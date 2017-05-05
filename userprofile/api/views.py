@@ -25,5 +25,5 @@ class UserCreateApiView(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        response_data = UserSerializer(user).data
+        response_data = self.retrieve_serializer_class(user).data
         return Response(response_data, status=HTTP_201_CREATED)
