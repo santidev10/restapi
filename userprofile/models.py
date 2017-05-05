@@ -4,7 +4,6 @@ Userprofile models module
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager
 from django.core import validators
-from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
@@ -46,13 +45,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     # extra fields and updated fields
     email = models.EmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
-    phone_regex = RegexValidator(
-        regex=r'^\+?1?\d{9,15}$',
-        message="Phone number must be entered"
-                " in the format: '+999999999'. Up to 15 digits allowed."
-    )
-    phone_number = models.CharField(
-        max_length=15, validators=[phone_regex], null=True, blank=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
 
     objects = UserManager()
 

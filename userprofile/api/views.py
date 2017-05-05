@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
+    HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer
@@ -42,9 +43,21 @@ class UserAuthApiView(APIView):
         """
         Login user
         """
-        serializer = AuthTokenSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
+        auth_token = request.data.get("auth_token")
+        if auth_token:
+            try:
+                user = Token.objects.get(key=auth_token).user
+            except Token.DoesNotExist:
+                user = None
+        else:
+            serializer = AuthTokenSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.validated_data['user']
+        if not user:
+            return Response(
+                data={"error": ["Unable to authenticate user"
+                                " with provided credentials"]},
+                status=HTTP_400_BAD_REQUEST)
         Token.objects.get_or_create(user=user)
         response_data = self.serializer_class(user).data
         return Response(response_data)
