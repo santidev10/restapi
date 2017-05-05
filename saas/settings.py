@@ -109,6 +109,19 @@ USE_TZ = True
 
 AUTH_USER_MODEL = "userprofile.UserProfile"
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
+
+}
+
 try:
     from .local_settings import *
 except ImportError:
