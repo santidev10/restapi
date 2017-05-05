@@ -4,14 +4,22 @@ Userprofile api serializers module
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField
+    ValidationError, SerializerMethodField, RegexValidator
 
 
 class UserCreateSerializer(ModelSerializer):
     """
-    Serializer to create user instance
+    Serializer for create user
     """
     verify_password = CharField(max_length=255, required=True)
+    company = CharField(max_length=255, required=True)
+    phone_regex = RegexValidator(
+        regex=r'^\+?1?\d{9,15}$',
+        message="Phone number must be entered"
+                " in the format: '+999999999'. Up to 15 digits allowed."
+    )
+    phone_number = CharField(
+        max_length=15, required=True, validators=[phone_regex])
 
     class Meta:
         """
@@ -52,7 +60,7 @@ class UserCreateSerializer(ModelSerializer):
 
 class UserSerializer(ModelSerializer):
     """
-    Serializer for user model
+    Serializer for update/retrieve user
     """
     token = SerializerMethodField()
 
@@ -68,6 +76,10 @@ class UserSerializer(ModelSerializer):
             "company",
             "phone_number",
             "email",
+            "is_staff",
+            "token"
+        )
+        read_only_fields = (
             "is_staff",
             "token"
         )
