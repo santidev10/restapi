@@ -9,7 +9,7 @@ from rest_framework.serializers import ModelSerializer, CharField, \
 
 class UserCreateSerializer(ModelSerializer):
     """
-    Serializer to create user instance
+    Serializer for create user
     """
     verify_password = CharField(max_length=255, required=True)
 
@@ -52,7 +52,7 @@ class UserCreateSerializer(ModelSerializer):
 
 class UserSerializer(ModelSerializer):
     """
-    Serializer for user model
+    Serializer for update/retrieve user
     """
     token = SerializerMethodField()
 
@@ -68,6 +68,10 @@ class UserSerializer(ModelSerializer):
             "company",
             "phone_number",
             "email",
+            "is_staff",
+            "token"
+        )
+        read_only_fields = (
             "is_staff",
             "token"
         )
