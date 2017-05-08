@@ -37,6 +37,7 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
+    "aw_reporting",
     "userprofile",
 )
 
@@ -58,6 +59,12 @@ MIDDLEWARE_CLASSES = [
 ROOT_URLCONF = 'saas.urls'
 
 WSGI_APPLICATION = 'saas.wsgi.application'
+
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'static'),
+)
 
 
 # Database
