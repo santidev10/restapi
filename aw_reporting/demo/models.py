@@ -20,10 +20,10 @@ VIEW_THROUGH = 400
 
 class BaseDemo:
     id = DEMO_ACCOUNT_ID
-    items_proportion = 1
     period_proportion = 1
     name = "Demo"
     status = 'enabled'
+    children = []
 
     average_position = 1
     ad_network = "YouTube Videos"
@@ -42,16 +42,8 @@ class BaseDemo:
         self.start_date = self.today - timedelta(days=19)
         self.end_date = self.today + timedelta(days=10)
 
-    def set_period_proportion(self, start_date, end_date):
-        start_date = start_date or self.start_date
-        start_date = min(start_date, self.yesterday)
-
-        end_date = end_date or self.end_date
-        end_date = min(end_date, self.yesterday)
-
-        selected = (end_date - start_date).days + 1
-        total_days = (self.yesterday - self.start_date).days + 1
-        self.period_proportion = selected / total_days
+    def __getitem__(self, name):
+        return getattr(self, name)
 
     default_creative = (
         {
@@ -144,6 +136,7 @@ class BaseDemo:
 
     @property
     def channel(self):
+        return []
         from video.models import Video, Channel
 
         channel_ids = Video.objects.filter(
@@ -165,6 +158,7 @@ class BaseDemo:
 
     @property
     def video(self):
+        return []
         from video.models import Video
         videos = [
             dict(label=v.title, id=v.id, thumbnail=v.thumbnail_image_url)
@@ -176,6 +170,7 @@ class BaseDemo:
 
     @property
     def creative(self):
+        return []
         from video.models import Video
         video = [
             dict(label=v.title, id=v.id, thumbnail=v.thumbnail_image_url)
@@ -198,11 +193,11 @@ class BaseDemo:
                         status="enabled",
                     )
                 )
-        if hasattr(self, 'campaigns'):
-            for c in self.campaigns:
-                get_ads(c.ad_groups)
-        elif hasattr(self, 'ad_groups'):
-            get_ads(self.ad_groups)
+        if isinstance(self, DemoAccount):
+            for c in self.children:
+                get_ads(c.children)
+        else:
+            get_ads(self.children)
 
         return ads
 
@@ -277,31 +272,31 @@ class BaseDemo:
 
     @property
     def impressions(self):
-        return int(IMPRESSIONS * self.items_proportion * self.period_proportion)
+        return sum(i.impressions for i in self.children)
 
     @property
     def video_views(self):
-        return int(VIDEO_VIEWS * self.items_proportion * self.period_proportion)
+        return sum(i.video_views for i in self.children)
 
     @property
     def clicks(self):
-        return int(CLICKS * self.items_proportion * self.period_proportion)
+        return sum(i.clicks for i in self.children)
 
     @property
     def cost(self):
-        return int(COST * self.items_proportion * self.period_proportion)
+        return sum(i.cost for i in self.children)
 
     @property
     def all_conversions(self):
-        return int(ALL_CONVERSIONS * self.items_proportion * self.period_proportion)
+        return sum(i.all_conversions for i in self.children)
 
     @property
     def conversions(self):
-        return int(CONVERSIONS * self.items_proportion * self.period_proportion)
+        return sum(i.conversions for i in self.children)
 
     @property
     def view_through(self):
-        return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
+        return sum(i.view_through for i in self.children)
 
     @property
     def average_cpm(self):
@@ -331,10 +326,37 @@ class BaseDemo:
 class DemoAdGroup(BaseDemo):
     items_proportion = 1 / TOTAL_DEMO_AD_GROUPS_COUNT
 
+    @property
+    def impressions(self):
+        return int(IMPRESSIONS * self.items_proportion * self.period_proportion)
+
+    @property
+    def video_views(self):
+        return int(VIDEO_VIEWS * self.items_proportion * self.period_proportion)
+
+    @property
+    def clicks(self):
+        return int(CLICKS * self.items_proportion * self.period_proportion)
+
+    @property
+    def cost(self):
+        return int(COST * self.items_proportion * self.period_proportion)
+
+    @property
+    def all_conversions(self):
+        return int(ALL_CONVERSIONS * self.items_proportion * self.period_proportion)
+
+    @property
+    def conversions(self):
+        return int(CONVERSIONS * self.items_proportion * self.period_proportion)
+
+    @property
+    def view_through(self):
+        return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
+
 
 class DemoCampaign(BaseDemo):
     type = "Video"
-    items_proportion = 1 / DEMO_CAMPAIGNS_COUNT
 
     @property
     def name(self):
@@ -342,7 +364,7 @@ class DemoCampaign(BaseDemo):
 
     def __init__(self, **kwargs):
         super(DemoCampaign, self).__init__(**kwargs)
-        self.ad_groups = [
+        self.children = [
             DemoAdGroup(id="{}{}".format(self.id, (i + 1)),
                         name="{} #{}".format(name, self.id))
             for i, name in enumerate(DEMO_AD_GROUPS)
@@ -350,24 +372,69 @@ class DemoCampaign(BaseDemo):
 
 
 class DemoAccount(BaseDemo):
-    campaigns = list()
 
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
-        self.campaigns = [DemoCampaign(id=str(i + 1))
-                          for i in range(DEMO_CAMPAIGNS_COUNT)]
+        self.children = [DemoCampaign(id=str(i + 1))
+                         for i in range(DEMO_CAMPAIGNS_COUNT)]
 
-    def set_items_selected_proportion(self, campaigns, ad_groups):
+    def filter_out_items(self, campaigns, ad_groups):
         if ad_groups:
-            selected_count = sum(
-                1 for c in self.campaigns for a in c.ad_groups
-                if a.id in ad_groups
-            )
-            self.items_proportion = selected_count / TOTAL_DEMO_AD_GROUPS_COUNT
+            new_campaigns = []
+            for c in self.children:
+                new_groups = [a for a in c.children if a.id in ad_groups]
+                if new_groups:
+                    c.children = new_groups
+                    new_campaigns.append(c)
+            self.children = new_campaigns
 
         elif campaigns:
-            selected_count = sum(
-                1 for c in self.campaigns if c.id in campaigns
-            )
-            self.items_proportion = selected_count / DEMO_CAMPAIGNS_COUNT
+            self.children = [c for c in self.children if c.id in campaigns]
 
+    def set_period_proportion(self, start_date, end_date):
+        start_date = start_date or self.start_date
+        start_date = min(start_date, self.yesterday)
+
+        end_date = end_date or self.end_date
+        end_date = min(end_date, self.yesterday)
+
+        selected = (end_date - start_date).days + 1
+        total_days = (self.yesterday - self.start_date).days + 1
+        period_proportion = selected / total_days
+        for c in self.children:
+            for a in c.children:
+                a.period_proportion = period_proportion
+
+    @property
+    def details(self):
+        details = dict(
+            id=self.id,
+            name=self.name,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            age=[dict(name=e, value=i+1)
+                 for i, e in enumerate(reversed(AgeRanges))],
+            gender=[dict(name=e, value=i+1)
+                    for i, e in enumerate(Genders)],
+            device=[dict(name=e, value=i+1)
+                    for i, e in enumerate(reversed(Devices))],
+            channel=[],
+            creative=[],
+            video=[],
+            clicks=self.clicks,
+            cost=self.cost,
+            impressions=self.impressions,
+            video_views=self.video_views,
+            ctr=self.ctr,
+            ctr_v=self.ctr_v,
+            average_cpm=self.average_cpm,
+            average_cpv=self.average_cpv,
+            video_view_rate=self.video_view_rate,
+            average_position=self.average_position,
+            ad_network=self.ad_network,
+            video100rate=self.video100rate,
+            video25rate=self.video25rate,
+            video50rate=self.video50rate,
+            video75rate=self.video75rate,
+        )
+        return details

@@ -61,6 +61,12 @@ ROOT_URLCONF = 'saas.urls'
 WSGI_APPLICATION = 'saas.wsgi.application'
 
 
+STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'static'),
+)
+
+
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
 

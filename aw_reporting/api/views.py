@@ -8,7 +8,10 @@ from rest_framework.views import APIView
 from aw_reporting.api.serializers import *
 from aw_reporting.demo import demo_view_decorator
 from datetime import datetime
+from io import StringIO
 import logging
+import csv
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +67,8 @@ class AnalyzeChartApiView(APIView):
             if end_date else None,
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
-            indicator=data.get("indicator"),
+            indicator=data.get("indicator", "average_cpv"),
+            dimension=data.get("dimension"),
         )
         return filters
 
@@ -72,20 +76,97 @@ class AnalyzeChartApiView(APIView):
         raise NotImplementedError("Vzhukh!")
 
 
-class AnalyzeChartItemsApiView(ListAPIView):
+@demo_view_decorator
+class AnalyzeChartItemsApiView(APIView):
 
-    def list(self, request, *args, **kwargs):
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
+            segmented=data.get("segmented"),
+        )
+        return filters
+
+    def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 
 
-class AnalyzeExportApiView(ListAPIView):
+@demo_view_decorator
+class AnalyzeExportApiView(APIView):
 
-    def list(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 
+    file_name = "{title}-analyze-{timestamp}.csv"
 
-class AnalyzeExportWeeklyReport(ListAPIView):
+    column_names = (
+        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
+        "25%", "50%", "75%", "100%",
+    )
+    column_keys = (
+        'name', 'impressions', 'video_views', 'cost', 'average_cpm',
+        'average_cpv', 'clicks', 'ctr', 'ctr_v', 'video_view_rate',
+        'video25rate', 'video50rate', 'video75rate', 'video100rate',
+    )
+    tabs = (
+        'device', 'gender', 'age', 'topic', 'interest', 'remarketing',
+        'keyword', 'location', 'creative', 'ad', 'channel', 'video',
+    )
 
-    def list(self, request, *args, **kwargs):
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get('campaigns'),
+            ad_groups=data.get('ad_groups'),
+        )
+        return filters
+
+    @staticmethod
+    def stream_response_generator(data_generator):
+        for row in data_generator():
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(row)
+            yield output.getvalue()
+
+    def stream_response(self, item_name, generator):
+        generator = self.stream_response_generator(generator)
+        response = StreamingHttpResponse(generator,
+                                         content_type='text/csv')
+        filename = self.file_name.format(
+            title=re.sub(r"\W", item_name, '-'),
+            timestamp=datetime.now().strftime("%Y%m%d"),
+        )
+        response['Content-Disposition'] = 'attachment; ' \
+                                          'filename="{}"'.format(filename)
+        return response
+
+
+@demo_view_decorator
+class AnalyzeExportWeeklyReport(APIView):
+
+    def get_filters(self):
+        data = self.request.data
+        filters = dict(
+            campaigns=data.get('campaigns'),
+            ad_groups=data.get('ad_groups'),
+        )
+        return filters
+
+    def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 

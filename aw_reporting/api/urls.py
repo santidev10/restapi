@@ -21,7 +21,7 @@ urlpatterns = [
     url(r'^analyze_export/(?P<pk>\w+)/',
         views.AnalyzeExportApiView.as_view(),
         name="analyze_export"),
-    url(r'^analyze_export_weekly_report/$',
+    url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
         views.AnalyzeExportWeeklyReport.as_view(),
         name="analyze_export_weekly_report"),
 ]
