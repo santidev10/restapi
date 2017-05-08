@@ -44,6 +44,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     # extra fields and updated fields
     email = models.EmailField(_('email address'), unique=True)
+    company = models.CharField(max_length=255, null=True, blank=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
 
     objects = UserManager()
 
