@@ -7,6 +7,9 @@ class DemoAnalyzeWeeklyReport(AnalyzeWeeklyReport):
     def get_campaign_data(self):
         return self.account.children
 
+    def get_ad_group_data(self):
+        return [a for c in self.account.children for a in c.children]
+
     def get_total_data(self):
         return self.account
 
