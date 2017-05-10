@@ -1,12 +1,15 @@
 from django.core.urlresolvers import reverse
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
-from rest_framework.test import APITestCase
+from saas.utils_tests import ExtendedAPITestCase
 from aw_reporting.demo.models import *
 import json
 
 
-class AnalyzeExportAPITestCase(APITestCase):
+class AnalyzeExportAPITestCase(ExtendedAPITestCase):
+
+    def setUp(self):
+        self.create_test_user()
 
     def test_success(self):
         url = reverse("aw_reporting_urls:analyze_export",

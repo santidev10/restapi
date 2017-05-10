@@ -1,11 +1,14 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from rest_framework.test import APITestCase
+from saas.utils_tests import ExtendedAPITestCase
 from aw_reporting.demo.models import *
 import json
 
 
-class AccountNamesAPITestCase(APITestCase):
+class AccountNamesAPITestCase(ExtendedAPITestCase):
+
+    def setUp(self):
+        self.create_test_user()
 
     def test_success_get_filter_dates(self):
         url = reverse("aw_reporting_urls:analyze_chart",

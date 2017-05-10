@@ -1,12 +1,13 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from rest_framework.test import APITestCase
+from saas.utils_tests import ExtendedAPITestCase
 from aw_reporting.demo.models import *
 
 
-class AccountNamesAPITestCase(APITestCase):
+class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
+        self.create_test_user()
         url = reverse("aw_reporting_urls:analyze_account_campaigns",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.get(url)
