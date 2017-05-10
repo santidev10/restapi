@@ -166,8 +166,6 @@ class AnalyzeWeeklyReport:
         # Filling document
         self.prepare_overview_section()
         next_row = self.prepare_placement_section(self.start_row)
-
-        # TODO We don't collect this statistic yet
         next_row = self.prepare_ad_group_section(next_row)
         next_row = self.prepare_interest_section(next_row)
         next_row = self.prepare_topic_section(next_row)
@@ -350,6 +348,18 @@ class AnalyzeWeeklyReport:
             total_row, start_row, self.footer_format)
         return start_row + 1
 
+    def get_ad_group_data(self):
+        queryset = AdGroupStatistic.objects.filter(**self.get_filters())
+        group_by = ("ad_group__name", "ad_group_id")
+        campaign_data = queryset.values(*group_by).annotate(
+            **{s: Sum(s, default=Value(0))
+               for s in SUM_STATS + QUARTILE_STATS}
+        ).order_by(*group_by)
+        for i in campaign_data:
+            dict_add_calculated_stats(i)
+            dict_quartiles_to_rates(i)
+        return campaign_data
+
     def prepare_ad_group_section(self, start_row):
         """
         Filling ad group section
@@ -365,16 +375,21 @@ class AnalyzeWeeklyReport:
             "Clicks",
             "CTR",
             "Video played to: 100%",
-
-            # TODO We don't collect the statistic for those two columns yet
             "Viewable Impressions",
             "Viewability"
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         # TODO We don't collect this statistic yet.
-        temp_info = [list([""] * 9) for x in range(5)]
-        start_row = self.write_rows(temp_info, start_row)
+        ad_group_info = [
+            (
+                obj["name"], obj["impressions"], obj["video_views"],
+                "{}%".format(obj["video_view_rate"]), obj["clicks"],
+                obj["ctr"], "{}%".format(obj["video100rate"]), "", "",
+            )
+            for obj in self.get_ad_group_data()
+        ]
+        start_row = self.write_rows(ad_group_info, start_row)
         return start_row + 1
 
     def get_interest_data(self):
