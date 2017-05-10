@@ -2,6 +2,7 @@
 Userprofile api serializers module
 """
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator
@@ -58,6 +59,7 @@ class UserCreateSerializer(ModelSerializer):
         user.set_password(user.password)
         user.save()
         Token.objects.get_or_create(user=user)
+        update_last_login(None, user)
         return user
 
 
@@ -85,10 +87,14 @@ class UserSerializer(ModelSerializer):
             "phone_number",
             "email",
             "is_staff",
+            "last_login",
+            "date_joined",
             "token"
         )
         read_only_fields = (
             "is_staff",
+            "last_login",
+            "date_joined",
             "token"
         )
 
