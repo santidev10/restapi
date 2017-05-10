@@ -6,20 +6,23 @@ from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator
 
+PHONE_REGEX = RegexValidator(
+    regex=r'^\+?1?\d{9,15}$',
+    message="Phone number must be entered"
+            " in the format: '+999999999'. Up to 15 digits allowed."
+)
+
 
 class UserCreateSerializer(ModelSerializer):
     """
     Serializer for create user
     """
-    verify_password = CharField(max_length=255, required=True)
+    first_name = CharField(max_length=255, required=True)
+    last_name = CharField(max_length=255, required=True)
     company = CharField(max_length=255, required=True)
-    phone_regex = RegexValidator(
-        regex=r'^\+?1?\d{9,15}$',
-        message="Phone number must be entered"
-                " in the format: '+999999999'. Up to 15 digits allowed."
-    )
     phone_number = CharField(
-        max_length=15, required=True, validators=[phone_regex])
+        max_length=15, required=True, validators=[PHONE_REGEX])
+    verify_password = CharField(max_length=255, required=True)
 
     class Meta:
         """
@@ -62,6 +65,11 @@ class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
+    first_name = CharField(max_length=255, required=True)
+    last_name = CharField(max_length=255, required=True)
+    company = CharField(max_length=255, required=True)
+    phone_number = CharField(
+        max_length=15, required=True, validators=[PHONE_REGEX])
     token = SerializerMethodField()
 
     class Meta:
