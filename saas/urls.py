@@ -2,9 +2,10 @@
 Saas urls module
 """
 from django.conf.urls import url, include
-from userprofile.api import urls as userprofile_api_urls
-from aw_reporting.api import urls as aw_reporting_urls
+
 from administration.api import urls as admin_urls
+from aw_reporting.api import urls as aw_reporting_urls
+from userprofile.api import urls as userprofile_api_urls
 
 urlpatterns = [
     # Userprofile api urls
