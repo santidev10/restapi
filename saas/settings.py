@@ -129,6 +129,11 @@ REST_FRAMEWORK = {
 
 }
 
+SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
 try:
     from .local_settings import *
 except ImportError:
