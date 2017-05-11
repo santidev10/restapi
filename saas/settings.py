@@ -39,6 +39,7 @@ INSTALLED_APPS = (
 PROJECT_APPS = (
     "aw_reporting",
     "userprofile",
+    "singledb",
 )
 
 THIRD_PARTY_APPS = (
@@ -128,6 +129,11 @@ REST_FRAMEWORK = {
     )
 
 }
+
+DATABASE_ROUTERS = [
+    'singledb.db_routers.SingledbRouter',
+]
+
 
 try:
     from .local_settings import *
