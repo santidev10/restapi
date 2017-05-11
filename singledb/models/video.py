@@ -4,8 +4,8 @@ from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 
-from .base import Base
-from .base import Timestampable
+from singledb.models.base import Base
+from singledb.models.base import Timestampable
 
 
 VIDEO_STATUS_CHOICES = (

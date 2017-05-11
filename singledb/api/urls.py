@@ -1,17 +1,17 @@
 from django.conf.urls import url
 
-from ..settings import SLAVE_MODE
-from .views import ChannelListApiView
+from singledb.settings import SLAVE_MODE
+from singledb.api.views import ChannelListApiView
 
 if SLAVE_MODE:
-    from .slave_views import ChannelListApiView
-    from .slave_views import ChannelRetrieveUpdateDeleteApiView
-    from .slave_views import VideoListApiView
-    from .slave_views import VideoRetrieveUpdateDeleteApiView
+    from singledb.api.slave_views import ChannelListApiView
+    from singledb.api.slave_views import ChannelRetrieveUpdateDeleteApiView
+    from singledb.api.slave_views import VideoListApiView
+    from singledb.api.slave_views import VideoRetrieveUpdateDeleteApiView
 else:
-    from .views import ChannelRetrieveUpdateDeleteApiView
-    from .views import VideoListApiView
-    from .views import VideoRetrieveUpdateDeleteApiView
+    from singledb.api.views import ChannelRetrieveUpdateDeleteApiView
+    from singledb.api.views import VideoListApiView
+    from singledb.api.views import VideoRetrieveUpdateDeleteApiView
 
 
 urlpatterns = [

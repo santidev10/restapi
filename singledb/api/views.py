@@ -1,14 +1,14 @@
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 
-from ..models import Channel
-from ..models import Video
-from ..models import TRENDINGS
-from ..models import get_trending_model_by_name
+from singledb.models import Channel
+from singledb.models import Video
+from singledb.models import TRENDINGS
+from singledb.models import get_trending_model_by_name
 
-from .pagination import ListPaginator
-from .serializers import ChannelSerializer
-from .serializers import VideoSerializer
+from singledb.api.pagination import ListPaginator
+from singledb.api.serializers import ChannelSerializer
+from singledb.api.serializers import VideoSerializer
 
 
 class ChannelListApiView(ListAPIView):
