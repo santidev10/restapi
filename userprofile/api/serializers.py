@@ -7,6 +7,8 @@ from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator
 
+from administration.notifications import send_new_registration_email
+
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
     message="Phone number must be entered"
@@ -53,13 +55,25 @@ class UserCreateSerializer(ModelSerializer):
 
     def save(self, **kwargs):
         """
-        Set user password
+        Make 'post-save' actions
         """
         user = super(UserCreateSerializer, self).save(**kwargs)
+        # set password
         user.set_password(user.password)
         user.save()
+        # set token
         Token.objects.get_or_create(user=user)
+        # update last login
         update_last_login(None, user)
+        # send email to admin
+        email_data = {
+            "host": self.context.get("request").get_host(),
+            "email": user.email,
+            "company": user.company,
+            "phone": user.phone_number
+        }
+        send_new_registration_email(email_data)
+        # done
         return user
 
 
