@@ -29,6 +29,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'age', 'gender', 'device', 'channel', 'creative', 'video',
                 'clicks', 'cost', 'impressions', 'video_views',
                 'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
+                "all_conversions", "conversions", "view_through",
                 'video_view_rate', 'average_position', 'ad_network',
                 'video100rate', 'video25rate', 'video50rate',
                 'video75rate',

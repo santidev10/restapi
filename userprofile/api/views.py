@@ -2,6 +2,7 @@
 Userprofile api views module
 """
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
@@ -59,6 +60,7 @@ class UserAuthApiView(APIView):
                                 " with provided credentials"]},
                 status=HTTP_400_BAD_REQUEST)
         Token.objects.get_or_create(user=user)
+        update_last_login(None, user)
         response_data = self.serializer_class(user).data
         return Response(response_data)
 
