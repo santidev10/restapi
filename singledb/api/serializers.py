@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 
-from ..models import Channel
-from ..models import Video
+from singledb.models import Channel
+from singledb.models import Video
 
 
 class ChannelSerializer(ModelSerializer):
