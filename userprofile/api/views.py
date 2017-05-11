@@ -26,7 +26,8 @@ class UserCreateApiView(APIView):
         """
         Extend post functionality
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         response_data = self.retrieve_serializer_class(user).data
