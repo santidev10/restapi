@@ -163,7 +163,9 @@ class UserPasswordSetApiView(APIView):
                 return Response({'email': email}, HTTP_404_NOT_FOUND)
 
             if not default_token_generator.check_token(user, token):
-                return Response({'token': 'invalid token'}, HTTP_403_FORBIDDEN)
+                return Response({'token': 'Your link has expired. '
+                                          'Please reset your password again.'},
+                                HTTP_403_FORBIDDEN)
             user.set_password(serializer.data.get('new_password'))
             user.save()
             return Response(UserSerializer(user).data)
