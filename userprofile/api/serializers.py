@@ -127,15 +127,6 @@ class UserSetPasswordSerializer(Serializer):
     Serializer for password set endpoint.
     """
     new_password = CharField(required=True)
-    new_password_confirm = CharField(required=True)
     email = CharField(required=True)
     token = CharField(required=True)
 
-    def validate(self, validated_data):
-        """
-        Validate passwords for equality
-        """
-        if not validated_data["new_password"] == validated_data["new_password_confirm"]:
-            raise ValidationError(
-                {"new_password": "new_password did not match new_password_confirm"})
-        return validated_data
