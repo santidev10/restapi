@@ -129,7 +129,7 @@ class UserPasswordResetApiView(APIView):
             email=email,
             token=token)
 
-        user.email_user('IQ > Password reset',
+        user.email_user('SaaS > Password reset notification',
                         'IQ system has received password reset request.\n'
                         'Click the link below to reset your password\n\n'
                         '{}\n\n'
