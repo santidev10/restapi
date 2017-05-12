@@ -1,16 +1,18 @@
 """
 Userprofile api views module
 """
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
-    HTTP_400_BAD_REQUEST
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_200_OK
 from rest_framework.views import APIView
 
-from userprofile.api.serializers import UserCreateSerializer, UserSerializer
+from userprofile.api.serializers import UserCreateSerializer, UserSerializer, UserSetPasswordSerializer
 
 
 class UserCreateApiView(APIView):
@@ -97,3 +99,72 @@ class UserProfileApiView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class UserPasswordResetApiView(APIView):
+    """
+    Password reset api view
+    """
+    permission_classes = tuple()
+
+    def post(self, request):
+        """
+        Send email notification
+        """
+        email = request.data.get('email')
+
+        try:
+            user = get_user_model().objects.get(email=email)
+        except get_user_model().DoesNotExist:
+            return Response({'email': email}, HTTP_404_NOT_FOUND)
+
+        if user.is_superuser:
+            return Response({'email': email}, HTTP_403_FORBIDDEN)
+
+        token = default_token_generator.make_token(user)
+        host = request.build_absolute_uri('/')
+
+        reset_uri = '{host}password_reset?email={email}&token={token}'.format(
+            host=host,
+            email=email,
+            token=token)
+
+        user.email_user('IQ > Password reset',
+                        'IQ system has received password reset request.\n'
+                        'Click the link below to reset your password\n\n'
+                        '{}\n\n'
+                        'Please do not respond to this email.'
+                        .format(reset_uri),
+                        from_email=settings.SENDER_EMAIL_ADDRESS)
+
+        return Response({'email': email}, HTTP_200_OK)
+
+
+
+class UserPasswordSetApiView(APIView):
+    """
+    Endpoint for setting new password for user
+    """
+    permission_classes = tuple()
+    serializer_class = UserSetPasswordSerializer
+
+    def post(self, request):
+        """
+        Update user password
+        """
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data.get('email')
+            token = serializer.data.get('token')
+
+            try:
+                user = get_user_model().objects.get(email=email)
+            except get_user_model().DoesNotExist:
+                return Response({'email': email}, HTTP_404_NOT_FOUND)
+
+            if not default_token_generator.check_token(user, token):
+                return Response({'token': 'invalid token'}, HTTP_403_FORBIDDEN)
+            user.set_password(serializer.data.get('new_password'))
+            user.save()
+            return Response(UserSerializer(user).data)
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)

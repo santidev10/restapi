@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField, RegexValidator
+    ValidationError, SerializerMethodField, RegexValidator, Serializer
 
 from administration.notifications import send_new_registration_email
 
@@ -120,3 +120,22 @@ class UserSerializer(ModelSerializer):
             return obj.auth_token.key
         except Token.DoesNotExist:
             return
+
+
+class UserSetPasswordSerializer(Serializer):
+    """
+    Serializer for password set endpoint.
+    """
+    new_password = CharField(required=True)
+    new_password_confirm = CharField(required=True)
+    email = CharField(required=True)
+    token = CharField(required=True)
+
+    def validate(self, validated_data):
+        """
+        Validate passwords for equality
+        """
+        if not validated_data["new_password"] == validated_data["new_password_confirm"]:
+            raise ValidationError(
+                {"new_password": "new_password did not match new_password_confirm"})
+        return validated_data
