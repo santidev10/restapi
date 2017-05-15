@@ -37,6 +37,7 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
+    "aw_creation",
     "aw_reporting",
     "userprofile",
     "singledb",
@@ -138,6 +139,9 @@ SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+
+YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'  # this is default development key
 
 try:
     from .local_settings import *
