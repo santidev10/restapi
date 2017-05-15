@@ -7,6 +7,8 @@ class ChannelListFiltersApiView(object):
 class ChannelRetrieveUpdateDeleteApiView(object):
     pass
 
+class CountryListApiView(object):
+    pass
 
 class VideoListApiView(object):
     pass

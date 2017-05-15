@@ -6,6 +6,7 @@ from django.core.validators import MinValueValidator
 
 from singledb.models.base import Base
 from singledb.models.base import Timestampable
+from utils.constants import LANGUAGES
 
 
 VIDEO_STATUS_CHOICES = (
@@ -56,6 +57,11 @@ class Video(Timestampable):
     def __str__(self):
         return self.title
 
+    @property
+    def language(self):
+        if self.lang_code:
+            return LANGUAGES.get(self.lang_code)
+
 
 class VideoDetails(Base):
     video = models.OneToOneField('singledb.Video', related_name="details", primary_key=True)
@@ -68,6 +74,7 @@ class VideoDetails(Base):
     months_out = models.IntegerField(null=True, validators=[MinValueValidator(3), MaxValueValidator(12)])
     margin = models.FloatField(null=True, validators=[MinValueValidator(.2), MaxValueValidator(.8)])
     cpm = models.FloatField(null=True, validators=[MinValueValidator(.7), MaxValueValidator(1.5)])
+    history_date = models.DateField()
 
     class Meta:
         db_table = 'video_videodetails'

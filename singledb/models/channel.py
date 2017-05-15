@@ -4,6 +4,7 @@ from django.contrib.postgres.fields import JSONField
 
 from singledb.models.base import Base
 from singledb.models.base import Timestampable
+from utils.constants import LANGUAGES
 
 
 class Channel(Timestampable):
@@ -45,6 +46,15 @@ class Channel(Timestampable):
     @property
     def is_monetizable(self):
         return self.monetization > 0
+
+    @property
+    def language(self):
+        codes = self.video_set.filter(lang_code__isnull=False)\
+                              .values('lang_code')\
+                              .annotate(count=models.Count('id'))
+        if codes:
+            code = sorted(codes, key=lambda i: i['count'], reverse=True)[0].get('lang_code')
+            return LANGUAGES.get(code)
 
 
 class ChannelDetails(Base):

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -7,20 +8,21 @@ from rest_framework.views import APIView
 from singledb.models import Channel
 
 from singledb.api.pagination import ListPaginator
-from singledb.api.serializers import ChannelSerializer
+from singledb.api.serializers import ChannelDetailsSerializer
+from singledb.api.serializers import ChannelListSerializer
 from singledb.api.utils import ChannelFiltersGenerator
 
 
-class RetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
+class ChannelRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
     permission_classes = tuple()
-    serializer_class = ChannelSerializer
+    serializer_class = ChannelDetailsSerializer
 
     def get_queryset(self):
         queryset = Channel.objects.all().select_related("details")
         return queryset
 
 
-class ListFiltersApiView(APIView):
+class ChannelListFiltersApiView(APIView):
     permission_classes = tuple()
     allowed_filters = ["countries", "categories"]
 
@@ -37,9 +39,9 @@ class ListFiltersApiView(APIView):
         return Response(data=generator())
 
 
-class ListApiView(ListAPIView):
+class ChannelListApiView(ListAPIView):
     permission_classes = tuple()
-    serializer_class = ChannelSerializer
+    serializer_class = ChannelListSerializer
     pagination_class = ListPaginator
     allowed_sorts = ["subscribers", "sentiment", "engagement", "views_per_video", "thirty_days_views", "thirty_days_subscribers"]
 
@@ -53,16 +55,57 @@ class ListApiView(ListAPIView):
         return queryset.order_by("-details__{}".format(sorting))
 
     def do_filters(self, queryset):
-        min_subscribers = self.request.query_params.get("min_subscribers_yt")
         filters = {}
+        exclude = {}
+
+        # selected ids
+        selected_ids = self.request.query_params.get("ids")
+        if selected_ids:
+            selected_ids = selected_ids.split(",")
+            filters["id__in"] = selected_ids
+        # country
+        country = self.request.query_params.get("country")
+        if country:
+            filters["country__in"] = country.split(",")
+        # email
+        email = self.request.query_params.get("email")
+        if email == "1":
+            exclude["emails"] = ""
+        if email == "0":
+            filters["emails"] = ""
+        # min_subscribers
+        min_subscribers = self.request.query_params.get("min_subscribers_yt")
         if min_subscribers:
             filters['details__subscribers__gte'] = min_subscribers
+        # max_subscribers
+        max_subscribers = self.request.query_params.get("max_subscribers_yt")
+        if max_subscribers:
+            filters['details__subscribers__lte'] = max_subscribers
+        # preferred
+        preferred = self.request.query_params.get("preferred")
+        if preferred:
+            filters['preferred'] = int(preferred)
+
         if filters:
             try:
                 queryset = queryset.filter(**filters)
             except ValueError:
                 queryset = Channel.objects.none()
+        if exclude:
+            try:
+                queryset = queryset.exclude(**exclude)
+            except ValueError:
+                queryset = Channel.objects.none()
+
+        # category
+        category = self.request.query_params.get("category")
+        if category:
+            categories = category.split(",")
+            category_search = reduce(operator.or_, (Q(category__icontains=x) for x in categories))
+            queryset = queryset.filter(category_search)
+
         return queryset
+
 
     def get_queryset(self):
         queryset = Channel.objects.all().select_related("details")

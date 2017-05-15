@@ -1,5 +1,6 @@
 from singledb.models.channel import Channel
 from singledb.models.channel import ChannelDetails
+from singledb.models.country import Country
 from singledb.models.video import Video
 from singledb.models.video import VideoDetails
 from singledb.models.video import VideoTrendingMostLiked
