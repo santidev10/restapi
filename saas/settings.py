@@ -37,6 +37,7 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
+    "aw_creation",
     "aw_reporting",
     "userprofile",
 )

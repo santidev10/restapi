@@ -1,7 +1,7 @@
-
 from django.conf.urls import url, include
 from userprofile.api import urls as userprofile_api_urls
 from aw_reporting.api import urls as aw_reporting_urls
+from aw_creation.api import urls as aw_creation_urls
 
 urlpatterns = [
     # Userprofile api urls
@@ -10,4 +10,7 @@ urlpatterns = [
     # AdWords reporting api urls
     url(r'^api/v1/', include(aw_reporting_urls,
                              namespace='aw_reporting_urls')),
+    # AdWords creation api urls
+    url(r'^api/v1/', include(aw_creation_urls,
+                             namespace='aw_creation_urls')),
 ]
