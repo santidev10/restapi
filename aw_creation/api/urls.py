@@ -2,6 +2,7 @@ from django.conf.urls import url
 from aw_creation.api import views
 
 urlpatterns = [
+    # optimization
     url(r'^geo_target_list/$',
         views.GeoTargetListApiView.as_view(),
         name="geo_target_list"),
@@ -20,4 +21,12 @@ urlpatterns = [
     url(r'^optimization_ad_group/(?P<pk>\w+)/$',
         views.OptimizationAdGroupApiView.as_view(),
         name="optimization_ad_group"),
+
+    # creation
+    url(r'^creation_options/$',
+        views.CreationOptionsApiView.as_view(),
+        name="creation_options"),
+    url(r'^creation_account/$',
+        views.CreationAccountApiView.as_view(),
+        name="creation_account"),
 ]
