@@ -5,6 +5,8 @@ from rest_framework.test import APITestCase
 
 class ExtendedAPITestCase(APITestCase):
 
+    multi_db = True
+
     test_user_data = {
         "username": "TestUser",
         "first_name": "TestUser",

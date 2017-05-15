@@ -1,15 +1,14 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from aw_campaign.models import Topic
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from aw_reporting.models import Topic
+from saas.utils_tests import ExtendedAPITestCase
 from urllib.parse import urlencode
 
 
-class TopicToolTestCase(APITestCase):
+class TopicToolTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.add_permission("campaign_creation")
 
     def create_topic(self, name="Parent"):
         parent = Topic.objects.create(name=name)
@@ -20,8 +19,8 @@ class TopicToolTestCase(APITestCase):
     def test_success_get(self):
         parent = self.create_topic()
 
-        # creation_topic_tool
-        url = reverse("aw_creation_urls:creation_topic_tool")
+        # optimization_topic_tool
+        url = reverse("aw_creation_urls:optimization_topic_tool")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -43,11 +42,8 @@ class TopicToolTestCase(APITestCase):
         self.create_topic("Parent#1")
 
         url = reverse(
-            "aw_creation_urls:creation_topic_tool_export",
+            "aw_creation_urls:optimization_topic_tool_export",
         )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
         url = "{}?{}".format(
             str(url),
             urlencode({'auth_token': self.user.auth_token.key}),
@@ -63,11 +59,8 @@ class TopicToolTestCase(APITestCase):
         children = parent_1.children.first()
 
         url = reverse(
-            "aw_creation_urls:creation_topic_tool_export",
+            "aw_creation_urls:optimization_topic_tool_export",
         )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
         url = "{}?{}".format(
             str(url),
             urlencode(
