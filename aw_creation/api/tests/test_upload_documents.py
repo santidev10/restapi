@@ -10,35 +10,35 @@ class DocumentsTestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_upload(self):
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9004056,
             name=10001,
             canonical_name="10001,New York,United States",
             country_code="US",
             target_type="Postal Code", status="Active",
         )
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9016366,
             name="46919",
             canonical_name="46919,Indiana,United States",
             country_code="US",
             target_type="Postal Code", status="Active",
         )
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9016367,
             name="46920",
             canonical_name="46920,Indiana,United States",
             country_code="US",
             target_type="Postal Code", status="Active",
         )
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9016368,
             name="46921",
             canonical_name="46921,Indiana,United States",
             country_code="US",
             target_type="Postal Code", status="Active",
         )
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9016369,
             name="46922",
             canonical_name="46922,Indiana,United States",
@@ -77,14 +77,14 @@ class DocumentsTestCase(ExtendedAPITestCase):
         )
 
     def test_success_csv_upload(self):
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9031988,
             name=94513,
             canonical_name="94513,California,United States",
             country_code="US",
             target_type="Postal Code", status="Active",
         )
-        GeoTarget.objects.create(
+        GeoTarget.objects.get_or_create(
             id=9032054,
             name=94596,
             canonical_name="94596,California,United States",
