@@ -69,6 +69,8 @@ class ChannelListApiView(ListAPIView):
                 pass
             elif filter_group == 'entertainment':
                 filters['ptk_value__in'] = ['vevo']
+            elif filter_group == 'all':
+                pass
             else:
                 queryset = Channel.objects.none()
 
