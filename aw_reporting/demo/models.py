@@ -436,5 +436,8 @@ class DemoAccount(BaseDemo):
             video25rate=self.video25rate,
             video50rate=self.video50rate,
             video75rate=self.video75rate,
+            conversions=self.conversions,
+            all_conversions=self.all_conversions,
+            view_through=self.view_through,
         )
         return details

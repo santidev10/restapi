@@ -480,8 +480,17 @@ class CreationAccountApiView(APIView):
         data = request.data
 
         number = AccountCreation.objects.filter(owner=owner).count() + 1
-
         account_fields = ('goal_type', 'video_ad_format',)
+
+        v_ad_format = data.get('video_ad_format')
+        campaign_count = data.get('campaign_count', 1)
+        ad_group_count = data.get('ad_group_count', 1)
+        assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
+        assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
+
+        age_ranges = data['age_ranges']
+        parents = data['parents']
+        genders = data['genders']
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
@@ -491,12 +500,6 @@ class CreationAccountApiView(APIView):
                    for f in account_fields
                    if data.get(f) is not None}
             )
-            v_ad_format = data.get('video_ad_format')
-            campaign_count = data.get('campaign_count', 1)
-            ad_group_count = data.get('ad_group_count', 1)
-            assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
-            assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
-
             for i in range(campaign_count):
                 c_uid = i + 1
                 campaign_creation = CampaignCreation.objects.create(
@@ -517,16 +520,16 @@ class CreationAccountApiView(APIView):
                         ct_overlay_text=data['ct_overlay_text'],
                         display_url=data['display_url'],
                         final_url=data['final_url'],
-                        age_ranges=data['age_ranges'],
-                        parents=data['parents'],
-                        genders=data['genders'],
+                        age_ranges=age_ranges,
+                        parents=parents,
+                        genders=genders,
                     )
 
         response = OrderedDict(
             id=account_creation.id,
             name=account_creation.name,
             video_ad_format=dict(
-                id=v_ad_format,
+                id=account_creation.video_ad_format,
                 name=dict(AccountCreation.VIDEO_AD_FORMATS)[v_ad_format]
             ),
             campaign_count=campaign_count,
