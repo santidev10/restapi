@@ -5,9 +5,10 @@ from django.db import transaction
 from django.db.models import Q, Min, Max, Sum
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView, RetrieveUpdateAPIView, GenericAPIView
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST, \
     HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.parsers import FileUploadParser
 from rest_framework.views import APIView
 from aw_creation.api.serializers import *
 from aw_reporting.models import GeoTarget
@@ -15,6 +16,9 @@ from aw_reporting.demo import demo_view_decorator
 from collections import OrderedDict
 from datetime import datetime
 from io import StringIO
+from openpyxl import load_workbook
+from apiclient.discovery import build
+from apiclient.errors import HttpError
 import logging
 import csv
 import re
@@ -34,6 +38,141 @@ class GeoTargetListApiView(APIView):
             queryset = queryset.filter(name__icontains=search)
         data = self.serializer_class(queryset[:100],  many=True).data
         return Response(data=data)
+
+
+class DocumentImportBaseAPIView(GenericAPIView):
+    parser_classes = (FileUploadParser,)
+
+    @staticmethod
+    def get_xlsx_contents(file_obj, return_lines=False):
+        wb = load_workbook(file_obj)
+        for sheet in wb:
+            for row in sheet:
+                if return_lines:
+                    yield tuple(i.value for i in row)
+                else:
+                    for cell in row:
+                        yield cell.value
+
+    @staticmethod
+    def get_csv_contents(file_obj, return_lines=False):
+        string = file_obj.read().decode()
+        reader = csv.reader(string.split("\n"))
+        for row in reader:
+            if return_lines:
+                yield tuple(i.strip() for i in row)
+            else:
+                for cell in row:
+                    yield cell.strip()
+
+
+class DocumentToChangesApiView(DocumentImportBaseAPIView):
+
+    def post(self, request, content_type, **_):
+        file_obj = request.data['file']
+        fct = file_obj.content_type
+        if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            data = self.get_xlsx_contents(file_obj)
+        elif fct in ("text/csv", "application/vnd.ms-excel"):
+            data = self.get_csv_contents(file_obj)
+        else:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data={"errors": ["The MIME type isn't supported: "
+                                 "{}".format(file_obj.content_type)]})
+        if content_type == "postal_codes":
+            response_data = self.get_location_rules(data)
+        else:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data={"errors": ["The content type isn't supported: "
+                                 "{}".format(content_type)]})
+        return Response(status=HTTP_200_OK, data=response_data)
+
+    def get_location_rules(self, items):
+        items = set(str(i) for i in items if i)
+        geo_targets = self.get_geo_targets(items)
+        result = [dict(id=i['id'], name=i['canonical_name'])
+                  for i in geo_targets]
+        undefined = list(items - set(i['name'] for i in geo_targets))
+        if undefined:
+            # let's search for zip+4 postal codes
+            re_sub = re.sub
+            numeric_values = [re_sub(r"\D", "", i) for i in undefined]
+            plus_4_zips = filter(lambda i: len(i) == 9, numeric_values)
+            common_codes = [c[:5] for c in plus_4_zips]
+            if common_codes:
+                geo_targets = self.get_geo_targets(common_codes)
+                if geo_targets:
+                    valid_zips = set(i['name'] for i in geo_targets)
+                    result.extend(
+                        [dict(id=i['id'], name=i['canonical_name'])
+                         for i in geo_targets]
+                    )
+                    # remove items from undefined set
+                    drop_indexes = []
+                    for code in valid_zips:
+                        for n, i in enumerate(numeric_values):
+                            if i.startswith(code):
+                                drop_indexes.append(n)
+                    undefined = [i for n, i in enumerate(undefined)
+                                 if n not in drop_indexes]
+
+        return {'result': result, "undefined": undefined}
+
+    @staticmethod
+    def get_geo_targets(names):
+        geo_targets = GeoTarget.objects.filter(
+            name__in=names
+        ).values("id", "name", "canonical_name")
+        return geo_targets
+
+
+class YoutubeVideoSearchApiView(GenericAPIView):
+
+    def get(self, request, query, **_):
+        youtube = build(
+            "youtube", "v3",
+            developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
+        )
+        options = {
+            'q': query,
+            'part': 'snippet',
+            'type': "video",
+            'maxResults': 50,
+            'safeSearch': 'none',
+        }
+        next_page = request.GET.get("next_page")
+        if next_page:
+            options["pageToken"] = next_page
+        results = youtube.search().list(**options).execute()
+        print(results)
+        response = dict(
+            next_page=results.get("nextPageToken"),
+            items_count=results.get("pageInfo", {}).get("totalResults"),
+            items=[self.format_item(i) for i in results.get("items", [])]
+        )
+        return Response(data=response)
+
+    @staticmethod
+    def format_item(data):
+        snippet = data.get("snippet", {})
+        thumbnails = snippet.get("thumbnails", {})
+        thumbnail = thumbnails.get("high") if "high" in thumbnails \
+            else thumbnails.get("default")
+        uid = data.get("id", {}).get("videoId")
+        item = dict(
+            id=uid,
+            title=snippet.get("title"),
+            url="https://youtube.com/video/{}".format(uid),
+            description=snippet.get("description"),
+            thumbnail=thumbnail.get("url"),
+            channel=dict(
+                id=snippet.get("channelId"),
+                title=snippet.get("channelTitle"),
+            ),
+        )
+        return item
 
 
 class OptimizationAccountListPaginator(PageNumberPagination):
@@ -480,7 +619,6 @@ class CreationAccountApiView(APIView):
         data = request.data
 
         number = AccountCreation.objects.filter(owner=owner).count() + 1
-        account_fields = ('goal_type', 'video_ad_format',)
 
         v_ad_format = data.get('video_ad_format')
         campaign_count = data.get('campaign_count', 1)
@@ -488,24 +626,32 @@ class CreationAccountApiView(APIView):
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
 
-        age_ranges = data['age_ranges']
-        parents = data['parents']
-        genders = data['genders']
-
         with transaction.atomic():
-            account_creation = AccountCreation.objects.create(
+            account_data = dict(
                 name="Account {}".format(number),
-                owner=owner,
-                **{f: data[f]
-                   for f in account_fields
-                   if data.get(f) is not None}
+                owner=owner.id,
+                video_networks=[
+                    i[0] for i in AccountCreation.VIDEO_NETWORKS
+                ],
             )
+            account_data.update(data)
+            serializer = OptimizationCreateAccountSerializer(
+                data=account_data)
+            serializer.is_valid(raise_exception=True)
+            account_creation = serializer.save()
+
             for i in range(campaign_count):
                 c_uid = i + 1
-                campaign_creation = CampaignCreation.objects.create(
+                campaign_data = dict(
                     name="Campaign {}".format(c_uid),
-                    account_creation=account_creation,
+                    account_creation=account_creation.id,
                 )
+                campaign_data.update(data)
+                serializer = OptimizationCreateCampaignSerializer(
+                    data=campaign_data,
+                )
+                serializer.is_valid(raise_exception=True)
+                campaign_creation = serializer.save()
                 # ad_schedule, location, freq_capping
                 OptimizationCampaignApiView.update_related_models(
                     campaign_creation.id, data
@@ -513,17 +659,22 @@ class CreationAccountApiView(APIView):
 
                 for j in range(ad_group_count):
                     a_uid = j + 1
-                    AdGroupCreation.objects.create(
+                    ag_data = dict(
                         name="AdGroup {}.{}".format(c_uid, a_uid),
-                        campaign_creation=campaign_creation,
-                        video_url=data['video_url'],
-                        ct_overlay_text=data['ct_overlay_text'],
-                        display_url=data['display_url'],
-                        final_url=data['final_url'],
-                        age_ranges=age_ranges,
-                        parents=parents,
-                        genders=genders,
+                        campaign_creation=campaign_creation.id,
                     )
+                    ag_data.update(data)
+                    serializer = OptimizationAdGroupUpdateSerializer(
+                        data=ag_data,
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    ad_group_creation = serializer.save()
+
+        age_ranges = data['age_ranges']
+        parents = data['parents']
+        genders = data['genders']
+        devices = data['devices']
+        goal_type = data['goal_type']
 
         response = OrderedDict(
             id=account_creation.id,
@@ -539,19 +690,42 @@ class CreationAccountApiView(APIView):
             ct_overlay_text=data['ct_overlay_text'],
             display_url=data['display_url'],
             final_url=data['final_url'],
-            age_ranges=data['age_ranges'],
-            parents=data['parents'],
-            genders=data['genders'],
+            age_ranges=[dict(id=uid, name=n)
+                        for uid, n in AdGroupCreation.AGE_RANGES
+                        if uid in age_ranges],
+            parents=[dict(id=uid, name=n)
+                     for uid, n in AdGroupCreation.PARENTS
+                     if uid in parents],
+            genders=[dict(id=uid, name=n)
+                     for uid, n in AdGroupCreation.GENDERS
+                     if uid in genders],
 
-            languages=data['languages'],
-            location_rules=data['location_rules'],
+            languages=Language.objects.filter(
+                campaigns__account_creation=account_creation
+            ).values('id', 'name').distinct(),
+            location_rules=LocationRuleSerializer(
+                LocationRule.objects.filter(
+                    campaign_creation__account_creation=account_creation
+                ),
+                many=True, read_only=True,
+            ).data,
 
-            devices=data['devices'],
-            frequency_capping=data['frequency_capping'],
+            devices=[dict(id=uid, name=n)
+                     for uid, n in CampaignCreation.DEVICES
+                     if uid in devices],
+            frequency_capping=FrequencyCapSerializer(
+                FrequencyCap.objects.filter(
+                    campaign_creation__account_creation=account_creation
+                ).distinct(),
+                many=True, read_only=True,
+            ).data,
             start=data['start'], end=data['end'],
 
-            goal_units=data['goal_units'], goal_type=data['goal_type'],
-
+            goal_units=data['goal_units'],
+            goal_type=dict(
+                id=goal_type,
+                name=dict(AccountCreation.GOAL_TYPES)[goal_type]
+            ),
             budget=data['budget'],
             max_rate=data['max_rate'],
         )

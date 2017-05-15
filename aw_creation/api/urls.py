@@ -2,10 +2,17 @@ from django.conf.urls import url
 from aw_creation.api import views
 
 urlpatterns = [
-    # optimization
     url(r'^geo_target_list/$',
         views.GeoTargetListApiView.as_view(),
         name="geo_target_list"),
+    url(r'^document_to_changes/(?P<content_type>\w+)/$',
+        views.DocumentToChangesApiView.as_view(),
+        name="document_to_changes"),
+    url(r'^youtube_video_search/(?P<query>.+)/$',
+        views.YoutubeVideoSearchApiView.as_view(),
+        name="youtube_video_search"),
+
+    # optimization
     url(r'^optimization_options/$',
         views.OptimizationOptionsApiView.as_view(),
         name="optimization_options"),

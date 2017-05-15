@@ -523,6 +523,15 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
         return super(OptimizationUpdateAccountSerializer, self).validate(data)
 
 
+class OptimizationCreateAccountSerializer(
+        OptimizationUpdateAccountSerializer):
+
+    class Meta:
+        model = AccountCreation
+        fields = OptimizationUpdateAccountSerializer.Meta.fields + (
+            'owner',)
+
+
 class OptimizationUpdateCampaignSerializer(ModelSerializer):
 
     devices = ListField()
@@ -539,6 +548,14 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
             'languages',
             'devices',
         )
+
+
+class OptimizationCreateCampaignSerializer(
+    OptimizationUpdateCampaignSerializer):
+    class Meta:
+        model = CampaignCreation
+        fields = OptimizationUpdateCampaignSerializer.Meta.fields + (
+            'account_creation', )
 
 
 class OptimizationLocationRuleUpdateSerializer(ModelSerializer):
