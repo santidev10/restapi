@@ -40,8 +40,8 @@ class DocumentsTestCase(ExtendedAPITestCase):
         GeoTarget.objects.get_or_create(
             id=9016368,
             defaults=dict(
-                name="46921",
-                canonical_name="46921,Indiana,United States",
+                name="46923",
+                canonical_name="46923,Indiana,United States",
                 country_code="US",
                 target_type="Postal Code", status="Active",
             )
@@ -49,8 +49,8 @@ class DocumentsTestCase(ExtendedAPITestCase):
         GeoTarget.objects.get_or_create(
             id=9016369,
             defaults=dict(
-                name="46922",
-                canonical_name="46922,Indiana,United States",
+                name="46926",
+                canonical_name="46926,Indiana,United States",
                 country_code="US",
                 target_type="Postal Code", status="Active",
             )
