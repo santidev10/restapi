@@ -5,20 +5,20 @@ from django.db import transaction
 from django.db.models import Q, Min, Max, Sum
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView, RetrieveUpdateAPIView, GenericAPIView
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
+    GenericAPIView
+from rest_framework.status import HTTP_404_NOT_FOUND, \
+    HTTP_400_BAD_REQUEST, HTTP_200_OK, HTTP_202_ACCEPTED
 from rest_framework.parsers import FileUploadParser
 from rest_framework.views import APIView
 from aw_creation.api.serializers import *
 from aw_reporting.models import GeoTarget
-from aw_reporting.demo import demo_view_decorator
+from singledb.models import Channel, Video
 from collections import OrderedDict
 from datetime import datetime
 from io import StringIO
 from openpyxl import load_workbook
 from apiclient.discovery import build
-from apiclient.errors import HttpError
 import logging
 import csv
 import re
@@ -731,3 +731,466 @@ class CreationAccountApiView(APIView):
         )
 
         return Response(data=response)
+
+
+# tools
+
+class TopicToolListApiView(ListAPIView):
+    serializer_class = TopicHierarchySerializer
+    queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+
+
+class TopicToolListExportApiView(TopicToolListApiView):
+    export_fields = ('id', 'name', 'parent_id')
+    file_name = "topic_list"
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        export_ids = request.GET.get('export_ids')
+        if export_ids:
+            export_ids = set(int(i) for i in export_ids.split(','))
+        fields = self.export_fields
+
+        def generator():
+            def to_line(line):
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(line)
+                return output.getvalue()
+
+            def item_with_children(item):
+                if not export_ids or item.id in export_ids:
+                    yield to_line(tuple(getattr(item, f) for f in fields))
+
+                for i in item.children.all():
+                    if not export_ids or i.id in export_ids:
+                        yield to_line(tuple(getattr(i, f) for f in fields))
+
+            yield to_line(fields)
+            for topic in queryset:
+                yield from item_with_children(topic)
+
+        response = StreamingHttpResponse(
+            generator(), content_type='text/csv')
+        filename = "{}_{}.csv".format(
+            self.file_name,
+            datetime.now().strftime("%Y%m%d"),
+        )
+        response['Content-Disposition'] = 'attachment; filename=' \
+                                          '"{}"'.format(filename)
+        return response
+
+
+# Tools
+class AudienceToolListApiView(ListAPIView):
+    serializer_class = AudienceHierarchySerializer
+    queryset = Audience.objects.filter(
+        parent__isnull=True,
+        type__in=[Audience.AFFINITY_TYPE, Audience.IN_MARKET_TYPE],
+    ).order_by('type', 'name')
+
+
+class AudienceToolListExportApiView(TopicToolListExportApiView):
+    export_fields = ('id', 'name', 'parent_id', 'type')
+    file_name = "audience_list"
+    queryset = AudienceToolListApiView.queryset
+
+
+# targeting lists
+class TargetingListBaseAPIClass(GenericAPIView):
+    serializer_class = AdGroupTargetingListSerializer
+
+    def get_queryset(self):
+            pk = self.kwargs.get('pk')
+            list_type = self.kwargs.get('list_type')
+            queryset = TargetingItem.objects.filter(
+                ad_group_creation_id=pk,
+                type=list_type,
+            )
+            return queryset
+
+    @staticmethod
+    def data_to_list(data):
+        data = [i['criteria'] if type(i) is dict else i
+                for i in data]
+        return data
+
+    def data_to_dicts(self, data):
+        is_negative = self.request.GET.get('is_negative', False)
+        data = [i if type(i) is dict
+                else dict(criteria=str(i), is_negative=is_negative)
+                for i in data]
+        return data
+
+    def add_items_info(self, data):
+        list_type = self.kwargs.get('list_type')
+        ids = set(i['criteria'] for i in data)
+        if ids:
+            if list_type == TargetingItem.CHANNEL_TYPE:
+                info = Channel.objects.in_bulk(ids)
+                for item in data:
+                    item_info = info.get(item['criteria'])
+                    item['name'] = item_info.title if item_info else None
+                    item['thumbnail'] = item_info.thumbnail_image_url \
+                        if item_info else None
+
+            elif list_type == TargetingItem.VIDEO_TYPE:
+                info = Video.objects.in_bulk(ids)
+                for item in data:
+                    item_info = info.get(item['criteria'])
+                    item['name'] = item_info.title if item_info else None
+                    item['thumbnail'] = item_info.thumbnail_image_url \
+                        if item_info else None
+
+            elif list_type == TargetingItem.TOPIC_TYPE:
+                info = dict(
+                    Topic.objects.filter(
+                        id__in=ids).values_list('id', 'name')
+                )
+                for item in data:
+                    item['name'] = info.get(int(item['criteria']))
+
+            elif list_type == TargetingItem.INTEREST_TYPE:
+                info = dict(
+                    Audience.objects.filter(
+                        id__in=ids).values_list('id', 'name')
+                )
+                for item in data:
+                    item['name'] = info.get(int(item['criteria']))
+            elif list_type == TargetingItem.KEYWORD_TYPE:
+                for item in data:
+                    item['name'] = item['criteria']
+
+
+class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = self.get_serializer(queryset, many=True).data
+        self.add_items_info(data)
+        return Response(data=data)
+
+    def post(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        try:
+            ad_group_creation = AdGroupCreation.objects.get(pk=pk)
+        except AdGroupCreation.DoesNotExsist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = self.data_to_dicts(request.data)
+        data = self.drop_not_valid(data, list_type)
+
+        criteria_sent = set(i['criteria'] for i in data)
+
+        queryset = self.get_queryset()
+        criteria_exists = set(
+            queryset.filter(
+                criteria__in=criteria_sent
+            ).values_list('criteria', flat=True)
+        )
+        post_data = []
+        for item in data:
+            if item['criteria'] not in criteria_exists:
+                item['type'] = list_type
+                item['ad_group_creation'] = pk
+                post_data.append(item)
+
+        serializer = AdGroupTargetingListUpdateSerializer(
+            data=post_data, many=True)
+        serializer.is_valid(raise_exception=True)
+        res = serializer.save()
+        if res:
+            ad_group_creation.save()
+        response = self.get(request, *args, **kwargs)
+        return response
+
+    def delete(self, request, *args, **kwargs):
+        criteria_list = self.data_to_list(request.data)
+        count, details = self.get_queryset().filter(
+            criteria__in=criteria_list
+        ).delete()
+        if count:
+            pk = self.kwargs.get('pk')
+            try:
+                ad_group_creation = AdGroupCreation.objects.get(pk=pk)
+            except AdGroupCreation.DoesNotExsist:
+                pass
+            else:
+                ad_group_creation.save()
+
+        response = self.get(request, *args, **kwargs)
+        return response
+
+    def drop_not_valid(self, objects_list, list_type):
+        method = "drop_not_valid_{}".format(list_type)
+        if hasattr(self, method):
+            return getattr(self, method)(objects_list)
+        else:
+            return objects_list
+
+    @staticmethod
+    def drop_not_valid_topic(objects_list):
+        existed_ids = set(
+            Topic.objects.filter(
+                id__in=[i['criteria'] for i in objects_list]
+            ).values_list('id', flat=True)
+        )
+        valid_list = [i for i in objects_list
+                      if int(i['criteria']) in existed_ids]
+        return valid_list
+
+    @staticmethod
+    def drop_not_valid_interest(objects_list):
+        existed_ids = set(
+            Audience.objects.filter(
+                type__in=(Audience.IN_MARKET_TYPE, Audience.AFFINITY_TYPE),
+                id__in=[i['criteria'] for i in objects_list]
+            ).values_list('id', flat=True)
+        )
+        valid_list = [i for i in objects_list
+                      if int(i['criteria']) in existed_ids]
+        return valid_list
+
+
+class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
+
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+
+        queryset = self.get_queryset()
+        data = self.get_serializer(queryset, many=True).data
+        self.add_items_info(data)
+
+        def generator():
+
+            def to_line(line):
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(line)
+                return output.getvalue()
+
+            fields = ['criteria', 'is_negative', 'name']
+            yield to_line(fields)
+            for item in data:
+                yield to_line(tuple(item.get(f) for f in fields))
+        response = StreamingHttpResponse(generator(), content_type='text/csv')
+        filename = "ad_group_targeting_list_{}_{}_{}.csv".format(
+            datetime.now().strftime("%Y%m%d"), pk, list_type
+        )
+        response['Content-Disposition'] = 'attachment; filename=' \
+                                          '"{}"'.format(filename)
+        return response
+
+
+class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
+                                        DocumentImportBaseAPIView):
+    parser_classes = (FileUploadParser,)
+
+    def post(self, request, *args, **kwargs):
+
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        method = "import_{}_criteria".format(list_type)
+        if not hasattr(self, method):
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data="Unsupported list type: {}".format(list_type))
+
+        criteria_list = []
+        for _, file_obj in request.data.items():
+
+            file_obj = request.data['file']
+            fct = file_obj.content_type
+            if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                data = self.get_xlsx_contents(file_obj, return_lines=True)
+            elif fct in ("text/csv", "application/vnd.ms-excel"):
+                data = self.get_csv_contents(file_obj, return_lines=True)
+            else:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data={"errors": ["The MIME type isn't supported: "
+                                     "{}".format(file_obj.content_type)]})
+
+            criteria_list.extend(getattr(self, method)(data))
+
+        if criteria_list:
+            existed_criteria = list(
+                self.get_queryset().filter(
+                    criteria__in=[i['criteria'] for i in criteria_list]
+                ).values_list('criteria', flat=True)
+            )
+
+            to_create = []
+            for i in criteria_list:
+                criteria = str(i['criteria'])
+                if criteria not in existed_criteria:
+                    existed_criteria.append(criteria)
+                    to_create.append(i)
+
+            if to_create:
+                is_negative = request.GET.get('is_negative', False)
+                for i in to_create:
+                    if i.get('is_negative') is None:
+                        i['is_negative'] = is_negative
+                    i['ad_group_creation'] = pk
+                    i['type'] = list_type
+
+                serializer = AdGroupTargetingListUpdateSerializer(
+                    data=to_create, many=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                try:
+                    ad_group_creation = AdGroupCreation.objects.get(
+                        pk=pk
+                    )
+                    ad_group_creation.save()
+                except AdGroupCreation.DoesNotExsist:
+                    pass
+
+        response = self.get(request, *args, **kwargs)
+        return response
+
+    @staticmethod
+    def import_keyword_criteria(data):
+        kws = []
+        data = list(data)
+        for line in data[1:]:
+            if len(line) > 1:
+                criteria, is_negative, *_ = line
+                if is_negative is "True":
+                    is_negative = True
+                elif is_negative is "False":
+                    is_negative = True
+                else:
+                    is_negative = None
+            elif len(line):
+                criteria, is_negative = line[0], None
+            else:
+                continue
+
+            if re.search(r"\w+", criteria):
+                kws.append(
+                    dict(criteria=criteria, is_negative=is_negative)
+                )
+        return kws
+
+    @staticmethod
+    def import_channel_criteria(data):
+        channels = []
+        channel_pattern = re.compile(r"[\w-]{24}")
+
+        for line in data:
+            criteria, is_negative = None, None
+            if len(line) > 1:
+                first, second, *_ = line
+                if second is "True":
+                    is_negative = True
+                elif second is "False":
+                    is_negative = False
+
+            elif len(line):
+                first, second = line[0], ""
+            else:
+                continue
+
+            match = channel_pattern.search(second)
+            if match:
+                criteria = match.group(0)
+            else:
+                match = channel_pattern.search(first)
+                if match:
+                    criteria = match.group(0)
+
+            if criteria:
+                channels.append(
+                    dict(criteria=criteria, is_negative=is_negative)
+                )
+        return channels
+
+    @staticmethod
+    def import_video_criteria(data):
+        videos = []
+        pattern = re.compile(r"[\w-]{11}")
+        for line in data:
+            criteria, is_negative = None, None
+            if len(line) > 1:
+                first, second, *_ = line
+                if second is "True":
+                    is_negative = True
+                elif second is "False":
+                    is_negative = False
+
+            elif len(line):
+                first, second = line[0], ""
+            else:
+                continue
+
+            match = pattern.search(second)
+            if match:
+                criteria = match.group(0)
+            else:
+                match = pattern.search(first)
+                if match:
+                    criteria = match.group(0)
+
+            if criteria:
+                videos.append(
+                    dict(criteria=criteria, is_negative=is_negative)
+                )
+        return videos
+
+    @staticmethod
+    def import_topic_criteria(data):
+        objects = []
+        topic_ids = set(Topic.objects.values_list('id', flat=True))
+        for line in data:
+            if len(line) > 1:
+                criteria, is_negative, *_ = line
+                is_negative = is_negative == "True"
+            elif len(line):
+                criteria, is_negative = line[0], False
+            else:
+                continue
+
+            try:
+                criteria = int(criteria)
+            except ValueError:
+                continue
+            else:
+                if criteria in topic_ids:
+                    objects.append(
+                        dict(criteria=criteria, is_negative=is_negative)
+                    )
+        return objects
+
+    @staticmethod
+    def import_interest_criteria(data):
+        objects = []
+        interest_ids = set(
+            Audience.objects.filter(
+                type__in=(Audience.IN_MARKET_TYPE, Audience.AFFINITY_TYPE)
+            ).values_list('id', flat=True)
+        )
+        for line in data:
+            if len(line) > 1:
+                criteria, is_negative, *_ = line
+                is_negative = is_negative == "True"
+            elif len(line):
+                criteria, is_negative = line[0], False
+            else:
+                continue
+
+            try:
+                criteria = int(criteria)
+            except ValueError:
+                continue
+            else:
+                if criteria in interest_ids:
+                    objects.append(
+                        dict(criteria=criteria, is_negative=is_negative)
+                    )
+        return objects

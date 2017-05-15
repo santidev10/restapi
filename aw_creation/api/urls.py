@@ -12,6 +12,14 @@ urlpatterns = [
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
 
+    # creation
+    url(r'^creation_options/$',
+        views.CreationOptionsApiView.as_view(),
+        name="creation_options"),
+    url(r'^creation_account/$',
+        views.CreationAccountApiView.as_view(),
+        name="creation_account"),
+
     # optimization
     url(r'^optimization_options/$',
         views.OptimizationOptionsApiView.as_view(),
@@ -29,11 +37,32 @@ urlpatterns = [
         views.OptimizationAdGroupApiView.as_view(),
         name="optimization_ad_group"),
 
-    # creation
-    url(r'^creation_options/$',
-        views.CreationOptionsApiView.as_view(),
-        name="creation_options"),
-    url(r'^creation_account/$',
-        views.CreationAccountApiView.as_view(),
-        name="creation_account"),
+    # tools
+    url(r'^optimization_topic_tool/$',
+        views.TopicToolListApiView.as_view(),
+        name="optimization_topic_tool"),
+    url(r'^optimization_topic_tool_export/$',
+        views.TopicToolListExportApiView.as_view(),
+        name="optimization_topic_tool_export"),
+
+    url(r'^optimization_audience_tool/$',
+        views.AudienceToolListApiView.as_view(),
+        name="optimization_audience_tool"),
+    url(r'^optimization_audience_tool_export/$',
+        views.AudienceToolListExportApiView.as_view(),
+        name="optimization_audience_tool_export"),
+
+    # ad group targeting lists
+    url(r'^optimization_ad_group_targeting/'
+        r'(?P<pk>\d+)/(?P<list_type>\w+)/$',
+        views.AdGroupTargetingListApiView.as_view(),
+        name="optimization_ad_group_targeting"),
+    url(r'^optimization_ad_group_targeting_export/'
+        r'(?P<pk>\d+)/(?P<list_type>\w+)/$',
+        views.AdGroupTargetingListExportApiView.as_view(),
+        name="optimization_ad_group_targeting_export"),
+    url(r'^optimization_ad_group_targeting_import/'
+        r'(?P<pk>\d+)/(?P<list_type>\w+)/$',
+        views.AdGroupTargetingListImportApiView.as_view(),
+        name="optimization_ad_group_targeting_import"),
 ]

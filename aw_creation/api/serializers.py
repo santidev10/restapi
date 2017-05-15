@@ -1,5 +1,5 @@
 from aw_creation.models import *
-from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTarget, Topic, Audience
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, FloatField, IntegerField, DateField, \
     PrimaryKeyRelatedField, CharField, StringRelatedField, ListField, \
@@ -579,3 +579,44 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
                     "{}: empty set is not allowed".format(f))
         return super(OptimizationAdGroupUpdateSerializer,
                      self).validate(data)
+
+
+class TopicHierarchySerializer(ModelSerializer):
+    children = SerializerMethodField()
+
+    class Meta:
+        model = Topic
+        exclude = ("parent",)
+
+    @staticmethod
+    def get_children(obj):
+        r = TopicHierarchySerializer(obj.children.all(), many=True).data
+        return r
+
+
+class AudienceHierarchySerializer(ModelSerializer):
+    children = SerializerMethodField()
+
+    class Meta:
+        model = Audience
+        exclude = ("parent",)
+
+    @staticmethod
+    def get_children(obj):
+        r = AudienceHierarchySerializer(obj.children.all(),
+                                        many=True).data
+        return r
+
+
+class AdGroupTargetingListSerializer(ModelSerializer):
+
+    class Meta:
+        model = TargetingItem
+        exclude = ('type', 'id', 'ad_group_creation')
+
+
+class AdGroupTargetingListUpdateSerializer(ModelSerializer):
+
+    class Meta:
+        model = TargetingItem
+        exclude = ('id',)

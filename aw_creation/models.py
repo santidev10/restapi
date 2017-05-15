@@ -159,6 +159,15 @@ class AccountCreation(UniqueItem):
             return " ".join(lines)
 
 
+@receiver(post_save,
+          sender=AccountCreation, dispatch_uid="save_account_receiver")
+def save_account_receiver(sender, instance, created, **kwargs):
+    if not created:
+        sender.objects.filter(pk=instance.pk).update(
+            version=get_version(), is_changed=True
+        )
+
+
 def default_languages():
     return Language.objects.filter(pk__in=(1000, 1003))
 
@@ -276,6 +285,14 @@ class CampaignCreation(UniqueItem):
             if code:
                 lines.append(code)
         return " ".join(lines)
+
+
+@receiver(post_save, sender=CampaignCreation,
+          dispatch_uid="save_campaign_receiver")
+def save_campaign_receiver(sender, instance, created, **_):
+    AccountCreation.objects.filter(
+        id=instance.account_creation_id,
+    ).update(version=get_version(), is_changed=True)
 
 
 class AdGroupCreation(UniqueItem):
@@ -422,6 +439,14 @@ class AdGroupCreation(UniqueItem):
             ),
         ]
         return " ".join(lines)
+
+
+@receiver(post_save, sender=AdGroupCreation,
+          dispatch_uid="save_group_receiver")
+def save_group_receiver(sender, instance, created, **_):
+    AccountCreation.objects.filter(
+        campaign_creations__id=instance.campaign_creation_id,
+    ).update(version=get_version(), is_changed=True)
 
 
 class LocationRule(models.Model):

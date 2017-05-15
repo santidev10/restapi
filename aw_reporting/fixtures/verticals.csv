@@ -1,0 +1,2222 @@
+Category,ID,Parent ID
+Arts & Entertainment,3,0
+Celebrities & Entertainment News,184,3
+Comics & Animation,316,3
+Anime & Manga,317,316
+Cartoons,319,316
+Comics,318,316
+Entertainment Industry,612,3
+Film & TV Industry,1116,612
+Film & TV Awards,1108,1116
+Film & TV Production,1117,1116
+Recording Industry,1115,612
+Music Awards,1113,1115
+Record Labels,1114,1115
+Events & Listings,569,3
+"Bars, Clubs & Nightlife",188,569
+Concerts & Music Festivals,891,569
+Event Ticket Sales,614,569
+Expos & Conventions,1531,569
+Film Festivals,1086,569
+Food & Beverage Events,1530,569
+Live Sporting Events,1273,569
+Movie Listings & Theater Showtimes,1085,569
+Fun & Trivia,539,3
+Flash-Based Entertainment,447,539
+Fun Tests & Silly Surveys,1174,539
+Humor,182,3
+Live Comedy,895,182
+Political Humor,1180,182
+Spoofs & Satire,1244,182
+Movies,34,3
+Action & Adventure Films,1097,34
+Martial Arts Films,1101,1097
+Superhero Films,1100,1097
+Western Films,1099,1097
+Animated Films,1104,34
+Bollywood & South Asian Film,360,34
+Classic Films,1102,34
+Silent Films,1098,1102
+Comedy Films,1095,34
+Cult & Indie Films,1103,34
+DVD & Video Shopping,210,34
+DVD & Video Rentals,1145,210
+Documentary Films,1072,34
+Drama Films,1094,34
+Family Films,1291,34
+Horror Films,615,34
+Movie Memorabilia,213,34
+Movie Reference,1106,34
+Movie Reviews & Previews,1107,1106
+Musical Films,1105,34
+Romance Films,1310,34
+Science Fiction & Fantasy Films,616,34
+"Thriller, Crime & Mystery Films",1096,34
+Music & Audio,35,3
+CD & Audio Shopping,217,35
+Classical Music,586,35
+Country Music,587,35
+Dance & Electronic Music,588,35
+Experimental & Industrial Music,1022,35
+Folk & Traditional Music,1023,35
+Jazz & Blues,589,35
+Blues,1040,589
+Jazz,42,589
+Music Art & Memorabilia,218,35
+Music Education & Instruction,1087,35
+Music Equipment & Technology,1024,35
+DJ Resources & Equipment,1025,1024
+Music Recording Technology,1026,1024
+Musical Instruments,216,1024
+Drums & Percussion,1327,216
+Guitars,1325,216
+Pianos & Keyboards,1326,216
+Samples & Sound Libraries,1091,1024
+Music Reference,1027,35
+Music Composition & Theory,1028,1027
+Sheet Music,892,1027
+Song Lyrics & Tabs,617,1027
+Music Streams & Downloads,220,35
+Music Videos,1408,35
+Pop Music,1021,35
+Radio,215,35
+Podcasting,809,215
+Talk Radio,1186,215
+Religious Music,1020,35
+Christian & Gospel Music,585,1020
+Rock Music,590,35
+Classic Rock & Oldies,1037,590
+Hard Rock & Progressive,1035,590
+Indie & Alternative Music,1038,590
+Metal (Music),1036,590
+Punk (Music),1041,590
+Soundtracks,893,35
+Urban & Hip-Hop,592,35
+Rap & Hip-Hop,1030,592
+Reggaeton,1242,592
+Soul & R&B,1039,592
+Vocals & Show Tunes,618,35
+World Music,593,35
+African Music,1208,593
+Arab & Middle Eastern Music,1034,593
+East Asian Music,1033,593
+Latin American Music,591,593
+Brazilian Music,1287,591
+Latin Pop,1285,591
+Salsa & Tropical Music,1286,591
+Reggae & Caribbean Music,1031,593
+South Asian Music,1032,593
+Offbeat,33,3
+Edgy & Bizarre,538,33
+Occult & Paranormal,449,33
+Online Media,613,3
+Online Image Galleries,1222,613
+Webcams & Virtual Tours,575,613
+Performing Arts,23,3
+Acting & Theater,894,23
+Broadway & Musical Theater,1243,23
+Circus,1591,23
+Dance,581,23
+Magic,1592,23
+Opera,1185,23
+TV & Video,36,3
+Online Video,211,36
+Web Series,1409,211
+TV Commercials,1055,36
+TV Guides & Reference,1187,36
+TV Networks & Stations,359,36
+TV Shows & Programs,358,36
+TV Comedies,1047,358
+TV Documentary & Nonfiction,1411,358
+TV Dramas,1193,358
+TV Crime & Legal Shows,1111,1193
+TV Medical Shows,1194,1193
+TV Soap Operas,357,1193
+TV Family-Oriented Shows,1110,358
+TV Game Shows,1050,358
+TV Reality Shows,1049,358
+TV Sci-Fi & Fantasy Shows,1112,358
+TV Talent & Variety Shows,1410,358
+TV Talk Shows,1048,358
+Visual Art & Design,24,3
+Architecture,477,24
+Art & Craft Supplies,1361,24
+Art Museums & Galleries,1521,24
+Arts Education,1195,24
+Design,653,24
+Graphic Design,654,653
+Industrial & Product Design,655,653
+Interior Design,656,653
+Painting,1167,24
+Photographic & Digital Arts,439,24
+Sculpture,1412,24
+Autos & Vehicles,47,0
+Bicycles & Accessories,1191,47
+BMX Bikes,1402,1191
+Bike Accessories,1398,1191
+Bike Frames,1399,1191
+Bike Helmets & Protective Gear,1400,1191
+Bike Parts & Repair,1401,1191
+Cruiser Bikes,1403,1191
+Cycling Apparel,1407,1191
+Kid's Bikes,1404,1191
+Mountain Bikes,1405,1191
+Road Bikes,1406,1191
+Boats & Watercraft,1140,47
+Campers & RVs,1213,47
+Classic Vehicles,1013,47
+Commercial Vehicles,1214,47
+Cargo Trucks & Trailers,1215,1214
+Custom & Performance Vehicles,806,47
+Hybrid & Alternative Vehicles,810,47
+Electric & Plug-In Vehicles,1380,810
+Microcars & City Cars,1317,47
+Motorcycles,273,47
+Off-Road Vehicles,148,47
+Personal Aircraft,1147,47
+Scooters & Mopeds,1212,47
+Trucks & SUVs,610,47
+SUVs,1057,610
+Trucks,1056,610
+Vans & Minivans,1058,610
+Vehicle Brands,815,47
+Acura,820,815
+Audi,821,815
+BMW,822,815
+Bentley,1059,815
+Buick,1060,815
+Cadillac,823,815
+Chevrolet,826,815
+Chrysler,833,815
+Citroën,834,815
+Dodge,836,815
+Ferrari,1061,815
+Fiat,838,815
+Alfa Romeo,1413,838
+Ford,840,815
+GM-Daewoo,896,815
+GMC,842,815
+Honda,843,815
+Hummer,1062,815
+Hyundai,845,815
+Isuzu,1378,815
+Jaguar,1063,815
+Jeep,846,815
+Kia,848,815
+Lamborghini,1064,815
+Land Rover,1065,815
+Lexus,849,815
+Lincoln,850,815
+Maserati,1066,815
+Mazda,851,815
+Mercedes-Benz,852,815
+Mercury,853,815
+Mini,1067,815
+Mitsubishi,854,815
+Nissan,855,815
+Infiniti,1377,855
+Peugeot,856,815
+Pontiac,857,815
+Porsche,858,815
+Renault-Samsung,859,815
+Rolls-Royce,1068,815
+SEAT,1414,815
+Saab,897,815
+Saturn,860,815
+Subaru,861,815
+Suzuki,1070,815
+Toyota,863,815
+Scion,1069,863
+Vauxhall-Opel,898,815
+Volkswagen,865,815
+Volvo,867,815
+Vehicle Codes & Driving Laws,1294,47
+Drunk Driving Law,968,1294
+Vehicle & Traffic Safety,1416,1294
+Vehicle Licensing & Registration,170,1294
+Driving Instruction & Driver Education,1415,170
+Vehicle Maintenance,138,47
+Vehicle Parts & Accessories,89,47
+Auto Exterior,1217,89
+Auto Interior,1218,89
+Engine & Transmission,1216,89
+Vehicle Fuels & Lubricants,1269,89
+Vehicle Wheels & Tires,438,89
+Vehicle Shopping,473,47
+Fuel Economy & Gas Prices,1268,473
+"Vehicle Specs, Reviews & Comparisons",1267,473
+Vehicle Shows,803,47
+Beauty & Fitness,44,0
+Beauty Pageants,1219,44
+Body Art,239,44
+Cosmetic Procedures,1220,44
+Cosmetic Surgery,238,1220
+Cosmetology & Beauty Professionals,147,44
+Face & Body Care,143,44
+Hygiene & Toiletries,244,143
+Make-Up & Cosmetics,234,143
+Perfumes & Fragrances,242,143
+Skin & Nail Care,93,143
+Unwanted Body & Facial Hair Removal,144,143
+Fashion & Style,185,44
+Fashion Designers & Collections,98,185
+Fashion Modeling,1155,185
+Fitness,94,44
+Bodybuilding,241,94
+Fitness Equipment & Accessories,1417,94
+Fitness Instruction & Personal Training,1418,94
+Gyms & Health Clubs,1419,94
+Yoga & Pilates,611,94
+Hair Care,146,44
+Hair Loss,235,146
+Spas & Beauty Services,145,44
+Massage Therapy,557,145
+Weight Loss,236,44
+Books & Literature,22,0
+Book Retailers,355,22
+Children's Literature,1183,22
+E-Books,608,22
+Fan Fiction,540,22
+Literary Classics,1184,22
+Magazines,412,22
+Poetry,565,22
+Writers Resources,1177,22
+Business & Industrial,12,0
+Advertising & Marketing,25,12
+Brand Management,1548,25
+Marketing,83,25
+Promotional Items & Corporate Gifts,1420,25
+Public Relations,327,25
+Sales,1547,25
+Telemarketing,328,25
+Aerospace & Defense,356,12
+Defense Industry,669,356
+Space Technology,668,356
+Agriculture & Forestry,46,12
+Agricultural Equipment,748,46
+Aquaculture,747,46
+Crops & Seed,749,46
+Farms & Ranches,1578,46
+Food Production,621,46
+Forestry,750,46
+Horticulture,751,46
+Livestock,752,46
+Automotive Industry,1190,12
+Business Education,799,12
+Business Finance,1138,12
+Commercial Lending,1160,1138
+Investment Banking,1139,1138
+Risk Management,620,1138
+Venture Capital,905,1138
+Business Operations,1159,12
+Business Plans & Presentations,336,1159
+Human Resources,157,1159
+Compensation & Benefits,723,157
+Corporate Training,331,157
+Payroll Services,724,157
+Recruitment & Staffing,330,157
+Management,338,1159
+Business Process,721,338
+Project Management,1360,338
+Strategic Planning,722,338
+Supply Chain Management,801,338
+Business Services,329,12
+Consulting,1162,329
+Corporate Events,334,329
+Trade Fairs & Industry Shows,335,334
+E-Commerce Services,340,329
+Merchant Services & Payment Systems,280,340
+Fire & Security Services,726,329
+Knowledge Management,800,329
+Office Services,28,329
+Office & Facilities Management,337,28
+Office Supplies,95,329
+Office Furniture,333,95
+Outsourcing,718,329
+Physical Asset Management,719,329
+Quality Control & Tracking,720,329
+Signage,1076,329
+Writing & Editing Services,725,329
+Chemicals Industry,288,12
+Agrochemicals,670,288
+Cleaning Agents,671,288
+Coatings & Adhesives,672,288
+Dyes & Pigments,673,288
+Plastics & Polymers,674,288
+Construction & Maintenance,48,12
+Building Materials & Supplies,650,48
+Nails Screws & Fasteners,829,650
+Plumbing Fixtures & Equipment,830,650
+Wood & Plastics,831,650
+Civil Engineering,651,48
+Construction Consulting & Contracting,652,48
+Urban & Regional Planning,686,48
+Energy & Utilities,233,12
+Electricity,658,233
+Nuclear Energy,954,233
+Oil & Gas,659,233
+Renewable & Alternative Energy,657,233
+Hydropower,1424,657
+Solar Power,1422,657
+Wind Power,1423,657
+Waste Management,660,233
+Recycling,1307,660
+Water Supply & Treatment,1349,233
+Hospitality Industry,955,12
+Event Planning,956,955
+Food Service,957,955
+Restaurant Supply,816,957
+Industrial Materials & Equipment,287,12
+Fluid Handling,1152,287
+Valves Hoses & Fittings,839,1152
+Generators,835,287
+Heavy Machinery,837,287
+Manufacturing,49,12
+Factory Automation,661,49
+Metals & Mining,606,12
+Precious Metals,1425,606
+Pharmaceuticals & Biotech,255,12
+Printing & Publishing,1176,12
+Document & Printing Services,332,1176
+Business Cards & Stationary,1375,332
+Professional & Trade Associations,1199,12
+Retail Trade,841,12
+Retail Equipment & Technology,844,841
+Small Business,551,12
+Business Formation,1200,551
+Home Office,727,551
+MLM & Business Opportunities,552,551
+Textiles & Nonwovens,566,12
+Transportation & Logistics,50,12
+Aviation,662,50
+Distribution & Logistics,664,50
+Freight & Trucking,289,50
+Import & Export,354,50
+Mail & Package Delivery,1150,50
+Couriers & Messengers,663,1150
+Maritime Transport,665,50
+Moving & Relocation,291,50
+Packaging,290,50
+Parking,1306,50
+Public Storage,1347,50
+Rail Transport,666,50
+Urban Transport,667,50
+Warehousing,1426,50
+Computers & Electronics,5,0
+CAD & CAM,1300,5
+Computer Hardware,30,5
+Computer Components,717,30
+Chips & Processors,741,717
+Computer Memory,226,717
+Sound & Video Cards,740,717
+Computer Drives & Storage,496,30
+CD & DVD Drives & Burners,1321,496
+CD & DVD Storage Media,1322,496
+Data Backup & Recovery,1323,496
+Flash Drives & Memory Cards,1318,496
+Hard Drives,1320,496
+Memory Card Readers,1319,496
+Network Storage,729,496
+Computer Peripherals,312,30
+Computer Monitors & Displays,487,312
+Input Devices,493,312
+"Printers, Copiers & Fax",1330,312
+Copiers,1331,1330
+Fax Machines,1332,1330
+Ink & Toner,1333,1330
+Printers,494,1330
+Scanners,495,1330
+Computer Servers,728,30
+Desktop Computers,309,30
+Hardware Modding & Tuning,739,30
+Laptops & Notebooks,310,30
+Tablet PCs,1277,310
+Computer Security,314,5
+Antivirus & Malware,315,314
+Hacking & Cracking,738,314
+Network Security,344,314
+Consumer Electronics,78,5
+Audio Equipment,361,78
+Headphones,1396,361
+Speakers,1158,361
+Stereo Systems & Components,91,361
+Camera & Photo Equipment,573,78
+"Binoculars, Telescopes & Optical Devices",1384,573
+Cameras & Camcorders,306,573
+Camcorders,308,306
+Camera Lenses,1383,306
+Cameras,307,306
+Car Electronics,1188,78
+Car Audio,230,1188
+Car Video,1189,1188
+Electronic Accessories,1192,78
+GPS & Navigation,794,78
+Gadgets & Portable Electronics,362,78
+E-Book Readers,1324,362
+MP3 & Portable Media Players,227,362
+PDAs & Handhelds,228,362
+Game Systems & Consoles,899,78
+Handheld Game Consoles,1046,899
+Nintendo,1043,899
+Sony PlayStation,1044,899
+Xbox,1045,899
+TV & Video Equipment,229,78
+DVRs & Set-Top Boxes,1393,229
+Home Theater Systems,1157,229
+Projectors & Screens,1334,229
+Televisions,305,229
+HDTVs,1354,305
+LCD TVs,1356,305
+Plasma TVs,1355,305
+Projection TVs,1357,305
+Video Players & Recorders,492,229
+Blu-Ray Players & Recorders,1394,492
+DVD Players & Recorders,1395,492
+Electronics & Electrical,434,5
+Data Sheets & Electronics Reference,900,434
+Electromechanical Devices,743,434
+Electronic Components,742,434
+Optoelectronics & Fiber,744,434
+Power Supplies,745,434
+Test & Measurement,746,434
+Enterprise Technology,77,5
+Customer Relationship Management (CRM),341,77
+Data Management,343,77
+Enterprise Resource Planning (ERP),342,77
+Networking,311,5
+Data Formats & Protocols,488,311
+Network Monitoring & Management,347,311
+Networking Equipment,346,311
+VPN & Remote Access,1279,311
+Programming,31,5
+C & C++,731,31
+Development Tools,730,31
+Java (Programming Language),732,31
+Scripting Languages,733,31
+Windows & .NET,734,31
+Software,32,5
+Business & Productivity Software,498,32
+Accounting & Financial Software,1341,498
+Calendar & Scheduling Software,1358,498
+Presentation Software,1346,498
+Project Management Software,1359,498
+Spreadsheet Software,1344,498
+Word Processing Software,1345,498
+Device Drivers,225,32
+Educational Software,804,32
+Freeware & Shareware,901,32
+Internet Software,807,32
+Content Management,808,807
+Download Managers,1500,807
+Internet Clients & Browsers,304,807
+Proxying & Filtering,902,807
+Multimedia Software,497,32
+Audio & Music Software,1089,497
+Audio Files Formats & Codecs,1092,1089
+Desktop Publishing,1088,497
+Fonts,805,1088
+Graphics & Animation Software,486,497
+Media Players,1090,497
+Photo & Video Software,577,497
+Video File Formats & Codecs,1315,577
+Open Source,313,32
+Operating Systems,303,32
+Linux & Unix,736,303
+Mac OS,735,303
+Mobile OS,1382,303
+Android OS,1534,1382
+Apple iOS,1533,1382
+BlackBerry OS,1535,1382
+Symbian OS,1536,1382
+Windows Mobile OS,1537,1382
+Windows OS,737,303
+Software Utilities,224,32
+Finance,7,0
+Accounting & Auditing,278,7
+Billing & Invoicing,1427,278
+Bookkeeping,1428,278
+Tax Preparation & Planning,1283,278
+Banking,37,7
+ATMs & Branch Locations,1429,37
+Debit & Checking Services,1430,37
+Money Transfer & Wire Services,1432,37
+Savings Accounts,1431,37
+Credit & Lending,279,7
+Credit Cards,811,279
+Credit Reporting & Monitoring,1433,279
+Debt Collection & Repossession,1434,279
+Debt Management,812,279
+Loans,1435,279
+Home Financing,466,1435
+Home Equity Loans & Lines of Credit,1445,466
+Home Refinancing,1446,466
+Mortgages,1447,466
+Personal Loans,1436,1435
+Short-Term Loans & Cash Advances,1437,1436
+Student Loans & College Financing,813,1435
+Vehicle Financing,1448,1435
+Auto Financing,468,1448
+Financial Planning & Management,903,7
+Asset & Portfolio Management,1439,903
+Inheritance & Estate Planning,1438,903
+Retirement & Pension,619,903
+"Grants, Scholarships & Financial Aid",1282,7
+Government Grants,1440,1282
+Study Grants & Scholarships,1441,1282
+Insurance,38,7
+Health Insurance,249,38
+Home Insurance,465,38
+Life Insurance,1442,38
+Travel Insurance,1443,38
+Vehicle Insurance,1444,38
+Auto Insurance,467,1444
+Investing,107,7
+Brokerages & Day Trading,1449,107
+Commodities & Futures Trading,904,107
+Currencies & Foreign Exchange,814,107
+Derivatives,1450,107
+Funds,1451,107
+Exchange Traded Funds,1452,1451
+Hedge Funds,1453,1451
+Mutual Funds,1454,1451
+Real Estate Investment Trusts,1455,107
+Socially Responsible Investing,1456,107
+Stocks & Bonds,1457,107
+Bonds,1458,1457
+Exchanges,1459,1457
+Food & Drink,71,0
+Beverages,560,71
+Alcoholic Beverages,277,560
+Beer,404,277
+Liquor,406,277
+Wine,405,277
+Bottled Water,1509,560
+Coffee & Tea,916,560
+Coffee,1527,916
+Tea,1528,916
+Juice,1510,560
+Soft Drinks,1511,560
+Cooking & Recipes,122,71
+BBQ & Grilling,1525,122
+Cuisines,911,122
+East Asian Cuisine,912,911
+Chinese Cuisine,1551,912
+Japanese Cuisine,1552,912
+Korean Cuisine,1554,912
+Eastern European Cuisine,1563,911
+French Cuisine,1556,911
+German Cuisine,1564,911
+Latin American Cuisine,913,911
+Caribbean Cuisine,1566,913
+Mexican Cuisine,1560,913
+South American Cuisine,1565,913
+Mediterranean Cuisine,914,911
+Greek Cuisine,1558,914
+Italian Cuisine,1557,914
+Spanish Cuisine,1559,914
+Middle Eastern Cuisine,1532,911
+North American Cuisine,915,911
+South Asian Cuisine,1567,911
+Indian Cuisine,1553,1567
+Southeast Asian Cuisine,1568,911
+Thai Cuisine,1555,1568
+Vietnamese Cuisine,1569,1568
+Vegetarian Cuisine,825,911
+Culinary Training,297,122
+Desserts,1526,122
+Healthy Eating,1501,122
+Salads,1529,122
+Soups & Stews,910,122
+Food,1512,71
+Baked Goods,907,1512
+Breakfast Foods,1513,1512
+Candy & Sweets,906,1512
+Condiments & Dressings,1538,1512
+Cooking Fats & Oils,1539,1512
+Dairy & Eggs,1514,1512
+Cheese,1540,1514
+Fruits & Vegetables,908,1512
+Gourmet & Specialty Foods,1541,1512
+Grains & Pasta,1515,1512
+Herbs & Spices,1516,1512
+"Jams, Jellies & Preserves",1542,1512
+Meat & Seafood,909,1512
+Beef,1543,909
+Fish & Seafood,1544,909
+Pork,1545,909
+Poultry,1546,909
+Organic & Natural Foods,1517,1512
+Snack Foods,1518,1512
+Food & Grocery Delivery,1523,71
+Food & Grocery Retailers,121,71
+Bakeries,1573,121
+Butchers,1574,121
+Convenience Stores,1575,121
+Delicatessens,1576,121
+Farmers' Markets,1577,121
+Restaurants,276,71
+Catering,1524,276
+Dining Guides,917,276
+Fast Food,918,276
+Burgers,1562,918
+Fine Dining,1561,276
+Pizzerias,1550,276
+Games,8,0
+Arcade & Coin-Op Games,919,8
+Board Games,920,8
+Chess & Abstract Strategy Games,921,920
+Miniatures & Wargaming,922,920
+Card Games,39,8
+Collectible Card Games,923,39
+Poker & Casino Games,924,39
+Computer & Video Games,41,8
+Action & Platform Games,1311,41
+Adventure Games,925,41
+Casual Games,926,41
+Driving & Racing Games,927,41
+Fighting Games,928,41
+Gaming Media & Reference,1343,41
+Game Cheats & Hints,381,1343
+Music & Dance Games,929,41
+Shooter Games,930,41
+Simulation Games,931,41
+Business & Tycoon Games,1497,931
+City Building Games,1496,931
+Life Simulation Games,1498,931
+Vehicle Simulators,1495,931
+Sports Games,932,41
+Sports Management Games,1499,932
+Strategy Games,933,41
+Video Game Development,1491,41
+Video Game Emulation,1342,41
+Video Game Retailers,1146,41
+Dice Games,1492,8
+Educational Games,1493,8
+Family-Oriented Games & Activities,1290,8
+Drawing & Coloring,1397,1290
+Dress-Up & Fashion Games,1173,1290
+Gambling,637,8
+Horse & Dog Racing,698,637
+Lottery & Sweepstakes,364,637
+Sports Betting,934,637
+Online Games,105,8
+Massive Multiplayer,935,105
+Party Games,936,8
+Puzzles & Brainteasers,937,8
+Roleplaying Games,622,8
+Table Games,938,8
+Billiards,939,938
+Table Tennis,940,938
+Tile Games,1549,8
+Word Games,1494,8
+Health,45,0
+Aging & Geriatrics,623,45
+Alzheimer's Disease,624,623
+Alternative & Natural Medicine,499,45
+Acupuncture & Chinese Medicine,1239,499
+Cleansing & Detoxification,1238,499
+Health Conditions,419,45
+AIDS & HIV,625,419
+Allergies,626,419
+Arthritis,628,419
+Cancer,429,419
+Cold & Flu,629,419
+Diabetes,630,419
+Ear Nose & Throat,1211,419
+Eating Disorders,571,419
+Endocrine Conditions,1328,419
+Thyroid Conditions,1329,1328
+GERD & Digestive Disorders,638,419
+Genetic Disorders,941,419
+Heart & Hypertension,559,419
+Cholesterol Issues,643,559
+Infectious Diseases,632,419
+Parasites & Parasitic Diseases,1262,632
+Vaccines & Immunizations,1263,632
+Injury,817,419
+Neurological Disorders,942,419
+Obesity,818,419
+Pain Management,819,419
+Headaches & Migraines,631,819
+Respiratory Conditions,824,419
+Asthma,627,824
+Skin Conditions,420,419
+Sleep Disorders,633,419
+Health Education & Medical Training,254,45
+Health Foundations & Medical Research,252,45
+Medical Devices & Equipment,251,45
+Assistive Technology,1352,251
+Mobility Equipment & Accessories,1353,1352
+Medical Facilities & Services,256,45
+Doctors' Offices,634,256
+Hospitals & Treatment Centers,250,256
+Medical Procedures,635,256
+Medical Tests & Exams,943,635
+Surgery,944,635
+Physical Therapy,500,256
+Medical Literature & Resources,253,45
+Medical Photos & Illustration,945,253
+Men's Health,636,45
+Mental Health,437,45
+Anxiety & Stress,639,437
+Depression,640,437
+Learning & Developmental Disabilities,641,437
+ADD & ADHD,642,641
+Nursing,418,45
+Assisted Living & Long Term Care,649,418
+Nutrition,456,45
+Special & Restricted Diets,457,456
+Kosher Foods,1572,457
+Low Carbohydrate Diets,1570,457
+Low Fat & Low Cholesterol Diets,1571,457
+Vitamins & Supplements,237,456
+Oral & Dental Care,245,45
+Pediatrics,645,45
+Pharmacy,248,45
+Drugs & Medications,646,248
+Public Health,947,45
+Health Policy,1256,947
+Occupational Health & Safety,644,947
+Poisons & Overdoses,946,947
+Reproductive Health,195,45
+Birth Control,198,195
+Erectile Dysfunction,202,195
+Infertility,647,195
+OBGYN,558,195
+Sex Education & Counseling,536,195
+Sexual Enhancement,1236,195
+Sexually Transmitted Diseases,421,195
+Substance Abuse,257,45
+Drug & Alcohol Testing,1351,257
+Drug & Alcohol Treatment,1350,257
+Smoking & Smoking Cessation,1237,257
+Steroids & Performance-Enhancing Drugs,1235,257
+Vision Care,246,45
+Eye Exams & Optometry,1502,246
+Eyeglasses & Contacts,1224,246
+Laser Vision Correction,1503,246
+Women's Health,648,45
+Hobbies & Leisure,65,0
+Clubs & Organizations,189,65
+Fraternal Orders & Service Clubs,1468,189
+Youth Organizations & Resources,1469,189
+"Contests, Awards & Prizes",1276,65
+Crafts,284,65
+Ceramics & Pottery,1470,284
+Fiber & Textile Arts,1230,284
+Outdoors,688,65
+Equestrian,568,688
+Fishing,462,688
+Hiking & Camping,542,688
+Hunting & Shooting,461,688
+Paintball,786,65
+Radio Control & Modeling,787,65
+Model Trains & Railroads,1590,787
+Recreational Aviation,999,65
+Special Occasions,977,65
+Holidays & Seasonal Events,678,977
+Birthdays & Name Days,1270,678
+Carnival & Mardi Gras,1246,678
+Christian Holidays,1274,678
+Christmas,1078,1274
+Easter,1123,1274
+Halloween & October 31st,1079,678
+Islamic Holidays,1275,678
+Jewish Holidays,1124,678
+New Year,1271,678
+Thanksgiving,1125,678
+Valentine's Day,1122,678
+Weddings,293,977
+Water Activities,1002,65
+Boating,459,1002
+Diving & Underwater Activities,1305,1002
+Surf & Swim,689,1002
+Home & Garden,11,0
+Bed & Bath,948,11
+Bathroom,1365,948
+Bedroom,1366,948
+Bedding & Bed Linens,1369,1366
+Beds & Headboards,1367,1366
+Mattresses,1368,1366
+Domestic Services,472,11
+Cleaning Supplies & Services,949,472
+Gardening & Landscaping,269,11
+HVAC & Climate Control,828,11
+Home Appliances,271,11
+Water Filters & Purifiers,1371,271
+Home Furnishings,270,11
+Clocks,1363,270
+Lamps & Lighting,272,270
+Rugs & Carpets,1362,270
+Sofas & Chairs,1370,270
+Home Improvement,158,11
+Construction & Power Tools,950,158
+Doors & Windows,827,158
+Flooring,832,158
+House Painting & Finishing,1232,158
+Locks & Locksmiths,1421,158
+Plumbing,1153,158
+Roofing,1175,158
+Home Storage & Shelving,1348,11
+Homemaking & Interior Decor,137,11
+Kitchen & Dining,951,11
+Cookware & Diningware,120,951
+Cutlery & Cutting Accessories,1373,120
+Major Kitchen Appliances,1293,951
+Dishwashers,1600,1293
+Kitchen Hoods & Vents,1604,1293
+Microwaves,1601,1293
+"Ranges, Cooktops & Ovens",1602,1293
+Refrigerators & Freezers,1603,1293
+Small Kitchen Appliances,1292,951
+Blenders,1605,1292
+Bread Makers,1606,1292
+Coffee & Espresso Makers,1607,1292
+Food Processors,1608,1292
+Toasters & Toaster Ovens,1609,1292
+Laundry,1364,11
+Nursery & Playroom,1372,11
+Pest Control,471,11
+Swimming Pools & Spas,952,11
+Yard & Patio,953,11
+Internet & Telecom,13,0
+Communications Equipment,385,13
+Radio Equipment,1182,385
+Email & Messaging,394,13
+Spam & Email Filtering,1522,394
+Text & Instant Messaging,1379,394
+Voice & Video Chat,386,394
+Mobile & Wireless,382,13
+Mobile & Wireless Accessories,1171,382
+Bluetooth Accessories,1170,1171
+Mobile Apps & Add-Ons,1109,382
+Android Apps,1461,1109
+Ringtones & Mobile Themes,532,1109
+iOS Apps,1462,1109
+Mobile Phones,390,382
+Smart Phones,1071,390
+Search Engines,485,13
+People Search,1234,485
+Service Providers,383,13
+Cable & Satellite Providers,501,383
+ISPs,104,383
+Internet Cafes,1463,383
+Phone Service Providers,384,383
+Calling Cards,389,384
+Teleconferencing,392,13
+Web Apps & Online Tools,1142,13
+Web Portals,301,13
+Web Services,302,13
+Affiliate Programs,326,302
+Hosted Data Storage,1464,302
+Search Engine Optimization & Marketing,84,302
+Web Design & Development,422,302
+Web Hosting & Domain Registration,53,302
+Web Stats & Analytics,675,302
+Jobs & Education,958,0
+Education,74,958
+Academic Conferences & Publications,1289,74
+Alumni & Reunions,1015,74
+Colleges & Universities,372,74
+"Fraternities, Sororities & Student Societies",1465,372
+Distance Learning,367,74
+Early Childhood Education,1012,74
+Preschool,1579,1012
+Homeschooling,791,74
+Primary & Secondary Schooling (K-12),371,74
+Special Education,1118,74
+Standardized & Admissions Tests,373,74
+Study Abroad,1308,74
+Teaching & Classroom Resources,700,74
+Lesson Plans,1466,700
+School Supplies & Classroom Equipment,1467,700
+Training & Certification,1388,74
+Vocational & Continuing Education,369,74
+Computer Education,1229,369
+Internships,1471,958
+Jobs,60,958
+Career Resources & Planning,959,60
+Job Listings,960,60
+Accounting & Finance Jobs,1472,960
+Clerical & Administrative Jobs,1473,960
+Education Jobs,1474,960
+Executive & Management Jobs,1475,960
+Government & Public Sector Jobs,1476,960
+Health & Medical Jobs,1477,960
+IT & Technical Jobs,802,960
+Legal Jobs,1478,960
+Retail Jobs,1479,960
+Sales & Marketing Jobs,1481,960
+Temporary & Seasonal Jobs,1480,960
+Resumes & Portfolios,961,60
+Law & Government,19,0
+Government,76,19
+Courts & Judiciary,1075,76
+Embassies & Consulates,962,76
+Executive Branch,963,76
+Government Contracting & Procurement,1385,76
+Government Ministries,1387,76
+Intelligence & Counterterrorism,1221,76
+Legislative Branch,964,76
+Lobbying,1386,76
+Multilateral Organizations,965,76
+Public Finance,1161,76
+Public Policy,1316,76
+Royalty,702,76
+State & Local Government,966,76
+Visa & Immigration,555,76
+Legal,75,19
+Accident & Personal Injury Law,427,75
+Bankruptcy,423,75
+Business & Corporate Law,1272,75
+Constitutional Law & Civil Rights,967,75
+Criminal Law,424,75
+Family Law,522,75
+Intellectual Property,426,75
+Labor & Employment Law,701,75
+Legal Education,792,75
+Legal Services,969,75
+Product Liability,970,75
+Military,366,19
+Air Force,1247,366
+Army,1248,366
+Marines,1250,366
+Navy,1249,366
+Veterans,793,366
+Public Safety,166,19
+Crime & Justice,704,166
+Corporate & Financial Crime,1181,704
+Gangs & Organized Crime,1312,704
+Prisons & Corrections,1284,704
+Emergency Services,168,166
+Law Enforcement,535,166
+Security Products & Services,705,166
+Social Services,508,19
+Counseling Services,511,508
+Welfare & Unemployment,706,508
+News,16,0
+Broadcast & Network News,112,16
+Business News,784,16
+Company News,1179,784
+Company Earnings,1240,1179
+Mergers & Acquisitions,1241,1179
+Economy News,1164,784
+Financial Markets,1163,784
+Fiscal Policy News,1165,784
+Gossip & Tabloid News,507,16
+Scandals & Investigations,1259,507
+Health News,1253,16
+Journalism & News Industry,1204,16
+Local News,572,16
+Newspapers,408,16
+Politics,396,16
+Campaigns & Elections,398,396
+Left-Wing Politics,410,396
+Media Critics & Watchdogs,1203,396
+Opinion & Commentary,1201,396
+Political Polls & Surveys,1202,396
+Right-Wing Politics,409,396
+Sports News,1077,16
+Technology News,785,16
+Weather,63,16
+World News,1209,16
+Online Communities,299,0
+Blogging Resources & Services,504,299
+Microblogging,1381,504
+Dating & Personals,55,299
+Matrimonial Services,546,55
+Personals,102,55
+Photo Rating Sites,320,55
+Feed Aggregation & Social Bookmarking,1482,299
+File Sharing & Hosting,321,299
+Forum & Chat Providers,191,299
+Online Goodies,43,299
+Clip Art & Animated GIFs,1223,43
+Skins Themes & Wallpapers,578,43
+Social Network Apps & Add-Ons,847,43
+Online Journals & Personal Sites,582,299
+Photo & Video Sharing,275,299
+Photo & Image Sharing,978,275
+Video Sharing,979,275
+Social Networks,529,299
+Virtual Worlds,972,299
+People & Society,14,0
+Disabled & Special Needs,677,14
+Ethnic & Identity Groups,56,14
+Africans & Diaspora,579,56
+African-Americans,547,579
+Arabs & Middle Easterners,556,56
+Asians & Diaspora,1257,56
+East Asians & Diaspora,549,1257
+South Asians & Diaspora,528,1257
+Southeast Asians & Pacific Islanders,580,1257
+Eastern Europeans,682,56
+Expatriate Communities,973,56
+Gay-Lesbian-Bisexual-Transgender,113,56
+Indigenous Peoples,681,56
+Native Americans,171,681
+Jewish Culture,550,56
+Latinos & Latin-Americans,548,56
+Western Europeans,683,56
+Family & Relationships,1131,14
+Etiquette,1304,1131
+Family,1132,1131
+Ancestry & Genealogy,400,1132
+Baby & Pet Names,1231,1132
+Parenting,58,1132
+Adoption,974,58
+Babies & Toddlers,1374,58
+Baby & Toddler Toys,1585,1374
+Baby Care & Hygiene,115,1374
+Baby Food & Formula,1584,1374
+Child Care,403,58
+Pregnancy & Maternity,401,58
+Youth Camps,402,58
+Friendship,1134,1131
+Marriage,1133,1131
+Romance,1135,1131
+Troubled Relationships,1260,1131
+Divorce & Separation,1261,1260
+Men's Interests,594,14
+Men's Interests (Mature),525,594
+Religion & Belief,59,14
+Astrology & Divination,448,59
+Buddhism,862,59
+Christianity,864,59
+Hinduism,866,59
+Islam,868,59
+Judaism,869,59
+Pagan & Esoteric Traditions,1258,59
+Places of Worship,1296,59
+Scientology,1251,59
+Self-Help & Motivational,870,59
+Skeptics & Non-Believers,975,59
+Spirituality,101,59
+Theology & Religious Study,1340,59
+Seniors & Retirement,298,14
+Social Issues & Advocacy,54,14
+Charity & Philanthropy,57,54
+Discrimination & Identity Relations,1205,54
+Drug Laws & Policy,1314,54
+Ethics,1483,54
+Green Living & Environmental Issues,82,54
+Housing & Development,1166,54
+Human Rights & Liberties,1280,54
+Immigration Policy & Border Issues,1313,54
+Poverty & Hunger,1127,54
+Privacy Issues,1281,54
+Reproductive Rights,976,54
+Same-Sex Marriage,1301,54
+Work & Labor Issues,703,54
+Unions & Labor Movement,1121,703
+Social Sciences,509,14
+Anthropology,1484,509
+Archaeology,1485,509
+Communications & Media Studies,1302,509
+Public Speaking,1303,1302
+Demographics,510,509
+Economics,520,509
+International Relations,521,509
+Psychology,543,509
+Subcultures & Niche Interests,502,14
+Goth Subculture,503,502
+Science Fiction & Fantasy,676,502
+Women's Interests,325,14
+Pets & Animals,66,0
+Animal Products & Services,882,66
+Animal Welfare,883,882
+Pet Food & Supplies,379,882
+Veterinarians,380,882
+Pets,563,66
+Birds,884,563
+Cats,885,563
+Dogs,886,563
+Exotic Pets,607,563
+Fish & Aquaria,887,563
+Horses,888,563
+Rabbits & Rodents,889,563
+Reptiles & Amphibians,890,563
+Wildlife,119,66
+Real Estate,29,0
+Apartments & Residential Rentals,378,29
+Bank-Owned & Foreclosed Properties,1460,29
+Commercial & Investment Real Estate,1178,29
+Property Development,687,29
+Property Inspections & Appraisals,463,29
+Property Management,425,29
+Real Estate Agencies,96,29
+Real Estate Listings,1080,29
+Timeshares & Vacation Properties,1081,29
+Reference,533,0
+Directories & Listings,527,533
+Business & Personal Listings,377,527
+General Reference,980,533
+Biographies & Quotations,690,980
+Calculators & Reference Tools,691,980
+Dictionaries & Encyclopedias,692,980
+Educational Resources,374,980
+Forms Guides & Templates,693,980
+Legal Forms,1137,693
+"How-To, DIY & Expert Content",694,980
+Public Records,1136,980
+Time & Calendars,695,980
+Geographic Reference,1084,533
+City & Local Guides,1014,1084
+Maps,268,1084
+Traffic & Public Transit,685,268
+Humanities,474,533
+History,433,474
+Military History,1288,433
+Myth & Folklore,609,474
+Philosophy,1093,474
+Language Resources,108,533
+Foreign Language Resources,1264,108
+Foreign Language Study,1266,1264
+Translation Tools & Resources,1265,1264
+Libraries & Museums,375,533
+Libraries,1520,375
+Museums,1519,375
+Technical Reference,1233,533
+Science,174,0
+Astronomy,435,174
+Biological Sciences,440,174
+Anatomy,788,440
+Flora & Fauna,981,440
+Insects & Entomology,1278,981
+Genetics,982,440
+Neuroscience,1226,440
+Chemistry,505,174
+Computer Science,1227,174
+Distributed & Parallel Computing,1298,1227
+Machine Learning & Artificial Intelligence,1299,1227
+Earth Sciences,1168,174
+Atmospheric Science,1254,1168
+Geology,443,1168
+Paleontology,1169,1168
+Water & Marine Sciences,441,1168
+Ecology & Environment,442,174
+Climate Change & Global Warming,1255,442
+Engineering & Technology,231,174
+Robotics,1141,231
+Mathematics,436,174
+Statistics,1252,436
+Physics,444,174
+Scientific Equipment,445,174
+Scientific Institutions,446,174
+Shopping,18,0
+Antiques & Collectibles,64,18
+Apparel,68,18
+Apparel Services,1228,68
+Athletic Apparel,983,68
+Casual Apparel,984,68
+T-Shirts,428,984
+Children's Clothing,985,68
+Clothing Accessories,124,68
+Gems & Jewelry,350,124
+Rings,1486,350
+Handbags & Purses,986,124
+Watches,987,124
+Costumes,988,68
+Eyewear,989,68
+Sunglasses,1487,989
+Footwear,697,68
+Athletic Shoes,1488,697
+Boots,1489,697
+Casual Shoes,1490,697
+Formal Wear,990,68
+Bridal Wear,1597,990
+Headwear,991,68
+Men's Clothing,992,68
+Outerwear,993,68
+Sleepwear,994,68
+Suits & Business Attire,1598,68
+Swimwear,995,68
+Undergarments,530,68
+Uniforms & Workwear,996,68
+Women's Clothing,997,68
+Dresses,1632,997
+Skirts,1631,997
+Auctions,292,18
+Classifieds,61,18
+Consumer Resources,69,18
+Consumer Advocacy & Protection,97,69
+Coupons & Discount Offers,365,69
+Customer Services,450,69
+Loyalty Cards & Programs,1309,450
+Technical Support,567,450
+Warranties & Service Contracts,451,450
+Identity Theft & Protection,1504,69
+Product Reviews & Price Comparisons,353,69
+Price Comparisons,352,353
+Discount & Outlet Stores,1505,18
+Entertainment Media,1143,18
+Entertainment Media Rentals,1144,1143
+Gifts & Special Event Items,70,18
+Cards & Greetings,100,70
+Custom & Personalized Items,1506,70
+Flowers,323,70
+Gifts,99,70
+Party & Holiday Supplies,324,70
+Green & Eco-Friendly Shopping,1507,18
+Luxury Goods,696,18
+Mass Merchants & Department Stores,73,18
+Photo & Video Services,576,18
+Stock Photography,574,576
+Shopping Portals & Search Engines,531,18
+Swap Meets & Outdoor Markets,1210,18
+Tobacco Products,123,18
+Toys,432,18
+Action Figures,1580,432
+Building Toys,1581,432
+Die-cast & Toy Vehicles,1587,432
+Dolls & Accessories,1582,432
+Outdoor Toys & Play Equipment,1588,432
+Puppets,1589,432
+Ride-On Toys & Wagons,1586,432
+Stuffed Toys,1583,432
+Wholesalers & Liquidators,1225,18
+Sports,20,0
+College Sports,1073,20
+Combat Sports,514,20
+Boxing,515,514
+Martial Arts,516,514
+Wrestling,512,514
+Extreme Sports,554,20
+Drag & Street Racing,1206,554
+Stunts & Dangerous Feats,1207,554
+Fantasy Sports,998,20
+Individual Sports,1000,20
+Bowling,1016,1000
+Cycling,458,1000
+Golf,261,1000
+Gymnastics,519,1000
+Racquet Sports,262,1000
+Tennis,1376,262
+Running & Walking,541,1000
+Skate Sports,1126,1000
+Track & Field,518,1000
+Motor Sports,180,20
+Auto Racing,1595,180
+Motorcycle Racing,1596,180
+Sport Scores & Statistics,1599,20
+Sporting Goods,263,20
+American Football Equipment,1611,263
+Baseball Equipment,1612,263
+Basketball Equipment,1613,263
+Bowling Equipment,1615,263
+Combat Sports Equipment,1616,263
+Boxing Gloves & Gear,1633,1616
+Martial Arts Equipment,1634,1616
+Cricket Equipment,1617,263
+Equestrian Equipment & Tack,1618,263
+Golf Equipment,1619,263
+Gymnastics Equipment,1620,263
+Hockey Equipment,1621,263
+Ice Skating Equipment,1622,263
+Roller Skating & Rollerblading Equipment,1623,263
+Skateboarding Equipment,1624,263
+Soccer Equipment,1614,263
+Sports Memorabilia,1083,263
+Squash & Racquetball Equipment,1625,263
+Table Tennis Equipment,1627,263
+Tennis Equipment,1628,263
+Volleyball Equipment,1629,263
+Water Sports Equipment,1626,263
+Winter Sports Equipment,1630,263
+Skiing Equipment,1635,1630
+Snowboarding Gear,1636,1630
+Sports Coaching & Training,1082,20
+Team Sports,1001,20
+American Football,258,1001
+Australian Football,1508,1001
+Baseball,259,1001
+Basketball,264,1001
+Cheerleading,534,1001
+Cricket,296,1001
+Handball,1017,1001
+Hockey,260,1001
+Rugby,517,1001
+Soccer,294,1001
+Volleyball,699,1001
+Water Sports,118,20
+Surfing,1593,118
+Swimming,1594,118
+Winter Sports,265,20
+Ice Skating,1149,265
+Skiing & Snowboarding,1148,265
+World Sports Competitions,1198,20
+Olympics,513,1198
+Travel,67,0
+Air Travel,203,67
+Airport Parking & Transportation,1245,203
+Bus & Rail,708,67
+Car Rental & Taxi Services,205,67
+Carpooling & Vehicle Sharing,1339,67
+Cruises & Charters,206,67
+Hotels & Accommodations,179,67
+Luggage & Travel Accessories,1003,67
+Specialty Travel,1004,67
+Adventure Travel,707,1004
+Agritourism,1389,1004
+Ecotourism,1005,1004
+Sightseeing Tours,1390,1004
+Vineyards & Wine Tourism,1391,1004
+Tourist Destinations,208,67
+Beaches & Islands,1074,208
+Historical Sites & Buildings,1006,208
+Lakes & Rivers,1120,208
+Mountain & Ski Resorts,1119,208
+Regional Parks & Gardens,1007,208
+Theme Parks,1008,208
+Zoos-Aquariums-Preserves,1009,208
+Travel Agencies & Services,1010,67
+Tourist Boards & Visitor Centers,1392,1010
+Vacation Offers,1019,1010
+Travel Guides & Travelogues,1011,67
+World Localities,5000,0
+Africa,5001,5000
+Eastern Africa,5002,5001
+Ethiopia,5003,5002
+Kenya,5004,5002
+Nairobi,5005,5004
+Madagascar,5621,5002
+Malawi,5714,5002
+Mozambique,5634,5002
+Rwanda,5473,5002
+Somalia,5591,5002
+Tanzania,5006,5002
+Uganda,5007,5002
+Zambia,5671,5002
+Zimbabwe,5008,5002
+Harare,5009,5008
+Middle Africa,5010,5001
+Angola,5636,5010
+Cameroon,5635,5010
+Chad,5715,5010
+Congo (DR),5011,5010
+Kinshasa,5012,5011
+Northern Africa,5013,5001
+Algeria,5014,5013
+Egypt,5015,5013
+Cairo,5016,5015
+Libya,5633,5013
+Morocco,5017,5013
+Sudan,5018,5013
+Tunisia,5019,5013
+Southern Africa,5020,5001
+Botswana,5713,5020
+South Africa,5021,5020
+Cape Town,5022,5021
+Johannesburg,5023,5021
+Western Africa,5024,5001
+Burkina Faso,5712,5024
+Côte d'Ivoire,5637,5024
+Ghana,5025,5024
+Mali,5711,5024
+Niger,5710,5024
+Nigeria,5026,5024
+Lagos,5027,5026
+Senegal,5653,5024
+Asia,5028,5000
+Central Asia,5029,5028
+Kazakhstan,5030,5029
+Kyrgyzstan,5574,5029
+Tajikistan,5579,5029
+Turkmenistan,5580,5029
+Uzbekistan,5031,5029
+East Asia,5032,5028
+China,5033,5032
+Eastern China,5364,5033
+Jiangsu,5392,5364
+Nanjing,5666,5392
+Shanghai,5040,5364
+Zhejiang,5393,5364
+Hangzhou,5039,5393
+North Central China,5367,5033
+Beijing,5034,5367
+Hebei,5401,5367
+Henan,5399,5367
+Inner Mongolia,5664,5367
+Shandong,5400,5367
+Shanxi,5660,5367
+Tianjin,5043,5367
+Northeast China,5363,5033
+Heilongjiang,5391,5363
+Harbin,5667,5391
+Jilin,5643,5363
+Changchun,5035,5643
+Liaoning,5390,5363
+Shenyang,5041,5390
+Northwest China,5368,5033
+Gansu,5661,5368
+Ningxia,5662,5368
+Qinghai,5663,5368
+Shaanxi,5402,5368
+Xi'an,5046,5402
+Xinjiang,5403,5368
+South Central China,5366,5033
+Anhui,5655,5366
+Chongqing,5036,5366
+Hubei,5397,5366
+Wuhan,5045,5397
+Hunan,5398,5366
+Jiangxi,5658,5366
+Sichuan,5396,5366
+Southeast China,5365,5033
+Fujian,5394,5365
+Guangdong,5395,5365
+Dongguan,5037,5395
+Guangzhou,5038,5395
+Shenzhen,5042,5395
+Hainan,5665,5365
+Southwest China,5369,5033
+Guangxi,5656,5369
+Guizhou,5659,5369
+Tibet,5044,5369
+Yunnan,5657,5369
+Hong Kong,5047,5032
+Japan,5048,5032
+Chubu,5382,5048
+Aichi,5723,5382
+Nagoya,5049,5723
+Fukui,5725,5382
+Gifu,5730,5382
+Ishikawa,5729,5382
+Nagano,5726,5382
+Niigata,5727,5382
+Shizuoka,5731,5382
+Toyama,5724,5382
+Yamanashi,5728,5382
+Chugoku,5385,5048
+Hiroshima,5735,5385
+Okayama,5736,5385
+Shimane,5734,5385
+Tottori,5732,5385
+Yamaguchi,5733,5385
+Hokkaido,5381,5048
+Sapporo,5051,5381
+Kansai,5383,5048
+Hyogo,5737,5383
+Kobe,5406,5737
+Kyoto,5407,5383
+Mie,5741,5383
+Nara,5739,5383
+Osaka,5050,5383
+Shiga,5738,5383
+Wakayama,5740,5383
+Kanto,5377,5048
+Chiba,5742,5377
+Gunma,5745,5377
+Ibaraki,5746,5377
+Kanagawa,5744,5377
+Kawasaki,5764,5744
+Yokohama,5404,5744
+Saitama,5743,5377
+Tochigi,5747,5377
+Tokyo,5052,5377
+Kyushu,5380,5048
+Fukuoka,5405,5380
+Kagoshima,5752,5380
+Kumamoto,5753,5380
+Miyazaki,5751,5380
+Nagasaki,5749,5380
+Oita,5750,5380
+Saga,5748,5380
+Okinawa,5379,5048
+Shikoku,5384,5048
+Ehime,5755,5384
+Kagawa,5754,5384
+Kochi,5757,5384
+Tokushima,5756,5384
+Tohoku,5378,5048
+Akita,5759,5378
+Aomori,5758,5378
+Fukushima,5763,5378
+Iwate,5760,5378
+Miyagi,5762,5378
+Sendai,5765,5762
+Yamagata,5761,5378
+Macau,5355,5032
+Mongolia,5577,5032
+North Korea,5053,5032
+South Korea,5054,5032
+Gangwon,5672,5054
+Gyeonggi,5375,5054
+Incheon,5370,5375
+Jeju,5371,5054
+North Chungcheong,5678,5054
+North Gyeongsang,5674,5054
+Daegu,5055,5674
+North Jeolla,5676,5054
+Seoul,5057,5054
+South Chungcheong,5677,5054
+Daejeon,5374,5677
+South Gyeongsang,5673,5054
+Busan,5372,5673
+Ulsan,5376,5673
+South Jeolla,5675,5054
+Gwangju,5373,5675
+Taiwan,5058,5032
+Hsinchu,5389,5058
+Kaohsiung,5386,5058
+Taichung,5388,5058
+Tainan,5387,5058
+Taipei,5059,5058
+Russia & CIS,5593,5028
+Caucasus,5408,5593
+Armenia,5537,5408
+Azerbaijan,5538,5408
+Georgia,5539,5408
+Russian Federation,5120,5593
+Far Eastern Russia,5606,5120
+North Caucasian District,5766,5120
+Northwestern Russia,5594,5120
+Saint Petersburg,5122,5594
+Russian Central District,5595,5120
+Moscow,5121,5595
+Russian Southern District,5603,5120
+Siberian Federal District,5605,5120
+Urals District,5607,5120
+Volga District,5604,5120
+South Asia,5074,5028
+Afghanistan,5075,5074
+Bangladesh,5076,5074
+Bhutan,5553,5074
+India,5077,5074
+East India,5515,5077
+Bihar,5650,5515
+Chhattisgarh,5775,5515
+Orissa,5654,5515
+West Bengal,5649,5515
+Kolkata,5082,5649
+North India,5519,5077
+Delhi,5080,5519
+Madhya Pradesh,5652,5519
+Punjab (India),5776,5519
+Uttar Pradesh,5644,5519
+Agra,5520,5644
+Northeast India,5514,5077
+South India,5516,5077
+Andhra Pradesh,5648,5516
+Hyderabad,5081,5648
+Karnataka,5640,5516
+Bangalore,5078,5640
+Kerala,5651,5516
+Tamil Nadu,5639,5516
+Chennai,5079,5639
+West India,5517,5077
+Goa,5518,5517
+Gujarat,5647,5517
+Maharashtra,5645,5517
+Mumbai,5083,5645
+Rajasthan,5646,5517
+Jaipur,5521,5646
+Indian Ocean Islands,5620,5074
+Maldives,5576,5620
+Réunion,5702,5620
+Nepal,5085,5074
+Pakistan,5086,5074
+Karachi,5087,5086
+Lahore,5088,5086
+Sri Lanka,5089,5074
+Southeast Asia,5060,5028
+Brunei,5554,5060
+Cambodia,5555,5060
+East Timor,5557,5060
+Indonesia,5061,5060
+Java (Indonesia),5703,5061
+Jakarta,5062,5703
+Kalimantan,5704,5061
+Maluku Islands,5705,5061
+Nusa Tenggara,5706,5061
+Bali,5361,5706
+Sulawesi,5707,5061
+Sumatra,5708,5061
+Western New Guinea,5709,5061
+Laos,5575,5060
+Malaysia,5063,5060
+Kuala Lumpur,5064,5063
+Myanmar,5065,5060
+Philippines,5066,5060
+Cebu,5668,5066
+Manila,5067,5066
+Singapore,5068,5060
+Thailand,5069,5060
+Bangkok,5070,5069
+Chiang Mai,5810,5069
+Pattaya,5812,5069
+Southern Thailand,5811,5069
+Phuket,5362,5811
+Viet Nam,5071,5060
+Hanoi,5072,5071
+Ho Chi Minh City,5073,5071
+West Asia,5090,5028
+Bahrain,5552,5090
+Iran,5084,5090
+Iraq,5092,5090
+Israel,5093,5090
+Jerusalem,5094,5093
+Palestinian Territories,5592,5093
+Tel Aviv,5095,5093
+Jordan,5096,5090
+Kuwait,5558,5090
+Lebanon,5097,5090
+Oman,5578,5090
+Qatar,5590,5090
+Saudi Arabia,5098,5090
+Syria,5099,5090
+Turkey,5100,5090
+Aegean Turkey,5834,5100
+Izmir,5842,5834
+Muğla,5845,5834
+Bodrum,5849,5845
+Pamukkale,5846,5834
+Black Sea Turkey,5835,5100
+Central Anatolia,5836,5100
+Ankara,5101,5836
+Cappadocia,5844,5836
+Konya,5847,5836
+Eastern Anatolia,5837,5100
+Marmara Region,5838,5100
+Bursa,5841,5838
+Istanbul,5102,5838
+Mediterranean Turkey,5839,5100
+Adana,5848,5839
+Antalya,5843,5839
+Mersin,5850,5839
+Southeastern Anatolia,5840,5100
+United Arab Emirates,5103,5090
+Yemen,5581,5090
+Europe,5104,5000
+Central & Eastern Europe,5565,5104
+Austria,5178,5565
+Vienna,5179,5178
+Baltics,5556,5565
+Estonia,5128,5556
+Latvia,5134,5556
+Lithuania,5135,5556
+Czech Republic,5108,5565
+Prague,5109,5108
+Eastern Europe,5105,5565
+Belarus,5106,5105
+Moldova,5585,5105
+Ukraine,5124,5105
+Crimea,5628,5124
+Kiev,5619,5124
+Germany,5188,5565
+Baden-Wuerttemberg,5490,5188
+Bavaria,5491,5188
+Munich,5195,5491
+Berlin,5189,5188
+Brandenburg,5494,5188
+Bremen,5495,5188
+Hamburg,5194,5188
+Hesse,5493,5188
+Frankfurt,5193,5493
+Lower Saxony,5492,5188
+Mecklenburg-Vorpommern,5496,5188
+North Rhine-Westphalia,5489,5188
+Cologne,5190,5489
+Duesseldorf,5191,5489
+Essen (Ruhr Area),5192,5489
+Rhineland-Palatinate,5497,5188
+Saarland,5498,5188
+Saxony,5499,5188
+Saxony-Anhalt,5500,5188
+Schleswig-Holstein,5501,5188
+Thuringia,5502,5188
+Hungary,5110,5565
+Budapest,5111,5110
+Liechtenstein,5566,5565
+Poland,5112,5565
+Katowice (Upper Silesian),5113,5112
+Krakow,5114,5112
+Warsaw,5115,5112
+Wroclaw,5116,5112
+Łódź,5117,5112
+Slovakia,5123,5565
+Slovenia,5170,5565
+Switzerland,5200,5565
+Geneva,5201,5200
+Zurich,5202,5200
+Mediterranean Europe,5150,5104
+Cyprus,5091,5150
+Italy,5155,5150
+Abruzzo,5626,5155
+Aosta Valley,5722,5155
+Basilicata,5720,5155
+Calabria,5513,5155
+Campania,5504,5155
+Naples,5160,5504
+Salerno & Amalfi Coast,5771,5504
+Emilia-Romagna,5508,5155
+Friuli-Venezia Giulia,5717,5155
+Lazio,5505,5155
+Rome,5162,5505
+Liguria,5511,5155
+Genoa,5158,5511
+Lombardy,5503,5155
+Milan,5159,5503
+Marche,5716,5155
+Molise,5721,5155
+Piedmont,5507,5155
+Turin,5164,5507
+Puglia,5509,5155
+Bari,5156,5509
+Sardinia,5512,5155
+Sicily,5163,5155
+Palermo,5161,5163
+Trentino-Alto Adige,5718,5155
+Tuscany,5510,5155
+Florence,5157,5510
+Umbria,5719,5155
+Veneto,5506,5155
+Venice,5165,5506
+Malta,5166,5150
+Monaco,5586,5150
+Portugal,5167,5150
+Azores & Madeira,5773,5167
+Lisbon,5168,5167
+Porto,5772,5167
+San Marino,5587,5150
+Spain,5171,5150
+Andalucia,5476,5171
+Cádiz,5616,5476
+Málaga,5174,5476
+Seville,5175,5476
+Aragon,5485,5171
+Asturias,5487,5171
+Balearic Islands,5488,5171
+Basque Country,5481,5171
+Canary Islands,5482,5171
+Cantabria,5770,5171
+Castile and León,5480,5171
+Castile-La Mancha,5483,5171
+Catalonia,5477,5171
+Barcelona,5172,5477
+Extremadura,5486,5171
+Galicia,5479,5171
+Madrid,5173,5171
+Murcia,5484,5171
+Valencian Community,5478,5171
+Valencia,5176,5478
+Vatican City,5769,5150
+Nordic Countries,5125,5104
+Denmark,5126,5125
+Copenhagen,5127,5126
+Finland,5129,5125
+Helsinki,5130,5129
+Greenland,5679,5125
+Iceland,5131,5125
+Norway,5136,5125
+Oslo,5137,5136
+Sweden,5138,5125
+Stockholm,5139,5138
+Southeastern Europe,5567,5104
+Albania,5582,5567
+Bosnia and Herzegovina,5151,5567
+Bulgaria,5107,5567
+Croatia,5152,5567
+Greece,5153,5567
+Aegean Islands,5831,5153
+Athens,5154,5153
+Crete,5825,5153
+Kosovo,5767,5567
+Montenegro,5768,5567
+Republic of Macedonia,5584,5567
+Romania,5118,5567
+Bucharest,5119,5118
+Serbia,5169,5567
+Western Europe,5177,5104
+Andorra,5583,5177
+Benelux,5534,5177
+Belgium,5180,5534
+Brussels,5181,5180
+Luxembourg,5196,5534
+Netherlands,5197,5534
+Amsterdam,5198,5197
+Rotterdam,5199,5197
+France,5182,5177
+Central France,5533,5182
+Auvergne,5680,5533
+Centre,5681,5533
+Limousin,5682,5533
+East France,5531,5182
+Alsace,5683,5531
+Strasbourg,5610,5683
+Burgundy,5684,5531
+Champagne-Ardenne,5685,5531
+Franche-Comté,5686,5531
+Lorraine,5687,5531
+French Overseas (DOM-TOM),5608,5182
+North France,5532,5182
+Lower Normandy,5688,5532
+Nord-Pas-de-Calais,5690,5532
+Lille,5611,5690
+Picardy,5691,5532
+Upper Normandy,5689,5532
+South East France,5528,5182
+Corsica,5617,5528
+Provence-Alpes-Côte d'Azur,5692,5528
+Marseille,5184,5692
+Nice,5185,5692
+Rhône-Alpes,5693,5528
+Lyon,5183,5693
+South West France,5527,5182
+Aquitaine,5694,5527
+Bordeaux,5613,5694
+Languedoc-Roussillon,5695,5527
+Montpellier,5612,5695
+Midi-Pyrénées,5696,5527
+Toulouse,5187,5696
+West France,5530,5182
+Brittany,5697,5530
+Rennes,5614,5697
+Pays de la Loire,5698,5530
+Nantes,5609,5698
+Poitou-Charentes,5699,5530
+Île-de-France,5529,5182
+Paris,5186,5529
+Ireland,5132,5177
+Dublin,5133,5132
+United Kingdom,5140,5177
+England,5440,5140
+East Midlands,5447,5440
+East of England,5446,5440
+London (UK),5147,5440
+North East England,5451,5440
+North West England,5450,5440
+Liverpool,5146,5450
+Manchester,5148,5450
+South East England,5444,5440
+South West England,5445,5440
+Bristol,5142,5445
+West Midlands,5448,5440
+Birmingham (UK),5141,5448
+Yorkshire,5449,5440
+Leeds-Bradford,5145,5449
+Sheffield,5149,5449
+Northern Ireland,5443,5140
+Scotland,5441,5140
+Edinburgh,5143,5441
+Glasgow,5144,5441
+Wales,5442,5140
+Latin America,5203,5000
+Caribbean,5204,5203
+Antigua & Barbuda,5550,5204
+"Aruba, Bonaire & Curaçao",5569,5204
+Bahamas,5360,5204
+Barbados,5559,5204
+Cayman Islands,5570,5204
+Cuba,5205,5204
+Dominica,5560,5204
+Dominican Republic,5206,5204
+Grenada,5561,5204
+Guadeloupe,5700,5204
+Haiti,5562,5204
+Jamaica,5439,5204
+Martinique,5701,5204
+Puerto Rico,5207,5204
+Saint Kitts & Nevis,5563,5204
+Saint Lucia,5564,5204
+Saint Vincent & Grenadines,5572,5204
+Trinidad & Tobago,5573,5204
+Virgin Islands,5571,5204
+Central America,5208,5203
+Belize,5549,5208
+Costa Rica,5209,5208
+El Salvador,5548,5208
+Guatemala,5547,5208
+Honduras,5546,5208
+Mexico,5210,5208
+Baja California,5792,5210
+Los Cabos,5813,5792
+Tijuana,5214,5792
+Central Mexico,5797,5210
+Cuernavaca (Morelos),5814,5797
+Guanajuato,5801,5797
+Mexico City,5212,5797
+Mexico State,5798,5797
+Puebla,5800,5797
+Veracruz,5799,5797
+Northern Mexico,5793,5210
+Chihuahua,5795,5793
+Nuevo León,5794,5793
+Monterrey,5213,5794
+Tamaulipas,5796,5793
+Pacific Coast (Mexico),5802,5210
+Chiapas,5806,5802
+Guerrero,5803,5802
+Acapulco,5815,5803
+Jalisco,5805,5802
+Guadalajara,5211,5805
+Puerto Vallarta,5816,5805
+Michoacán,5807,5802
+Oaxaca,5804,5802
+Sinaloa,5808,5802
+Yucatán Peninsula,5809,5210
+Quintana Roo,5817,5809
+Cancún & Riviera Maya,5819,5817
+Yucatán,5818,5809
+Mérida,5820,5818
+Nicaragua,5545,5208
+Panama,5215,5208
+South America,5216,5203
+Argentina,5217,5216
+Buenos Aires,5218,5217
+Bolivia,5540,5216
+Brazil,5219,5216
+Central West Brazil,5526,5219
+Brasilia,5221,5526
+Goiás,5774,5526
+Mato Grosso,5786,5526
+Mato Grosso do Sul,5787,5526
+North Brazil,5522,5219
+Amazonas,5788,5522
+Pará,5789,5522
+Rondônia,5790,5522
+Tocantins,5791,5522
+Northeast Brazil,5523,5219
+Alagoas,5778,5523
+Bahia,5631,5523
+Salvador,5226,5631
+Ceará,5779,5523
+Fortaleza,5222,5779
+Maranhão,5780,5523
+Paraíba,5781,5523
+Pernambuco,5782,5523
+Recife,5224,5782
+Piauí,5783,5523
+Rio Grande do Norte,5784,5523
+Sergipe,5785,5523
+South Brazil,5524,5219
+Paraná,5627,5524
+Rio Grande do Sul,5630,5524
+Porto Alegre,5223,5630
+Santa Catarina,5629,5524
+Southeast Brazil,5525,5219
+Espirito Santo,5777,5525
+Minas Gerais,5632,5525
+Belo Horizonte,5220,5632
+Rio de Janeiro,5225,5525
+São Paulo,5227,5525
+Chile,5228,5216
+Santiago,5229,5228
+Colombia,5230,5216
+Bogota,5231,5230
+Ecuador,5536,5216
+Galapagos Islands,5832,5536
+Quito,5833,5536
+French Guiana,5544,5216
+Guyana,5543,5216
+Paraguay,5541,5216
+Peru,5232,5216
+Lima,5233,5232
+Suriname,5542,5216
+Uruguay,5234,5216
+Venezuela,5235,5216
+Caracas,5236,5235
+Middle East,5588,5000
+North America,5237,5000
+Bermuda,5354,5237
+Canada,5238,5237
+Atlantic Provinces,5239,5238
+New Brunswick,5596,5239
+Newfoundland & Labrador,5598,5239
+Nova Scotia,5597,5239
+Halifax,5240,5597
+Prince Edward Island,5599,5239
+British Columbia,5241,5238
+Vancouver,5242,5241
+Victoria (BC),5243,5241
+Canadian Prairies,5244,5238
+Alberta,5600,5244
+Calgary,5245,5600
+Edmonton,5246,5600
+Manitoba,5602,5244
+Winnipeg,5247,5602
+Saskatchewan,5601,5244
+Northern Territories,5248,5238
+Ontario,5249,5238
+Greater Toronto,5253,5249
+Hamilton-Niagara Peninsula,5250,5249
+Ottawa-Gatineau,5252,5249
+Southwestern Ontario,5251,5249
+Quebec,5254,5238
+Montreal,5255,5254
+Quebec City,5256,5254
+USA,5257,5237
+Alaska,5258,5257
+California,5259,5257
+California Central Coast,5669,5259
+Lake Tahoe,5474,5259
+Sacramento Valley,5263,5259
+San Francisco Bay Area,5265,5259
+San Joaquin Valley,5260,5259
+Silicon Valley,5266,5259
+Southern California,5535,5259
+Inland Empire,5262,5535
+Los Angeles,5261,5535
+Orange County (CA),5475,5535
+San Diego,5264,5535
+Florida,5267,5257
+Central Florida,5624,5267
+Deltona-Daytona Beach,5642,5624
+Greater Orlando,5270,5624
+Tampa Bay Area,5271,5624
+Florida Panhandle,5622,5267
+Tallahassee,5824,5622
+North Florida,5623,5267
+Jacksonville,5268,5623
+Southern Florida,5638,5267
+Florida Keys,5822,5638
+Fort Myers-Cape Coral,5823,5638
+South Florida Metro,5625,5638
+Broward-Fort Lauderdale,5641,5625
+Miami-Dade,5269,5625
+West Palm Beach-Boca Raton,5272,5625
+Great Plains (USA),5273,5257
+Kansas,5462,5273
+Nebraska,5470,5273
+North Dakota,5471,5273
+Oklahoma,5426,5273
+Oklahoma City,5274,5426
+Tulsa,5275,5426
+South Dakota,5472,5273
+Hawaii,5276,5257
+Big Island (Hawaii),5828,5276
+Kauai,5829,5276
+Maui,5827,5276
+Oahu,5826,5276
+Mid-Atlantic (USA),5277,5257
+Delaware,5463,5277
+Maryland,5427,5277
+Baltimore Metro,5279,5427
+New Jersey,5411,5277
+New York State,5409,5277
+Albany-Capital District,5278,5409
+Buffalo-Niagara Falls,5280,5409
+New York City,5282,5409
+Rochester-Finger Lakes,5285,5409
+Pennsylvania,5410,5277
+Harrisburg-South Central PA,5281,5410
+Philadelphia,5283,5410
+Pittsburgh,5284,5410
+Washington DC,5286,5277
+Midwest (USA),5287,5257
+Illinois,5428,5287
+Chicago,5288,5428
+Indiana,5429,5287
+Indianapolis,5294,5429
+Iowa,5458,5287
+Michigan,5413,5287
+Detroit,5292,5413
+Grand Rapids-West Michigan,5293,5413
+Minnesota,5431,5287
+Minneapolis-Saint Paul,5297,5431
+Missouri,5414,5287
+Greater St. Louis,5298,5414
+Kansas City,5295,5414
+Ohio,5412,5287
+Cincinnati,5289,5412
+Columbus (OH),5291,5412
+Greater Cleveland,5290,5412
+Wisconsin,5430,5287
+Milwaukee,5296,5430
+New England,5299,5257
+Connecticut,5423,5299
+Greater Hartford,5301,5423
+New Haven,5670,5423
+Maine,5459,5299
+Massachusetts,5424,5299
+Boston Metro,5300,5424
+New Hampshire,5461,5299
+Rhode Island,5425,5299
+Providence,5302,5425
+Vermont,5460,5299
+Pacific Northwest,5303,5257
+Oregon,5433,5303
+Portland (OR),5304,5433
+Washington State,5432,5303
+Seattle-Tacoma,5305,5432
+Rocky Mountains,5306,5257
+Colorado,5434,5306
+Denver,5307,5434
+Idaho,5466,5306
+Montana,5465,5306
+Wyoming,5464,5306
+South (USA),5308,5257
+Alabama,5422,5308
+Birmingham (AL),5311,5422
+Arkansas,5467,5308
+Georgia (USA),5420,5308
+Atlanta,5309,5420
+Kentucky,5421,5308
+Louisville,5315,5421
+Louisiana,5417,5308
+Baton Rouge,5310,5417
+New Orleans,5318,5417
+Mississippi,5469,5308
+North Carolina,5416,5308
+Charlotte Metro,5312,5416
+Piedmont Triad,5313,5416
+Raleigh-Durham,5320,5416
+South Carolina,5418,5308
+Greater Charleston (SC),5618,5418
+Myrtle Beach & Grand Strand,5821,5418
+Upstate South Carolina,5314,5418
+Tennessee,5419,5308
+Memphis,5316,5419
+Nashville,5317,5419
+Virginia,5415,5308
+Richmond-Petersburg,5321,5415
+Virginia Beach-Hampton Roads,5319,5415
+West Virginia,5468,5308
+Southwest (USA),5322,5257
+Arizona,5435,5322
+Phoenix,5325,5435
+Tucson,5328,5435
+Nevada,5436,5322
+Las Vegas,5324,5436
+Reno-Sparks,5326,5436
+New Mexico,5438,5322
+Albuquerque-Santa Fe,5323,5438
+Utah,5437,5322
+Salt Lake City,5327,5437
+Texas,5329,5257
+Austin-Round Rock,5330,5329
+Dallas-Fort Worth,5331,5329
+El Paso,5332,5329
+Houston,5333,5329
+San Antonio,5334,5329
+Oceania,5335,5000
+Australia,5336,5335
+New South Wales,5452,5336
+Canberra,5339,5452
+Newcastle (AU),5342,5452
+Sydney,5344,5452
+Northern Territory,5457,5336
+Queensland,5453,5336
+Brisbane,5338,5453
+Cairns,5357,5453
+Gold Coast,5340,5453
+South Australia,5456,5336
+Adelaide,5337,5456
+Tasmania,5356,5336
+Victoria (AU),5454,5336
+Melbourne,5341,5454
+Western Australia,5455,5336
+Perth,5343,5455
+New Zealand,5350,5335
+Auckland,5351,5350
+Christchurch,5359,5350
+Wellington,5358,5350
+Pacific Islands,5589,5335
+Melanesia,5345,5589
+Fiji,5346,5345
+Papua New Guinea,5347,5345
+Micronesia,5348,5589
+Guam,5349,5348
+Polynesia,5352,5589
+Tahiti & Bora Bora,5568,5352
+Polar Regions,5353,5000
