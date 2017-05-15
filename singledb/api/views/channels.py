@@ -58,6 +58,21 @@ class ChannelListApiView(ListAPIView):
         filters = {}
         exclude = {}
 
+        # --- Filter groups ---
+        filter_group = self.request.query_params.get("filter_group")
+        if filter_group:
+            if filter_group == 'influencer':
+                filters['details__subscribers__gte'] = 10000
+                filters['details__subscribers__lte'] = 100000
+            elif filter_group == 'brands':
+                #TODO: implement filter or brands
+                pass
+            elif filter_group == 'entertainment':
+                filters['ptk_value__in'] = ['vevo']
+            else:
+                queryset = Channel.objects.none()
+
+        # --- Filters ---
         # selected ids
         selected_ids = self.request.query_params.get("ids")
         if selected_ids:
