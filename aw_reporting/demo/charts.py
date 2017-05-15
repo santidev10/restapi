@@ -1,7 +1,9 @@
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
 from collections import defaultdict
+from datetime import datetime, time
 from copy import deepcopy
+from pytz import utc
 import random
 
 
@@ -77,6 +79,7 @@ class DemoChart:
     def charts(self):
         indicator = self.filters.get('indicator', 'average_cpv')
         dimension = self.filters.get('dimension')
+        segmented = self.filters.get('segmented')
 
         chart_type_kwargs = dict(
             additional_chart=bool(dimension),
@@ -85,53 +88,61 @@ class DemoChart:
                 'age', 'gender', 'creative', 'device') else 'bar',
         )
         charts = []
-        if indicator in SUM_STATS:
-            def red(a, b):
-                return a + b
+        if segmented:
+            if indicator in SUM_STATS:
+                def red(a, b):
+                    return a + b
 
+            else:
+                def red(a, b):
+                    return a + b / 2
+            summary = defaultdict(dict)
+            for campaign in self.account.children:
+                data = self.chart_lines(campaign, self.filters)
+                charts.append(
+                    dict(
+                        title=campaign.name,
+                        data=data,
+                        **chart_type_kwargs
+                    )
+                )
+                for line in data:
+                    item = summary[line['label']]
+                    item['label'] = line['label']
+                    if 'value' in item:
+                        item['value'] = red(item['value'], line['value'])
+                    else:
+                        item['value'] = line['value']
+
+                    if 'trend' in item:
+                        new_trend = []
+                        for a, b in zip(line['trend'], item['trend']):
+                            new_trend.append(
+                                dict(
+                                    label=a['label'],
+                                    value=red(a['value'], b['value'])
+                                )
+                            )
+                        item['trend'] = new_trend
+                    else:
+                        item['trend'] = deepcopy(line['trend'])
+            if len(charts) > 1:
+                sum_key = 'Summary for %d campaigns' % len(charts)
+                data = sorted(list(summary.values()), key=lambda i: i['label'])
+
+                charts.insert(
+                    0,
+                    dict(
+                        title=sum_key,
+                        data=data,
+                        **chart_type_kwargs
+                    )
+                )
         else:
-            def red(a, b):
-                return a + b / 2
-
-        summary = defaultdict(dict)
-        for campaign in self.account.children:
-            data = self.chart_lines(campaign, self.filters)
+            data = self.chart_lines(self.account, self.filters)
             charts.append(
                 dict(
-                    title=campaign.name,
-                    data=data,
-                    **chart_type_kwargs
-                )
-            )
-            for line in data:
-                item = summary[line['label']]
-                item['label'] = line['label']
-                if 'value' in item:
-                    item['value'] = red(item['value'], line['value'])
-                else:
-                    item['value'] = line['value']
-
-                if 'trend' in item:
-                    new_trend = []
-                    for a, b in zip(line['trend'], item['trend']):
-                        new_trend.append(
-                            dict(
-                                label=a['label'],
-                                value=red(a['value'], b['value'])
-                            )
-                        )
-                    item['trend'] = new_trend
-                else:
-                    item['trend'] = deepcopy(line['trend'])
-
-        if len(charts) > 1:
-            sum_key = 'Summary for %d campaigns' % len(charts)
-            data = sorted(list(summary.values()), key=lambda i: i['label'])
-
-            charts.insert(
-                0,
-                dict(
-                    title=sum_key,
+                    title="",
                     data=data,
                     **chart_type_kwargs
                 )
@@ -142,23 +153,33 @@ class DemoChart:
         lines = []
         dimension = filters.get('dimension')
         indicator = filters.get('indicator', 'average_cpv')
+        breakdown = filters.get('breakdown')
 
         start = filters['start_date'] or item.start_date
         end = filters['end_date'] or item.end_date
 
         # get every days values
         value = getattr(item, indicator)
-        days = (end - start).days + 1
+
+        if breakdown == "hourly":
+            time_points = [
+                datetime.combine(date, time(hour)).replace(tzinfo=utc)
+                for date in get_dates_range(start, end)
+                for hour in range(24)
+            ]
+        else:
+            time_points = list(get_dates_range(start, end))
+        time_points_len = len(time_points)
 
         if not dimension:
-            values = self.explode_value_random(value, indicator, days)
+            values = self.explode_value_random(value, indicator, time_points_len)
             lines.append(
                 dict(
                     average=None,
                     label="Summary",
                     trend=[dict(label=l, value=v)
                            for l, v in zip(
-                                get_dates_range(start, end),
+                                time_points,
                                 values
                            )],
                     value=value,
@@ -171,12 +192,12 @@ class DemoChart:
 
             for dim, sum_value in zip(dimensions, dim_values):
 
-                daily_vs = self.explode_value_random(sum_value, indicator, days)
+                daily_vs = self.explode_value_random(sum_value, indicator, time_points_len)
                 line = dict(
                     average=None,
                     trend=[dict(label=l, value=v)
                            for l, v in zip(
-                                get_dates_range(start, end),
+                                time_points,
                                 daily_vs
                            )],
                     value=sum_value,

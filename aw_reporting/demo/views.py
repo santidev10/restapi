@@ -98,6 +98,7 @@ class AnalyzeChartApiView:
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
+                filters['segmented'] = True
                 charts_obj = DemoChart(account, filters)
                 return Response(status=HTTP_200_OK, data=charts_obj.charts)
             else:
@@ -189,5 +190,121 @@ class AnalyzeExportWeeklyReport:
                 return response
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class TrackFiltersListApiView:
+
+    @staticmethod
+    def get(original_method):
+        def method(view, *args, **kwargs):
+            # TODO: check if the user has
+            # an active connected AdWords account,
+            # if he has then return result of the original method
+            if 1:
+                account = DemoAccount()
+                filters = dict(
+                    accounts=[
+                        dict(
+                            id=account.id,
+                            name=account.name,
+                            start_date=account.start_date,
+                            end_date=account.end_date,
+                            campaigns=[
+                                dict(
+                                    id=c.id,
+                                    name=c.name,
+                                    start_date=c.start_date,
+                                    end_date=c.end_date,
+                                )
+                                for c in account.children
+                            ]
+                        )
+                    ],
+                    indicator=[
+                        dict(id=uid, name=name)
+                        for uid, name in view.indicators
+                    ],
+                    breakdown=[
+                        dict(id=uid, name=name)
+                        for uid, name in view.breakdowns
+                    ],
+                    dimension=[
+                        dict(id=uid, name=name)
+                        for uid, name in view.dimensions
+                    ],
+                )
+                return Response(status=HTTP_200_OK, data=filters)
+            else:
+                return original_method(view, *args, **kwargs)
+
+        return method
+
+
+class TrackChartApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, *args, **kwargs):
+            # TODO: check if the user has
+            # an active connected AdWords account,
+            # if he has then return result of the original method
+            if 1:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                campaigns = [filters['campaign']] \
+                    if filters['campaign'] else []
+                account.filter_out_items(campaigns, None)
+                charts_obj = DemoChart(account, filters)
+                return Response(status=HTTP_200_OK,
+                                data=charts_obj.charts)
+            else:
+                return original_method(view, *args, **kwargs)
+
+        return method
+
+
+class TrackAccountsDataApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, *args, **kwargs):
+            # TODO: check if the user has
+            # an active connected AdWords account,
+            # if he has then return result of the original method
+            if 1:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                campaigns = [filters['campaign']] \
+                    if filters['campaign'] else []
+                account.filter_out_items(campaigns, None)
+                charts_obj = DemoChart(account, filters)
+
+                del filters['dimension']
+                data = charts_obj.chart_lines(account, filters)
+                trend = data[0]['trend']
+                latest_1d_data = trend[-1:]
+                latest_5d_data = trend[-5:]
+
+                accounts = [
+                    dict(
+                        id=account.id,
+                        label=account.name,
+                        average_1d=sum(i['value'] for i in latest_1d_data)
+                        / len(latest_1d_data) if len(latest_1d_data)
+                        else None,
+                        average_5d=sum(i['value'] for i in latest_5d_data)
+                        / len(latest_5d_data) if len(latest_5d_data)
+                        else None,
+                        trend=trend,
+                    )
+                ]
+                return Response(status=HTTP_200_OK,
+                                data=accounts)
+            else:
+                return original_method(view, *args, **kwargs)
 
         return method
