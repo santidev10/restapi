@@ -15,9 +15,6 @@ urlpatterns = [
     # AdWords reporting api urls
     url(r'^api/v1/', include(aw_reporting_urls,
                              namespace='aw_reporting_urls')),
-    # Single DB API URLs
-    url(r'^api/v1/', include(singledb_urls,
-                             namespace='singledb_urls')),
     # Admin api urls
     url(r'^api/v1/admin/', include(admin_urls, namespace='admin_api_urls')),
 ]

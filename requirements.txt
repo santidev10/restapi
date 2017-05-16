@@ -2,5 +2,6 @@ Django==1.9.9
 djangorestframework==3.2.4
 psycopg2==2.7.1
 XlsxWriter==0.9.6
+requests==2.8.1
 pytz==2017.2
 python-dateutil==2.6.0
