@@ -1273,11 +1273,32 @@ class OptimizationSettingsApiView(OptimizationFiltersApiView):
 class OptimizationTargetingApiView(OptimizationFiltersApiView,
                                    TargetingListBaseAPIClass):
 
+    def get_filters(self):
+        filters = {}
+        qp = self.request.query_params
+        campaign_creations = [
+            uid
+            for uid in qp.get('campaign_creations', "").split(",")
+            if uid
+        ]
+        if campaign_creations:
+            filters['campaign_creation_id__in'] = campaign_creations
+
+        ad_group_creations = [
+            uid
+            for uid in qp.get('ad_group_creations', "").split(",")
+            if uid
+        ]
+        if ad_group_creations:
+            filters['id__in'] = ad_group_creations
+        return filters
+
     def get(self, request, pk, kpi, list_type, **_):
         account_creation = self.get_object()
-
+        filters = self.get_filters()
         ad_group_creations = AdGroupCreation.objects.filter(
             campaign_creation__account_creation=account_creation,
+            **filters
         ).filter(
             Q(optimization_tuning__value__isnull=False,
               optimization_tuning__kpi=kpi) |

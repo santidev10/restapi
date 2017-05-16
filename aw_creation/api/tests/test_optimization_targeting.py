@@ -3,9 +3,8 @@ from rest_framework.status import HTTP_202_ACCEPTED, HTTP_200_OK, \
     HTTP_404_NOT_FOUND
 from saas.utils_tests import ExtendedAPITestCase
 from django.contrib.auth import get_user_model
-from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from aw_creation.models import *
-from aw_reporting.models import *
 
 
 class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
@@ -13,10 +12,10 @@ class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_account(self, owner):
+    def test_success_get(self):
         account_creation = AccountCreation.objects.create(
             name="Pep",
-            owner=owner,
+            owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="Campaign with tuning",
@@ -27,13 +26,13 @@ class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
             kpi=OptimizationTuning.IMPRESSIONS_KPI,
             value="12.345"
         )
-        ad_group_creation = AdGroupCreation.objects.create(
+        ad_group_creation1 = AdGroupCreation.objects.create(
             name="AdGroup without tuning",
             campaign_creation=campaign_creation,
         )
         TargetingItem.objects.create(
-            criteria="KW #{}".format(ad_group_creation),
-            ad_group_creation=ad_group_creation,
+            criteria="KW #{}".format(ad_group_creation1),
+            ad_group_creation=ad_group_creation1,
             type=TargetingItem.KEYWORD_TYPE,
         )
         ad_group_creation = AdGroupCreation.objects.create(
@@ -97,15 +96,13 @@ class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
             name="AdGroup without tuning",
             campaign_creation=campaign_creation,
         )
-        return account_creation
-
-    def test_success_get(self):
-        ac = self.create_account(owner=self.user)
-        url = reverse(
+        # -------
+        base_url = reverse(
             "aw_creation_urls:optimization_targeting",
-            args=(ac.id, OptimizationTuning.IMPRESSIONS_KPI,
+            args=(account_creation.id,
+                  OptimizationTuning.IMPRESSIONS_KPI,
                   TargetingItem.KEYWORD_TYPE))
-        response = self.client.get(url)
+        response = self.client.get(base_url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -133,4 +130,21 @@ class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
                 'ctr_v',
             }
         )
+        # filters
+        filters = dict(
+            campaign_creations=campaign_creation.id,
+        )
+        url = "{}?{}".format(base_url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 2)
+
+        filters = dict(
+            ad_group_creations=ad_group_creation1.id,
+        )
+        url = "{}?{}".format(base_url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 1)
+
 
