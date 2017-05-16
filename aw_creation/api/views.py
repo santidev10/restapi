@@ -146,7 +146,6 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         if next_page:
             options["pageToken"] = next_page
         results = youtube.search().list(**options).execute()
-        print(results)
         response = dict(
             next_page=results.get("nextPageToken"),
             items_count=results.get("pageInfo", {}).get("totalResults"),
