@@ -1,5 +1,3 @@
-from django.db import models
-
 SUM_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
 
