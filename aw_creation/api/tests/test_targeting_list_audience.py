@@ -194,7 +194,7 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         ad_group = self.create_ad_group()
         for i in range(3):
             Audience.objects.create(
-                id=i, name="Interest#{}".format(i),
+                id=i * 10000, name="Interest#{}".format(i),
                 type=Audience.IN_MARKET_TYPE,
             )
 

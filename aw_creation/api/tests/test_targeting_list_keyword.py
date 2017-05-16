@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
 from urllib.parse import urlencode
 from aw_creation.models import *
 from saas.utils_tests import ExtendedAPITestCase
@@ -74,9 +74,9 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             any(i['is_negative'] for i in response.data),
             False,
         )
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
@@ -101,9 +101,9 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             all(i['is_negative'] for i in response.data),
             True,
         )
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
@@ -132,9 +132,9 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             set(i['criteria'] for i in response.data),
             {"KW#{}".format(i) for i in range(5, 10)}
         )
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
@@ -152,9 +152,6 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             "aw_creation_urls:optimization_ad_group_targeting_export",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
         url = "{}?{}".format(
             str(url),
             urlencode({'auth_token': self.user.auth_token.key}),
@@ -171,16 +168,15 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             "aw_creation_urls:optimization_ad_group_targeting_import",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
-        with open('aw_campaign_creation/fixtures/'
-                  'keywords.csv', 'rb') as fp:
+        with open('aw_creation/fixtures/keywords.csv', 'rb') as fp:
             response = self.client.post(url, {'file': fp},
                                         format='multipart')
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
