@@ -7,7 +7,7 @@ from rest_framework.serializers import ModelSerializer, \
 from django.contrib.auth import get_user_model
 from collections import defaultdict
 from django.db.models import Count, QuerySet, Min, Max, Value, F, Case,\
-    When, Sum,\
+    When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     ExpressionWrapper, DecimalField as AggrDecimalField
 from datetime import datetime
@@ -623,6 +623,39 @@ class AdGroupTargetingListUpdateSerializer(ModelSerializer):
 
 
 # Optimize / Optimization
+
+class OptimizationFiltersAdGroupSerializer(ModelSerializer):
+
+    class Meta:
+        model = AdGroupCreation
+        fields = ('id', 'name')
+
+
+class OptimizationFiltersCampaignSerializer(ModelSerializer):
+
+    ad_group_creations = SerializerMethodField()
+
+    def __init__(self, *args, kpi, **kwargs):
+        self.kpi = kpi
+        super(OptimizationFiltersCampaignSerializer, self).__init__(
+                *args, **kwargs)
+
+    def get_ad_group_creations(self, obj):
+        queryset = AdGroupCreation.objects.filter(
+            campaign_creation=obj,
+        ).filter(
+            Q(optimization_tuning__value__isnull=False,
+              optimization_tuning__kpi=self.kpi) |
+            Q(campaign_creation__optimization_tuning__value__isnull=False,
+              campaign_creation__optimization_tuning__kpi=self.kpi)
+        )
+        items = OptimizationFiltersAdGroupSerializer(queryset, many=True).data
+        return items
+
+    class Meta:
+        model = CampaignCreation
+        fields = ('id', 'name', 'ad_group_creations')
+
 
 class OptimizationSettingsAdGroupSerializer(ModelSerializer):
 

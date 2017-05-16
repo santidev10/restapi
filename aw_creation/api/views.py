@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q, Min, Max, Sum
+from django.db.models import Q, Min, Max, Sum, Avg
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
@@ -14,7 +14,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND, \
 from rest_framework.parsers import FileUploadParser
 from rest_framework.views import APIView
 from aw_creation.api.serializers import *
-from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
+    dict_add_calculated_stats
 from singledb.models import Channel, Video
 from collections import OrderedDict
 from datetime import datetime
@@ -802,13 +803,13 @@ class TargetingListBaseAPIClass(GenericAPIView):
     serializer_class = AdGroupTargetingListSerializer
 
     def get_queryset(self):
-            pk = self.kwargs.get('pk')
-            list_type = self.kwargs.get('list_type')
-            queryset = TargetingItem.objects.filter(
-                ad_group_creation_id=pk,
-                type=list_type,
-            )
-            return queryset
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        queryset = TargetingItem.objects.filter(
+            ad_group_creation_id=pk,
+            type=list_type,
+        )
+        return queryset
 
     @staticmethod
     def data_to_list(data):
@@ -1198,6 +1199,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
 
 # optimize tab
 class OptimizationFiltersApiView(APIView):
+
     def get_object(self):
         pk = self.kwargs.get("pk")
         account = get_object_or_404(
@@ -1209,25 +1211,22 @@ class OptimizationFiltersApiView(APIView):
 
     def get(self, request, pk, kpi, **_):
         account_creation = self.get_object()
-        data = OptimizationSettingsSerializer(
-            account_creation, kpi=kpi).data
+        queryset = account_creation.campaign_creations.filter(
+            Q(optimization_tuning__value__isnull=False,
+              optimization_tuning__kpi=kpi) |
+            Q(ad_group_creations__optimization_tuning__value__isnull=False,
+              ad_group_creations__optimization_tuning__kpi=kpi)
+        ).order_by('id').distinct()
+        data = OptimizationFiltersCampaignSerializer(
+            queryset, many=True, kpi=kpi,
+        ).data
         return Response(data=data)
 
 
-class OptimizationSettingsApiView(APIView):
+class OptimizationSettingsApiView(OptimizationFiltersApiView):
     """
     Settings at the Optimization tab
     """
-    serializer = OptimizationSettingsSerializer
-
-    def get_object(self):
-        pk = self.kwargs.get("pk")
-        account = get_object_or_404(
-            AccountCreation,
-            owner=self.request.user,
-            pk=pk,
-        )
-        return account
 
     def get(self, request, pk, kpi, **_):
         account_creation = self.get_object()
@@ -1271,30 +1270,56 @@ class OptimizationSettingsApiView(APIView):
         return self.get(request, pk, kpi, **kwargs)
 
 
-class OptimizationTargetingApiView(APIView):
+class OptimizationTargetingApiView(OptimizationFiltersApiView,
+                                   TargetingListBaseAPIClass):
 
-    def get_object(self):
-        pk = self.kwargs.get("pk")
-        account = get_object_or_404(
-            AccountCreation,
-            owner=self.request.user,
-            pk=pk,
-        )
-        return account
-
-    def get(self, request, pk, kpi, **_):
+    def get(self, request, pk, kpi, list_type, **_):
         account_creation = self.get_object()
 
         ad_group_creations = AdGroupCreation.objects.filter(
             campaign_creation__account_creation=account_creation,
         ).filter(
-            Q(optimization_tuning__value__isnull=False) |
-            Q(campaign_creation__optimization_tuning__value__isnull=False)
+            Q(optimization_tuning__value__isnull=False,
+              optimization_tuning__kpi=kpi) |
+            Q(campaign_creation__optimization_tuning__value__isnull=False,
+              campaign_creation__optimization_tuning__kpi=kpi)
         )
-        print(ad_group_creations)
+
+        values = ad_group_creations.aggregate(
+            value=Avg(
+                Case(
+                    When(
+                        campaign_creation__optimization_tuning__value__isnull=False,
+                        campaign_creation__optimization_tuning__kpi=kpi,
+                        then="campaign_creation__optimization_tuning__value",
+                    ),
+                    When(
+                        optimization_tuning__value__isnull=False,
+                        optimization_tuning__kpi=kpi,
+                        then="optimization_tuning__value",
+                    ),
+                    output_field=AggrDecimalField()
+                )
+            )
+        )
+        value = values['value']
         items = []
-        return Response(data=items)
+        if ad_group_creations:
+            items = TargetingItem.objects.filter(
+                ad_group_creation__in=ad_group_creations,
+                type=list_type,
+                is_negative=False,
+            ).values('criteria').order_by('criteria').distinct()
+            self.add_items_info(items)
+            self.add_items_stats(items, kpi, value)
 
+        return Response(data=dict(items=items, value=value))
 
-
-
+    @staticmethod
+    def add_items_stats(items, kpi, value):
+        stat_names = SUM_STATS + CONVERSIONS
+        stats = dict(zip(stat_names, (0 for _ in range(len(stat_names)))))
+        dict_add_calculated_stats(stats)
+        for i in items:
+            i.update(stats)
+            i['bigger_than_value'] = (i.get(kpi) or 0) > (value or 0)
