@@ -1,9 +1,8 @@
 from django.core.validators import MaxValueValidator, MinValueValidator, \
-    RegexValidator, ValidationError
+    RegexValidator
 from django.dispatch import receiver
 from django.db import models
 from django.db.models.signals import post_save
-from django.conf import settings
 from decimal import Decimal
 import calendar
 import json
@@ -395,6 +394,7 @@ class AdGroupCreation(UniqueItem):
         "campaign" variable have to be defined above
         :return:
         """
+        from .targeting import TargetingItem
         targeting = self.targeting_items.all()
         channels = targeting.filter(type=TargetingItem.CHANNEL_TYPE)
         videos = targeting.filter(type=TargetingItem.VIDEO_TYPE)
@@ -546,29 +546,3 @@ class AdScheduleRule(models.Model):
             ("campaign_creation", "day", "from_hour",
              "from_minute", "to_hour", "to_minute"),
         )
-
-
-class TargetingItem(models.Model):
-    criteria = models.CharField(max_length=150)
-    ad_group_creation = models.ForeignKey(
-        AdGroupCreation, related_name="targeting_items"
-    )
-    CHANNEL_TYPE = "channel"
-    VIDEO_TYPE = "video"
-    TOPIC_TYPE = "topic"
-    INTEREST_TYPE = "interest"
-    KEYWORD_TYPE = "keyword"
-    TYPES = (
-        (CHANNEL_TYPE, CHANNEL_TYPE),
-        (VIDEO_TYPE, VIDEO_TYPE),
-        (TOPIC_TYPE, TOPIC_TYPE),
-        (INTEREST_TYPE, INTEREST_TYPE),
-        (KEYWORD_TYPE, KEYWORD_TYPE),
-    )
-    type = models.CharField(max_length=20, choices=TYPES)
-    is_negative = models.BooleanField(default=False)
-
-    class Meta:
-        unique_together = (('ad_group_creation', 'type', 'criteria'),)
-        ordering = ['ad_group_creation', 'type', 'is_negative',
-                    'criteria']

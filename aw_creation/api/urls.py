@@ -20,7 +20,7 @@ urlpatterns = [
         views.CreationAccountApiView.as_view(),
         name="creation_account"),
 
-    # optimization
+    # optimize
     url(r'^optimization_options/$',
         views.OptimizationOptionsApiView.as_view(),
         name="optimization_options"),
@@ -36,6 +36,11 @@ urlpatterns = [
     url(r'^optimization_ad_group/(?P<pk>\w+)/$',
         views.OptimizationAdGroupApiView.as_view(),
         name="optimization_ad_group"),
+
+    # optimization
+    url(r'^optimization_settings/$',
+        views.OptimizationSettingsApiView.as_view(),
+        name="optimization_settings"),
 
     # tools
     url(r'^optimization_topic_tool/$',

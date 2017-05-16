@@ -1193,3 +1193,9 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
                         dict(criteria=criteria, is_negative=is_negative)
                     )
         return objects
+
+
+# optimize tab
+class OptimizationSettingsApiView(APIView):
+    def get(self, request, *args, **kwargs):
+        pass

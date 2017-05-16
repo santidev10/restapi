@@ -16,7 +16,8 @@ def load_data(apps, schema_editor):
 
         for name, uid, parent_id in reader:
             bulk.append(topic_model(
-                id=uid, name=name, parent_id=parent_id,
+                id=uid, name=name,
+                parent_id=parent_id if parent_id != "0" else None,
             ))
     topic_model.objects.bulk_create(bulk)
 
