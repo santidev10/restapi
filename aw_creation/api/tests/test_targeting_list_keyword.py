@@ -28,13 +28,13 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         for i in range(10):
             TargetingItem.objects.create(
                 criteria=i,
-                ad_group_management=ad_group,
+                ad_group_creation=ad_group,
                 type=TargetingItem.KEYWORD_TYPE,
                 is_negative=i % 2,
             )
 
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list",
+            "aw_creation_urls:optimization_ad_group_targeting",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
 
@@ -58,7 +58,7 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         ad_group = self.create_ad_group()
         data = ["KW#{}".format(i) for i in range(10)]
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list",
+            "aw_creation_urls:optimization_ad_group_targeting",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
         response = self.client.post(
@@ -84,7 +84,7 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         ad_group = self.create_ad_group()
         data = ["KW#{}".format(i) for i in range(10)]
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list",
+            "aw_creation_urls:optimization_ad_group_targeting",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
         response = self.client.post(
@@ -112,13 +112,13 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         for i in range(10):
             TargetingItem.objects.create(
                 criteria="KW#{}".format(i),
-                ad_group_management=ad_group,
+                ad_group_creation=ad_group,
                 type=TargetingItem.KEYWORD_TYPE,
                 is_negative=i % 2,
             )
 
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list",
+            "aw_creation_urls:optimization_ad_group_targeting",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
 
@@ -143,13 +143,13 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         for i in range(10):
             TargetingItem.objects.create(
                 criteria="KW#{}".format(i),
-                ad_group_management=ad_group,
+                ad_group_creation=ad_group,
                 type=TargetingItem.KEYWORD_TYPE,
                 is_negative=i % 2,
             )
 
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list_export",
+            "aw_creation_urls:optimization_ad_group_targeting_export",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
         response = self.client.get(url)
@@ -168,7 +168,7 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         ad_group = self.create_ad_group()
 
         url = reverse(
-            "aw_creation_urls:ad_group_targeting_list_import",
+            "aw_creation_urls:optimization_ad_group_targeting_import",
             args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
         )
         with open('aw_campaign_creation/fixtures/'
