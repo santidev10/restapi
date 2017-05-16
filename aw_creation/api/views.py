@@ -3,6 +3,8 @@ from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, Min, Max, Sum
+from django.shortcuts import get_object_or_404
+from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
@@ -531,6 +533,7 @@ class CreationOptionsApiView(APIView):
                 AccountCreation.VIDEO_AD_FORMATS[:1],
             ),
             # 2
+            name="string;max_length=250;required;validation=^[^#']*$",
             campaign_count=list_to_resp(
                 range(1, BULK_CREATE_CAMPAIGNS_COUNT + 1)
             ),
@@ -617,8 +620,6 @@ class CreationAccountApiView(APIView):
         owner = self.request.user
         data = request.data
 
-        number = AccountCreation.objects.filter(owner=owner).count() + 1
-
         v_ad_format = data.get('video_ad_format')
         campaign_count = data.get('campaign_count', 1)
         ad_group_count = data.get('ad_group_count', 1)
@@ -627,7 +628,7 @@ class CreationAccountApiView(APIView):
 
         with transaction.atomic():
             account_data = dict(
-                name="Account {}".format(number),
+                name=data.get('name'),
                 owner=owner.id,
                 video_networks=[
                     i[0] for i in AccountCreation.VIDEO_NETWORKS
@@ -1196,6 +1197,104 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
 
 
 # optimize tab
+class OptimizationFiltersApiView(APIView):
+    def get_object(self):
+        pk = self.kwargs.get("pk")
+        account = get_object_or_404(
+            AccountCreation,
+            owner=self.request.user,
+            pk=pk,
+        )
+        return account
+
+    def get(self, request, pk, kpi, **_):
+        account_creation = self.get_object()
+        data = OptimizationSettingsSerializer(
+            account_creation, kpi=kpi).data
+        return Response(data=data)
+
+
 class OptimizationSettingsApiView(APIView):
-    def get(self, request, *args, **kwargs):
-        pass
+    """
+    Settings at the Optimization tab
+    """
+    serializer = OptimizationSettingsSerializer
+
+    def get_object(self):
+        pk = self.kwargs.get("pk")
+        account = get_object_or_404(
+            AccountCreation,
+            owner=self.request.user,
+            pk=pk,
+        )
+        return account
+
+    def get(self, request, pk, kpi, **_):
+        account_creation = self.get_object()
+        data = OptimizationSettingsSerializer(
+            account_creation, kpi=kpi).data
+        return Response(data=data)
+
+    def put(self, request, pk, kpi, **kwargs):
+        account_creation = self.get_object()
+
+        campaign_creations = request.data.get('campaign_creations', [])
+        if campaign_creations:
+            c_ids = set(
+                CampaignCreation.objects.filter(
+                    account_creation=account_creation
+                ).values_list('id', flat=True)
+            )
+            for i in campaign_creations:
+                if i['id'] in c_ids:
+                    CampaignOptimizationTuning.objects.update_or_create(
+                        dict(value=i['value']),
+                        item_id=i['id'],
+                        kpi=kpi,
+                    )
+
+        ad_group_creations = request.data.get('ad_group_creations', [])
+        if ad_group_creations:
+            a_ids = set(
+                AdGroupCreation.objects.filter(
+                    campaign_creation__account_creation=account_creation
+                ).values_list('id', flat=True)
+            )
+            for i in ad_group_creations:
+                if i['id'] in a_ids:
+                    AdGroupOptimizationTuning.objects.update_or_create(
+                        dict(value=i['value']),
+                        item_id=i['id'],
+                        kpi=kpi,
+                    )
+
+        return self.get(request, pk, kpi, **kwargs)
+
+
+class OptimizationTargetingApiView(APIView):
+
+    def get_object(self):
+        pk = self.kwargs.get("pk")
+        account = get_object_or_404(
+            AccountCreation,
+            owner=self.request.user,
+            pk=pk,
+        )
+        return account
+
+    def get(self, request, pk, kpi, **_):
+        account_creation = self.get_object()
+
+        ad_group_creations = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation=account_creation,
+        ).filter(
+            Q(optimization_tuning__value__isnull=False) |
+            Q(campaign_creation__optimization_tuning__value__isnull=False)
+        )
+        print(ad_group_creations)
+        items = []
+        return Response(data=items)
+
+
+
+

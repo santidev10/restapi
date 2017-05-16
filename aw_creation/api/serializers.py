@@ -620,3 +620,55 @@ class AdGroupTargetingListUpdateSerializer(ModelSerializer):
     class Meta:
         model = TargetingItem
         exclude = ('id',)
+
+
+# Optimize / Optimization
+
+class OptimizationSettingsAdGroupSerializer(ModelSerializer):
+
+    value = SerializerMethodField()
+
+    def get_value(self, obj):
+        kpi = self.parent.parent.parent.parent.kpi
+        try:
+            s = AdGroupOptimizationTuning.objects.get(item=obj, kpi=kpi)
+        except AdGroupOptimizationTuning.DoesNotExist:
+            pass
+        else:
+            return s.value
+
+    class Meta:
+        model = AdGroupCreation
+        fields = ('id', 'name', 'value')
+
+
+class OptimizationSettingsCampaignsSerializer(ModelSerializer):
+
+    ad_group_creations = OptimizationSettingsAdGroupSerializer(many=True)
+    value = SerializerMethodField()
+
+    def get_value(self, obj):
+        kpi = self.parent.parent.kpi
+        try:
+            s = CampaignOptimizationTuning.objects.get(item=obj, kpi=kpi)
+        except CampaignOptimizationTuning.DoesNotExist:
+            pass
+        else:
+            return s.value
+
+    class Meta:
+        model = CampaignCreation
+        fields = ('id', 'name', 'value', 'ad_group_creations')
+
+
+class OptimizationSettingsSerializer(ModelSerializer):
+
+    def __init__(self, *args, kpi, **kwargs):
+        self.kpi = kpi
+        super(OptimizationSettingsSerializer, self).__init__(*args, **kwargs)
+
+    campaign_creations = OptimizationSettingsCampaignsSerializer(many=True)
+
+    class Meta:
+        model = AccountCreation
+        fields = ('id', 'name', 'campaign_creations')

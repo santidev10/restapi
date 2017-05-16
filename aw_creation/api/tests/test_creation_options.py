@@ -19,6 +19,7 @@ class CreationOptionsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
+                'name',
                 'ad_group_count',
                 'video_ad_format',
                 'campaign_count',

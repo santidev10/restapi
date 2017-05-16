@@ -3,9 +3,6 @@ from .creation import AccountCreation, CampaignCreation, AdGroupCreation
 
 
 class OptimizationTuning(models.Model):
-    item = models.ForeignKey(
-        AccountCreation, related_name="optimization_tuning"
-    )
 
     IMPRESSIONS_KPI = "impressions"
     VIEWS_KPI = "video_views"
@@ -38,10 +35,6 @@ class OptimizationTuning(models.Model):
         abstract = True
         unique_together = (('item', 'kpi',),)
         ordering = ['item']
-
-
-class AccountOptimizationTuning(OptimizationTuning):
-    pass
 
 
 class CampaignOptimizationTuning(OptimizationTuning):

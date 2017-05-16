@@ -38,9 +38,12 @@ urlpatterns = [
         name="optimization_ad_group"),
 
     # optimization
-    url(r'^optimization_settings/$',
+    url(r'^optimization_settings/(?P<pk>\w+)/(?P<kpi>\w+)/$',
         views.OptimizationSettingsApiView.as_view(),
         name="optimization_settings"),
+    url(r'^optimization_targeting/(?P<pk>\w+)/(?P<kpi>\w+)/$',
+        views.OptimizationTargetingApiView.as_view(),
+        name="optimization_targeting"),
 
     # tools
     url(r'^optimization_topic_tool/$',
