@@ -39,6 +39,7 @@ INSTALLED_APPS = (
 PROJECT_APPS = (
     "aw_reporting",
     "userprofile",
+    "singledb",
 )
 
 THIRD_PARTY_APPS = (
@@ -128,6 +129,10 @@ REST_FRAMEWORK = {
     )
 
 }
+
+DATABASE_ROUTERS = [
+    'singledb.db_routers.SingledbRouter',
+]
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
