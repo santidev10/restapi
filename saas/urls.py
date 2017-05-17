@@ -6,6 +6,7 @@ from django.conf.urls import url, include
 from administration.api import urls as admin_api_urls
 from aw_reporting.api import urls as aw_reporting_urls
 from channel.api import urls as channel_api_urls
+from segment.api import urls as segment_api_urls
 from userprofile.api import urls as userprofile_api_urls
 
 urlpatterns = [
@@ -23,4 +24,7 @@ urlpatterns = [
 
     # Channel api urls
     url(r'^api/v1/', include(channel_api_urls, namespace='channel_api_urls')),
+
+    # Segment api urls
+    url(r'^api/v1/', include(segment_api_urls, namespace='segment_api_urls')),
 ]
