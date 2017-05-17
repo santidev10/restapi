@@ -92,4 +92,5 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'max_rate',
             }
         )
+        self.assertEqual(response.data['name'], data['name'])
 
