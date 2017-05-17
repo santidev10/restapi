@@ -1,27 +1,23 @@
-from django.http import HttpResponse
-from django.http import StreamingHttpResponse
-from django.utils import timezone
+import csv
+import logging
+import re
+from collections import OrderedDict
+
+from apiclient.discovery import build
 from django.db import transaction
-from django.db.models import Q, Min, Max, Sum
+from django.db.models import Q
+from django.utils import timezone
+from openpyxl import load_workbook
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, GenericAPIView
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView, RetrieveUpdateAPIView, GenericAPIView
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
 from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, \
+    HTTP_200_OK, HTTP_202_ACCEPTED
 from rest_framework.views import APIView
+
 from aw_creation.api.serializers import *
 from aw_reporting.models import GeoTarget
-from aw_reporting.demo import demo_view_decorator
-from collections import OrderedDict
-from datetime import datetime
-from io import StringIO
-from openpyxl import load_workbook
-from apiclient.discovery import build
-from apiclient.errors import HttpError
-import logging
-import csv
-import re
 
 logger = logging.getLogger(__name__)
 
