@@ -314,9 +314,13 @@ class OptimizationAccountListApiView(ListAPIView):
     pagination_class = OptimizationAccountListPaginator
 
     def get_queryset(self, **filters):
+        sort_by = self.request.query_params.get('sort_by')
+        if sort_by != "name":
+            sort_by = "-created_at"
+
         queryset = AccountCreation.objects.filter(
             owner=self.request.user, **filters
-        ).order_by('is_ended', '-created_at')
+        ).order_by(sort_by)
         return queryset
 
     def filter_queryset(self, queryset):
