@@ -1,8 +1,6 @@
 """
 Single database API connector module
 """
-import json
-
 import requests
 from django.conf import settings
 
@@ -18,43 +16,41 @@ class SingleDatabaseApiConnector(object):
     """
     Connector class for IQ api
     """
-    iq_api_url = settings.IQ_API_URL
+    single_database_api_url = settings.SINGLE_DATABASE_API_URL
 
-    def execute_post_call(self, url, body):
+    def execute_get_call(self, endpoint, query_params):
         """
-        Make POST call to api
+        Make GET call to api
         """
+        # prepare header
         headers = {"Content-Type": "application/json"}
+        # prepare query params
+        params = "?{}".format(
+            "&".join(
+                ["{}={}".format(key, value)
+                 for key, value in query_params.items()]
+            )
+        )
+        # build url
+        url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
+        # execute call
         try:
-            response = requests.post(url, body, headers=headers).json()
+            self.response = requests.get(url, headers=headers)
+            response_data = self.response.json()
         except Exception as e:
-            raise IQApiConnectorException(
+            raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
-        if response.status_code > 300:
-            # TODO check for error this part
-            # TODO save last response
-            raise IQApiConnectorException(
-                "Error during iq api call: {}".format(response.json()))
-        return response
+        else:
+            if self.response.status_code > 300:
+                raise SingleDatabaseApiConnectorException(
+                    "Error during iq api call: {}".format(response_data))
+        return response_data
 
-    def authenticate_channel(self, token):
+    def get_channel_list(self, query_params):
         """
-        Make channel authentication
+        Obtain channel list
+        :param query_params: dict
         """
-        endpoint = "site/channels/authentication/"
-        url = "{}{}".format(self.iq_api_url, endpoint)
-        post_body = json.dumps({"youtube_channel_token": token})
-        response = self.execute_post_call(url, post_body)
-        return response.json()
-
-    def authenticate_page(self, token, page_id):
-        """
-        Make facebook page authentication
-        """
-        endpoint = "site/fb_pages/authentication/"
-        url = "{}{}".format(self.iq_api_url, endpoint)
-        post_body = json.dumps(
-            {"facebook_page_token": token,
-             "facebook_page_id": page_id})
-        response = self.execute_post_call(url, post_body)
-        return response.json()
+        endpoint = "channels/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
