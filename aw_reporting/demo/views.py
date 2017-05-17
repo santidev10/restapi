@@ -1,14 +1,10 @@
+from django.http import HttpResponse
 from rest_framework.response import Response
-from django.http import StreamingHttpResponse, HttpResponse
-from django.utils import timezone
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
-from rest_framework.views import APIView
-from aw_reporting.api.serializers import *
+from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from .models import *
 from .charts import DemoChart
+from .models import *
 
 
 class AnalyzeAccountsListApiView:

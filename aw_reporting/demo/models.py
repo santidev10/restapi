@@ -1,6 +1,6 @@
-from aw_reporting.models import *
 from datetime import datetime, timedelta
 
+from aw_reporting.models import *
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_CAMPAIGNS_COUNT = 2

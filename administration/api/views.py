@@ -11,7 +11,7 @@ from utils.api_paginator import CustomPageNumberPaginator
 
 class UserPaginator(CustomPageNumberPaginator):
     """
-    Paginator for segments list
+    Paginator for user list
     """
     page_size = 10
 
