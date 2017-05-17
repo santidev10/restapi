@@ -1,10 +1,11 @@
-from aw_reporting.models import *
-from aw_reporting.demo.charts import DemoChart
 from datetime import datetime, timedelta
+from io import BytesIO
+
+import xlsxwriter
 from django.conf import settings
 from django.db.models import Sum, Value
-from io import BytesIO
-import xlsxwriter
+
+from aw_reporting.models import *
 
 
 class AnalyzeWeeklyReport:

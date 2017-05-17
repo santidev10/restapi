@@ -1,17 +1,14 @@
-from django.http import HttpResponse
-from django.http import StreamingHttpResponse
-from django.utils import timezone
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
-from rest_framework.views import APIView
-from aw_reporting.api.serializers import *
-from aw_reporting.demo import demo_view_decorator
+import csv
+import logging
+import re
 from datetime import datetime
 from io import StringIO
-import logging
-import csv
-import re
+
+from django.http import StreamingHttpResponse
+from rest_framework.generics import ListAPIView
+from rest_framework.views import APIView
+
+from aw_reporting.demo import demo_view_decorator
 
 logger = logging.getLogger(__name__)
 
