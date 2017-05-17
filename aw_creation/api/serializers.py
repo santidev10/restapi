@@ -497,6 +497,7 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
+            'name',
             'is_ended',
             'is_paused',
             'is_approved',
