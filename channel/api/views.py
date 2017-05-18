@@ -1,27 +1,22 @@
 """
-Chanel api views module
+Channel api views module
 """
-from rest_framework.response import Response
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
-
-from utils.single_database_connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
+from singledb.api.views.base import SingledbApiView
+from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
-class ChannelListApiView(APIView):
-    """
-    Proxy view for channel list
-    """
-    def get(self, request):
-        """
-        Get procedure
-        """
-        connector = SingleDatabaseApiConnector()
-        try:
-            response_data = connector.get_channel_list(request.query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        return Response(response_data)
+class ChannelListApiView(SingledbApiView):
+    connector_get = Connector().get_channel_list
+
+
+class ChannelListFiltersApiView(SingledbApiView):
+    connector_get = Connector().get_channel_filters_list
+
+
+class ChannelRetrieveUpdateApiView(SingledbApiView):
+    connector_get = Connector().get_channel
+    connector_put = Connector().put_channel
+
+
+class ChannelSetApiView(SingledbApiView):
+    connector_delete = Connector().delete_channels
