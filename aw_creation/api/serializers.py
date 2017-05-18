@@ -1,15 +1,13 @@
-import re
-
-from django.db.models import QuerySet, Min, Max, F, Case,\
-    When, Sum,\
+from aw_reporting.models import GeoTarget, Topic, Audience
+from aw_creation.models import TargetingItem, AdGroupCreation, \
+    CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
+from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     DecimalField as AggrDecimalField
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, \
-    ValidationError
-
-from aw_creation.models import *
-from aw_reporting.models import GeoTarget
+    SerializerMethodField, ListField, ValidationError
+import re
 
 
 class SimpleGeoTargetSerializer(ModelSerializer):
@@ -22,6 +20,45 @@ class SimpleGeoTargetSerializer(ModelSerializer):
     class Meta:
         model = GeoTarget
         fields = ("id", "name")
+
+
+def add_targeting_list_items_info(data, list_type):
+    ids = set(i['criteria'] for i in data)
+    if ids:
+        if list_type == TargetingItem.CHANNEL_TYPE:
+            info = {}   # Channel.objects.in_bulk(ids)
+            for item in data:
+                item_info = info.get(item['criteria'])
+                item['name'] = item_info.title if item_info else None
+                item['thumbnail'] = item_info.thumbnail_image_url \
+                    if item_info else None
+
+        elif list_type == TargetingItem.VIDEO_TYPE:
+            info = {}  # Video.objects.in_bulk(ids)
+            for item in data:
+                item_info = info.get(item['criteria'])
+                item['name'] = item_info.title if item_info else None
+                item['thumbnail'] = item_info.thumbnail_image_url \
+                    if item_info else None
+
+        elif list_type == TargetingItem.TOPIC_TYPE:
+            info = dict(
+                Topic.objects.filter(
+                    id__in=ids).values_list('id', 'name')
+            )
+            for item in data:
+                item['name'] = info.get(int(item['criteria']))
+
+        elif list_type == TargetingItem.INTEREST_TYPE:
+            info = dict(
+                Audience.objects.filter(
+                    id__in=ids).values_list('id', 'name')
+            )
+            for item in data:
+                item['name'] = info.get(int(item['criteria']))
+        elif list_type == TargetingItem.KEYWORD_TYPE:
+            for item in data:
+                item['name'] = item['criteria']
 
 
 class OptimizationAdGroupSerializer(ModelSerializer):
@@ -41,41 +78,8 @@ class OptimizationAdGroupSerializer(ModelSerializer):
 
         for list_type, items in targeting.items():
             if len(items):
-                ids = set(i['criteria'] for i in items)
-                if list_type == TargetingItem.CHANNEL_TYPE:
-                    info = Channel.objects.in_bulk(ids)
-                    for item in items:
-                        item_info = info.get(item['criteria'])
-                        item['name'] = item_info.title if item_info else None
-                        item['thumbnail'] = item_info.thumbnail_image_url \
-                            if item_info else None
+                add_targeting_list_items_info(items, list_type)
 
-                elif list_type == TargetingItem.VIDEO_TYPE:
-                    info = Video.objects.in_bulk(ids)
-                    for item in items:
-                        item_info = info.get(item['criteria'])
-                        item['name'] = item_info.title if item_info else None
-                        item['thumbnail'] = item_info.thumbnail_image_url \
-                            if item_info else None
-
-                elif list_type == TargetingItem.TOPIC_TYPE:
-                    info = dict(
-                        Topic.objects.filter(
-                            id__in=ids).values_list('id', 'name')
-                    )
-                    for item in items:
-                        item['name'] = info.get(int(item['criteria']))
-
-                elif list_type == TargetingItem.INTEREST_TYPE:
-                    info = dict(
-                        Audience.objects.filter(
-                            id__in=ids).values_list('id', 'name')
-                    )
-                    for item in items:
-                        item['name'] = info.get(int(item['criteria']))
-                elif list_type == TargetingItem.KEYWORD_TYPE:
-                    for item in items:
-                        item['name'] = item['criteria']
         return targeting
 
     @staticmethod
@@ -492,6 +496,7 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
+            'name',
             'is_ended',
             'is_paused',
             'is_approved',
@@ -574,3 +579,129 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
                     "{}: empty set is not allowed".format(f))
         return super(OptimizationAdGroupUpdateSerializer,
                      self).validate(data)
+
+
+class TopicHierarchySerializer(ModelSerializer):
+    children = SerializerMethodField()
+
+    class Meta:
+        model = Topic
+        exclude = ("parent",)
+
+    @staticmethod
+    def get_children(obj):
+        r = TopicHierarchySerializer(obj.children.all(), many=True).data
+        return r
+
+
+class AudienceHierarchySerializer(ModelSerializer):
+    children = SerializerMethodField()
+
+    class Meta:
+        model = Audience
+        exclude = ("parent",)
+
+    @staticmethod
+    def get_children(obj):
+        r = AudienceHierarchySerializer(obj.children.all(),
+                                        many=True).data
+        return r
+
+
+class AdGroupTargetingListSerializer(ModelSerializer):
+
+    class Meta:
+        model = TargetingItem
+        exclude = ('type', 'id', 'ad_group_creation')
+
+
+class AdGroupTargetingListUpdateSerializer(ModelSerializer):
+
+    class Meta:
+        model = TargetingItem
+        exclude = ('id',)
+
+
+# Optimize / Optimization
+
+class OptimizationFiltersAdGroupSerializer(ModelSerializer):
+
+    class Meta:
+        model = AdGroupCreation
+        fields = ('id', 'name')
+
+
+class OptimizationFiltersCampaignSerializer(ModelSerializer):
+
+    ad_group_creations = SerializerMethodField()
+
+    def __init__(self, *args, kpi, **kwargs):
+        self.kpi = kpi
+        super(OptimizationFiltersCampaignSerializer, self).__init__(
+                *args, **kwargs)
+
+    def get_ad_group_creations(self, obj):
+        queryset = AdGroupCreation.objects.filter(
+            campaign_creation=obj,
+        ).filter(
+            Q(optimization_tuning__value__isnull=False,
+              optimization_tuning__kpi=self.kpi) |
+            Q(campaign_creation__optimization_tuning__value__isnull=False,
+              campaign_creation__optimization_tuning__kpi=self.kpi)
+        )
+        items = OptimizationFiltersAdGroupSerializer(queryset, many=True).data
+        return items
+
+    class Meta:
+        model = CampaignCreation
+        fields = ('id', 'name', 'ad_group_creations')
+
+
+class OptimizationSettingsAdGroupSerializer(ModelSerializer):
+
+    value = SerializerMethodField()
+
+    def get_value(self, obj):
+        kpi = self.parent.parent.parent.parent.kpi
+        try:
+            s = AdGroupOptimizationTuning.objects.get(item=obj, kpi=kpi)
+        except AdGroupOptimizationTuning.DoesNotExist:
+            pass
+        else:
+            return s.value
+
+    class Meta:
+        model = AdGroupCreation
+        fields = ('id', 'name', 'value')
+
+
+class OptimizationSettingsCampaignsSerializer(ModelSerializer):
+
+    ad_group_creations = OptimizationSettingsAdGroupSerializer(many=True)
+    value = SerializerMethodField()
+
+    def get_value(self, obj):
+        kpi = self.parent.parent.kpi
+        try:
+            s = CampaignOptimizationTuning.objects.get(item=obj, kpi=kpi)
+        except CampaignOptimizationTuning.DoesNotExist:
+            pass
+        else:
+            return s.value
+
+    class Meta:
+        model = CampaignCreation
+        fields = ('id', 'name', 'value', 'ad_group_creations')
+
+
+class OptimizationSettingsSerializer(ModelSerializer):
+
+    def __init__(self, *args, kpi, **kwargs):
+        self.kpi = kpi
+        super(OptimizationSettingsSerializer, self).__init__(*args, **kwargs)
+
+    campaign_creations = OptimizationSettingsCampaignsSerializer(many=True)
+
+    class Meta:
+        model = AccountCreation
+        fields = ('id', 'name', 'campaign_creations')

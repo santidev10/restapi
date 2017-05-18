@@ -181,3 +181,25 @@ class GeoTarget(models.Model):
 
     def __str__(self):
         return "%s" % self.canonical_name
+
+
+class Topic(models.Model):
+    parent = models.ForeignKey('self', null=True, related_name='children')
+    name = models.CharField(max_length=150, db_index=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Audience(models.Model):
+    parent = models.ForeignKey('self', null=True, related_name='children')
+    name = models.CharField(max_length=150)
+    type = models.CharField(max_length=25, db_index=True)
+
+    CUSTOM_AFFINITY_TYPE = "custom-affinity"
+    AFFINITY_TYPE = "affinity"
+    IN_MARKET_TYPE = "in-market"
+    TYPES = (CUSTOM_AFFINITY_TYPE, AFFINITY_TYPE, IN_MARKET_TYPE)
+
+    def __str__(self):
+        return "%s" % self.name

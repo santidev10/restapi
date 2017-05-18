@@ -1,13 +1,13 @@
-import calendar
-import json
-import logging
-import uuid
-from decimal import Decimal
-
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
+from django.dispatch import receiver
 from django.db import models
-
+from django.db.models.signals import post_save
+from decimal import Decimal
+import calendar
+import json
+import uuid
+import logging
 logger = logging.getLogger(__name__)
 
 
@@ -158,6 +158,15 @@ class AccountCreation(UniqueItem):
             return " ".join(lines)
 
 
+@receiver(post_save,
+          sender=AccountCreation, dispatch_uid="save_account_receiver")
+def save_account_receiver(sender, instance, created, **kwargs):
+    if not created:
+        sender.objects.filter(pk=instance.pk).update(
+            version=get_version(), is_changed=True
+        )
+
+
 def default_languages():
     return Language.objects.filter(pk__in=(1000, 1003))
 
@@ -277,6 +286,14 @@ class CampaignCreation(UniqueItem):
         return " ".join(lines)
 
 
+@receiver(post_save, sender=CampaignCreation,
+          dispatch_uid="save_campaign_receiver")
+def save_campaign_receiver(sender, instance, created, **_):
+    AccountCreation.objects.filter(
+        id=instance.account_creation_id,
+    ).update(version=get_version(), is_changed=True)
+
+
 class AdGroupCreation(UniqueItem):
 
     campaign_creation = models.ForeignKey(
@@ -377,6 +394,7 @@ class AdGroupCreation(UniqueItem):
         "campaign" variable have to be defined above
         :return:
         """
+        from .targeting import TargetingItem
         targeting = self.targeting_items.all()
         channels = targeting.filter(type=TargetingItem.CHANNEL_TYPE)
         videos = targeting.filter(type=TargetingItem.VIDEO_TYPE)
@@ -421,6 +439,14 @@ class AdGroupCreation(UniqueItem):
             ),
         ]
         return " ".join(lines)
+
+
+@receiver(post_save, sender=AdGroupCreation,
+          dispatch_uid="save_group_receiver")
+def save_group_receiver(sender, instance, created, **_):
+    AccountCreation.objects.filter(
+        campaign_creations__id=instance.campaign_creation_id,
+    ).update(version=get_version(), is_changed=True)
 
 
 class LocationRule(models.Model):
@@ -520,29 +546,3 @@ class AdScheduleRule(models.Model):
             ("campaign_creation", "day", "from_hour",
              "from_minute", "to_hour", "to_minute"),
         )
-
-
-class TargetingItem(models.Model):
-    criteria = models.CharField(max_length=150)
-    ad_group_creation = models.ForeignKey(
-        AdGroupCreation, related_name="targeting_items"
-    )
-    CHANNEL_TYPE = "channel"
-    VIDEO_TYPE = "video"
-    TOPIC_TYPE = "topic"
-    INTEREST_TYPE = "interest"
-    KEYWORD_TYPE = "keyword"
-    TYPES = (
-        (CHANNEL_TYPE, CHANNEL_TYPE),
-        (VIDEO_TYPE, VIDEO_TYPE),
-        (TOPIC_TYPE, TOPIC_TYPE),
-        (INTEREST_TYPE, INTEREST_TYPE),
-        (KEYWORD_TYPE, KEYWORD_TYPE),
-    )
-    type = models.CharField(max_length=20, choices=TYPES)
-    is_negative = models.BooleanField(default=False)
-
-    class Meta:
-        unique_together = (('ad_group_creation', 'type', 'criteria'),)
-        ordering = ['ad_group_creation', 'type', 'is_negative',
-                    'criteria']

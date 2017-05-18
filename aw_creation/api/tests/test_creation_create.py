@@ -24,6 +24,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         start = datetime.now().date()
         end = start + timedelta(days=2)
         data = dict(
+            name="My account",
             video_ad_format=AccountCreation.IN_STREAM_TYPE,
             campaign_count=2,
             ad_group_count=3,
@@ -92,4 +93,5 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'max_rate',
             }
         )
+        self.assertEqual(response.data['name'], data['name'])
 
