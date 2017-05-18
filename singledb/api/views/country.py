@@ -3,4 +3,4 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
 class CountryListApiView(SingledbApiView):
-    connector = Connector().get_country_list
+    connector_get = Connector().get_country_list
