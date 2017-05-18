@@ -96,6 +96,7 @@ class SegmentSerializer(ModelSerializer):
         """
         model = Segment
         fields = (
+            "id",
             "title",
             "segment_type",
             "category",

@@ -2,7 +2,9 @@
 Saas urls module
 """
 from django.conf.urls import url, include
-
+from django.conf import settings
+from django.views.generic import RedirectView
+from saas.views import ApiRootView
 from administration.api import urls as admin_api_urls
 from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api import urls as aw_reporting_urls
@@ -41,3 +43,10 @@ urlpatterns = [
     # Singledb api urls
     url(r'^api/v1/', include(singledb_api_urls, namespace="singledb_api_urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        url(r'^$', RedirectView.as_view(url='api/v1/', permanent=True),
+            name='redirect_root'),
+        url(r'^api/v1/$', ApiRootView.as_view(), name="api_root"),
+    ]
