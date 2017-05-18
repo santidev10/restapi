@@ -48,7 +48,7 @@ class SingleDatabaseApiConnector(object):
         url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
         # execute call
         try:
-            self.response = method(url, headers=headers)
+            self.response = method(url, headers=headers, verify=False)
             response_data = self.response.json()
         except Exception as e:
             raise SingleDatabaseApiConnectorException(

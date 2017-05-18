@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from segment.models import Segment
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector, \
+from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 
 
@@ -52,7 +52,7 @@ class ChannelListApiView(APIView):
             query_params.update(ids=",".join(channels_ids))
             # TODO we can't be sure that all segment channels are still in SDB
         # make call
-        connector = SingleDatabaseApiConnector()
+        connector = Connector()
         try:
             response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:

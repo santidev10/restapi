@@ -38,7 +38,6 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
-    "singledb",
     "aw_creation",
     "aw_reporting",
     "userprofile",
