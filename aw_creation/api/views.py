@@ -1,10 +1,11 @@
-from aw_creation.api.serializers import *
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.db import transaction
-
+from django.db.models import Q, Avg, When, Case, Value, \
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView
@@ -15,18 +16,31 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
 from rest_framework.views import APIView
 
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
-    dict_add_calculated_stats
+    dict_add_calculated_stats, Topic, Audience
+from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
+    BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
+    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
+    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
+from aw_creation.api.serializers import add_targeting_list_items_info, \
+    SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
+    OptimizationAccountDetailsSerializer, FrequencyCapUpdateSerializer, FrequencyCapSerializer, \
+    OptimizationCampaignsSerializer, OptimizationAccountListSerializer, \
+    OptimizationUpdateAccountSerializer, OptimizationCreateAccountSerializer, \
+    OptimizationUpdateCampaignSerializer, OptimizationCreateCampaignSerializer, \
+    OptimizationLocationRuleUpdateSerializer, OptimizationAdGroupUpdateSerializer, TopicHierarchySerializer, \
+    AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
+    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer
+
 from collections import OrderedDict
+from decimal import Decimal
 from datetime import datetime
 from io import StringIO
 from openpyxl import load_workbook
 from apiclient.discovery import build
-from django.db.models import Q, Avg
-import logging
+
+import calendar
 import csv
 import re
-
-logger = logging.getLogger(__name__)
 
 
 class GeoTargetListApiView(APIView):

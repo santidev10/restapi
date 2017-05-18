@@ -1,21 +1,12 @@
-from aw_creation.models import *
 from aw_reporting.models import GeoTarget, Topic, Audience
-from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, FloatField, IntegerField, DateField, \
-    PrimaryKeyRelatedField, CharField, StringRelatedField, ListField, \
-    ValidationError, BooleanField, Serializer
-from django.contrib.auth import get_user_model
-from collections import defaultdict
-from django.db.models import Count, QuerySet, Min, Max, Value, F, Case,\
-    When, Sum, Q, \
+from aw_creation.models import TargetingItem, AdGroupCreation, \
+    CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
+from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     DecimalField as AggrDecimalField
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, \
-    ValidationError
-
-from aw_creation.models import *
-from aw_reporting.models import GeoTarget
+    SerializerMethodField, ListField, ValidationError
 import re
 
 
