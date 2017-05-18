@@ -1,10 +1,7 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from saas.utils_tests import ExtendedAPITestCase
-from django.contrib.auth import get_user_model
-from datetime import datetime, timedelta
-from aw_creation.models import *
-from aw_reporting.models import *
 
 
 class CreationOptionsAPITestCase(ExtendedAPITestCase):

@@ -9,11 +9,13 @@ from collections import defaultdict
 from django.db.models import Count, QuerySet, Min, Max, Value, F, Case,\
     When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
-    ExpressionWrapper, DecimalField as AggrDecimalField
-from datetime import datetime
-import pytz
-import math
-import json
+    DecimalField as AggrDecimalField
+from rest_framework.serializers import ModelSerializer, \
+    SerializerMethodField, ListField, \
+    ValidationError
+
+from aw_creation.models import *
+from aw_reporting.models import GeoTarget
 import re
 
 
@@ -27,6 +29,45 @@ class SimpleGeoTargetSerializer(ModelSerializer):
     class Meta:
         model = GeoTarget
         fields = ("id", "name")
+
+
+def add_targeting_list_items_info(data, list_type):
+    ids = set(i['criteria'] for i in data)
+    if ids:
+        if list_type == TargetingItem.CHANNEL_TYPE:
+            info = {}   # Channel.objects.in_bulk(ids)
+            for item in data:
+                item_info = info.get(item['criteria'])
+                item['name'] = item_info.title if item_info else None
+                item['thumbnail'] = item_info.thumbnail_image_url \
+                    if item_info else None
+
+        elif list_type == TargetingItem.VIDEO_TYPE:
+            info = {}  # Video.objects.in_bulk(ids)
+            for item in data:
+                item_info = info.get(item['criteria'])
+                item['name'] = item_info.title if item_info else None
+                item['thumbnail'] = item_info.thumbnail_image_url \
+                    if item_info else None
+
+        elif list_type == TargetingItem.TOPIC_TYPE:
+            info = dict(
+                Topic.objects.filter(
+                    id__in=ids).values_list('id', 'name')
+            )
+            for item in data:
+                item['name'] = info.get(int(item['criteria']))
+
+        elif list_type == TargetingItem.INTEREST_TYPE:
+            info = dict(
+                Audience.objects.filter(
+                    id__in=ids).values_list('id', 'name')
+            )
+            for item in data:
+                item['name'] = info.get(int(item['criteria']))
+        elif list_type == TargetingItem.KEYWORD_TYPE:
+            for item in data:
+                item['name'] = item['criteria']
 
 
 class OptimizationAdGroupSerializer(ModelSerializer):
@@ -46,41 +87,8 @@ class OptimizationAdGroupSerializer(ModelSerializer):
 
         for list_type, items in targeting.items():
             if len(items):
-                ids = set(i['criteria'] for i in items)
-                if list_type == TargetingItem.CHANNEL_TYPE:
-                    info = Channel.objects.in_bulk(ids)
-                    for item in items:
-                        item_info = info.get(item['criteria'])
-                        item['name'] = item_info.title if item_info else None
-                        item['thumbnail'] = item_info.thumbnail_image_url \
-                            if item_info else None
+                add_targeting_list_items_info(items, list_type)
 
-                elif list_type == TargetingItem.VIDEO_TYPE:
-                    info = Video.objects.in_bulk(ids)
-                    for item in items:
-                        item_info = info.get(item['criteria'])
-                        item['name'] = item_info.title if item_info else None
-                        item['thumbnail'] = item_info.thumbnail_image_url \
-                            if item_info else None
-
-                elif list_type == TargetingItem.TOPIC_TYPE:
-                    info = dict(
-                        Topic.objects.filter(
-                            id__in=ids).values_list('id', 'name')
-                    )
-                    for item in items:
-                        item['name'] = info.get(int(item['criteria']))
-
-                elif list_type == TargetingItem.INTEREST_TYPE:
-                    info = dict(
-                        Audience.objects.filter(
-                            id__in=ids).values_list('id', 'name')
-                    )
-                    for item in items:
-                        item['name'] = info.get(int(item['criteria']))
-                elif list_type == TargetingItem.KEYWORD_TYPE:
-                    for item in items:
-                        item['name'] = item['criteria']
         return targeting
 
     @staticmethod

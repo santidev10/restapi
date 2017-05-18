@@ -1,27 +1,27 @@
-from django.http import HttpResponse
+from aw_creation.api.serializers import *
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q, Min, Max, Sum, Avg
+
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView
-from rest_framework.status import HTTP_404_NOT_FOUND, \
-    HTTP_400_BAD_REQUEST, HTTP_200_OK, HTTP_202_ACCEPTED
 from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, \
+    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from aw_creation.api.serializers import *
+
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats
-from singledb.models import Channel, Video
 from collections import OrderedDict
 from datetime import datetime
 from io import StringIO
 from openpyxl import load_workbook
 from apiclient.discovery import build
+from django.db.models import Q, Avg
 import logging
 import csv
 import re
@@ -830,42 +830,7 @@ class TargetingListBaseAPIClass(GenericAPIView):
 
     def add_items_info(self, data):
         list_type = self.kwargs.get('list_type')
-        ids = set(i['criteria'] for i in data)
-        if ids:
-            if list_type == TargetingItem.CHANNEL_TYPE:
-                info = Channel.objects.in_bulk(ids)
-                for item in data:
-                    item_info = info.get(item['criteria'])
-                    item['name'] = item_info.title if item_info else None
-                    item['thumbnail'] = item_info.thumbnail_image_url \
-                        if item_info else None
-
-            elif list_type == TargetingItem.VIDEO_TYPE:
-                info = Video.objects.in_bulk(ids)
-                for item in data:
-                    item_info = info.get(item['criteria'])
-                    item['name'] = item_info.title if item_info else None
-                    item['thumbnail'] = item_info.thumbnail_image_url \
-                        if item_info else None
-
-            elif list_type == TargetingItem.TOPIC_TYPE:
-                info = dict(
-                    Topic.objects.filter(
-                        id__in=ids).values_list('id', 'name')
-                )
-                for item in data:
-                    item['name'] = info.get(int(item['criteria']))
-
-            elif list_type == TargetingItem.INTEREST_TYPE:
-                info = dict(
-                    Audience.objects.filter(
-                        id__in=ids).values_list('id', 'name')
-                )
-                for item in data:
-                    item['name'] = info.get(int(item['criteria']))
-            elif list_type == TargetingItem.KEYWORD_TYPE:
-                for item in data:
-                    item['name'] = item['criteria']
+        add_targeting_list_items_info(data, list_type)
 
 
 class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
