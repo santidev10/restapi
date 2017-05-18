@@ -1,5 +1,5 @@
 """
-Chanel api views module
+Channel api views module
 """
 from django.db.models import Q
 from rest_framework.response import Response
@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from segment.models import Segment
-from utils.single_database_connector import SingleDatabaseApiConnector, \
+from singledb.api.views.base import SingledbApiView
+from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 
 
@@ -51,7 +52,7 @@ class ChannelListApiView(APIView):
             query_params.update(ids=",".join(channels_ids))
             # TODO we can't be sure that all segment channels are still in SDB
         # make call
-        connector = SingleDatabaseApiConnector()
+        connector = Connector()
         try:
             response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:
@@ -59,3 +60,16 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+
+class ChannelListFiltersApiView(SingledbApiView):
+    connector_get = Connector().get_channel_filters_list
+
+
+class ChannelRetrieveUpdateApiView(SingledbApiView):
+    connector_get = Connector().get_channel
+    connector_put = Connector().put_channel
+
+
+class ChannelSetApiView(SingledbApiView):
+    connector_delete = Connector().delete_channels
