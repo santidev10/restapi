@@ -12,6 +12,9 @@ DATE_FORMAT = "%Y-%m-%d"
 
 @demo_view_decorator
 class AnalyzeAccountsListApiView(ListAPIView):
+    """
+    Returns a list of user's accounts that were pulled from AdWords
+    """
 
     def list(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")

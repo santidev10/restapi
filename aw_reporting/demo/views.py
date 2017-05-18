@@ -8,6 +8,9 @@ from .models import *
 
 
 class AnalyzeAccountsListApiView:
+    """
+    Returns a demo list of accounts
+    """
     @staticmethod
     def list(original_method):
         def method(view, request, **kwargs):
