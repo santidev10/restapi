@@ -34,6 +34,7 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
+    'django.contrib.staticfiles',
 )
 
 PROJECT_APPS = (
@@ -127,8 +128,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     )
-
 }
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
