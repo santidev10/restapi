@@ -62,4 +62,4 @@ class ApiRootView(APIView):
                 kwargs={"pk": demo_pk}
             )),
         ])
-        return Response(response, content_type="")
+        return Response(response)
