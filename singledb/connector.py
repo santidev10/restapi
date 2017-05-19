@@ -87,7 +87,6 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk + "/"
-        print(query_params)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
