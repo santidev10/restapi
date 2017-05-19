@@ -4,7 +4,9 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -76,14 +78,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(data['items']), len(DEMO_AD_GROUPS))
 
     def test_demo_all_dimensions(self):
-        for dimension in ('device', 'gender', 'age', 'topic', 'interest',
-                         # 'creative', 'channel', 'video', TODO: add this tabs when videos and channels are done
-                          'keyword', 'location', 'ad'):
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            for dimension in ('device', 'gender', 'age', 'topic',
+                              'interest', 'creative', 'channel', 'video',
+                              'keyword', 'location', 'ad'):
 
-            url = reverse("aw_reporting_urls:analyze_chart_items",
-                          args=(DEMO_ACCOUNT_ID, dimension))
+                url = reverse("aw_reporting_urls:analyze_chart_items",
+                              args=(DEMO_ACCOUNT_ID, dimension))
 
-            response = self.client.post(url)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertGreater(len(response.data), 1)
+                response = self.client.post(url)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertGreater(len(response.data), 1)
 
