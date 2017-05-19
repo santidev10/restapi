@@ -332,6 +332,9 @@ class OptimizationAccountListSerializer(ModelSerializer):
                     self.delivery[e['id']] = e
 
                 order_data = queryset.annotate(
+                    start=Min('campaign_creations__start'),
+                    end=Max('campaign_creations__end'),
+                    budget=Sum('campaign_creations__budget'),
                     ordered_impressions=Sum(
                         Case(
                             When(
@@ -341,10 +344,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
                             output_field=AggrIntegerField(),
                         )
                     ),
-                ).annotate(
-                    start=Min('campaign_creations__start'),
-                    end=Max('campaign_creations__end'),
-                    budget=Sum('campaign_creations__budget'),
                     ordered_views=Sum(
                         Case(
                             When(
@@ -360,7 +359,9 @@ class OptimizationAccountListSerializer(ModelSerializer):
                                 campaign_creations__max_rate__isnull=False,
                                 campaign_creations__goal_units__isnull=False,
                                 goal_type=AccountCreation.GOAL_IMPRESSIONS,
-                                then=F('campaign_creations__max_rate') * F('campaign_creations__goal_units') / 1000.,
+                                then=F('campaign_creations__max_rate') *
+                                     F('campaign_creations__goal_units') /
+                                     1000.,
                             ),
                             output_field=AggrDecimalField(),
                         )
@@ -371,7 +372,8 @@ class OptimizationAccountListSerializer(ModelSerializer):
                                 campaign_creations__max_rate__isnull=False,
                                 campaign_creations__goal_units__isnull=False,
                                 goal_type=AccountCreation.GOAL_VIDEO_VIEWS,
-                                then=F('campaign_creations__max_rate') * F('campaign_creations__goal_units'),
+                                then=F('campaign_creations__max_rate') *
+                                     F('campaign_creations__goal_units'),
                             ),
                             output_field=AggrDecimalField(),
                         )
@@ -381,7 +383,8 @@ class OptimizationAccountListSerializer(ModelSerializer):
                         When(
                             ordered_views_cost__isnull=False,
                             ordered_views__isnull=False,
-                            then=F('ordered_views_cost') / F('ordered_views'),
+                            then=F('ordered_views_cost') /
+                                 F('ordered_views'),
                         ),
                         output_field=AggrDecimalField(),
                     ),
@@ -389,7 +392,8 @@ class OptimizationAccountListSerializer(ModelSerializer):
                         When(
                             ordered_impressions_cost__isnull=False,
                             ordered_impressions__isnull=False,
-                            then=F('ordered_impressions_cost') / F('ordered_impressions') * 1000,
+                            then=F('ordered_impressions_cost') /
+                                 F('ordered_impressions') * 1000,
                         ),
                         output_field=AggrDecimalField(),
                     ),
@@ -547,6 +551,7 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
             'budget',
             'languages',
             'devices',
+            'max_rate',
         )
 
 

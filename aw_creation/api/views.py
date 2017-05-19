@@ -642,6 +642,8 @@ class CreationAccountApiView(APIView):
         v_ad_format = data.get('video_ad_format')
         campaign_count = data.get('campaign_count', 1)
         ad_group_count = data.get('ad_group_count', 1)
+        goal_units = data.get('goal_units', 0)
+        budget = data.get('budget', 0)
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
 
@@ -661,11 +663,22 @@ class CreationAccountApiView(APIView):
 
             for i in range(campaign_count):
                 c_uid = i + 1
-                campaign_data = dict(
+                # campaign goal
+                c_goal = goal_units // campaign_count
+                if i == 0:
+                    c_goal += goal_units % campaign_count
+                # campaign budget
+                c_budget = budget // campaign_count
+                if i == 0:
+                    c_budget += budget % campaign_count
+
+                campaign_data = dict(**data)
+                campaign_data.update(dict(
                     name="Campaign {}".format(c_uid),
                     account_creation=account_creation.id,
-                )
-                campaign_data.update(data)
+                    goal_units=c_goal,
+                    budget=c_budget,
+                ))
                 serializer = OptimizationCreateCampaignSerializer(
                     data=campaign_data,
                 )
@@ -687,7 +700,7 @@ class CreationAccountApiView(APIView):
                         data=ag_data,
                     )
                     serializer.is_valid(raise_exception=True)
-                    ad_group_creation = serializer.save()
+                    serializer.save()
 
         age_ranges = data['age_ranges']
         parents = data['parents']
