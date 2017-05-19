@@ -44,7 +44,7 @@ class SegmentListCreateApiView(ListCreateAPIView):
         Prepare queryset to display
         """
         if self.request.user.is_staff:
-            queryset = Segment.object.all()
+            queryset = Segment.objects.all()
         else:
             queryset = Segment.objects.filter(
                 Q(owner=self.request.user) |
