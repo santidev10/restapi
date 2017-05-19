@@ -92,3 +92,39 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data), 1, "one chart")
         self.assertEqual(len(response.data[0]['data']), 0,
                          "There is no data from the future")
+
+    def test_get_ctr_v(self):
+        url = reverse("aw_reporting_urls:track_chart")
+        today = datetime.now().date()
+        filters = dict(
+            start_date=today - timedelta(days=30),
+            end_date=today,
+            indicator="ctr_v",
+        )
+        url = "{}?{}".format(url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = response.data[0]['data'][0]['trend']
+        self.assertLess(
+            max(i['value'] for i in trend),
+            10,
+            "On real data max CTR(v) is no more than 10%"
+        )
+
+    def test_get_ctr(self):
+        url = reverse("aw_reporting_urls:track_chart")
+        today = datetime.now().date()
+        filters = dict(
+            start_date=today - timedelta(days=30),
+            end_date=today,
+            indicator="ctr",
+        )
+        url = "{}?{}".format(url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = response.data[0]['data'][0]['trend']
+        self.assertLess(
+            max(i['value'] for i in trend),
+            5,
+            "On real data max CTR is no more than 5%"
+        )
