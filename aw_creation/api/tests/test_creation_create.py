@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
+from django.db.models import Sum, Avg, Count
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
@@ -50,8 +51,8 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             ],
             start=str(start), end=str(end),
             goal_type=AccountCreation.GOAL_IMPRESSIONS,
-            goal_units=1000,
-            budget=1000,
+            goal_units=1001,  #
+            budget=113.53,
             max_rate="0.5",
             channel_lists=[],
             video_lists=[],
@@ -94,4 +95,25 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             }
         )
         self.assertEqual(response.data['name'], data['name'])
+        campaign_data = CampaignCreation.objects.aggregate(
+            count=Count('id'),
+            goal=Sum('goal_units'),
+            budget=Sum('budget'),
+            max_rate=Avg('max_rate'),
+        )
+
+        self.assertEqual(campaign_data['count'], data['campaign_count'])
+        self.assertEqual(campaign_data['goal'], data['goal_units'])
+        self.assertEqual(float(campaign_data['budget']), data['budget'])
+        self.assertEqual(str(campaign_data['max_rate']), data['max_rate'])
+
+        ad_group_data = AdGroupCreation.objects.aggregate(
+            count=Count('id'),
+            max_rate=Avg('max_rate'),
+        )
+        self.assertEqual(
+            ad_group_data['count'],
+            data['campaign_count'] * data['ad_group_count'],
+        )
+        self.assertEqual(str(ad_group_data['max_rate']), data['max_rate'])
 
