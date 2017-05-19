@@ -45,8 +45,8 @@ def get_client(**kwargs):
             return client_obj
 
 
-def optimize_keyword(query):
-    service_client = get_client()
+def optimize_keyword(query, client=None):
+    service_client = client or get_client()
     offset = 0
     page_size = 1000
 
