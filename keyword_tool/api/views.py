@@ -214,7 +214,7 @@ class ListParentApiView(APIView):
 
         if email is None:
             return KeywordsList.objects.none()
-        print(self.request.user.is_superuser)
+
         if self.request.user.is_superuser:
             queryset = KeywordsList.objects.all()
         else:

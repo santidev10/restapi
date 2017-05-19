@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    top_keywords = connector_get = Connector().get_top_channel_keywords(query_params={})
+    top_keywords =  Connector().get_top_channel_keywords(query_params={})
 
     def handle(self, *args, **options):
         with transaction.atomic(using='aw_campaign'):
