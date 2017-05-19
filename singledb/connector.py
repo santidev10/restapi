@@ -1,6 +1,7 @@
 """
 Single database API connector module
 """
+import json
 import requests
 from django.conf import settings
 
@@ -30,7 +31,7 @@ class SingleDatabaseApiConnector(object):
     def execute_delete_call(self, *args, **kwargs):
         return self.execute_call(requests.delete, *args, **kwargs)
 
-    def execute_call(self, method, endpoint, query_params):
+    def execute_call(self, method, endpoint, query_params, data=None):
         """
         Make GET call to api
         """
@@ -47,7 +48,10 @@ class SingleDatabaseApiConnector(object):
         url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
         # execute call
         try:
-            self.response = method(url, headers=headers, verify=False)
+            if data is None:
+                self.response = method(url, headers=headers, verify=False)
+            else:
+                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
             response_data = self.response.json()
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
@@ -76,13 +80,13 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def put_channel(self, query_params, pk):
+    def put_channel(self, query_params, pk, data):
         """
         Update channel
         :param query_params: dict
         """
-        endpoint = "channels/" + pk
-        response_data = self.execute_put_call(endpoint, query_params)
+        endpoint = "channels/" + pk + "/"
+        response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
     def get_channel_list(self, query_params):
@@ -112,13 +116,13 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def delete_channels(self, query_params):
+    def delete_channels(self, query_params, data):
         """
         Delete channels
         :param query_params: dict
         """
         endpoint = "channel_set/"
-        response_data = self.execute_delete_call(endpoint, query_params)
+        response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
     def get_video(self, query_params, pk):
@@ -130,13 +134,13 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def put_video(self, query_params, pk):
+    def put_video(self, query_params, pk, data):
         """
         Update video
         :param query_params: dict
         """
-        endpoint = "videos/" + pk
-        response_data = self.execute_put_call(endpoint, query_params)
+        endpoint = "videos/" + pk + "/"
+        response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
     def get_video_list(self, query_params):
@@ -157,11 +161,11 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def delete_videos(self, query_params):
+    def delete_videos(self, query_params, data):
         """
         Delete videos
         :param query_params: dict
         """
         endpoint = "video_set/"
-        response_data = self.execute_delete_call(endpoint, query_params)
+        response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data

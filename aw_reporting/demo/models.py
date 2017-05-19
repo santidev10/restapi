@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-
 from aw_reporting.models import *
+from singledb.connector import SingleDatabaseApiConnector
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_CAMPAIGNS_COUNT = 2
@@ -41,144 +41,62 @@ class BaseDemo:
         self.yesterday = datetime.now().date()
         self.start_date = self.today - timedelta(days=19)
         self.end_date = self.today + timedelta(days=10)
+        self._channels = None
+        self._videos = None
 
     def __getitem__(self, name):
         return getattr(self, name)
 
-    default_creative = (
-        {
-            'label': 'Nauru Files (Australia) - BBC News',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/R39ghkO69fI/hqdefault.jpg'
-        },
-        {
-            'label': 'Anna van der Breggen - BBC Sport interview',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/DEA6AxrNWUA/hqdefault.jpg'
-        },
-        {
-            'label': 'The Hunt - EP 7 TRAILER',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/qmQmwEkK65U/hqdefault.jpg'
-        },
-    )
-
-    default_channel = (
-        {
-            'label': 'SciShow Space',
-            'id': None,
-            'thumbnail': 'https://yt3.ggpht.com/-TA--KN7t7dQ/AAAAAAAAAAI/AAAAAAAAAAA/04IfrZ3uZvQ/s88-c-k-no-mo-rj-c0xffffff/photo.jpg',
-        },
-        {
-            'label': 'thebrainscoop',
-            'id': None,
-            'thumbnail': 'https://yt3.ggpht.com/-PHvFjeB5gJg/AAAAAAAAAAI/AAAAAAAAAAA/06Gf-ATVD6I/s88-c-k-no-mo-rj-c0xffffff/photo.jpg',
-        },
-        {
-            'label': 'CGP Grey',
-            'id': None,
-            'thumbnail': 'https://yt3.ggpht.com/-hcwBgBwDiuk/AAAAAAAAAAI/AAAAAAAAAAA/eQENCQCzV4w/s88-c-k-no-rj-c0xffffff/photo.jpg',
-        },
-        {
-            'label': 'CrashCourse',
-            'id': None,
-            'thumbnail': 'https://yt3.ggpht.com/-CbyerLDiZAc/AAAAAAAAAAI/AAAAAAAAAAA/XOz_qJn17K0/s88-c-k-no-rj-c0xffffff/photo.jpg',
-        },
-        {
-            'label': 'MinuteEarth',
-            'id': None,
-            'thumbnail': 'https://yt3.ggpht.com/-4N4bJGqwS94/AAAAAAAAAAI/AAAAAAAAAAA/VRmzCPV9CXw/s88-c-k-no-rj-c0xffffff/photo.jpg',
-        },
-        {
-            'label': 'MinutePhysics',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/i/UHW94eEFW7hkUMVaZz4eDg/1.jpg',
-        },
-    )
-
-    default_video = (
-        {
-            'label': 'How to upload YouTube videos by default (very useful 2016)',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/Zuj9nKZJLf4/hqdefault.jpg',
-        },
-        {
-            'label': 'How to give the BEST PowerPoint presentation!',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/eHhqWbI0y4M/hqdefault.jpg',
-        },
-        {
-            'label': 'Vocabulary & Expressions for POKER and other card games',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/r1gfifW5F0U/hqdefault.jpg',
-        },
-        {
-            'label': 'Learn the FUTURE PROGRESSIVE TENSE in English',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/N6ejjMWsFfg/hqdefault.jpg',
-        },
-        {
-            'label': '15 Fishy Expressions in English',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/l9oqWH_9_N0/hqdefault.jpg',
-        },
-        {
-            'label': 'Internet Safety',
-            'id': None,
-            'thumbnail': 'https://i.ytimg.com/vi/N0xiAFsa_aE/hqdefault.jpg',
-        },
-    )
-
     video_criteria = dict(
         is_safe=True,
         lang_code='en',
+        country="United States",
     )
 
     @property
     def channel(self):
-        return []
-        from video.models import Video, Channel
-
-        channel_ids = Video.objects.filter(
-            **self.video_criteria
-        ).values_list('channel_id', flat=True).distinct()[:6]
-        channel = [
-            dict(
-                label=v['title'], id=v['id'],
-                thumbnail=v['thumbnail_image_url']
-            )
-            for v in Channel.objects.filter(id__in=channel_ids).values(
-                'id', 'title', 'thumbnail_image_url'
-            )
-        ]
-        if not channel:
-            return self.default_channel
-
-        return channel
+        if self._channels is None:
+            connector = SingleDatabaseApiConnector()
+            response = connector.get_channel_list(self.video_criteria)
+            self._channels = [
+                dict(
+                    id=i['id'],
+                    label=i['title'],
+                    thumbnail=i['thumbnail_image_url'],
+                )
+                for i in response.get('items', [])
+            ]
+        return self._channels
 
     @property
     def video(self):
-        return []
-        from video.models import Video
-        videos = [
-            dict(label=v.title, id=v.id, thumbnail=v.thumbnail_image_url)
-            for v in Video.objects.filter(**self.video_criteria)[:6]
-        ]
-        if not videos:
-            return self.default_video
-        return videos
+        if self._videos is None:
+            connector = SingleDatabaseApiConnector()
+            response = connector.get_video_list(self.video_criteria)
+            self._videos = [
+                dict(
+                    id=i['id'],
+                    label=i['title'],
+                    thumbnail=i['thumbnail_image_url'],
+                )
+                for i in response.get('items', [])
+            ]
+        return self._videos[:6]
 
     @property
     def creative(self):
-        return []
-        from video.models import Video
-        video = [
-            dict(label=v.title, id=v.id, thumbnail=v.thumbnail_image_url)
-            for v in Video.objects.filter(**self.video_criteria)[6:12]
-        ]
-        if not video:
-            return self.default_creative
-        return video
+        if self._videos is None:
+            connector = SingleDatabaseApiConnector()
+            response = connector.get_video_list(self.video_criteria)
+            self._videos = [
+                dict(
+                    id=i['id'],
+                    label=i['title'],
+                    thumbnail=i['thumbnail_image_url'],
+                )
+                for i in response.get('items', [])
+            ]
+        return self._videos[6:12]
 
     @property
     def ad(self):
@@ -407,6 +325,52 @@ class DemoAccount(BaseDemo):
 
     @property
     def details(self):
+
+        channels = []
+        all_channels = self.channel[:3]
+        for i in all_channels:
+            channel = dict(
+                id=i['id'],
+                name=i['label'],
+                thumbnail=i['thumbnail'],
+                cost=self.cost / len(all_channels),
+                impressions=self.impressions // len(all_channels),
+                video_views=self.video_views // len(all_channels),
+                clicks=self.clicks // len(all_channels),
+            )
+            dict_add_calculated_stats(channel)
+            channels.append(channel)
+
+        videos = []
+        all_videos = self.video[:3]
+        for i in all_videos:
+            video = dict(
+                id=i['id'],
+                name=i['label'],
+                thumbnail=i['thumbnail'],
+                cost=self.cost / len(all_channels),
+                impressions=self.impressions // len(all_channels),
+                video_views=self.video_views // len(all_channels),
+                clicks=self.clicks // len(all_channels),
+            )
+            dict_add_calculated_stats(video)
+            videos.append(video)
+
+        creative_list = []
+        all_creative = self.creative[:3]
+        for i in all_creative:
+            video = dict(
+                id=i['id'],
+                name=i['label'],
+                thumbnail=i['thumbnail'],
+                cost=self.cost / len(all_channels),
+                impressions=self.impressions // len(all_channels),
+                video_views=self.video_views // len(all_channels),
+                clicks=self.clicks // len(all_channels),
+            )
+            dict_add_calculated_stats(video)
+            creative_list.append(video)
+
         details = dict(
             id=self.id,
             name=self.name,
@@ -418,9 +382,9 @@ class DemoAccount(BaseDemo):
                     for i, e in enumerate(Genders)],
             device=[dict(name=e, value=i+1)
                     for i, e in enumerate(reversed(Devices))],
-            channel=[],
-            creative=[],
-            video=[],
+            channel=channels,
+            creative=creative_list,
+            video=videos,
             clicks=self.clicks,
             cost=self.cost,
             impressions=self.impressions,
