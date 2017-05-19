@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):
@@ -36,15 +36,17 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             end_date=today - timedelta(days=1),
             indicator="impressions",
         )
-        for dimension in ('device', 'gender', 'age', 'topic', 'interest',
-                         # 'creative', 'channel', 'video', TODO: add these tabs when videos and channels are done
-                          'keyword', 'location', 'ad'):
-            filters['dimension'] = dimension
-            url = "{}?{}".format(base_url, urlencode(filters))
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(len(response.data), 1)
-            self.assertGreater(len(response.data[0]['data']), 1)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            for dimension in ('device', 'gender', 'age', 'topic',
+                              'interest', 'creative', 'channel', 'video',
+                              'keyword', 'location', 'ad'):
+                filters['dimension'] = dimension
+                url = "{}?{}".format(base_url, urlencode(filters))
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertEqual(len(response.data), 1)
+                self.assertGreater(len(response.data[0]['data']), 1)
 
     def test_success_hourly(self):
         url = reverse("aw_reporting_urls:track_chart")

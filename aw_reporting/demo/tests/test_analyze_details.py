@@ -1,10 +1,10 @@
-import json
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
+import json
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -16,12 +16,15 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
         today = datetime.now().date()
-        response = self.client.post(
-            url,
-            json.dumps(dict(start_date=str(today - timedelta(days=2)),
-                            end_date=str(today - timedelta(days=1)))),
-            content_type='application/json',
-        )
+
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url,
+                json.dumps(dict(start_date=str(today - timedelta(days=2)),
+                                end_date=str(today - timedelta(days=1)))),
+                content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -48,15 +51,37 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 }
             )
 
+        for k in ('channel', 'creative', 'video'):
+            self.assertEqual(len(data[k]), 3)
+            self.assertEqual(
+                set(data[k][0].keys()),
+                {
+                    'id',
+                    'name',
+                    'thumbnail',
+                    'impressions',
+                    'video_views',
+                    'ctr_v',
+                    'average_cpv',
+                    'average_cpm',
+                    'cost',
+                    'clicks',
+                    'ctr',
+                    'video_view_rate',
+                }
+            )
+
     def test_success_get_filter_ad_groups(self):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
         ad_groups = ["11", "22"]
-        response = self.client.post(
-            url,
-            json.dumps(dict(ad_groups=ad_groups)),
-            content_type='application/json',
-        )
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url,
+                json.dumps(dict(ad_groups=ad_groups)),
+                content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(

@@ -2,9 +2,10 @@ import json
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -66,17 +67,18 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             'start_date': str(today - timedelta(days=1)),
             'end_date': str(today),
         }
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            for dimension in ('device', 'gender', 'age', 'topic',
+                              'interest', 'creative', 'channel', 'video',
+                              'keyword', 'location', 'ad'):
 
-        for dimension in ('device', 'gender', 'age', 'topic', 'interest',
-                         # 'creative', 'channel', 'video', TODO: add this tabs when videos and channels are done
-                          'keyword', 'location', 'ad'):
-
-            filters['dimension'] = dimension
-            response = self.client.post(
-                url, json.dumps(filters),
-                content_type='application/json',
-            )
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(len(response.data), 3)
-            self.assertGreater(len(response.data[0]['data']), 1)
+                filters['dimension'] = dimension
+                response = self.client.post(
+                    url, json.dumps(filters),
+                    content_type='application/json',
+                )
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertEqual(len(response.data), 3)
+                self.assertGreater(len(response.data[0]['data']), 1)
 

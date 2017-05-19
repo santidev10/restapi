@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
+import json
 
 
 class ExtendedAPITestCase(APITestCase):
@@ -31,3 +32,21 @@ class ExtendedAPITestCase(APITestCase):
                 HTTP_AUTHORIZATION='Token {}'.format(token.key)
             )
         return user
+
+
+class SingleDatabaseApiConnectorPatcher:
+    """
+    We can use the class to patch SingleDatabaseApiConnector in tests
+    """
+
+    @staticmethod
+    def get_channel_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+            data = json.load(data_file)
+        return data
+
+    @staticmethod
+    def get_video_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_video_list.json') as data_file:
+            data = json.load(data_file)
+        return data

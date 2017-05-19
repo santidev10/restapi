@@ -1,11 +1,11 @@
-import json
-
 from django.core.urlresolvers import reverse
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
+import json
 
 
 class AnalyzeExportAPITestCase(ExtendedAPITestCase):
@@ -21,9 +21,12 @@ class AnalyzeExportAPITestCase(ExtendedAPITestCase):
             'start_date': str(today - timedelta(days=1)),
             'end_date': str(today),
         }
-        response = self.client.post(
-            url, json.dumps(filters), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(type(response), StreamingHttpResponse)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(filters), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(type(response), StreamingHttpResponse)
+            self.assertGreater(len(list(response)), 10)
 
