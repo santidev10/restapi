@@ -1,6 +1,6 @@
-from aw_reporting.models import *
 from datetime import datetime, timedelta
 
+from aw_reporting.models import *
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_CAMPAIGNS_COUNT = 2
@@ -436,5 +436,8 @@ class DemoAccount(BaseDemo):
             video25rate=self.video25rate,
             video50rate=self.video50rate,
             video75rate=self.video75rate,
+            conversions=self.conversions,
+            all_conversions=self.all_conversions,
+            view_through=self.view_through,
         )
         return details

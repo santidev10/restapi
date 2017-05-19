@@ -1,5 +1,4 @@
 from django.conf.urls import url
-
 from aw_reporting.api import views
 
 urlpatterns = [

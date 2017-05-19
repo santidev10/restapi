@@ -1,8 +1,10 @@
+import json
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from saas.utils_tests import ExtendedAPITestCase
+
 from aw_reporting.demo.models import *
-import json
+from saas.utils_tests import ExtendedAPITestCase
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -29,6 +31,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'age', 'gender', 'device', 'channel', 'creative', 'video',
                 'clicks', 'cost', 'impressions', 'video_views',
                 'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
+                "all_conversions", "conversions", "view_through",
                 'video_view_rate', 'average_position', 'ad_network',
                 'video100rate', 'video25rate', 'video50rate',
                 'video75rate',

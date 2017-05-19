@@ -1,10 +1,12 @@
+import random
+from collections import defaultdict
+from copy import deepcopy
+from datetime import datetime, time
+
+from pytz import utc
+
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
-from collections import defaultdict
-from datetime import datetime, time
-from copy import deepcopy
-from pytz import utc
-import random
 
 
 class DemoChart:
