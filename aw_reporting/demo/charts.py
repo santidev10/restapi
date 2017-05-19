@@ -12,6 +12,7 @@ from aw_reporting.utils import get_dates_range
 class DemoChart:
 
     def __init__(self, account, filters):
+        self.today = datetime.now().date()
         self.account = account
         self.filters = filters
 
@@ -160,52 +161,59 @@ class DemoChart:
         start = filters['start_date'] or item.start_date
         end = filters['end_date'] or item.end_date
 
-        # get every days values
-        value = getattr(item, indicator)
+        if start <= self.today:
+            end = min(self.today, end)
 
-        if breakdown == "hourly":
-            time_points = [
-                datetime.combine(date, time(hour)).replace(tzinfo=utc)
-                for date in get_dates_range(start, end)
-                for hour in range(24)
-            ]
-        else:
-            time_points = list(get_dates_range(start, end))
-        time_points_len = len(time_points)
+            # get every days values
+            value = getattr(item, indicator)
 
-        if not dimension:
-            values = self.explode_value_random(value, indicator, time_points_len)
-            lines.append(
-                dict(
-                    average=None,
-                    label="Summary",
-                    trend=[dict(label=l, value=v)
-                           for l, v in zip(
-                                time_points,
-                                values
-                           )],
-                    value=value,
+            if breakdown == "hourly":
+                time_points = [
+                    datetime.combine(date, time(hour)).replace(tzinfo=utc)
+                    for date in get_dates_range(start, end)
+                    for hour in range(24)
+                ]
+            else:
+                time_points = list(get_dates_range(start, end))
+            time_points_len = len(time_points)
+
+            if not dimension:
+                values = self.explode_value_random(
+                    value, indicator, time_points_len,
                 )
-            )
-        else:
-            dimensions = deepcopy(getattr(item, dimension))
-            dim_len = len(dimensions)
-            dim_values = self.explode_value(value, indicator, dim_len)
-
-            for dim, sum_value in zip(dimensions, dim_values):
-
-                daily_vs = self.explode_value_random(sum_value, indicator, time_points_len)
-                line = dict(
-                    average=None,
-                    trend=[dict(label=l, value=v)
-                           for l, v in zip(
-                                time_points,
-                                daily_vs
-                           )],
-                    value=sum_value,
+                lines.append(
+                    dict(
+                        average=None,
+                        label="Summary",
+                        trend=[dict(label=l, value=v)
+                               for l, v in zip(
+                                    time_points,
+                                    values
+                               )],
+                        value=value,
+                    )
                 )
-                line.update(dim)
-                lines.append(line)
+            else:
+                dimensions = deepcopy(getattr(item, dimension))
+                dim_len = len(dimensions)
+                dim_values = self.explode_value(value, indicator, dim_len)
+
+                for dim, sum_value in zip(dimensions, dim_values):
+
+                    daily_vs = self.explode_value_random(
+                        sum_value, indicator, time_points_len,
+                    )
+                    line = dict(
+                        average=None,
+                        trend=[dict(label=l, value=v)
+                               for l, v in zip(
+                                    time_points,
+                                    daily_vs
+                               )],
+                        value=sum_value,
+                    )
+                    line.update(dim)
+                    lines.append(line)
 
         return lines
 
