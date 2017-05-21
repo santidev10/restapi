@@ -98,9 +98,18 @@ class Segment(Model):
         except SingleDatabaseApiConnectorException:
             # TODO add fail logging and, probably, retries
             return
-        # TODO check channels from response and available relations
+        # Check all channels still alive in SDB
+        response_channels_ids = {obj.get("id") for obj in response_data}
+        ids_difference = set(channels_ids) - response_channels_ids
+        if ids_difference:
+            ChannelRelation.object.filter(id__in=ids_difference).delete()
         channels_count = self.channels.count()
-        # count statistics
+        # all channels we dropped from SDB
+        if not channels_count:
+            self.statistics = {}
+            self.mini_dash_data = {}
+            self.save()
+            return
         subscribers_count = 0
         videos_count = 0
         views_count = 0
@@ -165,8 +174,18 @@ class Segment(Model):
         except SingleDatabaseApiConnectorException:
             # TODO add fail logging and, probably, retries
             return
-        # TODO check videos from response and available relations
+        # Check all videos still alive in SDB
+        response_videos_ids = {obj.get("id") for obj in response_data}
+        ids_difference = set(videos_ids) - response_videos_ids
+        if ids_difference:
+            VideoRelation.object.filter(id__in=ids_difference).delete()
         videos_count = self.videos.count()
+        # all channels we dropped from SDB
+        if not videos_count:
+            self.statistics = {}
+            self.mini_dash_data = {}
+            self.save()
+            return
         # count statistics
         views_count = 0
         likes_count = 0

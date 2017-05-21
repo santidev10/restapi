@@ -37,7 +37,7 @@ class SegmentListCreateApiView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
         # TODO enable after celery setup on staging
-        segment.count_statistics_fields()
+        segment.count_statistics_fields(segment)
         # segment.count_statistics_fields.delay(segment)
         response_data = self.serializer_class(
             segment, context=serializer_context).data
