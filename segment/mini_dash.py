@@ -104,14 +104,15 @@ def get_top_keywords_from_text(text, languages):
     return keywords_data[:expected_number_of_keywords]
 
 
-class MiniDashGenerator(object):
+class SegmentMiniDashGenerator(object):
     """
     Segment mini-dash generator
     """
-    def __init__(self, sdb_data):
+    def __init__(self, sdb_data, segment):
         """
         Set up procedure
         """
+        self.segment = segment
         self.sdb_data = sdb_data
         self.history_length = 31
         # TODO check for potential errors
@@ -120,9 +121,9 @@ class MiniDashGenerator(object):
         self.date_range = prepare_date_range(
             self.max_history_date, self.history_length - 1)
 
-    def get_video_views_chart_data_section(self):
+    def get_channels_video_views_chart_data_section(self):
         """
-        Prepare video views chart data section
+        Prepare channels video views chart data section
         :return: list
         """
         video_views_data = [
@@ -137,7 +138,24 @@ class MiniDashGenerator(object):
             video_views_data, "video_views_count")
         return response
 
-    def get_views_per_video_chart_data_section(self):
+    def get_videos_video_views_chart_data_section(self):
+        """
+        Prepare videos video views chart data section
+        :return: list
+        """
+        video_views_data = [
+            [0] * (self.max_history_date
+                   - datetime.strptime(obj.get("history_date"), "%Y-%m-%d")
+                   ).days + get_diff_history_by_period(
+                        obj.get("views_history")[:self.history_length],
+                        days=2)
+            for obj in self.sdb_data
+            ]
+        response = self.prepare_response_data(
+            video_views_data, "video_views_count")
+        return response
+
+    def get_channels_views_per_video_chart_data_section(self):
         """
         Prepare views per video chart data section
         :return: list
@@ -153,6 +171,17 @@ class MiniDashGenerator(object):
         response = self.prepare_response_data(
             views_per_video_data, "views_per_video")
         return response
+
+    def get_videos_views_per_video_chart_data_section(self, video_views_data):
+        """
+        Prepare videos views per video chart data section
+        :return: list
+        """
+        videos_count = self.segment.videos.count()
+        for obj in video_views_data:
+            obj["views_per_video"] =\
+                obj.pop("video_views_count") / videos_count
+        return video_views_data
 
     def prepare_response_data(self, data, counter_name):
         """
@@ -190,7 +219,9 @@ class MiniDashGenerator(object):
         descriptions = [
             obj.get("description")
             for obj in self.sdb_data
-            if obj.get("description") != "Channel has no description"]
+            if obj.get("description") not in ["Channel has no description",
+                                              "Video has not description"]
+        ]
         titles = [obj.get("title")
                   for obj in self.sdb_data if obj.get("title") != "No title"]
         # aggregated value
@@ -206,10 +237,23 @@ class MiniDashGenerator(object):
         Prepare serialized data
         :return: dict
         """
-        data = {
-            "views_chart_data": self.get_video_views_chart_data_section(),
-            "views_per_video_chart_data":
-                self.get_views_per_video_chart_data_section(),
-            "keywords": self.get_keywords_section()
-        }
+        data = None
+        if self.segment.segment_type == "channel":
+            data = {
+                "views_chart_data":
+                    self.get_channels_video_views_chart_data_section(),
+                "views_per_video_chart_data":
+                    self.get_channels_views_per_video_chart_data_section(),
+                "keywords": self.get_keywords_section()
+            }
+        elif self.segment.segment_type == "video":
+            views_chart_data = self.get_videos_video_views_chart_data_section()
+            views_per_video_chart_data =\
+                self.get_videos_views_per_video_chart_data_section(
+                    views_chart_data)
+            data = {
+                "views_chart_data":views_chart_data,
+                "views_per_video_chart_data": views_per_video_chart_data,
+                "keywords": self.get_keywords_section()
+            }
         return data

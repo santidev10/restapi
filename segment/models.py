@@ -6,7 +6,7 @@ from django.db.models import ForeignKey
 from django.db.models import ManyToManyField
 from django.db.models import Model, CharField
 
-from segment.mini_dash import MiniDashGenerator
+from segment.mini_dash import SegmentMiniDashGenerator
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 
@@ -58,12 +58,13 @@ class Segment(Model):
         """
         Setup re-counting of statistics and mini dash data
         """
+        # we are not using getattr to prevent attribute error
+        # and also to set security for update methods
         if self.segment_type == "channel":
             self.__count_channel_segment_statistics_fields()
-        if self.segment_type == "video":
-            # TODO add functionality
-            return
-        if self.segment_type == "keyword":
+        elif self.segment_type == "video":
+            self.__count_video_segment_statistics_fields()
+        elif self.segment_type == "keyword":
             # TODO add functionality
             return
 
@@ -80,7 +81,6 @@ class Segment(Model):
         # obtain channels data
         channels_ids = self.channels.values_list(
             "channel_id", flat=True)
-        channels_count = self.channels.count()
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
                         "fields": "id,title,thumbnail_image_url,"
@@ -97,6 +97,7 @@ class Segment(Model):
             # TODO add fail logging and, probably, retries
             return
         # TODO check channels from response and available relations
+        channels_count = self.channels.count()
         # count statistics
         subscribers_count = 0
         videos_count = 0
@@ -133,5 +134,73 @@ class Segment(Model):
         }
         self.statistics = statistics
         # count mini-dash
-        self.mini_dash_data = MiniDashGenerator(response_data).data
+        self.mini_dash_data = SegmentMiniDashGenerator(
+            response_data, self).data
+        self.save()
+
+    def __count_video_segment_statistics_fields(self):
+        """
+        Count statistic for video segments
+        """
+        # Drop statistics
+        if not self.videos.exists():
+            self.statistics = {}
+            self.mini_dash_data = {}
+            self.save()
+            return
+        # obtain videos data
+        videos_ids = self.videos.values_list(
+            "video_id", flat=True)
+        # TODO flat may freeze SDB if queryset is too big
+        query_params = {"ids": ",".join(videos_ids),
+                        "fields": "id,title,description,thumbnail_image_url,"
+                                  "views,likes,dislikes,chart_data,"
+                                  "comments,views_history,history_date",
+                        "flat": 1}
+        connector = Connector()
+        try:
+            response_data = connector.get_video_list(query_params)
+        except SingleDatabaseApiConnectorException:
+            # TODO add fail logging and, probably, retries
+            return
+        # TODO check videos from response and available relations
+        videos_count = self.videos.count()
+        # count statistics
+        views_count = 0
+        likes_count = 0
+        dislikes_count = 0
+        comments_count = 0
+        thirty_days_views_count = 0
+        for obj in response_data:
+            views_count += obj.get("views")
+            likes_count += obj.get("likes")
+            dislikes_count += obj.get("dislikes")
+            comments_count += obj.get("comments")
+            views_history = obj.get("views_history")
+            if views_history:
+                thirty_days_views_count += (
+                    views_history[:30][0] - views_history[:30][-1])
+        top_three_videos = sorted(
+            response_data, key=lambda k: k['views'], reverse=True)[:3]
+        top_three_videos_data = [
+            {"id": obj.get("id"),
+             "image_url": obj.get("thumbnail_image_url"),
+             "title": obj.get("title")}
+            for obj in top_three_videos]
+        statistics = {
+            "top_three_videos": top_three_videos_data,
+            "videos_count": videos_count,
+            "views_count": views_count,
+            "views_per_video": views_count / videos_count,
+            "thirty_days_views_count": thirty_days_views_count,
+            "sentiment": (likes_count / max(
+                sum((likes_count, dislikes_count)), 1)) * 100,
+            "engage_rate": (sum(
+                (likes_count, dislikes_count, comments_count))
+                            / max(views_count, 1)) * 100
+        }
+        self.statistics = statistics
+        # count mini-dash
+        self.mini_dash_data = SegmentMiniDashGenerator(
+            response_data, self).data
         self.save()
