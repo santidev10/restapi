@@ -2,9 +2,10 @@
 Segment api views module
 """
 from django.db.models import Q
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, \
+    RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_405_METHOD_NOT_ALLOWED
 
 from segment.api.serializers import SegmentCreateSerializer, SegmentSerializer
 from segment.models import Segment
@@ -35,7 +36,9 @@ class SegmentListCreateApiView(ListCreateAPIView):
             data=request.data, context=serializer_context)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
-        segment.count_statistics_fields.delay(segment)
+        # TODO enable after celery setup on staging
+        segment.count_statistics_fields()
+        # segment.count_statistics_fields.delay(segment)
         response_data = self.serializer_class(
             segment, context=serializer_context).data
         return Response(response_data, status=HTTP_201_CREATED)
@@ -60,3 +63,29 @@ class SegmentListCreateApiView(ListCreateAPIView):
         if category:
             filters["category"] = category
         return queryset.filter(**filters)
+
+
+class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve / update / delete segment endpoint
+    """
+    serializer_class = SegmentSerializer
+
+    def get_queryset(self):
+        """
+        Prepare queryset to display
+        """
+        if self.request.user.is_staff:
+            queryset = Segment.objects.all()
+        else:
+            queryset = Segment.objects.filter(
+                Q(owner=self.request.user) |
+                ~Q(category="private"))
+        return queryset
+
+    def put(self, request, *args, **kwargs):
+        """
+        Allow partial update
+        """
+        # TODO discuss the algorithm
+        return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
