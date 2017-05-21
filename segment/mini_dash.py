@@ -178,10 +178,13 @@ class SegmentMiniDashGenerator(object):
         :return: list
         """
         videos_count = self.segment.videos.count()
+        views_per_video_data = []
         for obj in video_views_data:
-            obj["views_per_video"] =\
-                obj.pop("video_views_count") / videos_count
-        return video_views_data
+            value = obj.copy()
+            value["views_per_video"] = \
+                value.pop("video_views_count") / videos_count
+            views_per_video_data.append(value)
+        return views_per_video_data
 
     def prepare_response_data(self, data, counter_name):
         """
@@ -252,7 +255,7 @@ class SegmentMiniDashGenerator(object):
                 self.get_videos_views_per_video_chart_data_section(
                     views_chart_data)
             data = {
-                "views_chart_data":views_chart_data,
+                "views_chart_data": views_chart_data,
                 "views_per_video_chart_data": views_per_video_chart_data,
                 "keywords": self.get_keywords_section()
             }

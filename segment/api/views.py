@@ -35,8 +35,7 @@ class SegmentListCreateApiView(ListCreateAPIView):
             data=request.data, context=serializer_context)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
-        # TODO check if schedule is necessary
-        segment.count_statistics_fields()
+        segment.count_statistics_fields.delay(segment)
         response_data = self.serializer_class(
             segment, context=serializer_context).data
         return Response(response_data, status=HTTP_201_CREATED)

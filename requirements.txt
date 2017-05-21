@@ -17,3 +17,6 @@ uritemplate==3.0.0
 XlsxWriter==0.9.6
 requests==2.8.1
 nltk==3.2
+celery==3.1.23
+celery-with-redis==3.0
+django-celery==3.1.17

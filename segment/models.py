@@ -1,6 +1,7 @@
 """
 Segment models module
 """
+from celery import task
 from django.contrib.postgres.fields import JSONField
 from django.db.models import ForeignKey
 from django.db.models import ManyToManyField
@@ -54,6 +55,7 @@ class Segment(Model):
     videos = ManyToManyField(
         "segment.VideoRelation", blank=True, related_name="segments")
 
+    @task
     def count_statistics_fields(self):
         """
         Setup re-counting of statistics and mini dash data
