@@ -84,6 +84,37 @@ class SegmentCreateSerializer(ModelSerializer):
         return segment
 
 
+class SegmentUpdateSerializer(ModelSerializer):
+    """
+    Serializer for update segment
+    """
+    class Meta:
+        """
+        Meta params
+        """
+        model = Segment
+        fields = (
+            "title",
+            "category"
+        )
+
+    def validate(self, data):
+        """
+        Check segment category
+        """
+        segment_category = data.get("category")
+        user = self.context.get("request").user
+        if segment_category is not None:
+            if segment_category != "private" and not user.is_staff:
+                raise ValidationError(
+                    "Not valid category. Options are: private")
+            elif segment_category not in AVAILABLE_SEGMENT_CATEGORIES:
+                raise ValidationError(
+                    "Not valid category. Options are: {}".format(
+                        ", ".join(AVAILABLE_SEGMENT_CATEGORIES)))
+        return data
+
+
 class SegmentSerializer(ModelSerializer):
     """
     Segment retrieve serializer
