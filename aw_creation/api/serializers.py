@@ -545,6 +545,7 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
     class Meta:
         model = CampaignCreation
         fields = (
+            'name',
             'is_approved',
             'is_paused',
             'start',
@@ -554,6 +555,15 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
             'languages',
             'devices',
             'max_rate',
+        )
+
+
+class OptimizationAppendCampaignSerializer(ModelSerializer):
+
+    class Meta:
+        model = CampaignCreation
+        fields = (
+            'name', 'account_creation',
         )
 
 
@@ -586,6 +596,15 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
                     "{}: empty set is not allowed".format(f))
         return super(OptimizationAdGroupUpdateSerializer,
                      self).validate(data)
+
+
+class OptimizationAppendAdGroupSerializer(ModelSerializer):
+
+    class Meta:
+        model = AdGroupCreation
+        fields = (
+            'name', 'campaign_creation',
+        )
 
 
 class TopicHierarchySerializer(ModelSerializer):

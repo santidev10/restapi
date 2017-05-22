@@ -16,12 +16,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView
+    GenericAPIView, ListCreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
+    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import add_targeting_list_items_info, \
@@ -32,7 +32,9 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     OptimizationUpdateCampaignSerializer, OptimizationCreateCampaignSerializer, \
     OptimizationLocationRuleUpdateSerializer, OptimizationAdGroupUpdateSerializer, TopicHierarchySerializer, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
-    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer
+    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
+    OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
+
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
@@ -403,6 +405,39 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
         return self.retrieve(self, request, *args, **kwargs)
 
 
+class OptimizationCampaignListApiView(ListCreateAPIView):
+    serializer_class = OptimizationCampaignsSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = CampaignCreation.objects.filter(
+            account_creation__owner=self.request.user,
+            account_creation_id=pk
+        )
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        try:
+            account_creation = AccountCreation.objects.get(
+                pk=kwargs.get("pk"), owner=request.user
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        request.data['account_creation'] = account_creation.id
+        if not request.data.get('name'):
+            count = self.get_queryset().count()
+            request.data['name'] = "Campaign {}".format(count + 1)
+
+        serializer = OptimizationAppendCampaignSerializer(
+            data=request.data)
+        serializer.is_valid(raise_exception=True)
+        campaign_creation = serializer.save()
+
+        data = self.get_serializer(instance=campaign_creation).data
+        return Response(data, status=HTTP_201_CREATED)
+
+
 class OptimizationCampaignApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -508,6 +543,39 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
                     instance=instance, data=rule)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
+
+
+class OptimizationAdGroupListApiView(ListCreateAPIView):
+    serializer_class = OptimizationAdGroupSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation__owner=self.request.user,
+            campaign_creation_id=pk
+        )
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        try:
+            campaign_creation = CampaignCreation.objects.get(
+                pk=kwargs.get("pk"), account_creation__owner=request.user
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        request.data['campaign_creation'] = campaign_creation.id
+        if not request.data.get('name'):
+            count = self.get_queryset().count()
+            request.data['name'] = "Campaign {}".format(count + 1)
+
+        serializer = OptimizationAppendAdGroupSerializer(
+            data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+
+        data = self.get_serializer(instance=obj).data
+        return Response(data, status=HTTP_201_CREATED)
 
 
 class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
@@ -634,6 +702,9 @@ class CreationOptionsApiView(APIView):
 class CreationAccountApiView(APIView):
 
     def post(self, request, *args, **kwargs):
+        from segment.models import Segment
+        from keyword_tool.models import KeywordsList
+
         owner = self.request.user
         data = request.data
 
@@ -644,6 +715,69 @@ class CreationAccountApiView(APIView):
         budget = data.get('budget', 0)
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
+
+        channel_lists = data.get('channel_lists', [])
+        if channel_lists:
+            channel_ids = Segment.objects.filter(
+                id__in=channel_lists
+            ).values_list("channels__channel_id", flat=True).distinct()
+
+            def set_channel_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=cid,
+                        type=TargetingItem.CHANNEL_TYPE,
+                    )
+                    for cid in channel_ids
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_channel_targeting(ad_group):
+                pass
+
+        video_lists = data.get('video_lists', [])
+        if video_lists:
+            video_ids = Segment.objects.filter(
+                id__in=video_lists
+            ).values_list("videos__video_id", flat=True).distinct()
+
+            def set_video_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=uid,
+                        type=TargetingItem.VIDEO_TYPE,
+                    )
+                    for uid in video_ids
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_video_targeting(ad_group):
+                pass
+
+        keyword_lists = data.get('keyword_lists', [])
+        if keyword_lists:
+            kws = KeywordsList.objects.filter(
+                id__in=keyword_lists
+            ).values_list("keywords__text", flat=True).distinct()
+
+            def set_kw_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=kw,
+                        type=TargetingItem.KEYWORD_TYPE,
+                    )
+                    for kw in kws
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_kw_targeting(ad_group):
+                pass
 
         with transaction.atomic():
             account_data = dict(
@@ -698,7 +832,10 @@ class CreationAccountApiView(APIView):
                         data=ag_data,
                     )
                     serializer.is_valid(raise_exception=True)
-                    serializer.save()
+                    ag_creation = serializer.save()
+                    set_channel_targeting(ag_creation)
+                    set_video_targeting(ag_creation)
+                    set_kw_targeting(ag_creation)
 
         age_ranges = data['age_ranges']
         parents = data['parents']

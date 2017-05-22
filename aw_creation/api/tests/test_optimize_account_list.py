@@ -104,7 +104,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(item['impressions'], 10)
         self.assertEqual(item['ordered_views'], 100)
         self.assertEqual(item['ordered_views_cost'], 7)
-        self.assertEqual(str(item['ordered_cpv']), '0.070000')
+        self.assertEqual(float(item['ordered_cpv']), 0.07)
 
     def test_success_get_ended_account(self):
         account_creation = self.create_data(self.user)

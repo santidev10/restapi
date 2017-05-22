@@ -7,6 +7,10 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):
@@ -15,6 +19,13 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_post(self):
+        if 'postgresql' not in settings.DATABASES['default']['ENGINE']:
+            logger.warning("This test require postgres db!")
+            return
+
+        from segment.models import VideoRelation, ChannelRelation, Segment
+        from keyword_tool.models import KeywordsList, KeyWord
+
         url = reverse("aw_creation_urls:creation_account")
         english, _ = Language.objects.get_or_create(id=1000,
                                                     name="English")
@@ -24,6 +35,29 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         start = datetime.now().date()
         end = start + timedelta(days=2)
+
+        # video list
+        video_segment = Segment.objects.create(owner=self.user)
+        video_ids = {"ABC", "DEF"}
+        for vid in video_ids:
+            video = VideoRelation.objects.create(video_id=vid)
+            video_segment.videos.add(video)
+
+        # channel list
+        channel_segment = Segment.objects.create(owner=self.user)
+        channel_ids = {"abc", "def"}
+        for cid in channel_ids:
+            channel = ChannelRelation.objects.create(channel_id=cid)
+            channel_segment.channels.add(channel)
+
+        # kw list
+        kws = {"banana", "batman", "slave"}
+        kw_list = KeywordsList.objects.create(name="",
+                                              user_email=self.user.email)
+        for kw in kws:
+            kw_obj = KeyWord.objects.create(text=kw)
+            kw_list.keywords.add(kw_obj)
+
         data = dict(
             name="My account",
             video_ad_format=AccountCreation.IN_STREAM_TYPE,
@@ -54,9 +88,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             goal_units=1001,  #
             budget=113.53,
             max_rate="0.5",
-            channel_lists=[],
-            video_lists=[],
-            keyword_lists=[],
+            channel_lists=[channel_segment.id],
+            video_lists=[video_segment.id],
+            keyword_lists=[kw_list.id],
             topic_lists=[],
             interest_lists=[],
         )
@@ -116,4 +150,45 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             data['campaign_count'] * data['ad_group_count'],
         )
         self.assertEqual(str(ad_group_data['max_rate']), data['max_rate'])
+
+        # targeting lists
+        # channel
+        channel_targeting = TargetingItem.objects.filter(
+            type=TargetingItem.CHANNEL_TYPE
+        ).values('criteria').order_by('criteria').annotate(
+            count=Count('id')
+        )
+        self.assertEqual(
+            set(i['criteria'] for i in channel_targeting),
+            channel_ids
+        )
+        self.assertEqual(
+            set(i['count'] for i in channel_targeting),
+            {data['campaign_count'] * data['ad_group_count']}
+        )
+        # video
+        video_targeting = TargetingItem.objects.filter(
+            type=TargetingItem.VIDEO_TYPE
+        ).values('criteria').order_by('criteria').annotate(
+            count=Count('id')
+        )
+        self.assertEqual(
+            set(i['criteria'] for i in video_targeting),
+            video_ids
+        )
+        self.assertEqual(
+            set(i['count'] for i in video_targeting),
+            {data['campaign_count'] * data['ad_group_count']}
+        )
+        # keywords
+        kw_targeting = TargetingItem.objects.filter(
+            type=TargetingItem.KEYWORD_TYPE
+        ).values('criteria').order_by('criteria').annotate(
+            count=Count('id')
+        )
+        self.assertEqual(set(i['criteria'] for i in kw_targeting), kws)
+        self.assertEqual(
+            set(i['count'] for i in kw_targeting),
+            {data['campaign_count'] * data['ad_group_count']}
+        )
 
