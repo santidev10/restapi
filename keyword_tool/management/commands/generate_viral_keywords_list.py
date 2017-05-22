@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    top_keywords =  Connector().get_top_channel_keywords(query_params={})
+    top_keywords = Connector().get_top_channel_keywords(query_params={})
 
     def handle(self, *args, **options):
-        with transaction.atomic(using='aw_campaign'):
+        with transaction.atomic():
             # Delete old keywords
             ViralKeywords.objects.all().delete()
 
@@ -32,10 +32,13 @@ class Command(BaseCommand):
                         )
                     except Exception as e:
                         # timeout if too many requests
-                        inner_error = e.fault.detail.ApiExceptionFault.errors
-                        if inner_error.reason == 'RATE_EXCEEDED':
-                            logger.info('{}, timeout 30 sec'.format(inner_error.reason))
-                            time.sleep(int(inner_error.retryAfterSeconds))
+                        try:
+                            inner_error = e.fault.detail.ApiExceptionFault.errors
+                            if inner_error.reason == 'RATE_EXCEEDED':
+                                logger.info('{}, timeout 30 sec'.format(inner_error.reason))
+                                time.sleep(int(inner_error.retryAfterSeconds))
+                        except AttributeError:
+                            logger.info(e)
 
             # get all viral keywords
             keywords = {i for i in KeyWord.objects.filter(search_volume__gte=10000) if
@@ -45,4 +48,3 @@ class Command(BaseCommand):
             # create relations
             kv_to_save = [ViralKeywords(keyword=keyword) for keyword in keywords]
             ViralKeywords.objects.bulk_create(kv_to_save)
-

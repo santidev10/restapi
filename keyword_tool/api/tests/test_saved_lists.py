@@ -21,7 +21,7 @@ class KWToolSavedListTestCase(APITestCase):
         )
 
         self.url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_lists"
+            "keyword_tool_urls:kw_tool_saved_lists"
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -38,7 +38,7 @@ class KWToolSavedListTestCase(APITestCase):
             keywords.append(keyword.text)
 
         self.url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_lists"
+            "keyword_tool_urls:kw_tool_saved_lists"
         )
 
         response = self.client.post(
@@ -58,7 +58,7 @@ class KWToolSavedListTestCase(APITestCase):
         )
 
         url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list",
+            "keyword_tool_urls:kw_tool_saved_list",
             args=(saved_list.id,),
         )
         another_user = get_user_model().objects.create(
@@ -79,7 +79,7 @@ class KWToolSavedListTestCase(APITestCase):
             name="My list",
         )
         url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list",
+            "keyword_tool_urls:kw_tool_saved_list",
             args=(saved_list.id,),
         )
         response = self.client.delete(url)
@@ -101,14 +101,14 @@ class KWToolSavedListTestCase(APITestCase):
             my_list.keywords.add(keyword)
 
         url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_keywords",
+            "keyword_tool_urls:kw_tool_saved_list_keywords",
             args=(another_list.id,)
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
         url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_keywords",
+            "keyword_tool_urls:kw_tool_saved_list_keywords",
             args=(my_list.id,)
         )
         response = self.client.get(url)
@@ -151,41 +151,6 @@ class KWToolSavedListTestCase(APITestCase):
                 }
             )
 
-    def test_export_kws(self):
-        self.client.credentials(HTTP_AUTHORIZATION='')
-
-        my_list = KeywordsList.objects.create(
-            user_email=self.user.email,
-            name="My list",
-        )
-        for i in range(1, 10):
-            keyword = KeyWord.objects.create(text="kw #%s" % i)
-            my_list.keywords.add(keyword)
-
-        base_url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_export",
-            args=(my_list.id,)
-        )
-        url = "{}?{}".format(
-            base_url,
-            urlencode({'auth_token': self.user.auth_token.key}),
-        )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        lines = list(response)
-        self.assertEqual(10, len(lines))  # header and 9 keywords
-
-        # export selected
-        exp_keyword = lines[1].split(b',')[0]
-        url += "&" + urlencode(
-            {'ids': exp_keyword}
-        )
-        response = self.client.get(url)
-        lines = list(response)
-        self.assertEqual(2, len(lines))  # only one keyword
-        keyword = lines[1].split(b',')[0]
-        self.assertEqual(keyword, exp_keyword)  # only one keyword
-
     def test_add_kws_to_keywords_list(self):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
@@ -200,7 +165,7 @@ class KWToolSavedListTestCase(APITestCase):
             ids.append(keyword.pk)
 
         base_url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_keywords",
+            "keyword_tool_urls:kw_tool_saved_list_keywords",
             args=(my_list.id,)
         )
         response = self.client.get(base_url)
@@ -234,7 +199,7 @@ class KWToolSavedListTestCase(APITestCase):
             ids.append(keyword.pk)
 
         base_url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_keywords",
+            "keyword_tool_urls:kw_tool_saved_list_keywords",
             args=(my_list.id,)
         )
         response = self.client.get(base_url)
@@ -266,7 +231,7 @@ class KWToolSavedListTestCase(APITestCase):
             my_list.keywords.add(keyword)
 
         base_url = reverse(
-            "keyword_tool_api_urls:kw_tool_saved_list_keywords",
+            "keyword_tool_urls:kw_tool_saved_list_keywords",
             args=(my_list.id,)
         )
         response = self.client.get(base_url)

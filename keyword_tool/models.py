@@ -111,7 +111,7 @@ class Query(models.Model):
                 )
             )
 
-        with transaction.atomic(using='aw_campaign'):
+        with transaction.atomic():
             query_obj = cls.objects.create(text=query)
 
             if kws:

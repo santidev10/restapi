@@ -12,7 +12,7 @@ from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.models import Query, KeywordsList, ViralKeywords
 
 from aw_reporting.adwords_api import optimize_keyword
-#TODO uncomment when adwords stats will be created is saas
+# TODO uncomment when adwords stats will be created is saas
 from aw_reporting.models import SUM_STATS, \
     QUARTILE_STATS, dict_quartiles_to_rates, dict_add_calculated_stats
 # from utils.api_permissions import get_perm_class
@@ -55,44 +55,45 @@ class OptimizeQueryApiView(ListAPIView):
         else:
             sort_by = 'search_volume'
 
-        extra_selects = dict(
-            cpv="SELECT "
-                "CASE WHEN Sum(video_views) > 0 "
-                "THEN COALESCE(1.0 * Sum(cost) / Sum(video_views), 0) "
-                "ELSE 0 END "
-                "FROM aw_campaign_keywordstatistic "
-                "WHERE aw_campaign_keywordstatistic.keyword_id "
-                "= keyword_tool_keyword.text",
-            ctr="SELECT "
-                "CASE WHEN Sum(impressions) > 0 "
-                "THEN COALESCE(1.0 * Sum(clicks) / Sum(impressions), 0) "
-                "ELSE 0 END "
-                "FROM aw_campaign_keywordstatistic "
-                "WHERE aw_campaign_keywordstatistic.keyword_id "
-                "= keyword_tool_keyword.text",
-            ctr_v="SELECT "
-                  "CASE WHEN Sum(video_views) > 0 "
-                  "THEN COALESCE(1.0 * Sum(clicks) / Sum(video_views), 0) "
-                  "ELSE 0 END "
-                  "FROM aw_campaign_keywordstatistic "
-                  "WHERE aw_campaign_keywordstatistic.keyword_id "
-                  "= keyword_tool_keyword.text",
-            view_rate="SELECT "
-                      "CASE WHEN Sum(impressions) > 0 "
-                      "THEN COALESCE("
-                      "1.0 * Sum(video_views) / Sum(impressions), 0) "
-                      "ELSE 0 END "
-                      "FROM aw_campaign_keywordstatistic "
-                      "WHERE aw_campaign_keywordstatistic.keyword_id "
-                      "= keyword_tool_keyword.text",
-        )
-        if sort_by in extra_selects:
-            queryset = queryset.extra(
-                select={
-                    sort_by: extra_selects[sort_by]
-                }
-            )
-        elif sort_by == 'search_volume':
+        # TODO uncomment when adwords stats will be created is saas
+        # extra_selects = dict(
+        #     cpv="SELECT "
+        #         "CASE WHEN Sum(video_views) > 0 "
+        #         "THEN COALESCE(1.0 * Sum(cost) / Sum(video_views), 0) "
+        #         "ELSE 0 END "
+        #         "FROM aw_campaign_keywordstatistic "
+        #         "WHERE aw_campaign_keywordstatistic.keyword_id "
+        #         "= keyword_tool_keyword.text",
+        #     ctr="SELECT "
+        #         "CASE WHEN Sum(impressions) > 0 "
+        #         "THEN COALESCE(1.0 * Sum(clicks) / Sum(impressions), 0) "
+        #         "ELSE 0 END "
+        #         "FROM aw_campaign_keywordstatistic "
+        #         "WHERE aw_campaign_keywordstatistic.keyword_id "
+        #         "= keyword_tool_keyword.text",
+        #     ctr_v="SELECT "
+        #           "CASE WHEN Sum(video_views) > 0 "
+        #           "THEN COALESCE(1.0 * Sum(clicks) / Sum(video_views), 0) "
+        #           "ELSE 0 END "
+        #           "FROM aw_campaign_keywordstatistic "
+        #           "WHERE aw_campaign_keywordstatistic.keyword_id "
+        #           "= keyword_tool_keyword.text",
+        #     view_rate="SELECT "
+        #               "CASE WHEN Sum(impressions) > 0 "
+        #               "THEN COALESCE("
+        #               "1.0 * Sum(video_views) / Sum(impressions), 0) "
+        #               "ELSE 0 END "
+        #               "FROM aw_campaign_keywordstatistic "
+        #               "WHERE aw_campaign_keywordstatistic.keyword_id "
+        #               "= keyword_tool_keyword.text",
+        # )
+        # if sort_by in extra_selects:
+        #     queryset = queryset.extra(
+        #         select={
+        #             sort_by: extra_selects[sort_by]
+        #         }
+        #     )
+        if sort_by == 'search_volume':
             queryset = queryset.annotate(
                 search_volume_not_null=Coalesce('search_volume', 0)
             )
@@ -175,23 +176,23 @@ class OptimizeQueryApiView(ListAPIView):
 
         # TODO uncomment when adwords stats will be created is saas
         # @staticmethod
-    # def add_ad_words_data(items):
-    #     from aw_reporting.models import KeywordStatistic
-    #     stats = KeywordStatistic.objects.filter(
-    #         keyword_id__in=set(i['keyword_text'] for i in items)
-    #     ).values('keyword_id').order_by('keyword_id').annotate(
-    #         campaigns_count=Count('ad_group__campaign_id', distinct=True),
-    #         **{n: Sum(n) for n in SUM_STATS + QUARTILE_STATS}
-    #     )
-    #     stats = {s['keyword_id']: s for s in stats}
-    #
-    #     for item in items:
-    #         item_stats = stats.get(item['keyword_text'], {})
-    #         item['campaigns_count'] = item_stats.get('campaigns_count', 0)
-    #         for s in SUM_STATS + QUARTILE_STATS:
-    #             item[s] = item_stats.get(s)
-    #         dict_quartiles_to_rates(item)
-    #         dict_add_calculated_stats(item)
+        # def add_ad_words_data(items):
+        #     from aw_reporting.models import KeywordStatistic
+        #     stats = KeywordStatistic.objects.filter(
+        #         keyword_id__in=set(i['keyword_text'] for i in items)
+        #     ).values('keyword_id').order_by('keyword_id').annotate(
+        #         campaigns_count=Count('ad_group__campaign_id', distinct=True),
+        #         **{n: Sum(n) for n in SUM_STATS + QUARTILE_STATS}
+        #     )
+        #     stats = {s['keyword_id']: s for s in stats}
+        #
+        #     for item in items:
+        #         item_stats = stats.get(item['keyword_text'], {})
+        #         item['campaigns_count'] = item_stats.get('campaigns_count', 0)
+        #         for s in SUM_STATS + QUARTILE_STATS:
+        #             item[s] = item_stats.get(s)
+        #         dict_quartiles_to_rates(item)
+        #         dict_add_calculated_stats(item)
 
 
 class ListParentApiView(APIView):
@@ -229,7 +230,6 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-
         name = self.request.data.get('name')
         keywords = self.request.data.get('keywords')
 

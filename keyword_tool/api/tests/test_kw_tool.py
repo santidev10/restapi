@@ -15,7 +15,7 @@ class KWToolAPITestCase(APITestCase):
 
     def test_get_predefined_queries(self):
         self.url = reverse(
-            "keyword_tool_api_urls:kw_tool_predefined_queries"
+            "keyword_tool_urls:kw_tool_predefined_queries"
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -23,7 +23,7 @@ class KWToolAPITestCase(APITestCase):
 
     def test_interests_list(self):
         call_command("load_product_and_services")
-        self.url = reverse("keyword_tool_api_urls:kw_tool_interests")
+        self.url = reverse("keyword_tool_urls:kw_tool_interests")
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -36,7 +36,7 @@ class KWToolAPITestCase(APITestCase):
         call_command("load_product_and_services")
         optimize_keyword.return_value = deepcopy(RESP)
         query = "pokemon"
-        self.url = reverse("keyword_tool_api_urls:kw_tool_optimize_query",
+        self.url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                            args=(query,))
         response = self.client.get(self.url)
         optimize_keyword.assert_called([query])
@@ -109,7 +109,7 @@ class KWToolAPITestCase(APITestCase):
         call_command("load_product_and_services")
         optimize_keyword.return_value = deepcopy(RESP)
         query = "pokemon"
-        url = reverse("keyword_tool_api_urls:kw_tool_optimize_query",
+        url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                       args=(query,))
         response = self.client.get(url)
         optimize_keyword.assert_called(query)
@@ -128,7 +128,7 @@ class KWToolAPITestCase(APITestCase):
              'interests': [13376, 10015]}
         ]
         query = "batman"
-        url = reverse("keyword_tool_api_urls:kw_tool_optimize_query",
+        url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                       args=(query,))
         response = self.client.get(url)
         optimize_keyword.assert_called_with(query)
@@ -137,7 +137,7 @@ class KWToolAPITestCase(APITestCase):
     @patch("keyword_tool.api.views.optimize_keyword")
     def test_optimize_query_sort_volume(self, optimize_keyword):
         optimize_keyword.return_value = deepcopy(RESP)
-        base_url = reverse("keyword_tool_api_urls:kw_tool_optimize_query",
+        base_url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                            args=("pokemon",))
 
         url = "{}?sort_by={}".format(base_url, 'search_volume')
@@ -151,7 +151,7 @@ class KWToolAPITestCase(APITestCase):
     def test_optimize_query_filter(self, optimize_keyword):
         call_command("load_product_and_services")
         optimize_keyword.return_value = deepcopy(RESP)
-        base_url = reverse("keyword_tool_api_urls:kw_tool_optimize_query",
+        base_url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                            args=("pokemon",))
 
         filters = [
