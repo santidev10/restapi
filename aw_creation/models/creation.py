@@ -223,6 +223,9 @@ class CampaignCreation(UniqueItem):
         ),
     )
 
+    class Meta:
+        ordering = ['-id']
+
     def get_devices(self):
         return json.loads(self.devices_raw)
 
@@ -390,6 +393,9 @@ class AdGroupCreation(UniqueItem):
     def set_age_ranges(self, value):
         self.age_ranges_raw = json.dumps(value)
     age_ranges = property(get_age_ranges, set_age_ranges)
+
+    class Meta:
+        ordering = ['-id']
 
     def get_aws_code(self):
         """

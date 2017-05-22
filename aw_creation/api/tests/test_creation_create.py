@@ -8,6 +8,9 @@ from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):
@@ -17,6 +20,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
 
     def test_success_post(self):
         if 'postgresql' not in settings.DATABASES['default']['ENGINE']:
+            logger.warning("This test require postgres db!")
             return
 
         from segment.models import VideoRelation, ChannelRelation, Segment

@@ -16,12 +16,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView
+    GenericAPIView, ListCreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
+    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import add_targeting_list_items_info, \
@@ -32,7 +32,9 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     OptimizationUpdateCampaignSerializer, OptimizationCreateCampaignSerializer, \
     OptimizationLocationRuleUpdateSerializer, OptimizationAdGroupUpdateSerializer, TopicHierarchySerializer, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
-    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer
+    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
+    OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
+
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
@@ -403,6 +405,39 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
         return self.retrieve(self, request, *args, **kwargs)
 
 
+class OptimizationCampaignListApiView(ListCreateAPIView):
+    serializer_class = OptimizationCampaignsSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = CampaignCreation.objects.filter(
+            account_creation__owner=self.request.user,
+            account_creation_id=pk
+        )
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        try:
+            account_creation = AccountCreation.objects.get(
+                pk=kwargs.get("pk"), owner=request.user
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        request.data['account_creation'] = account_creation.id
+        if not request.data.get('name'):
+            count = self.get_queryset().count()
+            request.data['name'] = "Campaign {}".format(count + 1)
+
+        serializer = OptimizationAppendCampaignSerializer(
+            data=request.data)
+        serializer.is_valid(raise_exception=True)
+        campaign_creation = serializer.save()
+
+        data = self.get_serializer(instance=campaign_creation).data
+        return Response(data, status=HTTP_201_CREATED)
+
+
 class OptimizationCampaignApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -508,6 +543,39 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
                     instance=instance, data=rule)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
+
+
+class OptimizationAdGroupListApiView(ListCreateAPIView):
+    serializer_class = OptimizationAdGroupSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation__owner=self.request.user,
+            campaign_creation_id=pk
+        )
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        try:
+            campaign_creation = CampaignCreation.objects.get(
+                pk=kwargs.get("pk"), account_creation__owner=request.user
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        request.data['campaign_creation'] = campaign_creation.id
+        if not request.data.get('name'):
+            count = self.get_queryset().count()
+            request.data['name'] = "Campaign {}".format(count + 1)
+
+        serializer = OptimizationAppendAdGroupSerializer(
+            data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+
+        data = self.get_serializer(instance=obj).data
+        return Response(data, status=HTTP_201_CREATED)
 
 
 class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
