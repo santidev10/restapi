@@ -1,8 +1,8 @@
-from time import sleep
-from googleads import adwords, oauth2
-from oauth2client import client
 import logging
+from time import sleep
+
 import yaml
+from googleads import adwords, oauth2
 
 logger = logging.getLogger(__name__)
 API_VERSION = 'v201609'

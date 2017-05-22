@@ -1,11 +1,13 @@
+import csv
+import re
+from datetime import datetime
+from io import StringIO
+
 from django.http import StreamingHttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
+
 from aw_reporting.demo import demo_view_decorator
-from datetime import datetime
-from io import StringIO
-import csv
-import re
 
 DATE_FORMAT = "%Y-%m-%d"
 

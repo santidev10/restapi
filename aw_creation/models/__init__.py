@@ -1,3 +1,4 @@
 from .creation import *
-from .targeting import TargetingItem
 from .optimization import *
+from .targeting import TargetingItem
+

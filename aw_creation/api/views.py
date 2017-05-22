@@ -1,26 +1,29 @@
-from django.http import StreamingHttpResponse
-from django.utils import timezone
+import calendar
+import csv
+import re
+from collections import OrderedDict
+from datetime import datetime
+from decimal import Decimal
+from io import StringIO
+
+from apiclient.discovery import build
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, Avg, When, Case, Value, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
-from django.conf import settings
-
-from rest_framework.pagination import PageNumberPagination
+from django.utils import timezone
+from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
-    dict_add_calculated_stats, Topic, Audience
-from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
-    BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
-    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
-    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
 from aw_creation.api.serializers import add_targeting_list_items_info, \
     SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
     OptimizationAccountDetailsSerializer, FrequencyCapUpdateSerializer, FrequencyCapSerializer, \
@@ -30,17 +33,12 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     OptimizationLocationRuleUpdateSerializer, OptimizationAdGroupUpdateSerializer, TopicHierarchySerializer, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
     AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer
-
-from collections import OrderedDict
-from decimal import Decimal
-from datetime import datetime
-from io import StringIO
-from openpyxl import load_workbook
-from apiclient.discovery import build
-
-import calendar
-import csv
-import re
+from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
+    BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
+    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
+    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
+from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
+    dict_add_calculated_stats, Topic, Audience
 
 
 class GeoTargetListApiView(APIView):

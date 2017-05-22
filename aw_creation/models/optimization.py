@@ -1,5 +1,6 @@
 from django.db import models
-from .creation import AccountCreation, CampaignCreation, AdGroupCreation
+
+from .creation import CampaignCreation, AdGroupCreation
 
 
 class OptimizationTuning(models.Model):
