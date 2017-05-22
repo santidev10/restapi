@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
+from django.conf import settings
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):
@@ -15,6 +16,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_post(self):
+        if 'postgresql' not in settings.DATABASES['default']['ENGINE']:
+            return
+
         from segment.models import VideoRelation, ChannelRelation, Segment
         from keyword_tool.models import KeywordsList, KeyWord
 
