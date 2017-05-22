@@ -46,7 +46,8 @@ PROJECT_APPS = (
 
 THIRD_PARTY_APPS = (
     "rest_framework",
-    "rest_framework.authtoken"
+    "rest_framework.authtoken",
+    "djcelery",
 )
 
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -150,6 +151,20 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
 
 SINGLE_DATABASE_API_URL = "https://10.0.2.39:10500/api/v1/"
+
+import djcelery
+
+djcelery.setup_loader()
+CELERY_TASK_RESULT_EXPIRES = 18000
+CELERYD_TASK_ERROR_EMAILS = False
+CELERY_RESULT_BACKEND = "redis://"
+CELERY_REDIS_HOST = "localhost"
+CELERY_REDIS_PORT = 6379
+CELERY_REDIS_DB = 0
+CELERY_ACKS_LATE = True
+CELERYD_PREFETCH_MULTIPLIER = 1
+
+BROKER_URL = "redis://localhost:6379/0"
 
 try:
     from .local_settings import *
