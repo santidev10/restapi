@@ -17,7 +17,7 @@ def update_keywords_stats(data):
             kw.competition = k.get('competition')
             kw.monthly_searches = k.get('monthly_searches', [])
             kw.search_volume = k.get('search_volume')
-            kw.save()  # lol
+            kw.save()
 
             # manage interests
             old_ids = set(
