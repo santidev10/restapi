@@ -19,7 +19,6 @@ class SingleDatabaseApiConnector(object):
     """
     single_database_api_url = settings.SINGLE_DATABASE_API_URL
 
-    
     def execute_get_call(self, *args, **kwargs):
         return self.execute_call(requests.get, *args, **kwargs)
 
@@ -105,6 +104,15 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/filters/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def get_top_channel_keywords(self, query_params):
+        """
+        Get top keywords for popular channels
+        :param query_params: dict
+        """
+        endpoint = "channels/top_keywords/"
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
