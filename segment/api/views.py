@@ -3,7 +3,7 @@ Segment api views module
 """
 from django.db.models import Q
 from rest_framework.generics import ListCreateAPIView, \
-    RetrieveUpdateDestroyAPIView
+    RetrieveUpdateDestroyAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 
@@ -137,3 +137,42 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
                 id__in=videos_to_delete_ids))
             return
         return
+
+
+class SegmentDuplicateApiView(GenericAPIView):
+    """
+    Endpoint for segment duplicate
+    """
+    serializer_class = SegmentSerializer
+
+    def get_queryset(self):
+        """
+        Prepare queryset to display
+        """
+        if self.request.user.is_staff:
+            queryset = Segment.objects.all()
+        else:
+            queryset = Segment.objects.filter(
+                Q(owner=self.request.user) |
+                ~Q(category="private"))
+        return queryset
+
+    def post(self, request, pk):
+        """
+        Make a copy of segment and attach to user
+        """
+        segment = self.get_object()
+        duplicated_segment_data = {
+            "title": "{} (copy)".format(segment.title),
+            "segment_type": segment.segment_type,
+            "category": "private",
+            "statistics": segment.statistics,
+            "mini_dash_data": segment.mini_dash_data,
+            "owner": request.user
+        }
+        duplicated_segment = Segment.objects.create(**duplicated_segment_data)
+        duplicated_segment.channels.add(*segment.channels.all())
+        duplicated_segment.videos.add(*segment.videos.all())
+        response_data = self.serializer_class(
+            duplicated_segment, context={"request": request}).data
+        return Response(response_data, status=HTTP_201_CREATED)
