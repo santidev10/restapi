@@ -1,8 +1,10 @@
+from urllib.parse import urlencode
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.models import Topic
 from saas.utils_tests import ExtendedAPITestCase
-from urllib.parse import urlencode
 
 
 class TopicToolTestCase(ExtendedAPITestCase):

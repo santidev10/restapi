@@ -1,10 +1,10 @@
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_202_ACCEPTED, HTTP_200_OK, \
-    HTTP_404_NOT_FOUND
-from saas.utils_tests import ExtendedAPITestCase
-from django.contrib.auth import get_user_model
 from urllib.parse import urlencode
+
+from django.core.urlresolvers import reverse
+from rest_framework.status import HTTP_200_OK
+
 from aw_creation.models import *
+from saas.utils_tests import ExtendedAPITestCase
 
 
 class OptimizationTargetingAPITestCase(ExtendedAPITestCase):

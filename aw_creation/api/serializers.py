@@ -1,13 +1,15 @@
-from aw_reporting.models import GeoTarget, Topic, Audience
-from aw_creation.models import TargetingItem, AdGroupCreation, \
-    CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
+import re
+
 from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     DecimalField as AggrDecimalField
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError
-import re
+
+from aw_creation.models import TargetingItem, AdGroupCreation, \
+    CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
+from aw_reporting.models import GeoTarget, Topic, Audience
 
 
 class SimpleGeoTargetSerializer(ModelSerializer):

@@ -1,18 +1,19 @@
 """
 Saas urls module
 """
-from django.conf.urls import url, include
 from django.conf import settings
+from django.conf.urls import url, include
 from django.views.generic import RedirectView
-from saas.views import ApiRootView
+
 from administration.api import urls as admin_api_urls
 from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api import urls as aw_reporting_urls
 from channel.api import urls as channel_api_urls
-from video.api import urls as video_api_urls
+from saas.views import ApiRootView
 from segment.api import urls as segment_api_urls
-from userprofile.api import urls as userprofile_api_urls
 from singledb.api import urls as singledb_api_urls
+from userprofile.api import urls as userprofile_api_urls
+from video.api import urls as video_api_urls
 
 urlpatterns = [
     # Admin api urls
