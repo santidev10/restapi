@@ -12,10 +12,10 @@ class TopicToolTestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_topic(self, name="Parent"):
-        parent = Topic.objects.create(name=name)
-        Topic.objects.create(name="Child#1", parent=parent)
-        Topic.objects.create(name="Child#2", parent=parent)
+    def create_topic(self, name="Parent", uid=10000):
+        parent = Topic.objects.create(id=uid, name=name)
+        Topic.objects.create(id=uid + 1, name="Child#1", parent=parent)
+        Topic.objects.create(id=uid + 2, name="Child#2", parent=parent)
         return parent
 
     def test_success_get(self):
@@ -39,7 +39,7 @@ class TopicToolTestCase(ExtendedAPITestCase):
 
     def test_export_list(self):
         self.create_topic("Parent#2")
-        self.create_topic("Parent#1")
+        self.create_topic("Parent#1", uid=20000)
 
         url = reverse(
             "aw_creation_urls:optimization_topic_tool_export",
@@ -55,7 +55,7 @@ class TopicToolTestCase(ExtendedAPITestCase):
 
     def test_export_list_with_ids(self):
         parent_2 = self.create_topic("Parent#2")
-        parent_1 = self.create_topic("Parent#1")
+        parent_1 = self.create_topic("Parent#1", uid=20000)
         children = parent_1.children.first()
 
         url = reverse(

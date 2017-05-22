@@ -634,6 +634,9 @@ class CreationOptionsApiView(APIView):
 class CreationAccountApiView(APIView):
 
     def post(self, request, *args, **kwargs):
+        from segment.models import Segment
+        from keyword_tool.models import KeywordsList
+
         owner = self.request.user
         data = request.data
 
@@ -644,6 +647,69 @@ class CreationAccountApiView(APIView):
         budget = data.get('budget', 0)
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
+
+        channel_lists = data.get('channel_lists', [])
+        if channel_lists:
+            channel_ids = Segment.objects.filter(
+                id__in=channel_lists
+            ).values_list("channels__channel_id", flat=True).distinct()
+
+            def set_channel_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=cid,
+                        type=TargetingItem.CHANNEL_TYPE,
+                    )
+                    for cid in channel_ids
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_channel_targeting(ad_group):
+                pass
+
+        video_lists = data.get('video_lists', [])
+        if video_lists:
+            video_ids = Segment.objects.filter(
+                id__in=video_lists
+            ).values_list("videos__video_id", flat=True).distinct()
+
+            def set_video_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=uid,
+                        type=TargetingItem.VIDEO_TYPE,
+                    )
+                    for uid in video_ids
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_video_targeting(ad_group):
+                pass
+
+        keyword_lists = data.get('keyword_lists', [])
+        if keyword_lists:
+            kws = KeywordsList.objects.filter(
+                id__in=keyword_lists
+            ).values_list("keywords__text", flat=True).distinct()
+
+            def set_kw_targeting(ad_group):
+                items = [
+                    TargetingItem(
+                        ad_group_creation=ad_group,
+                        criteria=kw,
+                        type=TargetingItem.KEYWORD_TYPE,
+                    )
+                    for kw in kws
+                ]
+                if items:
+                    TargetingItem.objects.bulk_create(items)
+        else:
+            def set_kw_targeting(ad_group):
+                pass
 
         with transaction.atomic():
             account_data = dict(
@@ -698,7 +764,10 @@ class CreationAccountApiView(APIView):
                         data=ag_data,
                     )
                     serializer.is_valid(raise_exception=True)
-                    serializer.save()
+                    ag_creation = serializer.save()
+                    set_channel_targeting(ag_creation)
+                    set_video_targeting(ag_creation)
+                    set_kw_targeting(ag_creation)
 
         age_ranges = data['age_ranges']
         parents = data['parents']
