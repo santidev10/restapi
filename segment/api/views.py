@@ -53,6 +53,10 @@ class SegmentListCreateApiView(ListCreateAPIView):
                 Q(owner=self.request.user) |
                 ~Q(category="private"))
         filters = {}
+        # search
+        search = self.request.query_params.get("search")
+        if search:
+            filters["title__icontains"] = search
         # segment type
         segment_type = self.request.query_params.get("segment_type")
         if segment_type:
