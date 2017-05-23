@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta
 from aw_reporting.models import *
-from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnector, \
+    SingleDatabaseApiConnectorException
+import logging
+
+logger = logging.getLogger(__name__)
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_CAMPAIGNS_COUNT = 2
@@ -52,51 +56,77 @@ class BaseDemo:
         lang_code='en',
         country="United States",
     )
+    channel_criteria = dict(
+        country="United States",
+    )
+
+    def get_channels(self):
+        if self._channels is None:
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="channel",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    limit=12,
+                    **self.channel_criteria
+                )
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                items = []
+            self._channels = items
+        return self._channels
+
+    def get_videos(self):
+        if self._videos is None:
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    limit=12,
+                    **self.video_criteria
+                )
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                items = []
+            self._videos = items
+        return self._videos
 
     @property
     def channel(self):
-        if self._channels is None:
-            connector = SingleDatabaseApiConnector()
-            response = connector.get_channel_list(self.video_criteria)
-            self._channels = [
-                dict(
-                    id=i['id'],
-                    label=i['title'],
-                    thumbnail=i['thumbnail_image_url'],
-                )
-                for i in response.get('items', [])
-            ]
-        return self._channels
+        channel = [
+            dict(
+                id=i['id'],
+                label=i['title'],
+                thumbnail=i['thumbnail_image_url'],
+            )
+            for i in self.get_channels()
+        ]
+        return channel
 
     @property
     def video(self):
-        if self._videos is None:
-            connector = SingleDatabaseApiConnector()
-            response = connector.get_video_list(self.video_criteria)
-            self._videos = [
-                dict(
-                    id=i['id'],
-                    label=i['title'],
-                    thumbnail=i['thumbnail_image_url'],
-                )
-                for i in response.get('items', [])
-            ]
-        return self._videos[:6]
+        video = [
+            dict(
+                id=i['id'],
+                label=i['title'],
+                thumbnail=i['thumbnail_image_url'],
+            )
+            for i in self.get_videos()[:6]
+        ]
+        return video
 
     @property
     def creative(self):
-        if self._videos is None:
-            connector = SingleDatabaseApiConnector()
-            response = connector.get_video_list(self.video_criteria)
-            self._videos = [
-                dict(
-                    id=i['id'],
-                    label=i['title'],
-                    thumbnail=i['thumbnail_image_url'],
-                )
-                for i in response.get('items', [])
-            ]
-        return self._videos[6:12]
+        creative = [
+            dict(
+                id=i['id'],
+                label=i['title'],
+                thumbnail=i['thumbnail_image_url'],
+            )
+            for i in self.get_videos()[6:12]
+        ]
+        return creative
 
     @property
     def ad(self):
