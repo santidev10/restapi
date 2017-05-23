@@ -122,7 +122,7 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
             channels_to_delete_ids = self.request.data.get(
                 "channels_to_delete") or []
             segment.channels.remove(*ChannelRelation.objects.filter(
-                id__in=channels_to_delete_ids))
+                channel_id__in=channels_to_delete_ids))
             return
         elif segment.segment_type == "video":
             # add videos
@@ -138,7 +138,7 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
             videos_to_delete_ids = self.request.data.get(
                 "videos_to_delete") or []
             segment.videos.remove(*VideoRelation.objects.filter(
-                id__in=videos_to_delete_ids))
+                video_id__in=videos_to_delete_ids))
             return
         return
 
