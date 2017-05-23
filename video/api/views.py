@@ -1,6 +1,8 @@
 """
 Video api views module
 """
+from rest_framework.permissions import IsAuthenticated
+
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
