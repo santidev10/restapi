@@ -3,6 +3,7 @@ Single database API connector module
 """
 import json
 import requests
+from urllib.parse import urlencode
 from django.conf import settings
 
 
@@ -38,12 +39,7 @@ class SingleDatabaseApiConnector(object):
         # prepare header
         headers = {"Content-Type": "application/json"}
         # prepare query params
-        params = "?{}".format(
-            "&".join(
-                ["{}={}".format(key, value)
-                 for key, value in query_params.items()]
-            )
-        )
+        params = "?{}".format(urlencode(query_params, doseq=True))
         # build url
         url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
         # execute call
@@ -168,4 +164,9 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "video_set/"
         response_data = self.execute_delete_call(endpoint, query_params, data)
+        return response_data
+
+    def get_custom_query_result(self, model_name, **params):
+        endpoint = "custom_query/{}/".format(model_name)
+        response_data = self.execute_get_call(endpoint, params)
         return response_data
