@@ -21,7 +21,7 @@ class SimpleGeoTargetSerializer(ModelSerializer):
 
     class Meta:
         model = GeoTarget
-        fields = ("id", "name")
+        fields = ("id", "name", "target_type")
 
 
 def add_targeting_list_items_info(data, list_type):
