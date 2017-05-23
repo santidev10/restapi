@@ -58,6 +58,7 @@ class BaseDemo:
     )
     channel_criteria = dict(
         country="United States",
+        is_content_safe=True,
     )
 
     def get_channels(self):
@@ -68,6 +69,7 @@ class BaseDemo:
                     model_name="channel",
                     fields=["id", "title", "thumbnail_image_url"],
                     limit=12,
+                    order_by="-details__subscribers",
                     **self.channel_criteria
                 )
             except SingleDatabaseApiConnectorException as e:
@@ -84,6 +86,7 @@ class BaseDemo:
                     model_name="video",
                     fields=["id", "title", "thumbnail_image_url"],
                     limit=12,
+                    order_by="-views",
                     **self.video_criteria
                 )
             except SingleDatabaseApiConnectorException as e:
