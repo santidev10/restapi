@@ -50,7 +50,8 @@ class OptimizeQueryApiView(ListAPIView):
         query_params = self.request.query_params
 
         if 'sort_by' in query_params and query_params['sort_by'] in (
-                'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate'):
+                'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate',
+                'competition', 'average_cpc'):
             sort_by = query_params['sort_by']
         else:
             sort_by = 'search_volume'
