@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(SingledbApiView):
@@ -16,9 +17,11 @@ class VideoListFiltersApiView(SingledbApiView):
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
+    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
 
 
 class VideoSetApiView(SingledbApiView):
+    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_videos

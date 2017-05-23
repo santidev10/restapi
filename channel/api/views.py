@@ -2,10 +2,12 @@
 Channel api views module
 """
 from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import Segment
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
@@ -67,9 +69,11 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
+    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 
 
 class ChannelSetApiView(SingledbApiView):
+    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_channels
