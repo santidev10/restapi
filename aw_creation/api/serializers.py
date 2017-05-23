@@ -28,6 +28,7 @@ def add_targeting_list_items_info(data, list_type):
     ids = set(i['criteria'] for i in data)
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
+
             info = {}   # Channel.objects.in_bulk(ids)
             for item in data:
                 item_info = info.get(item['criteria'])

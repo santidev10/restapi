@@ -1,11 +1,10 @@
 from urllib.parse import urlencode
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from singledb.models import Channel
-
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class TargetingListTestCase(ExtendedAPITestCase):
@@ -28,24 +27,28 @@ class TargetingListTestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         ad_group = self.create_ad_group()
-        for i in range(10):
-            uid = "channel_id_{}".format(i)
-            Channel.objects.create(id=uid)
+        ids = (
+            "UC-lHJZR3Gqxm24_Vd_AJ5Yw", "UCZJ7m7EnCNodqnu5SAtg8eQ",
+            "UCHkj014U2CQ2Nv0UZeYpE_A", "UCBR8-60-B28hp2BmDPdntcQ",
+            "UC2xskkQVFEpLcGFnNSLQY0A", "UCXazgXDIYyWH-yXLAkcrFxw"
+        )
+        for i, uid in enumerate(ids):
             TargetingItem.objects.create(
                 criteria=uid,
                 ad_group_creation=ad_group,
                 type=TargetingItem.CHANNEL_TYPE,
                 is_negative=i % 2,
             )
-
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting",
-            args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
-        )
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            url = reverse(
+                "aw_creation_urls:optimization_ad_group_targeting",
+                args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
+            )
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 10)
+        self.assertEqual(len(response.data), len(ids))
         self.assertEqual(
             set(response.data[0].keys()),
             {
@@ -55,10 +58,12 @@ class TargetingListTestCase(ExtendedAPITestCase):
                 'thumbnail',
             }
         )
+        self.assertIsNotNone(response.data[0]['name'])
+        self.assertIsNotNone(response.data[0]['thumbnail'])
         self.assertIs(
-            any(i['is_negative'] for i in response.data[:5]), False)
+            any(i['is_negative'] for i in response.data[:3]), False)
         self.assertIs(
-            all(i['is_negative'] for i in response.data[5:]), True)
+            all(i['is_negative'] for i in response.data[3:]), True)
 
     def test_success_post(self):
         ad_group = self.create_ad_group()
