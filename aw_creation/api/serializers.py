@@ -1,5 +1,3 @@
-import re
-
 from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     DecimalField as AggrDecimalField
@@ -10,6 +8,12 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
 from aw_reporting.models import GeoTarget, Topic, Audience
+from singledb.connector import SingleDatabaseApiConnector, \
+    SingleDatabaseApiConnectorException
+import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleGeoTargetSerializer(ModelSerializer):
@@ -28,21 +32,40 @@ def add_targeting_list_items_info(data, list_type):
     ids = set(i['criteria'] for i in data)
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="channel",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=ids,
+                )
+                info = {i['id']: i for i in items}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                info = {}
 
-            info = {}   # Channel.objects.in_bulk(ids)
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['name'] = item_info.title if item_info else None
-                item['thumbnail'] = item_info.thumbnail_image_url \
-                    if item_info else None
+                item_info = info.get(item['criteria'], {})
+                item['name'] = item_info.get("title")
+                item['thumbnail'] = item_info.get("thumbnail_image_url")
 
         elif list_type == TargetingItem.VIDEO_TYPE:
-            info = {}  # Video.objects.in_bulk(ids)
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=ids,
+                )
+                info = {i['id']: i for i in items}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                info = {}
+
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['name'] = item_info.title if item_info else None
-                item['thumbnail'] = item_info.thumbnail_image_url \
-                    if item_info else None
+                item_info = info.get(item['criteria'], {})
+                item['name'] = item_info.get("title")
+                item['thumbnail'] = item_info.get("thumbnail_image_url")
 
         elif list_type == TargetingItem.TOPIC_TYPE:
             info = dict(
