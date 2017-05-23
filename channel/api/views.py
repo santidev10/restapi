@@ -52,7 +52,6 @@ class ChannelListApiView(APIView):
                 "channel_id", flat=True)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
-            # TODO we can't be sure that all segment channels are still in SDB
         # make call
         connector = Connector()
         try:
