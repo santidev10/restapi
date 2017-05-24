@@ -6,8 +6,14 @@ from io import StringIO
 from django.http import StreamingHttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
-
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, \
+    HTTP_500_INTERNAL_SERVER_ERROR
+from oauth2client import client
+import requests
+from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
+from aw_reporting.models import AWConnection
 
 DATE_FORMAT = "%Y-%m-%d"
 
@@ -282,5 +288,104 @@ class TrackAccountsDataApiView(TrackApiBase):
 
     def get(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
+
+
+class ConnectAWAccountApiView(APIView):
+
+    scopes = (
+        'https://www.googleapis.com/auth/adwords',
+        'https://www.googleapis.com/auth/userinfo.email',
+    )
+    lost_perm_error = "You have already provided access to your accounts" \
+                      " but we've lost it. Please, visit " \
+                      "https://myaccount.google.com/permissions and " \
+                      "remove our application's connection " \
+                      "then try again"
+
+    # first step
+    def get(self, request, *args, **kwargs):
+        redirect_url = self.get_redirect_url()
+        if not redirect_url:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=dict(error="Required query param: 'redirect_url'")
+            )
+
+        flow = self.get_flow(redirect_url)
+        authorize_url = flow.step1_get_authorize_url()
+        return Response(dict(authorize_url=authorize_url))
+
+    # second step
+    def post(self, request, *args, **kwargs):
+        redirect_url = self.get_redirect_url()
+        if not redirect_url:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=dict(error="Required query param: 'redirect_url'")
+            )
+
+        code = request.data.get("code")
+        if not code:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=dict(error="Required: 'code'")
+            )
+
+        flow = self.get_flow(redirect_url)
+        try:
+            credential = flow.step2_exchange(code)
+        except client.FlowExchangeError as e:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=dict(error='Authentication has failed: %s' % e)
+            )
+        else:
+            access_token = credential.access_token
+            refresh_token = credential.refresh_token
+
+            url = "https://www.googleapis.com/oauth2/v3/tokeninfo?" \
+                  "access_token={}".format(access_token)
+            token_info = requests.get(url).json()
+
+            try:
+                connection = AWConnection.objects.get(email=token_info['email'])
+            except AWConnection.DoesNotExist:
+                if refresh_token:
+                    connection = AWConnection.objects.create(
+                        email=token_info['email'],
+                        refresh_token=refresh_token,
+                    )
+                else:
+                    return Response(
+                        data=dict(error=self.lost_perm_error),
+                        status=HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+
+            self.request.user.aw_connections.add(connection)
+
+            aw_settings = load_web_app_settings()
+            customers = get_customers(refresh_token, **aw_settings)
+            print(customers)
+
+            return Response(data={})
+
+    def get_flow(self, redirect_url):
+        aw_settings = load_web_app_settings()
+        flow = client.OAuth2WebServerFlow(
+            client_id=aw_settings.get("client_id"),
+            client_secret=aw_settings.get("client_secret"),
+            scope=self.scopes,
+            user_agent=aw_settings.get("user_agent"),
+            redirect_uri=redirect_url,
+        )
+        return flow
+
+    def get_redirect_url(self):
+        rf = self.request.META.get('HTTP_REFERER')
+        redirect_url = self.request.query_params.get("redirect_url", rf)
+        return redirect_url
+
+
+
 
 

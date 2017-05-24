@@ -83,6 +83,13 @@ def dict_quartiles_to_rates(data):
             del data[qf]
 
 
+class AWConnection(models.Model):
+    email = models.EmailField(primary_key=True)
+    refresh_token = models.CharField(max_length=150)
+    users = models.ManyToManyField('userprofile.userprofile',
+                                   related_name="aw_connections")
+
+
 class Account(models.Model):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250, null=True)

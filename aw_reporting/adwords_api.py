@@ -14,6 +14,24 @@ def load_settings():
     return conf.get('adwords', {})
 
 
+def load_web_app_settings():
+    with open('aw_reporting/ad_words_web.yaml', 'r') as f:
+        conf = yaml.load(f)
+    return conf
+
+
+def get_customers(refresh_token, **kwargs):
+    aw_client = get_client(
+        client_customer_id=None,
+        refresh_token=refresh_token,
+        **kwargs
+    )
+    customer_service = aw_client.GetService(
+        'CustomerService', version=API_VERSION
+    )
+    return customer_service.getCustomers()
+
+
 def get_client(**kwargs):
     api_settings = load_settings()
     api_settings.update(kwargs)
