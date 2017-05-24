@@ -165,7 +165,7 @@ class Segment(Model):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(videos_ids),
                         "fields": "id,title,description,thumbnail_image_url,"
-                                  "views,likes,dislikes,chart_data,"
+                                  "views,likes,dislikes,"
                                   "comments,views_history,history_date",
                         "flat": 1}
         connector = Connector()
