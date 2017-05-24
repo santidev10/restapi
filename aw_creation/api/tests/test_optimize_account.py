@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_creation.models import *
 from aw_reporting.models import *
@@ -227,7 +227,6 @@ class AccountAPITestCase(ExtendedAPITestCase):
                       args=(ac.id,))
 
         request_data = dict(
-            is_approved=True,
             is_paused=True,
             is_ended=True,
             video_networks=[
@@ -239,13 +238,30 @@ class AccountAPITestCase(ExtendedAPITestCase):
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['is_approved'], True)
         self.assertEqual(response.data['is_paused'], True)
         self.assertEqual(response.data['is_ended'], True)
         self.assertEqual(
             set(i['id'] for i in response.data['video_networks']),
             set(request_data['video_networks']),
         )
+
+    def test_fail_approve(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ac = self.create_account(**defaults)
+        url = reverse("aw_creation_urls:optimization_account",
+                      args=(ac.id,))
+        data = dict(
+            is_approved=True,
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
 
 

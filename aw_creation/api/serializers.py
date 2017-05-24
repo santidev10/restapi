@@ -551,6 +551,12 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
                     "Cannot target display network without first "
                     "targeting YouTube video network")
 
+        if data.get("is_approved") is True:
+            raise ValidationError(
+                "You cannot approve account creations "
+                "unless you have at least one connected MCC account"
+            )
+
         return super(OptimizationUpdateAccountSerializer, self).validate(data)
 
 

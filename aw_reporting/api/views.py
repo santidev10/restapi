@@ -24,6 +24,10 @@ class AnalyzeAccountsListApiView(ListAPIView):
 
 @demo_view_decorator
 class AnalyzeAccountCampaignsListApiView(APIView):
+    """
+    Return a list of the account's campaigns/ad-groups
+    We use it to build filters
+    """
 
     def get(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
@@ -31,6 +35,14 @@ class AnalyzeAccountCampaignsListApiView(APIView):
 
 @demo_view_decorator
 class AnalyzeDetailsApiView(APIView):
+    """
+    Send filters to get the account's details
+
+    Body example:
+    {}
+    or
+    {"start": "2017-05-01", "end": "2017-06-01", "campaigns": ["1", "2"], "ad_groups": ["11", "12"]}
+    """
 
     def get_filters(self):
         data = self.request.data
@@ -52,6 +64,13 @@ class AnalyzeDetailsApiView(APIView):
 
 @demo_view_decorator
 class AnalyzeChartApiView(APIView):
+    """
+    Send filters to get data for charts
+
+    Body example:
+
+    {"indicator": "impressions", "dimension": "device"}
+    """
 
     def get_filters(self):
         data = self.request.data
@@ -75,6 +94,13 @@ class AnalyzeChartApiView(APIView):
 
 @demo_view_decorator
 class AnalyzeChartItemsApiView(APIView):
+    """
+    Send filters to get a list of targeted items
+
+    Body example:
+
+    {"segmented": false}
+    """
 
     def get_filters(self):
         data = self.request.data
@@ -97,6 +123,13 @@ class AnalyzeChartItemsApiView(APIView):
 
 @demo_view_decorator
 class AnalyzeExportApiView(APIView):
+    """
+    Send filters to download a csv report
+
+    Body example:
+
+    {"campaigns": ["1", "2"]}
+    """
 
     def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
@@ -155,6 +188,13 @@ class AnalyzeExportApiView(APIView):
 
 @demo_view_decorator
 class AnalyzeExportWeeklyReport(APIView):
+    """
+    Send filters to download weekly report
+
+    Body example:
+
+    {"campaigns": ["1", "2"]}
+    """
 
     def get_filters(self):
         data = self.request.data
@@ -216,6 +256,9 @@ class TrackApiBase(APIView):
 
 @demo_view_decorator
 class TrackFiltersListApiView(TrackApiBase):
+    """
+    Lists of the filter names and values
+    """
 
     def get(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
@@ -223,6 +266,9 @@ class TrackFiltersListApiView(TrackApiBase):
 
 @demo_view_decorator
 class TrackChartApiView(TrackApiBase):
+    """
+    Returns data we need to build charts
+    """
 
     def get(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
@@ -230,6 +276,10 @@ class TrackChartApiView(TrackApiBase):
 
 @demo_view_decorator
 class TrackAccountsDataApiView(TrackApiBase):
+    """
+    Returns a list of accounts for the table below the chart
+    """
+
     def get(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 
