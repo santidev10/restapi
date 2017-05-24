@@ -47,6 +47,7 @@ def add_targeting_list_items_info(data, list_type):
 
             for item in data:
                 item_info = info.get(item['criteria'], {})
+                item['id'] = item_info.get("id")
                 item['name'] = item_info.get("title")
                 item['thumbnail'] = item_info.get("thumbnail_image_url")
 
@@ -65,6 +66,7 @@ def add_targeting_list_items_info(data, list_type):
 
             for item in data:
                 item_info = info.get(item['criteria'], {})
+                item['id'] = item_info.get("id")
                 item['name'] = item_info.get("title")
                 item['thumbnail'] = item_info.get("thumbnail_image_url")
 
