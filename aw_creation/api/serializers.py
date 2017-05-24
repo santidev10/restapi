@@ -752,7 +752,7 @@ class OptimizationFiltersCampaignSerializer(ModelSerializer):
               optimization_tuning__kpi=self.kpi) |
             Q(campaign_creation__optimization_tuning__value__isnull=False,
               campaign_creation__optimization_tuning__kpi=self.kpi)
-        )
+        ).distinct()
         items = OptimizationFiltersAdGroupSerializer(queryset, many=True).data
         return items
 

@@ -26,6 +26,11 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             kpi=OptimizationTuning.IMPRESSIONS_KPI,
             value="12.345"
         )
+        CampaignOptimizationTuning.objects.create(
+            item=campaign_creation,
+            kpi=OptimizationTuning.VIEW_RATE_KPI,
+            value="2.2"
+        )
         AdGroupCreation.objects.create(
             name="AdGroup without tuning",
             campaign_creation=campaign_creation,
@@ -61,6 +66,11 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             item=ad_group_creation,
             kpi=OptimizationTuning.IMPRESSIONS_KPI,
             value="12.345",
+        )
+        AdGroupOptimizationTuning.objects.create(
+            item=ad_group_creation,
+            kpi=OptimizationTuning.VIEW_RATE_KPI,
+            value="2.2",
         )
         AdGroupCreation.objects.create(
             name="AdGroup without tuning",
