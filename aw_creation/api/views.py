@@ -34,7 +34,6 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
     AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
     OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
-
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\

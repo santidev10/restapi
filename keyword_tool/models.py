@@ -1,9 +1,11 @@
-from django.db import models
-from django.db.utils import IntegrityError
-from .tasks import update_keywords_stats
 import json
-from django.db import transaction
 import logging
+
+from django.db import models
+from django.db import transaction
+from django.db.utils import IntegrityError
+
+from .tasks import update_keywords_stats
 
 logger = logging.getLogger(__name__)
 

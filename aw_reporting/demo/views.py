@@ -1,10 +1,12 @@
+from datetime import datetime
+
 from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from .charts import DemoChart
 from .models import DemoAccount, DEMO_ACCOUNT_ID
-from datetime import datetime
 
 
 class AnalyzeAccountsListApiView:
