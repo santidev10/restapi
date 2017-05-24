@@ -44,6 +44,11 @@ from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
 
 
 class GeoTargetListApiView(APIView):
+    """
+    Returns a list of geo-targets, limit is 100
+    Accepts ?search=kharkiv parameter
+    """
+
 
     queryset = GeoTarget.objects.all().order_by('name')
     serializer_class = SimpleGeoTargetSerializer
@@ -84,6 +89,13 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
+    """
+    Send a post request with multipart-ford-data encoded file data
+    key: 'file'
+    will return
+    {"result":[{"name":"94002,California,United States","id":9031903}, ..],
+                "undefined":[]}
+    """
 
     def post(self, request, content_type, **_):
         file_obj = request.data['file']
@@ -598,6 +610,10 @@ class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
 
 
 class CreationOptionsApiView(APIView):
+    """
+    Returns a list of fields (with values sometimes)
+    that could be sent during the account creation process
+    """
 
     @staticmethod
     def get(*_, **k):
@@ -700,6 +716,11 @@ class CreationOptionsApiView(APIView):
 
 
 class CreationAccountApiView(APIView):
+    """
+    Accepts POST request and creates an account
+    Example body:
+    {"video_ad_format":"TRUE_VIEW_IN_STREAM","name":"T-800","campaign_count":2,"ad_group_count":2,"ct_overlay_text":"be be bee","display_url":"https://saas-rc.channelfactory.com/","final_url":"https://saas-rc.channelfactory.com/","video_url":"https://youtube.com/video/OPYcFQxsKlQ","genders":["GENDER_FEMALE","GENDER_MALE"],"parents":["PARENT_PARENT","PARENT_NOT_A_PARENT","PARENT_UNDETERMINED"],"age_ranges":["AGE_RANGE_18_24","AGE_RANGE_25_34","AGE_RANGE_35_44","AGE_RANGE_45_54","AGE_RANGE_55_64","AGE_RANGE_65_UP"],"languages":[1000,1036],"location_rules":[{"latitude":40.7127837,"longitude":-74.005941,"geo_target":200501,"east":-73.700272,"north":40.9152555,"south":40.4960439,"west":-74.255734}],"devices":["DESKTOP_DEVICE","MOBILE_DEVICE"],"frequency_capping":[{"event_type":"IMPRESSION","level":"CAMPAIGN","limit":5,"time_unit":"DAY"}],"start":"2017-05-24","end":"2017-05-31","budget":100,"goal_units":1000,"goal_type":"GOAL_VIDEO_VIEWS","max_rate":5,"channel_lists":[],"video_lists":[],"interest_lists":[],"topic_lists":[],"keyword_lists":[]}
+    """
 
     def post(self, request, *args, **kwargs):
         from segment.models import Segment
