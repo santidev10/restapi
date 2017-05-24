@@ -1,11 +1,10 @@
 from urllib.parse import urlencode
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from singledb.models import Channel
-
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class TargetingListTestCase(ExtendedAPITestCase):
@@ -28,24 +27,26 @@ class TargetingListTestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         ad_group = self.create_ad_group()
-        for i in range(10):
-            uid = "channel_id_{}".format(i)
-            Channel.objects.create(id=uid)
+        ids = (
+            "UC-lHJZR3Gqxm24_Vd_AJ5Yw", "UCZJ7m7EnCNodqnu5SAtg8eQ",
+            "UCHkj014U2CQ2Nv0UZeYpE_A", "UCBR8-60-B28hp2BmDPdntcQ",
+            "UC2xskkQVFEpLcGFnNSLQY0A", "UCXazgXDIYyWH-yXLAkcrFxw"
+        )
+        for i, uid in enumerate(ids):
             TargetingItem.objects.create(
                 criteria=uid,
                 ad_group_creation=ad_group,
                 type=TargetingItem.CHANNEL_TYPE,
                 is_negative=i % 2,
             )
+        url = reverse("aw_creation_urls:optimization_ad_group_targeting",
+                      args=(ad_group.id, TargetingItem.CHANNEL_TYPE))
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
 
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting",
-            args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
-        )
-
-        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 10)
+        self.assertEqual(len(response.data), len(ids))
         self.assertEqual(
             set(response.data[0].keys()),
             {
@@ -55,10 +56,12 @@ class TargetingListTestCase(ExtendedAPITestCase):
                 'thumbnail',
             }
         )
+        self.assertIsNotNone(response.data[0]['name'])
+        self.assertIsNotNone(response.data[0]['thumbnail'])
         self.assertIs(
-            any(i['is_negative'] for i in response.data[:5]), False)
+            any(i['is_negative'] for i in response.data[:3]), False)
         self.assertIs(
-            all(i['is_negative'] for i in response.data[5:]), True)
+            all(i['is_negative'] for i in response.data[3:]), True)
 
     def test_success_post(self):
         ad_group = self.create_ad_group()
@@ -81,10 +84,11 @@ class TargetingListTestCase(ExtendedAPITestCase):
             {'criteria': 'another_channel_3', "is_negative": True},
             "another_channel_4",
         ]
-
-        response = self.client.post(
-            url, json.dumps(data), content_type='application/json',
-        )
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(data), content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 14)
         self.assertEqual(
@@ -96,9 +100,9 @@ class TargetingListTestCase(ExtendedAPITestCase):
             }
         )
         self.assertEqual(response.data[8]['criteria'], data[2]['criteria'])
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
@@ -123,10 +127,11 @@ class TargetingListTestCase(ExtendedAPITestCase):
             {'criteria': 'channel_id_4', "is_negative": True},
             "channel_id_5",
         ]
-
-        response = self.client.delete(
-            url, json.dumps(data), content_type='application/json',
-        )
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.delete(
+                url, json.dumps(data), content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 6)
         self.assertEqual(
@@ -140,9 +145,9 @@ class TargetingListTestCase(ExtendedAPITestCase):
                 'channel_id_9',
             }
         )
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
@@ -159,14 +164,13 @@ class TargetingListTestCase(ExtendedAPITestCase):
             "aw_creation_urls:optimization_ad_group_targeting_export",
             args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
         )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
         url = "{}?{}".format(
             str(url),
             urlencode({'auth_token': self.user.auth_token.key}),
         )
-        response = self.client.get(url)
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
         self.assertEqual(len(lines), 11)
@@ -178,15 +182,17 @@ class TargetingListTestCase(ExtendedAPITestCase):
             "aw_creation_urls:optimization_ad_group_targeting_import",
             args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
         )
-        with open('aw_campaign_creation/fixtures/'
-                  'import_channels_list.csv', 'rb') as fp:
-            response = self.client.post(url, {'file': fp},
-                                        format='multipart')
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            with open('aw_creation/fixtures/import_channels_list.csv',
+                      'rb') as fp:
+                response = self.client.post(url, {'file': fp},
+                                            format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
-        ad_group.campaign_management.account_management.refresh_from_db()
+        ad_group.campaign_creation.account_creation.refresh_from_db()
         self.assertIs(
-            ad_group.campaign_management.account_management.is_changed,
+            ad_group.campaign_creation.account_creation.is_changed,
             True,
         )
 
