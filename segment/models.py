@@ -178,7 +178,7 @@ class Segment(Model):
         response_videos_ids = {obj.get("id") for obj in response_data}
         ids_difference = set(videos_ids) - response_videos_ids
         if ids_difference:
-            VideoRelation.object.filter(id__in=ids_difference).delete()
+            VideoRelation.objects.filter(video_id__in=ids_difference).delete()
         videos_count = self.videos.count()
         # all channels we dropped from SDB
         if not videos_count:
