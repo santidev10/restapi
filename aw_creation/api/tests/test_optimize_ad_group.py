@@ -149,6 +149,54 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_fail_set_max_rate(self):
+        """
+        SAAS-158: CPv that is entered on ad group level
+        should be less than Max CPV at placement level
+        :return:
+        """
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            max_rate="0.075",  # max rate at campaign level
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group_creation.id,))
+        data = dict(
+            max_rate="0.076",   # max rate at ad group level
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_set_max_rate(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            max_rate="0.075",  # max rate at campaign level
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group_creation.id,))
+        data = dict(
+            max_rate="0.075",   # max rate at ad group level
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+
 
 
 

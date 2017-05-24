@@ -10,6 +10,7 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
 from aw_reporting.models import GeoTarget, Topic, Audience
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from decimal import Decimal
 import re
 import logging
 
@@ -639,6 +640,17 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
             if f in data and not data[f]:
                 raise ValidationError(
                     "{}: empty set is not allowed".format(f))
+
+        # SAAS-158: CPv that is entered on ad group level
+        # should be less than Max CPV at placement level
+        if "max_rate" in data and self.instance:
+            campaign_rate = self.instance.campaign_creation.max_rate
+            if campaign_rate is not None:
+                if Decimal(data['max_rate']) > campaign_rate:
+                    raise ValidationError(
+                        "Max rate at ad group level shouldn't be bigger "
+                        "than the max rate at placement level"
+                    )
 
         # approving process
         if self.instance and data.get("is_approved") is True:
