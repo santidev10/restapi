@@ -120,6 +120,7 @@ class SegmentSerializer(ModelSerializer):
     Segment retrieve serializer
     """
     is_editable = SerializerMethodField()
+    owner = SerializerMethodField()
 
     class Meta:
         """
@@ -133,7 +134,8 @@ class SegmentSerializer(ModelSerializer):
             "category",
             "statistics",
             "mini_dash_data",
-            "is_editable"
+            "is_editable",
+            "owner"
         )
 
     def get_is_editable(self, obj):
@@ -142,3 +144,11 @@ class SegmentSerializer(ModelSerializer):
         """
         user = self.context.get("request").user
         return user.is_staff or user == obj.owner
+
+    def get_owner(self, obj):
+        """
+        Owner first name + last name
+        """
+        if obj.owner:
+            return obj.owner.get_full_name()
+        return

@@ -1,8 +1,9 @@
+import logging
 from datetime import datetime, timedelta
+
 from aw_reporting.models import *
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-import logging
 
 logger = logging.getLogger(__name__)
 

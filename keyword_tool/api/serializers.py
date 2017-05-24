@@ -1,6 +1,7 @@
-from keyword_tool.models import KeyWord, Interest, KeywordsList
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
+
+from keyword_tool.models import KeyWord, Interest, KeywordsList
 
 
 class InterestsSerializer(ModelSerializer):
