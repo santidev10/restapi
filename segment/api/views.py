@@ -5,7 +5,7 @@ from django.db.models import Q
 from rest_framework.generics import ListCreateAPIView, \
     RetrieveUpdateDestroyAPIView, GenericAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_403_FORBIDDEN
 
 from segment.api.serializers import SegmentCreateSerializer, SegmentSerializer, \
     SegmentUpdateSerializer
@@ -92,6 +92,9 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
         Allow partial update
         """
         segment = self.get_object()
+        user = request.user
+        if not (user.is_staff or segment.owner == user):
+            return Response(status=HTTP_403_FORBIDDEN)
         serializer_context = {"request": request}
         serializer = self.update_serializer_class(
             instance=segment, data=request.data,
