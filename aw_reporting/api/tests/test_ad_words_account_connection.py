@@ -41,7 +41,7 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
         response = self.client.post(
             url,
             json.dumps(dict(
-                code="4/22ojfG8DUiYsufjH4Trw0kqy1m5Y7TMN03vEGu4jZGo#"
+                code="4/9oRTm3ncy0vqFWuaYSUCxD2cLzW8b-H4kyGKXhS4R8U#"
             )),
             content_type='application/json',
         )

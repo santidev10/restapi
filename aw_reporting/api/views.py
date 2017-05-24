@@ -361,11 +361,21 @@ class ConnectAWAccountApiView(APIView):
                         status=HTTP_500_INTERNAL_SERVER_ERROR,
                     )
 
-            self.request.user.aw_connections.add(connection)
+            customers = get_customers(
+                connection.refresh_token,
+                **load_web_app_settings()
+            )
+            mcc_accounts = list(filter(
+                lambda i: i['canManageClients'] and not i['testAccount'],
+                customers,
+            ))
+            if not mcc_accounts:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data=dict(error="This account don't have access to ")
+                )
 
-            aw_settings = load_web_app_settings()
-            customers = get_customers(refresh_token, **aw_settings)
-            print(customers)
+            self.request.user.aw_connections.add(connection)
 
             return Response(data={})
 
