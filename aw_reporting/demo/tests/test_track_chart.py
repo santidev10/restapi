@@ -63,6 +63,25 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         trend = response.data[0]['data'][0]['trend']
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
 
+    def test_success_hourly_today(self):
+        url = reverse("aw_reporting_urls:track_chart")
+        today = datetime.now().date()
+        filters = dict(
+            start_date=today,
+            end_date=today,
+            indicator="impressions",
+            breakdown="hourly",
+        )
+        url = "{}?{}".format(url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = response.data[0]['data'][0]['trend']
+        self.assertEqual(
+            len(trend), datetime.now().hour,
+            "today's hourly chart "
+            "contains only points for the passed hours"
+        )
+
     def test_get_from_future(self):
         url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
