@@ -581,6 +581,27 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
             'max_rate',
         )
 
+    def validate(self, data):
+        if "devices" in data and not data["devices"]:
+            raise ValidationError("devices: empty set is not allowed")
+
+        # approving process
+        if self.instance and data.get("is_approved") is True:
+            required_fields = ("start", "end", "budget", "max_rate",
+                               "goal_units")
+            empty_fields = [
+                f for f in required_fields
+                if not getattr(self.instance, f)
+            ]
+            if empty_fields:
+                raise ValidationError(
+                    'These fields are required for approving: '
+                    '{}'.format(empty_fields)
+                )
+
+        return super(OptimizationUpdateCampaignSerializer,
+                     self).validate(data)
+
 
 class OptimizationAppendCampaignSerializer(ModelSerializer):
 
@@ -618,6 +639,21 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
             if f in data and not data[f]:
                 raise ValidationError(
                     "{}: empty set is not allowed".format(f))
+
+        # approving process
+        if self.instance and data.get("is_approved") is True:
+            required_fields = ("max_rate", "video_url", "display_url",
+                               "final_url")
+            empty_fields = [
+                f for f in required_fields
+                if not getattr(self.instance, f)
+            ]
+            if empty_fields:
+                raise ValidationError(
+                    'These fields are required for approving: '
+                    '{}'.format(empty_fields)
+                )
+
         return super(OptimizationAdGroupUpdateSerializer,
                      self).validate(data)
 
