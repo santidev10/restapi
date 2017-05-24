@@ -1,12 +1,8 @@
 """
 Video api views module
 """
-from rest_framework.permissions import IsAuthenticated
-
-from singledb.api.views.base import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
@@ -15,6 +11,8 @@ from segment.models import Segment
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
 
 class VideoListApiView(APIView):
     """
