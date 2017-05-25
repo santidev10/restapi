@@ -10,6 +10,7 @@ from django.db.models import Model, CharField
 from segment.mini_dash import SegmentMiniDashGenerator
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from utils.models import Timestampable
 
 AVAILABLE_SEGMENT_TYPES = (
     "channel",
@@ -46,7 +47,7 @@ class VideoRelation(Model):
     video_id = CharField(max_length=30, primary_key=True)
 
 
-class Segment(Model):
+class Segment(Timestampable):
     """
     Main segment model
     """
