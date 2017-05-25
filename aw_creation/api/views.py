@@ -9,7 +9,7 @@ from io import StringIO
 from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Avg, When, Case, Value, \
+from django.db.models import Q, Avg, Max, When, Case, Value, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -344,21 +344,42 @@ class OptimizationAccountListApiView(ListAPIView):
         if sort_by != "name":
             sort_by = "-created_at"
 
+        today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
             owner=self.request.user, **filters
-        ).order_by(sort_by)
+        ).annotate(
+            campaigns_status=Max(
+                Case(
+                    When(
+                        campaign_creations__end__lt=today,
+                        then=Value(2),  # ended
+                    ),
+                    When(
+                        campaign_creations__end__gte=today,
+                        then=Value(1),  # live
+                    ),
+                    default=Value(0),
+                    output_field=AggrIntegerField()
+                )
+            )
+        ).annotate(
+            ended_status=Case(
+                When(
+                    campaigns_status__lt=2,
+                    is_ended=False,
+                    then=Value(0),  # shown by default
+                ),
+                default=Value(1),
+                output_field=AggrIntegerField()
+            )
+        ).order_by('ended_status', sort_by)
         return queryset
 
     def filter_queryset(self, queryset):
-        now = timezone.now()
         if not self.request.query_params.get('show_closed', False):
-            ids = list(
-                queryset.filter(
-                    Q(campaign_creations__end__isnull=True) |
-                    Q(campaign_creations__end__gte=now)
-                ).values_list('id', flat=True).distinct()
+            queryset = queryset.filter(
+                ended_status__lt=1,
             )
-            queryset = queryset.filter(id__in=ids)
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(name__icontains=search)

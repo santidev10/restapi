@@ -124,6 +124,11 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             url, json.dumps(data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['non_field_errors'][0],
+            "These fields are required for approving: "
+            "max CPV, video URL, display URL, final URL"
+        )
 
     def test_success_approve(self):
         today = datetime.now().date()

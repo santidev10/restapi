@@ -11,6 +11,7 @@ from aw_reporting.models import GeoTarget, Topic, Audience
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from decimal import Decimal
+from collections import OrderedDict
 import re
 import logging
 
@@ -596,16 +597,21 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
 
         # approving process
         if self.instance and data.get("is_approved") is True:
-            required_fields = ("start", "end", "budget", "max_rate",
-                               "goal_units")
+            required_fields = OrderedDict([
+                ("start", "start date"),
+                ("end", "end date"),
+                ("budget", "budget"),
+                ("max_rate", "max rate"),
+                ("goal_units", "goal"),
+            ])
             empty_fields = [
-                f for f in required_fields
+                required_fields[f] for f in required_fields
                 if not getattr(self.instance, f)
             ]
             if empty_fields:
                 raise ValidationError(
                     'These fields are required for approving: '
-                    '{}'.format(empty_fields)
+                    '{}'.format(", ".join(empty_fields))
                 )
 
         return super(OptimizationUpdateCampaignSerializer,
@@ -662,16 +668,20 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
 
         # approving process
         if self.instance and data.get("is_approved") is True:
-            required_fields = ("max_rate", "video_url", "display_url",
-                               "final_url")
+            required_fields = OrderedDict([
+                ("max_rate", "max CPV"),
+                ("video_url", "video URL"),
+                ("display_url", "display URL"),
+                ("final_url", "final URL"),
+            ])
             empty_fields = [
-                f for f in required_fields
+                required_fields[f] for f in required_fields
                 if not getattr(self.instance, f)
             ]
             if empty_fields:
                 raise ValidationError(
                     'These fields are required for approving: '
-                    '{}'.format(empty_fields)
+                    '{}'.format(", ".join(empty_fields))
                 )
 
         return super(OptimizationAdGroupUpdateSerializer,

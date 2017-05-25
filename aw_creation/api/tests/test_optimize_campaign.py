@@ -154,6 +154,11 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['non_field_errors'][0],
+            "These fields are required for approving: "
+            "start date, end date, budget, max rate, goal"
+        )
 
     def test_success_approve(self):
         account_creation = AccountCreation.objects.create(
