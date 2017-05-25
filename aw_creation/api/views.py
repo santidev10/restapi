@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
 from rest_framework.views import APIView
+from utils.permissions import IsAuthQueryTokenPermission
 
 from aw_creation.api.serializers import add_targeting_list_items_info, \
     SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
@@ -950,6 +951,7 @@ class TopicToolListApiView(ListAPIView):
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id')
     file_name = "topic_list"
 
@@ -1001,6 +1003,7 @@ class AudienceToolListApiView(ListAPIView):
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id', 'type')
     file_name = "audience_list"
     queryset = AudienceToolListApiView.queryset
@@ -1129,6 +1132,8 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
 
 class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
+
+    permission_classes = (IsAuthQueryTokenPermission,)
 
     def get(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
