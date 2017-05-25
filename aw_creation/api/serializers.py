@@ -103,7 +103,8 @@ class OptimizationAdGroupSerializer(ModelSerializer):
     @staticmethod
     def get_targeting(obj):
         targeting = {k[0]: [] for k in TargetingItem.TYPES}
-        items = obj.targeting_items.all().values('type', 'criteria')
+        items = obj.targeting_items.all().values(
+            'type', 'criteria', 'is_negative')
         for i in items:
             targeting[i['type']].append(i)
 

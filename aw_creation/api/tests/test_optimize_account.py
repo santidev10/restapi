@@ -52,6 +52,12 @@ class AccountAPITestCase(ExtendedAPITestCase):
             name="",
             campaign_creation=campaign_creation,
         )
+        TargetingItem.objects.create(
+            ad_group_creation=ad_group_creation,
+            criteria="js",
+            type=TargetingItem.KEYWORD_TYPE,
+            is_negative=True,
+        )
         return account_creation
 
     def test_success_get(self):
@@ -212,6 +218,10 @@ class AccountAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(ad_group_data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
+        )
+        self.assertEqual(
+            set(ad_group_data['targeting']['keyword'][0]),
+            {'criteria', 'is_negative', 'type', 'name'}
         )
 
     def test_success_update(self):
