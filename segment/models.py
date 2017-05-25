@@ -86,8 +86,8 @@ class Segment(Model):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
                         "fields": "id,title,thumbnail_image_url,"
-                                  "subscribers,videos,"
-                                  "video_views,likes,dislikes,comments,"
+                                  "subscribers,videos,views,"
+                                  "likes,dislikes,comments,"
                                   "video_views_history,"
                                   "views_per_video_history,description,"
                                   "language,history_date",
@@ -119,7 +119,7 @@ class Segment(Model):
         for obj in response_data:
             subscribers_count += obj.get("subscribers")
             videos_count += obj.get("videos")
-            views_count += obj.get("video_views")
+            views_count += obj.get("views")
             likes_count += obj.get("likes")
             dislikes_count += obj.get("dislikes")
             comments_count += obj.get("comments")
