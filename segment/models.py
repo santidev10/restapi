@@ -17,12 +17,18 @@ AVAILABLE_SEGMENT_TYPES = (
     "keyword"
 )
 
-AVAILABLE_SEGMENT_CATEGORIES = (
+AVAILABLE_CHANNEL_SEGMENT_CATEGORIES = (
     "private",
     "youtube",
     "iab",
     "cas",
     "blacklist"
+)
+
+AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES = (
+    "channel_factory",
+    "blacklist",
+    "private"
 )
 
 

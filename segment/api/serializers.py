@@ -5,7 +5,8 @@ from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField
 
 from segment.models import Segment, AVAILABLE_SEGMENT_TYPES, \
-    AVAILABLE_SEGMENT_CATEGORIES, ChannelRelation, VideoRelation
+    AVAILABLE_CHANNEL_SEGMENT_CATEGORIES, ChannelRelation, VideoRelation,\
+    AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES
 
 
 class SegmentCreateSerializer(ModelSerializer):
@@ -48,10 +49,16 @@ class SegmentCreateSerializer(ModelSerializer):
         if not user.is_staff and segment_category != "private":
             raise ValidationError(
                 "Not valid category. Options are: private")
-        elif segment_category not in AVAILABLE_SEGMENT_CATEGORIES:
+        if segment_type == "video" and segment_category not in\
+           AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES:
             raise ValidationError(
                 "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_SEGMENT_CATEGORIES)))
+                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+        if segment_type == "channel" and segment_category not in\
+           AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
+            raise ValidationError(
+                "Not valid category. Options are: {}".format(
+                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
         return data
 
     def save(self, **kwargs):
@@ -103,15 +110,23 @@ class SegmentUpdateSerializer(ModelSerializer):
         Check segment category
         """
         segment_category = data.get("category")
+        segment_type = self.instance.segment_type
         user = self.context.get("request").user
-        if segment_category is not None:
-            if segment_category != "private" and not user.is_staff:
-                raise ValidationError(
-                    "Not valid category. Options are: private")
-            elif segment_category not in AVAILABLE_SEGMENT_CATEGORIES:
-                raise ValidationError(
-                    "Not valid category. Options are: {}".format(
-                        ", ".join(AVAILABLE_SEGMENT_CATEGORIES)))
+        if segment_category is None:
+            return data
+        if segment_category != "private" and not user.is_staff:
+            raise ValidationError(
+                "Not valid category. Options are: private")
+        if segment_type == "video" and segment_category not in\
+           AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES:
+            raise ValidationError(
+                "Not valid category. Options are: {}".format(
+                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+        if segment_type == "channel" and segment_category not in\
+           AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
+            raise ValidationError(
+                "Not valid category. Options are: {}".format(
+                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
         return data
 
 
