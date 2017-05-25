@@ -23,6 +23,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
 from rest_framework.views import APIView
+from utils.permissions import IsAuthQueryTokenPermission
+from rest_framework.authtoken.models import Token
 
 from aw_creation.api.serializers import add_targeting_list_items_info, \
     SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
@@ -375,7 +377,7 @@ class OptimizationAccountListApiView(ListAPIView):
         return queryset
 
     def filter_queryset(self, queryset):
-        if not self.request.query_params.get('show_closed', False):
+        if self.request.query_params.get('show_closed') != "true":
             queryset = queryset.filter(
                 ended_status__lt=1,
             )
@@ -949,6 +951,7 @@ class TopicToolListApiView(ListAPIView):
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id')
     file_name = "topic_list"
 
@@ -1000,6 +1003,7 @@ class AudienceToolListApiView(ListAPIView):
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id', 'type')
     file_name = "audience_list"
     queryset = AudienceToolListApiView.queryset
@@ -1009,12 +1013,17 @@ class AudienceToolListExportApiView(TopicToolListExportApiView):
 class TargetingListBaseAPIClass(GenericAPIView):
     serializer_class = AdGroupTargetingListSerializer
 
+    def get_user(self):
+        return self.request.user
+
     def get_queryset(self):
         pk = self.kwargs.get('pk')
         list_type = self.kwargs.get('list_type')
         queryset = TargetingItem.objects.filter(
             ad_group_creation_id=pk,
             type=list_type,
+            ad_group_creation__campaign_creation__account_creation__owner
+            =self.get_user()
         )
         return queryset
 
@@ -1128,6 +1137,13 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
 
 class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
+
+    permission_classes = (IsAuthQueryTokenPermission,)
+
+    def get_user(self):
+        auth_token = self.request.query_params.get("auth_token")
+        token = Token.objects.get(key=auth_token)
+        return token.user
 
     def get(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
