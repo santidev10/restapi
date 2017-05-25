@@ -1023,7 +1023,8 @@ class TargetingListBaseAPIClass(GenericAPIView):
         queryset = TargetingItem.objects.filter(
             ad_group_creation_id=pk,
             type=list_type,
-            ad_group_creation__campaign_creation__account_creation__owner=self.get_user()
+            ad_group_creation__campaign_creation__account_creation__owner
+            =self.get_user()
         )
         return queryset
 
