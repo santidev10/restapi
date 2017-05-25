@@ -52,6 +52,7 @@ class TargetingListTestCase(ExtendedAPITestCase):
             {
                 'criteria',
                 'is_negative',
+                'id',
                 'name',
                 'thumbnail',
             }
