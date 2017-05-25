@@ -263,5 +263,27 @@ class AccountAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_fail_name_validation(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ac = self.create_account(**defaults)
+        url = reverse("aw_creation_urls:optimization_account",
+                      args=(ac.id,))
+        data = dict(
+            name="Campaign '",
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['name'][0],
+            "# and ' are not allowed for titles",
+        )
+
 
 
