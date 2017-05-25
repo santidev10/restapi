@@ -2,6 +2,7 @@
 Segment api views module
 """
 from django.db.models import Q
+from django.db.models.expressions import RawSQL
 from rest_framework.generics import ListCreateAPIView, \
     RetrieveUpdateDestroyAPIView, GenericAPIView
 from rest_framework.response import Response
@@ -42,16 +43,10 @@ class SegmentListCreateApiView(ListCreateAPIView):
             segment, context=serializer_context).data
         return Response(response_data, status=HTTP_201_CREATED)
 
-    def get_queryset(self):
+    def do_filters(self, queryset):
         """
-        Prepare queryset to display
+        Filter queryset
         """
-        if self.request.user.is_staff:
-            queryset = Segment.objects.all()
-        else:
-            queryset = Segment.objects.filter(
-                Q(owner=self.request.user) |
-                ~Q(category="private"))
         filters = {}
         # search
         search = self.request.query_params.get("search")
@@ -65,7 +60,54 @@ class SegmentListCreateApiView(ListCreateAPIView):
         category = self.request.query_params.get("category")
         if category:
             filters["category"] = category
-        return queryset.filter(**filters)
+        # make filtering
+        if filters:
+            queryset = queryset.filter(**filters)
+        return queryset
+
+    def do_sorts(self, queryset):
+        """
+        Sort queryset
+        """
+        available_sorts = {
+            "title",
+        }
+        available_statisitcs_sorts = {
+            "videos_count",
+        }
+        available_reverse_sorts = {
+            "created_at",
+        }
+        available_reverse_statisitcs_sorts = {
+            "channels_count",
+            "engage_rate",
+            "sentiment",
+            "videos_count"
+        }
+        sort = self.request.query_params.get("sort_by")
+        if sort in available_sorts:
+            queryset = queryset.order_by(sort)
+        if sort in available_statisitcs_sorts:
+            queryset = queryset.annotate(
+                value=RawSQL("statistics->>%s", (sort, ))).order_by("value")
+        if sort in available_reverse_sorts:
+            queryset = queryset.order_by("-{}".format(sort))
+        if sort in available_reverse_statisitcs_sorts:
+            queryset = queryset.annotate(
+                value=RawSQL("statistics->>%s", (sort, ))).order_by("-value")
+        return queryset
+
+    def get_queryset(self):
+        """
+        Prepare queryset to display
+        """
+        if self.request.user.is_staff:
+            queryset = Segment.objects.all()
+        else:
+            queryset = Segment.objects.filter(
+                Q(owner=self.request.user) |
+                ~Q(category="private"))
+        return self.do_sorts(self.do_filters(queryset))
 
 
 class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
