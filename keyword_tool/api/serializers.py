@@ -1,7 +1,7 @@
-from keyword_tool.models import KeyWord, Interest, KeywordsList, \
-    AVAILABLE_KEYWORD_LIST_CATEGORIES
 from rest_framework.serializers import ModelSerializer, ValidationError
 from rest_framework.serializers import SerializerMethodField
+
+from keyword_tool.models import KeyWord, Interest, KeywordsList, AVAILABLE_KEYWORD_LIST_CATEGORIES
 
 
 class InterestsSerializer(ModelSerializer):

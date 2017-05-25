@@ -17,12 +17,18 @@ AVAILABLE_SEGMENT_TYPES = (
     "keyword"
 )
 
-AVAILABLE_SEGMENT_CATEGORIES = (
+AVAILABLE_CHANNEL_SEGMENT_CATEGORIES = (
     "private",
     "youtube",
     "iab",
     "cas",
     "blacklist"
+)
+
+AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES = (
+    "channel_factory",
+    "blacklist",
+    "private"
 )
 
 
@@ -86,8 +92,8 @@ class Segment(Model):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
                         "fields": "id,title,thumbnail_image_url,"
-                                  "subscribers,video_count,"
-                                  "video_views,likes,dislikes,comments,"
+                                  "subscribers,videos,views,"
+                                  "likes,dislikes,comments,"
                                   "video_views_history,"
                                   "views_per_video_history,description,"
                                   "language,history_date",
@@ -118,8 +124,8 @@ class Segment(Model):
         comments_count = 0
         for obj in response_data:
             subscribers_count += obj.get("subscribers")
-            videos_count += obj.get("video_count")
-            views_count += obj.get("video_views")
+            videos_count += obj.get("videos")
+            views_count += obj.get("views")
             likes_count += obj.get("likes")
             dislikes_count += obj.get("dislikes")
             comments_count += obj.get("comments")
@@ -165,7 +171,7 @@ class Segment(Model):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(videos_ids),
                         "fields": "id,title,description,thumbnail_image_url,"
-                                  "views,likes,dislikes,chart_data,"
+                                  "views,likes,dislikes,"
                                   "comments,views_history,history_date",
                         "flat": 1}
         connector = Connector()
@@ -178,7 +184,7 @@ class Segment(Model):
         response_videos_ids = {obj.get("id") for obj in response_data}
         ids_difference = set(videos_ids) - response_videos_ids
         if ids_difference:
-            VideoRelation.object.filter(id__in=ids_difference).delete()
+            VideoRelation.objects.filter(video_id__in=ids_difference).delete()
         videos_count = self.videos.count()
         # all channels we dropped from SDB
         if not videos_count:

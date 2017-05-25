@@ -168,11 +168,15 @@ class DemoChart:
             value = getattr(item, indicator)
 
             if breakdown == "hourly":
-                time_points = [
-                    datetime.combine(date, time(hour)).replace(tzinfo=utc)
-                    for date in get_dates_range(start, end)
-                    for hour in range(24)
-                ]
+                time_points = []
+                for date in get_dates_range(start, end):
+                    max_hour = datetime.now().hour \
+                        if date == self.today else 24
+                    for hour in range(max_hour):
+                        time_points.append(
+                            datetime.combine(
+                                date, time(hour)).replace(tzinfo=utc)
+                        )
             else:
                 time_points = list(get_dates_range(start, end))
             time_points_len = len(time_points)

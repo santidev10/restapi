@@ -1,8 +1,9 @@
-from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
-from saas.utils_tests import ExtendedAPITestCase as APITestCase
+
 from keyword_tool.models import *
+from saas.utils_tests import ExtendedAPITestCase as APITestCase
 
 
 class KWToolSavedListTestCase(APITestCase):

@@ -1,25 +1,21 @@
-from django.db.models import Q
+import logging
 
-from .serializers import *
-from django.db.models import Sum, Count
-from django.db.models.functions import Coalesce
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Count
+from django.db.models import Q
+from django.db.models.functions import Coalesce
 from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView, GenericAPIView
-from keyword_tool.settings import PREDEFINED_QUERIES
-from keyword_tool.models import Query, KeywordsList, ViralKeywords
 
 from aw_reporting.adwords_api import optimize_keyword
-# TODO uncomment when adwords stats will be created is saas
-from aw_reporting.models import SUM_STATS, \
-    QUARTILE_STATS, dict_quartiles_to_rates, dict_add_calculated_stats
-# from utils.api_permissions import get_perm_class
+from keyword_tool.models import Query, KeywordsList, ViralKeywords
+from keyword_tool.settings import PREDEFINED_QUERIES
 from utils.api_paginator import CustomPageNumberPaginator
-import logging
+from .serializers import *
 
 logger = logging.getLogger(__name__)
 

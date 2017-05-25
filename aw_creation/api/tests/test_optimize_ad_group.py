@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
-
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_creation.models import *
-from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
 
 
@@ -23,29 +21,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation,
             start=start,
             end=end,
-        )
-        english, _ = Language.objects.get_or_create(id=1000,
-                                                    name="English")
-        campaign_creation.languages.add(english)
-
-        # location rule
-        geo_target = GeoTarget.objects.create(
-            id=0, name="Hell", canonical_name="Hell", country_code="RU",
-            target_type="place", status="hot",
-        )
-        LocationRule.objects.create(
-            campaign_creation=campaign_creation,
-            geo_target=geo_target,
-        )
-        FrequencyCap.objects.create(
-            campaign_creation=campaign_creation,
-            limit=10,
-        )
-        AdScheduleRule.objects.create(
-            campaign_creation=campaign_creation,
-            day=1,
-            from_hour=6,
-            to_hour=18,
         )
         ad_group_creation = AdGroupCreation.objects.create(
             name="",
@@ -108,7 +83,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         data = dict(
             name="Ad Group  1",
             max_rate="66.666",
-            is_approved=True,
             video_url="https://www.youtube.com/watch?v=zaa0r2WbmYo",
             genders=[AdGroupCreation.GENDER_FEMALE,
                      AdGroupCreation.GENDER_MALE],
@@ -129,10 +103,105 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad_group.video_url, data['video_url'])
         self.assertEqual(ad_group.final_url, data['final_url'])
         self.assertEqual(ad_group.display_url, data['display_url'])
-        self.assertEqual(ad_group.is_approved, data['is_approved'])
         self.assertEqual(set(ad_group.genders), set(data['genders']))
         self.assertEqual(set(ad_group.parents), set(data['parents']))
         self.assertEqual(set(ad_group.age_ranges), set(data['age_ranges']))
+
+    def test_fail_approve(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group.id,))
+        data = dict(
+            is_approved=True,
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['non_field_errors'][0],
+            "These fields are required for approving: "
+            "max CPV, video URL, display URL, final URL"
+        )
+
+    def test_success_approve(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        ad_group.display_url = "www.4e-tam.ua"
+        ad_group.final_url = "https://www.4e-tam.ua"
+        ad_group.video_url = "https://www.youtube.com/watch?v=a_6DEctiNSs"
+        ad_group.max_rate = "20.0"
+        ad_group.save()
+
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group.id,))
+        data = dict(
+            is_approved=True,
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_fail_set_max_rate(self):
+        """
+        SAAS-158: CPv that is entered on ad group level
+        should be less than Max CPV at placement level
+        :return:
+        """
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            max_rate="0.075",  # max rate at campaign level
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group_creation.id,))
+        data = dict(
+            max_rate="0.076",   # max rate at ad group level
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_set_max_rate(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            max_rate="0.075",  # max rate at campaign level
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group_creation.id,))
+        data = dict(
+            max_rate="0.075",   # max rate at ad group level
+        )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+
 
 
 

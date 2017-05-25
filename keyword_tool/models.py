@@ -1,11 +1,13 @@
+import json
+import logging
+
 from celery.task import task
 from django.db import models
+from django.db import transaction
 from django.db.models import Avg
 from django.db.utils import IntegrityError
+
 from .tasks import update_keywords_stats
-import json
-from django.db import transaction
-import logging
 
 logger = logging.getLogger(__name__)
 

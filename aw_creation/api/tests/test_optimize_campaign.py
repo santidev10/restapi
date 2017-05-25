@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_creation.models import *
 from aw_reporting.models import *
@@ -47,7 +47,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             from_hour=6,
             to_hour=18,
         )
-        ad_group_creation = AdGroupCreation.objects.create(
+        AdGroupCreation.objects.create(
             name="",
             campaign_creation=campaign_creation,
         )
@@ -114,7 +114,6 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                       args=(campaign.id,))
 
         request_data = dict(
-            is_approved=True,
             is_paused=True,
             ad_schedule_rules=[
                 dict(day=1, from_hour=6, to_hour=18),
@@ -134,12 +133,112 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['is_approved'], True)
         self.assertEqual(response.data['is_paused'], True)
         self.assertEqual(len(response.data['ad_schedule_rules']), 2)
         self.assertEqual(len(response.data['frequency_capping']), 2)
         self.assertEqual(len(response.data['location_rules']), 2)
         self.assertEqual(len(response.data['devices']), 1)
+
+    def test_fail_approve(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(is_approved=True)
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['non_field_errors'][0],
+            "These fields are required for approving: "
+            "start date, end date, budget, max rate, goal"
+        )
+
+    def test_success_approve(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = datetime.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today, end=today + timedelta(days=1),
+            budget="20.5", max_rate="2.2", goal_units=1000,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(is_approved=True)
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_fail_set_wrong_order_dates(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            start=str(today + timedelta(days=1)),
+            end=str(today),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "End date must be > start date")
+
+    def test_fail_set_start_in_the_past(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            start=str(today - timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "dates in the past are not allowed")
+
+    def test_fail_set_end_in_the_past(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            end=str(today - timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "dates in the past are not allowed")
 
 
 

@@ -1,5 +1,3 @@
-import re
-
 from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
     DecimalField as AggrDecimalField
@@ -9,7 +7,16 @@ from rest_framework.serializers import ModelSerializer, \
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
-from aw_reporting.models import GeoTarget, Topic, Audience
+from aw_reporting.models import GeoTarget, Topic, Audience, DATE_FORMAT
+from singledb.connector import SingleDatabaseApiConnector, \
+    SingleDatabaseApiConnectorException
+from decimal import Decimal
+from collections import OrderedDict
+from datetime import datetime
+import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleGeoTargetSerializer(ModelSerializer):
@@ -28,20 +35,42 @@ def add_targeting_list_items_info(data, list_type):
     ids = set(i['criteria'] for i in data)
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
-            info = {}   # Channel.objects.in_bulk(ids)
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="channel",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=ids,
+                )
+                info = {i['id']: i for i in items}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                info = {}
+
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['name'] = item_info.title if item_info else None
-                item['thumbnail'] = item_info.thumbnail_image_url \
-                    if item_info else None
+                item_info = info.get(item['criteria'], {})
+                item['id'] = item_info.get("id")
+                item['name'] = item_info.get("title")
+                item['thumbnail'] = item_info.get("thumbnail_image_url")
 
         elif list_type == TargetingItem.VIDEO_TYPE:
-            info = {}  # Video.objects.in_bulk(ids)
+            connector = SingleDatabaseApiConnector()
+            try:
+                items = connector.get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=ids,
+                )
+                info = {i['id']: i for i in items}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                info = {}
+
             for item in data:
-                item_info = info.get(item['criteria'])
-                item['name'] = item_info.title if item_info else None
-                item['thumbnail'] = item_info.thumbnail_image_url \
-                    if item_info else None
+                item_info = info.get(item['criteria'], {})
+                item['id'] = item_info.get("id")
+                item['name'] = item_info.get("title")
+                item['thumbnail'] = item_info.get("thumbnail_image_url")
 
         elif list_type == TargetingItem.TOPIC_TYPE:
             info = dict(
@@ -526,6 +555,12 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
                     "Cannot target display network without first "
                     "targeting YouTube video network")
 
+        if data.get("is_approved") is True:
+            raise ValidationError(
+                "You cannot approve account creations "
+                "unless you have at least one connected MCC account"
+            )
+
         return super(OptimizationUpdateAccountSerializer, self).validate(data)
 
 
@@ -556,6 +591,55 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
             'devices',
             'max_rate',
         )
+
+    def validate(self, data):
+        if "devices" in data and not data["devices"]:
+            raise ValidationError("devices: empty set is not allowed")
+
+        # approving process
+        if self.instance and data.get("is_approved") is True:
+            required_fields = OrderedDict([
+                ("start", "start date"),
+                ("end", "end date"),
+                ("budget", "budget"),
+                ("max_rate", "max rate"),
+                ("goal_units", "goal"),
+            ])
+            empty_fields = [
+                required_fields[f] for f in required_fields
+                if not getattr(self.instance, f)
+            ]
+            if empty_fields:
+                raise ValidationError(
+                    'These fields are required for approving: '
+                    '{}'.format(", ".join(empty_fields))
+                )
+
+        # if one of the following fields is provided
+        if {"is_approved", "start", "end"} & set(data.keys()):
+            today = datetime.now().date()
+
+            start, end = None, None
+            if self.instance:
+                start, end = self.instance.start, self.instance.end
+
+            if data.get("start"):
+                start = data.get("start")
+
+            if data.get("end"):
+                end = data.get("end")
+
+            for date in (start, end):
+                if date and date < today:
+                    raise ValidationError('Wrong date period: dates in '
+                                          'the past are not allowed')
+
+            if start and end and start > end:
+                raise ValidationError(
+                    'Wrong date period: start date > end date')
+
+        return super(OptimizationUpdateCampaignSerializer,
+                     self).validate(data)
 
 
 class OptimizationAppendCampaignSerializer(ModelSerializer):
@@ -594,6 +678,36 @@ class OptimizationAdGroupUpdateSerializer(ModelSerializer):
             if f in data and not data[f]:
                 raise ValidationError(
                     "{}: empty set is not allowed".format(f))
+
+        # SAAS-158: CPv that is entered on ad group level
+        # should be less than Max CPV at placement level
+        if "max_rate" in data and self.instance:
+            campaign_rate = self.instance.campaign_creation.max_rate
+            if campaign_rate is not None:
+                if Decimal(data['max_rate']) > campaign_rate:
+                    raise ValidationError(
+                        "Max rate at ad group level shouldn't be bigger "
+                        "than the max rate at placement level"
+                    )
+
+        # approving process
+        if self.instance and data.get("is_approved") is True:
+            required_fields = OrderedDict([
+                ("max_rate", "max CPV"),
+                ("video_url", "video URL"),
+                ("display_url", "display URL"),
+                ("final_url", "final URL"),
+            ])
+            empty_fields = [
+                required_fields[f] for f in required_fields
+                if not getattr(self.instance, f)
+            ]
+            if empty_fields:
+                raise ValidationError(
+                    'These fields are required for approving: '
+                    '{}'.format(", ".join(empty_fields))
+                )
+
         return super(OptimizationAdGroupUpdateSerializer,
                      self).validate(data)
 
@@ -674,7 +788,7 @@ class OptimizationFiltersCampaignSerializer(ModelSerializer):
               optimization_tuning__kpi=self.kpi) |
             Q(campaign_creation__optimization_tuning__value__isnull=False,
               campaign_creation__optimization_tuning__kpi=self.kpi)
-        )
+        ).distinct()
         items = OptimizationFiltersAdGroupSerializer(queryset, many=True).data
         return items
 

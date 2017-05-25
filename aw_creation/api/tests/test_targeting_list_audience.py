@@ -1,8 +1,9 @@
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
-
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
+    HTTP_401_UNAUTHORIZED
+from rest_framework.authtoken.models import Token
 from aw_creation.models import *
 from aw_reporting.models import Audience
 from saas.utils_tests import ExtendedAPITestCase
@@ -10,12 +11,9 @@ from saas.utils_tests import ExtendedAPITestCase
 
 class InterestTargetingListTestCase(ExtendedAPITestCase):
 
-    def setUp(self):
-        self.user = self.create_test_user()
-
-    def create_ad_group(self):
+    def create_ad_group(self, user):
         account = AccountCreation.objects.create(
-            id="1", name="", owner=self.user,
+            id="1", name="", owner=user,
         )
         campaign_creation = CampaignCreation.objects.create(
             account_creation=account, name="",
@@ -27,7 +25,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_success_get(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user()
+        ad_group = self.create_ad_group(user)
         for i in range(10):
             Audience.objects.create(
                 id=i, name="Interest#{}".format(i),
@@ -62,7 +61,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
             all(i['is_negative'] for i in response.data[5:]), True)
 
     def test_success_post(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user()
+        ad_group = self.create_ad_group(user)
         account = ad_group.campaign_creation.account_creation
         AccountCreation.objects.filter(
             id=account.id).update(is_changed=False)
@@ -96,7 +96,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertIs(account.is_changed, True)
 
     def test_success_post_negative(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user()
+        ad_group = self.create_ad_group(user)
         account = ad_group.campaign_creation.account_creation
         AccountCreation.objects.filter(
             id=account.id).update(is_changed=False)
@@ -130,7 +131,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertIs(account.is_changed, True)
 
     def test_success_delete(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user()
+        ad_group = self.create_ad_group(user)
         for i in range(10):
             Audience.objects.create(
                 id=i, name="Interest#{}".format(i),
@@ -166,7 +168,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertIs(account.is_changed, True)
 
     def test_export_list(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user(auth=False)
+        ad_group = self.create_ad_group(user)
         for i in range(10):
             Audience.objects.create(
                 id=i, name="Interest#{}".format(i),
@@ -183,9 +186,14 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
             "aw_creation_urls:optimization_ad_group_targeting_export",
             args=(ad_group.id, TargetingItem.INTEREST_TYPE),
         )
+        response = self.client.get(url)
+        self.assertIn(response.status_code,
+                      (HTTP_403_FORBIDDEN, HTTP_401_UNAUTHORIZED))
+
+        token = Token.objects.create(user=user)
         url = "{}?{}".format(
             str(url),
-            urlencode({'auth_token': self.user.auth_token.key}),
+            urlencode({'auth_token': token.key}),
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -193,7 +201,8 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertEqual(len(lines), 11)
 
     def test_import_list(self):
-        ad_group = self.create_ad_group()
+        user = self.create_test_user()
+        ad_group = self.create_ad_group(user)
         for i in range(3):
             Audience.objects.create(
                 id=i * 10000, name="Interest#{}".format(i),

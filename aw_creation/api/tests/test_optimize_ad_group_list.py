@@ -4,7 +4,6 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 
 from aw_creation.models import *
-from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
 
 

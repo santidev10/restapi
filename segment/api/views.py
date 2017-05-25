@@ -5,7 +5,7 @@ from django.db.models import Q
 from rest_framework.generics import ListCreateAPIView, \
     RetrieveUpdateDestroyAPIView, GenericAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_201_CREATED, HTTP_403_FORBIDDEN
 
 from segment.api.serializers import SegmentCreateSerializer, SegmentSerializer, \
     SegmentUpdateSerializer
@@ -53,6 +53,10 @@ class SegmentListCreateApiView(ListCreateAPIView):
                 Q(owner=self.request.user) |
                 ~Q(category="private"))
         filters = {}
+        # search
+        search = self.request.query_params.get("search")
+        if search:
+            filters["title__icontains"] = search
         # segment type
         segment_type = self.request.query_params.get("segment_type")
         if segment_type:
@@ -88,6 +92,9 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
         Allow partial update
         """
         segment = self.get_object()
+        user = request.user
+        if not (user.is_staff or segment.owner == user):
+            return Response(status=HTTP_403_FORBIDDEN)
         serializer_context = {"request": request}
         serializer = self.update_serializer_class(
             instance=segment, data=request.data,
@@ -118,7 +125,7 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
             channels_to_delete_ids = self.request.data.get(
                 "channels_to_delete") or []
             segment.channels.remove(*ChannelRelation.objects.filter(
-                id__in=channels_to_delete_ids))
+                channel_id__in=channels_to_delete_ids))
             return
         elif segment.segment_type == "video":
             # add videos
@@ -134,7 +141,7 @@ class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
             videos_to_delete_ids = self.request.data.get(
                 "videos_to_delete") or []
             segment.videos.remove(*VideoRelation.objects.filter(
-                id__in=videos_to_delete_ids))
+                video_id__in=videos_to_delete_ids))
             return
         return
 

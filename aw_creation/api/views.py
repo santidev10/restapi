@@ -9,7 +9,7 @@ from io import StringIO
 from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Avg, When, Case, Value, \
+from django.db.models import Q, Avg, Max, When, Case, Value, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -23,6 +23,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
 from rest_framework.views import APIView
+from utils.permissions import IsAuthQueryTokenPermission
+from rest_framework.authtoken.models import Token
 
 from aw_creation.api.serializers import add_targeting_list_items_info, \
     SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
@@ -34,7 +36,6 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
     AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
     OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
-
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
@@ -44,6 +45,11 @@ from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
 
 
 class GeoTargetListApiView(APIView):
+    """
+    Returns a list of geo-targets, limit is 100
+    Accepts ?search=kharkiv parameter
+    """
+
 
     queryset = GeoTarget.objects.all().order_by('name')
     serializer_class = SimpleGeoTargetSerializer
@@ -84,6 +90,13 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
+    """
+    Send a post request with multipart-ford-data encoded file data
+    key: 'file'
+    will return
+    {"result":[{"name":"94002,California,United States","id":9031903}, ..],
+                "undefined":[]}
+    """
 
     def post(self, request, content_type, **_):
         file_obj = request.data['file']
@@ -332,21 +345,42 @@ class OptimizationAccountListApiView(ListAPIView):
         if sort_by != "name":
             sort_by = "-created_at"
 
+        today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
             owner=self.request.user, **filters
-        ).order_by(sort_by)
+        ).annotate(
+            campaigns_status=Max(
+                Case(
+                    When(
+                        campaign_creations__end__lt=today,
+                        then=Value(2),  # ended
+                    ),
+                    When(
+                        campaign_creations__end__gte=today,
+                        then=Value(1),  # live
+                    ),
+                    default=Value(0),
+                    output_field=AggrIntegerField()
+                )
+            )
+        ).annotate(
+            ended_status=Case(
+                When(
+                    campaigns_status__lt=2,
+                    is_ended=False,
+                    then=Value(0),  # shown by default
+                ),
+                default=Value(1),
+                output_field=AggrIntegerField()
+            )
+        ).order_by('ended_status', sort_by)
         return queryset
 
     def filter_queryset(self, queryset):
-        now = timezone.now()
-        if not self.request.query_params.get('show_closed', False):
-            ids = list(
-                queryset.filter(
-                    Q(campaign_creations__end__isnull=True) |
-                    Q(campaign_creations__end__gte=now)
-                ).values_list('id', flat=True).distinct()
+        if self.request.query_params.get('show_closed') != "1":
+            queryset = queryset.filter(
+                ended_status__lt=1,
             )
-            queryset = queryset.filter(id__in=ids)
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
@@ -598,6 +632,10 @@ class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
 
 
 class CreationOptionsApiView(APIView):
+    """
+    Returns a list of fields (with values sometimes)
+    that could be sent during the account creation process
+    """
 
     @staticmethod
     def get(*_, **k):
@@ -700,6 +738,11 @@ class CreationOptionsApiView(APIView):
 
 
 class CreationAccountApiView(APIView):
+    """
+    Accepts POST request and creates an account
+    Example body:
+    {"video_ad_format":"TRUE_VIEW_IN_STREAM","name":"T-800","campaign_count":2,"ad_group_count":2,"ct_overlay_text":"be be bee","display_url":"https://saas-rc.channelfactory.com/","final_url":"https://saas-rc.channelfactory.com/","video_url":"https://youtube.com/video/OPYcFQxsKlQ","genders":["GENDER_FEMALE","GENDER_MALE"],"parents":["PARENT_PARENT","PARENT_NOT_A_PARENT","PARENT_UNDETERMINED"],"age_ranges":["AGE_RANGE_18_24","AGE_RANGE_25_34","AGE_RANGE_35_44","AGE_RANGE_45_54","AGE_RANGE_55_64","AGE_RANGE_65_UP"],"languages":[1000,1036],"location_rules":[{"latitude":40.7127837,"longitude":-74.005941,"geo_target":200501,"east":-73.700272,"north":40.9152555,"south":40.4960439,"west":-74.255734}],"devices":["DESKTOP_DEVICE","MOBILE_DEVICE"],"frequency_capping":[{"event_type":"IMPRESSION","level":"CAMPAIGN","limit":5,"time_unit":"DAY"}],"start":"2017-05-24","end":"2017-05-31","budget":100,"goal_units":1000,"goal_type":"GOAL_VIDEO_VIEWS","max_rate":5,"channel_lists":[],"video_lists":[],"interest_lists":[],"topic_lists":[],"keyword_lists":[]}
+    """
 
     def post(self, request, *args, **kwargs):
         from segment.models import Segment
@@ -908,6 +951,7 @@ class TopicToolListApiView(ListAPIView):
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id')
     file_name = "topic_list"
 
@@ -959,6 +1003,7 @@ class AudienceToolListApiView(ListAPIView):
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):
+    permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id', 'type')
     file_name = "audience_list"
     queryset = AudienceToolListApiView.queryset
@@ -968,12 +1013,17 @@ class AudienceToolListExportApiView(TopicToolListExportApiView):
 class TargetingListBaseAPIClass(GenericAPIView):
     serializer_class = AdGroupTargetingListSerializer
 
+    def get_user(self):
+        return self.request.user
+
     def get_queryset(self):
         pk = self.kwargs.get('pk')
         list_type = self.kwargs.get('list_type')
         queryset = TargetingItem.objects.filter(
             ad_group_creation_id=pk,
             type=list_type,
+            ad_group_creation__campaign_creation__account_creation__owner
+            =self.get_user()
         )
         return queryset
 
@@ -1087,6 +1137,13 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
 
 class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
+
+    permission_classes = (IsAuthQueryTokenPermission,)
+
+    def get_user(self):
+        auth_token = self.request.query_params.get("auth_token")
+        token = Token.objects.get(key=auth_token)
+        return token.user
 
     def get(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
