@@ -378,7 +378,7 @@ class OptimizationAccountListApiView(ListAPIView):
         return queryset
 
     def filter_queryset(self, queryset):
-        if not self.request.query_params.get('show_closed', False):
+        if self.request.query_params.get('show_closed') != "true":
             queryset = queryset.filter(
                 ended_status__lt=1,
             )
