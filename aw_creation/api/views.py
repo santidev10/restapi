@@ -602,7 +602,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
         request.data['campaign_creation'] = campaign_creation.id
         if not request.data.get('name'):
             count = self.get_queryset().count()
-            request.data['name'] = "Campaign {}".format(count + 1)
+            request.data['name'] = "Ad Group {}".format(count + 1)
 
         serializer = OptimizationAppendAdGroupSerializer(
             data=request.data)
@@ -838,7 +838,6 @@ class CreationAccountApiView(APIView):
             account_creation = serializer.save()
 
             for i in range(campaign_count):
-                c_uid = i + 1
                 # campaign goal
                 c_goal = goal_units // campaign_count
                 if i == 0:
@@ -850,7 +849,7 @@ class CreationAccountApiView(APIView):
 
                 campaign_data = dict(**data)
                 campaign_data.update(dict(
-                    name="Campaign {}".format(c_uid),
+                    name="Campaign {}".format(i + 1),
                     account_creation=account_creation.id,
                     goal_units=c_goal,
                     budget=c_budget,
@@ -866,12 +865,11 @@ class CreationAccountApiView(APIView):
                 )
 
                 for j in range(ad_group_count):
-                    a_uid = j + 1
-                    ag_data = dict(
-                        name="AdGroup {}.{}".format(c_uid, a_uid),
+                    ag_data = dict(**data)
+                    ag_data.update(dict(
+                        name="Ad Group {}".format(j + 1),
                         campaign_creation=campaign_creation.id,
-                    )
-                    ag_data.update(data)
+                    ))
                     serializer = OptimizationAdGroupUpdateSerializer(
                         data=ag_data,
                     )
