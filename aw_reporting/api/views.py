@@ -301,6 +301,7 @@ class ConnectAWAccountApiView(APIView):
                       "https://myaccount.google.com/permissions and " \
                       "remove our application's connection " \
                       "then try again"
+    no_mcc_error = "Please, provide an account that has access to "
 
     # first step
     def get(self, request, *args, **kwargs):
@@ -340,20 +341,18 @@ class ConnectAWAccountApiView(APIView):
                 data=dict(error='Authentication has failed: %s' % e)
             )
         else:
-            access_token = credential.access_token
-            refresh_token = credential.refresh_token
-
             url = "https://www.googleapis.com/oauth2/v3/tokeninfo?" \
-                  "access_token={}".format(access_token)
+                  "access_token={}".format(credential.access_token)
             token_info = requests.get(url).json()
-
             try:
-                connection = AWConnection.objects.get(email=token_info['email'])
+                connection = AWConnection.objects.get(
+                    email=token_info['email']
+                )
             except AWConnection.DoesNotExist:
-                if refresh_token:
+                if credential.refresh_token:
                     connection = AWConnection.objects.create(
                         email=token_info['email'],
-                        refresh_token=refresh_token,
+                        refresh_token=credential.refresh_token,
                     )
                 else:
                     return Response(
@@ -372,10 +371,11 @@ class ConnectAWAccountApiView(APIView):
             if not mcc_accounts:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
-                    data=dict(error="This account don't have access to ")
+                    data=dict(error=self.no_mcc_error)
                 )
 
             self.request.user.aw_connections.add(connection)
+            # TODO: add something to the success response
 
             return Response(data={})
 
