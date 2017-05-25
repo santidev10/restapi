@@ -9,7 +9,6 @@ def update_keywords_stats(data):
     for k in data:
         try:
             kw = KeyWord.objects.get(pk=k['keyword_text'])
-
         except KeyWord.DoesNotExist:
             pass
         else:
@@ -50,3 +49,4 @@ def update_keywords_stats(data):
                     )
                 interest_relation.objects.bulk_create(interest_relations)
 
+    return

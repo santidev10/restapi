@@ -1,4 +1,6 @@
+from celery.task import task
 from django.db import models
+from django.db.models import Avg
 from django.db.utils import IntegrityError
 from .tasks import update_keywords_stats
 import json
@@ -6,6 +8,12 @@ from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
+
+AVAILABLE_KEYWORD_LIST_CATEGORIES = (
+    "private",
+    "chf",
+    "blacklist"
+)
 
 
 class BaseQueryset(models.QuerySet):
@@ -158,9 +166,33 @@ class KeywordsList(BaseModel):
     user_email = models.EmailField(db_index=True)
     keywords = models.ManyToManyField(KeyWord, related_name='lists')
     updated_at = models.DateTimeField(auto_now=True)
+    category = models.CharField(max_length=255, null=True, blank=True)
+
+    # De normalized fields
+    num_keywords = models.IntegerField(default=0)
+    average_volume = models.BigIntegerField(default=0)
+    average_cpc = models.FloatField(default=0)
+    competition = models.FloatField(default=0)
+    average_cpv = models.FloatField(default=0)
+    average_view_rate = models.FloatField(default=0)
+    average_ctrv = models.FloatField(default=0)
 
     class Meta:
         ordering = ['-updated_at']
+
+    @task
+    def update_kw_list_stats(self):
+        kw_querry = self.keywords.through
+        self.num_keywords = kw_querry.objects.filter(keywordslist_id=self.id).count()
+        count_data = kw_querry.objects.aggregate(average_volume=Avg('keyword__search_volume'),
+                                                 average_cpc=Avg('keyword__average_cpc'),
+                                                 competition=Avg('keyword__competition'))
+        self.average_volume = count_data['average_volume']
+        self.average_cpc = count_data['average_cpc']
+        self.competition = count_data['competition']
+        # TODO Update adword fiels in future
+        self.save()
+        return
 
 
 class ViralKeywords(BaseModel):
