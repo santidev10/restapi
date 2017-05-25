@@ -22,6 +22,8 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 
 Genders = ("Undetermined", "Female", "Male")
 
+DATE_FORMAT = "%Y-%m-%d"
+
 
 def get_average_cpv(cost, views):
     if cost is None or not views:

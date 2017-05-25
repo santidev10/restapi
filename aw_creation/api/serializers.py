@@ -7,11 +7,12 @@ from rest_framework.serializers import ModelSerializer, \
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
-from aw_reporting.models import GeoTarget, Topic, Audience
+from aw_reporting.models import GeoTarget, Topic, Audience, DATE_FORMAT
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from decimal import Decimal
 from collections import OrderedDict
+from datetime import datetime
 import re
 import logging
 
@@ -613,6 +614,29 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
                     'These fields are required for approving: '
                     '{}'.format(", ".join(empty_fields))
                 )
+
+        # if one of the following fields is provided
+        if {"is_approved", "start", "end"} & set(data.keys()):
+            today = datetime.now().date()
+
+            start, end = None, None
+            if self.instance:
+                start, end = self.instance.start, self.instance.end
+
+            if data.get("start"):
+                start = data.get("start")
+
+            if data.get("end"):
+                end = data.get("end")
+
+            for date in (start, end):
+                if date and date < today:
+                    raise ValidationError('Wrong date period: dates in '
+                                          'the past are not allowed')
+
+            if start and end and start > end:
+                raise ValidationError(
+                    'Wrong date period: start date > end date')
 
         return super(OptimizationUpdateCampaignSerializer,
                      self).validate(data)

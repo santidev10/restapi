@@ -179,5 +179,66 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_fail_set_wrong_order_dates(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            start=str(today + timedelta(days=1)),
+            end=str(today),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "End date must be > start date")
+
+    def test_fail_set_start_in_the_past(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            start=str(today - timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "dates in the past are not allowed")
+
+    def test_fail_set_end_in_the_past(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        today = datetime.now().date()
+        request_data = dict(
+            end=str(today - timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "dates in the past are not allowed")
+
 
 
