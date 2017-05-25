@@ -187,7 +187,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         url = "{}?{}".format(
             base_url,
             urlencode(dict(
-                show_closed="true",
+                showClosed="true",
                 sort_by="name",
             )),
         )

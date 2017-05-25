@@ -7,11 +7,12 @@ from rest_framework.serializers import ModelSerializer, \
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning
-from aw_reporting.models import GeoTarget, Topic, Audience
+from aw_reporting.models import GeoTarget, Topic, Audience, DATE_FORMAT
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from decimal import Decimal
 from collections import OrderedDict
+from datetime import datetime
 import re
 import logging
 

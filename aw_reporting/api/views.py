@@ -8,8 +8,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 
 from aw_reporting.demo import demo_view_decorator
-
-DATE_FORMAT = "%Y-%m-%d"
+from aw_reporting.models import DATE_FORMAT
 
 
 @demo_view_decorator
