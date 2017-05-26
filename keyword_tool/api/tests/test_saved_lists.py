@@ -26,7 +26,7 @@ class KWToolSavedListTestCase(APITestCase):
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data), 4)
         returned_list = response.data[0]
         self.assertEqual(returned_list['id'], my_list.id)
         self.assertEqual(returned_list['name'], my_list.name)
