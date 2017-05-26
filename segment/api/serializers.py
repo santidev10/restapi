@@ -14,8 +14,8 @@ class SegmentCreateSerializer(ModelSerializer):
     Serializer for create segment
     """
     title = CharField(max_length=255, required=True)
-    channels_ids = CharField(max_length=255, required=False)
-    videos_ids = CharField(max_length=255, required=False)
+    channels_ids = CharField(required=False, allow_blank=True, allow_null=True)
+    videos_ids = CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         """
@@ -71,7 +71,7 @@ class SegmentCreateSerializer(ModelSerializer):
         segment.owner = user
         segment.save()
         # set channels
-        if self.channels_ids is not None:
+        if self.channels_ids:
             channels_ids = self.channels_ids.split(",")
             instances = []
             for channel_id in channels_ids:
@@ -80,7 +80,7 @@ class SegmentCreateSerializer(ModelSerializer):
                 instances.append(instance)
             segment.channels.add(*instances)
         # set videos
-        if self.videos_ids is not None:
+        if self.videos_ids:
             videos_ids = self.videos_ids.split(",")
             instances = []
             for video_id in videos_ids:
@@ -136,6 +136,19 @@ class SegmentSerializer(ModelSerializer):
     """
     is_editable = SerializerMethodField()
     owner = SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        """
+        Extend initializing procedure
+        """
+        fields = kwargs.pop('fields', None)
+        super(SegmentSerializer, self).__init__(*args, **kwargs)
+        if fields is not None:
+            requested_fields = set(fields)
+            pre_defined_fields = set(self.fields.keys())
+            difference = pre_defined_fields - requested_fields
+            for field_name in difference:
+                self.fields.pop(field_name)
 
     class Meta:
         """

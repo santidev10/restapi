@@ -109,6 +109,28 @@ class SegmentListCreateApiView(ListCreateAPIView):
                 ~Q(category="private"))
         return self.do_sorts(self.do_filters(queryset))
 
+    def paginate_queryset(self, queryset):
+        """
+        Processing flat query param
+        """
+        flat = self.request.query_params.get("flat")
+        if flat == "1":
+            return None
+        return super(
+            SegmentListCreateApiView, self).paginate_queryset(queryset)
+
+    def get_serializer(self, *args, **kwargs):
+        """
+        Return the serializer instance that should be used for validating and
+        deserializing input, and for serializing output.
+        """
+        serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
+        fields = self.request.query_params.get("fields")
+        if fields:
+            kwargs["fields"] = set(fields.split(","))
+        return serializer_class(*args, **kwargs)
+
 
 class SegmentRetrieveUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
     """
