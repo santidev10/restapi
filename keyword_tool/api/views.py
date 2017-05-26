@@ -231,7 +231,8 @@ class ListParentApiView(APIView):
         return self._paginator
 
     def paginate_queryset(self, queryset):
-        if self.paginator is None:
+        flat = self.request.query_params.get("flat")
+        if self.paginator is None or flat == '1':
             return None
         return self.paginator.paginate_queryset(queryset, self.request, view=self)
 
@@ -307,13 +308,17 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         queryset = self.visible_list_qs
         queryset = self.sort_list(queryset)
         queryset = self.filter_list(queryset)
-
+        fields = self.request.query_params.get("fields")
         page = self.paginate_queryset(queryset)
+
+        if fields:
+            kwargs["fields"] = set(fields.split(","))
+
         if page is not None:
-            serializer = SavedListNameSerializer(queryset, many=True, request=request)
+            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
             return self.get_paginated_response(serializer.data)
 
-        serializer = SavedListNameSerializer(queryset, many=True, request=request)
+        serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
