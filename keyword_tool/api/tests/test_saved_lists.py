@@ -66,9 +66,7 @@ class KWToolSavedListTestCase(APITestCase):
             email="donald.trump@mail.kz",
         )
         updates = dict(
-            name="New name",
-            visible_for_all=True,
-            collaborators=[another_user.id]
+            name="New name"
         )
         response = self.client.put(url, updates)
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
