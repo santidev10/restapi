@@ -137,6 +137,19 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     owner = SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        """
+        Extend initializing procedure
+        """
+        fields = kwargs.pop('fields', None)
+        super(SegmentSerializer, self).__init__(*args, **kwargs)
+        if fields is not None:
+            requested_fields = set(fields)
+            pre_defined_fields = set(self.fields.keys())
+            difference = pre_defined_fields - requested_fields
+            for field_name in difference:
+                self.fields.pop(field_name)
+
     class Meta:
         """
         Meta params
