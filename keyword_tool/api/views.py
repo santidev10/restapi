@@ -321,7 +321,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         keywords = self.request.data.get('keywords')
         category = self.request.data.get('category')
 
-        if name and keywords:
+        if name and keywords and category:
             # create list
             new_list = KeywordsList.objects.create(
                 user_email=self.request.user.email,
@@ -344,7 +344,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                             data=serializer.data)
 
         return Response(status=HTTP_400_BAD_REQUEST,
-                        data="'name' and 'keywords' are required params")
+                        data="'name' and 'keywords' and 'category are required params")
 
 
 class SavedListApiView(ListParentApiView):
