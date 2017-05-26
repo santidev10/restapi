@@ -23,22 +23,27 @@ def check_users_to_aw_accounts_permissions():
                 raise
         else:
             perm.can_read = True
-
+            print(accounts)
             # also we can update management accounts
             save_advertise_accounts(accounts, perm.account)
 
             # now lets check write permission
             # TODO: this works but shouldn't, find another solution
-            managed_service = client.GetService(
-              'AccountLabelService', version='v201702')
+            managed_customer_service = client.GetService(
+                  'ManagedCustomerService',
+                   version='v201607'
+            )
+            # Construct operations and add campaign.
             operations = [{
                 'operator': 'ADD',
                 'operand': {
-                    'name': 'Test IQ label',
+                    'name': 'Check permission account',
+                    'currencyCode': 'EUR',
+                    'dateTimeZone': 'Europe/London',
                 }
             }]
-            labels = managed_service.mutate(operations)
-            print(labels)
+            accounts = managed_customer_service.mutate(operations)
+            print(accounts)
 
         finally:
             perm.save()

@@ -32,7 +32,7 @@ class SimpleGeoTargetSerializer(ModelSerializer):
 
 
 def add_targeting_list_items_info(data, list_type):
-    ids = set(i['criteria'] for i in data)
+    ids = [i['criteria'] for i in data]
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
             connector = SingleDatabaseApiConnector()
