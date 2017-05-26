@@ -47,8 +47,13 @@ class SavedListNameSerializer(ModelSerializer):
         return obj.user_email == self.request.user.email
 
     def get_top_keywords(self, obj):
-        kw_ids = obj.keywords.through.objects.filter(keywordslist_id=obj.id).values_list('keyword__text', flat=True)
-        return KeyWord.objects.filter(text__in=kw_ids).order_by('-search_volume').values_list('text', flat=True)[:10]
+        kw_ids = obj.keywords.through.objects.filter(
+            keywordslist_id=obj.id).values_list(
+            'keyword__text', flat=True)
+
+        return [{'keyword': kw.text,
+                 'value': kw.search_volume} for kw in
+                KeyWord.objects.filter(text__in=kw_ids).order_by('-search_volume')[:10]]
 
     def validate(self, data):
         """
