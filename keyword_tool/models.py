@@ -10,7 +10,7 @@ from .tasks import update_keywords_stats
 logger = logging.getLogger(__name__)
 
 AVAILABLE_KEYWORD_LIST_CATEGORIES = (
-    "yt"
+    "yt",
     "private",
     "chf",
     "blacklist"

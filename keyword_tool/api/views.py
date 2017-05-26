@@ -218,7 +218,26 @@ class ViralKeywordsApiView(OptimizeQueryApiView):
 
 
 class ListParentApiView(APIView):
+    pagination_class = KWPaginator
     permission_classes = tuple()
+
+    @property
+    def paginator(self):
+        if not hasattr(self, '_paginator'):
+            if self.pagination_class is None:
+                self._paginator = None
+            else:
+                self._paginator = self.pagination_class()
+        return self._paginator
+
+    def paginate_queryset(self, queryset):
+        if self.paginator is None:
+            return None
+        return self.paginator.paginate_queryset(queryset, self.request, view=self)
+
+    def get_paginated_response(self, data):
+        assert self.paginator is not None
+        return self.paginator.get_paginated_response(data)
 
     @property
     def visible_list_qs(self):
@@ -275,15 +294,25 @@ class ListParentApiView(APIView):
         filters = {}
         # category
         category = self.request.query_params.get("category")
+        search = self.request.query_params.get("search")
+        if search:
+            filters['name__icontains'] = search
         if category:
             filters["category"] = category
         return queryset.filter(**filters)
+
 
 class SavedListsGetOrCreateApiView(ListParentApiView):
     def get(self, request, *args, **kwargs):
         queryset = self.visible_list_qs
         queryset = self.sort_list(queryset)
         queryset = self.filter_list(queryset)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = SavedListNameSerializer(queryset, many=True, request=request)
+            return self.get_paginated_response(serializer.data)
+
         serializer = SavedListNameSerializer(queryset, many=True, request=request)
         return Response(serializer.data)
 
@@ -292,7 +321,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         keywords = self.request.data.get('keywords')
         category = self.request.data.get('category')
 
-        if name and keywords:
+        if name and keywords and category:
             # create list
             new_list = KeywordsList.objects.create(
                 user_email=self.request.user.email,
@@ -315,7 +344,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                             data=serializer.data)
 
         return Response(status=HTTP_400_BAD_REQUEST,
-                        data="'name' and 'keywords' are required params")
+                        data="'name' and 'keywords' and 'category are required params")
 
 
 class SavedListApiView(ListParentApiView):
