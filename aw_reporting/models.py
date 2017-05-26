@@ -113,7 +113,7 @@ class AWAccountPermission(models.Model):
     account = models.ForeignKey(
         Account, related_name="mcc_permissions")
     can_read = models.BooleanField(default=False)
-    can_manage = models.BooleanField(default=False)
+    can_write = models.BooleanField(default=False)
 
     class Meta:
         unique_together = (("aw_connection", "account"),)
