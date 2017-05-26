@@ -2,6 +2,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from saas.utils_tests import ExtendedAPITestCase
 from urllib.parse import urlencode
+from unittest.mock import patch
+from aw_reporting.models import Account
 import json
 
 
@@ -25,7 +27,6 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
                 ))
             )
         )
-        print(response.data)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("authorize_url", response.data)
 
@@ -37,14 +38,47 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
                 redirect_url="https://saas.channelfactory.com"
             ))
         )
+        test_customers = [
+            dict(
+                customerId=7046445553,
+                currencyCode="UAH",
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+            dict(
+                customerId=7046445552,
+                currencyCode="UAH",
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="Account",
+                companyName=None,
+                canManageClients=False,  # !!
+                testAccount=False,
+            ),
+        ]
+        with patch(
+            "aw_reporting.api.views.client.OAuth2WebServerFlow"
+        ) as flow:
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
 
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                code="4/9oRTm3ncy0vqFWuaYSUCxD2cLzW8b-H4kyGKXhS4R8U#"
-            )),
-            content_type='application/json',
-        )
-        print(response.data)
+            with patch(
+                "aw_reporting.api.views.get_google_access_token_info",
+                new=lambda _: dict(email="test@mail.kz")
+            ):
+                with patch("aw_reporting.api.views.get_customers",
+                           new=lambda *_, **k: test_customers):
+                    response = self.client.post(
+                        url,
+                        json.dumps(dict(code="1111")),
+                        content_type='application/json',
+                    )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("authorize_url", response.data)
+        self.assertEqual(len(response.data), 1)
+        accounts = Account.objects.filter(
+            mcc_permissions__aw_connection__users=self.user)
+        self.assertEqual(len(accounts), 1,
+                         "MCC account is created and linked to the user")
+        self.assertEqual(accounts[0].name, "MCC Account")
+

@@ -5,7 +5,7 @@ import yaml
 from googleads import adwords, oauth2
 
 logger = logging.getLogger(__name__)
-API_VERSION = 'v201609'
+API_VERSION = 'v201702'
 
 
 def load_settings():
@@ -32,27 +32,23 @@ def get_customers(refresh_token, **kwargs):
     return customer_service.getCustomers()
 
 
-def get_client(**kwargs):
-    api_settings = load_settings()
-    api_settings.update(kwargs)
-    logger.debug('Start client, settings:', api_settings)
+def _get_client(developer_token, client_id, client_secret, user_agent,
+                refresh_token, client_customer_id=None):
     oauth2_client = oauth2.GoogleRefreshTokenClient(
-                                    api_settings.get('client_id'),
-                                    api_settings.get('client_secret'),
-                                    api_settings.get('refresh_token'))
-
+        client_id, client_secret, refresh_token
+    )
     try_num = 0
     while True:
         try:
             client_obj = adwords.AdWordsClient(
-                api_settings.get('developer_token'),
+                developer_token,
                 oauth2_client,
-                user_agent=api_settings.get('user_agent'),
-                client_customer_id=api_settings.get('client_customer_id'),
+                user_agent=user_agent,
+                client_customer_id=client_customer_id,
             )
         except Exception as e:
             logger.error("Error: %s" % str(e))
-            if try_num < 5:
+            if try_num < 3:
                 try_num += 1
                 seconds = try_num ** 4
                 logger.info('Sleep for %d seconds' % seconds)
@@ -61,6 +57,18 @@ def get_client(**kwargs):
                 raise
         else:
             return client_obj
+
+
+def get_web_app_client(**kwargs):
+    api_settings = load_web_app_settings()
+    api_settings.update(kwargs)
+    return _get_client(**api_settings)
+
+
+def get_client(**kwargs):
+    api_settings = load_settings()
+    api_settings.update(kwargs)
+    return _get_client(**api_settings)
 
 
 def optimize_keyword(query, client=None):
@@ -148,3 +156,37 @@ def optimize_keyword(query, client=None):
         more_pages = offset < total_count
 
     return result_data
+
+
+def get_all_customers(client):
+    page_size = 1000
+    # Initialize appropriate service.
+    managed_customer_service = client.GetService(
+        'ManagedCustomerService',
+        version=API_VERSION
+    )
+
+    offset = 0
+    selector = {
+        'fields': [
+            'CustomerId', 'Name', 'CurrencyCode', 'DateTimeZone',
+            'CanManageClients',
+        ],
+        'paging': {
+            'startIndex': str(offset),
+            'numberResults': str(page_size)
+        }
+    }
+    more_pages = True
+    customers = []
+
+    while more_pages:
+        page = managed_customer_service.get(selector)
+        if 'entries' in page and page['entries']:
+            customers += page['entries']
+
+        offset += page_size
+        selector['paging']['startIndex'] = str(offset)
+        more_pages = offset < int(page['totalNumEntries'])
+
+    return customers

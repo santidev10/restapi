@@ -22,6 +22,8 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 
 Genders = ("Undetermined", "Female", "Male")
 
+DATE_FORMAT = "%Y-%m-%d"
+
 
 def get_average_cpv(cost, views):
     if cost is None or not views:
@@ -105,14 +107,16 @@ class Account(models.Model):
         return "%s" % self.name
 
 
-class AccountConnection(models.Model):
-    manager = models.ForeignKey(
-        Account, null=True, blank=True, related_name='connections',
-        on_delete=models.SET_NULL,
-    )
-    user = models.ForeignKey('userprofile.userprofile',
-                             related_name="account_connections")
-    refresh_token = models.CharField(max_length=100)
+class AWAccountPermission(models.Model):
+    aw_connection = models.ForeignKey(
+        AWConnection, related_name="mcc_permissions")
+    account = models.ForeignKey(
+        Account, related_name="mcc_permissions")
+    can_read = models.BooleanField(default=False)
+    can_manage = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (("aw_connection", "account"),)
 
 
 class BaseStatisticModel(models.Model):

@@ -4,18 +4,18 @@ from datetime import datetime
 from io import StringIO
 
 from django.http import StreamingHttpResponse
+from django.db import transaction
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR
 from oauth2client import client
-import requests
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
-from aw_reporting.models import AWConnection
-
-DATE_FORMAT = "%Y-%m-%d"
+from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import AWConnection, Account, AWAccountPermission
+from aw_reporting.utils import get_google_access_token_info
 
 
 @demo_view_decorator
@@ -291,6 +291,26 @@ class TrackAccountsDataApiView(TrackApiBase):
 
 
 class ConnectAWAccountApiView(APIView):
+    """
+    The view allows to connect user's AdWords account
+    GET method gives an URL to go and grant access to our app
+    then send the code you will get in the query in POST request
+
+    POST body example:
+    {"code": "<INSERT YOUR CODE HERE>"}
+
+    success POST response example:
+    [
+        {
+            "can_manage_clients": true,
+            "currency_code": "USD",
+            "is_test_account": false,
+            "name": "CF Automation MCC",
+            "id": 7155851537,
+            "timezone": "America/Los_Angeles"
+        }
+    ]
+    """
 
     scopes = (
         'https://www.googleapis.com/auth/adwords',
@@ -299,13 +319,14 @@ class ConnectAWAccountApiView(APIView):
     lost_perm_error = "You have already provided access to your accounts" \
                       " but we've lost it. Please, visit " \
                       "https://myaccount.google.com/permissions and " \
-                      "remove our application's connection " \
+                      "revoke our application's permission " \
                       "then try again"
-    no_mcc_error = "Please, provide an account that has access to "
+    no_mcc_error = "MCC account wasn't found. Please check that you " \
+                   "really have access to at least one."
 
     # first step
     def get(self, request, *args, **kwargs):
-        redirect_url = self.get_redirect_url()
+        redirect_url = self.request.query_params.get("redirect_url")
         if not redirect_url:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
@@ -318,7 +339,8 @@ class ConnectAWAccountApiView(APIView):
 
     # second step
     def post(self, request, *args, **kwargs):
-        redirect_url = self.get_redirect_url()
+        # get refresh token
+        redirect_url = self.request.query_params.get("redirect_url")
         if not redirect_url:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
@@ -341,25 +363,40 @@ class ConnectAWAccountApiView(APIView):
                 data=dict(error='Authentication has failed: %s' % e)
             )
         else:
-            url = "https://www.googleapis.com/oauth2/v3/tokeninfo?" \
-                  "access_token={}".format(credential.access_token)
-            token_info = requests.get(url).json()
+            token_info = get_google_access_token_info(
+                credential.access_token)
+            if 'email' not in token_info:
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data=token_info)
+
+            refresh_token = credential.refresh_token
             try:
                 connection = AWConnection.objects.get(
                     email=token_info['email']
                 )
             except AWConnection.DoesNotExist:
-                if credential.refresh_token:
+                if refresh_token:
                     connection = AWConnection.objects.create(
                         email=token_info['email'],
-                        refresh_token=credential.refresh_token,
+                        refresh_token=refresh_token,
                     )
                 else:
                     return Response(
                         data=dict(error=self.lost_perm_error),
                         status=HTTP_500_INTERNAL_SERVER_ERROR,
                     )
+            else:
+                # update token
+                if refresh_token and \
+                   connection.refresh_token != refresh_token:
+                    connection.refresh_token = refresh_token
+                    connection.save()
 
+            # save this connection, even if there is no MCC accounts yet
+            self.request.user.aw_connections.add(connection)
+
+            # -- end of get refresh token
+            # save mcc accounts
             customers = get_customers(
                 connection.refresh_token,
                 **load_web_app_settings()
@@ -374,10 +411,26 @@ class ConnectAWAccountApiView(APIView):
                     data=dict(error=self.no_mcc_error)
                 )
 
-            self.request.user.aw_connections.add(connection)
-            # TODO: add something to the success response
+            response = []
+            with transaction.atomic():
+                for ac_data in mcc_accounts:
+                    data = dict(
+                        id=ac_data['customerId'],
+                        name=ac_data['descriptiveName'],
+                        currency_code=ac_data['currencyCode'],
+                        timezone=ac_data['dateTimeZone'],
+                        can_manage_clients=ac_data['canManageClients'],
+                        is_test_account=ac_data['testAccount'],
+                    )
+                    obj, _ = Account.objects.get_or_create(
+                        id=data['id'], defaults=data,
+                    )
+                    AWAccountPermission.objects.get_or_create(
+                        aw_connection=connection, account=obj,
+                    )
+                    response.append(data)
 
-            return Response(data={})
+            return Response(data=response)
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()
@@ -390,10 +443,7 @@ class ConnectAWAccountApiView(APIView):
         )
         return flow
 
-    def get_redirect_url(self):
-        rf = self.request.META.get('HTTP_REFERER')
-        redirect_url = self.request.query_params.get("redirect_url", rf)
-        return redirect_url
+
 
 
 
