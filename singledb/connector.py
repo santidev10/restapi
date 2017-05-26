@@ -168,5 +168,5 @@ class SingleDatabaseApiConnector(object):
 
     def get_custom_query_result(self, model_name, **params):
         endpoint = "custom_query/{}/".format(model_name)
-        response_data = self.execute_get_call(endpoint, params)
+        response_data = self.execute_post_call(endpoint, {}, data=params)
         return response_data
