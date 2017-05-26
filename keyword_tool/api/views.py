@@ -12,6 +12,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import optimize_keyword
+from keyword_tool.tasks import update_kw_list_stats
 from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from utils.api_paginator import CustomPageNumberPaginator
@@ -305,7 +306,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                             for kw_id in keywords]
             keywords_relation.objects.bulk_create(kw_relations)
 
-            new_list.update_kw_list_stats.delay(new_list)
+            update_kw_list_stats.delay(new_list)
             serializer = SavedListNameSerializer(instance=new_list,
                                                  data=self.request.data,
                                                  request=request)
@@ -404,7 +405,7 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                             for kw_id in ids_to_save]
             keywords_relation.objects.bulk_create(kw_relations)
 
-        obj.update_kw_list_stats.delay(obj)
+        update_kw_list_stats.delay(obj)
         return Response(status=HTTP_202_ACCEPTED,
                         data=dict(count=len(ids_to_save)))
 
@@ -434,7 +435,7 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                 keywordslist_id=obj.id,
                 keyword_id__in=ids_to_save,
             ).delete()
-        obj.update_kw_list_stats.delay(obj)
+        update_kw_list_stats.delay(obj)
         return Response(status=HTTP_202_ACCEPTED, data=dict(count=count))
 
 
@@ -463,7 +464,7 @@ class ListsDuplicateApiView(GenericAPIView):
                         for kw_id in keywords]
         keywords_relation.objects.bulk_create(kw_relations)
 
-        new_list.update_kw_list_stats.delay(new_list)
+        update_kw_list_stats.delay(new_list)
 
         return Response(status=HTTP_202_ACCEPTED,
                         data=SavedListNameSerializer(

@@ -1,10 +1,8 @@
 import json
 import logging
 
-from celery.task import task
 from django.db import models
 from django.db import transaction
-from django.db.models import Avg
 from django.db.utils import IntegrityError
 
 from .tasks import update_keywords_stats
@@ -182,20 +180,6 @@ class KeywordsList(BaseModel):
 
     class Meta:
         ordering = ['-updated_at']
-
-    @task
-    def update_kw_list_stats(self):
-        kw_querry = self.keywords.through
-        self.num_keywords = kw_querry.objects.filter(keywordslist_id=self.id).count()
-        count_data = kw_querry.objects.aggregate(average_volume=Avg('keyword__search_volume'),
-                                                 average_cpc=Avg('keyword__average_cpc'),
-                                                 competition=Avg('keyword__competition'))
-        self.average_volume = count_data['average_volume']
-        self.average_cpc = count_data['average_cpc']
-        self.competition = count_data['competition']
-        # TODO Update adword fiels in future
-        self.save()
-        return
 
 
 class ViralKeywords(BaseModel):

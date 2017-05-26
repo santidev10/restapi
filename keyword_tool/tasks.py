@@ -1,4 +1,5 @@
 from celery import task
+from django.db.models import Avg
 
 
 @task
@@ -49,4 +50,19 @@ def update_keywords_stats(data):
                     )
                 interest_relation.objects.bulk_create(interest_relations)
 
+    return
+
+
+@task
+def update_kw_list_stats(obj):
+    kw_querry = obj.keywords.through.objects.filter(keywordslist_id=obj.id)
+    obj.num_keywords = kw_querry.count()
+    count_data = kw_querry.aggregate(average_volume=Avg('keyword__search_volume'),
+                                             average_cpc=Avg('keyword__average_cpc'),
+                                             competition=Avg('keyword__competition'))
+    obj.average_volume = count_data['average_volume']
+    obj.average_cpc = count_data['average_cpc']
+    obj.competition = count_data['competition']
+    # TODO Update adword fiels in future
+    obj.save()
     return
