@@ -33,8 +33,15 @@ class SavedListNameSerializer(ModelSerializer):
     top_keywords = SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
+        fields = kwargs.pop('fields', None)
         self.request = kwargs.pop('request')
         super(SavedListNameSerializer, self).__init__(*args, **kwargs)
+        if fields is not None:
+            requested_fields = set(fields)
+            pre_defined_fields = set(self.fields.keys())
+            difference = pre_defined_fields - requested_fields
+            for field_name in difference:
+                self.fields.pop(field_name)
 
     def get_is_owner(self, obj):
         return obj.user_email == self.request.user.email
