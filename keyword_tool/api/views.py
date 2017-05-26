@@ -270,11 +270,19 @@ class ListParentApiView(APIView):
             queryset = queryset.order_by("-{}".format(sort_by))
         return queryset
 
+    def filter_list(self, queryset):
+        filters = {}
+        # category
+        category = self.request.query_params.get("category")
+        if category:
+            filters["category"] = category
+        return queryset.filter(**filters)
 
 class SavedListsGetOrCreateApiView(ListParentApiView):
     def get(self, request, *args, **kwargs):
         queryset = self.visible_list_qs
         queryset = self.sort_list(queryset)
+        queryset = self.filter_list(queryset)
         serializer = SavedListNameSerializer(queryset, many=True, request=request)
         return Response(serializer.data)
 
