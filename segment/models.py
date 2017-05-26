@@ -93,7 +93,7 @@ class Segment(Timestampable):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
                         "fields": "id,title,thumbnail_image_url,"
-                                  "subscribers,videos,views,"
+                                  "subscribers,videos,views,video_views"
                                   "likes,dislikes,comments,"
                                   "video_views_history,"
                                   "views_per_video_history,description,"
@@ -123,10 +123,12 @@ class Segment(Timestampable):
         likes_count = 0
         dislikes_count = 0
         comments_count = 0
+        video_views_count = 0
         for obj in response_data:
             subscribers_count += obj.get("subscribers")
             videos_count += obj.get("videos")
             views_count += obj.get("views")
+            video_views_count += obj.get("video_views")
             likes_count += obj.get("likes")
             dislikes_count += obj.get("dislikes")
             comments_count += obj.get("comments")
@@ -148,7 +150,7 @@ class Segment(Timestampable):
                 sum((likes_count, dislikes_count)), 1)) * 100,
             "engage_rate": (sum(
                 (likes_count, dislikes_count, comments_count))
-                            / max(views_count, 1)) * 100
+                            / max(video_views_count, 1)) * 100
         }
         self.statistics = statistics
         # count mini-dash
