@@ -158,8 +158,7 @@ def optimize_keyword(query, client=None):
     return result_data
 
 
-def get_all_customers(client):
-    page_size = 1000
+def get_all_customers(client, page_size=1000, limit=None):
     # Initialize appropriate service.
     managed_customer_service = client.GetService(
         'ManagedCustomerService',
@@ -188,5 +187,8 @@ def get_all_customers(client):
         offset += page_size
         selector['paging']['startIndex'] = str(offset)
         more_pages = offset < int(page['totalNumEntries'])
+
+        if limit and limit >= offset:
+            break
 
     return customers

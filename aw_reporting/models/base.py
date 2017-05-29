@@ -1,6 +1,5 @@
-import re
-
 from django.db import models
+import re
 
 SUM_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -91,6 +90,9 @@ class AWConnection(models.Model):
     users = models.ManyToManyField('userprofile.userprofile',
                                    related_name="aw_connections")
 
+    def __str__(self):
+        return "AWConnection: {}".format(self.email)
+
 
 class Account(models.Model):
     id = models.CharField(max_length=15, primary_key=True)
@@ -99,12 +101,11 @@ class Account(models.Model):
     timezone = models.CharField(max_length=100, null=True)
     can_manage_clients = models.BooleanField(default=False)
     is_test_account = models.BooleanField(default=False)
-    manager = models.ForeignKey("self", null=True,
-                                related_name='customers')
+    managers = models.ManyToManyField("self", related_name='customers')
     visible = models.BooleanField(default=True)
 
     def __str__(self):
-        return "%s" % self.name
+        return "Account: {}".format(self.name)
 
 
 class AWAccountPermission(models.Model):
@@ -113,10 +114,17 @@ class AWAccountPermission(models.Model):
     account = models.ForeignKey(
         Account, related_name="mcc_permissions")
     can_read = models.BooleanField(default=False)
+    # we will check read permission every day and show data to those users
+    # who has access to it on AdWords
     can_write = models.BooleanField(default=False)
+    # we will be set True only after successful account creations
+    # and set False on errors
 
     class Meta:
         unique_together = (("aw_connection", "account"),)
+
+    def __str__(self):
+        return "AWPermission({}, {})".format(self.aw_connection, self.account)
 
 
 class BaseStatisticModel(models.Model):
@@ -182,6 +190,24 @@ class AdGroup(BaseStatisticModel):
         return "%s %s" % (self.campaign.name, self.name)
 
 
+class Ad(BaseStatisticModel):
+    id = models.CharField(max_length=15, primary_key=True)
+    ad_group = models.ForeignKey(AdGroup, related_name='ads')
+
+    headline = models.CharField(max_length=150, null=True)
+    creative_name = models.CharField(max_length=150, null=True)
+    display_url = models.CharField(max_length=150, null=True)
+    status = models.CharField(max_length=10, null=True)
+
+    def __str__(self):
+        return "%s #%s" % (self.creative_name, self.id)
+
+
+class VideoCreative(BaseStatisticModel):
+    id = models.CharField(max_length=255, primary_key=True)
+    duration = models.IntegerField(null=True)
+
+
 class GeoTarget(models.Model):
     name = models.CharField(max_length=100)
     canonical_name = models.CharField(max_length=100)
@@ -214,3 +240,11 @@ class Audience(models.Model):
 
     def __str__(self):
         return "%s" % self.name
+
+
+class RemarkList(models.Model):
+    id = models.CharField(max_length=15, primary_key=True)
+    name = models.CharField(max_length=250)
+
+    def __str__(self):
+        return self.name
