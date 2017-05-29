@@ -84,4 +84,8 @@ urlpatterns = [
         r'(?P<pk>\d+)/(?P<list_type>\w+)/$',
         views.AdGroupTargetingListImportApiView.as_view(),
         name="optimization_ad_group_targeting_import"),
+    url(r'^optimization_ad_group_targeting_import_lists/'
+        r'(?P<pk>\d+)/(?P<list_type>\w+)/$',
+        views.AdGroupTargetingListImportListsApiView.as_view(),
+        name="optimization_ad_group_targeting_import_lists"),
 ]
