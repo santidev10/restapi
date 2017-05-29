@@ -1384,6 +1384,62 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         return objects
 
 
+class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
+
+    def post(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        try:
+            ad_group_creation = AdGroupCreation.objects.get(pk=pk)
+        except AdGroupCreation.DoesNotExsist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        ids = request.data
+        assert type(ids) is list
+
+        method = getattr(self, "get_{}_items")
+        if ids:
+            criteria_list = method(ids)
+            items = [
+                TargetingItem(
+                    ad_group_creation=ad_group_creation,
+                    criteria=cid,
+                    type=list_type,
+                )
+                for cid in criteria_list
+            ]
+            if items:
+                TargetingItem.objects.bulk_create(items)
+        return self.get(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        raise NotImplementedError
+
+    @staticmethod
+    def get_channel_items(ids):
+        from segment.models import Segment
+        items = Segment.objects.filter(id__in=ids).values_list(
+            "channels__channel_id", flat=True
+        ).order_by("channels__channel_id").distinct()
+        return items
+
+    @staticmethod
+    def get_video_items(ids):
+        from segment.models import Segment
+        items = Segment.objects.filter(id__in=ids).values_list(
+            "videos__video_id", flat=True
+        ).order_by("videos__video_id").distinct()
+        return items
+
+    @staticmethod
+    def get_keyword_items(ids):
+        from keyword_tool.models import KeywordsList
+        items = KeywordsList.objects.filter(id__in=ids).values_list(
+            "keywords__text", flat=True
+        ).order_by("keywords__text").distinct()
+        return items
+
+
 # optimize tab
 class OptimizationFiltersApiView(APIView):
 
