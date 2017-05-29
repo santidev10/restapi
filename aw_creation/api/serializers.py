@@ -626,14 +626,15 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
 
             if data.get("start"):
                 start = data.get("start")
-
             if data.get("end"):
                 end = data.get("end")
 
-            for date in (start, end):
+            for f_name, date in (("start", start), ("end", end)):
                 if date and date < today:
-                    raise ValidationError('Wrong date period: dates in '
-                                          'the past are not allowed')
+                    if data.get(f_name) or data.get("is_approved") is True:
+                        raise ValidationError(
+                            'Wrong date period: '
+                            'dates in the past are not allowed')
 
             if start and end and start > end:
                 raise ValidationError(
