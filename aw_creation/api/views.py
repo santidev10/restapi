@@ -1388,6 +1388,7 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
     def post(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
         list_type = self.kwargs.get('list_type')
+        is_negative = request.query_params.get('is_negative', False)
         try:
             ad_group_creation = AdGroupCreation.objects.get(pk=pk)
         except AdGroupCreation.DoesNotExsist:
@@ -1396,7 +1397,7 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
         ids = request.data
         assert type(ids) is list
 
-        method = getattr(self, "get_{}_items")
+        method = getattr(self, "get_{}_items".format(list_type))
         if ids:
             criteria_list = method(ids)
             items = [
@@ -1404,6 +1405,7 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
                     ad_group_creation=ad_group_creation,
                     criteria=cid,
                     type=list_type,
+                    is_negative=is_negative,
                 )
                 for cid in criteria_list
             ]
