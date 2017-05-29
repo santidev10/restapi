@@ -240,5 +240,48 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "dates in the past are not allowed")
 
+    def test_set_end_when_both_dates_not_valid(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = datetime.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today - timedelta(days=10),
+            end=today - timedelta(days=2),
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(
+            end=str(today + timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_fail_set_start_when_both_dates_not_valid(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = datetime.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today - timedelta(days=10),
+            end=today - timedelta(days=2),
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(
+            start=str(today + timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "Because start date > end date")
+
 
 
