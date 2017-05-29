@@ -93,7 +93,7 @@ class Segment(Timestampable):
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
                         "fields": "id,title,thumbnail_image_url,"
-                                  "subscribers,videos,views,video_views"
+                                  "subscribers,videos,views,video_views,"
                                   "likes,dislikes,comments,"
                                   "video_views_history,"
                                   "views_per_video_history,description,"
