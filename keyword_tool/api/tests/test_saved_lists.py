@@ -1,8 +1,9 @@
-from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
-from saas.utils_tests import ExtendedAPITestCase as APITestCase
+
 from keyword_tool.models import *
+from saas.utils_tests import ExtendedAPITestCase as APITestCase
 
 
 class KWToolSavedListTestCase(APITestCase):
@@ -14,10 +15,12 @@ class KWToolSavedListTestCase(APITestCase):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         KeywordsList.objects.create(
             user_email="donald.trump@mail.kz",
             name="Another list",
+            category="private"
         )
 
         self.url = reverse(
@@ -25,14 +28,15 @@ class KWToolSavedListTestCase(APITestCase):
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        returned_list = response.data[0]
+        self.assertEqual(len(response.data), 4)
+        returned_list = response.data['items'][0]
         self.assertEqual(returned_list['id'], my_list.id)
         self.assertEqual(returned_list['name'], my_list.name)
 
     def test_create_saved_lists(self):
         name = "My list"
         keywords = []
+        category = 'private'
         for i in range(1, 10):
             keyword = KeyWord.objects.create(text="kw #%s" % i)
             keywords.append(keyword.text)
@@ -46,6 +50,7 @@ class KWToolSavedListTestCase(APITestCase):
             dict(
                 name=name,
                 keywords=keywords,
+                category=category
             )
         )
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
@@ -55,6 +60,7 @@ class KWToolSavedListTestCase(APITestCase):
         saved_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
 
         url = reverse(
@@ -65,9 +71,7 @@ class KWToolSavedListTestCase(APITestCase):
             email="donald.trump@mail.kz",
         )
         updates = dict(
-            name="New name",
-            visible_for_all=True,
-            collaborators=[another_user.id]
+            name="New name"
         )
         response = self.client.put(url, updates)
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
@@ -77,6 +81,7 @@ class KWToolSavedListTestCase(APITestCase):
         saved_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         url = reverse(
             "keyword_tool_urls:kw_tool_saved_list",
@@ -91,10 +96,12 @@ class KWToolSavedListTestCase(APITestCase):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         another_list = KeywordsList.objects.create(
             user_email="donald.trump@mail.kz",
             name="Another list",
+            category="private"
         )
         for i in range(1, 10):
             keyword = KeyWord.objects.create(text="kw #%s" % i)
@@ -155,6 +162,7 @@ class KWToolSavedListTestCase(APITestCase):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         ids = []
         for i in range(1, 10):
@@ -187,6 +195,7 @@ class KWToolSavedListTestCase(APITestCase):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         ids = []
         for i in range(1, 10):
@@ -220,6 +229,7 @@ class KWToolSavedListTestCase(APITestCase):
         my_list = KeywordsList.objects.create(
             user_email=self.user.email,
             name="My list",
+            category="private"
         )
         ids = []
         for i in range(1, 10):

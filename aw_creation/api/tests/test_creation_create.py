@@ -1,5 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db.models import Sum, Avg, Count
 from rest_framework.status import HTTP_200_OK
@@ -7,8 +9,6 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
-from django.conf import settings
-import logging
 
 logger = logging.getLogger(__name__)
 

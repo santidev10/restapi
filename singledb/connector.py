@@ -2,8 +2,9 @@
 Single database API connector module
 """
 import json
-import requests
 from urllib.parse import urlencode
+
+import requests
 from django.conf import settings
 
 

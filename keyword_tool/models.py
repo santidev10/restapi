@@ -1,11 +1,20 @@
-from django.db import models
-from django.db.utils import IntegrityError
-from .tasks import update_keywords_stats
 import json
-from django.db import transaction
 import logging
 
+from django.db import models
+from django.db import transaction
+from django.db.utils import IntegrityError
+
+from .tasks import update_keywords_stats
+
 logger = logging.getLogger(__name__)
+
+AVAILABLE_KEYWORD_LIST_CATEGORIES = (
+    "yt",
+    "private",
+    "chf",
+    "blacklist"
+)
 
 
 class BaseQueryset(models.QuerySet):
@@ -158,6 +167,16 @@ class KeywordsList(BaseModel):
     user_email = models.EmailField(db_index=True)
     keywords = models.ManyToManyField(KeyWord, related_name='lists')
     updated_at = models.DateTimeField(auto_now=True)
+    category = models.CharField(max_length=255, null=True, blank=True)
+
+    # De normalized fields
+    num_keywords = models.IntegerField(default=0)
+    average_volume = models.BigIntegerField(default=0)
+    average_cpc = models.FloatField(default=0)
+    competition = models.FloatField(default=0)
+    average_cpv = models.FloatField(default=0)
+    average_view_rate = models.FloatField(default=0)
+    average_ctrv = models.FloatField(default=0)
 
     class Meta:
         ordering = ['-updated_at']
