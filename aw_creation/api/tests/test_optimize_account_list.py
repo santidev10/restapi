@@ -78,7 +78,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(item.keys()),
             {
-                'id', 'name',
+                'id', 'name', 'status',
                 'is_ended',
                 'start',
                 'ordered_cpv',
@@ -121,6 +121,10 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             response.data['items_count'], 1,
             "The account has no end date that's why it's shown"
         )
+        self.assertEqual(
+            response.data['items'][0]['status'], "Running",
+            "There is no any better status for this case"
+        )
 
     def test_hide_account_end_in_past(self):
         ac_creation = AccountCreation.objects.create(
@@ -131,6 +135,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             end=datetime.now().date() - timedelta(days=1),
         )
 
+        # 1
         url = reverse("aw_creation_urls:optimization_account_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -138,6 +143,11 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             response.data['items_count'], 0,
             "The only campaign with end date ended yesterday"
         )
+        # 2
+        response = self.client.get("{}?show_closed=1".format(url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(response.data['items'][0]['status'], "Ended")
 
     def test_hide_account_end_in_past_two_campaigns(self):
         ac_creation = AccountCreation.objects.create(
@@ -150,7 +160,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             name="", account_creation=ac_creation,
             end=datetime.now().date() - timedelta(days=1),
         )
-
+        # 1
         url = reverse("aw_creation_urls:optimization_account_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -158,6 +168,11 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             response.data['items_count'], 0,
             "The account isn't shown because the only date is in the past"
         )
+        # 2
+        response = self.client.get("{}?show_closed=1".format(url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(response.data['items'][0]['status'], "Ended")
 
     def test_hide_account_is_ended_true(self):
         ac_creation = AccountCreation.objects.create(
@@ -167,7 +182,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             name="", account_creation=ac_creation,
             end=datetime.now().date() + timedelta(days=1),
         )
-
+        # 1
         url = reverse("aw_creation_urls:optimization_account_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -175,6 +190,11 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             response.data['items_count'], 0,
             "The account isn't shown because of the flag 'is_ended' "
         )
+        # 2
+        response = self.client.get("{}?show_closed=1".format(url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(response.data['items'][0]['status'], "Ended")
 
     def test_show_hidden_account(self):
         AccountCreation.objects.create(

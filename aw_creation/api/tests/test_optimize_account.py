@@ -78,7 +78,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 # common details
-                'id', 'name',
+                'id', 'name', 'status',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
 
