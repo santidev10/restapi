@@ -37,26 +37,13 @@ def _get_client(developer_token, client_id, client_secret, user_agent,
     oauth2_client = oauth2.GoogleRefreshTokenClient(
         client_id, client_secret, refresh_token
     )
-    try_num = 0
-    while True:
-        try:
-            client_obj = adwords.AdWordsClient(
-                developer_token,
-                oauth2_client,
-                user_agent=user_agent,
-                client_customer_id=client_customer_id,
-            )
-        except Exception as e:
-            logger.error("Error: %s" % str(e))
-            if try_num < 3:
-                try_num += 1
-                seconds = try_num ** 4
-                logger.info('Sleep for %d seconds' % seconds)
-                sleep(seconds)
-            else:
-                raise
-        else:
-            return client_obj
+    client_obj = adwords.AdWordsClient(
+        developer_token,
+        oauth2_client,
+        user_agent=user_agent,
+        client_customer_id=client_customer_id,
+    )
+    return client_obj
 
 
 def get_web_app_client(**kwargs):

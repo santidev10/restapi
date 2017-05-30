@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
-from suds import WebFault
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
@@ -14,26 +13,29 @@ logger = logging.getLogger(__name__)
 #  helpers --
 
 
-def update_aw_read_permissions():
+def detect_success_aw_read_permissions():
     from aw_reporting.models import AWAccountPermission
-    for permission in AWAccountPermission.objects.all():
-        client = get_web_app_client(
-            refresh_token=permission.aw_connection.refresh_token,
-            client_customer_id=permission.account_id,
-        )
+    for permission in AWAccountPermission.objects.filter(
+        can_read=False,
+        aw_connection__revoked_access=False,
+    ):
         try:
-            get_all_customers(client, page_size=1, limit=1)
-        except WebFault as e:
-            if "AuthorizationError.USER_PERMISSION_DENIED" in\
-                    e.fault.faultstring:
-                # access was terminated
-                permission.can_read = False
-            else:
-                raise
+            client = get_web_app_client(
+                refresh_token=permission.aw_connection.refresh_token,
+                client_customer_id=permission.account_id,
+            )
+        except Exception as e:
+            logger.info(e)
         else:
-            permission.can_read = True
-        finally:
-            permission.save()
+            try:
+                get_all_customers(client, page_size=1, limit=1)
+            except Exception as e:
+                logger.info(e)
+            else:
+                # we don't care about the exceptions here
+                # successful read is the only thing we carry about here
+                permission.can_read = True
+                permission.save()
 
 
 def quart_views(row, n):
@@ -159,50 +161,6 @@ def save_accounts(account_connection, *_):
             if customer.manager_id != manager.id:
                 customer.manager = manager
                 customer.save()
-
-
-def save_campaigns(connection, queue, accounts):
-    execute_for_every_account(get_campaigns, connection, queue, accounts)
-
-
-def save_videos(connection, queue, accounts):
-    execute_for_every_account(get_videos, connection, queue, accounts)
-
-
-def save_ads(connection, queue, accounts):
-    execute_for_every_account(get_ads, connection, queue, accounts)
-
-
-def save_ad_groups(connection, queue, accounts):
-    execute_for_every_account(get_ad_groups, connection, queue, accounts)
-
-
-def save_placements(connection, queue, accounts):
-    execute_for_every_account(get_placements, connection, queue, accounts)
-
-
-def save_genders(connection, queue, accounts):
-    execute_for_every_account(get_genders, connection, queue, accounts)
-
-
-def save_age_ranges(connection, queue, accounts):
-    execute_for_every_account(get_age_ranges, connection, queue, accounts)
-
-
-def save_keywords(connection, queue, accounts):
-    execute_for_every_account(get_keywords, connection, queue, accounts)
-
-
-def save_topics(connection, queue, accounts):
-    execute_for_every_account(get_topics, connection, queue, accounts)
-
-
-def save_interests(connection, queue, accounts):
-    execute_for_every_account(get_interests, connection, queue, accounts)
-
-
-def save_cities(connection, queue, accounts):
-    execute_for_every_account(get_cities, connection, queue, accounts)
 
 
 def get_campaigns(connection, account):

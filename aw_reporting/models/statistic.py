@@ -19,14 +19,6 @@ class DeviceDailyStatisticModel(DailyStatisticModel):
         return Devices[int(self.device_id)]
 
 
-class CampaignStatistic(DeviceDailyStatisticModel):
-    campaign = models.ForeignKey(Campaign, related_name='statistics')
-
-    class Meta:
-        unique_together = (("campaign", "date", "device_id"),)
-        ordering = ["campaign", "date", "device_id"]
-
-
 class AdGroupStatistic(DeviceDailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup, related_name='statistics')
     ad_network = models.CharField(max_length=20, db_index=True)

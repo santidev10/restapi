@@ -389,6 +389,7 @@ class ConnectAWAccountApiView(APIView):
                 # update token
                 if refresh_token and \
                    connection.refresh_token != refresh_token:
+                    connection.revoked_access = False
                     connection.refresh_token = refresh_token
                     connection.save()
 

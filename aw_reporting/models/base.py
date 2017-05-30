@@ -89,6 +89,8 @@ class AWConnection(models.Model):
     refresh_token = models.CharField(max_length=150)
     users = models.ManyToManyField('userprofile.userprofile',
                                    related_name="aw_connections")
+    # Token has been expired or revoked
+    revoked_access = models.BooleanField(default=False)
 
     def __str__(self):
         return "AWConnection: {}".format(self.email)
