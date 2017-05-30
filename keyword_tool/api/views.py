@@ -43,7 +43,6 @@ class OptimizeQueryApiView(ListAPIView):
     page_size = 12
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
-    permission_classes = tuple()
 
     def sort(self, queryset):
         query_params = self.request.query_params
@@ -219,7 +218,6 @@ class ViralKeywordsApiView(OptimizeQueryApiView):
 
 class ListParentApiView(APIView):
     pagination_class = KWPaginator
-    permission_classes = tuple()
 
     @property
     def paginator(self):
@@ -340,7 +338,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                             for kw_id in keywords]
             keywords_relation.objects.bulk_create(kw_relations)
 
-            update_kw_list_stats.delay(new_list)
+            update_kw_list_stats.delay(new_list, KeyWord)
             serializer = SavedListNameSerializer(instance=new_list,
                                                  data=self.request.data,
                                                  request=request)
@@ -381,11 +379,9 @@ class SavedListApiView(ListParentApiView):
 
     def delete(self, *args, **kwargs):
         pk = self.kwargs.get('pk')
-        email = self.request.user.email
         try:
             obj = KeywordsList.objects.get(
                 pk=pk,
-                user_email=email,
             )
         except KeywordsList.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -439,7 +435,7 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                             for kw_id in ids_to_save]
             keywords_relation.objects.bulk_create(kw_relations)
 
-        update_kw_list_stats.delay(obj)
+        update_kw_list_stats.delay(obj, KeyWord)
         return Response(status=HTTP_202_ACCEPTED,
                         data=dict(count=len(ids_to_save)))
 
@@ -469,7 +465,7 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                 keywordslist_id=obj.id,
                 keyword_id__in=ids_to_save,
             ).delete()
-        update_kw_list_stats.delay(obj)
+        update_kw_list_stats.delay(obj, KeyWord)
         return Response(status=HTTP_202_ACCEPTED, data=dict(count=count))
 
 
@@ -498,7 +494,7 @@ class ListsDuplicateApiView(GenericAPIView):
                         for kw_id in keywords]
         keywords_relation.objects.bulk_create(kw_relations)
 
-        update_kw_list_stats.delay(new_list)
+        update_kw_list_stats.delay(new_list, KeyWord)
 
         return Response(status=HTTP_202_ACCEPTED,
                         data=SavedListNameSerializer(
