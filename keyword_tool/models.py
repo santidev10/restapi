@@ -177,6 +177,9 @@ class KeywordsList(BaseModel):
     average_cpv = models.FloatField(default=0)
     average_view_rate = models.FloatField(default=0)
     average_ctrv = models.FloatField(default=0)
+    top_keywords = models.TextField(null=True)
+    cum_average_volume = models.TextField(null=True)
+    cum_average_volume_per_kw = models.TextField(null=True)
 
     class Meta:
         ordering = ['-updated_at']
