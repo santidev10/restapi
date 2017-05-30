@@ -1,6 +1,6 @@
 from django.db.models import QuerySet, Min, Max, F, Case, When, Sum, Q, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
-    DecimalField as AggrDecimalField
+    DecimalField as AggrDecimalField, DateField as AggrDateField
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError
 
@@ -287,6 +287,8 @@ class OrderingSerializerMethodField(SerializerMethodField):
 
 class OptimizationAccountListSerializer(ModelSerializer):
     is_optimization_active = SerializerMethodField()
+    status = SerializerMethodField()
+
     start = OrderingSerializerMethodField()
     end = OrderingSerializerMethodField()
     ordered_cpm = OrderingSerializerMethodField()
@@ -366,6 +368,15 @@ class OptimizationAccountListSerializer(ModelSerializer):
                 order_data = queryset.annotate(
                     start=Min('campaign_creations__start'),
                     end=Max('campaign_creations__end'),
+                    end_not_paused=Min(
+                        Case(
+                            When(
+                                campaign_creations__is_paused=False,
+                                then=F('campaign_creations__end'),
+                            ),
+                            output_field=AggrDateField(),
+                        )
+                    ),
                     budget=Sum('campaign_creations__budget'),
                     ordered_impressions=Sum(
                         Case(
@@ -436,13 +447,15 @@ class OptimizationAccountListSerializer(ModelSerializer):
         super(OptimizationAccountListSerializer,
               self).__init__(instance, *args, **kwargs)
 
+        self.today = datetime.now().date()
+
     class Meta:
         model = AccountCreation
         fields = (
             "id", "name", "is_ended", "is_paused",
             "is_optimization_active", "is_changed", "is_approved",
             # from the campaigns
-            "start", "end",
+            "start", "end", "status",
             # plan stats
             "ordered_cpm", "ordered_cpv", "ordered_impressions",
             "ordered_impressions_cost", "ordered_views",
@@ -456,6 +469,23 @@ class OptimizationAccountListSerializer(ModelSerializer):
     @staticmethod
     def get_is_optimization_active(*_):
         return True
+
+    def get_status(self, obj):
+        ended = "Ended"
+        if obj.is_ended:
+            return ended
+
+        end = self.ordering[obj.id]['end']
+        if end is None or end >= self.today:
+            end_not_paused = self.ordering[obj.id]['end_not_paused']
+            if (end is None or
+                end_not_paused and end_not_paused >= self.today) and \
+                    obj.is_paused is False:
+                return "Running"
+            else:
+                return "Paused"
+        else:
+            return ended
 
 
 class OptimizationAccountDetailsSerializer(
