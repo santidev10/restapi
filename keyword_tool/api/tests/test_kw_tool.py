@@ -41,7 +41,7 @@ class KWToolAPITestCase(APITestCase):
         self.url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                            args=(query,))
         response = self.client.get(self.url)
-        optimize_keyword.assert_called([query])
+        optimize_keyword.assert_called_with([query])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
