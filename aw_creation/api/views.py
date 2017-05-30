@@ -1419,7 +1419,10 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
     @staticmethod
     def get_channel_items(ids):
         from segment.models import Segment
-        items = Segment.objects.filter(id__in=ids).values_list(
+        items = Segment.objects.filter(
+            id__in=ids,
+            channels__channel_id__isnull=False,
+        ).values_list(
             "channels__channel_id", flat=True
         ).order_by("channels__channel_id").distinct()
         return items
@@ -1427,7 +1430,10 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
     @staticmethod
     def get_video_items(ids):
         from segment.models import Segment
-        items = Segment.objects.filter(id__in=ids).values_list(
+        items = Segment.objects.filter(
+            id__in=ids,
+            videos__video_id__isnull=False,
+        ).values_list(
             "videos__video_id", flat=True
         ).order_by("videos__video_id").distinct()
         return items
@@ -1435,7 +1441,10 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
     @staticmethod
     def get_keyword_items(ids):
         from keyword_tool.models import KeywordsList
-        items = KeywordsList.objects.filter(id__in=ids).values_list(
+        items = KeywordsList.objects.filter(
+            id__in=ids,
+            keywords__text__isnull=False,
+        ).values_list(
             "keywords__text", flat=True
         ).order_by("keywords__text").distinct()
         return items
