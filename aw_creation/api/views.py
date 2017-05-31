@@ -737,7 +737,41 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
-class CreationAccountApiView(APIView):
+class UserListsImportMixin:
+
+    @staticmethod
+    def get_lists_items_ids(ids, list_type):
+        from segment.models import Segment
+        from keyword_tool.models import KeywordsList
+
+        if list_type == "channel":
+            item_ids = Segment.objects.filter(
+                id__in=ids, channels__channel_id__isnull=False
+            ).values_list(
+                "channels__channel_id", flat=True
+            ).order_by("channels__channel_id").distinct()
+
+        elif list_type == "video":
+            item_ids = Segment.objects.filter(
+                id__in=ids, videos__video_id__isnull=False
+            ).values_list(
+                "videos__video_id", flat=True
+            ).order_by("videos__video_id").distinct()
+
+        elif list_type == "keyword":
+            item_ids = KeywordsList.objects.filter(
+                id__in=ids, keywords__text__isnull=False
+            ).values_list(
+                "keywords__text", flat=True
+            ).order_by("keywords__text").distinct()
+
+        else:
+            raise NotImplementedError("Unknown type: {}".format(list_type))
+
+        return item_ids
+
+
+class CreationAccountApiView(APIView, UserListsImportMixin):
     """
     Accepts POST request and creates an account
     Example body:
@@ -745,9 +779,6 @@ class CreationAccountApiView(APIView):
     """
 
     def post(self, request, *args, **kwargs):
-        from segment.models import Segment
-        from keyword_tool.models import KeywordsList
-
         owner = self.request.user
         data = request.data
 
@@ -759,11 +790,9 @@ class CreationAccountApiView(APIView):
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
 
-        channel_lists = data.get('channel_lists', [])
-        if channel_lists:
-            channel_ids = Segment.objects.filter(
-                id__in=channel_lists
-            ).values_list("channels__channel_id", flat=True).distinct()
+        c_lists = data.get('channel_lists', [])
+        if c_lists:
+            channel_ids = self.get_lists_items_ids(c_lists, "channel")
 
             def set_channel_targeting(ad_group):
                 items = [
@@ -782,9 +811,7 @@ class CreationAccountApiView(APIView):
 
         video_lists = data.get('video_lists', [])
         if video_lists:
-            video_ids = Segment.objects.filter(
-                id__in=video_lists
-            ).values_list("videos__video_id", flat=True).distinct()
+            video_ids = self.get_lists_items_ids(video_lists, "video")
 
             def set_video_targeting(ad_group):
                 items = [
@@ -803,9 +830,7 @@ class CreationAccountApiView(APIView):
 
         keyword_lists = data.get('keyword_lists', [])
         if keyword_lists:
-            kws = KeywordsList.objects.filter(
-                id__in=keyword_lists
-            ).values_list("keywords__text", flat=True).distinct()
+            kws = self.get_lists_items_ids(keyword_lists, "keyword")
 
             def set_kw_targeting(ad_group):
                 items = [
@@ -1383,7 +1408,8 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         return objects
 
 
-class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
+class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
+                                             UserListsImportMixin):
 
     def post(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
@@ -1397,9 +1423,15 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
         ids = request.data
         assert type(ids) is list
 
-        method = getattr(self, "get_{}_items".format(list_type))
         if ids:
-            criteria_list = method(ids)
+            criteria_list = self.get_lists_items_ids(ids, list_type)
+            existed_ids = set(
+                TargetingItem.objects.filter(
+                    ad_group_creation=ad_group_creation,
+                    criteria__in=criteria_list,
+                    type=list_type,
+                ).values_list("criteria", flat=True)
+            )
             items = [
                 TargetingItem(
                     ad_group_creation=ad_group_creation,
@@ -1407,7 +1439,7 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
                     type=list_type,
                     is_negative=is_negative,
                 )
-                for cid in criteria_list
+                for cid in criteria_list if cid not in existed_ids
             ]
             if items:
                 TargetingItem.objects.bulk_create(items)
@@ -1415,39 +1447,6 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView):
 
     def delete(self, request, *args, **kwargs):
         raise NotImplementedError
-
-    @staticmethod
-    def get_channel_items(ids):
-        from segment.models import Segment
-        items = Segment.objects.filter(
-            id__in=ids,
-            channels__channel_id__isnull=False,
-        ).values_list(
-            "channels__channel_id", flat=True
-        ).order_by("channels__channel_id").distinct()
-        return items
-
-    @staticmethod
-    def get_video_items(ids):
-        from segment.models import Segment
-        items = Segment.objects.filter(
-            id__in=ids,
-            videos__video_id__isnull=False,
-        ).values_list(
-            "videos__video_id", flat=True
-        ).order_by("videos__video_id").distinct()
-        return items
-
-    @staticmethod
-    def get_keyword_items(ids):
-        from keyword_tool.models import KeywordsList
-        items = KeywordsList.objects.filter(
-            id__in=ids,
-            keywords__text__isnull=False,
-        ).values_list(
-            "keywords__text", flat=True
-        ).order_by("keywords__text").distinct()
-        return items
 
 
 # optimize tab
