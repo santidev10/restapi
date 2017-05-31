@@ -439,3 +439,88 @@ class DemoAccount(BaseDemo):
             view_through=self.view_through,
         )
         return details
+
+    @property
+    def creation_details(self):
+        from aw_creation.models import AccountCreation
+        from aw_reporting.demo.charts import DemoChart
+
+        creative = self.creative
+        if creative:
+            creative = dict(id=creative[0]['id'],
+                            name=creative[0]['thumbnail'],
+                            thumbnail=creative[0]['thumbnail'])
+
+        demo_details = dict(
+            id=self.id,
+            name=self.name,
+            status="Running",
+            impressions=self.impressions,
+            start=self.start_date,
+            end=self.end_date,
+            views=self.video_views,
+            cost=self.cost,
+            campaigns_count=len(self.children),
+            creative=creative,
+            structure=[
+                dict(
+                    id=c.id,
+                    name=c.name,
+                    ad_group_creations=[
+                        dict(id=a.id, name=a.name)
+                        for a in c.children
+                    ]
+                )
+                for c in self.children
+            ],
+            video_ad_format=dict(
+                id=AccountCreation.VIDEO_AD_FORMATS[0][0],
+                name=AccountCreation.VIDEO_AD_FORMATS[0][1],
+            ),
+            goal_type=dict(
+                id=AccountCreation.GOAL_TYPES[0][0],
+                name=AccountCreation.GOAL_TYPES[0][1],
+            ),
+            delivery_method=dict(
+                id=AccountCreation.DELIVERY_METHODS[0][0],
+                name=AccountCreation.DELIVERY_METHODS[0][1],
+            ),
+            video_networks=[
+                dict(id=uid, name=name)
+                for uid, name in AccountCreation.VIDEO_NETWORKS
+            ],
+            type=dict(
+                id=AccountCreation.CAMPAIGN_TYPES[0][0],
+                name=AccountCreation.CAMPAIGN_TYPES[0][1],
+            ),
+            bidding_type=dict(
+                id=AccountCreation.BIDDING_TYPES[0][0],
+                name=AccountCreation.BIDDING_TYPES[0][1],
+            ),
+            is_optimization_active=True,
+            is_changed=False,
+        )
+        #
+        filters = dict(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            indicator="video_views",
+        )
+        charts_obj = DemoChart(
+            self, filters, summary_label="AW", goal_units=VIDEO_VIEWS)
+        demo_details['goal_chart'] = charts_obj.chart_lines(self, filters)
+        print(demo_details['goal_chart'])
+        print("-"* 10)
+
+        # weekly chart
+        filters = dict(
+            start_date=self.today - timedelta(days=7),
+            end_date=self.today,
+            indicator="video_views",
+        )
+        self.set_period_proportion(filters['start_date'],
+                                   filters['end_date'])
+        charts_obj = DemoChart(self, filters)
+        chart_lines = charts_obj.chart_lines(self, filters)
+        demo_details['weekly_chart'] = chart_lines[0]['trend']
+        return demo_details

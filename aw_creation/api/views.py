@@ -42,6 +42,7 @@ from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats, Topic, Audience
+from aw_reporting.demo import demo_view_decorator
 
 
 class GeoTargetListApiView(APIView):
@@ -335,6 +336,7 @@ class OptimizationOptionsApiView(APIView):
         return Response(data=options)
 
 
+@demo_view_decorator
 class OptimizationAccountListApiView(ListAPIView):
 
     serializer_class = OptimizationAccountListSerializer

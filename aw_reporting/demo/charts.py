@@ -2,19 +2,21 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, time
-
 from pytz import utc
-
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
+import math
 
 
 class DemoChart:
 
-    def __init__(self, account, filters):
+    def __init__(self, account, filters,
+                 summary_label="Summary", goal_units=None):
         self.today = datetime.now().date()
         self.account = account
         self.filters = filters
+        self.summary_label = summary_label
+        self.goal_units = goal_units
 
     @property
     def chart_items(self):
@@ -187,8 +189,7 @@ class DemoChart:
                 )
                 lines.append(
                     dict(
-                        average=None,
-                        label="Summary",
+                        label=self.summary_label,
                         trend=[dict(label=l, value=v)
                                for l, v in zip(
                                     time_points,
@@ -218,6 +219,24 @@ class DemoChart:
                     )
                     line.update(dim)
                     lines.append(line)
+
+            if self.goal_units:
+                daily = math.ceil(self.goal_units / time_points_len)
+                values = [
+                    min(daily * (i + 1), self.goal_units)
+                    for i in range(time_points_len)
+                ]
+                lines.append(
+                    dict(
+                        label="View Goal",
+                        trend=[dict(label=l, value=v)
+                               for l, v in zip(
+                                    time_points,
+                                    values
+                               )],
+                        value=value,
+                    )
+                )
 
         return lines
 

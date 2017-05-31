@@ -6,10 +6,32 @@ from rest_framework.status import HTTP_200_OK
 from urllib.parse import urlencode
 from aw_creation.models import *
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):
+
+    details_keys = {
+        'id', 'name',
+        'status', 'start', 'end', 'is_optimization_active', 'is_changed',
+        'impressions', 'views', 'cost', 'campaigns_count',
+
+        "goal_type",
+        "bidding_type",
+        "video_ad_format",
+        "video_networks",
+        "type",
+        "delivery_method",
+
+        "creative",
+
+        "structure",
+
+        "goal_chart",
+        "weekly_chart",
+    }
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -33,8 +55,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'current_page',
             }
         )
-        self.assertEqual(response.data['items_count'], 0)
-        self.assertEqual(len(response.data['items']), 0)
+        self.assertEqual(response.data['items_count'], 1,
+                         "Only Demo account")
+        self.assertEqual(len(response.data['items']), 1)
 
     def test_success_get(self):
         account = Account.objects.create(id="1", name="")
@@ -72,33 +95,12 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'current_page',
             }
         )
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(response.data['items_count'], 2)
+        self.assertEqual(len(response.data['items']), 2)
+        item = response.data['items'][1]
         self.assertEqual(
             set(item.keys()),
-            {
-                'id', 'name', 'status',
-                'is_ended',
-                'start',
-                'ordered_cpv',
-                'cpv',
-                'ordered_impressions_cost',
-                'ordered_views_cost',
-                'impressions',
-                'views',
-                'ordered_views',
-                'impressions_cost',
-                'is_approved',
-                'end',
-                'cpm',
-                'ordered_cpm',
-                'is_optimization_active',
-                'is_paused',
-                'is_changed',
-                'ordered_impressions',
-                'views_cost',
-            }
+            self.details_keys,
         )
         self.assertEqual(item['impressions'], 10)
         self.assertEqual(item['ordered_views'], 100)
@@ -118,11 +120,11 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data['items_count'], 1,
+            response.data['items_count'], 2,
             "The account has no end date that's why it's shown"
         )
         self.assertEqual(
-            response.data['items'][0]['status'], "Running",
+            response.data['items'][1]['status'], "Running",
             "There is no any better status for this case"
         )
 
@@ -140,14 +142,14 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data['items_count'], 0,
+            response.data['items_count'], 1,
             "The only campaign with end date ended yesterday"
         )
         # 2
         response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(response.data['items'][0]['status'], "Ended")
+        self.assertEqual(response.data['items_count'], 2)
+        self.assertEqual(response.data['items'][1]['status'], "Ended")
 
     def test_hide_account_end_in_past_two_campaigns(self):
         ac_creation = AccountCreation.objects.create(
@@ -165,14 +167,14 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data['items_count'], 0,
+            response.data['items_count'], 1,
             "The account isn't shown because the only date is in the past"
         )
         # 2
         response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(response.data['items'][0]['status'], "Ended")
+        self.assertEqual(response.data['items_count'], 2)
+        self.assertEqual(response.data['items'][1]['status'], "Ended")
 
     def test_hide_account_is_ended_true(self):
         ac_creation = AccountCreation.objects.create(
@@ -187,14 +189,14 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data['items_count'], 0,
+            response.data['items_count'], 1,
             "The account isn't shown because of the flag 'is_ended' "
         )
         # 2
         response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(response.data['items'][0]['status'], "Ended")
+        self.assertEqual(response.data['items_count'], 2)
+        self.assertEqual(response.data['items'][1]['status'], "Ended")
 
     def test_show_hidden_account(self):
         AccountCreation.objects.create(
@@ -213,7 +215,65 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 2)
-        self.assertEqual(response.data['items'][0]['name'],
+        self.assertEqual(response.data['items_count'], 3)
+        self.assertEqual(response.data['items'][1]['name'],
                          live_account.name)
 
+    def test_success_get_demo(self):
+        url = reverse("aw_creation_urls:optimization_account_list")
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                'max_page',
+                'items_count',
+                'items',
+                'current_page',
+            }
+        )
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(len(response.data['items']), 1)
+        item = response.data['items'][0]
+        print(item)
+
+        self.assertEqual(
+            set(item.keys()),
+            self.details_keys,
+        )
+        self.assertEqual(
+            item['video_ad_format'],
+            dict(id=AccountCreation.IN_STREAM_TYPE,
+                 name=AccountCreation.VIDEO_AD_FORMATS[0][1]),
+        )
+        self.assertEqual(
+            item['type'],
+            dict(id=AccountCreation.VIDEO_TYPE,
+                 name=AccountCreation.CAMPAIGN_TYPES[0][1]),
+        )
+        self.assertEqual(
+            item['goal_type'],
+            dict(id=AccountCreation.GOAL_VIDEO_VIEWS,
+                 name=AccountCreation.GOAL_TYPES[0][1]),
+        )
+        self.assertEqual(
+            item['delivery_method'],
+            dict(id=AccountCreation.STANDARD_DELIVERY,
+                 name=AccountCreation.DELIVERY_METHODS[0][1]),
+        )
+        self.assertEqual(
+            item['bidding_type'],
+            dict(id=AccountCreation.MANUAL_CPV_BIDDING,
+                 name=AccountCreation.BIDDING_TYPES[0][1]),
+        )
+        self.assertEqual(
+            item['video_networks'],
+            [dict(id=uid, name=n)
+             for uid, n in AccountCreation.VIDEO_NETWORKS],
+        )
+        self.assertEqual(
+            set(item['creative'].keys()),
+            {'id', 'name', 'thumbnail'}
+        )
