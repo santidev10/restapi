@@ -163,7 +163,8 @@ class SegmentSerializer(ModelSerializer):
             "statistics",
             "mini_dash_data",
             "is_editable",
-            "owner"
+            "owner",
+            "created_at"
         )
 
     def get_is_editable(self, obj):
