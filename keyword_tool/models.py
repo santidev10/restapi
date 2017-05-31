@@ -185,6 +185,33 @@ class KeywordsList(BaseModel):
     class Meta:
         ordering = ['-updated_at']
 
+    @property
+    def top_keywords_data(self):
+        raw = self.top_keywords
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
+
+    @property
+    def cum_average_volume_data(self):
+        raw = self.cum_average_volume
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
+
+    @property
+    def cum_average_volume_per_kw_data(self):
+        raw = self.cum_average_volume_per_kw
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
+
 
 class ViralKeywords(BaseModel):
     keyword = models.ForeignKey(KeyWord, related_name='viral_keyword')

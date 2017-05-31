@@ -69,10 +69,10 @@ class SavedListNameSerializer(ModelSerializer):
     class Meta:
         model = KeywordsList
         fields = (
-            "id", "name", "category", "is_owner", "top_keywords", "num_keywords",
+            "id", "name", "category", "is_owner", "top_keywords_data", "num_keywords",
             "average_volume", "average_cpc", "competition",
             "average_cpv", "average_view_rate", "average_ctrv",
-            "cum_average_volume", "cum_average_volume_per_kw", "is_editable"
+            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable"
         )
 
 
