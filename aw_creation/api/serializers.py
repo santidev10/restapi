@@ -41,6 +41,7 @@ def add_targeting_list_items_info(data, list_type):
                     model_name="channel",
                     fields=["id", "title", "thumbnail_image_url"],
                     id__in=ids,
+                    limit=len(ids),
                 )
                 info = {i['id']: i for i in items}
             except SingleDatabaseApiConnectorException as e:
@@ -60,6 +61,7 @@ def add_targeting_list_items_info(data, list_type):
                     model_name="video",
                     fields=["id", "title", "thumbnail_image_url"],
                     id__in=ids,
+                    limit=len(ids),
                 )
                 info = {i['id']: i for i in items}
             except SingleDatabaseApiConnectorException as e:
