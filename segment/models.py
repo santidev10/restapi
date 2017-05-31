@@ -26,10 +26,17 @@ AVAILABLE_CHANNEL_SEGMENT_CATEGORIES = (
     "blacklist"
 )
 
-AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES = (
+AVAILABLE_KEYWORD_SEGMENT_CATEGORIES = (
     "channel_factory",
     "blacklist",
     "private"
+)
+
+AVAILABLE_VIDEO_SEGMENT_CATEGORIES = (
+    "youtube",
+    "blacklist",
+    "private",
+    "iab"
 )
 
 
