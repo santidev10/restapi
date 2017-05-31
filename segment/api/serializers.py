@@ -6,7 +6,7 @@ from rest_framework.serializers import ModelSerializer, CharField, \
 
 from segment.models import Segment, AVAILABLE_SEGMENT_TYPES, \
     AVAILABLE_CHANNEL_SEGMENT_CATEGORIES, ChannelRelation, VideoRelation,\
-    AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES
+    AVAILABLE_VIDEO_SEGMENT_CATEGORIES
 
 
 class SegmentCreateSerializer(ModelSerializer):
@@ -50,15 +50,15 @@ class SegmentCreateSerializer(ModelSerializer):
             raise ValidationError(
                 "Not valid category. Options are: private")
         if segment_type == "video" and segment_category not in\
-           AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES:
+           AVAILABLE_VIDEO_SEGMENT_CATEGORIES:
             raise ValidationError(
                 "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+                    ", ".join(AVAILABLE_VIDEO_SEGMENT_CATEGORIES)))
         if segment_type == "channel" and segment_category not in\
            AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
             raise ValidationError(
                 "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+                    ", ".join(AVAILABLE_CHANNEL_SEGMENT_CATEGORIES)))
         return data
 
     def save(self, **kwargs):
@@ -118,15 +118,15 @@ class SegmentUpdateSerializer(ModelSerializer):
             raise ValidationError(
                 "Not valid category. Options are: private")
         if segment_type == "video" and segment_category not in\
-           AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES:
+           AVAILABLE_VIDEO_SEGMENT_CATEGORIES:
             raise ValidationError(
                 "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+                    ", ".join(AVAILABLE_VIDEO_SEGMENT_CATEGORIES)))
         if segment_type == "channel" and segment_category not in\
            AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
             raise ValidationError(
                 "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES)))
+                    ", ".join(AVAILABLE_CHANNEL_SEGMENT_CATEGORIES)))
         return data
 
 
