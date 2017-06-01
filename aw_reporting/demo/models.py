@@ -26,6 +26,8 @@ VIEW_THROUGH = 400
 class BaseDemo:
     id = DEMO_ACCOUNT_ID
     period_proportion = 1
+    week_proportion = 0.2
+    last_week_proportions = 0.15
     name = "Demo"
     status = 'enabled'
     children = []
@@ -105,7 +107,7 @@ class BaseDemo:
                 thumbnail=i['thumbnail_image_url'],
             )
             for i in self.get_channels()
-        ]
+            ]
         return channel
 
     @property
@@ -117,7 +119,7 @@ class BaseDemo:
                 thumbnail=i['thumbnail_image_url'],
             )
             for i in self.get_videos()[:6]
-        ]
+            ]
         return video
 
     @property
@@ -129,7 +131,7 @@ class BaseDemo:
                 thumbnail=i['thumbnail_image_url'],
             )
             for i in self.get_videos()[6:12]
-        ]
+            ]
         return creative
 
     @property
@@ -145,6 +147,7 @@ class BaseDemo:
                         status="enabled",
                     )
                 )
+
         if isinstance(self, DemoAccount):
             for c in self.children:
                 get_ads(c.children)
@@ -227,16 +230,48 @@ class BaseDemo:
         return sum(i.impressions for i in self.children)
 
     @property
+    def impressions_this_week(self):
+        return sum(i.impressions_this_week for i in self.children)
+
+    @property
+    def impressions_last_week(self):
+        return sum(i.impressions_last_week for i in self.children)
+
+    @property
     def video_views(self):
         return sum(i.video_views for i in self.children)
+
+    @property
+    def video_views_this_week(self):
+        return sum(i.video_views_this_week for i in self.children)
+
+    @property
+    def video_views_last_week(self):
+        return sum(i.video_views_last_week for i in self.children)
 
     @property
     def clicks(self):
         return sum(i.clicks for i in self.children)
 
     @property
+    def clicks_this_week(self):
+        return sum(i.clicks_this_week for i in self.children)
+
+    @property
+    def clicks_last_week(self):
+        return sum(i.clicks_last_week for i in self.children)
+
+    @property
     def cost(self):
         return sum(i.cost for i in self.children)
+
+    @property
+    def cost_this_week(self):
+        return sum(i.cost_this_week for i in self.children)
+
+    @property
+    def cost_last_week(self):
+        return sum(i.cost_last_week for i in self.children)
 
     @property
     def all_conversions(self):
@@ -260,8 +295,26 @@ class BaseDemo:
         return self.cost / self.video_views if self.video_views else None
 
     @property
+    def average_cpv_top(self):
+        return self.cost / self.video_views * 1.2 if self.video_views else None
+
+    @property
+    def average_cpv_bottom(self):
+        return self.cost / self.video_views * 0.8 if self.video_views else None
+
+    @property
     def video_view_rate(self):
         return self.video_views / self.impressions * 100 \
+            if self.impressions else None
+
+    @property
+    def video_view_rate_top(self):
+        return self.video_views / self.impressions * 100 * 1.2 \
+            if self.impressions else None
+
+    @property
+    def video_view_rate_bottom(self):
+        return self.video_views / self.impressions * 100 * 0.8 \
             if self.impressions else None
 
     @property
@@ -270,8 +323,28 @@ class BaseDemo:
             if self.impressions else None
 
     @property
+    def ctr_top(self):
+        return self.clicks / self.impressions * 100 * 1.2 \
+            if self.impressions else None
+
+    @property
+    def ctr_bottom(self):
+        return self.clicks / self.impressions * 100 * 0.8 \
+            if self.impressions else None
+
+    @property
     def ctr_v(self):
         return self.clicks / self.video_views * 100 \
+            if self.video_views else None
+
+    @property
+    def ctr_v_top(self):
+        return self.clicks / self.video_views * 100 * 1.2 \
+            if self.video_views else None
+
+    @property
+    def ctr_v_bottom(self):
+        return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
 
 
@@ -283,16 +356,48 @@ class DemoAdGroup(BaseDemo):
         return int(IMPRESSIONS * self.items_proportion * self.period_proportion)
 
     @property
+    def impressions_this_week(self):
+        return int(IMPRESSIONS * self.items_proportion * self.week_proportion)
+
+    @property
+    def impressions_last_week(self):
+        return int(IMPRESSIONS * self.items_proportion * self.last_week_proportions)
+
+    @property
     def video_views(self):
         return int(VIDEO_VIEWS * self.items_proportion * self.period_proportion)
+
+    @property
+    def video_views_this_week(self):
+        return int(VIDEO_VIEWS * self.items_proportion * self.week_proportion)
+
+    @property
+    def video_views_last_week(self):
+        return int(VIDEO_VIEWS * self.items_proportion * self.last_week_proportions)
 
     @property
     def clicks(self):
         return int(CLICKS * self.items_proportion * self.period_proportion)
 
     @property
+    def clicks_this_week(self):
+        return int(CLICKS * self.items_proportion * self.week_proportion)
+
+    @property
+    def clicks_last_week(self):
+        return int(CLICKS * self.items_proportion * self.last_week_proportions)
+
+    @property
     def cost(self):
         return int(COST * self.items_proportion * self.period_proportion)
+
+    @property
+    def cost_this_week(self):
+        return int(COST * self.items_proportion * self.week_proportion)
+
+    @property
+    def cost_last_week(self):
+        return int(COST * self.items_proportion * self.last_week_proportions)
 
     @property
     def all_conversions(self):
@@ -320,11 +425,10 @@ class DemoCampaign(BaseDemo):
             DemoAdGroup(id="{}{}".format(self.id, (i + 1)),
                         name="{} #{}".format(name, self.id))
             for i, name in enumerate(DEMO_AD_GROUPS)
-        ]
+            ]
 
 
 class DemoAccount(BaseDemo):
-
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
         self.children = [DemoCampaign(id=str(i + 1))
@@ -350,12 +454,17 @@ class DemoAccount(BaseDemo):
         end_date = end_date or self.end_date
         end_date = min(end_date, self.yesterday)
 
+        week = (datetime.now().date() - start_date).days + 1
+
         selected = (end_date - start_date).days + 1
         total_days = (self.yesterday - self.start_date).days + 1
         period_proportion = selected / total_days
+        week_proportion = 7 / total_days if week > 7 else week / total_days
+
         for c in self.children:
             for a in c.children:
                 a.period_proportion = period_proportion
+                a.week_proportion = week_proportion
 
     @property
     def details(self):
@@ -410,24 +519,40 @@ class DemoAccount(BaseDemo):
             name=self.name,
             start_date=self.start_date,
             end_date=self.end_date,
-            age=[dict(name=e, value=i+1)
+            age=[dict(name=e, value=i + 1)
                  for i, e in enumerate(reversed(AgeRanges))],
-            gender=[dict(name=e, value=i+1)
+            gender=[dict(name=e, value=i + 1)
                     for i, e in enumerate(Genders)],
-            device=[dict(name=e, value=i+1)
+            device=[dict(name=e, value=i + 1)
                     for i, e in enumerate(reversed(Devices))],
             channel=channels,
             creative=creative_list,
             video=videos,
             clicks=self.clicks,
+            clicks_this_week=self.clicks_this_week,
+            click_last_weel=self.clicks_last_week,
             cost=self.cost,
+            cost_this_week=self.cost_this_week,
+            cost_last_week=self.cost_last_week,
             impressions=self.impressions,
+            impressions_this_week=self.impressions_this_week,
+            impressions_last_week=self.impressions_last_week,
             video_views=self.video_views,
+            video_views_this_week=self.video_views_this_week,
+            video_views_lask_week=self.video_views_last_week,
             ctr=self.ctr,
+            ctr_top=self.ctr_top,
+            ctr_bottom=self.ctr_bottom,
             ctr_v=self.ctr_v,
+            ctr_v_top=self.ctr_v_top,
+            ctr_v_bottom=self.ctr_v_bottom,
             average_cpm=self.average_cpm,
             average_cpv=self.average_cpv,
+            average_cpv_top=self.average_cpv_top,
+            average_cpv_bottom=self.average_cpv_bottom,
             video_view_rate=self.video_view_rate,
+            video_view_rate_top=self.video_view_rate_top,
+            video_view_rate_bottom=self.video_view_rate_bottom,
             average_position=self.average_position,
             ad_network=self.ad_network,
             video100rate=self.video100rate,
