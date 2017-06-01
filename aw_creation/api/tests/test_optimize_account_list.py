@@ -26,10 +26,8 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         "delivery_method",
 
         "creative",
-
         "structure",
-
-        "goal_chart",
+        "goal_charts",
         "weekly_chart",
     }
 
@@ -44,7 +42,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             name="", owner=user,
         )
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -60,16 +60,14 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data['items']), 1)
 
     def test_success_get(self):
-        account = Account.objects.create(id="1", name="")
-        campaign = Campaign.objects.create(
-            id="1", name="", account=account, impressions=10)
-
         ac_creation = AccountCreation.objects.create(
             name="", owner=self.user,
         )
         camp_creation = CampaignCreation.objects.create(
-            name="", campaign=campaign, account_creation=ac_creation,
+            name="", account_creation=ac_creation,
             goal_units=100, max_rate="0.07",
+            start=datetime.now() - timedelta(days=10),
+            end=datetime.now() + timedelta(days=10),
         )
         AdGroupCreation.objects.create(
             name="", campaign_creation=camp_creation,
@@ -84,7 +82,15 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         # --
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -102,10 +108,6 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             set(item.keys()),
             self.details_keys,
         )
-        self.assertEqual(item['impressions'], 10)
-        self.assertEqual(item['ordered_views'], 100)
-        self.assertEqual(item['ordered_views_cost'], 7)
-        self.assertEqual(float(item['ordered_cpv']), 0.07)
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
@@ -117,7 +119,10 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
 
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             response.data['items_count'], 2,
@@ -139,14 +144,18 @@ class AccountListAPITestCase(ExtendedAPITestCase):
 
         # 1
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             response.data['items_count'], 1,
             "The only campaign with end date ended yesterday"
         )
         # 2
-        response = self.client.get("{}?show_closed=1".format(url))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 2)
         self.assertEqual(response.data['items'][1]['status'], "Ended")
@@ -164,14 +173,18 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         # 1
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             response.data['items_count'], 1,
             "The account isn't shown because the only date is in the past"
         )
         # 2
-        response = self.client.get("{}?show_closed=1".format(url))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 2)
         self.assertEqual(response.data['items'][1]['status'], "Ended")
@@ -186,14 +199,18 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         # 1
         url = reverse("aw_creation_urls:optimization_account_list")
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             response.data['items_count'], 1,
             "The account isn't shown because of the flag 'is_ended' "
         )
         # 2
-        response = self.client.get("{}?show_closed=1".format(url))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 2)
         self.assertEqual(response.data['items'][1]['status'], "Ended")
@@ -213,7 +230,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 sort_by="name",
             )),
         )
-        response = self.client.get(url)
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 3)
         self.assertEqual(response.data['items'][1]['name'],
@@ -237,7 +256,6 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data['items_count'], 1)
         self.assertEqual(len(response.data['items']), 1)
         item = response.data['items'][0]
-        print(item)
 
         self.assertEqual(
             set(item.keys()),
@@ -277,3 +295,5 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             set(item['creative'].keys()),
             {'id', 'name', 'thumbnail'}
         )
+        self.assertEqual(len(item['goal_charts']), 2)
+        self.assertEqual(len(item['weekly_chart']), 7)

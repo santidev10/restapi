@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
-
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
+    HTTP_403_FORBIDDEN
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AccountAPITestCase(ExtendedAPITestCase):
@@ -74,26 +77,31 @@ class AccountAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
+        self.perform_details_check(data)
+
+    def test_success_get_demo(self):
+        url = reverse("aw_creation_urls:optimization_account",
+                      args=(DEMO_ACCOUNT_ID,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.perform_details_check(data)
+
+    def perform_details_check(self, data):
         self.assertEqual(
-            set(response.data.keys()),
+            set(data.keys()),
             {
                 # common details
                 'id', 'name', 'status',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
 
-                'ordered_cpv',
-                'cpv',
-                'ordered_impressions_cost',
-                'ordered_views_cost',
-                'impressions',
-                'views',
-                'ordered_views',
-                'impressions_cost',
-                'cpm',
-                'ordered_cpm',
-                'ordered_impressions',
-                'views_cost',
+                'creative', 'weekly_chart', 'campaigns_count',
+                'structure', 'goal_charts',
+
+                'cost', 'impressions', 'views',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
@@ -102,8 +110,8 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 "budget", 'start', 'end',
             }
         )
-        self.assertEqual(data['start'], defaults['start'])
-        self.assertEqual(data['end'], defaults['end'])
+        self.assertIsNotNone(data['start'])
+        self.assertIsNotNone(data['end'])
         self.assertEqual(
             data['video_ad_format'],
             dict(id=AccountCreation.IN_STREAM_TYPE,
@@ -135,7 +143,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
              for uid, n in AccountCreation.VIDEO_NETWORKS],
         )
 
-        campaign_data = response.data['campaign_creations'][0]
+        campaign_data = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_data.keys()),
             {
@@ -165,6 +173,14 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 'geo_target',
             }
         )
+        self.assertEqual(len(campaign_data['devices']), 3)
+        self.assertEqual(
+            set(campaign_data['devices'][0].keys()),
+            {
+                'id',
+                'name',
+            }
+        )
         self.assertEqual(
             set(campaign_data['location_rules'][0]['radius_units']),
             {'id', 'name'}
@@ -185,7 +201,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 {'id', 'name'}
             )
 
-        self.assertEqual(len(campaign_data['ad_schedule_rules']), 1)
+        self.assertGreaterEqual(len(campaign_data['ad_schedule_rules']), 1)
         self.assertEqual(
             set(campaign_data['ad_schedule_rules'][0].keys()),
             {
@@ -254,6 +270,15 @@ class AccountAPITestCase(ExtendedAPITestCase):
             set(i['id'] for i in response.data['video_networks']),
             set(request_data['video_networks']),
         )
+
+    def test_fail_update_demo(self):
+        url = reverse("aw_creation_urls:optimization_account",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.patch(
+            url, json.dumps(dict(is_paused=True)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_fail_approve(self):
         today = datetime.now().date()

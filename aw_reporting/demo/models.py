@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timedelta
-
 from aw_reporting.models import *
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
@@ -29,6 +28,7 @@ class BaseDemo:
     name = "Demo"
     status = 'enabled'
     children = []
+    parent = None
 
     average_position = 1
     ad_network = "YouTube Videos"
@@ -37,6 +37,17 @@ class BaseDemo:
     video50rate = 40
     video75rate = 34
     video100rate = 27
+
+    optimization_impressions_value = 20
+    optimization_video_views_value = 5
+    optimization_clicks_value = 2
+    optimization_cost_value = 5
+    optimization_ctr_value = 1.0
+    optimization_average_cpv_value = 0.065
+    optimization_average_cpm_value = 23.5
+    optimization_video_view_rate_value = 5
+    optimization_conversions_value = 5
+    optimization_view_through_value = 5
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -306,9 +317,89 @@ class DemoAdGroup(BaseDemo):
     def view_through(self):
         return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
 
+    @property
+    def creation_details(self):
+        from aw_creation.models import AdGroupCreation, TargetingItem
+        data = dict(
+            id=self.id,
+            name=self.name,
+            ct_overlay_text="Demo overlay text",
+            parents=[
+                dict(id=uid, name=n)
+                for uid, n in AdGroupCreation.PARENTS
+            ],
+            targeting=dict(
+                video=[
+                    dict(
+                        criteria=i['label'],
+                        is_negative=bool(n % 2),
+                        type=TargetingItem.VIDEO_TYPE,
+                        name=i['label'],
+                        id=i['id'],
+                        thumbnail=i['thumbnail'],
+                    )
+                    for n, i in enumerate(self.parent.parent.video)
+                ],
+                topic=[
+                    dict(
+                        criteria=i['label'],
+                        is_negative=bool(n % 2),
+                        type=TargetingItem.TOPIC_TYPE,
+                        name=i['label'],
+                    )
+                    for n, i in enumerate(self.topic)
+                ],
+                channel=[
+                    dict(
+                        criteria=i['label'],
+                        is_negative=bool(n % 2),
+                        type=TargetingItem.CHANNEL_TYPE,
+                        name=i['label'],
+                        id=i['id'],
+                        thumbnail=i['thumbnail'],
+                    )
+                    for n, i in enumerate(self.parent.parent.channel)
+                ],
+                interest=[
+                    dict(
+                        criteria=i['label'],
+                        is_negative=bool(n % 2),
+                        type=TargetingItem.INTEREST_TYPE,
+                        name=i['label'],
+                    )
+                    for n, i in enumerate(self.interest)
+                ],
+                keyword=[
+                    dict(
+                        criteria=i['label'],
+                        is_negative=bool(n % 2),
+                        type=TargetingItem.KEYWORD_TYPE,
+                        name=i['label'],
+                    )
+                    for n, i in enumerate(self.keyword)
+                ],
+            ),
+            is_approved=True,
+            age_ranges=[
+                dict(id=uid, name=n)
+                for uid, n in AdGroupCreation.AGE_RANGES
+            ],
+            display_url="www.channelfactory.com",
+            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            genders=[
+                dict(id=uid, name=n)
+                for uid, n in AdGroupCreation.GENDERS
+            ],
+            max_rate=0.1,
+            final_url="https://www.channelfactory.com",
+            video_url="https://www.youtube.com/watch?v=XEngrJr79Jg",
+        )
+        return data
+
 
 class DemoCampaign(BaseDemo):
     type = "Video"
+    budget = 100
 
     @property
     def name(self):
@@ -318,16 +409,74 @@ class DemoCampaign(BaseDemo):
         super(DemoCampaign, self).__init__(**kwargs)
         self.children = [
             DemoAdGroup(id="{}{}".format(self.id, (i + 1)),
-                        name="{} #{}".format(name, self.id))
+                        name="{} #{}".format(name, self.id),
+                        parent=self)
             for i, name in enumerate(DEMO_AD_GROUPS)
         ]
+
+    @property
+    def creation_details(self):
+        from aw_creation.models import LocationRule, FrequencyCap, \
+            CampaignCreation
+        data = dict(
+            id=self.id,
+            name=self.name,
+            budget=self.budget,
+            devices=[
+                dict(id=d, name=n) for d, n in CampaignCreation.DEVICES
+            ],
+            location_rules=[
+                dict(
+                    longitude="-118.20533000",
+                    latitude="33.99711660",
+                    radius=145,
+                    bid_modifier=1,
+                    radius_units=dict(id=LocationRule.UNITS[0][0],
+                                      name=LocationRule.UNITS[0][1]),
+                    geo_target=None,
+                )
+            ],
+            languages=[dict(id=1000, name="English")],
+            goal_units=VIDEO_VIEWS / DEMO_CAMPAIGNS_COUNT,
+            ad_group_creations=[
+                a.creation_details
+                for a in self.children
+            ],
+            frequency_capping=[
+                dict(
+                    event_type=dict(id=FrequencyCap.EVENT_TYPES[0][0],
+                                    name=FrequencyCap.EVENT_TYPES[0][1]),
+                    limit=5,
+                    level=dict(id=FrequencyCap.LEVELS[0][0],
+                               name=FrequencyCap.LEVELS[0][1]),
+                    time_unit=dict(id=FrequencyCap.TIME_UNITS[0][0],
+                                   name=FrequencyCap.TIME_UNITS[0][1]),
+                )
+            ],
+            max_rate=0.1,
+            is_paused=False,
+            is_approved=True,
+            ad_schedule_rules=[
+                dict(
+                    from_hour=18,
+                    from_minute=0,
+                    to_minute=0,
+                    to_hour=23,
+                    day=i,
+                    campaign_creation=self.id,
+                ) for i in range(1, 8)
+            ],
+            start=self.start_date,
+            end=self.end_date,
+        )
+        return data
 
 
 class DemoAccount(BaseDemo):
 
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
-        self.children = [DemoCampaign(id=str(i + 1))
+        self.children = [DemoCampaign(id=str(i + 1), parent=self)
                          for i in range(DEMO_CAMPAIGNS_COUNT)]
 
     def filter_out_items(self, campaigns, ad_groups):
@@ -448,7 +597,7 @@ class DemoAccount(BaseDemo):
         creative = self.creative
         if creative:
             creative = dict(id=creative[0]['id'],
-                            name=creative[0]['thumbnail'],
+                            name=creative[0]['label'],
                             thumbnail=creative[0]['thumbnail'])
 
         demo_details = dict(
@@ -507,15 +656,15 @@ class DemoAccount(BaseDemo):
             indicator="video_views",
         )
         charts_obj = DemoChart(
-            self, filters, summary_label="AW", goal_units=VIDEO_VIEWS)
-        demo_details['goal_chart'] = charts_obj.chart_lines(self, filters)
-        print(demo_details['goal_chart'])
-        print("-"* 10)
+            self, filters, summary_label="AW", goal_units=VIDEO_VIEWS,
+            cumulative=True,
+        )
+        demo_details['goal_charts'] = charts_obj.chart_lines(self, filters)
 
         # weekly chart
         filters = dict(
             start_date=self.today - timedelta(days=7),
-            end_date=self.today,
+            end_date=self.today - timedelta(days=1),
             indicator="video_views",
         )
         self.set_period_proportion(filters['start_date'],

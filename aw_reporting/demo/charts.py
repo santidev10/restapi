@@ -11,12 +11,14 @@ import math
 class DemoChart:
 
     def __init__(self, account, filters,
-                 summary_label="Summary", goal_units=None):
+                 summary_label="Summary", goal_units=None,
+                 cumulative=False):
         self.today = datetime.now().date()
         self.account = account
         self.filters = filters
         self.summary_label = summary_label
         self.goal_units = goal_units
+        self.cumulative = cumulative
 
     @property
     def chart_items(self):
@@ -187,6 +189,14 @@ class DemoChart:
                 values = self.explode_value_random(
                     value, indicator, time_points_len,
                 )
+                if self.cumulative and indicator in SUM_STATS:
+                    current = 0
+                    new_values = []
+                    for v in values:
+                        current += v
+                        new_values.append(current)
+                    values = new_values
+
                 lines.append(
                     dict(
                         label=self.summary_label,

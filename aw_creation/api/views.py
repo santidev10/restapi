@@ -224,7 +224,7 @@ class OptimizationAccountListPaginator(PageNumberPagination):
 class OptimizationOptionsApiView(APIView):
 
     @staticmethod
-    def get(*_, **k):
+    def get(request, **k):
         def opts_to_response(opts):
             res = [dict(id=i, name=n) for i, n in opts]
             return res
@@ -421,6 +421,7 @@ class OptimizationAccountListApiView(ListAPIView):
         return Response(status=HTTP_202_ACCEPTED, data=data)
 
 
+@demo_view_decorator
 class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
     serializer_class = OptimizationAccountDetailsSerializer
@@ -441,6 +442,7 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
         return self.retrieve(self, request, *args, **kwargs)
 
 
+@demo_view_decorator
 class OptimizationCampaignListApiView(ListCreateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -1452,6 +1454,7 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
 
 
 # optimize tab
+@demo_view_decorator
 class OptimizationFiltersApiView(APIView):
 
     def get_object(self):
@@ -1477,6 +1480,7 @@ class OptimizationFiltersApiView(APIView):
         return Response(data=data)
 
 
+@demo_view_decorator
 class OptimizationSettingsApiView(OptimizationFiltersApiView):
     """
     Settings at the Optimization tab
@@ -1524,6 +1528,7 @@ class OptimizationSettingsApiView(OptimizationFiltersApiView):
         return self.get(request, pk, kpi, **kwargs)
 
 
+@demo_view_decorator
 class OptimizationTargetingApiView(OptimizationFiltersApiView,
                                    TargetingListBaseAPIClass):
 

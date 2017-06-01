@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, \
-    HTTP_404_NOT_FOUND
+    HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
@@ -56,11 +59,22 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.perform_response_check(response.data)
+
+    def test_success_get_demo(self):
+        url = reverse("aw_creation_urls:optimization_settings",
+                      args=(DEMO_ACCOUNT_ID,
+                            OptimizationTuning.IMPRESSIONS_KPI))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.perform_response_check(response.data)
+
+    def perform_response_check(self, data):
         self.assertEqual(
-            set(response.data.keys()),
+            set(data.keys()),
             {'id', 'name', 'campaign_creations'}
         )
-        campaign_creation = response.data['campaign_creations'][0]
+        campaign_creation = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_creation.keys()),
             {'id', 'name', 'value', 'ad_group_creations'}
@@ -110,3 +124,12 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             str(campaign_creation['ad_group_creations'][0]['value']),
             data['ad_group_creations'][0]['value'],
         )
+
+    def test_fail_update_demo(self):
+        url = reverse("aw_creation_urls:optimization_settings",
+                      args=(DEMO_ACCOUNT_ID,
+                            OptimizationTuning.IMPRESSIONS_KPI))
+        response = self.client.put(
+            url, json.dumps(dict()), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

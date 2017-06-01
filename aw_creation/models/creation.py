@@ -9,6 +9,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, \
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,12 @@ def get_uid(length=12):
 
 def get_version():
     return get_uid(8)
+
+
+def get_yt_id_from_url(url):
+    match = re.match(YT_VIDEO_REGEX, url)
+    if match:
+        return match.group(1)
 
 
 class UniqueItem(models.Model):
