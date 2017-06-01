@@ -584,6 +584,7 @@ class OptimizationCampaignListApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
+@demo_view_decorator
 class OptimizationCampaignApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -691,6 +692,7 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
                 serializer.save()
 
 
+@demo_view_decorator
 class OptimizationAdGroupListApiView(ListCreateAPIView):
     serializer_class = OptimizationAdGroupSerializer
 
@@ -707,7 +709,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
             campaign_creation = CampaignCreation.objects.get(
                 pk=kwargs.get("pk"), account_creation__owner=request.user
             )
-        except AccountCreation.DoesNotExist:
+        except CampaignCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
         request.data['campaign_creation'] = campaign_creation.id
@@ -724,6 +726,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
+@demo_view_decorator
 class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAdGroupSerializer
 
@@ -1180,6 +1183,7 @@ class TargetingListBaseAPIClass(GenericAPIView):
         add_targeting_list_items_info(data, list_type)
 
 
+@demo_view_decorator
 class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
     def get(self, request, *args, **kwargs):
@@ -1271,6 +1275,7 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
         return valid_list
 
 
+@demo_view_decorator
 class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
 
     permission_classes = (IsAuthQueryTokenPermission,)
@@ -1280,16 +1285,18 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
         token = Token.objects.get(key=auth_token)
         return token.user
 
-    def get(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
-
+    def get_data(self):
         queryset = self.get_queryset()
         data = self.get_serializer(queryset, many=True).data
         self.add_items_info(data)
+        return data
+
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        data = self.get_data()
 
         def generator():
-
             def to_line(line):
                 output = StringIO()
                 writer = csv.writer(output)
@@ -1309,6 +1316,7 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
         return response
 
 
+@demo_view_decorator
 class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
                                         DocumentImportBaseAPIView):
     parser_classes = (FileUploadParser,)
@@ -1520,6 +1528,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         return objects
 
 
+@demo_view_decorator
 class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
                                              UserListsImportMixin):
 

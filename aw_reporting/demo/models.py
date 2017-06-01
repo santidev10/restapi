@@ -42,9 +42,9 @@ class BaseDemo:
     optimization_video_views_value = 5
     optimization_clicks_value = 2
     optimization_cost_value = 5
-    optimization_ctr_value = 1.0
-    optimization_average_cpv_value = 0.065
-    optimization_average_cpm_value = 23.5
+    optimization_ctr_value = 0.95
+    optimization_average_cpv_value = 0.07
+    optimization_average_cpm_value = 24.7
     optimization_video_view_rate_value = 5
     optimization_conversions_value = 5
     optimization_view_through_value = 5
@@ -320,6 +320,65 @@ class DemoAdGroup(BaseDemo):
     def view_through(self):
         return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
 
+    def get_targeting_list(self, list_type):
+        from aw_creation.models import TargetingItem
+        items = []
+        if list_type == TargetingItem.VIDEO_TYPE:
+            items = [
+                dict(
+                    criteria=i['id'],
+                    is_negative=bool(n % 2),
+                    type=TargetingItem.VIDEO_TYPE,
+                    name=i['label'],
+                    id=i['id'],
+                    thumbnail=i['thumbnail'],
+                )
+                for n, i in enumerate(self.parent.parent.video)
+            ]
+        elif list_type == TargetingItem.CHANNEL_TYPE:
+            items = [
+                dict(
+                    criteria=i['id'],
+                    is_negative=bool(n % 2),
+                    type=TargetingItem.CHANNEL_TYPE,
+                    name=i['label'],
+                    id=i['id'],
+                    thumbnail=i['thumbnail'],
+                )
+                for n, i in enumerate(self.parent.parent.channel)
+            ]
+        elif list_type == TargetingItem.TOPIC_TYPE:
+            items = [
+                dict(
+                    criteria=i['id'],
+                    is_negative=bool(n % 2),
+                    type=TargetingItem.TOPIC_TYPE,
+                    name=i['label'],
+                )
+                for n, i in enumerate(self.topic)
+            ]
+        elif list_type == TargetingItem.INTEREST_TYPE:
+            items = [
+                dict(
+                    criteria=i['id'],
+                    is_negative=bool(n % 2),
+                    type=TargetingItem.INTEREST_TYPE,
+                    name=i['label'],
+                )
+                for n, i in enumerate(self.interest)
+            ]
+        elif list_type == TargetingItem.KEYWORD_TYPE:
+            items = [
+                dict(
+                    criteria=i['label'],
+                    is_negative=bool(n % 2),
+                    type=TargetingItem.KEYWORD_TYPE,
+                    name=i['label'],
+                )
+                for n, i in enumerate(self.keyword)
+            ]
+        return items
+
     @property
     def creation_details(self):
         from aw_creation.models import AdGroupCreation, TargetingItem
@@ -331,57 +390,8 @@ class DemoAdGroup(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in AdGroupCreation.PARENTS
             ],
-            targeting=dict(
-                video=[
-                    dict(
-                        criteria=i['id'],
-                        is_negative=bool(n % 2),
-                        type=TargetingItem.VIDEO_TYPE,
-                        name=i['label'],
-                        id=i['id'],
-                        thumbnail=i['thumbnail'],
-                    )
-                    for n, i in enumerate(self.parent.parent.video)
-                ],
-                topic=[
-                    dict(
-                        criteria=i['id'],
-                        is_negative=bool(n % 2),
-                        type=TargetingItem.TOPIC_TYPE,
-                        name=i['label'],
-                    )
-                    for n, i in enumerate(self.topic)
-                ],
-                channel=[
-                    dict(
-                        criteria=i['id'],
-                        is_negative=bool(n % 2),
-                        type=TargetingItem.CHANNEL_TYPE,
-                        name=i['label'],
-                        id=i['id'],
-                        thumbnail=i['thumbnail'],
-                    )
-                    for n, i in enumerate(self.parent.parent.channel)
-                ],
-                interest=[
-                    dict(
-                        criteria=i['id'],
-                        is_negative=bool(n % 2),
-                        type=TargetingItem.INTEREST_TYPE,
-                        name=i['label'],
-                    )
-                    for n, i in enumerate(self.interest)
-                ],
-                keyword=[
-                    dict(
-                        criteria=i['label'],
-                        is_negative=bool(n % 2),
-                        type=TargetingItem.KEYWORD_TYPE,
-                        name=i['label'],
-                    )
-                    for n, i in enumerate(self.keyword)
-                ],
-            ),
+            targeting={t[0]: self.get_targeting_list(t[0])
+                       for t in TargetingItem.TYPES},
             is_approved=True,
             age_ranges=[
                 dict(id=uid, name=n)
@@ -479,7 +489,8 @@ class DemoAccount(BaseDemo):
 
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
-        self.children = [DemoCampaign(id=str(i + 1), parent=self)
+        self.children = [DemoCampaign(id="demo{}".format(i + 1),
+                                      parent=self)
                          for i in range(DEMO_CAMPAIGNS_COUNT)]
 
     def filter_out_items(self, campaigns, ad_groups):

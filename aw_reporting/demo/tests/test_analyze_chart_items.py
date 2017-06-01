@@ -70,7 +70,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             url,
             json.dumps(dict(start_date=start_date,
                             end_date=end_date,
-                            campaigns=["1"])),
+                            campaigns=["demo1"])),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)

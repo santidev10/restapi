@@ -1,6 +1,7 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 from aw_creation.models import *
+from aw_reporting.demo.models import DemoAccount
 from saas.utils_tests import ExtendedAPITestCase
 
 
@@ -86,6 +87,28 @@ class TargetingListImportFromUserListTestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 10)
+
+    def test_fail_demo(self):
+        from keyword_tool.models import KeywordsList, KeyWord
+
+        ac = DemoAccount()
+        campaign = ac.children[0]
+        ad_group = campaign.children[0]
+
+        kw_list = KeywordsList.objects.create(name="", user_email="1@2.3")
+        for i in range(10):
+            kw = KeyWord.objects.create(text="kw #{}".format(i))
+            kw_list.keywords.add(kw)
+
+        url = reverse(
+            "aw_creation_urls:optimization_ad_group_targeting_import_lists",
+            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
+        )
+        response = self.client.post(
+            url, json.dumps([kw_list.id]),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
 
 

@@ -337,4 +337,12 @@ class AccountAPITestCase(ExtendedAPITestCase):
         ac.refresh_from_db()
         self.assertIs(ac.is_deleted, True)
 
+    def test_fail_delete_demo(self):
+        url = reverse("aw_creation_urls:optimization_account",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.delete(
+            url,  content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
 

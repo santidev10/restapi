@@ -4,9 +4,10 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN,\
+    HTTP_404_NOT_FOUND
 import json
-DEMO_READ_ONLY = "You are not allowed to change this entity"
+DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
 
 
 class OptimizationAccountListApiView:
@@ -170,6 +171,85 @@ class OptimizationCampaignListApiView:
         return method
 
 
+class OptimizationCampaignApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    if c.id == pk:
+                        return Response(data=c.creation_details)
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class OptimizationAdGroupApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for a in c.children:
+                        if a.id == pk:
+                            return Response(data=a.creation_details)
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class OptimizationAdGroupListApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    if c.id == pk:
+                        return Response(data=[a.creation_details for a in c.children])
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
 class OptimizationSettingsApiView:
     @staticmethod
     def get(original_method):
@@ -281,3 +361,84 @@ class OptimizationTargetingApiView:
         return method
 
 
+class AdGroupTargetingListApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, list_type, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for a in c.children:
+                        if a.id == pk:
+                            data = a.get_targeting_list(list_type)
+                            return Response(data=data)
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk,
+                                       list_type=list_type, **kwargs)
+
+        return method
+
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+    @staticmethod
+    def delete(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdGroupTargetingListExportApiView:
+    @staticmethod
+    def get_data(original_method):
+        def method(view):
+            pk = view.kwargs.get("pk")
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for a in c.children:
+                        if a.id == pk:
+                            list_type = view.kwargs.get("list_type")
+                            data = a.get_targeting_list(list_type)
+                            return data
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view)
+
+        return method
+
+
+class AdGroupTargetingListImportApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdGroupTargetingListImportListsApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method

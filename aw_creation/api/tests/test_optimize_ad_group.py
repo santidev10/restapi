@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
-
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
+    HTTP_403_FORBIDDEN
+from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from aw_reporting.models import *
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
@@ -41,7 +45,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
+        self.perform_format_check(response.data)
+
+    def perform_format_check(self, data):
         self.assertEqual(
             set(data.keys()),
             {
@@ -69,6 +75,32 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             set(data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
+
+    def test_success_get_demo(self):
+        ac = DemoAccount()
+        campaign = ac.children[0]
+        ad_group = campaign.children[0]
+
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.perform_format_check(response.data)
+
+    def test_fail_update_demo(self):
+        ac = DemoAccount()
+        campaign = ac.children[0]
+        ad_group = campaign.children[0]
+
+        url = reverse("aw_creation_urls:optimization_ad_group",
+                      args=(ad_group.id,))
+
+        response = self.client.patch(
+            url, json.dumps({}), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
         today = datetime.now().date()
