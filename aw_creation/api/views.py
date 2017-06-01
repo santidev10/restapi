@@ -16,12 +16,13 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView
+    GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
+    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED, \
+    HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
@@ -349,6 +350,7 @@ class OptimizationAccountListApiView(ListAPIView):
 
         today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
+            is_deleted=False,
             owner=self.request.user, **filters
         ).annotate(
             campaigns_status=Max(
@@ -440,6 +442,112 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_deleted = True
+        instance.save()
+        return Response(status=HTTP_204_NO_CONTENT)
+
+
+@demo_view_decorator
+class OptimizationAccountDuplicateApiView(APIView):
+    serializer_class = OptimizationAccountDetailsSerializer
+
+    duplicate_sign = " (copy)"
+    account_fields = (
+        "name", "is_paused",  "is_ended", "type", "goal_type",
+        "delivery_method", "video_ad_format",
+        "bidding_type", "video_networks_raw",
+
+    )
+    campaign_fields = (
+        "start", "end", "goal_units", "max_rate", "budget", "is_paused",
+        "is_approved", "devices_raw",
+    )
+    loc_rules_fields = (
+        "geo_target", "latitude", "longitude", "radius", "radius_units",
+        "bid_modifier",
+    )
+    freq_cap_fields = ("event_type", "level", "limit", "time_unit")
+    ad_schedule_fields = (
+        "day", "from_hour", "from_minute", "to_hour", "to_minute",
+    )
+    ad_group_fields = (
+        "max_rate", "video_url", "display_url", "final_url",
+        "ct_overlay_text",  "is_approved", "genders_raw", "parents_raw",
+        "age_ranges_raw",
+    )
+    targeting_fields = (
+        "criteria", "type", "is_negative",
+    )
+
+    def get_queryset(self):
+        queryset = AccountCreation.objects.filter(
+            owner=self.request.user
+        )
+        return queryset
+
+    def post(self, request, pk, **kwargs):
+        try:
+            instance = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = self.duplicate_account(instance)
+        return Response(data=data)
+
+    def duplicate_account(self, account):
+        account_data = dict(
+            name=self.get_duplicate_name(account.name),
+            owner=self.request.user,
+        )
+        for f in self.account_fields:
+            account_data[f] = getattr(account, f)
+        acc_duplicate = AccountCreation.objects.create(**account_data)
+
+        for c in account.campaign_creations.all():
+            camp_data = {f: getattr(c, f) for f in self.campaign_fields}
+            c_duplicate = CampaignCreation.objects.create(
+                account_creation=acc_duplicate, **camp_data
+            )
+            for l in c.languages.all():
+                c_duplicate.languages.add(l)
+            for r in c.location_rules.all():
+                LocationRule.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(r, f) for f in self.loc_rules_fields}
+                )
+            for i in c.frequency_capping.all():
+                FrequencyCap.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(i, f) for f in self.freq_cap_fields}
+                )
+            for i in c.ad_schedule_rules.all():
+                AdScheduleRule.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(i, f) for f in self.ad_schedule_fields}
+                )
+            for a in c.ad_group_creations.all():
+                a_duplicate = AdGroupCreation.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(a, f) for f in self.ad_group_fields}
+                )
+                for i in a.targeting_items.all():
+                    TargetingItem.objects.create(
+                        ad_group_creation=a_duplicate,
+                        **{f: getattr(i, f) for f in self.targeting_fields}
+                    )
+
+        account_data = self.serializer_class(acc_duplicate).data
+        return account_data
+
+    def get_duplicate_name(self, name):
+        if len(name) + len(self.duplicate_sign) <= 250 and \
+           self.duplicate_sign not in name:
+
+            name += self.duplicate_sign
+        return name
 
 
 @demo_view_decorator

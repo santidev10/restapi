@@ -63,7 +63,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         )
         return account_creation
 
-    def test_success_get(self):
+    def test_success_post(self):
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,
@@ -71,22 +71,30 @@ class AccountAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:optimization_account_duplicate",
                       args=(ac.id,))
 
-        response = self.client.get(url)
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
+        self.assertNotEqual(ac.id, data['id'])
         self.perform_details_check(data)
 
-    def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:optimization_account",
+    def test_success_post_demo(self):
+        url = reverse("aw_creation_urls:optimization_account_duplicate",
                       args=(DEMO_ACCOUNT_ID,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
+        self.assertNotEqual(DEMO_ACCOUNT_ID, data['id'])
         self.perform_details_check(data)
 
     def perform_details_check(self, data):
@@ -239,102 +247,3 @@ class AccountAPITestCase(ExtendedAPITestCase):
             set(ad_group_data['targeting']['keyword'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
-
-    def test_success_update(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account(**defaults)
-
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-
-        request_data = dict(
-            is_paused=True,
-            is_ended=True,
-            video_networks=[
-                AccountCreation.YOUTUBE_SEARCH,
-                AccountCreation.YOUTUBE_VIDEO,
-            ]
-        )
-        response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['is_paused'], True)
-        self.assertEqual(response.data['is_ended'], True)
-        self.assertEqual(
-            set(i['id'] for i in response.data['video_networks']),
-            set(request_data['video_networks']),
-        )
-
-    def test_fail_update_demo(self):
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(DEMO_ACCOUNT_ID,))
-        response = self.client.patch(
-            url, json.dumps(dict(is_paused=True)),
-            content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_fail_approve(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-        data = dict(
-            is_approved=True,
-        )
-        response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_fail_name_validation(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-        data = dict(
-            name="Campaign '",
-        )
-        response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(
-            response.data['name'][0],
-            "# and ' are not allowed for titles",
-        )
-
-    def test_success_delete(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
-
-        ac.refresh_from_db()
-        self.assertIs(ac.is_deleted, True)
-
-

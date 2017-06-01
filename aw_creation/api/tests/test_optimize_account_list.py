@@ -297,3 +297,18 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(len(item['goal_charts']), 2)
         self.assertEqual(len(item['weekly_chart']), 7)
+
+    def test_list_no_deleted_accounts(self):
+        AccountCreation.objects.create(
+            name="", owner=self.user, is_deleted=True
+        )
+        # --
+        url = reverse("aw_creation_urls:optimization_account_list")
+        with patch(
+            "aw_reporting.demo.models.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(len(response.data['items']), 1)

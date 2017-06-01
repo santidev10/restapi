@@ -165,29 +165,32 @@ class BaseDemo:
         return ads
 
     topic = (
-        {'label': 'Computer & Video Games'},
-        {'label': 'Arts & Entertainment'},
-        {'label': 'Shooter Games'},
-        {'label': 'Movies'},
-        {'label': 'TV Family-Oriented Shows'},
-        {'label': 'Business & Industrial'},
-        {'label': 'Beauty & Fitness'},
-        {'label': 'Food & Drink'},
+        {'label': 'Computer & Video Games', 'id': 41},
+        {'label': 'Arts & Entertainment', 'id': 3},
+        {'label': 'Shooter Games', "id": 930},
+        {'label': 'Movies', "id": 34},
+        {'label': 'TV Family-Oriented Shows', "id": 1110},
+        {'label': 'Business & Industrial', "id": 12},
+        {'label': 'Beauty & Fitness', "id": 44},
+        {'label': 'Food & Drink', "id": 71},
     )
 
     interest = (
-        {'label': '/Beauty Mavens'},
-        {'label': '/Beauty Products & Services'},
-        {'label': '/Family-Focused'},
+        {'label': '/Beauty Mavens', "id": 92505},
+        {'label': '/Beauty Products & Services', "id": 80546},
+        {'label': '/Family-Focused', "id": 91000},
         {'label': '/News Junkies & Avid Readers/Entertainment '
-                  '& Celebrity News Junkies'},
-        {'label': "/News Junkies & Avid Readers/Women's Media Fans"},
-        {'label': '/Foodies'},
-        {'label': '/Sports & Fitness/Outdoor Recreational Equipment'},
-        {'label': '/Sports Fans'},
-        {'label': '/News Junkies & Avid Readers'},
+                  '& Celebrity News Junkies',
+         'id': 92006},
+        {'label': "/News Junkies & Avid Readers/Women's Media Fans",
+         'id': 92007},
+        {'label': '/Foodies', 'id': 92300},
+        {'label': '/Sports & Fitness/Outdoor Recreational Equipment',
+         'id': 80549},
+        {'label': '/Sports Fans', "id": 90200},
+        {'label': '/News Junkies & Avid Readers', "id": 92000},
         {'label': '/Sports & Fitness/Fitness Products & Services/'
-                  'Exercise Equipment'},
+                  'Exercise Equipment', "id": 80559},
     )
 
     remarketing = (
@@ -331,7 +334,7 @@ class DemoAdGroup(BaseDemo):
             targeting=dict(
                 video=[
                     dict(
-                        criteria=i['label'],
+                        criteria=i['id'],
                         is_negative=bool(n % 2),
                         type=TargetingItem.VIDEO_TYPE,
                         name=i['label'],
@@ -342,7 +345,7 @@ class DemoAdGroup(BaseDemo):
                 ],
                 topic=[
                     dict(
-                        criteria=i['label'],
+                        criteria=i['id'],
                         is_negative=bool(n % 2),
                         type=TargetingItem.TOPIC_TYPE,
                         name=i['label'],
@@ -351,7 +354,7 @@ class DemoAdGroup(BaseDemo):
                 ],
                 channel=[
                     dict(
-                        criteria=i['label'],
+                        criteria=i['id'],
                         is_negative=bool(n % 2),
                         type=TargetingItem.CHANNEL_TYPE,
                         name=i['label'],
@@ -362,7 +365,7 @@ class DemoAdGroup(BaseDemo):
                 ],
                 interest=[
                     dict(
-                        criteria=i['label'],
+                        criteria=i['id'],
                         is_negative=bool(n % 2),
                         type=TargetingItem.INTEREST_TYPE,
                         name=i['label'],
@@ -673,3 +676,21 @@ class DemoAccount(BaseDemo):
         chart_lines = charts_obj.chart_lines(self, filters)
         demo_details['weekly_chart'] = chart_lines[0]['trend']
         return demo_details
+
+    @property
+    def creation_details_full(self):
+        data = self.creation_details
+        data.update(
+            is_ended=False,
+            is_paused=False,
+            is_approved=True,
+            budget=sum(
+                c.budget
+                for c in self.children
+            ),
+            campaign_creations=[
+                c.creation_details
+                for c in self.children
+            ],
+        )
+        return data

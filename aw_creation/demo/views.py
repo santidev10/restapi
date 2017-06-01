@@ -1,8 +1,11 @@
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.demo.charts import DemoChart
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
+    Language, TargetingItem
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-
+import json
 DEMO_READ_ONLY = "You are not allowed to change this entity"
 
 
@@ -28,21 +31,7 @@ class OptimizationAccountApiView:
         def method(view, request, pk, **kwargs):
             if pk == DEMO_ACCOUNT_ID:
                 demo = DemoAccount()
-                data = demo.creation_details
-                data.update(
-                    is_ended=False,
-                    is_paused=False,
-                    is_approved=True,
-                    budget=sum(
-                        c.budget
-                        for c in demo.children
-                    ),
-                    campaign_creations=[
-                        c.creation_details
-                        for c in demo.children
-                    ],
-                )
-                return Response(data=data)
+                return Response(data=demo.creation_details_full)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
@@ -56,6 +45,103 @@ class OptimizationAccountApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+    @staticmethod
+    def delete(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class OptimizationAccountDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                demo = DemoAccount()
+                data = demo.creation_details_full
+
+                acc_data = dict(
+                    name=view.get_duplicate_name(data['name']),
+                    owner=view.request.user,
+                )
+                for f in view.account_fields:
+                    if f == "video_networks_raw":
+                        acc_data[f] = json.dumps(
+                            [i['id'] for i in data['video_networks']])
+                    elif f in ("video_ad_format", "delivery_method",
+                               "bidding_type", "type", "goal_type"):
+                        acc_data[f] = data[f]["id"]
+                    else:
+                        acc_data[f] = data[f]
+                acc_duplicate = AccountCreation.objects.create(**acc_data)
+
+                for c in data['campaign_creations']:
+                    camp_data = dict()
+                    for f in view.campaign_fields:
+                        if f == "devices_raw":
+                            camp_data[f] = json.dumps(
+                                [i['id'] for i in c['devices']])
+                        else:
+                            camp_data[f] = c[f]
+                    c_duplicate = CampaignCreation.objects.create(
+                        account_creation=acc_duplicate, **camp_data
+                    )
+                    for l in c["languages"]:
+                        lang, _ = Language.objects.get_or_create(
+                            pk=l['id'], defaults=l)
+                        c_duplicate.languages.add(lang)
+                    for r in c["location_rules"]:
+                        LocationRule.objects.create(
+                            campaign_creation=c_duplicate,
+                            **{f: r[f]['id'] if type(r[f]) is dict else r[f]
+                               for f in view.loc_rules_fields}
+                        )
+
+                    for i in c['frequency_capping']:
+                        FrequencyCap.objects.create(
+                            campaign_creation=c_duplicate,
+                            **{f: i[f]['id'] if type(i[f]) is dict else i[f]
+                               for f in view.freq_cap_fields}
+                        )
+                    for i in c['ad_schedule_rules']:
+                        AdScheduleRule.objects.create(
+                            campaign_creation=c_duplicate,
+                            **{f: i[f]['id'] if type(i[f]) is dict else i[f]
+                               for f in view.ad_schedule_fields}
+                        )
+                    for a in c['ad_group_creations']:
+                        ag_data = {}
+                        for f in view.ad_group_fields:
+                            if f.endswith("_raw"):
+                                ag_data[f] = json.dumps(
+                                    [i["id"] for i in a[f[:-4]]]
+                                )
+                            else:
+                                ag_data[f] = a[f]
+                        a_duplicate = AdGroupCreation.objects.create(
+                            campaign_creation=c_duplicate, **ag_data
+                        )
+                        for list_type, items in a["targeting"].items():
+                            for i in items:
+                                TargetingItem.objects.create(
+                                    ad_group_creation=a_duplicate,
+                                    type=list_type,
+                                    is_negative=i['is_negative'],
+                                    criteria=i['criteria'],
+                                )
+
+                account_data = view.serializer_class(acc_duplicate).data
+                return Response(data=account_data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
