@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db import transaction
 from django.db.utils import IntegrityError
@@ -177,9 +178,39 @@ class KeywordsList(BaseModel):
     average_cpv = models.FloatField(default=0)
     average_view_rate = models.FloatField(default=0)
     average_ctrv = models.FloatField(default=0)
+    top_keywords = JSONField(null=True, blank=True)
+    cum_average_volume = JSONField(null=True, blank=True)
+    cum_average_volume_per_kw = JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ['-updated_at']
+
+    @property
+    def top_keywords_data(self):
+        raw = self.top_keywords
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
+
+    @property
+    def cum_average_volume_data(self):
+        raw = self.cum_average_volume
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
+
+    @property
+    def cum_average_volume_per_kw_data(self):
+        raw = self.cum_average_volume_per_kw
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return 'invalid data format'
 
 
 class ViralKeywords(BaseModel):

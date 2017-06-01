@@ -30,7 +30,7 @@ class KeywordSerializer(ModelSerializer):
 
 class SavedListNameSerializer(ModelSerializer):
     is_owner = SerializerMethodField()
-    top_keywords = SerializerMethodField()
+    is_editable = SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.pop('fields', None)
@@ -46,14 +46,9 @@ class SavedListNameSerializer(ModelSerializer):
     def get_is_owner(self, obj):
         return obj.user_email == self.request.user.email
 
-    def get_top_keywords(self, obj):
-        kw_ids = obj.keywords.through.objects.filter(
-            keywordslist_id=obj.id).values_list(
-            'keyword__text', flat=True)
-
-        return [{'keyword': kw.text,
-                 'value': kw.search_volume} for kw in
-                KeyWord.objects.filter(text__in=kw_ids).order_by('-search_volume')[:10]]
+    def get_is_editable(self, obj):
+        user = self.request.user
+        return user.is_staff or obj.user_email == user.email
 
     def validate(self, data):
         """
@@ -74,9 +69,10 @@ class SavedListNameSerializer(ModelSerializer):
     class Meta:
         model = KeywordsList
         fields = (
-            "id", "name", "category", "is_owner", "top_keywords", "num_keywords",
+            "id", "name", "category", "is_owner", "top_keywords_data", "num_keywords",
             "average_volume", "average_cpc", "competition",
             "average_cpv", "average_view_rate", "average_ctrv",
+            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable"
         )
 
 

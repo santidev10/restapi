@@ -26,10 +26,17 @@ AVAILABLE_CHANNEL_SEGMENT_CATEGORIES = (
     "blacklist"
 )
 
-AVAILABLE_VIDEO_AND_KEYWORD_SEGMENT_CATEGORIES = (
+AVAILABLE_KEYWORD_SEGMENT_CATEGORIES = (
     "channel_factory",
     "blacklist",
     "private"
+)
+
+AVAILABLE_VIDEO_SEGMENT_CATEGORIES = (
+    "youtube",
+    "blacklist",
+    "private",
+    "iab"
 )
 
 
@@ -90,14 +97,26 @@ class Segment(Timestampable):
         # obtain channels data
         channels_ids = self.channels.values_list(
             "channel_id", flat=True)
+        fields = [
+            "id",
+            "title",
+            "thumbnail_image_url",
+            "subscribers",
+            "videos",
+            "views",
+            "video_views",
+            "likes",
+            "dislikes",
+            "comments",
+            "video_views_history",
+            "views_per_video_history",
+            "description",
+            "language",
+            "history_date"
+        ]
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(channels_ids),
-                        "fields": "id,title,thumbnail_image_url,"
-                                  "subscribers,videos,views,video_views"
-                                  "likes,dislikes,comments,"
-                                  "video_views_history,"
-                                  "views_per_video_history,description,"
-                                  "language,history_date",
+                        "fields": ",".join(fields),
                         "flat": 1}
         connector = Connector()
         try:
@@ -171,11 +190,21 @@ class Segment(Timestampable):
         # obtain videos data
         videos_ids = self.videos.values_list(
             "video_id", flat=True)
+        fields = [
+            "id",
+            "title",
+            "description",
+            "thumbnail_image_url",
+            "views",
+            "likes",
+            "dislikes",
+            "comments",
+            "views_history",
+            "history_date"
+        ]
         # TODO flat may freeze SDB if queryset is too big
         query_params = {"ids": ",".join(videos_ids),
-                        "fields": "id,title,description,thumbnail_image_url,"
-                                  "views,likes,dislikes,"
-                                  "comments,views_history,history_date",
+                        "fields": ",".join(fields),
                         "flat": 1}
         connector = Connector()
         try:
