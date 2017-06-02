@@ -456,14 +456,14 @@ class OptimizationAccountDuplicateApiView(APIView):
 
     duplicate_sign = " (copy)"
     account_fields = (
-        "name", "is_paused",  "is_ended", "type", "goal_type",
+        "is_paused",  "is_ended", "type", "goal_type",
         "delivery_method", "video_ad_format",
         "bidding_type", "video_networks_raw",
 
     )
     campaign_fields = (
-        "start", "end", "goal_units", "max_rate", "budget", "is_paused",
-        "is_approved", "devices_raw",
+        "name", "start", "end", "goal_units", "max_rate", "budget",
+        "is_paused",  "is_approved", "devices_raw",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units",
@@ -474,7 +474,7 @@ class OptimizationAccountDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "max_rate", "video_url", "display_url", "final_url",
+        "name", "max_rate", "video_url", "display_url", "final_url",
         "ct_overlay_text",  "is_approved", "genders_raw", "parents_raw",
         "age_ranges_raw",
     )

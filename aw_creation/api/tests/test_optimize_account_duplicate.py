@@ -79,6 +79,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertNotEqual(ac.id, data['id'])
         self.perform_details_check(data)
+        self.assertEqual(data['name'], "Pep (copy)")
 
     def test_success_post_demo(self):
         url = reverse("aw_creation_urls:optimization_account_duplicate",
@@ -96,6 +97,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertNotEqual(DEMO_ACCOUNT_ID, data['id'])
         self.perform_details_check(data)
+        self.assertEqual(data['name'], "Demo (copy)")
 
     def perform_details_check(self, data):
         self.assertEqual(
