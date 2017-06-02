@@ -16,12 +16,13 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView
+    GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED
+    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED, \
+    HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
@@ -36,13 +37,13 @@ from aw_creation.api.serializers import add_targeting_list_items_info, \
     AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
     AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
     OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
-
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
     TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats, Topic, Audience
+from aw_reporting.demo import demo_view_decorator
 
 
 class GeoTargetListApiView(APIView):
@@ -224,7 +225,7 @@ class OptimizationAccountListPaginator(PageNumberPagination):
 class OptimizationOptionsApiView(APIView):
 
     @staticmethod
-    def get(*_, **k):
+    def get(request, **k):
         def opts_to_response(opts):
             res = [dict(id=i, name=n) for i, n in opts]
             return res
@@ -336,6 +337,7 @@ class OptimizationOptionsApiView(APIView):
         return Response(data=options)
 
 
+@demo_view_decorator
 class OptimizationAccountListApiView(ListAPIView):
 
     serializer_class = OptimizationAccountListSerializer
@@ -348,6 +350,7 @@ class OptimizationAccountListApiView(ListAPIView):
 
         today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
+            is_deleted=False,
             owner=self.request.user, **filters
         ).annotate(
             campaigns_status=Max(
@@ -420,6 +423,7 @@ class OptimizationAccountListApiView(ListAPIView):
         return Response(status=HTTP_202_ACCEPTED, data=data)
 
 
+@demo_view_decorator
 class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
     serializer_class = OptimizationAccountDetailsSerializer
@@ -439,7 +443,114 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
 
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_deleted = True
+        instance.save()
+        return Response(status=HTTP_204_NO_CONTENT)
 
+
+@demo_view_decorator
+class OptimizationAccountDuplicateApiView(APIView):
+    serializer_class = OptimizationAccountDetailsSerializer
+
+    duplicate_sign = " (copy)"
+    account_fields = (
+        "name", "is_paused",  "is_ended", "type", "goal_type",
+        "delivery_method", "video_ad_format",
+        "bidding_type", "video_networks_raw",
+
+    )
+    campaign_fields = (
+        "start", "end", "goal_units", "max_rate", "budget", "is_paused",
+        "is_approved", "devices_raw",
+    )
+    loc_rules_fields = (
+        "geo_target", "latitude", "longitude", "radius", "radius_units",
+        "bid_modifier",
+    )
+    freq_cap_fields = ("event_type", "level", "limit", "time_unit")
+    ad_schedule_fields = (
+        "day", "from_hour", "from_minute", "to_hour", "to_minute",
+    )
+    ad_group_fields = (
+        "max_rate", "video_url", "display_url", "final_url",
+        "ct_overlay_text",  "is_approved", "genders_raw", "parents_raw",
+        "age_ranges_raw",
+    )
+    targeting_fields = (
+        "criteria", "type", "is_negative",
+    )
+
+    def get_queryset(self):
+        queryset = AccountCreation.objects.filter(
+            owner=self.request.user
+        )
+        return queryset
+
+    def post(self, request, pk, **kwargs):
+        try:
+            instance = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = self.duplicate_account(instance)
+        return Response(data=data)
+
+    def duplicate_account(self, account):
+        account_data = dict(
+            name=self.get_duplicate_name(account.name),
+            owner=self.request.user,
+        )
+        for f in self.account_fields:
+            account_data[f] = getattr(account, f)
+        acc_duplicate = AccountCreation.objects.create(**account_data)
+
+        for c in account.campaign_creations.all():
+            camp_data = {f: getattr(c, f) for f in self.campaign_fields}
+            c_duplicate = CampaignCreation.objects.create(
+                account_creation=acc_duplicate, **camp_data
+            )
+            for l in c.languages.all():
+                c_duplicate.languages.add(l)
+            for r in c.location_rules.all():
+                LocationRule.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(r, f) for f in self.loc_rules_fields}
+                )
+            for i in c.frequency_capping.all():
+                FrequencyCap.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(i, f) for f in self.freq_cap_fields}
+                )
+            for i in c.ad_schedule_rules.all():
+                AdScheduleRule.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(i, f) for f in self.ad_schedule_fields}
+                )
+            for a in c.ad_group_creations.all():
+                a_duplicate = AdGroupCreation.objects.create(
+                    campaign_creation=c_duplicate,
+                    **{f: getattr(a, f) for f in self.ad_group_fields}
+                )
+                for i in a.targeting_items.all():
+                    TargetingItem.objects.create(
+                        ad_group_creation=a_duplicate,
+                        **{f: getattr(i, f) for f in self.targeting_fields}
+                    )
+
+        account_data = self.serializer_class(acc_duplicate).data
+        return account_data
+
+    def get_duplicate_name(self, name):
+        if len(name) + len(self.duplicate_sign) <= 250 and \
+           self.duplicate_sign not in name:
+
+            name += self.duplicate_sign
+        return name
+
+
+@demo_view_decorator
 class OptimizationCampaignListApiView(ListCreateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -473,6 +584,7 @@ class OptimizationCampaignListApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
+@demo_view_decorator
 class OptimizationCampaignApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationCampaignsSerializer
 
@@ -580,6 +692,7 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
                 serializer.save()
 
 
+@demo_view_decorator
 class OptimizationAdGroupListApiView(ListCreateAPIView):
     serializer_class = OptimizationAdGroupSerializer
 
@@ -596,7 +709,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
             campaign_creation = CampaignCreation.objects.get(
                 pk=kwargs.get("pk"), account_creation__owner=request.user
             )
-        except AccountCreation.DoesNotExist:
+        except CampaignCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
         request.data['campaign_creation'] = campaign_creation.id
@@ -613,6 +726,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
+@demo_view_decorator
 class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAdGroupSerializer
 
@@ -738,7 +852,41 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
-class CreationAccountApiView(APIView):
+class UserListsImportMixin:
+
+    @staticmethod
+    def get_lists_items_ids(ids, list_type):
+        from segment.models import Segment
+        from keyword_tool.models import KeywordsList
+
+        if list_type == "channel":
+            item_ids = Segment.objects.filter(
+                id__in=ids, channels__channel_id__isnull=False
+            ).values_list(
+                "channels__channel_id", flat=True
+            ).order_by("channels__channel_id").distinct()
+
+        elif list_type == "video":
+            item_ids = Segment.objects.filter(
+                id__in=ids, videos__video_id__isnull=False
+            ).values_list(
+                "videos__video_id", flat=True
+            ).order_by("videos__video_id").distinct()
+
+        elif list_type == "keyword":
+            item_ids = KeywordsList.objects.filter(
+                id__in=ids, keywords__text__isnull=False
+            ).values_list(
+                "keywords__text", flat=True
+            ).order_by("keywords__text").distinct()
+
+        else:
+            raise NotImplementedError("Unknown type: {}".format(list_type))
+
+        return item_ids
+
+
+class CreationAccountApiView(APIView, UserListsImportMixin):
     """
     Accepts POST request and creates an account
     Example body:
@@ -746,9 +894,6 @@ class CreationAccountApiView(APIView):
     """
 
     def post(self, request, *args, **kwargs):
-        from segment.models import Segment
-        from keyword_tool.models import KeywordsList
-
         owner = self.request.user
         data = request.data
 
@@ -760,11 +905,9 @@ class CreationAccountApiView(APIView):
         assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
         assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
 
-        channel_lists = data.get('channel_lists', [])
-        if channel_lists:
-            channel_ids = Segment.objects.filter(
-                id__in=channel_lists
-            ).values_list("channels__channel_id", flat=True).distinct()
+        c_lists = data.get('channel_lists', [])
+        if c_lists:
+            channel_ids = self.get_lists_items_ids(c_lists, "channel")
 
             def set_channel_targeting(ad_group):
                 items = [
@@ -783,9 +926,7 @@ class CreationAccountApiView(APIView):
 
         video_lists = data.get('video_lists', [])
         if video_lists:
-            video_ids = Segment.objects.filter(
-                id__in=video_lists
-            ).values_list("videos__video_id", flat=True).distinct()
+            video_ids = self.get_lists_items_ids(video_lists, "video")
 
             def set_video_targeting(ad_group):
                 items = [
@@ -804,9 +945,7 @@ class CreationAccountApiView(APIView):
 
         keyword_lists = data.get('keyword_lists', [])
         if keyword_lists:
-            kws = KeywordsList.objects.filter(
-                id__in=keyword_lists
-            ).values_list("keywords__text", flat=True).distinct()
+            kws = self.get_lists_items_ids(keyword_lists, "keyword")
 
             def set_kw_targeting(ad_group):
                 items = [
@@ -1044,6 +1183,7 @@ class TargetingListBaseAPIClass(GenericAPIView):
         add_targeting_list_items_info(data, list_type)
 
 
+@demo_view_decorator
 class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
     def get(self, request, *args, **kwargs):
@@ -1135,6 +1275,7 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
         return valid_list
 
 
+@demo_view_decorator
 class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
 
     permission_classes = (IsAuthQueryTokenPermission,)
@@ -1144,16 +1285,18 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
         token = Token.objects.get(key=auth_token)
         return token.user
 
-    def get(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
-
+    def get_data(self):
         queryset = self.get_queryset()
         data = self.get_serializer(queryset, many=True).data
         self.add_items_info(data)
+        return data
+
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        data = self.get_data()
 
         def generator():
-
             def to_line(line):
                 output = StringIO()
                 writer = csv.writer(output)
@@ -1173,6 +1316,7 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
         return response
 
 
+@demo_view_decorator
 class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
                                         DocumentImportBaseAPIView):
     parser_classes = (FileUploadParser,)
@@ -1384,7 +1528,50 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         return objects
 
 
+@demo_view_decorator
+class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
+                                             UserListsImportMixin):
+
+    def post(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        list_type = self.kwargs.get('list_type')
+        is_negative = request.query_params.get('is_negative', False)
+        try:
+            ad_group_creation = AdGroupCreation.objects.get(pk=pk)
+        except AdGroupCreation.DoesNotExsist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        ids = request.data
+        assert type(ids) is list
+
+        if ids:
+            criteria_list = self.get_lists_items_ids(ids, list_type)
+            existed_ids = set(
+                TargetingItem.objects.filter(
+                    ad_group_creation=ad_group_creation,
+                    criteria__in=criteria_list,
+                    type=list_type,
+                ).values_list("criteria", flat=True)
+            )
+            items = [
+                TargetingItem(
+                    ad_group_creation=ad_group_creation,
+                    criteria=cid,
+                    type=list_type,
+                    is_negative=is_negative,
+                )
+                for cid in criteria_list if cid not in existed_ids
+            ]
+            if items:
+                TargetingItem.objects.bulk_create(items)
+        return self.get(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        raise NotImplementedError
+
+
 # optimize tab
+@demo_view_decorator
 class OptimizationFiltersApiView(APIView):
 
     def get_object(self):
@@ -1410,6 +1597,7 @@ class OptimizationFiltersApiView(APIView):
         return Response(data=data)
 
 
+@demo_view_decorator
 class OptimizationSettingsApiView(OptimizationFiltersApiView):
     """
     Settings at the Optimization tab
@@ -1457,6 +1645,7 @@ class OptimizationSettingsApiView(OptimizationFiltersApiView):
         return self.get(request, pk, kpi, **kwargs)
 
 
+@demo_view_decorator
 class OptimizationTargetingApiView(OptimizationFiltersApiView,
                                    TargetingListBaseAPIClass):
 

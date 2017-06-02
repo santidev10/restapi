@@ -2,7 +2,9 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_202_ACCEPTED
 
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class PostAccountAPITestCase(ExtendedAPITestCase):
@@ -27,22 +29,15 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 # common details
-                'id', 'name',
+                'id', 'name', 'status',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
+                'creative', 'structure', 'weekly_chart',
+                'campaigns_count', 'goal_charts',
 
-                'ordered_cpv',
-                'cpv',
-                'ordered_impressions_cost',
-                'ordered_views_cost',
                 'impressions',
                 'views',
-                'ordered_views',
-                'impressions_cost',
-                'cpm',
-                'ordered_cpm',
-                'ordered_impressions',
-                'views_cost',
+                'cost',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",

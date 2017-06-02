@@ -2,19 +2,23 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, time
-
 from pytz import utc
-
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
+import math
 
 
 class DemoChart:
 
-    def __init__(self, account, filters):
+    def __init__(self, account, filters,
+                 summary_label="Summary", goal_units=None,
+                 cumulative=False):
         self.today = datetime.now().date()
         self.account = account
         self.filters = filters
+        self.summary_label = summary_label
+        self.goal_units = goal_units
+        self.cumulative = cumulative
 
     @property
     def chart_items(self):
@@ -185,10 +189,17 @@ class DemoChart:
                 values = self.explode_value_random(
                     value, indicator, time_points_len,
                 )
+                if self.cumulative and indicator in SUM_STATS:
+                    current = 0
+                    new_values = []
+                    for v in values:
+                        current += v
+                        new_values.append(current)
+                    values = new_values
+
                 lines.append(
                     dict(
-                        average=None,
-                        label="Summary",
+                        label=self.summary_label,
                         trend=[dict(label=l, value=v)
                                for l, v in zip(
                                     time_points,
@@ -219,37 +230,52 @@ class DemoChart:
                     line.update(dim)
                     lines.append(line)
 
+            if self.goal_units:
+                daily = math.ceil(self.goal_units / time_points_len)
+                values = [
+                    min(daily * (i + 1), self.goal_units)
+                    for i in range(time_points_len)
+                ]
+                lines.append(
+                    dict(
+                        label="View Goal",
+                        trend=[dict(label=l, value=v)
+                               for l, v in zip(
+                                    time_points,
+                                    values
+                               )],
+                        value=value,
+                    )
+                )
+
         return lines
 
     @staticmethod
-    def explode_value(value, indicator, n):
+    def explode_value(initial_value, indicator, length):
 
-        if value is None:
-            return [None for i in range(n)]
+        if initial_value is None:
+            return [None for i in range(length)]
 
-        def get_val(val):
-            return val
-
-        value /= 2
-
-        if indicator in SUM_STATS:
-            daily = value / n if n else 0
+        value = initial_value // 2
+        if indicator in (SUM_STATS + CONVERSIONS):
             if indicator != 'cost':
-                def get_val(val):
-                    return int(val)
+                daily = value // length if length else 0
+            else:
+                daily = value / length if length else 0
         else:
             daily = value
 
         # chart values
-        values = [daily for i in range(n)]
+        values = [daily for i in range(length)]
 
-        val_len = len(values)
-
-        bonus = value
+        bonus = initial_value - value
         for n, i in enumerate(values):
-            bonus /= 2
-            values[n] = get_val(values[n] + bonus
-                                if i < val_len - 1 else bonus * 2)
+            part = bonus // 2
+            values[n] += part
+            bonus -= part
+
+        if bonus and values:
+            values[-1] += bonus
 
         return values
 

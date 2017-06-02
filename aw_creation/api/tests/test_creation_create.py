@@ -1,5 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db.models import Sum, Avg, Count
 from rest_framework.status import HTTP_200_OK
@@ -7,8 +9,6 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase
-from django.conf import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +54,13 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         kws = {"banana", "batman", "slave"}
         kw_list = KeywordsList.objects.create(name="",
                                               user_email=self.user.email)
+
         for kw in kws:
             kw_obj = KeyWord.objects.create(text=kw)
             kw_list.keywords.add(kw_obj)
+
+        empty_kw_list = KeywordsList.objects.create(
+            name="1", user_email=self.user.email)
 
         data = dict(
             name="My account",
@@ -90,7 +94,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             max_rate="0.5",
             channel_lists=[channel_segment.id],
             video_lists=[video_segment.id],
-            keyword_lists=[kw_list.id],
+            keyword_lists=[kw_list.id, empty_kw_list.id],
             topic_lists=[],
             interest_lists=[],
         )

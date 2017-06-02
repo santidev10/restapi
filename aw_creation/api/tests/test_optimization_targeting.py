@@ -4,7 +4,10 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
@@ -146,5 +149,44 @@ class OptimizationTargetingAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['items']), 1)
+
+    def test_success_get_demo(self):
+        base_url = reverse(
+            "aw_creation_urls:optimization_targeting",
+            args=(DEMO_ACCOUNT_ID,
+                  OptimizationTuning.CPV_KPI,
+                  TargetingItem.CHANNEL_TYPE))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(base_url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {'items', 'value'},
+        )
+        items = response.data['items']
+        self.assertGreater(len(items), 1)
+        self.assertEqual(
+            set(items[0].keys()),
+            {
+                'id',
+                'name',
+                'thumbnail',
+                'bigger_than_value',
+                'conversions',
+                'average_cpv',
+                'ctr',
+                'impressions',
+                'all_conversions',
+                'clicks',
+                'cost',
+                'video_views',
+                'criteria',
+                'video_view_rate',
+                'average_cpm',
+                'view_through',
+                'ctr_v',
+            }
+        )
 
 

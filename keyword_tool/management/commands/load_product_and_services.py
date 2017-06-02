@@ -1,10 +1,11 @@
+import csv
+import logging
+from collections import namedtuple
+
 from django.core.management.base import BaseCommand
+
 from keyword_tool.models import Interest
 
-from collections import namedtuple
-import csv
-
-import logging
 logger = logging.getLogger(__name__)
 
 

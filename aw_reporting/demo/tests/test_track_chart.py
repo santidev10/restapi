@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from urllib.parse import urlencode
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):
@@ -62,6 +64,22 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
+
+    def test_success_hourly_clicks(self):
+        url = reverse("aw_reporting_urls:track_chart")
+        today = datetime.now().date()
+        filters = dict(
+            start_date=today - timedelta(days=2),
+            end_date=today - timedelta(days=1),
+            indicator="clicks",
+            breakdown="hourly",
+        )
+        url = "{}?{}".format(url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = response.data[0]['data'][0]['trend']
+        self.assertEqual(len(trend), 48, "24 hours x 2 days")
+        self.assertEqual(all(i['value'] for i in trend), True)
 
     def test_success_hourly_today(self):
         url = reverse("aw_reporting_urls:track_chart")

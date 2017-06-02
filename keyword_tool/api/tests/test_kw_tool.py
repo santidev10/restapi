@@ -1,12 +1,14 @@
+from copy import deepcopy
+from unittest.mock import patch
+from urllib.parse import urlencode
+
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from django.core.management import call_command
-from saas.utils_tests import ExtendedAPITestCase as APITestCase
-from unittest.mock import patch
-from keyword_tool.settings import PREDEFINED_QUERIES
+
 from keyword_tool.models import *
-from copy import deepcopy
-from urllib.parse import urlencode
+from keyword_tool.settings import PREDEFINED_QUERIES
+from saas.utils_tests import ExtendedAPITestCase as APITestCase
 
 
 class KWToolAPITestCase(APITestCase):
@@ -39,7 +41,7 @@ class KWToolAPITestCase(APITestCase):
         self.url = reverse("keyword_tool_urls:kw_tool_optimize_query",
                            args=(query,))
         response = self.client.get(self.url)
-        optimize_keyword.assert_called([query])
+        optimize_keyword.assert_called_with([query])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(

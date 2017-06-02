@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
-
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
+    HTTP_403_FORBIDDEN
+from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class CampaignAPITestCase(ExtendedAPITestCase):
@@ -66,7 +69,9 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
+        self.perform_format_check(response.data)
+
+    def perform_format_check(self, data):
         self.assertEqual(
             set(data.keys()),
             {
@@ -101,6 +106,30 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             set(ad_group_data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
+
+    def test_success_get_demo(self):
+        ac = DemoAccount()
+        campaign = ac.children[0]
+
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.perform_format_check(response.data)
+
+    def test_fail_update_demo(self):
+        ac = DemoAccount()
+        campaign = ac.children[0]
+
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign.id,))
+
+        response = self.client.patch(
+            url, json.dumps({}), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
         today = datetime.now().date()
@@ -239,6 +268,49 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "dates in the past are not allowed")
+
+    def test_set_end_when_both_dates_not_valid(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = datetime.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today - timedelta(days=10),
+            end=today - timedelta(days=2),
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(
+            end=str(today + timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_fail_set_start_when_both_dates_not_valid(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = datetime.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today - timedelta(days=10),
+            end=today - timedelta(days=2),
+        )
+        url = reverse("aw_creation_urls:optimization_campaign",
+                      args=(campaign_creation.id,))
+
+        request_data = dict(
+            start=str(today + timedelta(days=1)),
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
+                         "Because start date > end date")
 
 
 

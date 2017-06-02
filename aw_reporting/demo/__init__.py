@@ -1,4 +1,5 @@
 from .views import *
+from aw_creation.demo.views import *
 
 
 def demo_view_decorator(wrapped_class):

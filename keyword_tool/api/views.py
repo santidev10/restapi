@@ -1,23 +1,22 @@
-from .serializers import *
-from django.db.models import Sum, Count
-from django.db.models.functions import Coalesce
+import logging
+
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Count
+from django.db.models import Q
+from django.db.models.functions import Coalesce
 from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
-from keyword_tool.settings import PREDEFINED_QUERIES
-from keyword_tool.models import Query, KeywordsList, ViralKeywords
 
 from aw_reporting.adwords_api import optimize_keyword
-# TODO uncomment when adwords stats will be created is saas
-from aw_reporting.models import SUM_STATS, \
-    QUARTILE_STATS, dict_quartiles_to_rates, dict_add_calculated_stats
-# from utils.api_permissions import get_perm_class
+from keyword_tool.tasks import update_kw_list_stats
+from keyword_tool.models import Query, KeywordsList, ViralKeywords
+from keyword_tool.settings import PREDEFINED_QUERIES
 from utils.api_paginator import CustomPageNumberPaginator
-import logging
+from .serializers import *
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,6 @@ class OptimizeQueryApiView(ListAPIView):
     page_size = 12
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
-    permission_classes = tuple()
 
     def sort(self, queryset):
         query_params = self.request.query_params
@@ -94,11 +92,24 @@ class OptimizeQueryApiView(ListAPIView):
         #             sort_by: extra_selects[sort_by]
         #         }
         #     )
+
         if sort_by == 'search_volume':
             queryset = queryset.annotate(
                 search_volume_not_null=Coalesce('search_volume', 0)
             )
             sort_by = 'search_volume_not_null'
+
+        if sort_by == 'average_cpc':
+            queryset = queryset.annotate(
+                average_cpc_not_null=Coalesce('average_cpc', 0)
+            )
+            sort_by = 'average_cpc_not_null'
+
+        if sort_by == 'competition':
+            queryset = queryset.annotate(
+                competition_not_null=Coalesce('competition', 0)
+            )
+            sort_by = 'competition_not_null'
 
         if sort_by:
             queryset = queryset.order_by("-{}".format(sort_by))
@@ -196,12 +207,41 @@ class OptimizeQueryApiView(ListAPIView):
         #         dict_add_calculated_stats(item)
 
 
+class ViralKeywordsApiView(OptimizeQueryApiView):
+    def get_queryset(self):
+        viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
+        queryset = KeyWord.objects.filter(text__in=viral_list)
+        queryset = self.filter(queryset)
+        queryset = self.sort(queryset)
+        return queryset
+
+
 class ListParentApiView(APIView):
-    permission_classes = tuple()
+    pagination_class = KWPaginator
+
+    @property
+    def paginator(self):
+        if not hasattr(self, '_paginator'):
+            if self.pagination_class is None:
+                self._paginator = None
+            else:
+                self._paginator = self.pagination_class()
+        return self._paginator
+
+    def paginate_queryset(self, queryset):
+        flat = self.request.query_params.get("flat")
+        if self.paginator is None or flat == '1':
+            return None
+        return self.paginator.paginate_queryset(queryset, self.request, view=self)
+
+    def get_paginated_response(self, data):
+        assert self.paginator is not None
+        return self.paginator.get_paginated_response(data)
 
     @property
     def visible_list_qs(self):
         email = None
+        mode = self.request.query_params.get('mode')
         if isinstance(self.request.user, AnonymousUser):
             token = self.request.query_params.get("auth_token")
             if token:
@@ -217,30 +257,80 @@ class ListParentApiView(APIView):
         if email is None:
             return KeywordsList.objects.none()
 
-        if self.request.user.is_superuser:
+        if self.request.user.is_staff:
             queryset = KeywordsList.objects.all()
+        elif mode and mode == 'targeting':
+            queryset = KeywordsList.objects.filter(Q(user_email=email) |
+                                                   ~Q(category="private"))
         else:
             queryset = KeywordsList.objects.filter(user_email=email)
+
         return queryset
+
+    def sort_list(self, queryset):
+        sort_by = self.request.query_params.get('sort_by') or 'average_volume'
+
+        if sort_by == 'competition':
+            queryset = queryset.annotate(
+                competition_not_null=Coalesce('competition', 0)
+            )
+            sort_by = 'competition_not_null'
+        elif sort_by == 'average_cpc':
+            queryset = queryset.annotate(
+                average_cpc_not_null=Coalesce('average_cpc', 0)
+            )
+            sort_by = 'average_cpc_not_null'
+        elif sort_by == 'average_volume':
+            queryset = queryset.annotate(
+                average_volume_not_null=Coalesce('average_volume', 0)
+            )
+            sort_by = 'average_volume_not_null'
+        if sort_by:
+            queryset = queryset.order_by("-{}".format(sort_by))
+        return queryset
+
+    def filter_list(self, queryset):
+        filters = {}
+        # category
+        category = self.request.query_params.get("category")
+        search = self.request.query_params.get("search")
+        if search:
+            filters['name__icontains'] = search
+        if category:
+            filters["category"] = category
+        return queryset.filter(**filters)
 
 
 class SavedListsGetOrCreateApiView(ListParentApiView):
     def get(self, request, *args, **kwargs):
         queryset = self.visible_list_qs
-        serializer = SavedListNameSerializer(queryset, many=True, request=request)
+        queryset = self.sort_list(queryset)
+        queryset = self.filter_list(queryset)
+        fields = self.request.query_params.get("fields")
+        page = self.paginate_queryset(queryset)
+
+        if fields:
+            kwargs["fields"] = set(fields.split(","))
+
+        if page is not None:
+            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
         name = self.request.data.get('name')
         keywords = self.request.data.get('keywords')
+        category = self.request.data.get('category')
 
-        if name and keywords:
+        if name and keywords and category:
             # create list
             new_list = KeywordsList.objects.create(
                 user_email=self.request.user.email,
-                name=name
+                name=name,
+                category=category
             )
-
             # create relations
             keywords_relation = KeywordsList.keywords.through
             kw_relations = [keywords_relation(keyword_id=kw_id,
@@ -248,12 +338,16 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                             for kw_id in keywords]
             keywords_relation.objects.bulk_create(kw_relations)
 
+            update_kw_list_stats.delay(new_list, KeyWord)
+            serializer = SavedListNameSerializer(instance=new_list,
+                                                 data=self.request.data,
+                                                 request=request)
+            serializer.is_valid(raise_exception=True)
             return Response(status=HTTP_202_ACCEPTED,
-                            data=SavedListNameSerializer(
-                                new_list, request=request).data)
+                            data=serializer.data)
 
         return Response(status=HTTP_400_BAD_REQUEST,
-                        data="'name' and 'keywords' are required params")
+                        data="'name' and 'keywords' and 'category are required params")
 
 
 class SavedListApiView(ListParentApiView):
@@ -269,7 +363,10 @@ class SavedListApiView(ListParentApiView):
             return Response(status=HTTP_404_NOT_FOUND)
         else:
             serializer = SavedListUpdateSerializer(
-                instance=obj, data=request.data, partial=True
+                instance=obj,
+                data=request.data,
+                partial=True,
+                request=request
             )
             if not serializer.is_valid():
                 return Response(data=serializer.errors,
@@ -282,11 +379,9 @@ class SavedListApiView(ListParentApiView):
 
     def delete(self, *args, **kwargs):
         pk = self.kwargs.get('pk')
-        email = self.request.user.email
         try:
             obj = KeywordsList.objects.get(
                 pk=pk,
-                user_email=email,
             )
         except KeywordsList.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -340,6 +435,7 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                             for kw_id in ids_to_save]
             keywords_relation.objects.bulk_create(kw_relations)
 
+        update_kw_list_stats.delay(obj, KeyWord)
         return Response(status=HTTP_202_ACCEPTED,
                         data=dict(count=len(ids_to_save)))
 
@@ -369,13 +465,37 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
                 keywordslist_id=obj.id,
                 keyword_id__in=ids_to_save,
             ).delete()
+        update_kw_list_stats.delay(obj, KeyWord)
         return Response(status=HTTP_202_ACCEPTED, data=dict(count=count))
 
 
-class ViralKeywordsApiView(OptimizeQueryApiView):
+class ListsDuplicateApiView(GenericAPIView):
     def get_queryset(self):
-        viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
-        queryset = KeyWord.objects.filter(text__in=viral_list)
-        queryset = self.filter(queryset)
-        queryset = self.sort(queryset)
+        if self.request.user.is_staff:
+            queryset = KeywordsList.objects.all()
+        else:
+            queryset = KeywordsList.objects.filter(
+                Q(user_email=self.request.user.email) |
+                ~Q(category="private"))
         return queryset
+
+    def post(self, request, *args, **kwargs):
+        kw_list = self.get_object()
+        keywords = kw_list.keywords.through.objects.filter(
+            keywordslist_id=kw_list.id).values_list('keyword_id', flat=True)
+        new_list = KeywordsList.objects.create(
+            user_email=self.request.user.email,
+            name='{} (copy)'.format(kw_list.name),
+            category="private"
+        )
+        keywords_relation = KeywordsList.keywords.through
+        kw_relations = [keywords_relation(keyword_id=kw_id,
+                                          keywordslist_id=new_list.id)
+                        for kw_id in keywords]
+        keywords_relation.objects.bulk_create(kw_relations)
+
+        update_kw_list_stats.delay(new_list, KeyWord)
+
+        return Response(status=HTTP_202_ACCEPTED,
+                        data=SavedListNameSerializer(
+                            new_list, request=request).data)

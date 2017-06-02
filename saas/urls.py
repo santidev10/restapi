@@ -8,8 +8,8 @@ from django.views.generic import RedirectView
 from administration.api import urls as admin_api_urls
 from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api import urls as aw_reporting_urls
-from keyword_tool.api import urls as keyword_tool_urls
 from channel.api import urls as channel_api_urls
+from keyword_tool.api import urls as keyword_tool_urls
 from saas.views import ApiRootView
 from segment.api import urls as segment_api_urls
 from singledb.api import urls as singledb_api_urls

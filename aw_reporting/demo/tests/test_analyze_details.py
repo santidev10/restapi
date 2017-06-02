@@ -1,10 +1,12 @@
+import json
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-import json
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -37,7 +39,13 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 "all_conversions", "conversions", "view_through",
                 'video_view_rate', 'average_position', 'ad_network',
                 'video100rate', 'video25rate', 'video50rate',
-                'video75rate',
+                'video75rate', 'video_views_this_week',
+                'video_view_rate_top', 'impressions_this_week',
+                'video_views_lask_week', 'cost_this_week',
+                'video_view_rate_bottom', 'clicks_this_week',
+                'ctr_v_top', 'cost_last_week', 'average_cpv_top',
+                'ctr_v_bottom', 'ctr_bottom', 'click_last_weel',
+                'average_cpv_bottom', 'ctr_top', 'impressions_last_week'
             }
         )
         self.assertEqual(data['impressions'], IMPRESSIONS / 10)
@@ -74,7 +82,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_ad_groups(self):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
-        ad_groups = ["11", "22"]
+        ad_groups = ["demo11", "demo22"]
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(

@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
+from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
+    HTTP_403_FORBIDDEN
 
 from aw_creation.models import *
-from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from aw_reporting.demo.models import DemoAccount
+from saas.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher
+from unittest.mock import patch
 
 
 class AdGroupListAPITestCase(ExtendedAPITestCase):
@@ -23,7 +26,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             start=today, end=today + timedelta(days=20),
         )
 
-        ag_creation = AdGroupCreation.objects.create(
+        AdGroupCreation.objects.create(
             name="Wow", campaign_creation=campaign_creation,
         )
 
@@ -32,8 +35,10 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(len(data), 1)
+        self.perform_get_format_check(response.data)
+
+    def perform_get_format_check(self, data):
+        self.assertGreater(len(data), 0)
         self.assertEqual(
             set(data[0].keys()),
             {
@@ -51,7 +56,27 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
                 'thumbnail',
             }
         )
-        self.assertEqual(data[0]['id'], ag_creation.id)
+
+    def test_success_get_demo(self):
+        account = DemoAccount()
+        campaign = account.children[0]
+        url = reverse("aw_creation_urls:optimization_ad_group_list",
+                      args=(campaign.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.perform_get_format_check(response.data)
+
+    def test_fail_post_demo(self):
+        account = DemoAccount()
+        campaign = account.children[0]
+        url = reverse("aw_creation_urls:optimization_ad_group_list",
+                      args=(campaign.id,))
+        response = self.client.post(
+            url, json.dumps({}), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
         account_creation = AccountCreation.objects.create(
