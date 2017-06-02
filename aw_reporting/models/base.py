@@ -1,4 +1,5 @@
 from django.db import models
+from keyword_tool.models import BaseModel
 import re
 
 SUM_STATS = ("impressions", "video_views", "clicks", "cost")
@@ -105,6 +106,7 @@ class Account(models.Model):
     is_test_account = models.BooleanField(default=False)
     managers = models.ManyToManyField("self", related_name='customers')
     visible = models.BooleanField(default=True)
+    updated_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return "Account: {}".format(self.name)
@@ -129,7 +131,7 @@ class AWAccountPermission(models.Model):
         return "AWPermission({}, {})".format(self.aw_connection, self.account)
 
 
-class BaseStatisticModel(models.Model):
+class BaseStatisticModel(BaseModel):
     impressions = models.IntegerField(default=0)
     video_views = models.IntegerField(default=0)
     clicks = models.IntegerField(default=0)
@@ -174,6 +176,7 @@ class Campaign(BaseStatisticModel):
     type = models.CharField(max_length=20, null=True)
     budget = models.FloatField(null=True)
     status = models.CharField(max_length=7, null=True)
+    updated_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return "%s" % self.name

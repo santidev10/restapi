@@ -11,22 +11,26 @@ logger = logging.getLogger(__name__)
 class AWDataLoader:
 
     advertising_update_tasks = (
+        # get campaigns, ad-groups and ad-group daily stats
         tasks.get_campaigns,
-        tasks.get_ad_groups,
+        tasks.get_ad_groups_and_stats,
 
-        tasks.get_videos,
-        tasks.get_ads,
-
-        tasks.get_genders,
-        tasks.get_age_ranges,
-
-        tasks.get_placements,
-        tasks.get_keywords,
-        tasks.get_topics,
-        tasks.get_interests,
-
-        tasks.get_cities,
+        # tasks.get_videos,
+        # tasks.get_ads,
+        #
+        # tasks.get_genders,
+        # tasks.get_age_ranges,
+        #
+        # tasks.get_placements,
+        # tasks.get_keywords,
+        # tasks.get_topics,
+        # tasks.get_interests,
+        #
+        # tasks.get_cities,
     )
+
+    def __init__(self, today):
+        self.today = today
 
     def full_update(self, account):
         if account.can_manage_clients:
@@ -53,6 +57,9 @@ class AWDataLoader:
                     )
                 )
                 a.managers.add(manager)
+
+            manager.updated_date = self.today
+            manager.save()
 
     @staticmethod
     def run_task_with_any_permission(task, account, manager):
@@ -93,9 +100,12 @@ class AWDataLoader:
                 return result
 
     def advertising_account_update(self, client, account):
-
+        today = self.today
         for task in self.advertising_update_tasks:
-            task(client, account)
+            task(client, account, today)
+
+        account.updated_date = today
+        account.save()
 
 
 

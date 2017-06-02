@@ -19,6 +19,7 @@ class Command(BaseCommand):
             "timezone", flat=True).order_by("timezone").distinct()
 
         now = datetime.now(tz=utc)
+        today = now.date()
         timezones = [
             t for t in timezones
             if now.astimezone(timezone(t)).hour > 1
@@ -26,8 +27,25 @@ class Command(BaseCommand):
         logger.info("Timezones: {}".format(timezones))
 
         # first we will update accounts based on MCC timezone
-        for mcc in Account.objects.filter(timezone__in=timezones,
-                                          can_manage_clients=True):
-            updater = AWDataLoader()
+        mcc_to_update = Account.objects.filter(
+            timezone__in=timezones,
+            updated_date__lt=today,
+            can_manage_clients=True,
+        )
+        for mcc in mcc_to_update:
+            print(mcc)
+            updater = AWDataLoader(today)
             updater.full_update(mcc)
+
+        # 2) update all the advertising accounts
+        accounts_to_update = Account.objects.filter(
+            timezone__in=timezones,
+            updated_date__lt=today,
+            can_manage_clients=False,
+        )
+
+        # TODO: we can group them by mcc and use a single access token
+        for account in accounts_to_update:
+            updater = AWDataLoader(today)
+            updater.full_update(account)
 

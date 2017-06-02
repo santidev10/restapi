@@ -314,71 +314,29 @@ def ad_performance_report(client, campaign_ids=None, dates=None,
     return _output_to_rows(result, fields)
 
 
-def campaign_performance_report(client, campaign_ids=None,
-                                dates=None,
-                                include_zero_impressions=True,
-                                fields=None,
-                                additional_fields=None):
-    """
-    Used for fetching campaigns and campaign's statistics
-    :param client:
-    :param campaign_ids:
-    :param dates:
-    :param include_zero_impressions:
-    :param fields:
-    :param additional_fields:
-    :return:
-    """
-    if not fields:
-        fields = ['AccountCurrencyCode',
-                  'CampaignId', 'CampaignName',
-                  'StartDate', 'EndDate',
-                  'Amount', 'CampaignStatus', 'Labels',
-                  'AdvertisingChannelType'] \
-                 + completed_fields + main_statistics
-    fields = list(fields)
-    if additional_fields:
-        fields.extend(additional_fields)
-    predicates = []
-    if campaign_ids:
-        if len(campaign_ids) > 1:
-            predicates.append({
-                'field': 'CampaignId',
-                'operator': 'IN',
-                'values': [int(i) for i in campaign_ids],
-            })
-        else:
-            predicates.append({
-                'field': 'CampaignId',
-                'operator': 'EQUALS',
-                'values': campaign_ids[0],
-            })
+def campaign_performance_report(client):
+    fields = [
+        'CampaignId', 'CampaignName', 'CampaignStatus', 'StartDate',
+        'EndDate', 'Amount',  'AdvertisingChannelType'
+    ] + completed_fields + main_statistics
     selector = {
         'fields': fields,
-        'predicates': predicates
+        'predicates': [],
     }
-    if dates:
-        selector['dateRange'] = {
-            'min': dates['min'].strftime("%Y%m%d"),
-            'max': dates['max'].strftime("%Y%m%d"),
-        }
-
     result = _get_report(
-        client, 'CAMPAIGN_PERFORMANCE_REPORT',
-        selector,
-        date_range_type='CUSTOM_DATE' if dates else 'ALL_TIME',
-        include_zero_impressions=include_zero_impressions
+        client, 'CAMPAIGN_PERFORMANCE_REPORT', selector,
+        date_range_type='ALL_TIME', include_zero_impressions=False,
     )
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None, additional_fields=None):
-    fields = ['CampaignId', 'AdGroupId', 'AdGroupName',
-              'CpvBid', 'CpmBid', 'CpcBid'] + \
-             main_statistics + completed_fields
-
-    if additional_fields:
-        fields.extend(additional_fields)
+def ad_group_performance_report(client, dates=None):
+    fields = [
+        'CampaignId', 'CampaignName', 'CampaignStatus',
+        'AdGroupId', 'AdGroupName', 'AdGroupStatus',
+        'Date', 'Device', 'AdNetworkType1',
+        "AveragePosition",
+    ] + main_statistics + completed_fields
 
     selector = {
         'fields': fields,
@@ -386,8 +344,8 @@ def ad_group_performance_report(client, dates=None, additional_fields=None):
     }
     if dates:
         selector['dateRange'] = {
-            'min': dates['min'].strftime("%Y%m%d"),
-            'max': dates['max'].strftime("%Y%m%d"),
+            'min': dates[0].strftime("%Y%m%d"),
+            'max': dates[1].strftime("%Y%m%d"),
         }
 
     result = _get_report(
