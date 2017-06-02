@@ -515,7 +515,7 @@ class FrequencyCap(models.Model):
     )
     level = models.CharField(max_length=20, choices=LEVELS,
                              default=CAMPAIGN_LVL)
-    limit = models.PositiveSmallIntegerField(
+    limit = models.PositiveIntegerField(
         validators=[MinValueValidator(1)],
     )
     DAY_TIME_UNIT = "DAY"
