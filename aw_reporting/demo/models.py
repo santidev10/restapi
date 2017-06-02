@@ -44,9 +44,9 @@ class BaseDemo:
     optimization_video_views_value = 5
     optimization_clicks_value = 2
     optimization_cost_value = 5
-    optimization_ctr_value = 0.95
-    optimization_average_cpv_value = 0.07
-    optimization_average_cpm_value = 24.7
+    optimization_ctr_value = 0.998
+    optimization_average_cpv_value = 0.0699
+    optimization_average_cpm_value = 24.68
     optimization_video_view_rate_value = 5
     optimization_conversions_value = 5
     optimization_view_through_value = 5
