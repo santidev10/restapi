@@ -251,34 +251,31 @@ class DemoChart:
         return lines
 
     @staticmethod
-    def explode_value(value, indicator, n):
+    def explode_value(initial_value, indicator, length):
 
-        if value is None:
-            return [None for i in range(n)]
+        if initial_value is None:
+            return [None for i in range(length)]
 
-        def get_val(val):
-            return val
-
-        value /= 2
-
-        if indicator in SUM_STATS:
-            daily = value / n if n else 0
+        value = initial_value // 2
+        if indicator in (SUM_STATS + CONVERSIONS):
             if indicator != 'cost':
-                def get_val(val):
-                    return int(val)
+                daily = value // length if length else 0
+            else:
+                daily = value / length if length else 0
         else:
             daily = value
 
         # chart values
-        values = [daily for i in range(n)]
+        values = [daily for i in range(length)]
 
-        val_len = len(values)
-
-        bonus = value
+        bonus = initial_value - value
         for n, i in enumerate(values):
-            bonus /= 2
-            values[n] = get_val(values[n] + bonus
-                                if i < val_len - 1 else bonus * 2)
+            part = bonus // 2
+            values[n] += part
+            bonus -= part
+
+        if bonus and values:
+            values[-1] += bonus
 
         return values
 

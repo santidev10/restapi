@@ -60,4 +60,4 @@ class SingleDatabaseApiConnectorPatcher:
             items = self.get_channel_list(*args, **kwargs).get("items")
         else:
             items = []
-        return items
+        return items[:12]

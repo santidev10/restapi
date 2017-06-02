@@ -91,3 +91,23 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertGreater(len(response.data), 1)
 
+    def test_success_item_stats_are_sensible(self):
+        url = reverse("aw_reporting_urls:analyze_chart_items",
+                      args=(DEMO_ACCOUNT_ID, 'channel'))
+        today = datetime.now().date()
+        start_date = str(today - timedelta(days=2))
+        end_date = str(today - timedelta(days=1))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url,
+                json.dumps(dict(start_date=start_date,
+                                end_date=end_date,
+                                campaigns=["demo1"])),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+        for item in items:
+            self.assertLess(item['ctr'], 5)
+
