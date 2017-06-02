@@ -4,6 +4,7 @@ Channel api views module
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
@@ -71,6 +72,12 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
+
+    def put(self, *args, **kwargs):
+        if 'channel_group' in self.request.data \
+            and self.request.data['channel_group'] not in ['influencers','new','media','brands']:
+                return Response(status=HTTP_400_BAD_REQUEST)
+        return super().put(*args, **kwargs)
 
 
 class ChannelSetApiView(SingledbApiView):
