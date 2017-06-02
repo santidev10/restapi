@@ -41,11 +41,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video100rate', 'video25rate', 'video50rate',
                 'video75rate', 'video_views_this_week',
                 'video_view_rate_top', 'impressions_this_week',
-                'video_views_lask_week', 'cost_this_week',
+                'video_views_last_week', 'cost_this_week',
                 'video_view_rate_bottom', 'clicks_this_week',
                 'ctr_v_top', 'cost_last_week', 'average_cpv_top',
-                'ctr_v_bottom', 'ctr_bottom', 'click_last_weel',
-                'average_cpv_bottom', 'ctr_top', 'impressions_last_week'
+                'ctr_v_bottom', 'ctr_bottom', 'click_last_week',
+                'average_cpv_bottom', 'ctr_top', 'impressions_last_week', 'location'
             }
         )
         self.assertEqual(data['impressions'], IMPRESSIONS / 10)
