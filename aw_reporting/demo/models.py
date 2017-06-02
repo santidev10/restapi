@@ -525,8 +525,8 @@ class DemoAccount(BaseDemo):
                     for i, e in enumerate(Genders)],
             device=[dict(name=e, value=i + 1)
                     for i, e in enumerate(reversed(Devices))],
-            location=[dict(e, value=i)
-                    for i, e in enumerate(reversed(self.location))][6:],
+            location=[dict(name=e['label'], value=i + 1)
+                    for i, e in enumerate(reversed(self.location))][:6],
             channel=channels,
             creative=creative_list,
             video=videos,
