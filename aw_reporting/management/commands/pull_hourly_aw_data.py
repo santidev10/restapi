@@ -21,8 +21,6 @@ class Command(BaseCommand):
         logger.info('Total accounts: {}'.format(len(accounts)))
 
         updater = AWDataLoader(datetime.now().date())
-        from time import sleep
-        sleep(1000)
         for account in accounts:
             updater.run_task_with_any_manager(
                 self.load_hourly_stats, account,
