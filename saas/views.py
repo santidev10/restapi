@@ -12,10 +12,9 @@ class ApiRootView(APIView):
     """
     Root endpoint
     """
-    permission_classes = tuple()
-
     sections = (
         "create",
+        "optimize",
         "analyze",
         "track",
     )
@@ -36,6 +35,64 @@ class ApiRootView(APIView):
                 for s in self.sections
             ]
             return Response(OrderedDict(sections))
+
+    @staticmethod
+    def get_optimize_section(request, format=None):
+        from aw_creation.models import CampaignCreation, AdGroupCreation
+        demo_pk = "demo"
+        campaigns = CampaignCreation.objects.filter(
+            account_creation__owner=request.user
+        )[:1]
+        campaign_id = campaigns[0].id if campaigns else demo_pk
+
+        ad_groups = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation__owner=request.user
+        )[:1]
+        ad_group_id = ad_groups[0].id if ad_groups else demo_pk
+
+        response = OrderedDict([
+            ('Options for updating/creating', reverse(
+                'aw_creation_urls:optimization_options',
+                request=request,
+                format=format
+            )),
+            ('Your account creations list', reverse(
+                'aw_creation_urls:optimization_account_list',
+                request=request,
+                format=format
+            )),
+            ("Account creation's details", reverse(
+                'aw_creation_urls:optimization_account',
+                args=(demo_pk,),
+                request=request,
+                format=format
+            )),
+            ("Account's campaigns", reverse(
+                'aw_creation_urls:optimization_campaign_list',
+                args=(demo_pk,),
+                request=request,
+                format=format
+            )),
+            ("Campaign's details", reverse(
+                'aw_creation_urls:optimization_campaign',
+                args=(campaign_id,),
+                request=request,
+                format=format
+            )),
+            ("A list of ad groups of specified campaign", reverse(
+                'aw_creation_urls:optimization_ad_group_list',
+                args=(campaign_id,),
+                request=request,
+                format=format
+            )),
+            ("Ad-group's details", reverse(
+                'aw_creation_urls:optimization_ad_group',
+                args=(ad_group_id,),
+                request=request,
+                format=format
+            )),
+        ])
+        return Response(response)
 
     @staticmethod
     def get_analyze_section(request, format=None):

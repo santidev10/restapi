@@ -82,7 +82,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_ad_groups(self):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
-        ad_groups = ["11", "22"]
+        ad_groups = ["demo11", "demo22"]
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(

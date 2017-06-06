@@ -32,8 +32,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(len(data), 3)
         self.assertEqual(data[0]['title'], "Summary for 2 campaigns")
-        self.assertEqual(data[1]['title'], "Campaign #1")
-        self.assertEqual(data[2]['title'], "Campaign #2")
+        self.assertEqual(data[1]['title'], "Campaign #demo1")
+        self.assertEqual(data[2]['title'], "Campaign #demo2")
 
     def test_success_get_filter_items(self):
         url = reverse("aw_reporting_urls:analyze_chart",
@@ -45,13 +45,13 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             url,
             json.dumps(dict(start_date=start_date,
                             end_date=end_date,
-                            campaigns=["1"])),
+                            campaigns=["demo1"])),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['title'], "Campaign #1")
+        self.assertEqual(data[0]['title'], "Campaign #demo1")
 
         self.assertEqual(
             set(str(i['label']) for i in data[0]['data'][0]['trend']),

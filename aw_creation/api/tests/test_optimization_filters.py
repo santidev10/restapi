@@ -4,6 +4,7 @@ from rest_framework.status import HTTP_200_OK, \
     HTTP_404_NOT_FOUND
 
 from aw_creation.models import *
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from saas.utils_tests import ExtendedAPITestCase
 
 
@@ -113,3 +114,22 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
 
         second_campaign = response.data[1]
         self.assertEqual(len(second_campaign['ad_group_creations']), 1)
+
+    def test_success_get_demo(self):
+        url = reverse("aw_creation_urls:optimization_filters",
+                      args=(DEMO_ACCOUNT_ID,
+                            OptimizationTuning.IMPRESSIONS_KPI))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        first_campaign = response.data[0]
+        self.assertEqual(
+            set(first_campaign.keys()),
+            {'id', 'name', 'ad_group_creations'}
+        )
+        ad_group_creation = first_campaign['ad_group_creations'][0]
+        self.assertEqual(
+            set(ad_group_creation.keys()),
+            {'id', 'name'}
+        )
+
