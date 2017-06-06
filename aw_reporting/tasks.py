@@ -3,41 +3,15 @@ from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
+from collections import defaultdict
 import pytz
 import heapq
 import logging
 
 logger = logging.getLogger(__name__)
-#logging.getLogger('oauth2client.client').setLevel(logging.WARNING)
+
 
 #  helpers --
-
-
-def detect_success_aw_read_permissions():
-    from aw_reporting.models import AWAccountPermission
-    for permission in AWAccountPermission.objects.filter(
-        can_read=False,
-        aw_connection__revoked_access=False,
-    ):
-        try:
-            client = get_web_app_client(
-                refresh_token=permission.aw_connection.refresh_token,
-                client_customer_id=permission.account_id,
-            )
-        except Exception as e:
-            logger.info(e)
-        else:
-            try:
-                get_all_customers(client, page_size=1, limit=1)
-            except Exception as e:
-                logger.info(e)
-            else:
-                # we don't care about the exceptions here
-                # successful read is the only thing we carry about here
-                permission.can_read = True
-                permission.save()
-
-
 def quart_views(row, n):
     per = getattr(row, 'VideoQuartile%dRate' % n)
     impressions = int(row.Impressions)
@@ -64,19 +38,13 @@ def get_base_stats(row, quartiles=False):
         )
     return stats
 
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
+
 
 def drop_latest_stats(queryset, today):
     # delete stats for ten days
-    date_delete = today - timedelta(11)
+    date_delete = today - timedelta(AD_WORDS_STABILITY_STATS_DAYS_COUNT)
     queryset.filter(date__gte=date_delete).delete()
-
-
-def get_account_latest_change_date(account):
-    from aw_reporting.models import Campaign
-    data = Campaign.objects.filter(account=account).aggregate(
-        max_date=Max("updated_date")
-    )
-    return data['max_date']
 
 
 def get_account_border_dates(account):
@@ -89,78 +57,82 @@ def get_account_border_dates(account):
     )
     return dates['min_date'], dates['max_date']
 
-
-def format_bid_value(value):
-    value = value.strip(' -')
-    if value and value.isnumeric():
-        return value
-
-MIN_FETCH_DATE = datetime(2012, 1, 1).date()
-
 GET_DF = '%Y-%m-%d'
 # -- helpers
+
+
+def detect_success_aw_read_permissions():
+    from aw_reporting.models import AWAccountPermission
+    for permission in AWAccountPermission.objects.filter(
+        can_read=False,
+        aw_connection__revoked_access=False,
+    ):
+        try:
+            client = get_web_app_client(
+                refresh_token=permission.aw_connection.refresh_token,
+                client_customer_id=permission.account_id,
+            )
+        except Exception as e:
+            logger.info(e)
+        else:
+            try:
+                get_all_customers(client, page_size=1, limit=1)
+            except Exception as e:
+                logger.info(e)
+            else:
+                permission.can_read = True
+                permission.save()
 
 
 def get_campaigns(client, account, today):
     from aw_reporting.models import Campaign
     from aw_reporting.adwords_reports import campaign_performance_report
 
-    # lets find min and max dates for the report request
-    fields = ('impressions', 'video_views', 'clicks', 'cost', 'status',
-              'budget', 'name',  'type', 'start_date', 'end_date')
-    campaigns = Campaign.objects.filter(
-        account=account).values('id', *fields)
-    campaigns = {c['id']: c for c in campaigns}
+    min_date, max_date = get_account_border_dates(account)
+    max_saved_date = Campaign.objects.filter(account=account).aggregate(
+        max_date=Max("updated_date"))['max_date']
 
-    report = campaign_performance_report(client)
-    with transaction.atomic():
-        insert_campaign = []
-        for row_obj in report:
-            campaign_id = row_obj.CampaignId
+    if max_date is not None and (
+       max_saved_date is None or max_saved_date < max_date):
+        campaign_ids = set(
+            Campaign.objects.filter(
+                account=account).values_list('id', flat=True)
+        )
+        report = campaign_performance_report(client)
+        with transaction.atomic():
+            insert_campaign = []
+            for row_obj in report:
+                campaign_id = row_obj.CampaignId
+                try:
+                    end_date = datetime.strptime(row_obj.EndDate, GET_DF)
+                except ValueError:
+                    end_date = None
+                stats = {
+                    'name': row_obj.CampaignName,
+                    'account': account,
+                    'type': row_obj.AdvertisingChannelType,
+                    'start_date': datetime.strptime(row_obj.StartDate,
+                                                    GET_DF),
+                    'end_date': end_date,
+                    'budget': float(row_obj.Amount)/1000000,
+                    'status': row_obj.CampaignStatus,
+                    'updated_date': today,
+                }
+                stats.update(get_base_stats(row_obj))
 
-            try:
-                end_date = datetime.strptime(row_obj.EndDate, GET_DF)
-            except ValueError:
-                end_date = None
-
-            stats = {
-                'name': row_obj.CampaignName,
-                'account': account,
-                'type': row_obj.AdvertisingChannelType,
-                'start_date': datetime.strptime(row_obj.StartDate,
-                                                GET_DF),
-                'end_date': end_date,
-                'budget': float(row_obj.Amount)/1000000,
-                'status': row_obj.CampaignStatus,
-            }
-            stats.update(get_base_stats(row_obj))
-
-            if campaign_id not in campaigns:
-                stats['id'] = campaign_id
-                insert_campaign.append(Campaign(**stats))
-            else:
-                campaign = campaigns[campaign_id]
-                is_changed = False
-                for f in fields:
-                    print(campaign[f], stats[f])
-                    if campaign[f] != stats[f]:
-                        is_changed = True
-                        break
-                if is_changed:
-                    stats['updated_date'] = today
+                if campaign_id not in campaign_ids:
+                    stats['id'] = campaign_id
+                    insert_campaign.append(Campaign(**stats))
+                else:
                     Campaign.objects.filter(pk=campaign_id).update(**stats)
 
-        if insert_campaign:
-            Campaign.objects.bulk_create(insert_campaign)
+            if insert_campaign:
+                Campaign.objects.bulk_create(insert_campaign)
 
 
 def get_ad_groups_and_stats(client, account, today):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices
     from aw_reporting.adwords_reports import ad_group_performance_report
-
-    max_change_date = get_account_latest_change_date(account)
-    if max_change_date is None:
-        return
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -169,12 +141,14 @@ def get_ad_groups_and_stats(client, account, today):
     min_date, max_date = get_account_border_dates(account)
 
     # we update ad groups and daily stats only if there have been changes
-    if max_date is None or max_change_date > max_date:
+    dates = (max_date + timedelta(days=1), today) \
+        if max_date else None
+    report = ad_group_performance_report(
+        client, dates=dates)
+
+    if report:
         ad_group_ids = list(AdGroup.objects.filter(
             campaign__account=account).values_list('id', flat=True))
-
-        report = ad_group_performance_report(
-            client, dates=(min_date, max_date))
 
         with transaction.atomic():
             create_ad_groups = []
@@ -194,7 +168,8 @@ def get_ad_groups_and_stats(client, account, today):
                         'campaign_id': row_obj.CampaignId,
                     }
                     if ad_group_id in ad_group_ids:
-                        AdGroup.objects.filter(pk=ad_group_id).update(**stats)
+                        AdGroup.objects.filter(
+                            pk=ad_group_id).update(**stats)
                     else:
                         stats['id'] = ad_group_id
                         create_ad_groups.append(AdGroup(**stats))
@@ -221,24 +196,22 @@ def get_ad_groups_and_stats(client, account, today):
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
 
-def get_videos(account_connection, account):
-    from aw_campaign.models import VideoCreative, VideoCreativeStatistic, \
-        AdGroup
+def get_videos(client, account, today):
+    from aw_reporting.models import VideoCreative, \
+        VideoCreativeStatistic, AdGroup
+    from aw_reporting.adwords_reports import video_performance_report
 
-    stats_queryset = VideoCreativeStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
-
-    # lets find min and max dates for the report request
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
-    saved_stats = stats_queryset.aggregate(
-        max_date=Max('date'),
+    stats_queryset = VideoCreativeStatistic.objects.filter(
+        ad_group__campaign__account=account
     )
-    saved_max_date = saved_stats.get('max_date')
+    drop_latest_stats(stats_queryset, today)
+
+    saved_max_date = stats_queryset.aggregate(
+        max_date=Max('date'))['max_date']
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
@@ -253,16 +226,8 @@ def get_videos(account_connection, account):
                 campaign__account=account
             ).values_list('id', flat=True)
         )
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
-        reports = video_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
-            more_fields=("Date",)
-        )
+        dates = (min_date, max_date)
+        reports = video_performance_report(client, dates=dates)
         with transaction.atomic():
             create = []
             create_creative = []
@@ -298,21 +263,20 @@ def get_videos(account_connection, account):
                 VideoCreativeStatistic.objects.safe_bulk_create(create)
 
 
-def get_ads(account_connection, account):
-    from aw_campaign.models import Ad, AdStatistic
-
-    stats_queryset = AdStatistic.objects.filter(
-        ad__ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
+def get_ads(client, account, today):
+    from aw_reporting.models import Ad, AdStatistic
+    from aw_reporting.adwords_reports import ad_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
+    stats_queryset = AdStatistic.objects.filter(
+        ad__ad_group__campaign__account=account)
+    drop_latest_stats(stats_queryset, today)
+
     saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
+        max_date=Max('date')).get('max_date')
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
@@ -324,18 +288,10 @@ def get_ads(account_connection, account):
                 ad_group__campaign__account=account
             ).values_list('id', flat=True)
         )
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = ad_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
-            include_zero_impressions=False,
-            additional_fields=('Date', 'AveragePosition',)
+            client,
+            dates=(min_date, max_date),
         )
-
         create_ad = []
         create_stat = []
         updated_ads = []
@@ -385,166 +341,27 @@ def get_ads(account_connection, account):
                 AdStatistic.objects.safe_bulk_create(create_stat)
 
 
-
-
-
-def get_placements(account_connection, account):
-
-    from aw_campaign.models import ChannelStatistic, PlacementChannel, \
-        Devices, ManagedPlacementStatistic, Placement
-
-    channel_stats_queryset = ChannelStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    video_stats_queryset = ManagedPlacementStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(channel_stats_queryset)
-    drop_latest_stats(video_stats_queryset)
+def get_genders(client, account, today):
+    from aw_reporting.models import GenderStatistic, Genders
+    from aw_reporting.adwords_reports import gender_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
-
-    channel_saved_max_date = channel_stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
-    video_saved_max_date = video_stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
-
-    if channel_saved_max_date and video_saved_max_date:
-        saved_max_date = max(channel_saved_max_date, video_saved_max_date)
-    else:
-        saved_max_date = channel_saved_max_date or video_saved_max_date
-
-    if saved_max_date is None or saved_max_date < max_acc_date:
-        min_date = saved_max_date + timedelta(days=1) \
-            if saved_max_date else min_acc_date
-        max_date = max_acc_date
-
-        channel_ids = set(
-            PlacementChannel.objects.values_list('id', flat=True)
-        )
-        placements = set(
-            Placement.objects.all().values_list('id', flat=True))
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
-        report = placement_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
-        )
-        with transaction.atomic():
-            bulk_channels = []
-            bulk_channel_data = []
-            bulk_videos = []
-            bulk_video_data = []
-
-            for row_obj in report:
-                # only channels
-                display_name = row_obj.DisplayName
-                criteria = row_obj.Criteria.strip()
-
-                if '/channel/' in display_name:
-
-                    if criteria not in channel_ids:
-                        channel_ids.update({criteria})
-                        bulk_channels.append(
-                            PlacementChannel(id=criteria))
-
-                    stats = {
-                        'channel_id': criteria,
-                        'date': row_obj.Date,
-                        'ad_group_id': row_obj.AdGroupId,
-                        'device_id': Devices.index(row_obj.Device),
-                        'video_views_25_quartile': quart_views(
-                            row_obj, 25),
-                        'video_views_50_quartile': quart_views(
-                            row_obj, 50),
-                        'video_views_75_quartile': quart_views(
-                            row_obj, 75),
-                        'video_views_100_quartile': quart_views(
-                            row_obj, 100),
-                    }
-                    stats.update(get_base_stats(row_obj))
-                    bulk_channel_data.append(ChannelStatistic(**stats))
-
-                elif '/video/' in display_name:
-
-                    # only youtube ids we need in criteria
-                    if 'youtube.com/video/' in criteria:
-                        criteria = criteria.split('/')[-1]
-
-                    if criteria not in placements:
-                        placements.update({criteria})
-                        bulk_videos.append(Placement(id=criteria))
-
-                    stats = {
-                        'placement_id': criteria,
-                        'date': row_obj.Date,
-                        'ad_group_id': row_obj.AdGroupId,
-                        'device_id': Devices.index(row_obj.Device),
-                        'video_views_25_quartile': quart_views(
-                            row_obj, 25),
-                        'video_views_50_quartile': quart_views(
-                            row_obj, 50),
-                        'video_views_75_quartile': quart_views(
-                            row_obj, 75),
-                        'video_views_100_quartile': quart_views(
-                            row_obj, 100),
-                    }
-                    stats.update(get_base_stats(row_obj))
-                    bulk_video_data.append(
-                        ManagedPlacementStatistic(**stats)
-                    )
-
-            if bulk_channels:
-                PlacementChannel.objects.safe_bulk_create(
-                    bulk_channels)
-
-            if bulk_channel_data:
-                ChannelStatistic.objects.safe_bulk_create(
-                    bulk_channel_data)
-
-            if bulk_videos:
-                Placement.objects.safe_bulk_create(bulk_videos)
-
-            if bulk_video_data:
-                ManagedPlacementStatistic.objects.safe_bulk_create(
-                    bulk_video_data)
-
-
-def get_genders(account_connection, account):
-    from aw_campaign.models import GenderStatistic, Genders
 
     stats_queryset = GenderStatistic.objects.filter(
         ad_group__campaign__account=account
     )
-    drop_latest_stats(stats_queryset)
-
-    min_acc_date, max_acc_date = get_account_border_dates(account)
-    if max_acc_date is None:
-        return
-
+    drop_latest_stats(stats_queryset, today)
     saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
+        max_date=Max('date')).get('max_date')
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
             if saved_max_date else min_acc_date
         max_date = max_acc_date
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = gender_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
+            client, dates=(min_date, max_date),
         )
         with transaction.atomic():
             bulk_data = []
@@ -566,34 +383,29 @@ def get_genders(account_connection, account):
                 GenderStatistic.objects.safe_bulk_create(bulk_data)
 
 
-def get_age_ranges(account_connection, account):
-    from aw_campaign.models import AgeRangeStatistic, AgeRanges
-
-    stats_queryset = AgeRangeStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
+def get_age_ranges(client, account, today):
+    from aw_reporting.models import AgeRangeStatistic, AgeRanges
+    from aw_reporting.adwords_reports import age_range_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
+    stats_queryset = AgeRangeStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(stats_queryset, today)
+
     saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
+        max_date=Max('date')).get('max_date')
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = age_range_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
+            client, dates=(min_date, max_date),
         )
         with transaction.atomic():
             bulk_data = []
@@ -615,44 +427,132 @@ def get_age_ranges(account_connection, account):
                 AgeRangeStatistic.objects.safe_bulk_create(bulk_data)
 
 
-def get_keywords(account_connection, account):
-    from aw_campaign.models import Keyword, KeywordStatistic
-
-    stats_queryset = KeywordStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
+def get_placements(client, account, today):
+    from aw_reporting.models import YTVideoStatistic, YTChannelStatistic, \
+        Devices
+    from aw_reporting.adwords_reports import placement_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
-    saved_max_date = stats_queryset.aggregate(
+    channel_stats_queryset = YTChannelStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    video_stats_queryset = YTVideoStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(channel_stats_queryset, today)
+    drop_latest_stats(video_stats_queryset, today)
+
+    channel_saved_max_date = channel_stats_queryset.aggregate(
         max_date=Max('date'),
     ).get('max_date')
+    video_saved_max_date = video_stats_queryset.aggregate(
+        max_date=Max('date'),
+    ).get('max_date')
+
+    if channel_saved_max_date and video_saved_max_date:
+        saved_max_date = max(channel_saved_max_date, video_saved_max_date)
+    else:
+        saved_max_date = channel_saved_max_date or video_saved_max_date
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        keywords = set(Keyword.objects.values_list('name', flat=True))
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
-        report = keywords_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
+        report = placement_performance_report(
+            client, dates=(min_date, max_date),
         )
         with transaction.atomic():
-            bulk_keywords = []
+            bulk_channel_data = []
+            bulk_video_data = []
+
+            for row_obj in report:
+                # only channels
+                display_name = row_obj.DisplayName
+                criteria = row_obj.Criteria.strip()
+
+                if '/channel/' in display_name:
+                    stats = {
+                        'yt_id': criteria,
+                        'date': row_obj.Date,
+                        'ad_group_id': row_obj.AdGroupId,
+                        'device_id': Devices.index(row_obj.Device),
+                        'video_views_25_quartile': quart_views(
+                            row_obj, 25),
+                        'video_views_50_quartile': quart_views(
+                            row_obj, 50),
+                        'video_views_75_quartile': quart_views(
+                            row_obj, 75),
+                        'video_views_100_quartile': quart_views(
+                            row_obj, 100),
+                    }
+                    stats.update(get_base_stats(row_obj))
+                    bulk_channel_data.append(YTChannelStatistic(**stats))
+
+                elif '/video/' in display_name:
+                    # only youtube ids we need in criteria
+                    if 'youtube.com/video/' in criteria:
+                        criteria = criteria.split('/')[-1]
+
+                    stats = {
+                        'yt_id': criteria,
+                        'date': row_obj.Date,
+                        'ad_group_id': row_obj.AdGroupId,
+                        'device_id': Devices.index(row_obj.Device),
+                        'video_views_25_quartile': quart_views(
+                            row_obj, 25),
+                        'video_views_50_quartile': quart_views(
+                            row_obj, 50),
+                        'video_views_75_quartile': quart_views(
+                            row_obj, 75),
+                        'video_views_100_quartile': quart_views(
+                            row_obj, 100),
+                    }
+                    stats.update(get_base_stats(row_obj))
+                    bulk_video_data.append(YTVideoStatistic(**stats))
+
+            if bulk_channel_data:
+                YTChannelStatistic.objects.safe_bulk_create(
+                    bulk_channel_data)
+
+            if bulk_video_data:
+                YTVideoStatistic.objects.safe_bulk_create(
+                    bulk_video_data)
+
+
+def get_keywords(client, account, today):
+    from aw_reporting.models import KeywordStatistic
+    from aw_reporting.adwords_reports import keywords_performance_report
+
+    min_acc_date, max_acc_date = get_account_border_dates(account)
+    if max_acc_date is None:
+        return
+
+    stats_queryset = KeywordStatistic.objects.filter(
+        ad_group__campaign__account=account)
+    drop_latest_stats(stats_queryset, today)
+
+    saved_max_date = stats_queryset.aggregate(
+        max_date=Max('date')).get('max_date')
+
+    if saved_max_date is None or saved_max_date < max_acc_date:
+        min_date = saved_max_date + timedelta(days=1) \
+            if saved_max_date else min_acc_date
+        max_date = max_acc_date
+
+        report = keywords_performance_report(
+            client,
+            dates=(min_date, max_date),
+        )
+        with transaction.atomic():
             bulk_data = []
             for row_obj in report:
                 keyword = row_obj.Criteria
                 stats = {
-                    'keyword_id': keyword,
+                    'keyword': keyword,
                     'date': row_obj.Date,
                     'ad_group_id': row_obj.AdGroupId,
 
@@ -662,34 +562,26 @@ def get_keywords(account_connection, account):
                     'video_views_100_quartile': quart_views(row_obj, 100),
                 }
                 stats.update(get_base_stats(row_obj))
-                if keyword not in keywords:
-                    keywords.update({keyword})
-                    bulk_keywords.append(Keyword(name=keyword))
-
                 bulk_data.append(KeywordStatistic(**stats))
-
-            if bulk_keywords:
-                Keyword.objects.safe_bulk_create(bulk_keywords)
 
             if bulk_data:
                 KeywordStatistic.objects.safe_bulk_create(bulk_data)
 
 
-def get_topics(account_connection, account):
-    from aw_campaign.models import Topic, TopicStatistic
-
-    stats_queryset = TopicStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
+def get_topics(client, account, today):
+    from aw_reporting.models import Topic, TopicStatistic
+    from aw_reporting.adwords_reports import topics_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
+    stats_queryset = TopicStatistic.objects.filter(
+        ad_group__campaign__account=account)
+    drop_latest_stats(stats_queryset, today)
+
     saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
+        max_date=Max('date')).get('max_date')
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
@@ -697,14 +589,8 @@ def get_topics(account_connection, account):
         max_date = max_acc_date
 
         topics = dict(Topic.objects.values_list('name', 'id'))
-
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = topics_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
+            client, dates=(min_date, max_date),
         )
         with transaction.atomic():
             bulk_data = []
@@ -732,10 +618,14 @@ def get_topics(account_connection, account):
                 TopicStatistic.objects.safe_bulk_create(bulk_data)
 
 
-def get_interests(account_connection, account):
-
-    from aw_campaign.models import AudienceStatistic, RemarkStatistic, \
+def get_interests(client, account, today):
+    from aw_reporting.models import AudienceStatistic, RemarkStatistic, \
         RemarkList, Audience
+    from aw_reporting.adwords_reports import audience_performance_report
+
+    min_acc_date, max_acc_date = get_account_border_dates(account)
+    if max_acc_date is None:
+        return
 
     audience_stats_queryset = AudienceStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -743,12 +633,8 @@ def get_interests(account_connection, account):
     remark_stats_queryset = RemarkStatistic.objects.filter(
         ad_group__campaign__account=account
     )
-    drop_latest_stats(audience_stats_queryset)
-    drop_latest_stats(remark_stats_queryset)
-
-    min_acc_date, max_acc_date = get_account_border_dates(account)
-    if max_acc_date is None:
-        return
+    drop_latest_stats(audience_stats_queryset, today)
+    drop_latest_stats(remark_stats_queryset, today)
 
     aud_max_date = audience_stats_queryset.aggregate(
         max_date=Max('date'),
@@ -766,14 +652,8 @@ def get_interests(account_connection, account):
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = audience_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
-        )
+            client, dates=(min_date, max_date))
         remark_ids = set(RemarkList.objects.values_list('id', flat=True))
         interest_ids = set(Audience.objects.values_list('id', flat=True))
         bulk_aud_stats = []
@@ -857,21 +737,22 @@ def get_top_cities(report):
     return set(int(i) for i in top_cities if i.isnumeric())
 
 
-def get_cities(account_connection, account):
-    from aw_campaign.models import CityStatistic, GeoTarget
-
-    stats_queryset = CityStatistic.objects.filter(
-        ad_group__campaign__account=account
-    )
-    drop_latest_stats(stats_queryset)
+def get_cities(client, account, today):
+    from aw_reporting.models import CityStatistic, GeoTarget
+    from aw_reporting.adwords_reports import geo_performance_report, \
+        main_statistics
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
 
+    stats_queryset = CityStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(stats_queryset, today)
+
     saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date'),
-    ).get('max_date')
+        max_date=Max('date')).get('max_date')
 
     if saved_max_date is None or saved_max_date < max_acc_date:
         min_date = saved_max_date + timedelta(days=1) \
@@ -879,13 +760,8 @@ def get_cities(account_connection, account):
         max_date = max_acc_date
 
         # getting top cities
-        ad_client = get_client(
-            refresh_token=account_connection.refresh_token,
-            client_customer_id=account.id
-        )
         report = geo_performance_report(
-            ad_client, additional_fields=('Cost',)
-        )
+            client, additional_fields=('Cost',))
 
         top_cities = get_top_cities(report)
         existed_top_cities = set(GeoTarget.objects.filter(
@@ -925,8 +801,7 @@ def get_cities(account_connection, account):
                 return
 
         report = geo_performance_report(
-            ad_client,
-            dates={'min': min_date, 'max': max_date},
+            client, dates=(min_date, max_date),
             additional_fields=tuple(main_statistics) +
             ('Date', 'AdGroupId')
         )

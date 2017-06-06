@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.tasks import detect_success_aw_read_permissions
+from aw_reporting.utils import command_single_process_lock
 from datetime import datetime
 from pytz import timezone, utc
 import logging
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
 
+    @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
         detect_success_aw_read_permissions()
 
@@ -32,9 +34,8 @@ class Command(BaseCommand):
             updated_date__lt=today,
             can_manage_clients=True,
         )
+        updater = AWDataLoader(today)
         for mcc in mcc_to_update:
-            print(mcc)
-            updater = AWDataLoader(today)
             updater.full_update(mcc)
 
         # 2) update all the advertising accounts
@@ -44,8 +45,7 @@ class Command(BaseCommand):
             can_manage_clients=False,
         )
 
-        # TODO: we can group them by mcc and use a single access token
+        updater = AWDataLoader(today)
         for account in accounts_to_update:
-            updater = AWDataLoader(today)
             updater.full_update(account)
 

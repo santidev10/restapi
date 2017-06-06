@@ -41,7 +41,7 @@ class AdStatistic(DailyStatisticModel):
 
 
 class KeywordStatistic(DailyStatisticModel):
-    keyword = models.CharField(max_length=150)
+    keyword = models.CharField(max_length=150, db_index=True)
     ad_group = models.ForeignKey(AdGroup, related_name='keywords')
 
     class Meta:

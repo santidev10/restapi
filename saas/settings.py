@@ -167,6 +167,62 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 BROKER_URL = "redis://localhost:6379/0"
 
+LOGS_DIRECTORY = '.'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'main_formatter',
+        },
+        'file': {
+            'level': 'ERROR',
+            'filename': os.path.join(LOGS_DIRECTORY, 'iq_errors.log'),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'mail_developers': {
+            'level': 'CRITICAL',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'detail_formatter',
+        }
+    },
+    'loggers': {
+        'segment_creating': {
+            'handlers': ['console', 'file'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False
+        },
+        '': {
+            'handlers': ['console', 'file', 'mail_developers'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+    },
+    'formatters': {
+        'main_formatter': {
+            'format': '%(asctime)s %(levelname)s: %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S",
+        },
+        'detail_formatter': {
+            'format': '%(asctime)s %(levelname)s %(filename)s '
+                      'line %(lineno)d: %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda r: not DEBUG,
+        }
+    }
+}
+
 try:
     from .local_settings import *
 except ImportError:

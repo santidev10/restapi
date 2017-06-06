@@ -233,7 +233,7 @@ class Topic(models.Model):
         return self.name
 
 
-class Audience(models.Model):
+class Audience(BaseModel):
     parent = models.ForeignKey('self', null=True, related_name='children')
     name = models.CharField(max_length=150)
     type = models.CharField(max_length=25, db_index=True)
@@ -247,7 +247,7 @@ class Audience(models.Model):
         return "%s" % self.name
 
 
-class RemarkList(models.Model):
+class RemarkList(BaseModel):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
 

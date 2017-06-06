@@ -12,25 +12,40 @@ class AWDataLoader:
 
     advertising_update_tasks = (
         # get campaigns, ad-groups and ad-group daily stats
-        tasks.get_campaigns,
         tasks.get_ad_groups_and_stats,
+        tasks.get_campaigns,
 
-        # tasks.get_videos,
-        # tasks.get_ads,
+        tasks.get_videos,
+        tasks.get_ads,
         #
-        # tasks.get_genders,
-        # tasks.get_age_ranges,
+        tasks.get_genders,
+        tasks.get_age_ranges,
         #
-        # tasks.get_placements,
-        # tasks.get_keywords,
-        # tasks.get_topics,
-        # tasks.get_interests,
+        tasks.get_placements,
+        tasks.get_keywords,
+        tasks.get_topics,
+        tasks.get_interests,
         #
-        # tasks.get_cities,
+        tasks.get_cities,
     )
 
     def __init__(self, today):
         self.today = today
+        self.aw_cached_clients = {}
+
+    def get_aw_client(self, refresh_token, client_customer_id):
+        if refresh_token in self.aw_cached_clients:
+            client = self.aw_cached_clients[refresh_token]
+        else:
+            client = get_web_app_client(
+                refresh_token=refresh_token,
+                client_customer_id=client_customer_id,
+            )
+            self.aw_cached_clients[refresh_token] = client
+
+        if client.client_customer_id != client_customer_id:
+            client.SetClientCustomerId(client_customer_id)
+        return client
 
     def full_update(self, account):
         if account.can_manage_clients:
@@ -61,18 +76,15 @@ class AWDataLoader:
             manager.updated_date = self.today
             manager.save()
 
-    @staticmethod
-    def run_task_with_any_permission(task, account, manager):
+    def run_task_with_any_permission(self, task, account, manager):
         permissions = manager.mcc_permissions.filter(
             can_read=True, aw_connection__revoked_access=False,
         )
         for permission in permissions:
             aw_connection = permission.aw_connection
             try:
-                client = get_web_app_client(
-                    refresh_token=aw_connection.refresh_token,
-                    client_customer_id=account.id,
-                )
+                client = self.get_aw_client(aw_connection.refresh_token,
+                                            account.id)
                 result = task(client, account)
             except HttpAccessTokenRefreshError as e:
                 logger.warning((permission, e))
