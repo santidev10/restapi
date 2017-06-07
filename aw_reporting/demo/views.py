@@ -200,57 +200,39 @@ class TrackFiltersListApiView:
     @staticmethod
     def get(original_method):
         def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
-                account = DemoAccount()
-                filters = dict(
-                    accounts=[
-                        dict(
-                            id=account.id,
-                            name=account.name,
-                            start_date=account.start_date,
-                            end_date=account.end_date,
-                            campaigns=[
-                                dict(
-                                    id=c.id,
-                                    name=c.name,
-                                    start_date=c.start_date,
-                                    end_date=c.end_date,
-                                )
-                                for c in account.children
-                            ]
-                        )
-                    ],
-                    indicator=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.indicators
-                    ],
-                    breakdown=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.breakdowns
-                    ],
-                    dimension=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.dimensions
-                    ],
-                )
-                return Response(status=HTTP_200_OK, data=filters)
-            else:
-                return original_method(view, *args, **kwargs)
 
+            response = original_method(view, *args, **kwargs)
+            data = response.data
+            if not data['accounts']:
+                account = DemoAccount()
+                data['accounts'] = [
+                    dict(
+                        id=account.id,
+                        name=account.name,
+                        start_date=account.start_date,
+                        end_date=account.end_date,
+                        campaigns=[
+                            dict(
+                                id=c.id,
+                                name=c.name,
+                                start_date=c.start_date,
+                                end_date=c.end_date,
+                            )
+                            for c in account.children
+                        ]
+                    )
+                ]
+            return response
         return method
 
 
 class TrackChartApiView:
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -261,20 +243,16 @@ class TrackChartApiView:
                 charts_obj = DemoChart(account, filters)
                 return Response(status=HTTP_200_OK,
                                 data=charts_obj.charts)
-            else:
-                return original_method(view, *args, **kwargs)
-
         return method
 
 
 class TrackAccountsDataApiView:
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -303,9 +281,5 @@ class TrackAccountsDataApiView:
                         trend=trend,
                     )
                 ]
-                return Response(status=HTTP_200_OK,
-                                data=accounts)
-            else:
-                return original_method(view, *args, **kwargs)
-
+                return Response(status=HTTP_200_OK, data=accounts)
         return method

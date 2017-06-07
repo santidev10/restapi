@@ -56,12 +56,11 @@ class DemoChart:
         summary = {}
         items = {i['label']: i for i in dimensions}
         dim_len = len(dimensions)
-        sum_stats = SUM_STATS + CONVERSIONS
         for stat in all_stats:
             value = getattr(item, stat)
             summary[stat] = value
 
-            if stat in sum_stats:
+            if stat in SUM_STATS:
                 values = self.explode_value(value, stat, dim_len)
                 for item_stat, v in zip(items.values(), values):
                     item_stat[stat] = v
@@ -257,7 +256,7 @@ class DemoChart:
             return [None for i in range(length)]
 
         value = initial_value // 2
-        if indicator in (SUM_STATS + CONVERSIONS):
+        if indicator in SUM_STATS:
             if indicator != 'cost':
                 daily = value // length if length else 0
             else:

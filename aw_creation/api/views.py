@@ -1714,8 +1714,7 @@ class OptimizationTargetingApiView(OptimizationFiltersApiView,
 
     @staticmethod
     def add_items_stats(items, kpi, value):
-        stat_names = SUM_STATS + CONVERSIONS
-        stats = dict(zip(stat_names, (0 for _ in range(len(stat_names)))))
+        stats = dict(zip(SUM_STATS, (0 for _ in range(len(SUM_STATS)))))
         dict_add_calculated_stats(stats)
         for i in items:
             i.update(stats)

@@ -2,8 +2,10 @@ from django.db import models
 from keyword_tool.models import BaseModel
 import re
 
-SUM_STATS = ("impressions", "video_views", "clicks", "cost")
+BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
+
+SUM_STATS = BASE_STATS + CONVERSIONS
 
 QUARTILE_RATES = ('quartile_25_rate', 'quartile_50_rate',
                   'quartile_75_rate', 'quartile_100_rate')
@@ -23,6 +25,8 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 Genders = ("Undetermined", "Female", "Male")
 
 DATE_FORMAT = "%Y-%m-%d"
+
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 
 def get_average_cpv(cost, views):
@@ -110,6 +114,13 @@ class Account(models.Model):
 
     def __str__(self):
         return "Account: {}".format(self.name)
+
+    @classmethod
+    def user_objects(cls, user):
+        qs = cls.objects.filter(
+            managers__mcc_permissions__aw_connection__users=user,
+        )
+        return qs
 
 
 class AWAccountPermission(models.Model):

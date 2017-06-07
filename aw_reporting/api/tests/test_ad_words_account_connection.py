@@ -69,11 +69,16 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
             ):
                 with patch("aw_reporting.api.views.get_customers",
                            new=lambda *_, **k: test_customers):
-                    response = self.client.post(
-                        url,
-                        json.dumps(dict(code="1111")),
-                        content_type='application/json',
-                    )
+                    with patch(
+                        "aw_reporting.api.views.upload_initial_aw_data"
+                    ) as initial_upload_task:
+                        response = self.client.post(
+                            url,
+                            json.dumps(dict(code="1111")),
+                            content_type='application/json',
+                        )
+                        initial_upload_task.assert_called_once()
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         accounts = Account.objects.filter(

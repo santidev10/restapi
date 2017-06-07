@@ -199,46 +199,40 @@ def get_campaigns(client, account, today):
     from aw_reporting.models import Campaign
     from aw_reporting.adwords_reports import campaign_performance_report
 
-    min_date, max_date = get_account_border_dates(account)
-    max_saved_date = Campaign.objects.filter(account=account).aggregate(
-        max_date=Max("updated_date"))['max_date']
+    campaign_ids = set(
+        Campaign.objects.filter(
+            account=account).values_list('id', flat=True)
+    )
+    report = campaign_performance_report(client)
+    with transaction.atomic():
+        insert_campaign = []
+        for row_obj in report:
+            campaign_id = row_obj.CampaignId
+            try:
+                end_date = datetime.strptime(row_obj.EndDate, GET_DF)
+            except ValueError:
+                end_date = None
+            stats = {
+                'name': row_obj.CampaignName,
+                'account': account,
+                'type': row_obj.AdvertisingChannelType,
+                'start_date': datetime.strptime(row_obj.StartDate,
+                                                GET_DF),
+                'end_date': end_date,
+                'budget': float(row_obj.Amount)/1000000,
+                'status': row_obj.CampaignStatus,
+                'updated_date': today,
+            }
+            stats.update(get_base_stats(row_obj))
 
-    if max_date is not None and (
-       max_saved_date is None or max_saved_date < max_date):
-        campaign_ids = set(
-            Campaign.objects.filter(
-                account=account).values_list('id', flat=True)
-        )
-        report = campaign_performance_report(client)
-        with transaction.atomic():
-            insert_campaign = []
-            for row_obj in report:
-                campaign_id = row_obj.CampaignId
-                try:
-                    end_date = datetime.strptime(row_obj.EndDate, GET_DF)
-                except ValueError:
-                    end_date = None
-                stats = {
-                    'name': row_obj.CampaignName,
-                    'account': account,
-                    'type': row_obj.AdvertisingChannelType,
-                    'start_date': datetime.strptime(row_obj.StartDate,
-                                                    GET_DF),
-                    'end_date': end_date,
-                    'budget': float(row_obj.Amount)/1000000,
-                    'status': row_obj.CampaignStatus,
-                    'updated_date': today,
-                }
-                stats.update(get_base_stats(row_obj))
+            if campaign_id not in campaign_ids:
+                stats['id'] = campaign_id
+                insert_campaign.append(Campaign(**stats))
+            else:
+                Campaign.objects.filter(pk=campaign_id).update(**stats)
 
-                if campaign_id not in campaign_ids:
-                    stats['id'] = campaign_id
-                    insert_campaign.append(Campaign(**stats))
-                else:
-                    Campaign.objects.filter(pk=campaign_id).update(**stats)
-
-            if insert_campaign:
-                Campaign.objects.bulk_create(insert_campaign)
+        if insert_campaign:
+            Campaign.objects.bulk_create(insert_campaign)
 
 
 def get_ad_groups_and_stats(client, account, today):
@@ -282,6 +276,7 @@ def get_ad_groups_and_stats(client, account, today):
                         AdGroup.objects.filter(
                             pk=ad_group_id).update(**stats)
                     else:
+                        ad_group_ids.append(ad_group_id)
                         stats['id'] = ad_group_id
                         create_ad_groups.append(AdGroup(**stats))
                 # --update ad groups

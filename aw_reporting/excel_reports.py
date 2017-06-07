@@ -266,7 +266,7 @@ class AnalyzeWeeklyReport:
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
             **{s: Sum(s, default=Value(0))
-               for s in SUM_STATS + QUARTILE_STATS}
+               for s in BASE_STATS + QUARTILE_STATS}
         ).order_by(*group_by)
         for i in campaign_data:
             dict_add_calculated_stats(i)
@@ -277,7 +277,7 @@ class AnalyzeWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
             **{s: Sum(s, default=Value(0))
-               for s in SUM_STATS + QUARTILE_STATS}
+               for s in BASE_STATS + QUARTILE_STATS}
         )
         dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
@@ -354,7 +354,7 @@ class AnalyzeWeeklyReport:
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
             **{s: Sum(s, default=Value(0))
-               for s in SUM_STATS + QUARTILE_STATS}
+               for s in BASE_STATS + QUARTILE_STATS}
         ).order_by(*group_by)
         for i in campaign_data:
             dict_add_calculated_stats(i)

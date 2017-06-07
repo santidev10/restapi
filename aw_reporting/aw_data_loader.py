@@ -12,8 +12,9 @@ class AWDataLoader:
 
     advertising_update_tasks = (
         # get campaigns, ad-groups and ad-group daily stats
-        aw_tasks.get_ad_groups_and_stats,
         aw_tasks.get_campaigns,
+        aw_tasks.get_ad_groups_and_stats,
+
 
         aw_tasks.get_videos,
         aw_tasks.get_ads,

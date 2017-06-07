@@ -5,6 +5,7 @@ from io import StringIO
 
 from django.http import StreamingHttpResponse
 from django.db import transaction
+from django.db.models import Min, Max, Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +18,7 @@ from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import AWConnection, Account, AWAccountPermission
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
+from aw_reporting.charts import DeliveryChart
 
 
 @demo_view_decorator
@@ -268,7 +270,47 @@ class TrackFiltersListApiView(TrackApiBase):
     """
 
     def get(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+        accounts = Account.user_objects(request.user).filter(
+            can_manage_clients=False,
+        ).annotate(
+            start_date=Min("campaigns__start_date"),
+            end_date=Max("campaigns__end_date"),
+            impressions=Sum("campaigns__impressions")
+        ).filter(impressions__gt=0).distinct()
+
+        filters = dict(
+            accounts=[
+                dict(
+                    id=account.id,
+                    name=account.name,
+                    start_date=account.start_date,
+                    end_date=account.end_date,
+                    campaigns=[
+                        dict(
+                            id=c.id,
+                            name=c.name,
+                            start_date=c.start_date,
+                            end_date=c.end_date,
+                        )
+                        for c in account.campaigns.all()
+                    ]
+                )
+                for account in accounts
+            ],
+            indicator=[
+                dict(id=uid, name=name)
+                for uid, name in self.indicators
+            ],
+            breakdown=[
+                dict(id=uid, name=name)
+                for uid, name in self.breakdowns
+            ],
+            dimension=[
+                dict(id=uid, name=name)
+                for uid, name in self.dimensions
+            ],
+        )
+        return Response(data=filters)
 
 
 @demo_view_decorator
@@ -278,7 +320,9 @@ class TrackChartApiView(TrackApiBase):
     """
 
     def get(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+        filters = self.get_filters()
+        chart = DeliveryChart(additional_chart=False, **filters)
+        return Response(data=chart.get_response())
 
 
 @demo_view_decorator
@@ -287,8 +331,14 @@ class TrackAccountsDataApiView(TrackApiBase):
     Returns a list of accounts for the table below the chart
     """
 
-    def get(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def get(self, *args, **kwargs):
+        filters = self.get_filters()
+        chart = DeliveryChart(
+            additional_chart=False,
+            **filters
+        )
+        data = chart.get_account_segmented_data()
+        return Response(data=data)
 
 
 class ConnectAWAccountApiView(APIView):
