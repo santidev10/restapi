@@ -72,13 +72,10 @@ class SegmentListCreateApiView(ListCreateAPIView):
         available_sorts = {
             "title",
         }
-        available_statisitcs_sorts = {
-            "videos_count",
-        }
         available_reverse_sorts = {
             "created_at",
         }
-        available_reverse_statisitcs_sorts = {
+        available_statisitcs_sorts = {
             "channels_count",
             "engage_rate",
             "sentiment",
@@ -87,12 +84,9 @@ class SegmentListCreateApiView(ListCreateAPIView):
         sort = self.request.query_params.get("sort_by")
         if sort in available_sorts:
             queryset = queryset.order_by(sort)
-        if sort in available_statisitcs_sorts:
-            queryset = queryset.annotate(
-                value=RawSQL("statistics->>%s", (sort, ))).order_by("value")
         if sort in available_reverse_sorts:
             queryset = queryset.order_by("-{}".format(sort))
-        if sort in available_reverse_statisitcs_sorts:
+        if sort in available_statisitcs_sorts:
             queryset = queryset.annotate(
                 value=RawSQL("statistics->>%s", (sort, ))).order_by("-value")
         return queryset
