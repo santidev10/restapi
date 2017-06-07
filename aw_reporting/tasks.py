@@ -2,8 +2,10 @@ from datetime import datetime, timedelta
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from celery import task
 from django.db import transaction
-from django.db.models import Max, Min, Sum
+from django.db.models import Max, Min
+from collections import namedtuple
 from collections import defaultdict
+import csv
 import pytz
 import heapq
 import logging
@@ -58,7 +60,116 @@ def get_account_border_dates(account):
     return dates['min_date'], dates['max_date']
 
 GET_DF = '%Y-%m-%d'
+HOURS_CLEAR = 5
 # -- helpers
+
+
+def load_hourly_stats(client, account, *_):
+    from aw_reporting.models import CampaignHourlyStatistic, Campaign
+    from aw_reporting.adwords_reports import campaign_performance_report, \
+        main_statistics
+
+    queryset = CampaignHourlyStatistic.objects.filter(
+        campaign__account=account)
+
+    today = datetime.now(tz=pytz.timezone(account.timezone)).date()
+    min_date = today - timedelta(days=10)
+
+    # delete very old stats
+    queryset.filter(date__lt=min_date).delete()
+
+    last_entry = queryset.order_by('-date', '-hour').first()
+    # delete last 3 hours saved data
+    hour, date = 0, min_date  # default dummy data
+    if last_entry:
+        hour = last_entry.hour
+        date = last_entry.date
+        if hour >= HOURS_CLEAR:
+            hour -= HOURS_CLEAR
+        else:
+            queryset.filter(date=date).delete()
+            hour = 24 + hour - HOURS_CLEAR
+            date -= timedelta(days=1)
+        queryset.filter(date=date, hour__gte=hour).delete()
+
+    #  get report
+    report = campaign_performance_report(
+        client,
+        dates=(date, today),
+        fields=[
+           'CampaignId', 'CampaignName',
+           'Date', 'HourOfDay',
+        ] + main_statistics[:4]
+    )
+    if report:
+        campaign_ids = list(
+            account.campaigns.values_list('id', flat=True)
+        )
+        create_campaign = []
+        create_stat = []
+        for row in report:
+            row_date = row.Date
+            row_hour = int(row.HourOfDay)
+            if row_date == str(date) and row_hour < hour:
+                continue  # this row is already saved
+
+            campaign_id = row.CampaignId
+            if campaign_id not in campaign_ids:
+                campaign_ids.append(campaign_id)
+                create_campaign.append(
+                    Campaign(
+                        id=campaign_id,
+                        name=row.CampaignName,
+                        account=account,
+                        start_date=date,
+                    )
+                )
+
+            create_stat.append(
+                CampaignHourlyStatistic(
+                    date=row_date,
+                    hour=row.HourOfDay,
+                    campaign_id=row.CampaignId,
+                    video_views=row.VideoViews,
+                    impressions=row.Impressions,
+                    clicks=row.Clicks,
+                    cost=float(row.Cost)/1000000,
+                )
+            )
+        if create_campaign:
+            Campaign.objects.bulk_create(create_campaign)
+
+        if create_stat:
+            CampaignHourlyStatistic.objects.bulk_create(create_stat)
+
+
+@task
+def upload_initial_aw_data(connection_pk):
+    from aw_reporting.models import AWConnection, Account
+    from aw_reporting.aw_data_loader import AWDataLoader
+    connection = AWConnection.objects.get(pk=connection_pk)
+
+    updater = AWDataLoader(datetime.now(tz=pytz.utc).date())
+    client = get_web_app_client(
+        refresh_token=connection.refresh_token,
+    )
+
+    mcc_to_update = Account.objects.filter(
+        mcc_permissions__aw_connection=connection
+    ).distinct()
+    for mcc in mcc_to_update:
+        client.SetClientCustomerId(mcc.id)
+        updater.save_all_customers(client, mcc)
+
+    accounts_to_update = Account.objects.filter(
+        managers__mcc_permissions__aw_connection=connection,
+        can_manage_clients=False,
+    )
+    for account in accounts_to_update:
+        client.SetClientCustomerId(account.id)
+        updater.advertising_account_update(client, account)
+        # hourly stats
+        load_hourly_stats(client, account)
 
 
 def detect_success_aw_read_permissions():
@@ -831,7 +942,7 @@ def get_cities(client, account, today):
 
 
 def categories_define_parents():
-    from aw_campaign.models import Audience
+    from aw_reporting.models import Audience
     offset = 0
     limit = 100
     while True:
@@ -856,7 +967,7 @@ def categories_define_parents():
 
 
 def load_google_categories(skip_audiences=False, skip_topics=False):
-    from aw_campaign.models import Audience, Topic
+    from aw_reporting.models import Audience, Topic
 
     if not Audience.objects.count() and not skip_audiences:
 
@@ -916,7 +1027,7 @@ def load_google_categories(skip_audiences=False, skip_topics=False):
 
 
 def load_google_geo_targets():
-    from aw_campaign.models import GeoTarget
+    from aw_reporting.models import GeoTarget
 
     ids = set(GeoTarget.objects.values_list('id', flat=True))
     logger.info('Loading google geo targets...')

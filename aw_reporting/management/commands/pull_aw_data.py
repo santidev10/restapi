@@ -44,8 +44,6 @@ class Command(BaseCommand):
             updated_date__lt=today,
             can_manage_clients=False,
         )
-
-        updater = AWDataLoader(today)
         for account in accounts_to_update:
             updater.full_update(account)
 

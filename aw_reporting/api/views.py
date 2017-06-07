@@ -16,6 +16,7 @@ from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import AWConnection, Account, AWAccountPermission
 from aw_reporting.utils import get_google_access_token_info
+from aw_reporting.tasks import upload_initial_aw_data
 
 
 @demo_view_decorator
@@ -431,6 +432,7 @@ class ConnectAWAccountApiView(APIView):
                     )
                     response.append(data)
 
+            upload_initial_aw_data.delay(connection.email)
             return Response(data=response)
 
     def get_flow(self, redirect_url):

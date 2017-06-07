@@ -3,7 +3,7 @@ from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.models import Account
 from suds import WebFault
 from oauth2client.client import HttpAccessTokenRefreshError
-from aw_reporting import tasks
+import aw_reporting.tasks as aw_tasks
 import logging
 logger = logging.getLogger(__name__)
 
@@ -12,21 +12,21 @@ class AWDataLoader:
 
     advertising_update_tasks = (
         # get campaigns, ad-groups and ad-group daily stats
-        tasks.get_ad_groups_and_stats,
-        tasks.get_campaigns,
+        aw_tasks.get_ad_groups_and_stats,
+        aw_tasks.get_campaigns,
 
-        tasks.get_videos,
-        tasks.get_ads,
+        aw_tasks.get_videos,
+        aw_tasks.get_ads,
         #
-        tasks.get_genders,
-        tasks.get_age_ranges,
+        aw_tasks.get_genders,
+        aw_tasks.get_age_ranges,
         #
-        tasks.get_placements,
-        tasks.get_keywords,
-        tasks.get_topics,
-        tasks.get_interests,
+        aw_tasks.get_placements,
+        aw_tasks.get_keywords,
+        aw_tasks.get_topics,
+        aw_tasks.get_interests,
         #
-        tasks.get_cities,
+        aw_tasks.get_cities,
     )
 
     def __init__(self, today):
@@ -57,10 +57,13 @@ class AWDataLoader:
             )
 
     def mcc_full_update(self, manager):
-        accounts = self.run_task_with_any_permission(
-            lambda c, *_: get_all_customers(c),
+        self.run_task_with_any_permission(
+            self.save_all_customers,
             manager, manager
         )
+
+    def save_all_customers(self, client, manager):
+        accounts = get_all_customers(client)
         if accounts:
             for e in accounts:
                 a, created = Account.objects.update_or_create(
