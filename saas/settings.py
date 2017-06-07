@@ -167,6 +167,8 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 BROKER_URL = "redis://localhost:6379/0"
 
+KW_TOOL_KEY = "Qi3mxPnm"
+
 try:
     from .local_settings import *
 except ImportError:

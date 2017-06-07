@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth.models import AnonymousUser
+from django.core.management import call_command
 from django.db.models import Count
 from django.db.models import Q
 from django.db.models.functions import Coalesce
@@ -499,3 +500,12 @@ class ListsDuplicateApiView(GenericAPIView):
         return Response(status=HTTP_202_ACCEPTED,
                         data=SavedListNameSerializer(
                             new_list, request=request).data)
+
+
+class ViralListBuildView(APIView):
+    def post(self, *args, **kwargs):
+        uc = dict(self.request.data).get('update_complete')
+        if uc:
+            call_command('generate_viral_keywords_list')
+            return Response(status=HTTP_202_ACCEPTED)
+        return Response(status=HTTP_400_BAD_REQUEST)
