@@ -108,6 +108,11 @@ class ApiRootView(APIView):
                  connect_account_url,
                  urlencode(dict(redirect_url=connect_account_url))
              )),
+            ('A list of connected aw accounts', reverse(
+                'aw_reporting_urls:connect_aw_account_list',
+                request=request,
+                format=format
+            )),
             ('Account list', reverse(
                 'aw_reporting_urls:analyze_accounts',
                 request=request,
