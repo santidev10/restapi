@@ -143,30 +143,6 @@ if DEBUG:  # for the api root
     )
 
 
-SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
-EMAIL_HOST = "localhost"
-EMAIL_PORT = 1025
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-# this is default development key
-YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
-
-SINGLE_DATABASE_API_URL = "https://10.0.2.39:10500/api/v1/"
-
-import djcelery
-
-djcelery.setup_loader()
-CELERY_TASK_RESULT_EXPIRES = 18000
-CELERYD_TASK_ERROR_EMAILS = False
-CELERY_RESULT_BACKEND = "redis://"
-CELERY_REDIS_HOST = "localhost"
-CELERY_REDIS_PORT = 6379
-CELERY_REDIS_DB = 0
-CELERY_ACKS_LATE = True
-CELERYD_PREFETCH_MULTIPLIER = 1
-
-BROKER_URL = "redis://localhost:6379/0"
-
 LOGS_DIRECTORY = '.'
 
 LOGGING = {
@@ -222,6 +198,31 @@ LOGGING = {
         }
     }
 }
+
+
+SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# this is default development key
+YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
+
+SINGLE_DATABASE_API_URL = "https://10.0.2.39:10500/api/v1/"
+
+import djcelery
+
+djcelery.setup_loader()
+CELERY_TASK_RESULT_EXPIRES = 18000
+CELERYD_TASK_ERROR_EMAILS = False
+CELERY_RESULT_BACKEND = "redis://"
+CELERY_REDIS_HOST = "localhost"
+CELERY_REDIS_PORT = 6379
+CELERY_REDIS_DB = 0
+CELERY_ACKS_LATE = True
+CELERYD_PREFETCH_MULTIPLIER = 1
+
+BROKER_URL = "redis://localhost:6379/0"
 
 try:
     from .local_settings import *
