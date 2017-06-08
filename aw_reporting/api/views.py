@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR
 from oauth2client import client
+from aw_reporting.api.serializers import AWAccountConnectionSerializer
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
@@ -341,6 +342,16 @@ class TrackAccountsDataApiView(TrackApiBase):
         return Response(data=data)
 
 
+class ConnectAWAccountListApiView(ListAPIView):
+
+    serializer_class = AWAccountConnectionSerializer
+
+    def get_queryset(self):
+        qs = AWConnection.objects.filter(
+            users=self.request.user).order_by("email")
+        return qs
+
+
 class ConnectAWAccountApiView(APIView):
     """
     The view allows to connect user's AdWords account
@@ -463,7 +474,6 @@ class ConnectAWAccountApiView(APIView):
                     data=dict(error=self.no_mcc_error)
                 )
 
-            response = []
             with transaction.atomic():
                 for ac_data in mcc_accounts:
                     data = dict(
@@ -480,9 +490,9 @@ class ConnectAWAccountApiView(APIView):
                     AWAccountPermission.objects.get_or_create(
                         aw_connection=connection, account=obj,
                     )
-                    response.append(data)
-
             upload_initial_aw_data.delay(connection.email)
+
+            response = AWAccountConnectionSerializer(connection).data
             return Response(data=response)
 
     def get_flow(self, redirect_url):

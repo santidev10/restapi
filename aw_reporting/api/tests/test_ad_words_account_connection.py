@@ -62,10 +62,10 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
             "aw_reporting.api.views.client.OAuth2WebServerFlow"
         ) as flow:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
-
+            test_email = "test@mail.kz"
             with patch(
                 "aw_reporting.api.views.get_google_access_token_info",
-                new=lambda _: dict(email="test@mail.kz")
+                new=lambda _: dict(email=test_email)
             ):
                 with patch("aw_reporting.api.views.get_customers",
                            new=lambda *_, **k: test_customers):
@@ -80,7 +80,12 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
                         initial_upload_task.assert_called_once()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(set(response.data.keys()),
+                         {'email', 'mcc_accounts'})
+        self.assertEqual(response.data['email'], test_email)
+        self.assertEqual(len(response.data['mcc_accounts']), 1,
+                         "MCC account is created and linked to the user")
+
         accounts = Account.objects.filter(
             mcc_permissions__aw_connection__users=self.user)
         self.assertEqual(len(accounts), 1,
