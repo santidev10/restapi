@@ -42,7 +42,8 @@ PROJECT_APPS = (
     "aw_reporting",
     "userprofile",
     "segment",
-    "keyword_tool"
+    "keyword_tool",
+    "administration"
 )
 
 THIRD_PARTY_APPS = (
