@@ -1,9 +1,12 @@
 """
 Segment models module
 """
+from datetime import timedelta
+
 from celery import task
 from django.contrib.postgres.fields import JSONField
 from django.db.models import ForeignKey
+from django.db.models import Manager
 from django.db.models import ManyToManyField
 from django.db.models import Model, CharField
 
@@ -11,6 +14,7 @@ from segment.mini_dash import SegmentMiniDashGenerator
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from utils.models import Timestampable
+from django.utils import timezone
 
 AVAILABLE_SEGMENT_TYPES = (
     "channel",
@@ -54,6 +58,20 @@ class VideoRelation(Model):
     video_id = CharField(max_length=30, primary_key=True)
 
 
+class SegmentManager(Manager):
+    """
+    Extend default segment manager
+    """
+    def update_statistics(self):
+        """
+        Make re-count of all segments statistic and mini-dash fields
+        """
+        time_delta = timezone.now() - timedelta(hours=23)
+        segments = self.filter(updated_at__lte=time_delta)
+        for segment in segments:
+            segment.count_statistics_fields(segment)
+
+
 class Segment(Timestampable):
     """
     Main segment model
@@ -68,6 +86,9 @@ class Segment(Timestampable):
         "segment.ChannelRelation", blank=True, related_name="segments")
     videos = ManyToManyField(
         "segment.VideoRelation", blank=True, related_name="segments")
+
+    # set model manager
+    objects = SegmentManager()
 
     @task
     def count_statistics_fields(self):
