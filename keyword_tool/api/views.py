@@ -208,6 +208,14 @@ class OptimizeQueryApiView(ListAPIView):
         #         dict_add_calculated_stats(item)
 
 
+class KeywordsListApiView(OptimizeQueryApiView):
+    def get_queryset(self):
+        queryset = KeyWord.objects.all()
+        queryset = self.filter(queryset)
+        queryset = self.sort(queryset)
+        return queryset
+
+
 class ViralKeywordsApiView(OptimizeQueryApiView):
     def get_queryset(self):
         viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
