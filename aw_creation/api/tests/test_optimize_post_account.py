@@ -32,12 +32,12 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
                 'id', 'name', 'status',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'creative', 'structure', 'weekly_chart',
-                'campaigns_count', 'goal_charts',
-
-                'impressions',
-                'views',
-                'cost',
+                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'creative_count',
+                'keywords_count',
+                'goal_units',
+                'videos_count',
+                'channels_count',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",

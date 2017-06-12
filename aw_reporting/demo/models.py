@@ -730,35 +730,56 @@ class DemoAccount(BaseDemo):
 
     @property
     def creation_details(self):
-        from aw_creation.models import AccountCreation
-        from aw_reporting.demo.charts import DemoChart
 
-        creative = self.creative
-        if creative:
-            creative = dict(id=creative[0]['id'],
-                            name=creative[0]['label'],
-                            thumbnail=creative[0]['thumbnail'])
+        from aw_reporting.demo.charts import DemoChart
 
         demo_details = dict(
             id=self.id,
             name=self.name,
             status="Running",
-            impressions=self.impressions,
             start=self.start_date,
             end=self.end_date,
-            views=self.video_views,
-            cost=self.cost,
             campaigns_count=len(self.children),
-            creative=creative,
-            structure=[
-                dict(
-                    id=c.id,
-                    name=c.name,
-                    ad_group_creations=[
-                        dict(id=a.id, name=a.name)
-                        for a in c.children
-                    ]
-                )
+            ad_groups_count=DEMO_CAMPAIGNS_COUNT * len(DEMO_AD_GROUPS),
+            keywords_count=len(self.keyword),
+            creative_count=len(self.creative),
+            videos_count=len(self.video),
+            channels_count=len(self.video),
+            goal_units=VIDEO_VIEWS,
+            read_only=False,
+            is_optimization_active=True,
+            is_changed=False,
+        )
+        #
+
+
+        # weekly chart
+        filters = dict(
+            start_date=self.today - timedelta(days=7),
+            end_date=self.today - timedelta(days=1),
+            indicator="video_views",
+        )
+        self.set_period_proportion(filters['start_date'],
+                                   filters['end_date'])
+        charts_obj = DemoChart(self, filters)
+        chart_lines = charts_obj.chart_lines(self, filters)
+        demo_details['weekly_chart'] = chart_lines[0]['trend']
+        return demo_details
+
+    @property
+    def creation_details_full(self):
+        from aw_creation.models import AccountCreation
+        data = dict(**self.creation_details)
+        data.update(
+            is_ended=False,
+            is_paused=False,
+            is_approved=True,
+            budget=sum(
+                c.budget
+                for c in self.children
+            ),
+            campaign_creations=[
+                c.creation_details
                 for c in self.children
             ],
             video_ad_format=dict(
@@ -785,48 +806,5 @@ class DemoAccount(BaseDemo):
                 id=AccountCreation.BIDDING_TYPES[0][0],
                 name=AccountCreation.BIDDING_TYPES[0][1],
             ),
-            is_optimization_active=True,
-            is_changed=False,
-        )
-        #
-        filters = dict(
-            start_date=self.start_date,
-            end_date=self.end_date,
-            indicator="video_views",
-        )
-        charts_obj = DemoChart(
-            self, filters, summary_label="AW", goal_units=VIDEO_VIEWS,
-            cumulative=True,
-        )
-        demo_details['goal_charts'] = charts_obj.chart_lines(self, filters)
-
-        # weekly chart
-        filters = dict(
-            start_date=self.today - timedelta(days=7),
-            end_date=self.today - timedelta(days=1),
-            indicator="video_views",
-        )
-        self.set_period_proportion(filters['start_date'],
-                                   filters['end_date'])
-        charts_obj = DemoChart(self, filters)
-        chart_lines = charts_obj.chart_lines(self, filters)
-        demo_details['weekly_chart'] = chart_lines[0]['trend']
-        return demo_details
-
-    @property
-    def creation_details_full(self):
-        data = self.creation_details
-        data.update(
-            is_ended=False,
-            is_paused=False,
-            is_approved=True,
-            budget=sum(
-                c.budget
-                for c in self.children
-            ),
-            campaign_creations=[
-                c.creation_details
-                for c in self.children
-            ],
         )
         return data
