@@ -6,15 +6,15 @@ from rest_framework.status import HTTP_200_OK
 from urllib.parse import urlencode
 from aw_creation.models import *
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
-class AccountListAPITestCase(ExtendedAPITestCase):
+class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name',
+        'id', 'name', 'read_only',
         'status', 'start', 'end', 'is_optimization_active', 'is_changed',
         'impressions', 'views', 'cost', 'campaigns_count',
 
@@ -312,3 +312,29 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 1)
         self.assertEqual(len(response.data['items']), 1)
+
+    def test_success_get_readonly_accounts(self):
+        self.create_account(self.user)
+
+        another_user = get_user_model().objects.create(email="another@mail.au")
+        self.create_account(another_user)
+
+        # --
+        url = reverse("aw_creation_urls:optimization_account_list")
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 2)
+        item = response.data['items'][1]
+        self.assertEqual(
+            set(item.keys()),
+            self.details_keys,
+        )
+        self.assertEqual(item['read_only'], True)

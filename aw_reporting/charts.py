@@ -419,25 +419,33 @@ class DeliveryChart:
     def _get_creative_data(self):
         result = defaultdict(list)
         raw_stats = self.get_raw_stats(
-            VideoCreativeStatistic.objects.all(), ['creative_id'],
+            VideoCreativeStatistic.objects.all(), ['creative_id', 'creative__duration'],
             date=self.params['date']
         )
         if raw_stats:
-            videos_info = {
-                i['id']: i for i in
-                Video.objects.filter(
-                    id__in=set(s['creative_id'] for s in raw_stats)
-                ).values('id', 'title', 'thumbnail_image_url', 'duration')
-            }
+            connector = SingleDatabaseApiConnector()
+            try:
+                ids = [s['creative_id'] for s in raw_stats]
+                items = connector.get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    limit=len(ids),
+                    id__in=ids,
+                )
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+                videos_info = {}
+            else:
+                videos_info = {i['id']: i for i in items}
+
             for item in raw_stats:
                 youtube_id = item['creative_id']
                 info = videos_info.get(youtube_id, {})
                 item['id'] = youtube_id
                 item['thumbnail'] = info.get('thumbnail_image_url')
                 item['label'] = info.get('title', youtube_id)
-                item['duration'] = info.get('duration')
-
-                del item['creative_id']
+                item['duration'] = item['creative__duration']
+                del item['creative_id'], item['creative__duration']
                 result[youtube_id].append(item)
         else:
             group_by = ['ad__creative_name']

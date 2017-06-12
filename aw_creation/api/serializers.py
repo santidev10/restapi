@@ -490,7 +490,7 @@ class OptimizationAccountListSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name",
+            "id", "name", "read_only",
             "is_optimization_active", "is_changed",
             # from the campaigns
             "start", "end", "status",

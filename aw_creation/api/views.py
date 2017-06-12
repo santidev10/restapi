@@ -390,6 +390,16 @@ class OptimizationAccountListApiView(ListAPIView):
             queryset = queryset.filter(name__icontains=search)
         return queryset
 
+    def get(self, request, *args, **kwargs):
+        # import accounts
+        from aw_reporting.models import Account
+        accounts = Account.user_objects(request.user).filter(account_creation__isnull=True)
+        create = [AccountCreation(account=a, owner=request.user, read_only=True) for a in accounts]
+        if create:
+            AccountCreation.objects.bulk_create(create)
+
+        return super(OptimizationAccountListApiView, self).get(request, *args, **kwargs)
+
     def post(self, request, *args, **kwargs):
         data = request.data
         video_ad_format = data.get('video_ad_format')

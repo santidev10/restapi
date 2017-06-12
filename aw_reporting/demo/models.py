@@ -742,6 +742,7 @@ class DemoAccount(BaseDemo):
         demo_details = dict(
             id=self.id,
             name=self.name,
+            read_only=False,
             status="Running",
             impressions=self.impressions,
             start=self.start_date,

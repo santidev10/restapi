@@ -29,7 +29,7 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 # common details
-                'id', 'name', 'status',
+                'id', 'name', 'status', 'read_only',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
                 'creative', 'structure', 'weekly_chart',
