@@ -1,7 +1,7 @@
 import sys
 from django.core.management.base import BaseCommand
 
-from segment.models import Segment, ChannelRelation
+from segment.models import get_segment_model_by_type
 
 
 class Command(BaseCommand):
@@ -20,6 +20,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         segment_type = options.get('type')
         category = options.get('category')
+        model = get_segment_model_by_type(segment_type)
+        related_model = model.related.rel.related_model
+
+        if category not in dict(model.CATEGORIES):
+            raise Exception("Invalid category")
 
         i = 0
         while True:
@@ -27,16 +32,14 @@ class Command(BaseCommand):
             line = sys.stdin.readline().strip()
             if not line:
                 break
-            channel_id, title = tuple(line.split(',', 1))
+            related_id, title = tuple(line.split(',', 1))
 
-            segment_data = dict(title=title, segment_type=segment_type, category=category)
+            segment_data = dict(title=title, category=category)
             try:
-                segment = Segment.objects.get(**segment_data)
-            except Segment.DoesNotExist:
-                segment = Segment(**segment_data)
+                segment = model.objects.get(**segment_data)
+            except model.DoesNotExist:
+                segment = model(**segment_data)
                 segment.save()
 
-            obj, created = ChannelRelation.objects.get_or_create(pk=channel_id)
-            segment.channels.add(obj)
-            segment.save()
-            print(i, title, segment.channels.all().count())
+            related, created = related_model.objects.get_or_create(related_id=related_id, segment=segment)
+            print( i, 'add', related_id, 'to', title)
