@@ -9,6 +9,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 
 from .base import BaseSegment
 from .base import BaseSegmentRelated
+from .base import SegmentManager
 
 
 class SegmentKeyword(BaseSegment):
@@ -25,6 +26,8 @@ class SegmentKeyword(BaseSegment):
     category = CharField(max_length=255, choices=CATEGORIES)
 
     segment_type = 'keyword'
+
+    objects = SegmentManager()
 
     @task
     def update_statistics(self):

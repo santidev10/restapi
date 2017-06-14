@@ -2,16 +2,39 @@
 BaseSegment models module
 """
 from celery import task
+from datetime import timedelta
+import logging
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db.models import CharField
 from django.db.models import ForeignKey
+from django.db.models import Manager
 from django.db.models import Model
+from django.utils import timezone
 
 from segment.mini_dash import SegmentMiniDashGenerator
 from singledb.connector import SingleDatabaseApiConnectorException
 
 from utils.models import Timestampable
+
+logger = logging.getLogger(__name__)
+
+
+class SegmentManager(Manager):
+    """
+    Extend default segment manager
+    """
+    def update_statistics(self, forced=False):
+        """
+        Make re-count of all segments statistic and mini-dash fields
+        """
+        segments = self.all()
+        if not forced:
+            time_delta = timezone.now() - timedelta(hours=23)
+            segments = segments.filter(updated_at__lte=time_delta)
+        for segment in segments:
+            logger.info('Updating statistics for {}-segment [{} ids]: {}'.format(segment.segment_type, len(segment.related_ids_list), segment.title))
+            segment.update_statistics(segment)
 
 
 class BaseSegment(Timestampable):
@@ -41,6 +64,10 @@ class BaseSegment(Timestampable):
                     obj.save()
                 except IntegrityError:
                     continue
+
+    @property
+    def related_ids_list(self):
+        return self.related.all().values_list('related_id', flat=True)
 
     def delete_ralated_ids(self, ids):
         assert isinstance(ids, list), "ids must be a list"

@@ -19,27 +19,36 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         segment_type = options.get('type')
-        category = options.get('category')
-        model = get_segment_model_by_type(segment_type)
-        related_model = model.related.rel.related_model
+        self.category = options.get('category')
+        self.model = get_segment_model_by_type(segment_type)
 
-        if category not in dict(model.CATEGORIES):
+        if self.category not in dict(self.model.CATEGORIES):
             raise Exception("Invalid category")
 
-        i = 0
+        title_prev = None
+        related_ids = []
         while True:
-            i += 1
             line = sys.stdin.readline().strip()
             if not line:
                 break
             related_id, title = tuple(line.split(',', 1))
 
-            segment_data = dict(title=title, category=category)
-            try:
-                segment = model.objects.get(**segment_data)
-            except model.DoesNotExist:
-                segment = model(**segment_data)
-                segment.save()
+            if title_prev and title_prev != title:
+                self.save_data(title, related_ids)
+                related_ids = []
 
-            related, created = related_model.objects.get_or_create(related_id=related_id, segment=segment)
-            print( i, 'add', related_id, 'to', title)
+            title_prev = title
+            related_ids.append(related_id)
+
+        if related_ids and title_prev:
+            self.save_data(title, related_ids)
+
+    def save_data(self, title, ids):
+        print('Saving {} ids for segment: {}'.format(len(ids), title))
+        segment_data = dict(title=title, category=self.category)
+        try:
+            segment = self.model.objects.get(**segment_data)
+        except self.model.DoesNotExist:
+            segment = self.model(**segment_data)
+            segment.save()
+        segment.add_ralated_ids(ids)

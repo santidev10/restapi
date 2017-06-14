@@ -8,6 +8,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 
 from .base import BaseSegment
 from .base import BaseSegmentRelated
+from .base import SegmentManager
 
 
 class SegmentChannel(BaseSegment):
@@ -47,6 +48,8 @@ class SegmentChannel(BaseSegment):
     ]
 
     segment_type = 'channel'
+
+    objects = SegmentManager()
 
     def calculate_statistics(self, data):
         channels_count = len(data)

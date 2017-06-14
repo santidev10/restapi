@@ -25,3 +25,6 @@ def get_segment_model_by_type(segment_type):
             return model
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
+def total_update_statistics(forced=False):
+    for model in SEGMENT_MODELS.fget():
+        model.objects.update_statistics(forced=forced)

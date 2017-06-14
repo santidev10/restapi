@@ -8,6 +8,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 
 from .base import BaseSegment
 from .base import BaseSegmentRelated
+from .base import SegmentManager
 
 
 class SegmentVideo(BaseSegment):
@@ -40,6 +41,8 @@ class SegmentVideo(BaseSegment):
     ]
 
     segment_type = 'video'
+
+    objects = SegmentManager()
 
     def calculate_statistics(self, data):
         videos_count = len(data)
