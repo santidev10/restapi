@@ -98,16 +98,16 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
 
-                'creative', 'weekly_chart', 'campaigns_count',
-                'structure', 'goal_charts',
-
-                'cost', 'impressions', 'views',
+                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'creative_count', 'goal_units', 'channels_count', 'videos_count', 'keywords_count',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
                 "video_networks", "bidding_type",
                 # details below header (readonly)
                 "budget", 'start', 'end',
+
+                'creative', 'structure', 'goal_charts',
             }
         )
         self.assertIsNotNone(data['start'])
