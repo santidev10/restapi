@@ -17,8 +17,20 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         'id', 'name',
         'status', 'start', 'end', 'is_optimization_active', 'is_changed',
         'creative_count', 'keywords_count', 'videos_count', 'goal_units',
-        'channels_count', 'campaigns_count', 'ad_groups_count', 'details', 'read_only',
+        'channels_count', 'campaigns_count', 'ad_groups_count', 'read_only',
         "weekly_chart",
+        'is_ended',
+        'is_approved',
+        'structure',
+        'bidding_type',
+        'video_ad_format',
+        'delivery_method',
+        'video_networks',
+        'goal_type',
+        'is_paused',
+        'type',
+        'goal_charts',
+        'creative',
     }
 
     def setUp(self):
@@ -196,7 +208,6 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             self.details_keys,
         )
         self.assertEqual(len(item['weekly_chart']), 7)
-        self.assertEqual(set(item['details'].keys()), {'channel', 'video', 'creative'})
 
     def test_list_no_deleted_accounts(self):
         AccountCreation.objects.create(

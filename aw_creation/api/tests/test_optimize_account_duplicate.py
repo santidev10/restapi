@@ -120,6 +120,8 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 "video_networks", "bidding_type",
                 # details below header (readonly)
                 "budget", 'start', 'end',
+
+                'creative', 'structure', 'goal_charts',
             }
         )
         self.assertIsNotNone(data['start'])

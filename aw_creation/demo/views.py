@@ -68,18 +68,7 @@ class OptimizationAccountListApiView:
                         show = False
 
                 if show:
-                    data = dict(**demo.creation_details)
-                    data["details"] = {}
-                    filters = dict(
-                        start_date=demo.start_date,
-                        end_date=demo.end_date,
-                    )
-                    for key in ("creative", "video", "channel"):
-                        filters['dimension'] = "creative"
-                        charts_obj = DemoChart(demo, filters)
-                        data["details"][key] = charts_obj.chart_items.get('items')
-
-                    response.data['items'].insert(0, data)
+                    response.data['items'].insert(0, demo.creation_details)
                     response.data['items_count'] += 1
             return response
         return method

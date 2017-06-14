@@ -44,6 +44,11 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
                 "video_networks", "bidding_type",
                 # details below header (readonly)
                 "budget", 'start', 'end',
+                'structure', 'creative', 'goal_charts',
+
+                'goal_charts',
+                'creative',
+                'structure',
             }
         )
 
