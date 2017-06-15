@@ -151,7 +151,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
 
-SINGLE_DATABASE_API_URL = "https://10.0.2.39:10500/api/v1/"
+SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
 
 import djcelery
 
