@@ -322,7 +322,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
             kwargs["fields"] = set(fields.split(","))
 
         if page is not None:
-            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
+            serializer = SavedListNameSerializer(page, many=True, request=request, **kwargs)
             return self.get_paginated_response(serializer.data)
 
         serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
