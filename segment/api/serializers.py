@@ -64,12 +64,8 @@ class SegmentSerializer(ModelSerializer):
         Check segment type and category
         """
         # set up related_ids
-        self.ids_to_add = data.pop("ids_to_add", None)
-        self.ids_to_add = self.ids_to_add.split(',') if self.ids_to_add else []
-
-        self.ids_to_delete = data.pop("ids_to_delete", None)
-        self.ids_to_delete = self.ids_to_delete.split(',') if self.ids_to_delete else []
-
+        self.ids_to_add = data.pop("ids_to_add", [])
+        self.ids_to_delete = data.pop("ids_to_delete", [])
         segment_category = data.get("category")
         user = self.context.get("request").user
         available_categories = dict(self.Meta.model.CATEGORIES).keys()
