@@ -1,4 +1,4 @@
-from rest_framework.serializers import CharField
+from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
@@ -10,8 +10,8 @@ from segment.models import get_segment_model_by_type
 class SegmentSerializer(ModelSerializer):
     owner = SerializerMethodField()
     is_editable = SerializerMethodField()
-    ids_to_add = CharField(required=False, allow_blank=True, allow_null=True)
-    ids_to_delete = CharField(required=False, allow_blank=True, allow_null=True)
+    ids_to_add = ListField(required=False)
+    ids_to_delete = ListField(required=False)
 
     class Meta:
         model = None
