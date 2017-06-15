@@ -53,7 +53,7 @@ class VideoListApiView(APIView):
                     "items": [],
                     "current_page": 1,
                 }
-                return Response(empty_reponse)
+                return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
         # make call
