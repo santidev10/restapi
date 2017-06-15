@@ -27,7 +27,7 @@ class Command(BaseCommand):
         for line in self.get_search_data():
             response = []
             category, *keywords = line.split(',')
-            for chunk in self.chunks(keywords, 200):
+            for chunk in self.chunks(list(set([k.lower() for k in keywords])), 200):
                 response += self.get_awd_response(chunk)
             created, updated = self.create_or_update_keywords(response)
             kw_list = list(set([str(k.text) for k in created] + [kw['keyword_text'] for kw in updated]))
@@ -118,7 +118,7 @@ class Command(BaseCommand):
 
     def get_search_data(self):
         file_path = os.path.join(BASE_DIR, self.file_name)
-        fh = open(file_path, 'r')
+        fh = open(file_path, 'r', encoding='utf-8')
         for line in fh:
             yield line.strip()
 
