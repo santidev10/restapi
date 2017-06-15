@@ -92,7 +92,7 @@ class SegmentSerializer(ModelSerializer):
     def save(self, **kwargs):
         segment = super(SegmentSerializer, self).save(**kwargs)
         if self.ids_to_delete or self.ids_to_add:
-            segment.add_ralated_ids(self.ids_to_add)
-            segment.delete_ralated_ids(self.ids_to_delete)
+            segment.add_related_ids(self.ids_to_add)
+            segment.delete_related_ids(self.ids_to_delete)
             segment.update_statistics(segment)
         return segment

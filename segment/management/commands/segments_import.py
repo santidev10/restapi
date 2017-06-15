@@ -16,10 +16,14 @@ class Command(BaseCommand):
                             type=str,
                             default='youtube')
 
+        parser.add_argument('--category-limit',
+                            type=int,
+                            default=None)
 
     def handle(self, *args, **options):
         segment_type = options.get('type')
         self.category = options.get('category')
+        self.category_limit = options.get('category_limit')
         self.model = get_segment_model_by_type(segment_type)
 
         if self.category not in dict(self.model.CATEGORIES):
@@ -38,7 +42,9 @@ class Command(BaseCommand):
                 related_ids = []
 
             title_prev = title
-            related_ids.append(related_id)
+
+            if not self.category_limit or len(related_ids) < self.category_limit:
+                related_ids.append(related_id)
 
         if related_ids and title_prev:
             self.save_data(title, related_ids)
@@ -46,9 +52,6 @@ class Command(BaseCommand):
     def save_data(self, title, ids):
         print('Saving {} ids for segment: {}'.format(len(ids), title))
         segment_data = dict(title=title, category=self.category)
-        try:
-            segment = self.model.objects.get(**segment_data)
-        except self.model.DoesNotExist:
-            segment = self.model(**segment_data)
-            segment.save()
-        segment.add_ralated_ids(ids)
+        segment, created = self.model.objects.get_or_create(title=title, category=self.category)
+        segment.add_related_ids(ids)
+        segment.update_statistics(segment)

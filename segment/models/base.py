@@ -52,7 +52,7 @@ class BaseSegment(Timestampable):
     def get_related_ids(self):
         return self.related.values_list("related_id", flat=True)
 
-    def add_ralated_ids(self, ids):
+    def add_related_ids(self, ids):
         assert isinstance(ids, list), "ids must be a list"
         related_model = self.related.model
         objs = [related_model(segment_id=self.pk, related_id=related_id) for related_id in ids]
@@ -65,11 +65,15 @@ class BaseSegment(Timestampable):
                 except IntegrityError:
                     continue
 
+    def replace_related_ids(self, ids):
+        self.related.model.objects.filter(segment=self).delete()
+        self.add_related_ids(ids)
+
     @property
     def related_ids_list(self):
         return self.related.all().values_list('related_id', flat=True)
 
-    def delete_ralated_ids(self, ids):
+    def delete_related_ids(self, ids):
         assert isinstance(ids, list), "ids must be a list"
         related_manager = self.related.model.objects
         related_manager.filter(segment_id=self.pk, related_id__in=ids)\

@@ -1,6 +1,7 @@
 """
 SegmentVideo models module
 """
+import logging
 from django.db.models import CharField
 from django.db.models import ForeignKey
 
@@ -9,6 +10,37 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
+
+
+logger = logging.getLogger(__name__)
+
+
+class SegmentVideoManager(SegmentManager):
+    def update_youtube_segments(self):
+        query_params = {'filter': 'categories'}
+        filters_categories = Connector().get_video_filters_list(query_params=query_params)
+        categories = [i['category'] for i in filters_categories]
+        for category in categories:
+            logger.info('Updating youtube video-segment by category: {}'.format(category))
+            query_params = {
+                'sort_by': 'views',
+                'fields': 'id',
+                'category': category,
+                'limit': '2000',
+                'preferred_channel': '0',
+                'is_monetizable': '1',
+                'min_views': '100000',
+                'min_sentiment': '80',
+                'min_engage_rate': '1',
+                'has_lang_code': '1',
+            }
+            result = Connector().get_video_list(query_params=query_params)
+            items = result.get('items', [])
+            ids = [i['id'] for i in items]
+            segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
+            segment.replace_related_ids(ids)
+            segment.update_statistics(segment)
+            logger.info('   ... videos: {}'.format(len(ids)))
 
 
 class SegmentVideo(BaseSegment):
@@ -42,7 +74,7 @@ class SegmentVideo(BaseSegment):
 
     segment_type = 'video'
 
-    objects = SegmentManager()
+    objects = SegmentVideoManager()
 
     def calculate_statistics(self, data):
         videos_count = len(data)
@@ -62,7 +94,7 @@ class SegmentVideo(BaseSegment):
             if views_history:
                 thirty_days_views_count += (views_history[:30][0] - views_history[:30][-1])
 
-        top_three_videos = sorted(response_data, key=lambda k: k['views'], reverse=True)[:3]
+        top_three_videos = sorted(data, key=lambda k: k['views'], reverse=True)[:3]
         top_three_videos_data = [
             {
                 "id": obj.get("id"),
