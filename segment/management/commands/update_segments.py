@@ -1,10 +1,10 @@
 """
-Command to update segments statistics data
+Command to update segments data
 """
 import logging
 from django.core.management import BaseCommand
 
-from segment.models import total_update_statistics
+from segment.models import total_update_segments
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -21,5 +21,5 @@ class Command(BaseCommand):
         Segments update depends on their updated_at time
         """
         logger.info("Start update segments procedure")
-        total_update_statistics()
+        total_update_segments()
         logger.info("Segments update procedure finished")
