@@ -907,9 +907,6 @@ class UserListsImportMixin:
                               .values_list('related__related_id', flat=True)\
                               .order_by('related__related_id')\
                               .distinct()
-        else:
-            raise NotImplementedError("Unknown type: {}".format(list_type))
-
         return item_ids
 
 
