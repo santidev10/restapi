@@ -46,6 +46,14 @@ class VideoListApiView(APIView):
                 return Response(status=HTTP_404_NOT_FOUND)
             # obtain channels ids
             videos_ids = segment.get_related_ids()
+            if not videos_ids:
+                empty_response = {
+                    "max_page": 1,
+                    "items_count": 0,
+                    "items": [],
+                    "current_page": 1,
+                }
+                return Response(empty_reponse)
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
         # make call
