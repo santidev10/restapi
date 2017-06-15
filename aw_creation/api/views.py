@@ -892,30 +892,21 @@ class UserListsImportMixin:
 
     @staticmethod
     def get_lists_items_ids(ids, list_type):
-        from segment.models import Segment
+        from segment.models import get_segment_model_by_type
         from keyword_tool.models import KeywordsList
 
-        if list_type == "channel":
-            item_ids = Segment.objects.filter(
-                id__in=ids, channels__channel_id__isnull=False
-            ).values_list(
-                "channels__channel_id", flat=True
-            ).order_by("channels__channel_id").distinct()
-
-        elif list_type == "video":
-            item_ids = Segment.objects.filter(
-                id__in=ids, videos__video_id__isnull=False
-            ).values_list(
-                "videos__video_id", flat=True
-            ).order_by("videos__video_id").distinct()
-
-        elif list_type == "keyword":
+        if list_type == "keyword":
             item_ids = KeywordsList.objects.filter(
                 id__in=ids, keywords__text__isnull=False
             ).values_list(
                 "keywords__text", flat=True
             ).order_by("keywords__text").distinct()
-
+        else:
+            manager = get_segment_model_by_type(list_type).objects
+            item_ids = manager.filter(id__in=ids)\
+                              .values_list('related__related_id', flat=True)\
+                              .order_by('related__related_id')\
+                              .distinct()
         else:
             raise NotImplementedError("Unknown type: {}".format(list_type))
 

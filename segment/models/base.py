@@ -53,17 +53,24 @@ class BaseSegment(Timestampable):
         return self.related.values_list("related_id", flat=True)
 
     def add_related_ids(self, ids):
-        assert isinstance(ids, list), "ids must be a list"
+        assert isinstance(ids, list) or isinstance(ids, set), "ids must be a list or set"
         related_model = self.related.model
         objs = [related_model(segment_id=self.pk, related_id=related_id) for related_id in ids]
+        error_msg = "duplicate key value violates unique constraint"
         try:
             related_model.objects.bulk_create(objs)
-        except IntegrityError:
-            for obj in objs:
-                try:
-                    obj.save()
-                except IntegrityError:
-                    continue
+        except IntegrityError as e:
+            if e.args and error_msg in e.args[0]:
+                for obj in objs:
+                    try:
+                        obj.save()
+                    except IntegrityError as e:
+                        if e.args and error_msg in e.args[0]:
+                            continue
+                        else:
+                            raise
+            else:
+                raise
 
     def replace_related_ids(self, ids):
         self.related.model.objects.filter(segment=self).delete()
@@ -74,7 +81,7 @@ class BaseSegment(Timestampable):
         return self.related.all().values_list('related_id', flat=True)
 
     def delete_related_ids(self, ids):
-        assert isinstance(ids, list), "ids must be a list"
+        assert isinstance(ids, list) or isinstance(ids, set), "ids must be a list or set"
         related_manager = self.related.model.objects
         related_manager.filter(segment_id=self.pk, related_id__in=ids)\
                        .delete()

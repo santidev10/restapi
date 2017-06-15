@@ -49,8 +49,7 @@ class ChannelListApiView(APIView):
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
             # obtain channels ids
-            channels_ids = segment.channels.values_list(
-                "channel_id", flat=True)
+            channels_ids = segment.get_related_ids()
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
         # make call
