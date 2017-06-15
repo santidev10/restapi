@@ -40,8 +40,8 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
         )
         test_customers = [
             dict(
-                customerId=7046445553,
                 currencyCode="UAH",
+                customerId=7046445553,
                 dateTimeZone="Europe/Kiev",
                 descriptiveName="MCC Account",
                 companyName=None,
@@ -77,7 +77,7 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
                             json.dumps(dict(code="1111")),
                             content_type='application/json',
                         )
-                        initial_upload_task.assert_called_once()
+                        self.assertEqual(initial_upload_task.delay.call_count, 1)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()),

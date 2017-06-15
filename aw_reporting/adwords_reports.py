@@ -287,7 +287,7 @@ def ad_performance_report(client, dates=None):
 def campaign_performance_report(client, dates=None, fields=None):
     if fields is None:
         fields = [
-            'CampaignId', 'CampaignName', 'CampaignStatus', 'StartDate',
+            'CampaignId', 'CampaignName', 'ServingStatus', 'StartDate',
             'EndDate', 'Amount',  'AdvertisingChannelType'
         ] + completed_fields + main_statistics
     selector = {
@@ -306,13 +306,14 @@ def campaign_performance_report(client, dates=None, fields=None):
     result = _get_report(
         client, 'CAMPAIGN_PERFORMANCE_REPORT', selector,
         date_range_type=date_range_type,
+        include_zero_impressions=True,
     )
     return _output_to_rows(result, fields)
 
 
 def ad_group_performance_report(client, dates=None):
     fields = [
-        'CampaignId', 'CampaignName', 'CampaignStatus',
+        'CampaignId',
         'AdGroupId', 'AdGroupName', 'AdGroupStatus',
         'Date', 'Device', 'AdNetworkType1',
         "AveragePosition",

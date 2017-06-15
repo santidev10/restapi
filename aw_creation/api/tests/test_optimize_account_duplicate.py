@@ -79,6 +79,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertNotEqual(ac.id, data['id'])
         self.perform_details_check(data)
+        self.assertEqual(data['name'], "Pep (copy)")
 
     def test_success_post_demo(self):
         url = reverse("aw_creation_urls:optimization_account_duplicate",
@@ -96,6 +97,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertNotEqual(DEMO_ACCOUNT_ID, data['id'])
         self.perform_details_check(data)
+        self.assertEqual(data['name'], "Demo (copy)")
 
     def perform_details_check(self, data):
         self.assertEqual(
@@ -105,17 +107,21 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 'id', 'name', 'status', 'read_only',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
+                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
 
-                'creative', 'weekly_chart', 'campaigns_count',
-                'structure', 'goal_charts',
-
-                'cost', 'impressions', 'views',
+                'creative_count',
+                'goal_units',
+                'channels_count',
+                'videos_count',
+                'keywords_count',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
                 "video_networks", "bidding_type",
                 # details below header (readonly)
-                "budget", 'start', 'end',
+                'start', 'end',
+
+                'creative', 'structure', 'goal_charts',
             }
         )
         self.assertIsNotNone(data['start'])

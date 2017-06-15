@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.tasks import detect_success_aw_read_permissions
 from aw_reporting.utils import command_single_process_lock
@@ -17,7 +18,7 @@ class Command(BaseCommand):
         detect_success_aw_read_permissions()
 
         from aw_reporting.models import Account
-        timezones = Account.objects.values_list(
+        timezones = Account.objects.filter(timezone__isnull=False).values_list(
             "timezone", flat=True).order_by("timezone").distinct()
 
         now = datetime.now(tz=utc)
@@ -31,8 +32,9 @@ class Command(BaseCommand):
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
             timezone__in=timezones,
-            updated_date__lt=today,
             can_manage_clients=True,
+        ).filter(
+            Q(updated_date__lt=today) | Q(updated_date__isnull=True)
         )
         updater = AWDataLoader(today)
         for mcc in mcc_to_update:
@@ -41,8 +43,9 @@ class Command(BaseCommand):
         # 2) update all the advertising accounts
         accounts_to_update = Account.objects.filter(
             timezone__in=timezones,
-            updated_date__lt=today,
             can_manage_clients=False,
+        ).filter(
+           Q(updated_date__lt=today) | Q(updated_date__isnull=True)
         )
         for account in accounts_to_update:
             updater.full_update(account)

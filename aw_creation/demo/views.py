@@ -1,4 +1,4 @@
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID, VIDEO_VIEWS, DEMO_CAMPAIGNS_COUNT
 from aw_reporting.demo.charts import DemoChart
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
@@ -19,8 +19,57 @@ class OptimizationAccountListApiView:
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
                 demo = DemoAccount()
-                response.data['items'].insert(0, demo.creation_details)
-                response.data['items_count'] += 1
+                show = True
+                filters = view.get_filters()
+
+                search = filters.get('search')
+                if search and search not in demo.name:
+                    show = False
+
+                status = filters.get('status')
+                if status and status != "Running":
+                    show = False
+
+                min_goal_units = filters.get('min_goal_units')
+                if min_goal_units and int(min_goal_units) > VIDEO_VIEWS:
+                    show = False
+
+                max_goal_units = filters.get('max_goal_units')
+                if max_goal_units and int(max_goal_units) < VIDEO_VIEWS:
+                    show = False
+
+                min_campaigns_count = filters.get('min_campaigns_count')
+                if min_campaigns_count and int(min_campaigns_count) > DEMO_CAMPAIGNS_COUNT:
+                    show = False
+
+                max_campaigns_count = filters.get('max_campaigns_count')
+                if max_campaigns_count and int(max_campaigns_count) < DEMO_CAMPAIGNS_COUNT:
+                    show = False
+
+                min_start = filters.get('min_start')
+                if min_start and min_start > str(demo.start_date):
+                    show = False
+
+                max_start = filters.get('max_start')
+                if max_start and max_start < str(demo.start_date):
+                    show = False
+
+                min_end = filters.get('min_end')
+                if min_end and min_end > str(demo.end_date):
+                    show = False
+
+                max_end = filters.get('max_end')
+                if max_end and max_end < str(demo.end_date):
+                    show = False
+
+                is_changed = filters.get('is_changed')
+                if is_changed:
+                    if int(is_changed):
+                        show = False
+
+                if show:
+                    response.data['items'].insert(0, demo.creation_details)
+                    response.data['items_count'] += 1
             return response
         return method
 

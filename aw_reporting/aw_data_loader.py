@@ -118,6 +118,7 @@ class AWDataLoader:
     def advertising_account_update(self, client, account):
         today = self.today
         for task in self.advertising_update_tasks:
+            logger.debug(task, account)
             task(client, account, today)
 
         account.updated_date = today

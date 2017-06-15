@@ -110,7 +110,7 @@ class Account(models.Model):
     is_test_account = models.BooleanField(default=False)
     managers = models.ManyToManyField("self", related_name='customers')
     visible = models.BooleanField(default=True)
-    updated_date = models.DateField(auto_now_add=True)
+    updated_date = models.DateField(null=True)
 
     def __str__(self):
         return "Account: {}".format(self.name)
@@ -186,7 +186,7 @@ class Campaign(BaseStatisticModel):
     end_date = models.DateField(null=True)
     type = models.CharField(max_length=20, null=True)
     budget = models.FloatField(null=True)
-    status = models.CharField(max_length=7, null=True)
+    status = models.CharField(max_length=10, null=True)
     updated_date = models.DateField(auto_now_add=True)
 
     def __str__(self):

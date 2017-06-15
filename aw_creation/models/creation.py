@@ -170,6 +170,10 @@ class AccountCreation(UniqueItem):
             )
             return " ".join(lines)
 
+    @property
+    def is_imported(self):
+        return self.read_only and self.account is not None
+
 
 @receiver(post_save,
           sender=AccountCreation, dispatch_uid="save_account_receiver")

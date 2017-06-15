@@ -744,12 +744,8 @@ class DemoAccount(BaseDemo):
             name=self.name,
             read_only=False,
             status="Running",
-            impressions=self.impressions,
             start=self.start_date,
             end=self.end_date,
-            views=self.video_views,
-            cost=self.cost,
-            campaigns_count=len(self.children),
             creative=creative,
             structure=[
                 dict(
@@ -762,6 +758,19 @@ class DemoAccount(BaseDemo):
                 )
                 for c in self.children
             ],
+            campaigns_count=len(self.children),
+            ad_groups_count=DEMO_CAMPAIGNS_COUNT * len(DEMO_AD_GROUPS),
+            keywords_count=len(self.keyword),
+            creative_count=len(self.creative),
+            videos_count=len(self.video),
+            channels_count=len(self.video),
+            goal_units=VIDEO_VIEWS,
+            is_optimization_active=True,
+            is_changed=False,
+
+            is_ended=False,
+            is_paused=False,
+            is_approved=True,
             video_ad_format=dict(
                 id=AccountCreation.VIDEO_AD_FORMATS[0][0],
                 name=AccountCreation.VIDEO_AD_FORMATS[0][1],
@@ -786,8 +795,6 @@ class DemoAccount(BaseDemo):
                 id=AccountCreation.BIDDING_TYPES[0][0],
                 name=AccountCreation.BIDDING_TYPES[0][1],
             ),
-            is_optimization_active=True,
-            is_changed=False,
         )
         #
         filters = dict(
@@ -816,15 +823,8 @@ class DemoAccount(BaseDemo):
 
     @property
     def creation_details_full(self):
-        data = self.creation_details
+        data = dict(**self.creation_details)
         data.update(
-            is_ended=False,
-            is_paused=False,
-            is_approved=True,
-            budget=sum(
-                c.budget
-                for c in self.children
-            ),
             campaign_creations=[
                 c.creation_details
                 for c in self.children

@@ -473,7 +473,6 @@ class ConnectAWAccountApiView(APIView):
                     status=HTTP_400_BAD_REQUEST,
                     data=dict(error=self.no_mcc_error)
                 )
-
             with transaction.atomic():
                 for ac_data in mcc_accounts:
                     data = dict(

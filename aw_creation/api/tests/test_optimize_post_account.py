@@ -29,21 +29,23 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 # common details
-                'id', 'name', 'status', 'read_only',
+                'id', 'name', 'start', 'end', 'status', 'read_only',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'creative', 'structure', 'weekly_chart',
-                'campaigns_count', 'goal_charts',
+                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'creative_count',
+                'keywords_count',
+                'goal_units',
+                'videos_count',
+                'channels_count',
 
-                'impressions',
-                'views',
-                'cost',
-
-                # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
                 "video_networks", "bidding_type",
-                # details below header (readonly)
-                "budget", 'start', 'end',
+                'structure', 'creative', 'goal_charts',
+
+                'goal_charts',
+                'creative',
+                'structure',
             }
         )
 

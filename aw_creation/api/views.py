@@ -9,7 +9,7 @@ from io import StringIO
 from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Avg, Max, When, Case, Value, \
+from django.db.models import Q, Avg, Max, Min, Sum, Count, When, Case, Value, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -348,53 +348,94 @@ class OptimizationAccountListApiView(ListAPIView):
         if sort_by != "name":
             sort_by = "-created_at"
 
-        today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).annotate(
-            campaigns_status=Max(
-                Case(
-                    When(
-                        campaign_creations__end__lt=today,
-                        then=Value(2),  # ended
-                    ),
-                    When(
-                        campaign_creations__end__gte=today,
-                        then=Value(1),  # live
-                    ),
-                    default=Value(0),
-                    output_field=AggrIntegerField()
-                )
-            )
-        ).annotate(
-            ended_status=Case(
-                When(
-                    campaigns_status__lt=2,
-                    is_ended=False,
-                    then=Value(0),  # shown by default
-                ),
-                default=Value(1),
-                output_field=AggrIntegerField()
-            )
-        ).order_by('ended_status', sort_by)
+        ).exclude(
+            Q(read_only=True) & Q(account__isnull=True)  # imported accounts that have been deleted
+        ).order_by('is_ended', sort_by)
         return queryset
+
+    filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
+               'is_changed', 'min_start', 'max_start', 'min_end', 'max_end')
+
+    def get_filters(self):
+        filters = {}
+        query_params = self.request.query_params
+        for f in self.filters:
+            v = query_params.get(f)
+            if v:
+                filters[f] = v
+        return filters
 
     def filter_queryset(self, queryset):
         if self.request.query_params.get('show_closed') != "1":
-            queryset = queryset.filter(
-                ended_status__lt=1,
-            )
-        search = self.request.query_params.get('search', '').strip()
+            queryset = queryset.filter(is_ended=False)
+
+        filters = self.get_filters()
+        search = filters.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
+
+        status = filters.get('status')
+        if status:
+            if status == "Ended":
+                queryset = queryset.filter(is_ended=True)
+            elif status == "Paused":
+                queryset = queryset.filter(is_paused=True, is_ended=False)
+            else:
+                queryset = queryset.filter(is_paused=False, is_ended=False)
+
+        min_goal_units = filters.get('min_goal_units')
+        max_goal_units = filters.get('max_goal_units')
+        if min_goal_units or max_goal_units:
+            queryset = queryset.annotate(goal_units=Sum('campaign_creations__goal_units'))
+            if min_goal_units:
+                queryset = queryset.filter(goal_units__gte=min_goal_units)
+            if max_goal_units:
+                queryset = queryset.filter(goal_units__lte=max_goal_units)
+
+        min_campaigns_count = filters.get('min_campaigns_count')
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if min_campaigns_count or max_campaigns_count:
+            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
+            if min_campaigns_count:
+                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+            if max_campaigns_count:
+                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+
+        min_start = filters.get('min_start')
+        max_start = filters.get('max_start')
+        if min_start or max_start:
+            queryset = queryset.annotate(start=Min("campaign_creations__start"))
+            if min_start:
+                queryset = queryset.filter(start__gte=min_start)
+            if max_start:
+                queryset = queryset.filter(start__lte=max_start)
+
+        min_end = filters.get('min_end')
+        max_end = filters.get('max_end')
+        if min_end or max_end:
+            queryset = queryset.annotate(end=Max("campaign_creations__end"))
+            if min_end:
+                queryset = queryset.filter(end__gte=min_end)
+            if max_end:
+                queryset = queryset.filter(end__lte=max_end)
+
+        is_changed = filters.get('is_changed')
+        if is_changed:
+            queryset = queryset.filter(is_changed=int(is_changed))
+
         return queryset
 
     def get(self, request, *args, **kwargs):
         # import accounts
         from aw_reporting.models import Account
         accounts = Account.user_objects(request.user).filter(account_creation__isnull=True)
-        create = [AccountCreation(account=a, owner=request.user, read_only=True) for a in accounts]
+        create = [
+            AccountCreation(account=a, owner=request.user, read_only=True)
+            for a in accounts
+        ]
         if create:
             AccountCreation.objects.bulk_create(create)
 
@@ -466,14 +507,14 @@ class OptimizationAccountDuplicateApiView(APIView):
 
     duplicate_sign = " (copy)"
     account_fields = (
-        "name", "is_paused",  "is_ended", "type", "goal_type",
+        "is_paused",  "is_ended", "type", "goal_type",
         "delivery_method", "video_ad_format",
         "bidding_type", "video_networks_raw",
 
     )
     campaign_fields = (
-        "start", "end", "goal_units", "max_rate", "budget", "is_paused",
-        "is_approved", "devices_raw",
+        "name", "start", "end", "goal_units", "max_rate", "budget",
+        "is_paused",  "is_approved", "devices_raw",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units",
@@ -484,7 +525,7 @@ class OptimizationAccountDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "max_rate", "video_url", "display_url", "final_url",
+        "name", "max_rate", "video_url", "display_url", "final_url",
         "ct_overlay_text",  "is_approved", "genders_raw", "parents_raw",
         "age_ranges_raw",
     )
