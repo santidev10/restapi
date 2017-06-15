@@ -4,7 +4,7 @@ Command to update segments statistics data
 import logging
 from django.core.management import BaseCommand
 
-from segment.models import Segment
+from segment.models import total_update_statistics
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -21,5 +21,5 @@ class Command(BaseCommand):
         Segments update depends on their updated_at time
         """
         logger.info("Start update segments procedure")
-        Segment.objects.update_statistics()
+        total_update_statistics()
         logger.info("Segments update procedure finished")
