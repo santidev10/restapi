@@ -2,8 +2,8 @@
 SegmentVideo models module
 """
 import logging
-from django.db.models import CharField
-from django.db.models import ForeignKey
+from django.contrib.postgres.fields import JSONField
+from django.db import models
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
@@ -26,7 +26,7 @@ class SegmentVideoManager(SegmentManager):
                 'sort_by': 'views',
                 'fields': 'id',
                 'category': category,
-                'limit': '2000',
+                'limit': '10000',
                 'preferred_channel': '0',
                 'is_monetizable': '1',
                 'min_views': '100000',
@@ -56,65 +56,50 @@ class SegmentVideo(BaseSegment):
         (IAB, IAB),
     )
 
-    category = CharField(max_length=255, choices=CATEGORIES)
 
-    singledb_method = Connector().get_video_list
-    singledb_fields = [
-        "id",
-        "title",
-        "description",
-        "thumbnail_image_url",
-        "views",
-        "likes",
-        "dislikes",
-        "comments",
-        "views_history",
-        "history_date"
-    ]
 
+    category = models.CharField(max_length=255, choices=CATEGORIES)
+
+    videos = models.BigIntegerField(default=0, db_index=True)
+    views_per_video = models.BigIntegerField(default=0, db_index=True)
+    views = models.BigIntegerField(default=0, db_index=True)
+    likes = models.BigIntegerField(default=0, db_index=True)
+    dislikes = models.BigIntegerField(default=0, db_index=True)
+    comments = models.BigIntegerField(default=0, db_index=True)
+    thirty_days_views = models.BigIntegerField(default=0, db_index=True)
+    engage_rate = models.FloatField(default=0.0, db_index=True)
+    sentiment = models.FloatField(default=0.0, db_index=True)
+    top_three_videos = JSONField(default=dict())
+  
+    singledb_method = Connector().get_videos_statistics
     segment_type = 'video'
 
     objects = SegmentVideoManager()
 
-    def calculate_statistics(self, data):
-        videos_count = len(data)
+    def populate_statistics_fields(self, data):
+        fields = ['views', 'likes', 'dislikes', 'comments', 'thirty_days_views']
+        for field in fields:
+            setattr(self, field, data[field])
 
-        views_count = 0
-        likes_count = 0
-        dislikes_count = 0
-        comments_count = 0
-        thirty_days_views_count = 0
+        self.views_per_video = self.views / self.videos if self.videos else 0
+        self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
+        self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.views, 1)) * 100
+        self.videos = data['count']
+        self.top_three_videos = data['top_list']
 
-        for obj in data:
-            views_count += obj.get("views")
-            likes_count += obj.get("likes")
-            dislikes_count += obj.get("dislikes")
-            comments_count += obj.get("comments")
-            views_history = obj.get("views_history")
-            if views_history:
-                thirty_days_views_count += (views_history[:30][0] - views_history[:30][-1])
-
-        top_three_videos = sorted(data, key=lambda k: k['views'], reverse=True)[:3]
-        top_three_videos_data = [
-            {
-                "id": obj.get("id"),
-                "image_url": obj.get("thumbnail_image_url"),
-                "title": obj.get("title")
-            } for obj in top_three_videos
-        ]
-
-        views_per_video = views_count / videos_count if videos_count else 0
+    @property
+    def statistics(self):
         statistics = {
-            "top_three_videos": top_three_videos_data,
-            "videos_count": videos_count,
-            "views_count": views_count,
-            "views_per_video": views_per_video,
-            "thirty_days_views_count": thirty_days_views_count,
-            "sentiment": (likes_count / max(sum((likes_count, dislikes_count)), 1)) * 100,
-            "engage_rate": (sum((likes_count, dislikes_count, comments_count)) / max(views_count, 1)) * 100,
+            "top_three_videos": self.top_three_videos_data,
+            "videos_count": self.videos,
+            "views_count": self.views,
+            "views_per_video": self.views_per_video,
+            "thirty_days_views_count": self.thirty_days_views_count,
+            "sentiment": self.sentiment,
+            "engage_rate": self.engage_rate,
         }
         return statistics
  
 
 class SegmentRelatedVideo(BaseSegmentRelated):
-    segment = ForeignKey(SegmentVideo, related_name='related')
+    segment = models.ForeignKey(SegmentVideo, related_name='related')
