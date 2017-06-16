@@ -167,6 +167,7 @@ class KeywordsList(BaseModel):
     name = models.TextField()
     user_email = models.EmailField(db_index=True)
     keywords = models.ManyToManyField(KeyWord, related_name='lists')
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=255, null=True, blank=True)
 
