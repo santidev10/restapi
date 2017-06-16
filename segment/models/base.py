@@ -107,7 +107,9 @@ class BaseSegment(Timestampable):
         self.populate_statistics_fields(data)
 
         # calculate mini-dash
-        self.mini_dash_data = SegmentMiniDashGenerator(data, self).data if data else {}
+# Next code has been disabled because if bug in data --->
+#        self.mini_dash_data = SegmentMiniDashGenerator(data, self).data if data else {}
+# <---
 
         self.save()
         return "Done"
