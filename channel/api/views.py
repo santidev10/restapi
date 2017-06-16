@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from segment.models import Segment
+from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
@@ -25,12 +25,12 @@ class ChannelListApiView(APIView):
         """
         try:
             if self.request.user.is_staff:
-                segment = Segment.objects.get(id=segment_id)
+                segment = SegmentChannel.objects.get(id=segment_id)
             else:
-                segment = Segment.objects.filter(
+                segment = SegmentChannel.objects.filter(
                     Q(owner=self.request.user) |
                     ~Q(category="private")).get(id=segment_id)
-        except Segment.DoesNotExist:
+        except SegmentChannel.DoesNotExist:
             return None
         return segment
 
@@ -49,8 +49,15 @@ class ChannelListApiView(APIView):
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
             # obtain channels ids
-            channels_ids = segment.channels.values_list(
-                "channel_id", flat=True)
+            channels_ids = segment.get_related_ids()
+            if not channels_ids:
+                empty_response = {
+                    "max_page": 1,
+                    "items_count": 0,
+                    "items": [],
+                    "current_page": 1,
+                }
+                return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
         # make call

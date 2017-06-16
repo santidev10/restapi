@@ -2,6 +2,7 @@ from rest_framework.serializers import ModelSerializer, ValidationError
 from rest_framework.serializers import SerializerMethodField
 
 from keyword_tool.models import KeyWord, Interest, KeywordsList, AVAILABLE_KEYWORD_LIST_CATEGORIES
+from userprofile.models import UserProfile
 
 
 class InterestsSerializer(ModelSerializer):
@@ -29,6 +30,7 @@ class KeywordSerializer(ModelSerializer):
 
 
 class SavedListNameSerializer(ModelSerializer):
+    owner = SerializerMethodField()
     is_owner = SerializerMethodField()
     is_editable = SerializerMethodField()
 
@@ -42,6 +44,10 @@ class SavedListNameSerializer(ModelSerializer):
             difference = pre_defined_fields - requested_fields
             for field_name in difference:
                 self.fields.pop(field_name)
+
+    def get_owner(self, obj):
+        user = UserProfile.objects.get(email=obj.user_email)
+        return "{} {}".format(user.first_name, user.last_name)
 
     def get_is_owner(self, obj):
         return obj.user_email == self.request.user.email
@@ -72,7 +78,8 @@ class SavedListNameSerializer(ModelSerializer):
             "id", "name", "category", "is_owner", "top_keywords_data", "num_keywords",
             "average_volume", "average_cpc", "competition",
             "average_cpv", "average_view_rate", "average_ctrv",
-            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable"
+            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable",
+            "owner", "created_at"
         )
 
 

@@ -1,147 +1,41 @@
-"""
-Segment api serializers module
-"""
-from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField
+from rest_framework.serializers import ListField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import ValidationError
 
-from segment.models import Segment, AVAILABLE_SEGMENT_TYPES, \
-    AVAILABLE_CHANNEL_SEGMENT_CATEGORIES, ChannelRelation, VideoRelation,\
-    AVAILABLE_VIDEO_SEGMENT_CATEGORIES
-
-
-class SegmentCreateSerializer(ModelSerializer):
-    """
-    Serializer for create segment
-    """
-    title = CharField(max_length=255, required=True)
-    channels_ids = CharField(required=False, allow_blank=True, allow_null=True)
-    videos_ids = CharField(required=False, allow_blank=True, allow_null=True)
-
-    class Meta:
-        """
-        Meta params
-        """
-        model = Segment
-        fields = (
-            "title",
-            "segment_type",
-            "category",
-            "channels_ids",
-            "videos_ids"
-        )
-
-    def validate(self, data):
-        """
-        Check segment type and category
-        """
-        # set up channels_ids and videos_ids
-        self.channels_ids = data.pop("channels_ids", None)
-        self.videos_ids = data.pop("videos_ids", None)
-        # segment type
-        segment_type = data.get("segment_type")
-        if segment_type not in AVAILABLE_SEGMENT_TYPES:
-            raise ValidationError(
-                "Not valid segment type. Options are: {}".format(
-                    ", ".join(AVAILABLE_SEGMENT_TYPES)))
-        # segment category
-        segment_category = data.get("category")
-        user = self.context.get("request").user
-        if not user.is_staff and segment_category != "private":
-            raise ValidationError(
-                "Not valid category. Options are: private")
-        if segment_type == "video" and segment_category not in\
-           AVAILABLE_VIDEO_SEGMENT_CATEGORIES:
-            raise ValidationError(
-                "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_SEGMENT_CATEGORIES)))
-        if segment_type == "channel" and segment_category not in\
-           AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
-            raise ValidationError(
-                "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_CHANNEL_SEGMENT_CATEGORIES)))
-        return data
-
-    def save(self, **kwargs):
-        """
-        Set owner
-        """
-        segment = super(SegmentCreateSerializer, self).save(**kwargs)
-        # set owner
-        user = self.context.get("request").user
-        segment.owner = user
-        segment.save()
-        # set channels
-        if self.channels_ids:
-            channels_ids = self.channels_ids.split(",")
-            instances = []
-            for channel_id in channels_ids:
-                instance, is_created = ChannelRelation.objects.get_or_create(
-                    channel_id=channel_id)
-                instances.append(instance)
-            segment.channels.add(*instances)
-        # set videos
-        if self.videos_ids:
-            videos_ids = self.videos_ids.split(",")
-            instances = []
-            for video_id in videos_ids:
-                instance, is_created = VideoRelation.objects.get_or_create(
-                    video_id=video_id)
-                instances.append(instance)
-            segment.videos.add(*instances)
-        return segment
-
-
-class SegmentUpdateSerializer(ModelSerializer):
-    """
-    Serializer for update segment
-    """
-    class Meta:
-        """
-        Meta params
-        """
-        model = Segment
-        fields = (
-            "title",
-            "category"
-        )
-
-    def validate(self, data):
-        """
-        Check segment category
-        """
-        segment_category = data.get("category")
-        segment_type = self.instance.segment_type
-        user = self.context.get("request").user
-        if segment_category is None:
-            return data
-        if segment_category != "private" and not user.is_staff:
-            raise ValidationError(
-                "Not valid category. Options are: private")
-        if segment_type == "video" and segment_category not in\
-           AVAILABLE_VIDEO_SEGMENT_CATEGORIES:
-            raise ValidationError(
-                "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_VIDEO_SEGMENT_CATEGORIES)))
-        if segment_type == "channel" and segment_category not in\
-           AVAILABLE_CHANNEL_SEGMENT_CATEGORIES:
-            raise ValidationError(
-                "Not valid category. Options are: {}".format(
-                    ", ".join(AVAILABLE_CHANNEL_SEGMENT_CATEGORIES)))
-        return data
+from segment.models import SegmentChannel
+from segment.models import get_segment_model_by_type
 
 
 class SegmentSerializer(ModelSerializer):
-    """
-    Segment retrieve serializer
-    """
-    is_editable = SerializerMethodField()
     owner = SerializerMethodField()
+    is_editable = SerializerMethodField()
+    ids_to_add = ListField(required=False)
+    ids_to_delete = ListField(required=False)
+
+    class Meta:
+        model = None
+        fields = ('id',
+                  'title',
+                  'segment_type',
+                  'category',
+                  'statistics',
+                  'mini_dash_data',
+                  'owner',
+                  'created_at',
+                  'is_editable',
+                  'ids_to_add',
+                  'ids_to_delete')
 
     def __init__(self, *args, **kwargs):
         """
         Extend initializing procedure
         """
-        fields = kwargs.pop('fields', None)
+        context = kwargs.get('context')
+        request = context.get("request")
+        fields = request.query_params.get('fields')
+        if fields:
+            fields = fields.split(',')
         super(SegmentSerializer, self).__init__(*args, **kwargs)
         if fields is not None:
             requested_fields = set(fields)
@@ -149,23 +43,6 @@ class SegmentSerializer(ModelSerializer):
             difference = pre_defined_fields - requested_fields
             for field_name in difference:
                 self.fields.pop(field_name)
-
-    class Meta:
-        """
-        Meta params
-        """
-        model = Segment
-        fields = (
-            "id",
-            "title",
-            "segment_type",
-            "category",
-            "statistics",
-            "mini_dash_data",
-            "is_editable",
-            "owner",
-            "created_at"
-        )
 
     def get_is_editable(self, obj):
         """
@@ -181,3 +58,37 @@ class SegmentSerializer(ModelSerializer):
         if obj.owner:
             return obj.owner.get_full_name()
         return
+
+    def validate(self, data):
+        """
+        Check segment type and category
+        """
+        # set up related_ids
+        self.ids_to_add = data.pop("ids_to_add", [])
+        self.ids_to_delete = data.pop("ids_to_delete", [])
+        segment_category = data.get("category")
+        user = self.context.get("request").user
+        available_categories = dict(self.Meta.model.CATEGORIES).keys()
+
+        # create new segment
+        if not self.instance:
+            data['owner'] = user
+
+            if not segment_category:
+                raise ValidationError("category: value is required")
+
+        if not user.is_staff and segment_category != "private":
+            raise ValidationError("Not valid category. Options are: private")
+
+        if segment_category not in available_categories:
+            raise ValidationError("Not valid category. Options are: {}".format(", ".join(available_categories)))
+
+        return data
+
+    def save(self, **kwargs):
+        segment = super(SegmentSerializer, self).save(**kwargs)
+        if self.ids_to_delete or self.ids_to_add:
+            segment.add_related_ids(self.ids_to_add)
+            segment.delete_related_ids(self.ids_to_delete)
+            segment.update_statistics(segment)
+        return segment
