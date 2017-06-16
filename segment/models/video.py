@@ -56,8 +56,6 @@ class SegmentVideo(BaseSegment):
         (IAB, IAB),
     )
 
-
-
     category = models.CharField(max_length=255, choices=CATEGORIES)
 
     videos = models.BigIntegerField(default=0, db_index=True)
@@ -70,7 +68,7 @@ class SegmentVideo(BaseSegment):
     engage_rate = models.FloatField(default=0.0, db_index=True)
     sentiment = models.FloatField(default=0.0, db_index=True)
     top_three_videos = JSONField(default=dict())
-  
+
     singledb_method = Connector().get_videos_statistics
     segment_type = 'video'
 
@@ -90,11 +88,11 @@ class SegmentVideo(BaseSegment):
     @property
     def statistics(self):
         statistics = {
-            "top_three_videos": self.top_three_videos_data,
+            "top_three_videos": self.top_three_videos,
             "videos_count": self.videos,
             "views_count": self.views,
             "views_per_video": self.views_per_video,
-            "thirty_days_views_count": self.thirty_days_views_count,
+            "thirty_days_views_count": self.thirty_days_views,
             "sentiment": self.sentiment,
             "engage_rate": self.engage_rate,
         }

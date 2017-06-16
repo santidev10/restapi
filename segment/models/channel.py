@@ -27,7 +27,7 @@ class SegmentChannel(BaseSegment):
     )
 
     category = models.CharField(max_length=255, choices=CATEGORIES)
- 
+
     channels = models.BigIntegerField(default=0, db_index=True)
     views_per_channel = models.BigIntegerField(default=0, db_index=True)
     subscribers_per_channel = models.BigIntegerField(default=0, db_index=True)

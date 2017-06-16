@@ -68,22 +68,19 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
             "title",
         }
         available_reverse_sorts = {
-            "created_at",
-        }
-        available_statisitcs_sorts = {
-            "channels_count",
+            self.model.segment_type + 's', # channels, videos, keywords
             "engage_rate",
             "sentiment",
-            "videos_count"
+            "created_at",
         }
         sort = self.request.query_params.get("sort_by")
+
         if sort in available_sorts:
             queryset = queryset.order_by(sort)
-        if sort in available_reverse_sorts:
+
+        elif sort in available_reverse_sorts:
             queryset = queryset.order_by("-{}".format(sort))
-        if sort in available_statisitcs_sorts:
-            queryset = queryset.annotate(
-                value=RawSQL("statistics->>%s", (sort, ))).order_by("-value")
+
         return queryset
 
     def get_queryset(self):
