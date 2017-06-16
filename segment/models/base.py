@@ -91,19 +91,10 @@ class BaseSegment(Timestampable):
             self.related.model.objects.filter(related_id__in=ids).delete()
 
     def obtain_singledb_data(self):
-        ids = self.get_related_ids()
+        ids = list(self.get_related_ids())
         if not ids:
             return []
-
-        # TODO flat may freeze SDB if queryset is too big
-        query_params = {"ids": ",".join(ids),
-                        "fields": ",".join(self.singledb_fields),
-                        "flat": 1}
-        try:
-            return self.singledb_method(query_params)
-        except SingleDatabaseApiConnectorException:
-            # TODO add fail logging and, probably, retries
-            return
+        return self.singledb_method(ids=ids, top=3)
 
     @task
     def update_statistics(self):
@@ -111,10 +102,6 @@ class BaseSegment(Timestampable):
         # just return on any fail
         if data is None:
             return
-
-        # Check all related records still alive in SDB
-        alive_ids = {obj.get("id") for obj in data}
-        self.cleanup_related_records(alive_ids)
 
         # populate statistics fields
         self.populate_statistics_fields(data)

@@ -171,3 +171,13 @@ class SingleDatabaseApiConnector(object):
         endpoint = "custom_query/{}/".format(model_name)
         response_data = self.execute_post_call(endpoint, {}, data=params)
         return response_data
+
+    def get_channels_statistics(self, **params):
+        endpoint = "channels/statistics/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data
+
+    def get_videos_statistics(self, **params):
+        endpoint = "videos/statistics/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data
