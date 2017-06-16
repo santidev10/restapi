@@ -177,7 +177,7 @@ class SegmentMiniDashGenerator(object):
         Prepare videos views per video chart data section
         :return: list
         """
-        videos_count = self.segment.videos.count()
+        videos_count = self.segment.related.count()
         views_per_video_data = []
         for obj in video_views_data:
             value = obj.copy()
@@ -240,23 +240,19 @@ class SegmentMiniDashGenerator(object):
         Prepare serialized data
         :return: dict
         """
-        data = None
-        if self.segment.segment_type == "channel":
-            data = {
-                "views_chart_data":
-                    self.get_channels_video_views_chart_data_section(),
-                "views_per_video_chart_data":
-                    self.get_channels_views_per_video_chart_data_section(),
-                "keywords": self.get_keywords_section()
-            }
-        elif self.segment.segment_type == "video":
+        from segment.models.channel import SegmentChannel
+        from segment.models.video import SegmentVideo
+
+        data = {"keywords": self.get_keywords_section()}
+
+        if isinstance(self.segment, SegmentChannel):
+            data["views_chart_data"] = self.get_channels_video_views_chart_data_section()
+            data["views_per_video_chart_data"] = self.get_channels_views_per_video_chart_data_section(),
+
+        elif isinstance(self.segment, SegmentVideo):
             views_chart_data = self.get_videos_video_views_chart_data_section()
-            views_per_video_chart_data =\
-                self.get_videos_views_per_video_chart_data_section(
-                    views_chart_data)
-            data = {
-                "views_chart_data": views_chart_data,
-                "views_per_video_chart_data": views_per_video_chart_data,
-                "keywords": self.get_keywords_section()
-            }
+            views_per_video_chart_data = self.get_videos_views_per_video_chart_data_section(views_chart_data)
+            data["views_chart_data"] = views_chart_data
+            data["views_per_video_chart_data"] = views_per_video_chart_data
+
         return data
