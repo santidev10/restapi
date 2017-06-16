@@ -1,22 +1,23 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
+from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 
 
-class AccountAPITestCase(ExtendedAPITestCase):
+class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_account(self, owner, start, end):
+    @staticmethod
+    def create_account_creation(owner, start, end):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
@@ -70,7 +71,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
             start=today,
             end=today + timedelta(days=10),
         )
-        ac = self.create_account(**defaults)
+        ac = self.create_account_creation(**defaults)
         url = reverse("aw_creation_urls:optimization_account_duplicate",
                       args=(ac.id,))
 
@@ -80,6 +81,16 @@ class AccountAPITestCase(ExtendedAPITestCase):
         self.assertNotEqual(ac.id, data['id'])
         self.perform_details_check(data)
         self.assertEqual(data['name'], "Pep (copy)")
+
+    def test_fail_post_imported(self):
+        self.create_account(self.user)
+        account_creation = OptimizationAccountListApiView.import_accounts(self.user)[0]
+
+        url = reverse("aw_creation_urls:optimization_account_duplicate",
+                      args=(account_creation.id,))
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_success_post_demo(self):
         url = reverse("aw_creation_urls:optimization_account_duplicate",

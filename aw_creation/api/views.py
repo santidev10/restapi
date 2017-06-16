@@ -428,17 +428,19 @@ class OptimizationAccountListApiView(ListAPIView):
 
         return queryset
 
-    def get(self, request, *args, **kwargs):
-        # import accounts
+    @staticmethod
+    def import_accounts(user):
         from aw_reporting.models import Account
-        accounts = Account.user_objects(request.user).filter(account_creation__isnull=True)
+        accounts = Account.user_objects(user).filter(account_creation__isnull=True)
         create = [
-            AccountCreation(account=a, owner=request.user, read_only=True)
+            AccountCreation(account=a, owner=user, read_only=True)
             for a in accounts
         ]
         if create:
-            AccountCreation.objects.bulk_create(create)
+            return AccountCreation.objects.bulk_create(create)
 
+    def get(self, request, *args, **kwargs):
+        self.import_accounts(request.user)
         return super(OptimizationAccountListApiView, self).get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
@@ -480,9 +482,10 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAccountDetailsSerializer
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            owner=self.request.user
-        )
+        filters = dict(owner=self.request.user)
+        if self.request.method != "DELETE":
+            filters['read_only'] = False
+        queryset = AccountCreation.objects.filter(**filters)
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -535,11 +538,12 @@ class OptimizationAccountDuplicateApiView(APIView):
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
-            owner=self.request.user
+            owner=self.request.user,
+            read_only=False,
         )
         return queryset
 
-    def post(self, request, pk, **kwargs):
+    def post(self, *args, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
         except AccountCreation.DoesNotExist:
