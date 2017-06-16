@@ -42,7 +42,6 @@ class BaseSegment(Timestampable):
     Base segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
-    statistics = JSONField(default=dict())
     mini_dash_data = JSONField(default=dict())
     owner = ForeignKey('userprofile.userprofile', null=True, blank=True)
 
@@ -117,8 +116,8 @@ class BaseSegment(Timestampable):
         alive_ids = {obj.get("id") for obj in data}
         self.cleanup_related_records(alive_ids)
 
-        # calculate statistics
-        self.statistics = self.calculate_statistics(data) if data else {}
+        # populate statistics fields
+        self.populate_statistics_fields(data)
 
         # calculate mini-dash
         self.mini_dash_data = SegmentMiniDashGenerator(data, self).data if data else {}
