@@ -12,7 +12,6 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.utils import timezone
 
-from segment.mini_dash import SegmentMiniDashGenerator
 from singledb.connector import SingleDatabaseApiConnectorException
 
 from utils.models import Timestampable
@@ -94,7 +93,7 @@ class BaseSegment(Timestampable):
         ids = list(self.get_related_ids())
         if not ids:
             return []
-        return self.singledb_method(ids=ids, top=3)
+        return self.singledb_method(ids=ids, top=3, minidash=1)
 
     @task
     def update_statistics(self):
@@ -105,11 +104,6 @@ class BaseSegment(Timestampable):
 
         # populate statistics fields
         self.populate_statistics_fields(data)
-
-        # calculate mini-dash
-# Next code has been disabled because if bug in data --->
-#        self.mini_dash_data = SegmentMiniDashGenerator(data, self).data if data else {}
-# <---
 
         self.save()
         return "Done"
