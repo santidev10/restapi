@@ -75,6 +75,7 @@ class SegmentVideo(BaseSegment):
     objects = SegmentVideoManager()
 
     def populate_statistics_fields(self, data):
+        self.videos = data['count']
         fields = ['views', 'likes', 'dislikes', 'comments', 'thirty_days_views']
         for field in fields:
             setattr(self, field, data[field])
@@ -82,7 +83,6 @@ class SegmentVideo(BaseSegment):
         self.views_per_video = self.views / self.videos if self.videos else 0
         self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
         self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.views, 1)) * 100
-        self.videos = data['count']
         self.top_three_videos = data['top_list']
         self.mini_dash_data = data['minidash']
 
