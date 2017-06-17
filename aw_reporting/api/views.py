@@ -9,15 +9,20 @@ from rest_framework.views import APIView
 
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
+from aw_creation.models import AccountCreation
+from aw_creation.api.views import OptimizationAccountListApiView
 
 
 @demo_view_decorator
-class AnalyzeAccountsListApiView(ListAPIView):
+class AnalyzeAccountsListApiView(OptimizationAccountListApiView):
     """
     Returns a list of user's accounts that were pulled from AdWords
     """
 
-    def list(self, request, *args, **kwargs):
+    def get_queryset(self, **filters):
+        return AccountCreation.objects.none()
+
+    def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 
 

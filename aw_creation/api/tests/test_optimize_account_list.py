@@ -14,7 +14,7 @@ from unittest.mock import patch
 class AccountListAPITestCase(ExtendedAPITestCase):
 
     details_keys = {
-        'id', 'name',
+        'id', 'name', 'account',
         'status', 'start', 'end', 'is_optimization_active', 'is_changed',
         'creative_count', 'keywords_count', 'videos_count', 'goal_units',
         'channels_count', 'campaigns_count', 'ad_groups_count', 'read_only',
@@ -62,8 +62,9 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data['items']), 1)
 
     def test_success_get(self):
+        account = Account.objects.create(id="123", name="")
         ac_creation = AccountCreation.objects.create(
-            name="", owner=self.user,
+            name="", owner=self.user, account=account,
         )
         camp_creation = CampaignCreation.objects.create(
             name="", account_creation=ac_creation,
@@ -110,6 +111,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             set(item.keys()),
             self.details_keys,
         )
+        self.assertEqual(item['account'], account.id)
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
@@ -131,8 +133,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             "The account has no end date that's why it's shown"
         )
         self.assertEqual(
-            response.data['items'][1]['status'], "Running",
-            "There is no any better status for this case"
+            response.data['items'][1]['status'], "Pending"
         )
 
     def test_hide_account_is_ended_true(self):
