@@ -49,14 +49,17 @@ class SingleDatabaseApiConnector(object):
                 self.response = method(url, headers=headers, verify=False)
             else:
                 self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
-            response_data = self.response.json()
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
         else:
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(response_data))
+                    "Error during iq api call: {}".format(self.response.text))
+        try:
+            response_data = self.response.json()
+        except Exception as e:
+            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}".formay(e))
         return response_data
 
     def get_country_list(self, query_params):
