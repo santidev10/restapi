@@ -49,6 +49,7 @@ class SegmentChannel(BaseSegment):
     objects = SegmentManager()
 
     def populate_statistics_fields(self, data):
+        self.channels = data['count']
         fields = ['subscribers', 'videos', 'views', 'video_views', 'likes', 'dislikes', 'comments']
         for field in fields:
             setattr(self, field, data[field])
@@ -57,7 +58,6 @@ class SegmentChannel(BaseSegment):
         self.subscribers_per_channel = self.subscribers / self.channels if self.channels else 0
         self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
         self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.video_views, 1)) * 100
-        self.channels = data['count']
         self.top_three_channels = data['top_list']
         self.mini_dash_data = data['minidash']
 
