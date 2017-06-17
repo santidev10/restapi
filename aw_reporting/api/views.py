@@ -2,15 +2,14 @@ import csv
 import re
 from datetime import datetime
 from io import StringIO
-
+from aw_creation.models import AccountCreation
+from aw_creation.api.views import OptimizationAccountListApiView
 from django.http import StreamingHttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
-from aw_creation.models import AccountCreation
-from aw_creation.api.views import OptimizationAccountListApiView
 
 
 @demo_view_decorator
