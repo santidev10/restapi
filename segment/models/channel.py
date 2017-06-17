@@ -59,6 +59,7 @@ class SegmentChannel(BaseSegment):
         self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.video_views, 1)) * 100
         self.channels = data['count']
         self.top_three_channels = data['top_list']
+        self.mini_dash_data = data['minidash']
 
     @property
     def statistics(self):
