@@ -1429,10 +1429,10 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data[1:]:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                if is_negative is "True":
+                if is_negative == "True":
                     is_negative = True
-                elif is_negative is "False":
-                    is_negative = True
+                elif is_negative == "False":
+                    is_negative = False
                 else:
                     is_negative = None
             elif len(line):
@@ -1518,7 +1518,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
@@ -1546,7 +1546,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
