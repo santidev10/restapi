@@ -381,8 +381,10 @@ class OptimizationAccountListApiView(ListAPIView):
                 queryset = queryset.filter(is_ended=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
-            else:
-                queryset = queryset.filter(is_paused=False, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_paused=True, is_ended=False)  # all
+            else:  # TODO: Approved, Running
+                queryset = queryset.none()
 
         min_goal_units = filters.get('min_goal_units')
         max_goal_units = filters.get('max_goal_units')
