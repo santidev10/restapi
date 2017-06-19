@@ -68,11 +68,14 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
             "title",
         }
         available_reverse_sorts = {
-            self.model.segment_type + 's', # channels, videos, keywords
+            "videos",
             "engage_rate",
             "sentiment",
             "created_at",
         }
+        if self.model.segment_type == 'channel':
+            available_reverse_sorts.add('channels')
+
         sort = self.request.query_params.get("sort_by")
 
         if sort in available_sorts:

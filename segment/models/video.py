@@ -26,7 +26,7 @@ class SegmentVideoManager(SegmentManager):
                 'sort_by': 'views',
                 'fields': 'id',
                 'category': category,
-                'limit': '2000',
+                'limit': '10000',
                 'preferred_channel': '0',
                 'is_monetizable': '1',
                 'min_views': '100000',
@@ -69,49 +69,22 @@ class SegmentVideo(BaseSegment):
     sentiment = models.FloatField(default=0.0, db_index=True)
     top_three_videos = JSONField(default=dict())
 
-    singledb_method = Connector().get_video_list
-    singledb_fields = [
-        "id",
-        "title",
-        "description",
-        "thumbnail_image_url",
-        "views",
-        "likes",
-        "dislikes",
-        "comments",
-        "views_history",
-        "history_date"
-    ]
-
+    singledb_method = Connector().get_videos_statistics
     segment_type = 'video'
 
     objects = SegmentVideoManager()
 
     def populate_statistics_fields(self, data):
-        self.videos = len(data)
-        self.views = 0
-        self.likes = 0
-        self.dislikes = 0
-        self.comments = 0
-        self.thirty_days_views = 0
-        for obj in data:
-            self.views += obj.get("views")
-            self.likes += obj.get("likes")
-            self.dislikes += obj.get("dislikes")
-            self.comments += obj.get("comments")
-            views_history = obj.get("views_history")
-            if views_history:
-                self.thirty_days_views += (views_history[:30][0] - views_history[:30][-1])
+        self.videos = data['count']
+        fields = ['views', 'likes', 'dislikes', 'comments', 'thirty_days_views']
+        for field in fields:
+            setattr(self, field, data[field])
 
         self.views_per_video = self.views / self.videos if self.videos else 0
         self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
         self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.views, 1)) * 100
-
-        self.top_three_videos = [{
-            "id": obj.get("id"),
-            "image_url": obj.get("thumbnail_image_url"),
-            "title": obj.get("title")
-        } for obj in sorted(data, key=lambda k: k['views'], reverse=True)[:3]]
+        self.top_three_videos = data['top_list']
+        self.mini_dash_data = data['minidash']
 
     @property
     def statistics(self):

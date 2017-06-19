@@ -2,7 +2,8 @@ import csv
 import re
 from datetime import datetime
 from io import StringIO
-
+from aw_creation.models import AccountCreation
+from aw_creation.api.views import OptimizationAccountListApiView
 from django.http import StreamingHttpResponse
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
@@ -12,12 +13,15 @@ from aw_reporting.models import DATE_FORMAT
 
 
 @demo_view_decorator
-class AnalyzeAccountsListApiView(ListAPIView):
+class AnalyzeAccountsListApiView(OptimizationAccountListApiView):
     """
     Returns a list of user's accounts that were pulled from AdWords
     """
 
-    def list(self, request, *args, **kwargs):
+    def get_queryset(self, **filters):
+        return AccountCreation.objects.none()
+
+    def post(self, request, *args, **kwargs):
         raise NotImplementedError("Vzhukh!")
 
 

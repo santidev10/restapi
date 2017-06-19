@@ -49,14 +49,17 @@ class SingleDatabaseApiConnector(object):
                 self.response = method(url, headers=headers, verify=False)
             else:
                 self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
-            response_data = self.response.json()
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
         else:
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(response_data))
+                    "Error during iq api call: {}".format(self.response.text))
+        try:
+            response_data = self.response.json()
+        except Exception as e:
+            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}".format(e))
         return response_data
 
     def get_country_list(self, query_params):
@@ -92,6 +95,10 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/"
+        if 'ids' in query_params:
+            ids = query_params.get('ids').split(',')
+            query_params.pop('ids')
+            query_params['ids_hash'] = self.store_ids(ids)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -146,6 +153,10 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "videos/"
+        if 'ids' in query_params:
+            ids = query_params.get('ids').split(',')
+            query_params.pop('ids')
+            query_params['ids_hash'] = self.store_ids(ids)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -171,3 +182,18 @@ class SingleDatabaseApiConnector(object):
         endpoint = "custom_query/{}/".format(model_name)
         response_data = self.execute_post_call(endpoint, {}, data=params)
         return response_data
+
+    def get_channels_statistics(self, **params):
+        endpoint = "channels/statistics/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data
+
+    def get_videos_statistics(self, **params):
+        endpoint = "videos/statistics/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data
+
+    def store_ids(self, ids):
+        endpoint = "cached_object/"
+        response_data = self.execute_post_call(endpoint, {}, data=ids)
+        return response_data['hash']

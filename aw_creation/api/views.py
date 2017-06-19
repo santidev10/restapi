@@ -381,8 +381,10 @@ class OptimizationAccountListApiView(ListAPIView):
                 queryset = queryset.filter(is_ended=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
-            else:
-                queryset = queryset.filter(is_paused=False, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_paused=True, is_ended=False)  # all
+            else:  # TODO: Approved, Running
+                queryset = queryset.none()
 
         min_goal_units = filters.get('min_goal_units')
         max_goal_units = filters.get('max_goal_units')
@@ -1417,10 +1419,10 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data[1:]:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                if is_negative is "True":
+                if is_negative == "True":
                     is_negative = True
-                elif is_negative is "False":
-                    is_negative = True
+                elif is_negative == "False":
+                    is_negative = False
                 else:
                     is_negative = None
             elif len(line):
@@ -1506,7 +1508,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
@@ -1534,7 +1536,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:

@@ -5,38 +5,13 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
+from aw_creation.demo.views import OptimizationAccountListApiView
 from .charts import DemoChart
 from .models import DemoAccount, DEMO_ACCOUNT_ID
 
 
-class AnalyzeAccountsListApiView:
-    """
-    Returns a demo list of accounts
-    """
-    @staticmethod
-    def list(original_method):
-        def method(view, request, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
-                account = DemoAccount()
-                accounts = [
-                    dict(
-                        id=account.id,
-                        name=account.name,
-                        start_date=account.start_date,
-                        end_date=account.end_date,
-                        is_ongoing=True,
-                        channels_count=1,
-                        videos_count=1,
-                    )
-                ]
-                return Response(status=HTTP_200_OK, data=accounts)
-            else:
-                return original_method(view, request, **kwargs)
-
-        return method
+class AnalyzeAccountsListApiView(OptimizationAccountListApiView):
+    pass
 
 
 class AnalyzeAccountCampaignsListApiView:
