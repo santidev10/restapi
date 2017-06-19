@@ -502,7 +502,7 @@ class OptimizationAccountListSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "read_only",
+            "id", "account", "name", "read_only",
             "is_optimization_active", "is_changed",
             # from the campaigns
             "start", "end", "status",
@@ -529,8 +529,13 @@ class OptimizationAccountListSerializer(ModelSerializer):
             return "Ended"
         elif obj.is_paused:
             return "Paused"
+        elif obj.is_approved:
+            if 0:  # campaign is launched on AdWords
+                return "Running"
+            else:
+                return "Approved"
         else:
-            return "Running"
+            return "Pending"
 
 
 class OptimizationAccountDetailsSerializer(OptimizationAccountListSerializer):
