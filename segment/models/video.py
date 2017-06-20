@@ -98,6 +98,35 @@ class SegmentVideo(BaseSegment):
             "engage_rate": self.engage_rate,
         }
         return statistics
+
+    def duplicate(self, owner):
+        duplicated_segment_data = {
+            "title": "{} (copy)".format(self.title),
+            "mini_dash_data": self.mini_dash_data,
+            "owner": owner,
+            "category": "private",
+
+            "videos": self.videos,
+            "views_per_video": self.views_per_video,
+            "views": self.views,
+            "likes": self.likes,
+            "dislikes": self.dislikes,
+            "comments": self.comments,
+            "thirty_days_views": self.thirty_days_views,
+            "engage_rate": self.engage_rate,
+            "sentiment": self.sentiment,
+            "top_three_videos": self.top_three_videos,
+        }
+
+        duplicated_segment = self.objects.create(**duplicated_segment_data)
+        related_manager = self.related.rel.related_model.objects
+        related_list = list(segment.related.all())
+        for related in related_list:
+            related.pk = None
+            related.segment = duplicated_segment
+        related_manager.bulk_create(related_list)
+
+        return duplicated_segment
  
 
 class SegmentRelatedVideo(BaseSegmentRelated):
