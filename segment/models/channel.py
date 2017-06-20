@@ -75,6 +75,37 @@ class SegmentChannel(BaseSegment):
         }
         return statistics
 
+    def duplicate(self, owner):
+        duplicated_segment_data = {
+            "title": "{} (copy)".format(self.title),
+            "mini_dash_data": self.mini_dash_data,
+            "owner": owner,
+            "category": "private",
+
+            "channels": self.channels,
+            "views_per_channel": self.views_per_channel,
+            "subscribers_per_channel": self.subscribers_per_channel,
+            "subscribers": self.subscribers,
+            "videos": self.videos,
+            "views": self.views,
+            "likes": self.likes,
+            "dislikes": self.dislikes,
+            "comments": self.comments,
+            "video_views": self.video_views,
+            "engage_rate": self.engage_rate,
+            "sentiment": self.sentiment,
+            "top_three_channels": self.top_three_channels,
+        }
+
+        duplicated_segment = self.__class__.objects.create(**duplicated_segment_data)
+        related_manager = self.__class__.related.rel.related_model.objects
+        related_list = list(self.related.all())
+        for related in related_list:
+            related.pk = None
+            related.segment = duplicated_segment
+        related_manager.bulk_create(related_list)
+
+        return duplicated_segment
 
 class SegmentRelatedChannel(BaseSegmentRelated):
     segment = models.ForeignKey(SegmentChannel, related_name='related')
