@@ -29,10 +29,11 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 # common details
-                'id', 'name', 'start', 'end', 'status', 'read_only',
+                'id', 'name', 'status', 'account',
+                'start', 'end',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'weekly_chart', 'campaigns_count', 'ad_groups_count',
                 'creative_count',
                 'keywords_count',
                 'goal_units',

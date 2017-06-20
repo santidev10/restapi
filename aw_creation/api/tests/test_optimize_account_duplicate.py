@@ -82,16 +82,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
         self.assertEqual(data['name'], "Pep (copy)")
 
-    def test_fail_post_imported(self):
-        self.create_account(self.user)
-        account_creation = OptimizationAccountListApiView.import_accounts(self.user)[0]
-
-        url = reverse("aw_creation_urls:optimization_account_duplicate",
-                      args=(account_creation.id,))
-
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-
     def test_success_post_demo(self):
         url = reverse("aw_creation_urls:optimization_account_duplicate",
                       args=(DEMO_ACCOUNT_ID,))
@@ -115,15 +105,13 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(data.keys()),
             {
                 # common details
-                'id', 'name', 'status', 'read_only',
+                'id', 'name', 'status', 'account',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'weekly_chart', 'campaigns_count', 'ad_groups_count',
 
-                'creative_count',
-                'goal_units',
-                'channels_count',
-                'videos_count',
+                'creative_count', 'goal_units',
+                'channels_count', 'videos_count',
                 'keywords_count',
 
                 # details below header
@@ -201,10 +189,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(campaign_data['devices']), 3)
         self.assertEqual(
             set(campaign_data['devices'][0].keys()),
-            {
-                'id',
-                'name',
-            }
+            {'id', 'name'},
         )
         self.assertEqual(
             set(campaign_data['location_rules'][0]['radius_units']),

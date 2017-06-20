@@ -206,5 +206,25 @@ class TopicTargetingListTestCase(ExtendedAPITestCase):
             True,
         )
 
+    def test_import_list_from_tool_negative(self):
+        ad_group = self.create_ad_group()
+        topics = (
+            (3, "Arts & Entertainment"),
+            (47, "Autos & Vehicles",)
+        )
+        for uid, name in topics:
+            Topic.objects.get_or_create(id=uid, defaults={'name': name})
 
+        url = reverse(
+            "aw_creation_urls:optimization_ad_group_targeting_import",
+            args=(ad_group.id, TargetingItem.TOPIC_TYPE),
+        )
+        with open('aw_creation/fixtures/topic_list_tool.csv',
+                  'rb') as fp:
+            response = self.client.post("{}?is_negative=1".format(url), {'file': fp},
+                                        format='multipart')
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
 
+        for i in response.data:
+            self.assertEqual(i['is_negative'], True)

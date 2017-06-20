@@ -280,30 +280,12 @@ class OptimizationCampaignsSerializer(ModelSerializer):
         )
 
 
-def none_for_imported_obj(func):
-
-    def wrapper(*args):
-        obj = args[-1]
-        if not obj.is_imported:
-            return func(*args)
-
-    return wrapper
-
-
-class NoneForImportedSerializerMethodField(SerializerMethodField):
-
-    @none_for_imported_obj
-    def to_representation(self, value):
-        return getattr(value, self.field_name)
-
-
 class OptimizationAccountListSerializer(ModelSerializer):
-    name = SerializerMethodField()
     is_optimization_active = SerializerMethodField()
     status = SerializerMethodField()
+    goal_units = SerializerMethodField()
     start = SerializerMethodField()
     end = SerializerMethodField()
-    goal_units = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     campaigns_count = SerializerMethodField()
     ad_groups_count = SerializerMethodField()
@@ -318,45 +300,25 @@ class OptimizationAccountListSerializer(ModelSerializer):
     delivery_method = SerializerMethodField()
     bidding_type = SerializerMethodField()
     video_networks = SerializerMethodField()
-    is_changed = NoneForImportedSerializerMethodField()
-    is_paused = NoneForImportedSerializerMethodField()
-    is_ended = NoneForImportedSerializerMethodField()
-    is_approved = NoneForImportedSerializerMethodField()
 
     structure = SerializerMethodField()
     creative = SerializerMethodField()
     goal_charts = SerializerMethodField()
 
     @staticmethod
-    def get_name(obj):
-        if obj.is_imported:
-            return obj.account.name
-        return obj.name
+    def get_goal_units(obj):
+        data = obj.campaign_creations.aggregate(goal_units=Sum('goal_units'))
+        return data['goal_units']
 
     @staticmethod
     def get_start(obj):
-        if obj.is_imported:
-            data = obj.account.campaigns.aggregate(value=Min('start_date'))
-        else:
-            data = obj.campaign_creations.aggregate(value=Min('start'))
+        data = obj.campaign_creations.aggregate(value=Min('start'))
         return data['value']
 
     @staticmethod
     def get_end(obj):
-        if obj.is_imported:
-            dates = obj.account.campaigns.values_list('end_date', flat=True).order_by('end_date').distinct()
-            if not dates or None in dates:
-                return None
-            else:
-                return max(dates)
-        else:
-            data = obj.campaign_creations.aggregate(value=Max('end'))
-            return data['value']
-
-    @staticmethod
-    def get_goal_units(obj):
-        data = obj.campaign_creations.aggregate(goal_units=Sum('goal_units'))
-        return data['goal_units']
+        data = obj.campaign_creations.aggregate(value=Max('end'))
+        return data['value']
 
     @staticmethod
     def get_goal_charts(obj):
@@ -399,16 +361,9 @@ class OptimizationAccountListSerializer(ModelSerializer):
 
     @staticmethod
     def get_structure(obj):
-        if obj.is_imported:
-            campaigns = obj.account.campaigns
 
-            def get_ad_groups(cid):
-                return AdGroup.objects.filter(campaign_id=cid)
-        else:
-            campaigns = obj.campaign_creations
-
-            def get_ad_groups(cid):
-                return AdGroupCreation.objects.filter(campaign_creation_id=cid)
+        def get_ad_groups(cid):
+            return AdGroupCreation.objects.filter(campaign_creation_id=cid)
 
         structure = [
             dict(
@@ -419,22 +374,16 @@ class OptimizationAccountListSerializer(ModelSerializer):
                     for a in get_ad_groups(c['id']).values('id', 'name').order_by('name')
                 ]
             )
-            for c in campaigns.values("id", "name").order_by("name")
+            for c in obj.campaign_creations.values("id", "name").order_by("name")
         ]
         return structure
 
     @staticmethod
     def get_creative(obj):
-        if obj.is_imported:
-            video_ids = VideoCreativeStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).values("creative_id").annotate(value=Sum("impressions")).order_by("value")[:1]
-
-        else:
-            video_urls = AdGroupCreation.objects.filter(
-                campaign_creation__account_creation_id=obj
-            ).values_list("video_url", flat=True).order_by("video_url").distinct()[:1]
-            video_ids = list(filter(None, set(get_yt_id_from_url(url) for url in video_urls)))
+        video_urls = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation_id=obj
+        ).values_list("video_url", flat=True).order_by("video_url").distinct()[:1]
+        video_ids = list(filter(None, set(get_yt_id_from_url(url) for url in video_urls)))
 
         if video_ids:
             video_id = video_ids[0]
@@ -464,42 +413,36 @@ class OptimizationAccountListSerializer(ModelSerializer):
             return response
 
     @staticmethod
-    @none_for_imported_obj
     def get_video_ad_format(obj):
         item_id = obj.video_ad_format
         options = dict(obj.__class__.VIDEO_AD_FORMATS)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
-    @none_for_imported_obj
     def get_type(obj):
         item_id = obj.type
         options = dict(obj.__class__.CAMPAIGN_TYPES)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
-    @none_for_imported_obj
     def get_goal_type(obj):
         item_id = obj.goal_type
         options = dict(obj.__class__.GOAL_TYPES)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
-    @none_for_imported_obj
     def get_delivery_method(obj):
         item_id = obj.delivery_method
         options = dict(obj.__class__.DELIVERY_METHODS)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
-    @none_for_imported_obj
     def get_bidding_type(obj):
         item_id = obj.bidding_type
         options = dict(obj.__class__.BIDDING_TYPES)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
-    @none_for_imported_obj
     def get_video_networks(obj):
         ids = obj.video_networks
         video_networks = [
@@ -511,11 +454,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
 
     @staticmethod
     def get_channels_count(obj):
-        if obj.is_imported:
-            data = YTChannelStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).aggregate(count=Count("yt_id", distinct=True))
-            return data['count']
         c = TargetingItem.objects.filter(
             ad_group_creation__campaign_creation__account_creation=obj,
             type=TargetingItem.CHANNEL_TYPE
@@ -524,11 +462,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
 
     @staticmethod
     def get_videos_count(obj):
-        if obj.is_imported:
-            data = YTVideoStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).aggregate(count=Count("yt_id", distinct=True))
-            return data['count']
         c = TargetingItem.objects.filter(
             ad_group_creation__campaign_creation__account_creation=obj,
             type=TargetingItem.VIDEO_TYPE
@@ -537,11 +470,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
 
     @staticmethod
     def get_keywords_count(obj):
-        if obj.is_imported:
-            data = KeywordStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).aggregate(count=Count("keyword", distinct=True))
-            return data['count']
         c = TargetingItem.objects.filter(
             ad_group_creation__campaign_creation__account_creation=obj,
             type=TargetingItem.KEYWORD_TYPE
@@ -550,23 +478,14 @@ class OptimizationAccountListSerializer(ModelSerializer):
 
     @staticmethod
     def get_campaigns_count(obj):
-        if obj.is_imported:
-            return obj.account.campaigns.count()
         return obj.campaign_creations.count()
 
     @staticmethod
     def get_ad_groups_count(obj):
-        if obj.is_imported:
-            return AdGroup.objects.filter(campaign__account=obj.account).count()
         return AdGroupCreation.objects.filter(campaign_creation__account_creation=obj).count()
 
     @staticmethod
     def get_creative_count(obj):
-        if obj.is_imported:
-            data = VideoCreativeStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).aggregate(count=Count("creative_id", distinct=True))
-            return data['count']
         return AdGroupCreation.objects.filter(campaign_creation__account_creation=obj).count()
 
     @staticmethod
@@ -612,7 +531,7 @@ class OptimizationAccountListSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "read_only",
+            "id", "account", "name",
             "is_optimization_active", "is_changed",
             # from the campaigns
             "start", "end", "status",
@@ -627,19 +546,22 @@ class OptimizationAccountListSerializer(ModelSerializer):
         )
 
     @staticmethod
-    @none_for_imported_obj
     def get_is_optimization_active(*_):
         return True
 
     @staticmethod
-    @none_for_imported_obj
     def get_status(obj):
         if obj.is_ended:
             return "Ended"
         elif obj.is_paused:
             return "Paused"
+        elif obj.is_approved:
+            if 0:  # campaign is launched on AdWords
+                return "Running"
+            else:
+                return "Approved"
         else:
-            return "Running"
+            return "Pending"
 
 
 class OptimizationAccountDetailsSerializer(OptimizationAccountListSerializer):

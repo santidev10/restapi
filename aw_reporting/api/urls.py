@@ -4,9 +4,9 @@ from aw_reporting.api import views
 
 urlpatterns = [
     # analyze
-    url(r'^analyze_accounts/$',
+    url(r'^analyze_accounts_list/$',
         views.AnalyzeAccountsListApiView.as_view(),
-        name="analyze_accounts"),
+        name="analyze_accounts_list"),
     url(r'^analyze_account_campaigns/(?P<pk>\w+)/$',
         views.AnalyzeAccountCampaignsListApiView.as_view(),
         name="analyze_account_campaigns"),

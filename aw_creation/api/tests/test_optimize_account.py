@@ -81,16 +81,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.perform_details_check(data)
 
-    def test_fail_get_imported(self):
-        self.create_account(self.user)
-        account_creation = OptimizationAccountListApiView.import_accounts(self.user)[0]
-
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(account_creation.id,))
-
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:optimization_account",
                       args=(DEMO_ACCOUNT_ID,))
@@ -98,19 +88,18 @@ class AccountAPITestCase(AwReportingAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.perform_details_check(data)
+        self.perform_details_check(response.data)
 
     def perform_details_check(self, data):
         self.assertEqual(
             set(data.keys()),
             {
                 # common details
-                'id', 'name', 'status', 'read_only',
+                'id', 'name', 'status', 'account',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
 
-                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'weekly_chart', 'campaigns_count', 'ad_groups_count',
                 'creative_count', 'goal_units', 'channels_count', 'videos_count', 'keywords_count',
 
                 "goal_type", "type", "video_ad_format", "delivery_method",
@@ -279,26 +268,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(request_data['video_networks']),
         )
 
-    def test_fail_update_imported(self):
-        self.create_account(self.user)
-        account_creation = OptimizationAccountListApiView.import_accounts(self.user)[0]
-
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(account_creation.id,))
-
-        request_data = dict(
-            is_paused=True,
-            is_ended=True,
-            video_networks=[
-                AccountCreation.YOUTUBE_SEARCH,
-                AccountCreation.YOUTUBE_VIDEO,
-            ]
-        )
-        response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-
     def test_fail_update_demo(self):
         url = reverse("aw_creation_urls:optimization_account",
                       args=(DEMO_ACCOUNT_ID,))
@@ -362,18 +331,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
-        ac.refresh_from_db()
-        self.assertIs(ac.is_deleted, True)
-
-    def test_success_delete_imported(self):
-        self.create_account(self.user)
-        ac = OptimizationAccountListApiView.import_accounts(self.user)[0]
-
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-        response = self.client.delete(url)
-
-        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         ac.refresh_from_db()
         self.assertIs(ac.is_deleted, True)
 

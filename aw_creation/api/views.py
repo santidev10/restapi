@@ -44,6 +44,9 @@ from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeoTargetListApiView(APIView):
@@ -351,8 +354,6 @@ class OptimizationAccountListApiView(ListAPIView):
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).exclude(
-            Q(read_only=True) & Q(account__isnull=True)  # imported accounts that have been deleted
         ).order_by('is_ended', sort_by)
         return queryset
 
@@ -383,8 +384,18 @@ class OptimizationAccountListApiView(ListAPIView):
                 queryset = queryset.filter(is_ended=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
             else:
-                queryset = queryset.filter(is_paused=False, is_ended=False)
+                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
+                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
+                if status == "Running":
+                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
+                elif status == "Approved":
+                    queryset = queryset.filter(camp_count=0, **approved_f)
+                else:
+                    logger.warning("Unknown status {}".format(status))
+                    queryset = queryset.none()
 
         min_goal_units = filters.get('min_goal_units')
         max_goal_units = filters.get('max_goal_units')
@@ -428,21 +439,6 @@ class OptimizationAccountListApiView(ListAPIView):
 
         return queryset
 
-    @staticmethod
-    def import_accounts(user):
-        from aw_reporting.models import Account
-        accounts = Account.user_objects(user).filter(account_creation__isnull=True)
-        create = [
-            AccountCreation(account=a, owner=user, read_only=True)
-            for a in accounts
-        ]
-        if create:
-            return AccountCreation.objects.bulk_create(create)
-
-    def get(self, request, *args, **kwargs):
-        self.import_accounts(request.user)
-        return super(OptimizationAccountListApiView, self).get(request, *args, **kwargs)
-
     def post(self, request, *args, **kwargs):
         data = request.data
         video_ad_format = data.get('video_ad_format')
@@ -482,10 +478,7 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAccountDetailsSerializer
 
     def get_queryset(self):
-        filters = dict(owner=self.request.user)
-        if self.request.method != "DELETE":
-            filters['read_only'] = False
-        queryset = AccountCreation.objects.filter(**filters)
+        queryset = AccountCreation.objects.filter(owner=self.request.user)
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -499,6 +492,9 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
+        if instance.account is not None:
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data=dict(error="You cannot delete approved setups"))
         instance.is_deleted = True
         instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -539,7 +535,6 @@ class OptimizationAccountDuplicateApiView(APIView):
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
             owner=self.request.user,
-            read_only=False,
         )
         return queryset
 
@@ -1448,10 +1443,10 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data[1:]:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                if is_negative is "True":
+                if is_negative == "True":
                     is_negative = True
-                elif is_negative is "False":
-                    is_negative = True
+                elif is_negative == "False":
+                    is_negative = False
                 else:
                     is_negative = None
             elif len(line):
@@ -1537,7 +1532,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
@@ -1565,7 +1560,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
