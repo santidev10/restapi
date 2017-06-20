@@ -149,7 +149,7 @@ class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
         Make a copy of segment and attach to user
         """
         segment = self.get_object()
-        duplicated_segment = segment.duplicated(request.user)
+        duplicated_segment = segment.duplicate(request.user)
 
         response_data = self.serializer_class(
             duplicated_segment,
