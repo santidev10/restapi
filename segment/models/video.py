@@ -118,9 +118,9 @@ class SegmentVideo(BaseSegment):
             "top_three_videos": self.top_three_videos,
         }
 
-        duplicated_segment = self.objects.create(**duplicated_segment_data)
-        related_manager = self.related.rel.related_model.objects
-        related_list = list(segment.related.all())
+        duplicated_segment = self.__class__.objects.create(**duplicated_segment_data)
+        related_manager = self.__class__.related.rel.related_model.objects
+        related_list = list(self.related.all())
         for related in related_list:
             related.pk = None
             related.segment = duplicated_segment
