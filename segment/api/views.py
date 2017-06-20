@@ -149,25 +149,11 @@ class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
         Make a copy of segment and attach to user
         """
         segment = self.get_object()
-        related_manager = self.model.related.rel.related_model.objects
-
-        related_list = list(segment.related.all())
-
-        duplicated_segment_data = {
-            "title": "{} (copy)".format(segment.title),
-            "category": "private",
-            "statistics": segment.statistics,
-            "mini_dash_data": segment.mini_dash_data,
-            "owner": request.user
-        }
-
-        duplicated_segment = self.model.objects.create(**duplicated_segment_data)
-        for related in related_list:
-            related.pk = None
-            related.segment = duplicated_segment
-        related_manager.bulk_create(related_list)
+        duplicated_segment = segment.duplicated(request.user)
 
         response_data = self.serializer_class(
-            duplicated_segment, context={"request": request}).data
+            duplicated_segment,
+            context={"request": request}
+        ).data
 
         return Response(response_data, status=HTTP_201_CREATED)
