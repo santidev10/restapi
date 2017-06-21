@@ -108,6 +108,21 @@ class BaseSegment(Timestampable):
         self.save()
         return "Done"
 
+    def duplicate(self, owner):
+        exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related']
+        segment_data = {f:getattr(self, f) for f in self._meta.get_all_field_names() if f not in exclude_fields}
+        segment_data['title'] = '{} (copy)'.format(self.title)
+        segment_data['owner'] = owner
+        segment_data['category'] = 'private'
+        duplicated_segment = self.__class__.objects.create(**segment_data)
+        related_manager = self.__class__.related.rel.related_model.objects
+        related_list = list(self.related.all())
+        for related in related_list:
+            related.pk = None
+            related.segment = duplicated_segment
+        related_manager.bulk_create(related_list)
+        return duplicated_segment
+
 
 class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:
