@@ -44,7 +44,7 @@ class Command(BaseCommand):
             related_id, title = tuple(line.split(',', 1))
 
             if title_prev and title_prev != title:
-                self.save_data(title, related_ids)
+                self.save_data(title_prev, related_ids)
                 related_ids = []
 
             title_prev = title
@@ -53,7 +53,7 @@ class Command(BaseCommand):
                 related_ids.append(related_id)
 
         if related_ids and title_prev:
-            self.save_data(title, related_ids)
+            self.save_data(title_prev, related_ids)
 
     def save_data(self, title, ids):
         logger.info('Saving {} ids for segment: {}'.format(len(ids), title))
