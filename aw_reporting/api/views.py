@@ -326,7 +326,10 @@ class TrackChartApiView(TrackApiBase):
 
     def get(self, request, *args, **kwargs):
         filters = self.get_filters()
-        chart = DeliveryChart(additional_chart=False, **filters)
+        visible_accounts = Account.user_objects(request.user).filter(
+            can_manage_clients=False,
+        ).values_list("id", flat=True)
+        chart = DeliveryChart(visible_accounts, additional_chart=False, **filters)
         return Response(data=chart.get_response())
 
 
@@ -336,9 +339,13 @@ class TrackAccountsDataApiView(TrackApiBase):
     Returns a list of accounts for the table below the chart
     """
 
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         filters = self.get_filters()
+        visible_accounts = Account.user_objects(request.user).filter(
+            can_manage_clients=False,
+        ).values_list("id", flat=True)
         chart = DeliveryChart(
+            visible_accounts,
             additional_chart=False,
             **filters
         )

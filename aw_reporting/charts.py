@@ -18,7 +18,7 @@ TOP_LIMIT = 10
 
 class DeliveryChart:
 
-    def __init__(self, accounts=None, campaigns=None, ad_groups=None,
+    def __init__(self, visible_accounts, accounts=None, campaigns=None, ad_groups=None,
                  indicator=None, dimension=None, breakdown="daily",
                  start_date=None, end_date=None,
 
@@ -31,6 +31,7 @@ class DeliveryChart:
             ).values_list('id', flat=True)
 
         self.params = dict(
+            visible_accounts=visible_accounts,
             campaigns=campaigns,
             ad_groups=ad_groups,
             indicator=indicator,
@@ -294,8 +295,7 @@ class DeliveryChart:
 
     def filter_queryset(self, queryset):
         camp_link = self.get_camp_link(queryset)
-
-        filters = {}
+        filters = {"%s__account_id__in" % camp_link: self.params['visible_accounts']}
         if self.params['start']:
             filters['date__gte'] = self.params['start']
         if self.params['end']:
@@ -305,7 +305,7 @@ class DeliveryChart:
             ad_group_link = self.get_ad_group_link(queryset)
             filters["%s_id__in" % ad_group_link] = self.params['ad_groups']
 
-        elif self.params['campaigns']:
+        if self.params['campaigns']:
             filters["%s_id__in" % camp_link] = self.params['campaigns']
 
         if self.params['indicator'] in ('average_cpv', 'ctr_v',
