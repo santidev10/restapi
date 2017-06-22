@@ -45,8 +45,8 @@ class ContanctMessageSendApiView(APIView):
         """
 
         sender = settings.SENDER_EMAIL_ADDRESS
-        subject = data.get("subject", "default")
-        to = ','.join(settings.LANDING_CONTACTS.get(subject))
+        subject = data.get("subject")
+        to = ','.join(settings.LANDING_CONTACTS.get(subject, settings.LANDING_CONTACTS.get('default')))
         text = "Dear Manager, \n" \
                "You've got a new contact message sent via SaaS contact form. \n\n" \
                "From: {name} \n" \
