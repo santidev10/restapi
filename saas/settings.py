@@ -42,7 +42,8 @@ PROJECT_APPS = (
     "aw_reporting",
     "userprofile",
     "segment",
-    "keyword_tool"
+    "keyword_tool",
+    "landing"
 )
 
 THIRD_PARTY_APPS = (
@@ -172,6 +173,20 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 BROKER_URL = "redis://localhost:6379/0"
 
 KW_TOOL_KEY = "Qi3mxPnm"
+
+# landing page settings
+LANDING_SUBJECT = [
+    "General",
+    "Sales",
+    "Technical Support"
+]
+
+LANDING_CONTACTS = {
+    'default': [
+        'yuriy.matso@channelfactory.com',
+        'chf.team@sigma.software',
+    ],
+}
 
 try:
     from .local_settings import *
