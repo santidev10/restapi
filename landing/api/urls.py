@@ -3,9 +3,8 @@ Feedback api urls module
 """
 from django.conf.urls import url
 
-from feedback.api.views import FeedbackRetrieveUpdateApiView,\
-    FeedbackSendApiView
+from landing.api.views import ContanctMessageSendApiView
 
 urlpatterns = [
-    url(r'^contacts/$', ContactsApiView.as_view(), name="contacts"),
+    url(r'^contacts/$', ContanctMessageSendApiView.as_view(), name="contacts"),
 ]

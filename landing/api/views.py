@@ -11,7 +11,7 @@ from landing.api.serializers import ContactMessageSendSerializer
 from landing.models import ContactMessage
 
 
-class FeedbackSendApiView(APIView):
+class ContanctMessageSendApiView(APIView):
     """
     Send feedback endpoint
     """
