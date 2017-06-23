@@ -4,7 +4,9 @@ SegmentChannel models module
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector as Connector
+# pylint: enable=import-error
 
 from .base import BaseSegment
 from .base import BaseSegmentRelated

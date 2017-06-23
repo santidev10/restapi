@@ -12,7 +12,9 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.utils import timezone
 
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 
 from utils.models import Timestampable
 

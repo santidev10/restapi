@@ -9,8 +9,10 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, \
     get_yt_id_from_url
 from aw_reporting.models import GeoTarget, Topic, Audience, DATE_FORMAT, SUM_STATS, dict_add_calculated_stats
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 from decimal import Decimal
 from collections import OrderedDict
 from datetime import datetime
