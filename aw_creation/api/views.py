@@ -17,7 +17,7 @@ from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
-from rest_framework.pagination import PageNumberPagination
+from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
@@ -209,20 +209,8 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         return item
 
 
-class OptimizationAccountListPaginator(PageNumberPagination):
-    page_size = 100
-
-    def get_paginated_response(self, data):
-        """
-        Update response to return
-        """
-        response_data = {
-            'items_count': self.page.paginator.count,
-            'items': data,
-            'current_page': self.page.number,
-            'max_page': self.page.paginator.num_pages,
-        }
-        return Response(response_data)
+class OptimizationAccountListPaginator(CustomPageNumberPaginator):
+    page_size = 20
 
 
 class OptimizationOptionsApiView(APIView):

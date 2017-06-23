@@ -114,7 +114,7 @@ class ApiRootView(APIView):
                 format=format
             )),
             ('Account list', reverse(
-                'aw_reporting_urls:analyze_accounts',
+                'aw_reporting_urls:analyze_accounts_list',
                 request=request,
                 format=format
             )),

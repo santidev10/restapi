@@ -822,6 +822,14 @@ class DemoAccount(BaseDemo):
         return demo_details
 
     @property
+    def account_details(self):
+        data = self.creation_details
+        del data['account']
+        data['account_creation'] = self.id
+        return data
+
+
+    @property
     def creation_details_full(self):
         data = dict(**self.creation_details)
         data.update(
@@ -831,3 +839,53 @@ class DemoAccount(BaseDemo):
             ],
         )
         return data
+
+    def account_passes_filters(self, filters):
+        show = True
+
+        search = filters.get('search')
+        if search and search not in demo.name:
+            show = False
+
+        status = filters.get('status')
+        if status and status != "Running":
+            show = False
+
+        min_goal_units = filters.get('min_goal_units')
+        if min_goal_units and int(min_goal_units) > VIDEO_VIEWS:
+            show = False
+
+        max_goal_units = filters.get('max_goal_units')
+        if max_goal_units and int(max_goal_units) < VIDEO_VIEWS:
+            show = False
+
+        min_campaigns_count = filters.get('min_campaigns_count')
+        if min_campaigns_count and int(min_campaigns_count) > DEMO_CAMPAIGNS_COUNT:
+            show = False
+
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if max_campaigns_count and int(max_campaigns_count) < DEMO_CAMPAIGNS_COUNT:
+            show = False
+
+        min_start = filters.get('min_start')
+        if min_start and min_start > str(self.start_date):
+            show = False
+
+        max_start = filters.get('max_start')
+        if max_start and max_start < str(self.start_date):
+            show = False
+
+        min_end = filters.get('min_end')
+        if min_end and min_end > str(self.end_date):
+            show = False
+
+        max_end = filters.get('max_end')
+        if max_end and max_end < str(self.end_date):
+            show = False
+
+        is_changed = filters.get('is_changed')
+        if is_changed:
+            if int(is_changed):
+                show = False
+
+        return show

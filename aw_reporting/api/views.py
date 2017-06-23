@@ -2,49 +2,148 @@ import csv
 import re
 from datetime import datetime
 from io import StringIO
-from aw_creation.models import AccountCreation
-from aw_creation.api.views import OptimizationAccountListApiView
 from django.http import StreamingHttpResponse
 from django.db import transaction
-from django.db.models import Min, Max, Sum
+from django.db.models import Min, Max, Sum, Count, Q
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR
 from oauth2client import client
-from aw_reporting.api.serializers import AWAccountConnectionSerializer
+from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, CampaignListSerializer
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
-from aw_reporting.models import AWConnection, Account, AWAccountPermission
+from aw_reporting.models import AWConnection, Account, AWAccountPermission, Campaign
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
+from utils.api_paginator import CustomPageNumberPaginator
+
+
+class AccountsListPaginator(CustomPageNumberPaginator):
+    page_size = 20
 
 
 @demo_view_decorator
-class AnalyzeAccountsListApiView(OptimizationAccountListApiView):
+class AnalyzeAccountsListApiView(ListAPIView):
     """
     Returns a list of user's accounts that were pulled from AdWords
     """
 
-    def get_queryset(self, **filters):
-        return AccountCreation.objects.none()
+    serializer_class = AccountsListSerializer
+    pagination_class = AccountsListPaginator
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def get_queryset(self, **filters):
+        sort_by = self.request.query_params.get('sort_by')
+        if sort_by != "name":
+            sort_by = "-created_at"
+
+        queryset = Account.user_objects(self.request.user).filter(
+            can_manage_clients=False,
+            # **filters
+        ).order_by("name")
+
+        return queryset
+
+    filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
+               'is_changed', 'min_start', 'max_start', 'min_end', 'max_end')
+
+    def get_filters(self):
+        filters = {}
+        query_params = self.request.query_params
+        for f in self.filters:
+            v = query_params.get(f)
+            if v:
+                filters[f] = v
+        return filters
+
+    def filter_queryset(self, queryset):
+        today = datetime.now().date()
+        queryset = queryset.annotate(start=Min("campaigns__start_date"),
+                                     end=Max("campaigns__end_date"))
+
+        if self.request.query_params.get('show_closed') != "1":
+            queryset = queryset.filter(Q(end__gte=today) | Q(end__isnull=True))
+
+        filters = self.get_filters()
+        search = filters.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+
+        status = filters.get('status')
+        if status:
+            if status == "Ended":
+                queryset = queryset.filter(is_ended=True)
+            elif status == "Paused":
+                queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
+            else:
+                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
+                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
+                if status == "Running":
+                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
+                elif status == "Approved":
+                    queryset = queryset.filter(camp_count=0, **approved_f)
+                else:
+                    queryset = queryset.none()
+
+        min_goal_units = filters.get('min_goal_units')
+        max_goal_units = filters.get('max_goal_units')
+        if min_goal_units or max_goal_units:
+            queryset = queryset.annotate(goal_units=Sum('campaign_creations__goal_units'))
+            if min_goal_units:
+                queryset = queryset.filter(goal_units__gte=min_goal_units)
+            if max_goal_units:
+                queryset = queryset.filter(goal_units__lte=max_goal_units)
+
+        min_campaigns_count = filters.get('min_campaigns_count')
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if min_campaigns_count or max_campaigns_count:
+            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
+            if min_campaigns_count:
+                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+            if max_campaigns_count:
+                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+
+        min_start = filters.get('min_start')
+        max_start = filters.get('max_start')
+        if min_start or max_start:
+
+            if min_start:
+                queryset = queryset.filter(start__gte=min_start)
+            if max_start:
+                queryset = queryset.filter(start__lte=max_start)
+
+        min_end = filters.get('min_end')
+        max_end = filters.get('max_end')
+        if min_end or max_end:
+
+            if min_end:
+                queryset = queryset.filter(end__gte=min_end)
+            if max_end:
+                queryset = queryset.filter(end__lte=max_end)
+
+        is_changed = filters.get('is_changed')
+        if is_changed:
+            queryset = queryset.filter(is_changed=int(is_changed))
+
+        return queryset
 
 
 @demo_view_decorator
-class AnalyzeAccountCampaignsListApiView(APIView):
+class AnalyzeAccountCampaignsListApiView(ListAPIView):
     """
     Return a list of the account's campaigns/ad-groups
     We use it to build filters
     """
+    serializer_class = CampaignListSerializer
 
-    def get(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        return Campaign.objects.filter(account_id=pk)
 
 
 @demo_view_decorator
@@ -274,6 +373,23 @@ class TrackFiltersListApiView(TrackApiBase):
     Lists of the filter names and values
     """
 
+    def get_static_filters(self):
+        static_filters = dict(
+            indicator=[
+                dict(id=uid, name=name)
+                for uid, name in self.indicators
+            ],
+            breakdown=[
+                dict(id=uid, name=name)
+                for uid, name in self.breakdowns
+            ],
+            dimension=[
+                dict(id=uid, name=name)
+                for uid, name in self.dimensions
+            ],
+        )
+        return static_filters
+
     def get(self, request, *args, **kwargs):
         accounts = Account.user_objects(request.user).filter(
             can_manage_clients=False,
@@ -302,18 +418,7 @@ class TrackFiltersListApiView(TrackApiBase):
                 )
                 for account in accounts
             ],
-            indicator=[
-                dict(id=uid, name=name)
-                for uid, name in self.indicators
-            ],
-            breakdown=[
-                dict(id=uid, name=name)
-                for uid, name in self.breakdowns
-            ],
-            dimension=[
-                dict(id=uid, name=name)
-                for uid, name in self.dimensions
-            ],
+            **self.get_static_filters()
         )
         return Response(data=filters)
 
@@ -373,16 +478,9 @@ class ConnectAWAccountApiView(APIView):
     {"code": "<INSERT YOUR CODE HERE>"}
 
     success POST response example:
-    [
-        {
-            "can_manage_clients": true,
-            "currency_code": "USD",
-            "is_test_account": false,
-            "name": "CF Automation MCC",
-            "id": 7155851537,
-            "timezone": "America/Los_Angeles"
-        }
-    ]
+    {"email": "your@email.com",
+    "mcc_accounts": [{"id": 1234, "name": "Test Acc", "currency_code": "UAH", "timezone": "Ukraine/Kiev"}]
+    }
     """
 
     scopes = (

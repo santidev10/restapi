@@ -3,15 +3,25 @@ from datetime import datetime
 from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from aw_creation.demo.views import OptimizationAccountListApiView
 from .charts import DemoChart
 from .models import DemoAccount, DEMO_ACCOUNT_ID
 
 
-class AnalyzeAccountsListApiView(OptimizationAccountListApiView):
-    pass
+class AnalyzeAccountsListApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, **kwargs):
+            response = original_method(view, request, **kwargs)
+            if response.status_code == HTTP_200_OK:
+                demo = DemoAccount()
+                filters = view.get_filters()
+                if demo.account_passes_filters(filters):
+                    response.data['items'].insert(0, demo.account_details)
+                    response.data['items_count'] += 1
+            return response
+
+        return method
 
 
 class AnalyzeAccountCampaignsListApiView:
@@ -174,30 +184,32 @@ class TrackFiltersListApiView:
 
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-
-            response = original_method(view, *args, **kwargs)
-            data = response.data
-            if not data['accounts']:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 account = DemoAccount()
-                data['accounts'] = [
-                    dict(
-                        id=account.id,
-                        name=account.name,
-                        start_date=account.start_date,
-                        end_date=account.end_date,
-                        campaigns=[
-                            dict(
-                                id=c.id,
-                                name=c.name,
-                                start_date=c.start_date,
-                                end_date=c.end_date,
-                            )
-                            for c in account.children
-                        ]
-                    )
-                ]
-            return response
+                data = dict(
+                    accounts=[
+                        dict(
+                            id=account.id,
+                            name=account.name,
+                            start_date=account.start_date,
+                            end_date=account.end_date,
+                            campaigns=[
+                                dict(
+                                    id=c.id,
+                                    name=c.name,
+                                    start_date=c.start_date,
+                                    end_date=c.end_date,
+                                )
+                                for c in account.children
+                            ]
+                        )
+                    ],
+                    **view.get_static_filters()
+                )
+            return Response(data=data)
         return method
 
 

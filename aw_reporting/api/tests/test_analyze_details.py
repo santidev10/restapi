@@ -1,20 +1,18 @@
 import json
 from unittest.mock import patch
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from .base import AwReportingAPITestCase
 
 
-class AccountNamesAPITestCase(ExtendedAPITestCase):
+class AccountNamesAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.create_test_user()
 
-    def test_success_get_filter_dates(self):
+    def test_success_get_filter_dates_demo(self):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
         today = datetime.now().date()
@@ -79,7 +77,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 }
             )
 
-    def test_success_get_filter_ad_groups(self):
+    def test_success_get_filter_ad_groups_demo(self):
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(DEMO_ACCOUNT_ID,))
         ad_groups = ["demo11", "demo22"]
