@@ -11,7 +11,6 @@ if __name__ == "__main__":
     for line in f:
         line = line.strip()
         print(line)
-
         if line[:2] == 'E:':
             errors_count += 1
 
