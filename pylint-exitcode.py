@@ -6,18 +6,25 @@ import errno
 
 if __name__ == "__main__":
     f = fileinput.input()
-    errors_count = 0
+
+    all_lines = []
+    error_lines = []
 
     for line in f:
         line = line.strip()
-        print(line)
+        all_lines.append(line)
+
         if line[:2] == 'E:':
-            errors_count += 1
+            error_lines.append(line)
 
     f.close()
 
-    if errors_count > 0:
+    if len(error_lines):
+        for line in error_lines:
+            print(line)
         print("Aborting the build due the errors.")
         sys.exit(1)
     else:
+        for line in all_lines:
+            print(line)
         sys.exit(0)

@@ -29,9 +29,11 @@ class ExtendedAPITestCase(APITestCase):
 
         if auth:
             token = Token.objects.create(user=user)
+            # pylint: disable=no-member
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(token.key)
             )
+            # pylint: enable=no-member
         return user
 
 

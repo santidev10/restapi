@@ -17,7 +17,7 @@ def load_settings():
 def get_client(**kwargs):
     api_settings = load_settings()
     api_settings.update(kwargs)
-    logger.debug('Start client, settings:', api_settings)
+    logger.debug('Start client, settings: {}'.format(api_settings))
     oauth2_client = oauth2.GoogleRefreshTokenClient(
                                     api_settings.get('client_id'),
                                     api_settings.get('client_secret'),

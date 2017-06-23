@@ -235,8 +235,10 @@ class AnalyzeWeeklyReport:
             self.date_delta.strftime("%m/%d/%y"),
             (datetime.now().date() - timedelta(days=1)).strftime("%m/%d/%y"))
         # Set merge area
+        # pylint: disable=no-value-for-parameter
         self.worksheet.merge_range('B1:D4', "")
         self.worksheet.merge_range('B5:D11', "", self.merge_format)
+        # pylint: enable=no-value-for-parameter
         self.worksheet.write_rich_string(
             "B5",
             self.bold_format,

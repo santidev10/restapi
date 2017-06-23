@@ -6,7 +6,9 @@ from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 
+# pylint: disable=import-error
 from apiclient.discovery import build
+# pylint: enable=import-error
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, Avg, Max, Min, Sum, Count, When, Case, Value, \
