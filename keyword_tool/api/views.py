@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth.models import AnonymousUser
+from django.core.management import call_command
 from django.db.models import Count
 from django.db.models import Q
 from django.db.models.functions import Coalesce
@@ -207,6 +208,14 @@ class OptimizeQueryApiView(ListAPIView):
         #         dict_add_calculated_stats(item)
 
 
+class KeywordsListApiView(OptimizeQueryApiView):
+    def get_queryset(self):
+        queryset = KeyWord.objects.all()
+        queryset = self.filter(queryset)
+        queryset = self.sort(queryset)
+        return queryset
+
+
 class ViralKeywordsApiView(OptimizeQueryApiView):
     def get_queryset(self):
         viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
@@ -313,7 +322,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
             kwargs["fields"] = set(fields.split(","))
 
         if page is not None:
-            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
+            serializer = SavedListNameSerializer(page, many=True, request=request, **kwargs)
             return self.get_paginated_response(serializer.data)
 
         serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
@@ -499,3 +508,12 @@ class ListsDuplicateApiView(GenericAPIView):
         return Response(status=HTTP_202_ACCEPTED,
                         data=SavedListNameSerializer(
                             new_list, request=request).data)
+
+
+class ViralListBuildView(APIView):
+    def post(self, *args, **kwargs):
+        uc = dict(self.request.data).get('update_complete')
+        if uc:
+            call_command('generate_viral_keywords_list')
+            return Response(status=HTTP_202_ACCEPTED)
+        return Response(status=HTTP_400_BAD_REQUEST)

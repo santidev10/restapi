@@ -167,6 +167,7 @@ class KeywordsList(BaseModel):
     name = models.TextField()
     user_email = models.EmailField(db_index=True)
     keywords = models.ManyToManyField(KeyWord, related_name='lists')
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=255, null=True, blank=True)
 
@@ -187,30 +188,15 @@ class KeywordsList(BaseModel):
 
     @property
     def top_keywords_data(self):
-        raw = self.top_keywords
-        if raw:
-            try:
-                return json.loads(raw)
-            except Exception:
-                return 'invalid data format'
+        return self.top_keywords
 
     @property
     def cum_average_volume_data(self):
-        raw = self.cum_average_volume
-        if raw:
-            try:
-                return json.loads(raw)
-            except Exception:
-                return 'invalid data format'
+        return self.cum_average_volume
 
     @property
     def cum_average_volume_per_kw_data(self):
-        raw = self.cum_average_volume_per_kw
-        if raw:
-            try:
-                return json.loads(raw)
-            except Exception:
-                return 'invalid data format'
+        return self.cum_average_volume_per_kw
 
 
 class ViralKeywords(BaseModel):

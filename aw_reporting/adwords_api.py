@@ -58,8 +58,9 @@ def get_client(**kwargs):
     return _get_client(**api_settings)
 
 
-def optimize_keyword(query, client=None):
+def optimize_keyword(query, client=None, request_type='IDEAS'):
     service_client = client or get_client()
+    request_type = request_type
     offset = 0
     page_size = 1000
 
@@ -96,7 +97,7 @@ def optimize_keyword(query, client=None):
             },
         ],
         'ideaType': 'KEYWORD',
-        'requestType': 'IDEAS',
+        'requestType': request_type,
 
         'requestedAttributeTypes': ['KEYWORD_TEXT', 'SEARCH_VOLUME',
                                     'CATEGORY_PRODUCTS_AND_SERVICES',
