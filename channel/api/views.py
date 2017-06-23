@@ -14,7 +14,7 @@ from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-# pylint: enaable=import-error
+# pylint: enable=import-error
 
 
 class ChannelListApiView(APIView):
