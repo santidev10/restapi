@@ -183,7 +183,6 @@ LANDING_SUBJECT = [
 
 LANDING_CONTACTS = {
     'default': [
-        'yuriy.matso@channelfactory.com',
         'chf.team@sigma.software',
     ],
 }
