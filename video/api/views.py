@@ -9,8 +9,10 @@ from rest_framework.views import APIView
 
 from segment.models import SegmentVideo
 from singledb.api.views.base import SingledbApiView
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
