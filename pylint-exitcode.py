@@ -9,12 +9,20 @@ if __name__ == "__main__":
 
     all_lines = []
     error_lines = []
+    module_line = None
 
     for line in f:
         line = line.strip()
         all_lines.append(line)
 
+        if line[:12] == '************':
+            module_line = line
+            
         if line[:2] == 'E:':
+            if module_line:
+                error_lines.append(module_line)
+                module_line = None
+
             error_lines.append(line)
 
     f.close()
