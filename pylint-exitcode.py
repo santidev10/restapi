@@ -17,6 +17,7 @@ if __name__ == "__main__":
     f.close()
 
     if errors_count > 0:
+        print("Aborting the build due the errors.")
         sys.exit(1)
     else:
         sys.exit(0)
