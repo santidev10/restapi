@@ -61,8 +61,9 @@ confidence=
 # wildcard-import (W0401)
 # relative-import (W0403)
 # invalid-name (C0103)
+# no-member (E1103)
 
-disable=C0103,C0111,C0112,W0511,R0903,W0614,C0301,W0403,W0401
+disable=C0103,C0111,C0112,W0511,R0903,W0614,C0301,W0403,W0401,E1103
 
 
 
