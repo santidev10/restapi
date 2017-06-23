@@ -33,11 +33,8 @@ class NoneField(SerializerMethodField):
         return
 
 
-class AccountsListSerializer(ModelSerializer):
-    creative = SerializerMethodField()
-    structure = SerializerMethodField()
+class AccountsHeaderSerializer(ModelSerializer):
     weekly_chart = SerializerMethodField()
-    goal_charts = SerializerMethodField()
 
     start = SerializerMethodField()
     end = SerializerMethodField()
@@ -48,12 +45,97 @@ class AccountsListSerializer(ModelSerializer):
     videos_count = SerializerMethodField()
     channels_count = SerializerMethodField()
 
-    is_approved = NoneField()
-    is_ended = NoneField()
     status = NoneField()
     is_optimization_active = NoneField()
     is_changed = NoneField()
     goal_units = NoneField()
+
+    @staticmethod
+    def get_weekly_chart(obj):
+        data = AdGroupStatistic.objects.filter(
+            ad_group__campaign__account=obj
+        ).values("date").order_by("-date").annotate(
+            views=Sum("video_views")
+        )[:7]
+        chart_data = [dict(label=i['date'], value=i['views']) for i in reversed(data)]
+        return chart_data
+
+    def get_ad_groups_count(self, obj):
+        return self.stats.get(obj.id, {}).get("ad_groups_count")
+
+    def get_campaigns_count(self, obj):
+        return self.stats.get(obj.id, {}).get("campaigns_count")
+
+    def get_channels_count(self, obj):
+        return self.stats.get(obj.id, {}).get("channels_count")
+
+    def get_creative_count(self, obj):
+        return self.stats.get(obj.id, {}).get("creative_count")
+
+    def get_videos_count(self, obj):
+        return self.stats.get(obj.id, {}).get("videos_count")
+
+    def get_keywords_count(self, obj):
+        return self.stats.get(obj.id, {}).get("keywords_count")
+
+    def get_start(self, obj):
+        return self.stats.get(obj.id, {}).get("min_start")
+
+    def get_end(self, obj):
+        stats = self.stats.get(obj.id)
+        if stats and not stats["end_is_null"]:
+            return stats["max_end"]
+
+    def __init__(self, *args, **kwargs):
+        self.stats = {}
+        if args:
+            if type(args[0]) is list:
+                ids = [i.id for i in args[0]]
+            else:
+                ids = [args[0].id]
+
+            data = Campaign.objects.filter(
+                account_id__in=ids
+            ).values('account_id').order_by('account_id').annotate(
+                min_start=Min("start_date"),
+                max_end=Max("end_date"),
+                end_is_null=Sum(
+                    Case(
+                        When(
+                            end_date__isnull=True,
+                            then=Value(1),
+                        ),
+                        default=Value(0),
+                        output_field=AggrIntegerField()
+                    )
+                ),
+                campaigns_count=Count("id", distinct=True),
+                ad_groups_count=Count("adgroup__id", distinct=True),
+                creative_count=Count("adgroup__videos_stats__creative_id", distinct=True),
+                keywords_count=Count("adgroup__keywords__keyword", distinct=True),
+                videos_count=Count("adgroup__managed_video_statistics__yt_id", distinct=True),
+                channels_count=Count("adgroup__channel_statistics__yt_id", distinct=True),
+            )
+            self.stats = {i['account_id']: i for i in data}
+
+        super(AccountsHeaderSerializer, self).__init__(*args, **kwargs)
+
+    class Meta:
+        model = Account
+        fields = (
+            'id', 'name', 'account_creation', 'status', 'start', 'end', 'is_optimization_active', 'is_changed',
+            'creative_count', 'keywords_count', 'videos_count', 'goal_units', 'channels_count', 'campaigns_count',
+            'ad_groups_count', "weekly_chart",
+        )
+
+
+class AccountsListSerializer(AccountsHeaderSerializer):
+    creative = SerializerMethodField()
+    structure = SerializerMethodField()
+    goal_charts = SerializerMethodField()
+
+    is_approved = NoneField()
+    is_ended = NoneField()
     bidding_type = NoneField()
     video_ad_format = NoneField()
     delivery_method = NoneField()
@@ -98,71 +180,10 @@ class AccountsListSerializer(ModelSerializer):
         ]
         return structure
 
-    @staticmethod
-    def get_weekly_chart(obj):
-        data = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account=obj
-        ).values("date").order_by("-date").annotate(
-            views=Sum("video_views")
-        )[:7]
-        chart_data = [dict(label=i['date'], value=i['views']) for i in reversed(data)]
-        return chart_data
-
-    def get_ad_groups_count(self, obj):
-        return self.stats.get(obj.id, {}).get("ad_groups_count")
-
-    def get_campaigns_count(self, obj):
-        return self.stats.get(obj.id, {}).get("campaigns_count")
-
-    def get_channels_count(self, obj):
-        return self.stats.get(obj.id, {}).get("channels_count")
-
-    def get_creative_count(self, obj):
-        return self.stats.get(obj.id, {}).get("creative_count")
-
-    def get_videos_count(self, obj):
-        return self.stats.get(obj.id, {}).get("videos_count")
-
-    def get_keywords_count(self, obj):
-        return self.stats.get(obj.id, {}).get("keywords_count")
-
-    def get_start(self, obj):
-        return self.stats.get(obj.id, {}).get("min_start")
-
-    def get_end(self, obj):
-        stats = self.stats.get(obj.id)
-        if stats and not stats["end_is_null"]:
-            return stats["max_end"]
-
     def __init__(self, *args, **kwargs):
-        self.stats = {}
         self.creative = {}
         if args:
             ids = [i.id for i in args[0]]
-            data = Campaign.objects.filter(
-                account_id__in=ids
-            ).values('account_id').order_by('account_id').annotate(
-                min_start=Min("start_date"),
-                max_end=Max("end_date"),
-                end_is_null=Sum(
-                    Case(
-                        When(
-                            end_date__isnull=True,
-                            then=Value(1),
-                        ),
-                        default=Value(0),
-                        output_field=AggrIntegerField()
-                    )
-                ),
-                campaigns_count=Count("id", distinct=True),
-                ad_groups_count=Count("adgroup__id", distinct=True),
-                creative_count=Count("adgroup__videos_stats__creative_id", distinct=True),
-                keywords_count=Count("adgroup__keywords__keyword", distinct=True),
-                videos_count=Count("adgroup__managed_video_statistics__yt_id", distinct=True),
-                channels_count=Count("adgroup__channel_statistics__yt_id", distinct=True),
-            )
-            self.stats = {i['account_id']: i for i in data}
-
             values = ("ad_group__campaign__account_id", "creative_id")
             data = VideoCreativeStatistic.objects.filter(
                 ad_group__campaign__account_id__in=ids
@@ -199,13 +220,24 @@ class AccountsListSerializer(ModelSerializer):
 
     class Meta:
         model = Account
-        fields = (
-            'id', 'name', 'account_creation', 'status', 'start', 'end', 'is_optimization_active', 'is_changed',
-            'creative_count', 'keywords_count', 'videos_count', 'goal_units', 'channels_count', 'campaigns_count',
-            'ad_groups_count', "weekly_chart", 'is_ended', 'is_approved', 'structure', 'bidding_type',
-            'video_ad_format', 'delivery_method', 'video_networks', 'goal_type', 'is_paused', 'type',
-            'goal_charts', 'creative',
+        fields = AccountsHeaderSerializer.Meta.fields + (
+            'is_ended', 'is_approved', 'structure', 'bidding_type',
+            'video_ad_format', 'delivery_method', 'video_networks',
+            'goal_type', 'is_paused', 'type', 'goal_charts', 'creative',
         )
+
+
+class AccountsDetailsSerializer(AccountsHeaderSerializer):
+
+    def __init__(self, *args, **kwargs):
+
+        super(AccountsDetailsSerializer, self).__init__(*args, **kwargs)
+
+    # class Meta:
+    #     model = Account
+    #     fields = (
+    #         'id', 'name', 'account_creation',
+    #     )
 
 
 class AdGroupListSerializer(ModelSerializer):

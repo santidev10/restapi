@@ -1,25 +1,32 @@
 import csv
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 from django.http import StreamingHttpResponse
 from django.db import transaction
-from django.db.models import Min, Max, Sum, Count, Q
-from rest_framework.generics import ListAPIView
+from django.db.models import Min, Max, Sum, Count, Q, Avg, Case, When, Value, IntegerField, FloatField, F, \
+    ExpressionWrapper
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_500_INTERNAL_SERVER_ERROR
+    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 from oauth2client import client
-from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, CampaignListSerializer
+from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, \
+    CampaignListSerializer, AccountsDetailsSerializer
+from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
+    dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
+    AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
+    Campaign, AdGroupStatistic, DATE_FORMAT
+
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
-from aw_reporting.models import DATE_FORMAT
-from aw_reporting.models import AWConnection, Account, AWAccountPermission, Campaign
+
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
 from utils.api_paginator import CustomPageNumberPaginator
+import pytz
 
 
 class AccountsListPaginator(CustomPageNumberPaginator):
@@ -156,6 +163,7 @@ class AnalyzeDetailsApiView(APIView):
     or
     {"start": "2017-05-01", "end": "2017-06-01", "campaigns": ["1", "2"], "ad_groups": ["11", "12"]}
     """
+    serializer_class = AccountsDetailsSerializer
 
     def get_filters(self):
         data = self.request.data
@@ -171,8 +179,140 @@ class AnalyzeDetailsApiView(APIView):
         )
         return filters
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def post(self, request, pk, **_):
+        try:
+            account = Account.user_objects(request.user).get(pk=pk)
+        except Account.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = AccountsDetailsSerializer(account).data
+
+        # stats
+        filters = self.get_filters()
+        fs = dict(ad_group__campaign__account=account)
+        if filters['campaigns']:
+            fs["ad_group__campaign__id__in"] = filters['campaigns']
+        if filters['ad_groups']:
+            fs["ad_group__id__in"] = filters['ad_groups']
+        if filters['start_date']:
+            fs["date__gte"] = filters['start_date']
+        if filters['end_date']:
+            fs["date__lte"] = filters['end_date']
+
+        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            average_position=Avg("average_position"),
+            ad_network=ConcatAggregate("ad_network", distinct=True),
+            **{s: Sum(s) for s in SUM_STATS + QUARTILE_STATS}
+        )
+        dict_add_calculated_stats(stats)
+        dict_quartiles_to_rates(stats)
+        data.update(stats)
+
+        # 'age', 'gender', 'device', 'location'
+        annotate = dict(v=Sum('cost'))
+        gender = GenderStatistic.objects.filter(**fs).values(
+            'gender_id').order_by('gender_id').annotate(**annotate)
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+
+        age = AgeRangeStatistic.objects.filter(**fs).values(
+            "age_range_id").order_by("age_range_id").annotate(**annotate)
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+
+        device = AdGroupStatistic.objects.filter(**fs).values(
+            "device_id").order_by("device_id").annotate(**annotate)
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+
+        location = CityStatistic.objects.filter(**fs).values(
+            "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
+        location = [dict(name=Devices[i['city__name']], value=i['v']) for i in location]
+
+        data.update(gender=gender, age=age, device=device, location=location)
+
+        # this and last week base stats
+        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date()
+        week_start = week_end - timedelta(days=6)
+        prev_week_end = week_start - timedelta(days=1)
+        prev_week_start = prev_week_end - timedelta(days=6)
+
+        annotate = {
+            "{}_{}_week".format(s, k): Sum(
+                    Case(
+                        When(
+                            date__gte=sd,
+                            date__lte=ed,
+                            then=s,
+                        ),
+                        output_field=IntegerField()
+                    )
+                )
+            for k, sd, ed in (("this", week_start, week_end),
+                              ("last", prev_week_start, prev_week_end))
+            for s in BASE_STATS
+        }
+        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(**annotate)
+        data.update(weeks_stats)
+
+        # top and bottom rates
+        'average_cpv_top' 'average_cpv_bottom'
+        'ctr_v_bottom' 'ctr_v_top'
+        'video_view_rate_top' 'video_view_rate_bottom'
+        'ctr_top' 'ctr_bottom'
+        annotate = dict(
+            average_cpv=ExpressionWrapper(
+                Case(
+                    When(
+                        video_views__sum__gt=0,
+                        then=F("cost__sum") / F("video_views__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr=ExpressionWrapper(
+                Case(
+                    When(
+                        clicks__sum__isnull=False,
+                        impressions__sum__gt=0,
+                        then=F("clicks__sum") * Value(100.0) / F("impressions__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr_v=ExpressionWrapper(
+                Case(
+                    When(
+                        clicks__sum__isnull=False,
+                        video_views__sum__gt=0,
+                        then=F("clicks__sum") * Value(100.0) / F("video_views__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            video_view_rate=ExpressionWrapper(
+                Case(
+                    When(
+                        video_views__sum__isnull=False,
+                        impressions__sum__gt=0,
+                        then=F("video_views__sum") * Value(100.0) / F("video_views__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+        )
+        fields = tuple(annotate.keys())
+        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values("date").order_by("date").annotate(
+            *[Sum(s) for s in BASE_STATS]
+        ).annotate(**annotate).aggregate(
+            **{"{}_{}".format(s, n): a(s)
+               for s in fields
+               for n, a in (("top", Max), ("bottom", Min))}
+        )
+        data.update(top_bottom_stats)
+
+        return Response(data=data)
 
 
 @demo_view_decorator
