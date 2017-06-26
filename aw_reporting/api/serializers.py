@@ -205,7 +205,7 @@ class AccountsListSerializer(AccountsHeaderSerializer):
                         limit=len(video_ids),
                     )
                 except SingleDatabaseApiConnectorException as e:
-                    logger.critical(str(e))
+                    logger.critical(e)
                 else:
                     if items:
                         items = {i['id']: i for i in items}
