@@ -15,6 +15,7 @@ from segment.api import urls as segment_api_urls
 from singledb.api import urls as singledb_api_urls
 from userprofile.api import urls as userprofile_api_urls
 from video.api import urls as video_api_urls
+from landing.api import urls as landing_api_urls
 
 urlpatterns = [
     # Admin api urls
@@ -48,6 +49,9 @@ urlpatterns = [
 
     # Singledb api urls
     url(r'^api/v1/', include(singledb_api_urls, namespace="singledb_api_urls")),
+
+    # landing api urls
+    url(r'^api/v1/', include(landing_api_urls, namespace="landing_api_urls")),
 ]
 
 if settings.DEBUG:
