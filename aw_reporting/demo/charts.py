@@ -281,6 +281,7 @@ class DemoChart:
     @staticmethod
     def explode_value_random(value, indicator, n):
 
+        # pylint: disable=E0102
         def get_val(val):
             return val
 
@@ -291,6 +292,7 @@ class DemoChart:
                     return int(val)
         else:
             daily = value
+        # pylint: enable=E0102
 
         # chart values
         values = [daily for i in range(n)]

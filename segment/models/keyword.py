@@ -5,8 +5,6 @@ from celery import task
 from django.db.models import CharField
 from django.db.models import ForeignKey
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
-
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
