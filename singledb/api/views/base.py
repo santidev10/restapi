@@ -9,22 +9,22 @@ from singledb.connector import SingleDatabaseApiConnectorException
 class SingledbApiView(APIView):
     def delete(self, request, *args, **kwargs):
         if not hasattr(self, 'connector_delete'):
-            raise HTTP_405_METHOD_NOT_ALLOWED
+            return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
         return self._connect(request, self.connector_delete, data=request.data, **kwargs)
 
     def get(self, request, *args, **kwargs):
         if not hasattr(self, 'connector_get'):
-            raise HTTP_405_METHOD_NOT_ALLOWED
+            return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
         return self._connect(request, self.connector_get, **kwargs)
 
     def post(self, request, *args, **kwargs):
         if not hasattr(self, 'connector_post'):
-            raise HTTP_405_METHOD_NOT_ALLOWED
+            return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
         return self._connect(request, self.connector_post, data=request.data, **kwargs)
 
     def put(self, request, *args, **kwargs):
         if not hasattr(self, 'connector_put'):
-            raise HTTP_405_METHOD_NOT_ALLOWED
+            return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
         return self._connect(request, self.connector_put, data=request.data, **kwargs)
 
     def _connect(self, request, connector, **kwargs):
