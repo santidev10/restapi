@@ -3,6 +3,7 @@ from rest_framework.status import HTTP_200_OK
 from .base import AwReportingAPITestCase
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
+from aw_reporting.models import Campaign, AdGroup
 
 
 class AccountNamesAPITestCase(AwReportingAPITestCase):
@@ -18,6 +19,8 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
     def test_success_get(self):
         user = self.create_test_user()
         account = self.create_account(user)
+        campaign = Campaign.objects.create(id=1, name="", account=account)
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
 
         url = reverse("aw_reporting_urls:analyze_accounts_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
