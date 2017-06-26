@@ -194,7 +194,7 @@ class AccountsListSerializer(AccountsHeaderSerializer):
                 if account_id not in creative or creative[account_id]['value'] < c['value']:
                     creative[account_id] = dict(id=c['creative_id'], value=c['value'])
 
-            video_ids = {i['creative_id'] for i in creative.values()}
+            video_ids = {i['id'] for i in creative.values()}
             if video_ids:
                 connector = SingleDatabaseApiConnector()
                 try:

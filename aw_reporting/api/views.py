@@ -67,75 +67,11 @@ class AnalyzeAccountsListApiView(ListAPIView):
         return filters
 
     def filter_queryset(self, queryset):
-        today = datetime.now().date()
-        queryset = queryset.annotate(start=Min("campaigns__start_date"),
-                                     end=Max("campaigns__end_date"))
-
-        if self.request.query_params.get('show_closed') != "1":
-            queryset = queryset.filter(Q(end__gte=today) | Q(end__isnull=True))
 
         filters = self.get_filters()
         search = filters.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
-
-        status = filters.get('status')
-        if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True)
-            elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_ended=False)
-            elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
-            else:
-                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
-                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
-                if status == "Running":
-                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
-                elif status == "Approved":
-                    queryset = queryset.filter(camp_count=0, **approved_f)
-                else:
-                    queryset = queryset.none()
-
-        min_goal_units = filters.get('min_goal_units')
-        max_goal_units = filters.get('max_goal_units')
-        if min_goal_units or max_goal_units:
-            queryset = queryset.annotate(goal_units=Sum('campaign_creations__goal_units'))
-            if min_goal_units:
-                queryset = queryset.filter(goal_units__gte=min_goal_units)
-            if max_goal_units:
-                queryset = queryset.filter(goal_units__lte=max_goal_units)
-
-        min_campaigns_count = filters.get('min_campaigns_count')
-        max_campaigns_count = filters.get('max_campaigns_count')
-        if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
-            if min_campaigns_count:
-                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
-            if max_campaigns_count:
-                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
-
-        min_start = filters.get('min_start')
-        max_start = filters.get('max_start')
-        if min_start or max_start:
-
-            if min_start:
-                queryset = queryset.filter(start__gte=min_start)
-            if max_start:
-                queryset = queryset.filter(start__lte=max_start)
-
-        min_end = filters.get('min_end')
-        max_end = filters.get('max_end')
-        if min_end or max_end:
-
-            if min_end:
-                queryset = queryset.filter(end__gte=min_end)
-            if max_end:
-                queryset = queryset.filter(end__lte=max_end)
-
-        is_changed = filters.get('is_changed')
-        if is_changed:
-            queryset = queryset.filter(is_changed=int(is_changed))
 
         return queryset
 
