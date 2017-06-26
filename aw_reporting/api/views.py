@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 from oauth2client import client
+from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, \
     CampaignListSerializer, AccountsDetailsSerializer
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
@@ -72,6 +73,34 @@ class AnalyzeAccountsListApiView(ListAPIView):
         search = filters.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
+
+        min_campaigns_count = filters.get('min_campaigns_count')
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if min_campaigns_count or max_campaigns_count:
+            queryset = queryset.annotate(campaigns_count=Count('campaigns'))
+            if min_campaigns_count:
+                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+            if max_campaigns_count:
+                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+
+        queryset = queryset.annotate(start=Min("campaigns__start_date"),
+                                     end=Max("campaigns__end_date"))
+
+        min_start = filters.get('min_start')
+        max_start = filters.get('max_start')
+        if min_start or max_start:
+            if min_start:
+                queryset = queryset.filter(start__gte=min_start)
+            if max_start:
+                queryset = queryset.filter(start__lte=max_start)
+
+        min_end = filters.get('min_end')
+        max_end = filters.get('max_end')
+        if min_end or max_end:
+            if min_end:
+                queryset = queryset.filter(end__gte=min_end)
+            if max_end:
+                queryset = queryset.filter(end__lte=max_end)
 
         return queryset
 
@@ -719,15 +748,20 @@ class ConnectAWAccountApiView(APIView):
                     connection.refresh_token = refresh_token
                     connection.save()
 
+            # -- end of get refresh token
+            # save mcc accounts
+            try:
+                customers = get_customers(
+                    connection.refresh_token,
+                    **load_web_app_settings()
+                )
+            except WebFault as e:
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data=dict(error=e.fault.faultstring))
+
             # save this connection, even if there is no MCC accounts yet
             self.request.user.aw_connections.add(connection)
 
-            # -- end of get refresh token
-            # save mcc accounts
-            customers = get_customers(
-                connection.refresh_token,
-                **load_web_app_settings()
-            )
             mcc_accounts = list(filter(
                 lambda i: i['canManageClients'] and not i['testAccount'],
                 customers,

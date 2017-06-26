@@ -201,7 +201,7 @@ class AccountsListSerializer(AccountsHeaderSerializer):
                     items = connector.get_custom_query_result(
                         model_name="video",
                         fields=["id", "title", "thumbnail_image_url"],
-                        id__in=video_ids,
+                        id__in=list(video_ids),
                         limit=len(video_ids),
                     )
                 except SingleDatabaseApiConnectorException as e:
@@ -209,11 +209,10 @@ class AccountsListSerializer(AccountsHeaderSerializer):
                 else:
                     if items:
                         items = {i['id']: i for i in items}
-                        for c in creative:
+                        for c in creative.values():
                             info = items.get(c['id'], {})
                             c['name'] = info.get('title')
                             c['thumbnail'] = info.get('thumbnail_image_url')
-
                 self.creative = creative
 
         super(AccountsListSerializer, self).__init__(*args, **kwargs)
