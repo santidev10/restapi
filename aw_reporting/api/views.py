@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 from oauth2client import client
+from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, \
     CampaignListSerializer, AccountsDetailsSerializer
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
@@ -719,15 +720,20 @@ class ConnectAWAccountApiView(APIView):
                     connection.refresh_token = refresh_token
                     connection.save()
 
+            # -- end of get refresh token
+            # save mcc accounts
+            try:
+                customers = get_customers(
+                    connection.refresh_token,
+                    **load_web_app_settings()
+                )
+            except WebFault as e:
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data=dict(error=e.fault.faultstring))
+
             # save this connection, even if there is no MCC accounts yet
             self.request.user.aw_connections.add(connection)
 
-            # -- end of get refresh token
-            # save mcc accounts
-            customers = get_customers(
-                connection.refresh_token,
-                **load_web_app_settings()
-            )
             mcc_accounts = list(filter(
                 lambda i: i['canManageClients'] and not i['testAccount'],
                 customers,
