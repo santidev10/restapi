@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models.aggregates import Aggregate
+from django.db.models import Min
 from keyword_tool.models import BaseModel
 import re
 
@@ -151,6 +152,16 @@ class Account(models.Model):
             managers__mcc_permissions__aw_connection__users=user,
         )
         return qs
+
+    @property
+    def start_date(self):
+        return self.campaigns.aggregate(date=Min('start_date'))['date']
+
+    @property
+    def end_date(self):
+        dates = self.campaigns.all().values_list('end_date', flat=True)
+        if None not in dates and dates:
+            return max(dates)
 
 
 class AWAccountPermission(models.Model):

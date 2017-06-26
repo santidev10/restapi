@@ -461,10 +461,9 @@ class AnalyzeWeeklyReport:
 
     def get_keyword_data(self):
         queryset = KeywordStatistic.objects.filter(**self.get_filters())
-        keyword_data = queryset.values(
-            "keyword__name").annotate(
-            Sum("impressions"), Sum("video_views")).order_by("keyword__name")
-        return keyword_data
+        keyword_data = queryset.values("keyword").annotate(
+            Sum("impressions"), Sum("video_views")).order_by("keyword")
+        return [dict(name=i['keyword'], **i) for i in keyword_data]
 
     def prepare_keyword_section(self, start_row):
         """

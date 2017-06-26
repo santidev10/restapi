@@ -18,7 +18,7 @@ TOP_LIMIT = 10
 
 class DeliveryChart:
 
-    def __init__(self, visible_accounts, accounts=None, campaigns=None, ad_groups=None,
+    def __init__(self, accounts, campaigns=None, ad_groups=None,
                  indicator=None, dimension=None, breakdown="daily",
                  start_date=None, end_date=None,
 
@@ -31,7 +31,7 @@ class DeliveryChart:
             ).values_list('id', flat=True)
 
         self.params = dict(
-            visible_accounts=visible_accounts,
+            accounts=accounts,
             campaigns=campaigns,
             ad_groups=ad_groups,
             indicator=indicator,
@@ -56,14 +56,61 @@ class DeliveryChart:
             additional_chart=self.additional_chart,
             additional_chart_type=self.additional_chart_type,
         )
-        charts = [
-            dict(
-                title="",
-                data=self.get_chart_data(),
+        if self.params['segmented_by']:
+            charts = self.get_segmented_data(
+                self.get_chart_data, self.params['segmented_by'],
                 **chart_type_kwargs
             )
-        ]
+        else:
+            charts = [
+                dict(
+                    title="",
+                    data=self.get_chart_data(),
+                    **chart_type_kwargs
+                )
+            ]
         return charts
+
+    def get_segmented_data(self, method, segmented_by, **kwargs):
+        items = defaultdict(lambda: {'campaigns': []})
+        if self.params['ad_groups']:
+            qs = Campaign.objects.filter(
+                adgroup__id__in=self.params['ad_groups'],
+            ).distinct()
+        elif self.params['campaigns']:
+            qs = Campaign.objects.filter(
+                pk__in=self.params['campaigns'],
+            )
+        else:
+            qs = Campaign.objects.none()
+
+        for i in qs.values('id', 'name'):
+            item = items[i['id']]
+            item['name'] = i['name']
+            item['campaigns'].append(i['id'])
+
+        result = []
+        if len(items) > 1:  # summary for >1 items
+            sum_key = 'Summary for %d %s' % (len(items), segmented_by)
+            result.append(
+                dict(
+                    title=sum_key,
+                    data=method(),
+                    **kwargs
+                )
+            )
+
+        items = sorted(items.values(), key=lambda n: n['name'])
+        for i in items:
+            self.params['campaigns'] = i['campaigns']
+            result.append(
+                dict(
+                    title=i['name'],
+                    data=method(),
+                    **kwargs
+                )
+            )
+        return result
 
     def get_chart_data(self):
         params = self.params
@@ -192,9 +239,6 @@ class DeliveryChart:
         }
         average_positions = []
 
-        external_rates = self.params['external_rates']
-        hide_costs = self.params['hide_costs']
-
         for label, stats in data.items():
             if not stats:
                 continue
@@ -207,20 +251,10 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
-            if external_rates:
-                stat['sum_cost'] = self.get_external_cost(stat)
             stat = self.norm_stat_names(stat)
 
             dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
-
-            if hide_costs:
-                stat['cost'] = stat['average_cpv'] = \
-                    stat['average_cpm'] = None
-
-            elif external_rates:
-                stat['average_cpv'] = external_rates['contracted_cpv']
-                stat['average_cpm'] = external_rates['contracted_cpm']
 
             if 'label' in stat:
                 stat['name'] = stat['label']
@@ -231,21 +265,10 @@ class DeliveryChart:
                 stat
             )
 
-        if external_rates:
-            response['summary']['sum_cost'] = self.get_external_cost(
-                response['summary']
-            )
         response['summary'] = self.norm_stat_names(response['summary'])
         dict_add_calculated_stats(response['summary'])
         if average_positions:
             response['summary']['average_position'] = sum(average_positions) / len(average_positions)
-        if hide_costs:
-            response['summary']['cost'] = None
-            response['summary']['average_cpv'] = None
-            response['summary']['average_cpm'] = None
-        elif external_rates:
-            response['summary']['average_cpv'] = external_rates['contracted_cpv']
-            response['summary']['average_cpm'] = external_rates['contracted_cpm']
 
         dict_quartiles_to_rates(response['summary'])
 
@@ -295,7 +318,7 @@ class DeliveryChart:
 
     def filter_queryset(self, queryset):
         camp_link = self.get_camp_link(queryset)
-        filters = {"%s__account_id__in" % camp_link: self.params['visible_accounts']}
+        filters = {"%s__account_id__in" % camp_link: self.params['accounts']}
         if self.params['start']:
             filters['date__gte'] = self.params['start']
         if self.params['end']:
@@ -314,7 +337,6 @@ class DeliveryChart:
 
         if filters:
             queryset = queryset.filter(**filters)
-
         return queryset
 
     def add_annotate(self, queryset):
@@ -362,8 +384,6 @@ class DeliveryChart:
 
         if not self.params['date']:
             item_stats = SUM_STATS + QUARTILE_STATS
-            if self.params['conversions']:
-                item_stats += CONVERSIONS
             return item_stats
 
         indicator = self.params['indicator']
@@ -644,13 +664,13 @@ class DeliveryChart:
 
         stats = self.get_top_data(
             KeywordStatistic.objects.all(),
-            'keyword_id',
+            'keyword',
         )
 
         result = defaultdict(list)
         for item in stats:
-            label = item['keyword_id']
-            del item['keyword_id']
+            label = item['keyword']
+            del item['keyword']
             result[label].append(item)
 
         return result

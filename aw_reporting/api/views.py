@@ -2,7 +2,7 @@ import csv
 import re
 from datetime import datetime, timedelta
 from io import StringIO
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, HttpResponse
 from django.db import transaction
 from django.db.models import Min, Max, Sum, Count, Q, Avg, Case, When, Value, IntegerField, FloatField, F, \
     ExpressionWrapper
@@ -21,7 +21,7 @@ from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_
 
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
-
+from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
@@ -341,8 +341,16 @@ class AnalyzeChartApiView(APIView):
         )
         return filters
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def post(self, request, pk, **_):
+        try:
+            item = Account.user_objects(request.user).get(pk=pk)
+        except Account.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        chart = DeliveryChart([item.id], segmented_by="campaigns", **filters)
+        chart_data = chart.get_response()
+        return Response(data=chart_data)
 
 
 @demo_view_decorator
@@ -366,12 +374,25 @@ class AnalyzeChartItemsApiView(APIView):
             if end_date else None,
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
-            segmented=data.get("segmented"),
+            segmented_by=data.get("segmented"),
         )
         return filters
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def post(self, request, pk, **kwargs):
+        dimension = kwargs.get('dimension')
+        try:
+            item = Account.user_objects(request.user).get(pk=pk)
+        except Account.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        chart = DeliveryChart(
+            accounts=[item.id],
+            dimension=dimension,
+            **filters
+        )
+        items = chart.get_items()
+        return Response(data=items)
 
 
 @demo_view_decorator
@@ -384,8 +405,16 @@ class AnalyzeExportApiView(APIView):
     {"campaigns": ["1", "2"]}
     """
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def post(self, request, pk, **_):
+        try:
+            item = Account.user_objects(request.user).get(pk=pk)
+        except Account.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        def data_generator():
+            return self.get_export_data(item)
+
+        return self.stream_response(item.name, data_generator)
 
     file_name = "{title}-analyze-{timestamp}.csv"
 
@@ -438,6 +467,41 @@ class AnalyzeExportApiView(APIView):
                                           'filename="{}"'.format(filename)
         return response
 
+    def get_export_data(self, item):
+        filters = self.get_filters()
+
+        data = dict(name=item.name)
+
+        fs = {'ad_group__campaign__account_id': item.id}
+        if filters['start_date']:
+            fs['date__gte'] = filters['start_date']
+        if filters['end_date']:
+            fs['date__lte'] = filters['end_date']
+        if filters['ad_groups']:
+            fs['ad_group_id__in'] = filters['ad_groups']
+        elif filters['campaigns']:
+            fs['ad_group__campaign_id__in'] = filters['campaigns']
+
+        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            **{s: Sum(s) for s in BASE_STATS + QUARTILE_STATS}
+        )
+        dict_quartiles_to_rates(stats)
+        dict_add_calculated_stats(stats)
+        data.update(stats)
+
+        yield self.column_names
+        yield ['Summary'] + [data.get(n) for n in self.column_keys]
+
+        for dimension in self.tabs:
+            chart = DeliveryChart(
+                accounts=[item.id],
+                dimension=dimension,
+                **filters
+            )
+            items = chart.get_items()
+            for data in items['items']:
+                yield [dimension.capitalize()] + [data[n] for n in self.column_keys]
+
 
 @demo_view_decorator
 class AnalyzeExportWeeklyReport(APIView):
@@ -457,8 +521,25 @@ class AnalyzeExportWeeklyReport(APIView):
         )
         return filters
 
-    def post(self, request, *args, **kwargs):
-        raise NotImplementedError("Vzhukh!")
+    def post(self, request, pk, **_):
+        try:
+            item = Account.user_objects(request.user).get(pk=pk)
+        except Account.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        report = AnalyzeWeeklyReport(item, **filters)
+
+        response = HttpResponse(
+            report.get_content(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
+            'Report {}.xlsx"'.format(
+            item.name,
+            datetime.now().date().strftime("%m.%d.%y")
+        )
+        return response
 
 
 class TrackApiBase(APIView):
@@ -534,8 +615,6 @@ class TrackFiltersListApiView(TrackApiBase):
         accounts = Account.user_objects(request.user).filter(
             can_manage_clients=False,
         ).annotate(
-            start_date=Min("campaigns__start_date"),
-            end_date=Max("campaigns__end_date"),
             impressions=Sum("campaigns__impressions")
         ).filter(impressions__gt=0).distinct()
 
