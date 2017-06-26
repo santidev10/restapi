@@ -28,7 +28,9 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
         url = reverse("aw_reporting_urls:analyze_accounts_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+            with patch("aw_reporting.api.serializers.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher):
+                response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()),

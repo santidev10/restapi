@@ -74,6 +74,34 @@ class AnalyzeAccountsListApiView(ListAPIView):
         if search:
             queryset = queryset.filter(name__icontains=search)
 
+        min_campaigns_count = filters.get('min_campaigns_count')
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if min_campaigns_count or max_campaigns_count:
+            queryset = queryset.annotate(campaigns_count=Count('campaigns'))
+            if min_campaigns_count:
+                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+            if max_campaigns_count:
+                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+
+        queryset = queryset.annotate(start=Min("campaigns__start_date"),
+                                     end=Max("campaigns__end_date"))
+
+        min_start = filters.get('min_start')
+        max_start = filters.get('max_start')
+        if min_start or max_start:
+            if min_start:
+                queryset = queryset.filter(start__gte=min_start)
+            if max_start:
+                queryset = queryset.filter(start__lte=max_start)
+
+        min_end = filters.get('min_end')
+        max_end = filters.get('max_end')
+        if min_end or max_end:
+            if min_end:
+                queryset = queryset.filter(end__gte=min_end)
+            if max_end:
+                queryset = queryset.filter(end__lte=max_end)
+
         return queryset
 
 
