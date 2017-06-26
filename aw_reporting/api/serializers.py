@@ -173,7 +173,7 @@ class AccountsListSerializer(AccountsHeaderSerializer):
                 name=c['name'],
                 ad_group_creations=[
                     dict(id=a['id'], name=a['name'])
-                    for a in AdGroup.filter(campaign_id=c['id']).values('id', 'name').order_by('name')
+                    for a in AdGroup.objects.filter(campaign_id=c['id']).values('id', 'name').order_by('name')
                 ]
             )
             for c in obj.campaigns.values("id", "name").order_by("name")
