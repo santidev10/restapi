@@ -6,18 +6,19 @@ from rest_framework.status import HTTP_200_OK
 from urllib.parse import urlencode
 from aw_creation.models import *
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from aw_reporting.utils import get_dates_range
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
-class AccountListAPITestCase(ExtendedAPITestCase):
+class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
         'id', 'name', 'account',
         'status', 'start', 'end', 'is_optimization_active', 'is_changed',
         'creative_count', 'keywords_count', 'videos_count', 'goal_units',
-        'channels_count', 'campaigns_count', 'ad_groups_count', 'read_only',
+        'channels_count', 'campaigns_count', 'ad_groups_count',
         "weekly_chart", 'is_ended',
         'is_approved',
         'structure',

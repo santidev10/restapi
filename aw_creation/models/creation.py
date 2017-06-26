@@ -66,6 +66,7 @@ class AccountCreation(UniqueItem):
         "aw_reporting.Account", related_name='account_creation',
         on_delete=models.SET_NULL, null=True, blank=True,
     )
+
     is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)

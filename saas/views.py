@@ -97,9 +97,24 @@ class ApiRootView(APIView):
     @staticmethod
     def get_analyze_section(request, format=None):
         demo_pk = "demo"
+        connect_account_url = reverse(
+            'aw_reporting_urls:connect_aw_account',
+            request=request,
+            format=format,
+        )
         response = OrderedDict([
+            ('Connect Your AdWords Account',
+             "{}?{}".format(
+                 connect_account_url,
+                 urlencode(dict(redirect_url=connect_account_url))
+             )),
+            ('A list of connected aw accounts', reverse(
+                'aw_reporting_urls:connect_aw_account_list',
+                request=request,
+                format=format
+            )),
             ('Account list', reverse(
-                'aw_reporting_urls:analyze_accounts',
+                'aw_reporting_urls:analyze_accounts_list',
                 request=request,
                 format=format
             )),

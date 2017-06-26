@@ -1,9 +1,13 @@
+from django.db import models
+from django.db.models.aggregates import Aggregate
+from django.db.models import Min
+from keyword_tool.models import BaseModel
 import re
 
-from django.db import models
-
-SUM_STATS = ("impressions", "video_views", "clicks", "cost")
+BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
+
+SUM_STATS = BASE_STATS + CONVERSIONS
 
 QUARTILE_RATES = ('quartile_25_rate', 'quartile_50_rate',
                   'quartile_75_rate', 'quartile_100_rate')
@@ -23,6 +27,8 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 Genders = ("Undetermined", "Female", "Male")
 
 DATE_FORMAT = "%Y-%m-%d"
+
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 
 def get_average_cpv(cost, views):
@@ -85,6 +91,47 @@ def dict_quartiles_to_rates(data):
             del data[qf]
 
 
+class ConcatAggregate(Aggregate):
+    function = 'array_agg'
+    name = 'Concat'
+    template = '%(function)s(%(distinct)s%(expressions)s)'
+
+    def __init__(self, expression, distinct=False, **extra):
+        super(ConcatAggregate, self).__init__(
+            expression,
+            distinct='DISTINCT ' if distinct else '',
+            **extra
+        )
+
+    def as_sqlite(self, compiler, connection, *args, **kwargs):
+        return super(ConcatAggregate, self).as_sql(
+            compiler, connection,
+            template="GROUP_CONCAT(%(distinct)s%(expressions)s)",
+            *args, **kwargs
+        )
+
+    def convert_value(self, value, expression, connection, context):
+        if value is None:
+            return ""
+        if type(value) is str:
+            value = value.split(",")
+        if type(value) is list:
+            value = ", ".join(str(i) for i in value)
+        return value
+
+
+class AWConnection(models.Model):
+    email = models.EmailField(primary_key=True)
+    refresh_token = models.CharField(max_length=150)
+    users = models.ManyToManyField('userprofile.userprofile',
+                                   related_name="aw_connections")
+    # Token has been expired or revoked
+    revoked_access = models.BooleanField(default=False)
+
+    def __str__(self):
+        return "AWConnection: {}".format(self.email)
+
+
 class Account(models.Model):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250, null=True)
@@ -92,25 +139,51 @@ class Account(models.Model):
     timezone = models.CharField(max_length=100, null=True)
     can_manage_clients = models.BooleanField(default=False)
     is_test_account = models.BooleanField(default=False)
-    manager = models.ForeignKey("self", null=True,
-                                related_name='customers')
+    managers = models.ManyToManyField("self", related_name='customers')
     visible = models.BooleanField(default=True)
+    updated_date = models.DateField(null=True)
 
     def __str__(self):
-        return "%s" % self.name
+        return "Account: {}".format(self.name)
+
+    @classmethod
+    def user_objects(cls, user):
+        qs = cls.objects.filter(
+            managers__mcc_permissions__aw_connection__users=user,
+        )
+        return qs
+
+    @property
+    def start_date(self):
+        return self.campaigns.aggregate(date=Min('start_date'))['date']
+
+    @property
+    def end_date(self):
+        dates = self.campaigns.all().values_list('end_date', flat=True)
+        if None not in dates and dates:
+            return max(dates)
 
 
-class AccountConnection(models.Model):
-    manager = models.ForeignKey(
-        Account, null=True, blank=True, related_name='connections',
-        on_delete=models.SET_NULL,
-    )
-    user = models.ForeignKey('userprofile.userprofile',
-                             related_name="account_connections")
-    refresh_token = models.CharField(max_length=100)
+class AWAccountPermission(models.Model):
+    aw_connection = models.ForeignKey(
+        AWConnection, related_name="mcc_permissions")
+    account = models.ForeignKey(
+        Account, related_name="mcc_permissions")
+    can_read = models.BooleanField(default=False)
+    # we will check read permission every day and show data to those users
+    # who has access to it on AdWords
+    can_write = models.BooleanField(default=False)
+    # we will be set True only after successful account creations
+    # and set False on errors
+
+    class Meta:
+        unique_together = (("aw_connection", "account"),)
+
+    def __str__(self):
+        return "AWPermission({}, {})".format(self.aw_connection, self.account)
 
 
-class BaseStatisticModel(models.Model):
+class BaseStatisticModel(BaseModel):
     impressions = models.IntegerField(default=0)
     video_views = models.IntegerField(default=0)
     clicks = models.IntegerField(default=0)
@@ -154,7 +227,8 @@ class Campaign(BaseStatisticModel):
     end_date = models.DateField(null=True)
     type = models.CharField(max_length=20, null=True)
     budget = models.FloatField(null=True)
-    status = models.CharField(max_length=7, null=True)
+    status = models.CharField(max_length=10, null=True)
+    updated_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return "%s" % self.name
@@ -171,6 +245,24 @@ class AdGroup(BaseStatisticModel):
 
     def __str__(self):
         return "%s %s" % (self.campaign.name, self.name)
+
+
+class Ad(BaseStatisticModel):
+    id = models.CharField(max_length=15, primary_key=True)
+    ad_group = models.ForeignKey(AdGroup, related_name='ads')
+
+    headline = models.CharField(max_length=150, null=True)
+    creative_name = models.CharField(max_length=150, null=True)
+    display_url = models.CharField(max_length=150, null=True)
+    status = models.CharField(max_length=10, null=True)
+
+    def __str__(self):
+        return "%s #%s" % (self.creative_name, self.id)
+
+
+class VideoCreative(BaseStatisticModel):
+    id = models.CharField(max_length=255, primary_key=True)
+    duration = models.IntegerField(null=True)
 
 
 class GeoTarget(models.Model):
@@ -193,7 +285,7 @@ class Topic(models.Model):
         return self.name
 
 
-class Audience(models.Model):
+class Audience(BaseModel):
     parent = models.ForeignKey('self', null=True, related_name='children')
     name = models.CharField(max_length=150)
     type = models.CharField(max_length=25, db_index=True)
@@ -205,3 +297,11 @@ class Audience(models.Model):
 
     def __str__(self):
         return "%s" % self.name
+
+
+class RemarkList(BaseModel):
+    id = models.CharField(max_length=15, primary_key=True)
+    name = models.CharField(max_length=250)
+
+    def __str__(self):
+        return self.name
