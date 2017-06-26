@@ -805,7 +805,7 @@ class DemoAccount(BaseDemo):
         show = True
 
         search = filters.get('search')
-        if search and search not in demo.name:
+        if search and search not in self.name:
             show = False
 
         status = filters.get('status')
