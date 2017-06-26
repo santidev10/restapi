@@ -36,4 +36,12 @@ urlpatterns = [
     url(r'^track_accounts_data/$',
         views.TrackAccountsDataApiView.as_view(),
         name="track_accounts_data"),
+
+    # connect aw account
+    url(r'^connect_aw_account_list/$',
+        views.ConnectAWAccountListApiView.as_view(),
+        name="connect_aw_account_list"),
+    url(r'^connect_aw_account/$',
+        views.ConnectAWAccountApiView.as_view(),
+        name="connect_aw_account"),
 ]

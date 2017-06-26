@@ -1,22 +1,23 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
+from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 
 
-class AccountAPITestCase(ExtendedAPITestCase):
+class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_account(self, owner, start, end):
+    @staticmethod
+    def create_account_creation(owner, start, end):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
@@ -70,7 +71,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
             start=today,
             end=today + timedelta(days=10),
         )
-        ac = self.create_account(**defaults)
+        ac = self.create_account_creation(**defaults)
         url = reverse("aw_creation_urls:optimization_account_duplicate",
                       args=(ac.id,))
 
@@ -107,19 +108,17 @@ class AccountAPITestCase(ExtendedAPITestCase):
                 'id', 'name', 'status', 'account',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'weekly_chart', 'campaigns_count', 'ad_groups_count',
 
-                'creative_count',
-                'goal_units',
-                'channels_count',
-                'videos_count',
+                'creative_count', 'goal_units',
+                'channels_count', 'videos_count',
                 'keywords_count',
 
                 # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
                 "video_networks", "bidding_type",
                 # details below header (readonly)
-                "budget", 'start', 'end',
+                'start', 'end',
 
                 'creative', 'structure', 'goal_charts',
             }
@@ -190,10 +189,7 @@ class AccountAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(campaign_data['devices']), 3)
         self.assertEqual(
             set(campaign_data['devices'][0].keys()),
-            {
-                'id',
-                'name',
-            }
+            {'id', 'name'},
         )
         self.assertEqual(
             set(campaign_data['location_rules'][0]['radius_units']),
