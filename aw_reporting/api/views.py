@@ -190,7 +190,7 @@ class AnalyzeDetailsApiView(APIView):
 
         location = CityStatistic.objects.filter(**fs).values(
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
-        location = [dict(name=Devices[i['city__name']], value=i['v']) for i in location]
+        location = [dict(name=i['city__name'], value=i['v']) for i in location]
 
         data.update(gender=gender, age=age, device=device, location=location)
 

@@ -42,19 +42,20 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
             id=1, name="", account=account, **stats
         )
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
-        date = datetime.now().date()
+        date = datetime.now().date() - timedelta(days=1)
         AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, **stats)
+        target, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name=""))
+        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target, **stats)
 
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(account.id,))
-        today = datetime.now().date()
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url,
-                json.dumps(dict(start_date=str(today - timedelta(days=2)),
-                                end_date=str(today - timedelta(days=1)))),
+                json.dumps(dict(start_date=str(date - timedelta(days=1)),
+                                end_date=str(date))),
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
