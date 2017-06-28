@@ -38,6 +38,7 @@ class Command(BaseCommand):
         )
         updater = AWDataLoader(today)
         for mcc in mcc_to_update:
+            logger.info("MCC update: {}".format(mcc))
             updater.full_update(mcc)
 
         # 2) update all the advertising accounts
@@ -48,5 +49,6 @@ class Command(BaseCommand):
            Q(updated_date__lt=today) | Q(updated_date__isnull=True)
         )
         for account in accounts_to_update:
+            logger.info("Customer account update: {}".format(account))
             updater.full_update(account)
 

@@ -14,11 +14,12 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
 from oauth2client import client
 from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, \
-    CampaignListSerializer, AccountsDetailsSerializer
+    CampaignListSerializer
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
-    Campaign, AdGroupStatistic, DATE_FORMAT
+    Campaign, AdGroupStatistic, DATE_FORMAT, VideoCreativeStatistic, YTChannelStatistic, \
+    YTVideoStatistic, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, all_stats_aggregate
 
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
@@ -26,8 +27,12 @@ from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
+from singledb.connector import SingleDatabaseApiConnector, SingleDatabaseApiConnectorException
 from utils.api_paginator import CustomPageNumberPaginator
 import pytz
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AccountsListPaginator(CustomPageNumberPaginator):
@@ -43,16 +48,10 @@ class AnalyzeAccountsListApiView(ListAPIView):
     serializer_class = AccountsListSerializer
     pagination_class = AccountsListPaginator
 
-    def get_queryset(self, **filters):
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by != "name":
-            sort_by = "-created_at"
-
+    def get_queryset(self):
         queryset = Account.user_objects(self.request.user).filter(
             can_manage_clients=False,
-            # **filters
         ).order_by("name")
-
         return queryset
 
     filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
@@ -128,7 +127,7 @@ class AnalyzeDetailsApiView(APIView):
     or
     {"start": "2017-05-01", "end": "2017-06-01", "campaigns": ["1", "2"], "ad_groups": ["11", "12"]}
     """
-    serializer_class = AccountsDetailsSerializer
+    serializer_class = AccountsListSerializer
 
     def get_filters(self):
         data = self.request.data
@@ -150,9 +149,12 @@ class AnalyzeDetailsApiView(APIView):
         except Account.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data = AccountsDetailsSerializer(account).data
+        data = self.serializer_class(account).data  # header data
+        data['details'] = self.get_details_data(account)
+        data['overview'] = self.get_overview_data(account)
+        return Response(data=data)
 
-        # stats
+    def get_overview_data(self, account):
         filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account)
         if filters['campaigns']:
@@ -164,14 +166,13 @@ class AnalyzeDetailsApiView(APIView):
         if filters['end_date']:
             fs["date__lte"] = filters['end_date']
 
-        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
-            average_position=Avg("average_position"),
-            ad_network=ConcatAggregate("ad_network", distinct=True),
-            **{s: Sum(s) for s in SUM_STATS + QUARTILE_STATS}
+        data = AdGroupStatistic.objects.filter(**fs).aggregate(
+            **all_stats_aggregate
         )
-        dict_add_calculated_stats(stats)
-        dict_quartiles_to_rates(stats)
-        data.update(stats)
+        dict_norm_base_stats(data)
+        dict_calculate_stats(data)
+        dict_quartiles_to_rates(data)
+        del data['video_impressions']
 
         # 'age', 'gender', 'device', 'location'
         annotate = dict(v=Sum('cost'))
@@ -201,15 +202,15 @@ class AnalyzeDetailsApiView(APIView):
 
         annotate = {
             "{}_{}_week".format(s, k): Sum(
-                    Case(
-                        When(
-                            date__gte=sd,
-                            date__lte=ed,
-                            then=s,
-                        ),
-                        output_field=IntegerField()
-                    )
+                Case(
+                    When(
+                        date__gte=sd,
+                        date__lte=ed,
+                        then=s,
+                    ),
+                    output_field=IntegerField()
                 )
+            )
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
             for s in BASE_STATS
@@ -218,10 +219,6 @@ class AnalyzeDetailsApiView(APIView):
         data.update(weeks_stats)
 
         # top and bottom rates
-        'average_cpv_top' 'average_cpv_bottom'
-        'ctr_v_bottom' 'ctr_v_top'
-        'video_view_rate_top' 'video_view_rate_bottom'
-        'ctr_top' 'ctr_bottom'
         annotate = dict(
             average_cpv=ExpressionWrapper(
                 Case(
@@ -276,8 +273,93 @@ class AnalyzeDetailsApiView(APIView):
                for n, a in (("top", Max), ("bottom", Min))}
         )
         data.update(top_bottom_stats)
+        return data
 
-        return Response(data=data)
+    @staticmethod
+    def get_details_data(account):
+
+        fs = dict(ad_group__campaign__account=account)
+        data = AdGroupStatistic.objects.filter(**fs).aggregate(
+            average_position=Avg("average_position"),
+            **{s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
+        )
+        dict_quartiles_to_rates(data)
+
+        annotate = dict(v=Sum('cost'))
+        creative = VideoCreativeStatistic.objects.filter(**fs).values(
+            "creative_id").annotate(**annotate).order_by('v')[:3]
+        if creative:
+            ids = [i['creative_id'] for i in creative]
+            creative = []
+            try:
+                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=list(ids),
+                    limit=len(ids),
+                )
+            except SingleDatabaseApiConnectorException as e:
+                logger.critical(e)
+            else:
+                video_info = {i['id']: i for i in channel_info}
+                for video_id in ids:
+                    info = video_info.get(video_id, {})
+                    creative.append(
+                        dict(
+                            id=video_id,
+                            name=info.get("title"),
+                            thumbnail=info.get('thumbnail_image_url'),
+                        )
+                    )
+        data.update(creative=creative)
+
+        # second section
+        gender = GenderStatistic.objects.filter(**fs).values(
+            'gender_id').order_by('gender_id').annotate(**annotate)
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+
+        age = AgeRangeStatistic.objects.filter(**fs).values(
+            "age_range_id").order_by("age_range_id").annotate(**annotate)
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+
+        device = AdGroupStatistic.objects.filter(**fs).values(
+            "device_id").order_by("device_id").annotate(**annotate)
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+        data.update(gender=gender, age=age, device=device)
+
+        # third section
+        charts = []
+        stats = AdGroupStatistic.objects.filter(
+            **fs
+        ).values("date").order_by("date").annotate(
+            views=Sum("video_views"),
+            impressions=Sum("impressions"),
+        )
+        if stats:
+            if any(i['views'] for i in stats):
+                charts.append(
+                    dict(
+                        label='Views',
+                        trend=[
+                            dict(label=i['date'], value=i['views'])
+                            for i in stats
+                        ]
+                    )
+                )
+
+            if any(i['impressions'] for i in stats):
+                charts.append(
+                    dict(
+                        label='Impressions',
+                        trend=[
+                            dict(label=i['date'], value=i['impressions'])
+                            for i in stats
+                        ]
+                    )
+                )
+        data['delivery_trend'] = charts
+
+        return data
 
 
 @demo_view_decorator

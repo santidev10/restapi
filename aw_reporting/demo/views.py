@@ -60,12 +60,16 @@ class AnalyzeDetailsApiView:
                 filters = view.get_filters()
 
                 account = DemoAccount()
+                data = account.account_details
+                data['details'] = account.details
+
                 account.set_period_proportion(filters['start_date'],
                                               filters['end_date'])
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                return Response(status=HTTP_200_OK, data=account.details)
+                data['overview'] = account.overview
+                return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
