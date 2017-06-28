@@ -1,6 +1,6 @@
 from django.db import models
 from django.db.models.aggregates import Aggregate
-from django.db.models import Min
+from django.db.models import Min, Sum, Case, When, Value, F, IntegerField, FloatField
 from keyword_tool.models import BaseModel
 import re
 
@@ -31,41 +31,82 @@ DATE_FORMAT = "%Y-%m-%d"
 DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 
-def get_average_cpv(cost, views):
-    if cost is None or not views:
-        return None
-    return float(cost)/views
+def get_average_cpv(*args, **kwargs):
+    if len(args) == 2:
+        cost, video_views = args
+    else:
+        cost = kwargs['cost']
+        video_views = kwargs['video_views']
+
+    if video_views:
+        return cost / video_views
 
 
-def get_average_cpm(cost, impressions):
+def get_average_cpm(*args, **kwargs):
+    if len(args) == 2:
+        cost, impressions = args
+    else:
+        cost = kwargs['cost']
+        impressions = kwargs['impressions']
+
     if cost is None or not impressions:
         return None
-    return float(cost)/impressions*1000
+    return cost / impressions * 1000
+
+
+def get_video_view_rate(*args, **kwargs):
+    if len(args) == 2:
+        views, impressions = args
+    else:
+        views = kwargs['video_views']
+        impressions = kwargs['video_impressions']
+
+    if impressions:
+        return 100 * views / impressions
+
+
+def get_ctr(*args, **kwargs):
+    if len(args) == 2:
+        clicks, impressions = args
+    else:
+        clicks = kwargs['clicks']
+        impressions = kwargs['video_impressions']
+
+    if impressions:
+        return 100 * clicks / impressions
+
+
+def get_ctr_v(*args, **kwargs):
+    if len(args) == 2:
+        clicks, video_views = args
+    else:
+        clicks = kwargs['clicks']
+        video_views = kwargs['video_views']
+
+    if video_views:
+        return 100 * clicks / video_views
 
 
 CALCULATED_STATS = {
     'video_view_rate': {
         'dependencies': ('video_views', 'impressions'),
-        'receipt': lambda views, impressions: 100 * views/float(impressions)
-                                              if impressions else None
+        'receipt': get_video_view_rate,
     },
     'ctr': {
         'dependencies': ('clicks', 'impressions'),
-        'receipt': lambda clicks, impressions: 100 * clicks/float(impressions)
-                                               if impressions else None
+        'receipt': get_ctr,
     },
     'ctr_v': {
         'dependencies': ('clicks', 'video_views'),
-        'receipt': lambda clicks, views: 100 * clicks/float(views)
-                                         if views else None
+        'receipt': get_ctr_v,
     },
     'average_cpv': {
         'dependencies': ('cost', 'video_views'),
-        'receipt': get_average_cpv
+        'receipt': get_average_cpv,
     },
     'average_cpm': {
         'dependencies': ('cost', 'impressions'),
-        'receipt': get_average_cpm
+        'receipt': get_average_cpm,
     },
 }
 
@@ -89,6 +130,38 @@ def dict_quartiles_to_rates(data):
             if impressions and qv is not None else None
         if qf in data:
             del data[qf]
+
+base_stats_aggregate = dict(
+    sum_impressions=Sum("impressions"),
+    video_impressions=Sum(
+        Case(
+            When(
+                video_views__gt=0,
+                then="impressions",
+            ),
+            output_field=IntegerField()
+        )
+    ),
+    sum_video_views=Sum("video_views"),
+    sum_clicks=Sum("video_views"),
+    sum_cost=Sum("video_views"),
+)
+
+all_stats_aggregate = {"sum_{}".format(s): Sum(s) for s in QUARTILE_STATS + CONVERSIONS}
+all_stats_aggregate.update(base_stats_aggregate)
+
+
+def dict_norm_base_stats(data):
+    for k, v in list(data.items()):
+        if k.startswith("sum_"):
+            data[k[4:]] = v
+            del data[k]
+
+
+def dict_calculate_stats(data):
+    for n, i in CALCULATED_STATS.items():
+        rec = i['receipt']
+        data[n] = rec(**data)
 
 
 class ConcatAggregate(Aggregate):
@@ -229,6 +302,8 @@ class Campaign(BaseStatisticModel):
     budget = models.FloatField(null=True)
     status = models.CharField(max_length=10, null=True)
     updated_date = models.DateField(auto_now_add=True)
+
+    SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 
     def __str__(self):
         return "%s" % self.name

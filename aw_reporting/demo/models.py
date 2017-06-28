@@ -632,11 +632,78 @@ class DemoAccount(BaseDemo):
                 a.week_proportion = week_proportion
 
     @property
+    def account_details(self):
+        from aw_reporting.demo.charts import DemoChart
+        filters = dict(
+            start_date=self.today - timedelta(days=7),
+            end_date=self.today - timedelta(days=1),
+            indicator="video_views",
+        )
+        new_demo = DemoAccount()
+        new_demo.set_period_proportion(filters['start_date'],
+                                       filters['end_date'])
+        charts_obj = DemoChart(new_demo, filters)
+        chart_lines = charts_obj.chart_lines(new_demo, filters)
+
+        data = dict(
+            id=self.id,
+            name=self.name,
+            account_creation=self.id,
+            end=self.end_date,
+            start=self.start_date,
+            status=self.status,
+            weekly_chart=chart_lines[0]['trend'],
+            clicks=self.clicks,
+            cost=self.cost,
+            impressions=self.impressions,
+            video_views=self.video_views,
+            video_view_rate=self.video_view_rate,
+            ctr_v=self.ctr_v,
+        )
+        return data
+
+
+    @property
     def details(self):
-        details = self.header_data
-        del details['account']
-        details['account_creation'] = DEMO_ACCOUNT_ID
-        details.update(
+        from aw_reporting.demo.charts import DemoChart
+
+        details = dict(
+            age=[dict(name=e, value=i + 1)
+                 for i, e in enumerate(reversed(AgeRanges))],
+            gender=[dict(name=e, value=i + 1)
+                    for i, e in enumerate(Genders)],
+            device=[dict(name=e, value=i + 1)
+                    for i, e in enumerate(reversed(Devices))],
+            average_position=self.average_position,
+            video100rate=self.video100rate,
+            video25rate=self.video25rate,
+            video50rate=self.video50rate,
+            video75rate=self.video75rate,
+            conversions=self.conversions,
+            all_conversions=self.all_conversions,
+            view_through=self.view_through,
+            creative=[dict(id=i['id'], name=i['label'], thumbnail=i['thumbnail'])
+                      for i in self.creative],
+
+            delivery_trend=[]
+        )
+        for indicator in ("impressions", "video_views"):
+            filters = dict(
+                start_date=None,
+                end_date=None,
+                indicator=indicator,
+            )
+            charts_obj = DemoChart(self, filters)
+            chart_lines = charts_obj.chart_lines(self, filters)
+            details['delivery_trend'].append(
+                dict(label=indicator.capitalize(),
+                     trend=chart_lines[0]['trend']))
+
+        return details
+
+    @property
+    def overview(self):
+        data = dict(
             age=[dict(name=e, value=i + 1)
                  for i, e in enumerate(reversed(AgeRanges))],
             gender=[dict(name=e, value=i + 1)
@@ -670,8 +737,6 @@ class DemoAccount(BaseDemo):
             video_view_rate=self.video_view_rate,
             video_view_rate_top=self.video_view_rate_top,
             video_view_rate_bottom=self.video_view_rate_bottom,
-            average_position=self.average_position,
-            ad_network=self.ad_network,
             video100rate=self.video100rate,
             video25rate=self.video25rate,
             video50rate=self.video50rate,
@@ -680,7 +745,7 @@ class DemoAccount(BaseDemo):
             all_conversions=self.all_conversions,
             view_through=self.view_through,
         )
-        return details
+        return data
 
     @property
     def header_data(self):
@@ -780,13 +845,6 @@ class DemoAccount(BaseDemo):
             ),
             goal_charts=charts_obj.chart_lines(self, filters),
         )
-        return data
-
-    @property
-    def account_details(self):
-        data = self.creation_details
-        del data['account']
-        data['account_creation'] = self.id
         return data
 
 

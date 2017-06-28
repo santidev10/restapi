@@ -8,31 +8,12 @@ from .base import AwReportingAPITestCase
 
 
 class AccountDetailsAPITestCase(AwReportingAPITestCase):
-
-    header_fields = {
-        'id', 'name',
-        'creative_count',
-        'account_creation',
-        'keywords_count',
-        'videos_count',
-        'end',
-        'is_changed',
-        'start',
-        'campaigns_count',
-        'status',
-        'is_optimization_active',
-        'channels_count',
-        'ad_groups_count',
-        'goal_units',
-        'weekly_chart',
-    }
-
-    detail_keys = {
+    overview_keys = {
         'age', 'gender', 'device', 'location',
         'clicks', 'cost', 'impressions', 'video_views',
         'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
         "all_conversions", "conversions", "view_through",
-        'video_view_rate', 'average_position', 'ad_network',
+        'video_view_rate',
         'video100rate', 'video25rate', 'video50rate',
         'video75rate', 'video_views_this_week',
         'video_view_rate_top', 'impressions_this_week',
@@ -43,19 +24,12 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         'average_cpv_bottom', 'ctr_top', 'impressions_last_week',
     }
 
-    media_keys = {
-        'id',
-        'name',
-        'thumbnail',
-        'impressions',
-        'video_views',
-        'ctr_v',
-        'average_cpv',
-        'average_cpm',
-        'cost',
-        'clicks',
-        'ctr',
-        'video_view_rate',
+    detail_keys = {
+        'creative',
+        'age', 'gender', 'device',
+        "all_conversions", "conversions", "view_through", 'average_position',
+        'video100rate', 'video25rate', 'video50rate', 'video75rate',
+        'delivery_trend',
     }
 
     def setUp(self):
@@ -63,24 +37,41 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = self.create_account(self.user)
+        stats = dict(impressions=4, video_views=2, clicks=1, cost=1)
+        campaign = Campaign.objects.create(
+            id=1, name="", account=account, **stats
+        )
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        date = datetime.now().date() - timedelta(days=1)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, **stats)
+        target, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name=""))
+        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target, **stats)
 
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(account.id,))
-        today = datetime.now().date()
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url,
-                json.dumps(dict(start_date=str(today - timedelta(days=2)),
-                                end_date=str(today - timedelta(days=1)))),
+                json.dumps(dict(start_date=str(date - timedelta(days=1)),
+                                end_date=str(date))),
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
+
         self.assertEqual(
             set(data.keys()),
-            self.detail_keys | self.header_fields,
+            self.account_list_header_fields | {"details", "overview"},
+        )
+        self.assertEqual(
+            set(data["details"].keys()),
+            self.detail_keys,
+        )
+        self.assertEqual(
+            set(data["overview"].keys()),
+            self.overview_keys,
         )
 
     def test_success_get_filter_dates_demo(self):
@@ -100,18 +91,17 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            self.detail_keys | self.header_fields,
+            self.account_list_header_fields | {"details", "overview"},
         )
-        self.assertEqual(data['impressions'], IMPRESSIONS / 10)
-        for k in ('age', 'gender', 'device'):
-            self.assertGreater(len(data[k]), 1)
-            self.assertEqual(
-                set(data[k][0].keys()),
-                {
-                    'name',
-                    'value',
-                }
-            )
+        self.assertEqual(
+            set(data["details"].keys()),
+            self.detail_keys,
+        )
+        self.assertEqual(
+            set(data["overview"].keys()),
+            self.overview_keys,
+        )
+        self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
         url = reverse("aw_reporting_urls:analyze_details",
@@ -127,7 +117,19 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
-            data['impressions'],
+            set(data.keys()),
+            self.account_list_header_fields | {"details", "overview"},
+        )
+        self.assertEqual(
+            set(data["details"].keys()),
+            self.detail_keys,
+        )
+        self.assertEqual(
+            set(data["overview"].keys()),
+            self.overview_keys,
+        )
+        self.assertEqual(
+            data['overview']['impressions'],
             IMPRESSIONS / TOTAL_DEMO_AD_GROUPS_COUNT * len(ad_groups),
         )
 
