@@ -105,7 +105,7 @@ class AccountsListSerializer(ModelSerializer):
                     )
                 ),
                 statuses=ConcatAggregate("status", distinct=True),
-                **base_stats_aggregate,
+                **base_stats_aggregate
             )
             for i in data:
                 dict_norm_base_stats(i)
