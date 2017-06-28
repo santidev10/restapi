@@ -143,8 +143,8 @@ base_stats_aggregate = dict(
         )
     ),
     sum_video_views=Sum("video_views"),
-    sum_clicks=Sum("video_views"),
-    sum_cost=Sum("video_views"),
+    sum_clicks=Sum("clicks"),
+    sum_cost=Sum("cost"),
 )
 
 all_stats_aggregate = {"sum_{}".format(s): Sum(s) for s in QUARTILE_STATS + CONVERSIONS}
