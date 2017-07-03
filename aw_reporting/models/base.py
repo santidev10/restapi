@@ -209,6 +209,9 @@ class AWConnectionToUserRelation(models.Model):
     user = models.ForeignKey("userprofile.userprofile", related_name="aw_connections")
     created = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = (("user", "connection"),)
+
 
 class Account(models.Model):
     id = models.CharField(max_length=15, primary_key=True)

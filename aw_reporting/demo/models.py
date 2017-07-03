@@ -649,7 +649,7 @@ class DemoAccount(BaseDemo):
             account_creation=self.id,
             end=self.end_date,
             start=self.start_date,
-            status=self.status,
+            status="Eligible",
             weekly_chart=chart_lines[0]['trend'],
             clicks=self.clicks,
             cost=self.cost,

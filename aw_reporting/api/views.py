@@ -51,7 +51,7 @@ class AnalyzeAccountsListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Account.user_objects(self.request.user).filter(
             can_manage_clients=False,
-        ).order_by("name")
+        ).order_by("name", "id")
         return queryset
 
     filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
@@ -67,6 +67,18 @@ class AnalyzeAccountsListApiView(ListAPIView):
         return filters
 
     def filter_queryset(self, queryset):
+
+        show_closed = self.request.query_params.get("show_closed")
+        if not show_closed or not int(show_closed):
+            queryset = queryset.annotate(
+                statuses=ConcatAggregate("campaigns__status", distinct=True)
+            ).exclude(
+                ~Q(statuses__isnull=True) &
+                Q(statuses__contains="ended") &
+                ~Q(statuses__contains="eligible") &
+                ~Q(statuses__contains="pending") &
+                ~Q(statuses__contains="suspended")
+            )
 
         filters = self.get_filters()
         search = filters.get('search')
@@ -829,6 +841,17 @@ class ConnectAWAccountApiView(APIView):
                     connection.revoked_access = False
                     connection.refresh_token = refresh_token
                     connection.save()
+
+            try:
+                AWConnectionToUserRelation.objects.get(
+                    user=self.request.user,
+                    connection=connection,
+                )
+            except AWConnectionToUserRelation.DoesNotExist:
+                pass
+            else:
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data=dict(error="You have already linked this account"))
 
             # -- end of get refresh token
             # save mcc accounts
