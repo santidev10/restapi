@@ -4,6 +4,7 @@ from aw_reporting.models import Account
 from suds import WebFault
 from oauth2client.client import HttpAccessTokenRefreshError
 import aw_reporting.tasks as aw_tasks
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ class AWDataLoader:
                 )
                 a.managers.add(manager)
 
-            manager.updated_date = self.today
+            manager.update_time = datetime.now()
             manager.save()
 
     def run_task_with_any_permission(self, task, account, manager):
@@ -121,7 +122,7 @@ class AWDataLoader:
             logger.debug(task, account)
             task(client, account, today)
 
-        account.updated_date = today
+        account.update_time = datetime.now()
         account.save()
 
 

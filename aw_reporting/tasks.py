@@ -222,7 +222,6 @@ def get_campaigns(client, account, today):
                 'end_date': end_date,
                 'budget': float(row_obj.Amount)/1000000,
                 'status': row_obj.ServingStatus,
-                'updated_date': today,
             }
             stats.update(get_base_stats(row_obj))
 

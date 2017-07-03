@@ -13,13 +13,13 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
-from aw_reporting.api.serializers import AWAccountConnectionSerializer, AccountsListSerializer, \
+from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
     Campaign, AdGroupStatistic, DATE_FORMAT, VideoCreativeStatistic, YTChannelStatistic, \
-    YTVideoStatistic, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, all_stats_aggregate
+    AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, all_stats_aggregate
 
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
@@ -726,11 +726,11 @@ class TrackAccountsDataApiView(TrackApiBase):
 
 class ConnectAWAccountListApiView(ListAPIView):
 
-    serializer_class = AWAccountConnectionSerializer
+    serializer_class = AWAccountConnectionRelationsSerializer
 
     def get_queryset(self):
-        qs = AWConnection.objects.filter(
-            users=self.request.user).order_by("email")
+        qs = AWConnectionToUserRelation.objects.filter(
+            user=self.request.user).order_by("connection__email")
         return qs
 
 
@@ -841,9 +841,6 @@ class ConnectAWAccountApiView(APIView):
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=e.fault.faultstring))
 
-            # save this connection, even if there is no MCC accounts yet
-            self.request.user.aw_connections.add(connection)
-
             mcc_accounts = list(filter(
                 lambda i: i['canManageClients'] and not i['testAccount'],
                 customers,
@@ -854,6 +851,11 @@ class ConnectAWAccountApiView(APIView):
                     data=dict(error=self.no_mcc_error)
                 )
             with transaction.atomic():
+                relation = AWConnectionToUserRelation.objects.create(
+                    user=self.request.user,
+                    connection=connection,
+                )
+
                 for ac_data in mcc_accounts:
                     data = dict(
                         id=ac_data['customerId'],
@@ -871,7 +873,7 @@ class ConnectAWAccountApiView(APIView):
                     )
             upload_initial_aw_data.delay(connection.email)
 
-            response = AWAccountConnectionSerializer(connection).data
+            response = AWAccountConnectionRelationsSerializer(relation).data
             return Response(data=response)
 
     def get_flow(self, redirect_url):

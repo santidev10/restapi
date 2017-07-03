@@ -81,13 +81,13 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()),
-                         {'email', 'mcc_accounts'})
+                         {'email', 'mcc_accounts', 'created', 'update_time'})
         self.assertEqual(response.data['email'], test_email)
         self.assertEqual(len(response.data['mcc_accounts']), 1,
                          "MCC account is created and linked to the user")
 
         accounts = Account.objects.filter(
-            mcc_permissions__aw_connection__users=self.user)
+            mcc_permissions__aw_connection__user_relations__user=self.user)
         self.assertEqual(len(accounts), 1,
                          "MCC account is created and linked to the user")
         self.assertEqual(accounts[0].name, "MCC Account")

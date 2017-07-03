@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField
-from aw_reporting.models import AWConnection, Account, Campaign, AdGroup, AdGroupStatistic, ConcatAggregate, \
-    dict_norm_base_stats, base_stats_aggregate, dict_calculate_stats
+from aw_reporting.models import AWConnectionToUserRelation, Account, Campaign, AdGroup, AdGroupStatistic, \
+    ConcatAggregate, dict_norm_base_stats, base_stats_aggregate, dict_calculate_stats
 from django.db.models import Min, Max, Sum, Count, Case, When, Value, IntegerField as AggrIntegerField
 import logging
 
@@ -13,18 +13,31 @@ class MCCAccountSerializer(ModelSerializer):
         fields = ("id", "name", "currency_code", "timezone")
 
 
-class AWAccountConnectionSerializer(ModelSerializer):
+class AWAccountConnectionRelationsSerializer(ModelSerializer):
     mcc_accounts = SerializerMethodField()
+    email = SerializerMethodField()
+    update_time = SerializerMethodField()
+
+    @staticmethod
+    def get_update_time(obj):
+        data = Account.objects.filter(managers__mcc_permissions__aw_connection=obj.connection).aggregate(
+            time=Max("update_time")
+        )
+        return data['time']
+
+    @staticmethod
+    def get_email(obj):
+        return obj.connection.email
 
     @staticmethod
     def get_mcc_accounts(obj):
         qs = Account.objects.filter(
-            mcc_permissions__aw_connection=obj).order_by("name")
+            mcc_permissions__aw_connection__user_relations=obj).order_by("name")
         return MCCAccountSerializer(qs, many=True).data
 
     class Meta:
-        model = AWConnection
-        fields = ("email", "mcc_accounts")
+        model = AWConnectionToUserRelation
+        fields = ("email", "mcc_accounts", "created", "update_time")
 
 
 class NoneField(SerializerMethodField):
