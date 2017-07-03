@@ -12,7 +12,6 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         url = reverse("aw_reporting_urls:connect_aw_account_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        print(response.data)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(
             set(response.data[0].keys()),

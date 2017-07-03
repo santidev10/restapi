@@ -229,8 +229,13 @@ class Account(models.Model):
 
     @classmethod
     def user_objects(cls, user):
+        manager_ids = set(
+            Account.objects.filter(
+                mcc_permissions__aw_connection__user_relations__user=user
+            ).values_list('id', flat=True)
+        )
         qs = cls.objects.filter(
-            managers__mcc_permissions__aw_connection__user_relations__user=user,
+            managers__id__in=manager_ids,
         )
         return qs
 

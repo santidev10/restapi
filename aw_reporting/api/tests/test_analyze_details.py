@@ -37,7 +37,11 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = self.create_account(self.user)
-        stats = dict(impressions=4, video_views=2, clicks=1, cost=1)
+        stats = dict(
+            impressions=4, video_views=2, clicks=1, cost=1,
+            video_views_25_quartile=4, video_views_50_quartile=3,
+            video_views_75_quartile=2, video_views_100_quartile=1,
+        )
         campaign = Campaign.objects.create(
             id=1, name="", account=account, **stats
         )
@@ -69,10 +73,40 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
             set(data["details"].keys()),
             self.detail_keys,
         )
+        self.assertEqual(data['details']['video25rate'], 100)
+        self.assertEqual(data['details']['video50rate'], 75)
+        self.assertEqual(data['details']['video75rate'], 50)
+        self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(
             set(data["overview"].keys()),
             self.overview_keys,
         )
+
+    def test_success_get_two_connections(self):
+        account = self.create_account(self.user)
+
+        # create second account + account connection for that manager
+        manager = account.managers.first()
+        connection = AWConnection.objects.create(
+            email="another_user@email.com",
+            refresh_token="",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        url = reverse("aw_reporting_urls:analyze_details",
+                      args=(account.id,))
+
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_get_filter_dates_demo(self):
         url = reverse("aw_reporting_urls:analyze_details",

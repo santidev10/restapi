@@ -292,10 +292,20 @@ class AnalyzeDetailsApiView(APIView):
 
         fs = dict(ad_group__campaign__account=account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            average_position=Avg("average_position"),
+            average_position=Avg(
+                Case(
+                    When(
+                        average_position__gt=0,
+                        then=F('average_position'),
+                    ),
+                    output_field=FloatField(),
+                )
+            ),
+            impressions=Sum("impressions"),
             **{s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
         )
         dict_quartiles_to_rates(data)
+        del data['impressions']
 
         annotate = dict(v=Sum('cost'))
         creative = VideoCreativeStatistic.objects.filter(**fs).values(
