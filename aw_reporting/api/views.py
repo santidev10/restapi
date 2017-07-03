@@ -293,6 +293,7 @@ class AnalyzeDetailsApiView(APIView):
         fs = dict(ad_group__campaign__account=account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
             average_position=Avg("average_position"),
+            impressions=Sum("impressions"),
             **{s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
         )
         dict_quartiles_to_rates(data)
