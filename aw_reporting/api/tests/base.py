@@ -1,5 +1,7 @@
 from saas.utils_tests import ExtendedAPITestCase
 from aw_reporting.models import *
+from datetime import datetime
+import pytz
 
 
 class AwReportingAPITestCase(ExtendedAPITestCase):
@@ -10,7 +12,8 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
     }
 
     def create_account(self, user):
-        account = Account.objects.create(id="123{}".format(user.id), name="Test account")
+        now = datetime.now(tz=pytz.utc)
+        account = Account.objects.create(id="123{}".format(user.id), name="Test account", update_time=now)
         manager = Account.objects.create(id="456{}".format(user.id), name="")
         account.managers.add(manager)
 
@@ -18,7 +21,10 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
             email=user.email,
             refresh_token="",
         )
-        connection.users.add(user)
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=user,
+        )
         AWAccountPermission.objects.create(
             aw_connection=connection,
             account=manager,

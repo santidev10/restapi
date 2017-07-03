@@ -196,13 +196,18 @@ class ConcatAggregate(Aggregate):
 class AWConnection(models.Model):
     email = models.EmailField(primary_key=True)
     refresh_token = models.CharField(max_length=150)
-    users = models.ManyToManyField('userprofile.userprofile',
-                                   related_name="aw_connections")
+
     # Token has been expired or revoked
     revoked_access = models.BooleanField(default=False)
 
     def __str__(self):
         return "AWConnection: {}".format(self.email)
+
+
+class AWConnectionToUserRelation(models.Model):
+    connection = models.ForeignKey(AWConnection, related_name="user_relations")
+    user = models.ForeignKey("userprofile.userprofile", related_name="aw_connections")
+    created = models.DateTimeField(auto_now_add=True)
 
 
 class Account(models.Model):
@@ -214,7 +219,7 @@ class Account(models.Model):
     is_test_account = models.BooleanField(default=False)
     managers = models.ManyToManyField("self", related_name='customers')
     visible = models.BooleanField(default=True)
-    updated_date = models.DateField(null=True)
+    update_time = models.DateTimeField(null=True)
 
     def __str__(self):
         return "Account: {}".format(self.name)
@@ -222,7 +227,7 @@ class Account(models.Model):
     @classmethod
     def user_objects(cls, user):
         qs = cls.objects.filter(
-            managers__mcc_permissions__aw_connection__users=user,
+            managers__mcc_permissions__aw_connection__user_relations__user=user,
         )
         return qs
 
@@ -301,7 +306,7 @@ class Campaign(BaseStatisticModel):
     type = models.CharField(max_length=20, null=True)
     budget = models.FloatField(null=True)
     status = models.CharField(max_length=10, null=True)
-    updated_date = models.DateField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now_add=True)
 
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 

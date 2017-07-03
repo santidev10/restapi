@@ -34,7 +34,7 @@ class Command(BaseCommand):
             timezone__in=timezones,
             can_manage_clients=True,
         ).filter(
-            Q(updated_date__lt=today) | Q(updated_date__isnull=True)
+            Q(update_time__date__lt=today) | Q(update_time__isnull=True)
         )
         updater = AWDataLoader(today)
         for mcc in mcc_to_update:
@@ -46,7 +46,7 @@ class Command(BaseCommand):
             timezone__in=timezones,
             can_manage_clients=False,
         ).filter(
-           Q(updated_date__lt=today) | Q(updated_date__isnull=True)
+           Q(update_time__date__lt=today) | Q(update_time__isnull=True)
         )
         for account in accounts_to_update:
             logger.info("Customer account update: {}".format(account))
