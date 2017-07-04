@@ -235,6 +235,7 @@ class AnalyzeDetailsApiView(APIView):
             average_cpv=ExpressionWrapper(
                 Case(
                     When(
+                        cost__sum__isnull=False,
                         video_views__sum__gt=0,
                         then=F("cost__sum") / F("video_views__sum"),
                     ),
@@ -269,7 +270,7 @@ class AnalyzeDetailsApiView(APIView):
                     When(
                         video_views__sum__isnull=False,
                         impressions__sum__gt=0,
-                        then=F("video_views__sum") * Value(100.0) / F("video_views__sum"),
+                        then=F("video_views__sum") * Value(100.0) / F("impressions__sum"),
                     ),
                     output_field=FloatField()
                 ),
