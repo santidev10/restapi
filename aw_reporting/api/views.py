@@ -872,8 +872,11 @@ class ConnectAWAccountApiView(APIView):
                     **load_web_app_settings()
                 )
             except WebFault as e:
+                fault_string = e.fault.faultstring
+                if "AuthenticationError.NOT_ADS_USER" in fault_string:
+                    fault_string = "AdWords account does not exist"
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data=dict(error=e.fault.faultstring))
+                                data=dict(error=fault_string))
 
             mcc_accounts = list(filter(
                 lambda i: i['canManageClients'] and not i['testAccount'],
