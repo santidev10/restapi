@@ -18,12 +18,14 @@ TOP_LIMIT = 10
 
 class DeliveryChart:
 
-    def __init__(self, accounts, campaigns=None, ad_groups=None,
+    def __init__(self, accounts, account=None, campaigns=None, ad_groups=None,
                  indicator=None, dimension=None, breakdown="daily",
                  start_date=None, end_date=None,
 
                  additional_chart=None, segmented_by=None,
                  date=True, **kwargs):
+        if account and account in accounts:
+            accounts = [account]
 
         if not campaigns and accounts:
             campaigns = Campaign.objects.filter(
