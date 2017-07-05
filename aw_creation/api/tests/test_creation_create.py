@@ -23,7 +23,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             logger.warning("This test require postgres db!")
             return
 
-        from segment.models import VideoRelation, ChannelRelation, SegmentVideo, SegmentChannel
+        from segment.models import SegmentVideo, SegmentChannel
         from keyword_tool.models import KeywordsList, KeyWord
 
         url = reverse("aw_creation_urls:creation_account")
