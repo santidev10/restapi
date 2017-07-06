@@ -101,7 +101,7 @@ class BaseSegment(Timestampable):
     def update_statistics(self):
         data = self.obtain_singledb_data()
         # just return on any fail
-        if data is None:
+        if not data:
             return
 
         # populate statistics fields
