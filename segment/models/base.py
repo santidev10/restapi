@@ -93,16 +93,16 @@ class BaseSegment(Timestampable):
 
     def obtain_singledb_data(self):
         ids = list(self.get_related_ids())
-        if not ids:
-            return []
         return self.singledb_method(ids=ids, top=3, minidash=1)
 
     @task
     def update_statistics(self):
         data = self.obtain_singledb_data()
         # just return on any fail
-        if not data:
+        if data is None:
             return
+
+        if not data:
 
         # populate statistics fields
         self.populate_statistics_fields(data)
