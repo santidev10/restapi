@@ -2,6 +2,7 @@ from rest_framework.serializers import ModelSerializer, SerializerMethodField
 from aw_reporting.models import AWConnectionToUserRelation, Account, Campaign, AdGroup, AdGroupStatistic, \
     ConcatAggregate, dict_norm_base_stats, base_stats_aggregate, dict_calculate_stats
 from django.db.models import Min, Max, Sum, Count, Case, When, Value, IntegerField as AggrIntegerField
+from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -74,15 +75,8 @@ class AccountsListSerializer(ModelSerializer):
                     if s in statuses:
                         return s.capitalize()
 
-    @staticmethod
-    def get_weekly_chart(obj):
-        data = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account=obj
-        ).values("date").order_by("-date").annotate(
-            views=Sum("video_views")
-        )[:7]
-        chart_data = [dict(label=i['date'], value=i['views']) for i in reversed(data)]
-        return chart_data
+    def get_weekly_chart(self, obj):
+        return self.daily_chart[obj.id][-7:]
 
     def get_start(self, obj):
         return self.stats.get(obj.id, {}).get("min_start")
@@ -94,6 +88,7 @@ class AccountsListSerializer(ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         self.stats = {}
+        self.daily_chart = defaultdict(list)
         if args:
             if isinstance(args[0], Account):
                 ids = [args[0].id]
@@ -124,6 +119,19 @@ class AccountsListSerializer(ModelSerializer):
                 dict_norm_base_stats(i)
                 dict_calculate_stats(i)
                 self.stats[i['account_id']] = i
+
+            # data for weekly charts
+            account_id_key = "ad_group__campaign__account_id"
+            group_by = (account_id_key, "date")
+            daily_stats = AdGroupStatistic.objects.filter(
+                ad_group__campaign__account_id__in=ids
+            ).values(*group_by).order_by(*group_by).annotate(
+                views=Sum("video_views")
+            )
+            for s in daily_stats:
+                self.daily_chart[s[account_id_key]].append(
+                    dict(label=s['date'], value=s['views'])
+                )
 
         super(AccountsListSerializer, self).__init__(*args, **kwargs)
 

@@ -51,7 +51,7 @@ class AnalyzeAccountsListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Account.user_objects(self.request.user).filter(
             can_manage_clients=False,
-        ).order_by("name", "id")
+        ).prefetch_related("account_creation").order_by("name", "id")
         return queryset
 
     filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
