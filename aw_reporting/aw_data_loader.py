@@ -1,10 +1,9 @@
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
-
+from django.utils import timezone
 from aw_reporting.models import Account
 from suds import WebFault
 from oauth2client.client import HttpAccessTokenRefreshError
 import aw_reporting.tasks as aw_tasks
-from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,7 @@ class AWDataLoader:
                 )
                 a.managers.add(manager)
 
-            manager.update_time = datetime.now()
+            manager.update_time = timezone.now()
             manager.save()
 
     def run_task_with_any_permission(self, task, account, manager):
@@ -122,7 +121,7 @@ class AWDataLoader:
             logger.debug(task, account)
             task(client, account, today)
 
-        account.update_time = datetime.now()
+        account.update_time = timezone.now()
         account.save()
 
 
