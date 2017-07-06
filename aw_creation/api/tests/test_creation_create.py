@@ -44,7 +44,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         # channel list
         channel_segment = SegmentChannel.objects.create(owner=self.user)
         channel_ids = {"abc", "def"}
-        video_segment.add_related_ids(channel_ids)
+        channel_segment.add_related_ids(channel_ids)
 
         # kw list
         kws = {"banana", "batman", "slave"}

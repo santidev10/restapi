@@ -907,7 +907,7 @@ class UserListsImportMixin:
             ).order_by("keywords__text").distinct()
         else:
             manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids)\
+            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False)\
                               .values_list('related__related_id', flat=True)\
                               .order_by('related__related_id')\
                               .distinct()

@@ -60,7 +60,6 @@ def get_account_border_dates(account):
     return dates['min_date'], dates['max_date']
 
 GET_DF = '%Y-%m-%d'
-HOURS_CLEAR = 5
 # -- helpers
 
 
@@ -77,21 +76,14 @@ def load_hourly_stats(client, account, *_):
 
     # delete very old stats
     queryset.filter(date__lt=min_date).delete()
-    last_entry = queryset.order_by('-date', '-hour').first()
+    last_entry = queryset.order_by('-date').first()
 
     with transaction.atomic():
-        # delete last 3 hours saved data
-        hour, date = 0, min_date  # default dummy data
+        # delete last day saved data
+        date = min_date  # default dummy data
         if last_entry:
-            hour = last_entry.hour
             date = last_entry.date
-            if hour >= HOURS_CLEAR:
-                hour -= HOURS_CLEAR
-            else:
-                queryset.filter(date=date).delete()
-                hour = 24 + hour - HOURS_CLEAR
-                date -= timedelta(days=1)
-            queryset.filter(date=date, hour__gte=hour).delete()
+            queryset.filter(date__gte=date).delete()
 
         #  get report
         report = campaign_performance_report(
@@ -109,11 +101,6 @@ def load_hourly_stats(client, account, *_):
             create_campaign = []
             create_stat = []
             for row in report:
-                row_date = row.Date
-                row_hour = int(row.HourOfDay)
-                if row_date == str(date) and row_hour < hour:
-                    continue  # this row is already saved
-
                 campaign_id = row.CampaignId
                 if campaign_id not in campaign_ids:
                     campaign_ids.append(campaign_id)
@@ -128,7 +115,7 @@ def load_hourly_stats(client, account, *_):
 
                 create_stat.append(
                     CampaignHourlyStatistic(
-                        date=row_date,
+                        date=row.Date,
                         hour=row.HourOfDay,
                         campaign_id=row.CampaignId,
                         video_views=row.VideoViews,

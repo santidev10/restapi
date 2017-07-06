@@ -696,7 +696,7 @@ class DemoAccount(BaseDemo):
             charts_obj = DemoChart(self, filters)
             chart_lines = charts_obj.chart_lines(self, filters)
             details['delivery_trend'].append(
-                dict(label=indicator.capitalize(),
+                dict(label=indicator.split("_")[-1].capitalize(),
                      trend=chart_lines[0]['trend']))
 
         return details
