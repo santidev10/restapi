@@ -92,7 +92,8 @@ def load_hourly_stats(client, account, *_):
             fields=[
                'CampaignId', 'CampaignName',
                'Date', 'HourOfDay',
-            ] + main_statistics[:4]
+            ] + main_statistics[:4],
+            include_zero_impressions=False,
         )
         if report:
             campaign_ids = list(
@@ -124,6 +125,7 @@ def load_hourly_stats(client, account, *_):
                         cost=float(row.Cost)/1000000,
                     )
                 )
+
             if create_campaign:
                 Campaign.objects.bulk_create(create_campaign)
 
