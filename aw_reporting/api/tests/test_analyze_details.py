@@ -135,6 +135,8 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
             set(data["overview"].keys()),
             self.overview_keys,
         )
+        self.assertEqual(data["details"]['delivery_trend'][0]['label'], "Impressions")
+        self.assertEqual(data["details"]['delivery_trend'][1]['label'], "Views")
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
