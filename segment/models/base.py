@@ -102,8 +102,6 @@ class BaseSegment(Timestampable):
         if data is None:
             return
 
-        if not data:
-
         # populate statistics fields
         self.populate_statistics_fields(data)
 
