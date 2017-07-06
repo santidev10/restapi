@@ -70,7 +70,7 @@ def get_ctr(*args, **kwargs):
         clicks, impressions = args
     else:
         clicks = kwargs['clicks']
-        impressions = kwargs['video_impressions']
+        impressions = kwargs['impressions']
 
     if impressions:
         return 100 * clicks / impressions
