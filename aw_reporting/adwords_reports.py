@@ -284,7 +284,7 @@ def ad_performance_report(client, dates=None):
     return _output_to_rows(result, fields)
 
 
-def campaign_performance_report(client, dates=None, fields=None):
+def campaign_performance_report(client, dates=None, fields=None, include_zero_impressions=True):
     if fields is None:
         fields = [
             'CampaignId', 'CampaignName', 'ServingStatus', 'StartDate',
@@ -306,7 +306,7 @@ def campaign_performance_report(client, dates=None, fields=None):
     result = _get_report(
         client, 'CAMPAIGN_PERFORMANCE_REPORT', selector,
         date_range_type=date_range_type,
-        include_zero_impressions=True,
+        include_zero_impressions=include_zero_impressions,
     )
     return _output_to_rows(result, fields)
 
