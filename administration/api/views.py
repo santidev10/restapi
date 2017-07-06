@@ -177,6 +177,15 @@ class UserActionListCreateApiView(ListCreateAPIView):
             return queryset.order_by("-{}".format(order_by))
         return queryset
 
+    def paginate_queryset(self, queryset):
+        """
+        Processing flat query param
+        """
+        flat = self.request.query_params.get("flat")
+        if flat == "1":
+            return None
+        return super().paginate_queryset(queryset)
+
     def get_queryset(self):
         """
         Prepare queryset
