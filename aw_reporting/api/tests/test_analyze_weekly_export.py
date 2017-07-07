@@ -15,6 +15,13 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
         self.account = self.create_account(self.user)
 
     def test_success(self):
+        campaign = Campaign.objects.create(id=1, name="", account=self.account)
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        date = datetime.now()
+        AdGroupStatistic.objects.create(
+            ad_group=ad_group, date=date, average_position=1,
+        )
+
         url = reverse("aw_reporting_urls:analyze_export_weekly_report",
                       args=(self.account.id,))
         today = datetime.now().date()
@@ -27,4 +34,3 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(type(response), HttpResponse)
-
