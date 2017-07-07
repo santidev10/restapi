@@ -207,7 +207,7 @@ class AnalyzeDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
 
         # this and last week base stats
-        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date()
+        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)
