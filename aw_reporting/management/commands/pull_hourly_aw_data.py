@@ -22,3 +22,4 @@ class Command(BaseCommand):
             updater.run_task_with_any_manager(
                 load_hourly_stats, account,
             )
+        logger.info('End')
