@@ -244,6 +244,13 @@ LANDING_CONTACTS = {
     ],
 }
 
+REGISTRATION_ACTION_EMAIL_ADDRESSES = [
+    "yuriy.matso@channelfactory.com",
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
+
 try:
     from .local_settings import *
 except ImportError:

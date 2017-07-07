@@ -10,11 +10,7 @@ def send_new_registration_email(email_data):
     Send new user registration email
     """
     sender = settings.SENDER_EMAIL_ADDRESS
-    emails = "yuriy.matso@channelfactory.com," \
-             "aleksandr.yakovenko@sigma.software," \
-             "anna.chumak@sigma.software," \
-             "maria.konareva@sigma.software"
-    to = emails.split(",")
+    to = settings.REGISTRATION_ACTION_EMAIL_ADDRESSES
     subject = "New registration"
     text = "Dear Admin, \n\n" \
            "A new user has just registered on {host}. \n\n" \
