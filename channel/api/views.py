@@ -10,9 +10,11 @@ from rest_framework.views import APIView
 
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
+# pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 
 
 class ChannelListApiView(APIView):

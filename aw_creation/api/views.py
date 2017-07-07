@@ -6,7 +6,9 @@ from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 
+# pylint: disable=import-error
 from apiclient.discovery import build
+# pylint: enable=import-error
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, Avg, Max, Min, Sum, Count, When, Case, Value, \
@@ -17,7 +19,7 @@ from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
-from rest_framework.pagination import PageNumberPagination
+from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
@@ -44,6 +46,9 @@ from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeoTargetListApiView(APIView):
@@ -206,20 +211,8 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         return item
 
 
-class OptimizationAccountListPaginator(PageNumberPagination):
-    page_size = 100
-
-    def get_paginated_response(self, data):
-        """
-        Update response to return
-        """
-        response_data = {
-            'items_count': self.page.paginator.count,
-            'items': data,
-            'current_page': self.page.number,
-            'max_page': self.page.paginator.num_pages,
-        }
-        return Response(response_data)
+class OptimizationAccountListPaginator(CustomPageNumberPaginator):
+    page_size = 20
 
 
 class OptimizationOptionsApiView(APIView):
@@ -382,9 +375,17 @@ class OptimizationAccountListApiView(ListAPIView):
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
             elif status == "Pending":
-                queryset = queryset.filter(is_paused=True, is_ended=False)  # all
-            else:  # TODO: Approved, Running
-                queryset = queryset.none()
+                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
+            else:
+                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
+                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
+                if status == "Running":
+                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
+                elif status == "Approved":
+                    queryset = queryset.filter(camp_count=0, **approved_f)
+                else:
+                    logger.warning("Unknown status {}".format(status))
+                    queryset = queryset.none()
 
         min_goal_units = filters.get('min_goal_units')
         max_goal_units = filters.get('max_goal_units')
@@ -467,9 +468,7 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAccountDetailsSerializer
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            owner=self.request.user
-        )
+        queryset = AccountCreation.objects.filter(owner=self.request.user)
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -483,6 +482,9 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
+        if instance.account is not None:
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data=dict(error="You cannot delete approved setups"))
         instance.is_deleted = True
         instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -522,11 +524,11 @@ class OptimizationAccountDuplicateApiView(APIView):
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
-            owner=self.request.user
+            owner=self.request.user,
         )
         return queryset
 
-    def post(self, request, pk, **kwargs):
+    def post(self, *args, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
         except AccountCreation.DoesNotExist:
@@ -905,7 +907,7 @@ class UserListsImportMixin:
             ).order_by("keywords__text").distinct()
         else:
             manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids)\
+            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False)\
                               .values_list('related__related_id', flat=True)\
                               .order_by('related__related_id')\
                               .distinct()
@@ -1740,8 +1742,7 @@ class OptimizationTargetingApiView(OptimizationFiltersApiView,
 
     @staticmethod
     def add_items_stats(items, kpi, value):
-        stat_names = SUM_STATS + CONVERSIONS
-        stats = dict(zip(stat_names, (0 for _ in range(len(stat_names)))))
+        stats = dict(zip(SUM_STATS, (0 for _ in range(len(SUM_STATS)))))
         dict_add_calculated_stats(stats)
         for i in items:
             i.update(stats)

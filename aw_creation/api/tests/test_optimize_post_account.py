@@ -30,20 +30,18 @@ class PostAccountAPITestCase(ExtendedAPITestCase):
             {
                 # common details
                 'id', 'name', 'status', 'account',
+                'start', 'end',
                 'is_ended', 'is_approved', 'is_paused', 'is_changed',
                 'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'read_only', 'ad_groups_count',
+                'weekly_chart', 'campaigns_count', 'ad_groups_count',
                 'creative_count',
                 'keywords_count',
                 'goal_units',
                 'videos_count',
                 'channels_count',
 
-                # details below header
                 "goal_type", "type", "video_ad_format", "delivery_method",
                 "video_networks", "bidding_type",
-                # details below header (readonly)
-                "budget", 'start', 'end',
                 'structure', 'creative', 'goal_charts',
 
                 'goal_charts',

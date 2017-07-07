@@ -23,7 +23,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             logger.warning("This test require postgres db!")
             return
 
-        from segment.models import VideoRelation, ChannelRelation, SegmentVideo, SegmentChannel
+        from segment.models import SegmentVideo, SegmentChannel
         from keyword_tool.models import KeywordsList, KeyWord
 
         url = reverse("aw_creation_urls:creation_account")
@@ -44,7 +44,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
         # channel list
         channel_segment = SegmentChannel.objects.create(owner=self.user)
         channel_ids = {"abc", "def"}
-        video_segment.add_related_ids(channel_ids)
+        channel_segment.add_related_ids(channel_ids)
 
         # kw list
         kws = {"banana", "batman", "slave"}

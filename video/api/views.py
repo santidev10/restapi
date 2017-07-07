@@ -8,9 +8,11 @@ from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
 from segment.models import SegmentVideo
+# pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
