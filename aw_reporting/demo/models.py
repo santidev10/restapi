@@ -28,7 +28,7 @@ class BaseDemo:
     week_proportion = 0.2
     last_week_proportions = 0.15
     name = "Demo"
-    status = 'enabled'
+    status = 'eligible'
     children = []
     parent = None
 
@@ -155,7 +155,7 @@ class BaseDemo:
                     dict(
                         label="Ad #{}".format(ag.id),
                         average_position=1,
-                        status="enabled",
+                        status="eligible",
                     )
                 )
 
