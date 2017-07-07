@@ -2,25 +2,25 @@
 Administration api views module
 """
 import operator
-
-from django.contrib.auth import get_user_model
 from functools import reduce
 
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db.models import Q
-from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
     HTTP_201_CREATED
-from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer
 from administration.models import UserAction
-from userprofile.models import UserProfile
 from userprofile.api.serializers import UserSerializer
+from userprofile.models import UserProfile
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -153,8 +153,19 @@ class UserActionListCreateApiView(ListCreateAPIView):
         slug = self.request.query_params.get("slug")
         if slug:
             filters["slug__icontains"] = slug
+        # start date
+        start_date = self.request.query_params.get("start_date")
+        if start_date:
+            filters["created_at__gte"] = start_date
+        # end date
+        end_date = self.request.query_params.get("end_date")
+        if end_date:
+            filters["created_at__lte"] = end_date
         if filters:
-            queryset = queryset.filter(**filters)
+            try:
+                queryset = queryset.filter(**filters)
+            except ValidationError:
+                queryset = UserAction.objects.none()
         return queryset
 
     def do_sorts(self, queryset):
