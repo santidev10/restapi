@@ -265,21 +265,22 @@ class AnalyzeWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **{s: Sum(s, default=Value(0))
-               for s in BASE_STATS + QUARTILE_STATS}
+            **all_stats_aggregate
         ).order_by(*group_by)
         for i in campaign_data:
-            dict_add_calculated_stats(i)
+            i['name'] = i['ad_group__campaign__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
             dict_quartiles_to_rates(i)
         return campaign_data
 
     def get_total_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
-            **{s: Sum(s, default=Value(0))
-               for s in BASE_STATS + QUARTILE_STATS}
+            **all_stats_aggregate
         )
-        dict_add_calculated_stats(total_data)
+        dict_norm_base_stats(total_data)
+        dict_calculate_stats(total_data)
         dict_quartiles_to_rates(total_data)
         return total_data
 
@@ -353,11 +354,12 @@ class AnalyzeWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **{s: Sum(s, default=Value(0))
-               for s in BASE_STATS + QUARTILE_STATS}
+            **all_stats_aggregate
         ).order_by(*group_by)
         for i in campaign_data:
-            dict_add_calculated_stats(i)
+            i['name'] = i['ad_group__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
             dict_quartiles_to_rates(i)
         return campaign_data
 
@@ -397,10 +399,15 @@ class AnalyzeWeeklyReport:
         queryset = AudienceStatistic.objects.filter(**self.get_filters())
         interest_data = queryset.filter(
             ad_group__campaign__account__id=self.account.id,
-            date__gte=self.date_delta).values(
-            "audience__name").annotate(
-            Sum("impressions"), Sum("video_views")
+            date__gte=self.date_delta
+        ).values("audience__name").annotate(
+            **all_stats_aggregate
         ).order_by("audience__name")
+        for i in interest_data:
+            i['name'] = i['audience__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+            dict_quartiles_to_rates(i)
         return interest_data
 
     def prepare_interest_section(self, start_row):
@@ -430,9 +437,15 @@ class AnalyzeWeeklyReport:
         queryset = TopicStatistic.objects.filter(**self.get_filters())
         topic_data = queryset.filter(
             ad_group__campaign__account__id=self.account.id,
-            date__gte=self.date_delta).values(
-            "topic__name").annotate(
-            Sum("impressions"), Sum("video_views")).order_by("topic__name")
+            date__gte=self.date_delta
+        ).values("topic__name").order_by("topic__name").annotate(
+            **all_stats_aggregate
+        )
+        for i in topic_data:
+            i['name'] = i['topic__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+            dict_quartiles_to_rates(i)
         return topic_data
 
     def prepare_topic_section(self, start_row):
@@ -462,8 +475,14 @@ class AnalyzeWeeklyReport:
     def get_keyword_data(self):
         queryset = KeywordStatistic.objects.filter(**self.get_filters())
         keyword_data = queryset.values("keyword").annotate(
-            Sum("impressions"), Sum("video_views")).order_by("keyword")
-        return [dict(name=i['keyword'], **i) for i in keyword_data]
+            **all_stats_aggregate
+        ).order_by("keyword")
+        for i in keyword_data:
+            i['name'] = i['keyword']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+            dict_quartiles_to_rates(i)
+        return keyword_data
 
     def prepare_keyword_section(self, start_row):
         """
@@ -491,10 +510,13 @@ class AnalyzeWeeklyReport:
     def get_device_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         device_data = queryset.values("device_id").annotate(
-            Sum("impressions"), Sum("video_views"),
-            Sum('clicks'), Sum("video_views_25_quartile"),
-            Sum("video_views_50_quartile"), Sum("video_views_75_quartile"),
-            Sum("video_views_100_quartile")).order_by("device_id")
+            **all_stats_aggregate
+        ).order_by("device_id")
+        for i in device_data:
+            i['name'] = Devices[i['device_id']]
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+            dict_quartiles_to_rates(i)
         return device_data
 
     def prepare_device_section(self, start_row):
