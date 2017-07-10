@@ -586,6 +586,31 @@ class DemoCampaign(BaseDemo):
             ],
             start=self.start_date,
             end=self.end_date,
+
+            video_ad_format=dict(
+                id=CampaignCreation.VIDEO_AD_FORMATS[0][0],
+                name=CampaignCreation.VIDEO_AD_FORMATS[0][1],
+            ),
+            goal_type=dict(
+                id=CampaignCreation.GOAL_TYPES[0][0],
+                name=CampaignCreation.GOAL_TYPES[0][1],
+            ),
+            delivery_method=dict(
+                id=CampaignCreation.DELIVERY_METHODS[0][0],
+                name=CampaignCreation.DELIVERY_METHODS[0][1],
+            ),
+            video_networks=[
+                dict(id=uid, name=name)
+                for uid, name in CampaignCreation.VIDEO_NETWORKS
+            ],
+            type=dict(
+                id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                name=CampaignCreation.CAMPAIGN_TYPES[0][1],
+            ),
+            bidding_type=dict(
+                id=CampaignCreation.BIDDING_TYPES[0][0],
+                name=CampaignCreation.BIDDING_TYPES[0][1],
+            ),
         )
         return data
 
@@ -817,30 +842,6 @@ class DemoAccount(BaseDemo):
             is_ended=False,
             is_paused=False,
             is_approved=True,
-            video_ad_format=dict(
-                id=AccountCreation.VIDEO_AD_FORMATS[0][0],
-                name=AccountCreation.VIDEO_AD_FORMATS[0][1],
-            ),
-            goal_type=dict(
-                id=AccountCreation.GOAL_TYPES[0][0],
-                name=AccountCreation.GOAL_TYPES[0][1],
-            ),
-            delivery_method=dict(
-                id=AccountCreation.DELIVERY_METHODS[0][0],
-                name=AccountCreation.DELIVERY_METHODS[0][1],
-            ),
-            video_networks=[
-                dict(id=uid, name=name)
-                for uid, name in AccountCreation.VIDEO_NETWORKS
-            ],
-            type=dict(
-                id=AccountCreation.CAMPAIGN_TYPES[0][0],
-                name=AccountCreation.CAMPAIGN_TYPES[0][1],
-            ),
-            bidding_type=dict(
-                id=AccountCreation.BIDDING_TYPES[0][0],
-                name=AccountCreation.BIDDING_TYPES[0][1],
-            ),
             goal_charts=charts_obj.chart_lines(self, filters),
         )
         return data

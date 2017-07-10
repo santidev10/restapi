@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
-from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
@@ -113,10 +112,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'creative_count', 'goal_units',
                 'channels_count', 'videos_count',
                 'keywords_count',
-
-                # details below header
-                "goal_type", "type", "video_ad_format", "delivery_method",
-                "video_networks", "bidding_type",
                 # details below header (readonly)
                 'start', 'end',
 
@@ -125,36 +120,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
         self.assertIsNotNone(data['start'])
         self.assertIsNotNone(data['end'])
-        self.assertEqual(
-            data['video_ad_format'],
-            dict(id=AccountCreation.IN_STREAM_TYPE,
-                 name=AccountCreation.VIDEO_AD_FORMATS[0][1]),
-        )
-        self.assertEqual(
-            data['type'],
-            dict(id=AccountCreation.VIDEO_TYPE,
-                 name=AccountCreation.CAMPAIGN_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['goal_type'],
-            dict(id=AccountCreation.GOAL_VIDEO_VIEWS,
-                 name=AccountCreation.GOAL_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['delivery_method'],
-            dict(id=AccountCreation.STANDARD_DELIVERY,
-                 name=AccountCreation.DELIVERY_METHODS[0][1]),
-        )
-        self.assertEqual(
-            data['bidding_type'],
-            dict(id=AccountCreation.MANUAL_CPV_BIDDING,
-                 name=AccountCreation.BIDDING_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['video_networks'],
-            [dict(id=uid, name=n)
-             for uid, n in AccountCreation.VIDEO_NETWORKS],
-        )
 
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
@@ -165,9 +130,39 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'start', 'end',
                 'goal_units', 'budget', 'max_rate', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'ad_group_creations',
+                'location_rules', 'ad_group_creations',
+                "goal_type", "type", "video_ad_format", "delivery_method", "video_networks", "bidding_type",
             }
+        )
+        self.assertEqual(
+            campaign_data['video_ad_format'],
+            dict(id=CampaignCreation.IN_STREAM_TYPE,
+                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['type'],
+            dict(id=CampaignCreation.VIDEO_TYPE,
+                 name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['goal_type'],
+            dict(id=CampaignCreation.GOAL_VIDEO_VIEWS,
+                 name=CampaignCreation.GOAL_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['delivery_method'],
+            dict(id=CampaignCreation.STANDARD_DELIVERY,
+                 name=CampaignCreation.DELIVERY_METHODS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['bidding_type'],
+            dict(id=CampaignCreation.MANUAL_CPV_BIDDING,
+                 name=CampaignCreation.BIDDING_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['video_networks'],
+            [dict(id=uid, name=n)
+             for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
         self.assertEqual(len(campaign_data['languages']), 1)
         self.assertEqual(

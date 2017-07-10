@@ -81,6 +81,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 'goal_units', 'budget', 'max_rate', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
+                'delivery_method', 'goal_type', 'video_ad_format', 'video_networks', 'bidding_type', 'type',
                 'ad_group_creations',
             }
         )

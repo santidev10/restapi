@@ -13,21 +13,13 @@ urlpatterns = [
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
 
-    # creation
+    # creation functionality
     url(r'^creation_options/$',
         views.CreationOptionsApiView.as_view(),
         name="creation_options"),
-    url(r'^creation_account/$',
-        views.CreationAccountApiView.as_view(),
-        name="creation_account"),
-
-    # optimize
-    url(r'^optimization_options/$',
-        views.OptimizationOptionsApiView.as_view(),
-        name="optimization_options"),
-    url(r'^optimization_account_list/$',
-        views.OptimizationAccountListApiView.as_view(),
-        name="optimization_account_list"),
+    url(r'^account_creation_list/$',
+        views.AccountCreationListApiView.as_view(),
+        name="account_creation_list"),
     url(r'^optimization_account/(?P<pk>\w+)/$',
         views.OptimizationAccountApiView.as_view(),
         name="optimization_account"),

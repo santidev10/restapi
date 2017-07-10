@@ -5,7 +5,6 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
-from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
@@ -102,43 +101,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'weekly_chart', 'campaigns_count', 'ad_groups_count',
                 'creative_count', 'goal_units', 'channels_count', 'videos_count', 'keywords_count',
 
-                "goal_type", "type", "video_ad_format", "delivery_method",
-                "video_networks", "bidding_type",
                 'start', 'end', 'creative', 'structure', 'goal_charts',
             }
         )
         self.assertIsNotNone(data['start'])
         self.assertIsNotNone(data['end'])
-        self.assertEqual(
-            data['video_ad_format'],
-            dict(id=AccountCreation.IN_STREAM_TYPE,
-                 name=AccountCreation.VIDEO_AD_FORMATS[0][1]),
-        )
-        self.assertEqual(
-            data['type'],
-            dict(id=AccountCreation.VIDEO_TYPE,
-                 name=AccountCreation.CAMPAIGN_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['goal_type'],
-            dict(id=AccountCreation.GOAL_VIDEO_VIEWS,
-                 name=AccountCreation.GOAL_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['delivery_method'],
-            dict(id=AccountCreation.STANDARD_DELIVERY,
-                 name=AccountCreation.DELIVERY_METHODS[0][1]),
-        )
-        self.assertEqual(
-            data['bidding_type'],
-            dict(id=AccountCreation.MANUAL_CPV_BIDDING,
-                 name=AccountCreation.BIDDING_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['video_networks'],
-            [dict(id=uid, name=n)
-             for uid, n in AccountCreation.VIDEO_NETWORKS],
-        )
 
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
@@ -151,6 +118,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
                 'ad_group_creations',
+                "goal_type", "type", "video_ad_format", "delivery_method", "video_networks", "bidding_type",
             }
         )
         self.assertEqual(len(campaign_data['languages']), 1)
@@ -209,6 +177,36 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'to_hour',
                 'day',
             }
+        )
+        self.assertEqual(
+            campaign_data['video_ad_format'],
+            dict(id=CampaignCreation.IN_STREAM_TYPE,
+                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['type'],
+            dict(id=CampaignCreation.VIDEO_TYPE,
+                 name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['goal_type'],
+            dict(id=CampaignCreation.GOAL_VIDEO_VIEWS,
+                 name=CampaignCreation.GOAL_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['delivery_method'],
+            dict(id=CampaignCreation.STANDARD_DELIVERY,
+                 name=CampaignCreation.DELIVERY_METHODS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['bidding_type'],
+            dict(id=CampaignCreation.MANUAL_CPV_BIDDING,
+                 name=CampaignCreation.BIDDING_TYPES[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['video_networks'],
+            [dict(id=uid, name=n)
+             for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
         ad_group_data = campaign_data['ad_group_creations'][0]
         self.assertEqual(

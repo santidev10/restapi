@@ -75,7 +75,66 @@ class AccountCreation(UniqueItem):
     version = models.CharField(max_length=8, default=get_version)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # new common fields that were moved up to the account level
+    def get_aws_code(self):
+        if self.account_id:
+            lines = []
+            for c in self.campaign_managements.filter(is_approved=True):
+                lines.append(c.get_aws_code())
+            lines.append(
+                "sendChangesStatus('{}', '{}');".format(
+                    self.account_id, self.version)
+            )
+            return " ".join(lines)
+
+
+@receiver(post_save,
+          sender=AccountCreation, dispatch_uid="save_account_receiver")
+def save_account_receiver(sender, instance, created, **kwargs):
+    if not created:
+        sender.objects.filter(pk=instance.pk).update(
+            version=get_version(), is_changed=True
+        )
+
+
+def default_languages():
+    return Language.objects.filter(pk__in=(1000, 1003))
+
+
+class Language(models.Model):
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=5)
+
+
+class CampaignCreation(UniqueItem):
+
+    account_creation = models.ForeignKey(
+        AccountCreation, related_name="campaign_creations",
+    )
+    campaign = models.OneToOneField(
+        "aw_reporting.Campaign", related_name='campaign_creation',
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    # fields
+    start = models.DateField(null=True, blank=True)
+    end = models.DateField(null=True, blank=True)
+    goal_units = models.PositiveIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1)],
+    )
+
+    max_rate = models.DecimalField(
+        null=True, blank=True, max_digits=6, decimal_places=3,
+    )
+    budget = models.DecimalField(
+        null=True, blank=True, max_digits=10, decimal_places=2,
+    )
+    is_paused = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=False)
+
+    languages = models.ManyToManyField(
+        'Language', related_name='campaigns', default=default_languages)
+
     VIDEO_TYPE = 'VIDEO'
     DISPLAY_TYPE = 'DISPLAY'
     CAMPAIGN_TYPES = ((VIDEO_TYPE, "Video"),
@@ -148,8 +207,6 @@ class AccountCreation(UniqueItem):
             [YOUTUBE_SEARCH, YOUTUBE_VIDEO, VIDEO_PARTNER_DISPLAY_NETWORK]
         ),
     )
-    # Cannot target display network
-    # without first targeting YouTube video network
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
@@ -157,66 +214,6 @@ class AccountCreation(UniqueItem):
     def set_video_networks(self, value):
         self.video_networks_raw = json.dumps(value)
     video_networks = property(get_video_networks, set_video_networks)
-
-    def get_aws_code(self):
-        if self.account_id:
-            lines = []
-            for c in self.campaign_managements.filter(is_approved=True):
-                lines.append(c.get_aws_code())
-            lines.append(
-                "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.version)
-            )
-            return " ".join(lines)
-
-
-@receiver(post_save,
-          sender=AccountCreation, dispatch_uid="save_account_receiver")
-def save_account_receiver(sender, instance, created, **kwargs):
-    if not created:
-        sender.objects.filter(pk=instance.pk).update(
-            version=get_version(), is_changed=True
-        )
-
-
-def default_languages():
-    return Language.objects.filter(pk__in=(1000, 1003))
-
-
-class Language(models.Model):
-    name = models.CharField(max_length=50)
-    code = models.CharField(max_length=5)
-
-
-class CampaignCreation(UniqueItem):
-
-    account_creation = models.ForeignKey(
-        AccountCreation, related_name="campaign_creations",
-    )
-    campaign = models.OneToOneField(
-        "aw_reporting.Campaign", related_name='campaign_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
-    )
-
-    # fields
-    start = models.DateField(null=True, blank=True)
-    end = models.DateField(null=True, blank=True)
-    goal_units = models.PositiveIntegerField(
-        null=True, blank=True,
-        validators=[MinValueValidator(1)],
-    )
-
-    max_rate = models.DecimalField(
-        null=True, blank=True, max_digits=6, decimal_places=3,
-    )
-    budget = models.DecimalField(
-        null=True, blank=True, max_digits=10, decimal_places=2,
-    )
-    is_paused = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False)
-
-    languages = models.ManyToManyField(
-        'Language', related_name='campaigns', default=default_languages)
 
     DESKTOP_DEVICE = 'DESKTOP_DEVICE'
     MOBILE_DEVICE = 'MOBILE_DEVICE'
@@ -233,15 +230,15 @@ class CampaignCreation(UniqueItem):
         ),
     )
 
-    class Meta:
-        ordering = ['-id']
-
     def get_devices(self):
         return json.loads(self.devices_raw)
 
     def set_devices(self, value):
         self.devices_raw = json.dumps(value)
     devices = property(get_devices, set_devices)
+
+    class Meta:
+        ordering = ['-id']
 
     @property
     def campaign_is_paused(self):

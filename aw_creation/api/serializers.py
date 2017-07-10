@@ -239,13 +239,59 @@ class FrequencyCapSerializer(ModelSerializer):
 
 
 class OptimizationCampaignsSerializer(ModelSerializer):
-    ad_group_creations = OptimizationAdGroupSerializer(many=True,
-                                                       read_only=True)
-    languages = SerializerMethodField()
-    devices = SerializerMethodField()
+    ad_group_creations = OptimizationAdGroupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
     frequency_capping = FrequencyCapSerializer(many=True, read_only=True)
+
+    languages = SerializerMethodField()
+    devices = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
+    type = SerializerMethodField()
+    goal_type = SerializerMethodField()
+    delivery_method = SerializerMethodField()
+    bidding_type = SerializerMethodField()
+    video_networks = SerializerMethodField()
+
+    @staticmethod
+    def get_video_ad_format(obj):
+        item_id = obj.video_ad_format
+        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_type(obj):
+        item_id = obj.type
+        options = dict(obj.__class__.CAMPAIGN_TYPES)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_goal_type(obj):
+        item_id = obj.goal_type
+        options = dict(obj.__class__.GOAL_TYPES)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_delivery_method(obj):
+        item_id = obj.delivery_method
+        options = dict(obj.__class__.DELIVERY_METHODS)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_bidding_type(obj):
+        item_id = obj.bidding_type
+        options = dict(obj.__class__.BIDDING_TYPES)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_video_networks(obj):
+        ids = obj.video_networks
+        video_networks = [
+            dict(id=uid, name=n)
+            for uid, n in obj.__class__.VIDEO_NETWORKS
+            if uid in ids
+        ]
+        return video_networks
 
     @staticmethod
     def get_languages(obj):
@@ -268,19 +314,15 @@ class OptimizationCampaignsSerializer(ModelSerializer):
             'id', 'name',
             'is_paused', 'is_approved',
             'start', 'end',
-            'budget',
-            'max_rate',
-            'languages',
+            'budget', 'max_rate', 'languages',
             'ad_group_creations',
-            'devices',
-            'location_rules',
-            'frequency_capping',
+            'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'goal_units',
-            'ad_schedule_rules',
+            'bidding_type', 'video_networks', 'delivery_method', 'video_ad_format', 'type', 'goal_type',
         )
 
 
-class OptimizationAccountListSerializer(ModelSerializer):
+class AccountCreationListSerializer(ModelSerializer):
     is_optimization_active = SerializerMethodField()
     status = SerializerMethodField()
     goal_units = SerializerMethodField()
@@ -293,13 +335,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
     channels_count = SerializerMethodField()
     videos_count = SerializerMethodField()
     keywords_count = SerializerMethodField()
-
-    video_ad_format = SerializerMethodField()
-    type = SerializerMethodField()
-    goal_type = SerializerMethodField()
-    delivery_method = SerializerMethodField()
-    bidding_type = SerializerMethodField()
-    video_networks = SerializerMethodField()
 
     structure = SerializerMethodField()
     creative = SerializerMethodField()
@@ -413,46 +448,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
             return response
 
     @staticmethod
-    def get_video_ad_format(obj):
-        item_id = obj.video_ad_format
-        options = dict(obj.__class__.VIDEO_AD_FORMATS)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_type(obj):
-        item_id = obj.type
-        options = dict(obj.__class__.CAMPAIGN_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_goal_type(obj):
-        item_id = obj.goal_type
-        options = dict(obj.__class__.GOAL_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_delivery_method(obj):
-        item_id = obj.delivery_method
-        options = dict(obj.__class__.DELIVERY_METHODS)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_bidding_type(obj):
-        item_id = obj.bidding_type
-        options = dict(obj.__class__.BIDDING_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_video_networks(obj):
-        ids = obj.video_networks
-        video_networks = [
-            dict(id=uid, name=n)
-            for uid, n in obj.__class__.VIDEO_NETWORKS
-            if uid in ids
-        ]
-        return video_networks
-
-    @staticmethod
     def get_channels_count(obj):
         c = TargetingItem.objects.filter(
             ad_group_creation__campaign_creation__account_creation=obj,
@@ -523,8 +518,7 @@ class OptimizationAccountListSerializer(ModelSerializer):
                 for e in order_data:
                     self.ordering[e['id']] = e
 
-        super(OptimizationAccountListSerializer,
-              self).__init__(instance, *args, **kwargs)
+        super(AccountCreationListSerializer, self).__init__(instance, *args, **kwargs)
 
         self.today = datetime.now().date()
 
@@ -540,8 +534,6 @@ class OptimizationAccountListSerializer(ModelSerializer):
             'channels_count', 'videos_count', 'keywords_count',
 
             'creative', 'structure', 'goal_charts',
-
-            'bidding_type', 'video_networks', 'delivery_method', 'video_ad_format', 'type', 'goal_type',
             'is_paused', 'is_approved', 'is_ended',
         )
 
@@ -564,14 +556,14 @@ class OptimizationAccountListSerializer(ModelSerializer):
             return "Pending"
 
 
-class OptimizationAccountDetailsSerializer(OptimizationAccountListSerializer):
+class AccountCreationDetailsSerializer(AccountCreationListSerializer):
 
     campaign_creations = OptimizationCampaignsSerializer(many=True,
                                                          read_only=True)
 
     class Meta:
         model = AccountCreation
-        fields = OptimizationAccountListSerializer.Meta.fields + ('campaign_creations',)
+        fields = AccountCreationListSerializer.Meta.fields + ('campaign_creations',)
 
 
 class OptimizationUpdateAccountSerializer(ModelSerializer):

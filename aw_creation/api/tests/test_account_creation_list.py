@@ -1,12 +1,10 @@
 from datetime import datetime, timedelta
-
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 from urllib.parse import urlencode
 from aw_creation.models import *
 from aw_reporting.models import *
-from aw_reporting.utils import get_dates_range
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -16,25 +14,59 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
         'id', 'name', 'account',
-        'status', 'start', 'end', 'is_optimization_active', 'is_changed',
+        'status', 'start', 'end',
+        'is_optimization_active', 'is_changed', 'is_paused', 'is_approved',
         'creative_count', 'keywords_count', 'videos_count', 'goal_units',
         'channels_count', 'campaigns_count', 'ad_groups_count',
         "weekly_chart", 'is_ended',
-        'is_approved',
-        'structure',
-        'bidding_type',
-        'video_ad_format',
-        'delivery_method',
-        'video_networks',
-        'goal_type',
-        'is_paused',
-        'type',
-        'goal_charts',
-        'creative',
+
+        'structure', 'goal_charts', 'creative',
     }
 
     def setUp(self):
         self.user = self.create_test_user()
+
+    def test_success_post(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+
+        self.assertEqual(
+            set(response.data.keys()),
+            self.details_keys | {"campaign_creations"}
+        )
+
+        campaign_creation = response.data['campaign_creations'][0]
+        self.assertEqual(
+            set(campaign_creation.keys()),
+            {
+                'id', 'name',
+                'is_approved', 'is_paused',
+                'start', 'end',
+                'goal_units', 'budget', 'max_rate', 'languages',
+                'devices', 'frequency_capping', 'ad_schedule_rules',
+                'location_rules',
+                'ad_group_creations',
+                'goal_type', 'video_networks', 'type', 'video_ad_format', 'delivery_method', 'bidding_type',
+            }
+        )
+
+        ad_group_creation = campaign_creation['ad_group_creations'][0]
+        self.assertEqual(
+            set(ad_group_creation.keys()),
+            {
+                'id', 'name', 'thumbnail', 'is_approved',
+                'video_url', 'ct_overlay_text', 'display_url', 'final_url',
+                'max_rate',
+                'genders', 'parents', 'age_ranges',
+                'targeting',
+            }
+        )
+
+        self.assertEqual(
+            set(ad_group_creation['targeting'].keys()),
+            {'channel', 'video', 'topic', 'interest', 'keyword'}
+        )
 
     def test_fail_get_data_of_another_user(self):
         user = get_user_model().objects.create(
@@ -43,7 +75,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="", owner=user,
         )
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -84,7 +116,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="", account_creation=ac_creation, campaign=None,
         )
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
             "aw_creation.api.serializers.SingleDatabaseApiConnector",
             new=SingleDatabaseApiConnectorPatcher
@@ -122,7 +154,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="", account_creation=ac_creation,
         )
 
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -145,7 +177,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             end=datetime.now().date() + timedelta(days=1),
         )
         # 1
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -169,7 +201,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         live_account = AccountCreation.objects.create(
             name="B", owner=self.user,
         )
-        base_url = reverse("aw_creation_urls:optimization_account_list")
+        base_url = reverse("aw_creation_urls:account_creation_list")
         url = "{}?{}".format(
             base_url,
             urlencode(dict(
@@ -186,7 +218,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                          live_account.name)
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -215,7 +247,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="", owner=self.user, is_deleted=True
         )
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
             "aw_reporting.demo.models.SingleDatabaseApiConnector",
             new=SingleDatabaseApiConnectorPatcher
@@ -229,7 +261,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(name="", owner=self.user)
         AccountCreation.objects.create(name="", owner=self.user, is_paused=True)
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         status = "Paused"
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -246,7 +278,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ac = AccountCreation.objects.create(name="", owner=self.user)
         CampaignCreation.objects.create(account_creation=ac, name="", goal_units=100)
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
@@ -261,7 +293,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ac = AccountCreation.objects.create(name="", owner=self.user)
         CampaignCreation.objects.create(account_creation=ac, name="")
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
@@ -276,7 +308,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ac = AccountCreation.objects.create(name="", owner=self.user)
         AccountCreation.objects.filter(id=ac.pk).update(is_changed=False)
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
@@ -304,7 +336,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ac2 = AccountCreation.objects.create(name="", owner=self.user)
         CampaignCreation.objects.create(account_creation=ac2, name="", start="2017-02-10")
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
@@ -321,7 +353,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ac2 = AccountCreation.objects.create(name="", owner=self.user)
         CampaignCreation.objects.create(account_creation=ac2, name="", end="2017-02-10")
         # --
-        url = reverse("aw_creation_urls:optimization_account_list")
+        url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher

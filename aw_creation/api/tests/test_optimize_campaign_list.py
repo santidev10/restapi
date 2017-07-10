@@ -13,6 +13,17 @@ from unittest.mock import patch
 
 class CampaignListAPITestCase(ExtendedAPITestCase):
 
+    detail_keys = {
+        'id', 'name',
+        'is_approved', 'is_paused',
+        'start', 'end',
+        'goal_units', 'budget', 'max_rate', 'languages',
+        'devices', 'frequency_capping', 'ad_schedule_rules',
+        'location_rules',
+        'type', 'video_networks', 'video_ad_format', 'goal_type', 'delivery_method', 'bidding_type',
+        'ad_group_creations',
+    }
+
     def setUp(self):
         self.user = self.create_test_user()
 
@@ -50,15 +61,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(
             set(data[0].keys()),
-            {
-                'id', 'name',
-                'is_approved', 'is_paused',
-                'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'ad_group_creations',
-            }
+            self.detail_keys
         )
 
     def test_success_post(self):
@@ -76,23 +79,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
-            {
-                'id',
-                'ad_group_creations',
-                'ad_schedule_rules',
-                'budget',
-                'location_rules',
-                'is_approved',
-                'frequency_capping',
-                'max_rate',
-                'name',
-                'devices',
-                'is_paused',
-                'goal_units',
-                'languages',
-                'end',
-                'start',
-            }
+            self.detail_keys,
         )
 
     def test_fail_post_demo(self):

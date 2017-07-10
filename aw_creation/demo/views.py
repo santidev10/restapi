@@ -10,7 +10,7 @@ import json
 DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
 
 
-class OptimizationAccountListApiView:
+class AccountCreationListApiView:
 
     @staticmethod
     def get(original_method):
@@ -75,20 +75,21 @@ class OptimizationAccountDuplicateApiView:
                     owner=view.request.user,
                 )
                 for f in view.account_fields:
-                    if f == "video_networks_raw":
-                        acc_data[f] = json.dumps(
-                            [i['id'] for i in data['video_networks']])
-                    elif f in ("video_ad_format", "delivery_method",
-                               "bidding_type", "type", "goal_type"):
-                        acc_data[f] = data[f]["id"]
-                    else:
-                        acc_data[f] = data[f]
+                    acc_data[f] = data[f]
                 acc_duplicate = AccountCreation.objects.create(**acc_data)
 
                 for c in data['campaign_creations']:
                     camp_data = dict()
                     for f in view.campaign_fields:
-                        if f == "devices_raw":
+                        if f == "video_networks_raw":
+                            acc_data[f] = json.dumps(
+                                [i['id'] for i in data['video_networks']])
+
+                        elif f in ("video_ad_format", "delivery_method",
+                                   "bidding_type", "type", "goal_type"):
+                            acc_data[f] = data[f]["id"]
+
+                        elif f == "devices_raw":
                             camp_data[f] = json.dumps(
                                 [i['id'] for i in c['devices']])
                         else:

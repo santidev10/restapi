@@ -1,49 +1,30 @@
-import calendar
-import csv
-import re
-from collections import OrderedDict
-from datetime import datetime
-from decimal import Decimal
-from io import StringIO
-
 from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Avg, Max, Min, Sum, Count, When, Case, Value, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
+from django.db.models import Avg, Value
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
+    GenericAPIView, ListCreateAPIView
 from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_201_CREATED, \
-    HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST,  HTTP_200_OK, HTTP_202_ACCEPTED, \
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
-
-from aw_creation.api.serializers import add_targeting_list_items_info, \
-    SimpleGeoTargetSerializer, OptimizationAdGroupSerializer, LocationRuleSerializer, \
-    OptimizationAccountDetailsSerializer, FrequencyCapUpdateSerializer, FrequencyCapSerializer, \
-    OptimizationCampaignsSerializer, OptimizationAccountListSerializer, \
-    OptimizationUpdateAccountSerializer, OptimizationCreateAccountSerializer, \
-    OptimizationUpdateCampaignSerializer, OptimizationCreateCampaignSerializer, \
-    OptimizationLocationRuleUpdateSerializer, OptimizationAdGroupUpdateSerializer, TopicHierarchySerializer, \
-    AudienceHierarchySerializer, AdGroupTargetingListSerializer, \
-    AdGroupTargetingListUpdateSerializer, OptimizationFiltersCampaignSerializer, OptimizationSettingsSerializer, \
-    OptimizationAppendCampaignSerializer, OptimizationAppendAdGroupSerializer
+from aw_creation.api.serializers import *
 from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
     TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
-from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
-    dict_add_calculated_stats, Topic, Audience
+from aw_reporting.models import GeoTarget, SUM_STATS, dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
+from io import StringIO
+import calendar
+import csv
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,8 +35,6 @@ class GeoTargetListApiView(APIView):
     Returns a list of geo-targets, limit is 100
     Accepts ?search=kharkiv parameter
     """
-
-
     queryset = GeoTarget.objects.all().order_by('name')
     serializer_class = SimpleGeoTargetSerializer
 
@@ -213,7 +192,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
     page_size = 20
 
 
-class OptimizationOptionsApiView(APIView):
+class CreationOptionsApiView(APIView):
 
     @staticmethod
     def get(request, **k):
@@ -231,32 +210,26 @@ class OptimizationOptionsApiView(APIView):
         options = OrderedDict(
             # ACCOUNT
             # create
-            campaign_count=list_to_resp(
-                range(1, BULK_CREATE_CAMPAIGNS_COUNT + 1)
-            ),
-            ad_group_count=list_to_resp(
-                range(1, BULK_CREATE_AD_GROUPS_COUNT + 1)
-            ),
             name="string;max_length=250;required;validation=^[^#']*$",
             # create and update
             video_ad_format=opts_to_response(
-                AccountCreation.VIDEO_AD_FORMATS[:1],
+                CampaignCreation.VIDEO_AD_FORMATS[:1],
             ),
             # update
             goal_type=opts_to_response(
-                AccountCreation.GOAL_TYPES[:1],
+                CampaignCreation.GOAL_TYPES[:1],
             ),
             type=opts_to_response(
-                AccountCreation.CAMPAIGN_TYPES[:1],
+                CampaignCreation.CAMPAIGN_TYPES[:1],
             ),
             bidding_type=opts_to_response(
-                AccountCreation.BIDDING_TYPES,
+                CampaignCreation.BIDDING_TYPES,
             ),
             delivery_method=opts_to_response(
-                AccountCreation.DELIVERY_METHODS[:1],
+                CampaignCreation.DELIVERY_METHODS[:1],
             ),
             video_networks=opts_to_response(
-                AccountCreation.VIDEO_NETWORKS,
+                CampaignCreation.VIDEO_NETWORKS,
             ),
 
             # CAMPAIGN
@@ -329,9 +302,9 @@ class OptimizationOptionsApiView(APIView):
 
 
 @demo_view_decorator
-class OptimizationAccountListApiView(ListAPIView):
+class AccountCreationListApiView(ListAPIView):
 
-    serializer_class = OptimizationAccountListSerializer
+    serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
 
     def get_queryset(self, **filters):
@@ -427,43 +400,31 @@ class OptimizationAccountListApiView(ListAPIView):
 
         return queryset
 
-    def post(self, request, *args, **kwargs):
-        data = request.data
-        video_ad_format = data.get('video_ad_format')
-        campaign_count = data.get('campaign_count')
-        ad_group_count = data.get('ad_group_count')
-        assert video_ad_format == AccountCreation.IN_STREAM_TYPE
-        assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
-        assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
+    def post(self, *a, **_):
+        account_count = AccountCreation.objects.filter(owner=self.request.user).count()
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
-                name=data.get('name'),
-                video_ad_format=video_ad_format,
+                name="Account {}".format(account_count + 1),
                 owner=self.request.user,
             )
-            for i in range(campaign_count):
-                c_uid = i + 1
-                campaign_creation = CampaignCreation.objects.create(
-                    name="Campaign {}".format(c_uid),
-                    account_creation=account_creation,
-                )
-                for j in range(ad_group_count):
-                    a_uid = j + 1
-                    AdGroupCreation.objects.create(
-                        name="AdGroup {}.{}".format(c_uid, a_uid),
-                        campaign_creation=campaign_creation,
-                    )
+            campaign_creation = CampaignCreation.objects.create(
+                name="Campaign 1",
+                account_creation=account_creation,
+            )
+            AdGroupCreation.objects.create(
+                name="AdGroup 1.1",
+                campaign_creation=campaign_creation,
+            )
 
-        obj = self.get_queryset(pk=account_creation.pk)[0]
-        data = OptimizationAccountDetailsSerializer(obj).data
+        data = AccountCreationDetailsSerializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)
 
 
 @demo_view_decorator
 class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
-    serializer_class = OptimizationAccountDetailsSerializer
+    serializer_class = AccountCreationDetailsSerializer
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(owner=self.request.user)
@@ -490,7 +451,7 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
 @demo_view_decorator
 class OptimizationAccountDuplicateApiView(APIView):
-    serializer_class = OptimizationAccountDetailsSerializer
+    serializer_class = AccountCreationDetailsSerializer
 
     duplicate_sign = " (copy)"
     account_fields = (
@@ -784,112 +745,6 @@ class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
         return self.retrieve(self, request, *args, **kwargs)
 
 
-class CreationOptionsApiView(APIView):
-    """
-    Returns a list of fields (with values sometimes)
-    that could be sent during the account creation process
-    """
-
-    @staticmethod
-    def get(*_, **k):
-        def opts_to_response(opts):
-            res = [dict(id=i, name=n) for i, n in opts]
-            return res
-
-        def list_to_resp(l, n_func=None):
-            n_func = n_func or (lambda e: e)
-            return [dict(id=i, name=n_func(i)) for i in l]
-
-        def get_week_day_name(n):
-            return calendar.day_name[n - 1]
-
-        options = OrderedDict(
-            # 1
-            video_ad_format=opts_to_response(
-                AccountCreation.VIDEO_AD_FORMATS[:1],
-            ),
-            # 2
-            name="string;max_length=250;required;validation=^[^#']*$",
-            campaign_count=list_to_resp(
-                range(1, BULK_CREATE_CAMPAIGNS_COUNT + 1)
-            ),
-            ad_group_count=list_to_resp(
-                range(1, BULK_CREATE_AD_GROUPS_COUNT + 1)
-            ),
-            # 3
-            video_url="url;validation=valid_yt_video",
-            ct_overlay_text="string;max_length=200",
-            display_url="string;max_length=200",
-            final_url="url;max_length=200",
-
-            # 4
-            genders=opts_to_response(
-                AdGroupCreation.GENDERS,
-            ),
-            parents=opts_to_response(
-                AdGroupCreation.PARENTS,
-            ),
-            age_ranges=opts_to_response(
-                AdGroupCreation.AGE_RANGES,
-            ),
-            languages=[
-                dict(id=l.id, name=l.name)
-                for l in Language.objects.all().annotate(
-                    priority=Case(
-                        When(
-                            id=1000,
-                            then=Value(0),
-                        ),
-                        default=Value(1),
-                        output_field=AggrIntegerField()
-                    )
-                ).order_by('priority', 'name')
-            ],
-
-            # 5
-            location_rules=dict(
-                geo_target="the list can be requested from:"
-                           " /geo_target_list/?search=Kiev",
-                latitude="decimal",
-                longitude="decimal",
-                radius="integer;max_values are 800mi and 500km",
-                radius_units=opts_to_response(LocationRule.UNITS),
-                __help="a list of objects is accepted;"
-                       "either geo_target_id or "
-                       "coordinates and a radius - required",
-            ),
-
-            # 6
-            devices=opts_to_response(CampaignCreation.DEVICES),
-            frequency_capping=dict(
-                event_type=opts_to_response(FrequencyCap.EVENT_TYPES),
-                level=opts_to_response(FrequencyCap.LEVELS),
-                limit='positive integer;max_value=65534',
-                time_unit=opts_to_response(FrequencyCap.TIME_UNITS),
-                __help="a list of two objects is allowed"
-                       "(for each of the event types);",
-            ),
-
-            # 7
-            start="date",
-            end="date",
-            goal_type=opts_to_response(
-                AccountCreation.GOAL_TYPES[:1],
-            ),
-            goal_units="integer;max_value=4294967294",
-            budget="decimal;max_digits=10,decimal_places=2",
-            max_rate="decimal;max_digits=6,decimal_places=3",
-
-            # 8
-            channel_lists="array of user lists' ids",
-            video_lists="array of user lists' ids",
-            keyword_lists="array of user lists' ids",
-            topic_lists="array of user lists' ids",
-            interest_lists="array of user lists' ids",
-        )
-        return Response(data=options)
-
-
 class UserListsImportMixin:
 
     @staticmethod
@@ -911,203 +766,8 @@ class UserListsImportMixin:
                               .distinct()
         return item_ids
 
-
-class CreationAccountApiView(APIView, UserListsImportMixin):
-    """
-    Accepts POST request and creates an account
-    Example body:
-    {"video_ad_format":"TRUE_VIEW_IN_STREAM","name":"T-800","campaign_count":2,"ad_group_count":2,"ct_overlay_text":"be be bee","display_url":"https://saas-rc.channelfactory.com/","final_url":"https://saas-rc.channelfactory.com/","video_url":"https://youtube.com/video/OPYcFQxsKlQ","genders":["GENDER_FEMALE","GENDER_MALE"],"parents":["PARENT_PARENT","PARENT_NOT_A_PARENT","PARENT_UNDETERMINED"],"age_ranges":["AGE_RANGE_18_24","AGE_RANGE_25_34","AGE_RANGE_35_44","AGE_RANGE_45_54","AGE_RANGE_55_64","AGE_RANGE_65_UP"],"languages":[1000,1036],"location_rules":[{"latitude":40.7127837,"longitude":-74.005941,"geo_target":200501,"east":-73.700272,"north":40.9152555,"south":40.4960439,"west":-74.255734}],"devices":["DESKTOP_DEVICE","MOBILE_DEVICE"],"frequency_capping":[{"event_type":"IMPRESSION","level":"CAMPAIGN","limit":5,"time_unit":"DAY"}],"start":"2017-05-24","end":"2017-05-31","budget":100,"goal_units":1000,"goal_type":"GOAL_VIDEO_VIEWS","max_rate":5,"channel_lists":[],"video_lists":[],"interest_lists":[],"topic_lists":[],"keyword_lists":[]}
-    """
-
-    def post(self, request, *args, **kwargs):
-        owner = self.request.user
-        data = request.data
-
-        v_ad_format = data.get('video_ad_format')
-        campaign_count = data.get('campaign_count', 1)
-        ad_group_count = data.get('ad_group_count', 1)
-        goal_units = data.get('goal_units', 0)
-        budget = data.get('budget', 0)
-        assert 0 < campaign_count <= BULK_CREATE_CAMPAIGNS_COUNT
-        assert 0 < ad_group_count <= BULK_CREATE_AD_GROUPS_COUNT
-
-        c_lists = data.get('channel_lists', [])
-        if c_lists:
-            channel_ids = self.get_lists_items_ids(c_lists, "channel")
-
-            def set_channel_targeting(ad_group):
-                items = [
-                    TargetingItem(
-                        ad_group_creation=ad_group,
-                        criteria=cid,
-                        type=TargetingItem.CHANNEL_TYPE,
-                    )
-                    for cid in channel_ids
-                ]
-                if items:
-                    TargetingItem.objects.bulk_create(items)
-        else:
-            def set_channel_targeting(ad_group):
-                pass
-
-        video_lists = data.get('video_lists', [])
-        if video_lists:
-            video_ids = self.get_lists_items_ids(video_lists, "video")
-
-            def set_video_targeting(ad_group):
-                items = [
-                    TargetingItem(
-                        ad_group_creation=ad_group,
-                        criteria=uid,
-                        type=TargetingItem.VIDEO_TYPE,
-                    )
-                    for uid in video_ids
-                ]
-                if items:
-                    TargetingItem.objects.bulk_create(items)
-        else:
-            def set_video_targeting(ad_group):
-                pass
-
-        keyword_lists = data.get('keyword_lists', [])
-        if keyword_lists:
-            kws = self.get_lists_items_ids(keyword_lists, "keyword")
-
-            def set_kw_targeting(ad_group):
-                items = [
-                    TargetingItem(
-                        ad_group_creation=ad_group,
-                        criteria=kw,
-                        type=TargetingItem.KEYWORD_TYPE,
-                    )
-                    for kw in kws
-                ]
-                if items:
-                    TargetingItem.objects.bulk_create(items)
-        else:
-            def set_kw_targeting(ad_group):
-                pass
-
-        with transaction.atomic():
-            account_data = dict(
-                name=data.get('name'),
-                owner=owner.id,
-                video_networks=[
-                    i[0] for i in AccountCreation.VIDEO_NETWORKS
-                ],
-            )
-            account_data.update(data)
-            serializer = OptimizationCreateAccountSerializer(
-                data=account_data)
-            serializer.is_valid(raise_exception=True)
-            account_creation = serializer.save()
-
-            for i in range(campaign_count):
-                # campaign goal
-                c_goal = goal_units // campaign_count
-                if i == 0:
-                    c_goal += goal_units % campaign_count
-                # campaign budget
-                c_budget = budget // campaign_count
-                if i == 0:
-                    c_budget += budget % campaign_count
-
-                campaign_data = dict(**data)
-                campaign_data.update(dict(
-                    name="Campaign {}".format(i + 1),
-                    account_creation=account_creation.id,
-                    goal_units=c_goal,
-                    budget=c_budget,
-                ))
-                serializer = OptimizationCreateCampaignSerializer(
-                    data=campaign_data,
-                )
-                serializer.is_valid(raise_exception=True)
-                campaign_creation = serializer.save()
-                # ad_schedule, location, freq_capping
-                OptimizationCampaignApiView.update_related_models(
-                    campaign_creation.id, data
-                )
-
-                for j in range(ad_group_count):
-                    ag_data = dict(**data)
-                    ag_data.update(dict(
-                        name="Ad Group {}".format(j + 1),
-                        campaign_creation=campaign_creation.id,
-                    ))
-                    serializer = OptimizationAdGroupUpdateSerializer(
-                        data=ag_data,
-                    )
-                    serializer.is_valid(raise_exception=True)
-                    ag_creation = serializer.save()
-                    set_channel_targeting(ag_creation)
-                    set_video_targeting(ag_creation)
-                    set_kw_targeting(ag_creation)
-
-        age_ranges = data['age_ranges']
-        parents = data['parents']
-        genders = data['genders']
-        devices = data['devices']
-        goal_type = data['goal_type']
-
-        response = OrderedDict(
-            id=account_creation.id,
-            name=account_creation.name,
-            video_ad_format=dict(
-                id=account_creation.video_ad_format,
-                name=dict(AccountCreation.VIDEO_AD_FORMATS)[v_ad_format]
-            ),
-            campaign_count=campaign_count,
-            ad_group_count=ad_group_count,
-
-            video_url=data['video_url'],
-            ct_overlay_text=data['ct_overlay_text'],
-            display_url=data['display_url'],
-            final_url=data['final_url'],
-            age_ranges=[dict(id=uid, name=n)
-                        for uid, n in AdGroupCreation.AGE_RANGES
-                        if uid in age_ranges],
-            parents=[dict(id=uid, name=n)
-                     for uid, n in AdGroupCreation.PARENTS
-                     if uid in parents],
-            genders=[dict(id=uid, name=n)
-                     for uid, n in AdGroupCreation.GENDERS
-                     if uid in genders],
-
-            languages=Language.objects.filter(
-                campaigns__account_creation=account_creation
-            ).values('id', 'name').distinct(),
-            location_rules=LocationRuleSerializer(
-                LocationRule.objects.filter(
-                    campaign_creation__account_creation=account_creation
-                ),
-                many=True, read_only=True,
-            ).data,
-
-            devices=[dict(id=uid, name=n)
-                     for uid, n in CampaignCreation.DEVICES
-                     if uid in devices],
-            frequency_capping=FrequencyCapSerializer(
-                FrequencyCap.objects.filter(
-                    campaign_creation__account_creation=account_creation
-                ).distinct(),
-                many=True, read_only=True,
-            ).data,
-            start=data['start'], end=data['end'],
-
-            goal_units=data['goal_units'],
-            goal_type=dict(
-                id=goal_type,
-                name=dict(AccountCreation.GOAL_TYPES)[goal_type]
-            ),
-            budget=data['budget'],
-            max_rate=data['max_rate'],
-        )
-
-        return Response(data=response)
-
-
 # tools
+
 
 class TopicToolListApiView(ListAPIView):
     serializer_class = TopicHierarchySerializer
