@@ -362,6 +362,16 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
 
 
 class SavedListApiView(ListParentApiView):
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        try:
+            obj = KeywordsList.objects.get(pk=pk)
+        except KeywordsList.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        return Response(data=SavedListNameSerializer(
+            obj, request=request).data,
+                        status=HTTP_202_ACCEPTED)
+
     def put(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
         email = self.request.user.email
