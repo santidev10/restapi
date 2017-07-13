@@ -14,13 +14,12 @@ from unittest.mock import patch
 class CampaignListAPITestCase(ExtendedAPITestCase):
 
     detail_keys = {
-        'id', 'name',
-        'is_approved', 'is_paused',
-        'start', 'end',
-        'goal_units', 'budget', 'max_rate', 'languages',
+        'id', 'name', 'start', 'end',
+        'budget', 'languages',
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',
-        'type', 'video_networks', 'video_ad_format', 'goal_type', 'delivery_method', 'bidding_type',
+        'video_networks', 'video_ad_format', 'delivery_method',
+        'age_ranges', 'genders', 'parents', 'content_exclusions',
         'ad_group_creations',
     }
 
@@ -41,7 +40,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             start=today, end=today + timedelta(days=20),
         )
 
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))
 
         response = self.client.get(url)
@@ -49,7 +48,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -69,7 +68,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             name="Pep", owner=self.user,
         )
 
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))
         post_data = dict()
 
@@ -83,7 +82,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         )
 
     def test_fail_post_demo(self):
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.post(
             url, json.dumps(dict()), content_type='application/json',

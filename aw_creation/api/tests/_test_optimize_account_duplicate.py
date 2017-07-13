@@ -103,19 +103,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                # common details
-                'id', 'name', 'status', 'account',
-                'is_ended', 'is_approved', 'is_paused', 'is_changed',
-                'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'ad_groups_count',
-
-                'creative_count', 'goal_units',
-                'channels_count', 'videos_count',
-                'keywords_count',
-                # details below header (readonly)
-                'start', 'end',
-
-                'creative', 'structure', 'goal_charts',
+                'id', 'name', 'status', 'start', 'end',
+                'is_changed', 'is_optimization_active',
+                'weekly_chart',
+                'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
+                'campaign_creations',
             }
         )
         self.assertIsNotNone(data['start'])

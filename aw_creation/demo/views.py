@@ -21,13 +21,13 @@ class AccountCreationListApiView:
                 demo = DemoAccount()
                 filters = view.get_filters()
                 if demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.creation_details)
+                    response.data['items'].insert(0, demo.header_data)
                     response.data['items_count'] += 1
             return response
         return method
 
 
-class OptimizationAccountApiView:
+class AccountCreationSetupApiView:
     @staticmethod
     def get(original_method):
 
@@ -83,11 +83,11 @@ class OptimizationAccountDuplicateApiView:
                     for f in view.campaign_fields:
                         if f == "video_networks_raw":
                             acc_data[f] = json.dumps(
-                                [i['id'] for i in data['video_networks']])
+                                [i['id'] for i in c['video_networks']])
 
                         elif f in ("video_ad_format", "delivery_method",
                                    "bidding_type", "type", "goal_type"):
-                            acc_data[f] = data[f]["id"]
+                            acc_data[f] = c[f]["id"]
 
                         elif f == "devices_raw":
                             camp_data[f] = json.dumps(
@@ -149,7 +149,7 @@ class OptimizationAccountDuplicateApiView:
         return method
 
 
-class OptimizationCampaignListApiView:
+class CampaignCreationListSetupApiView:
     @staticmethod
     def get(original_method):
 
@@ -174,7 +174,7 @@ class OptimizationCampaignListApiView:
         return method
 
 
-class OptimizationCampaignApiView:
+class CampaignCreationSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -200,7 +200,7 @@ class OptimizationCampaignApiView:
         return method
 
 
-class OptimizationAdGroupApiView:
+class AdGroupCreationSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -227,7 +227,7 @@ class OptimizationAdGroupApiView:
         return method
 
 
-class OptimizationAdGroupListApiView:
+class AdGroupCreationListSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -236,6 +236,61 @@ class OptimizationAdGroupListApiView:
                 for c in demo.children:
                     if c.id == pk:
                         return Response(data=[a.creation_details for a in c.children])
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationSetupApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for ag in c.children:
+                        for a in ag.children:
+                            if a.id == pk:
+                                return Response(data=a.creation_details)
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationListSetupApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for ag in c.children:
+                        if ag.id == pk:
+                            return Response(data=[a.creation_details for a in ag.children])
                 return Response(status=HTTP_404_NOT_FOUND)
             else:
                 return original_method(view, request, pk=pk, **kwargs)

@@ -42,6 +42,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'display_url',
                 'parents',
                 'genders',
+                'content_exclusions',
             }
         )
 

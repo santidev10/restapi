@@ -23,6 +23,10 @@ NameValidator = RegexValidator(r"^[^#']*$",
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
                  r"(?:/watch\?v=|/video/)([^\s&]+)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
+TrackingTemplateValidator = RegexValidator(
+    r"(https?://\S+)|(\{lpurl\}\S*)",
+    "Tracking url template must ba a valid URL or start with {lpurl} tag",
+)
 
 
 def get_uid(length=12):
@@ -74,6 +78,7 @@ class AccountCreation(UniqueItem):
     is_changed = models.BooleanField(default=True)
     version = models.CharField(max_length=8, default=get_version)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def get_aws_code(self):
         if self.account_id:
@@ -105,7 +110,91 @@ class Language(models.Model):
     code = models.CharField(max_length=5)
 
 
-class CampaignCreation(UniqueItem):
+class CommonTargetingItem(UniqueItem):
+    GENDER_FEMALE = "GENDER_FEMALE"
+    GENDER_MALE = "GENDER_MALE"
+    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
+    GENDERS = (
+        (GENDER_FEMALE, "Female"),
+        (GENDER_MALE, "Male"),
+        (GENDER_UNDETERMINED, "Undetermined"),
+    )
+    genders_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
+        )
+    )
+
+    def get_genders(self):
+        return json.loads(self.genders_raw)
+
+    def set_genders(self, value):
+        self.genders_raw = json.dumps(value)
+
+    genders = property(get_genders, set_genders)
+
+    PARENT_PARENT = "PARENT_PARENT"
+    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
+    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
+    PARENTS = (
+        (PARENT_PARENT, "Parent"),
+        (PARENT_NOT_A_PARENT, "Not a parent"),
+        (PARENT_UNDETERMINED, "Undetermined"),
+    )
+    parents_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
+        )
+    )
+
+    def get_parent(self):
+        return json.loads(self.parents_raw)
+
+    def set_parent(self, value):
+        self.parents_raw = json.dumps(value)
+
+    parents = property(get_parent, set_parent)
+
+    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
+    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
+    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
+    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
+    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
+    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
+    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
+    AGE_RANGES = (
+        (AGE_RANGE_18_24, "18-24"),
+        (AGE_RANGE_25_34, "25-34"),
+        (AGE_RANGE_35_44, "35-44"),
+        (AGE_RANGE_45_54, "45-54"),
+        (AGE_RANGE_55_64, "55-64"),
+        (AGE_RANGE_65_UP, "65+"),
+        (AGE_RANGE_UNDETERMINED, "Undetermined"),
+    )
+    age_ranges_raw = models.CharField(
+        max_length=200,
+        default=json.dumps(
+            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
+             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
+             AGE_RANGE_UNDETERMINED]
+        )
+    )
+
+    def get_age_ranges(self):
+        return json.loads(self.age_ranges_raw)
+
+    def set_age_ranges(self, value):
+        self.age_ranges_raw = json.dumps(value)
+
+    age_ranges = property(get_age_ranges, set_age_ranges)
+
+    class Meta:
+        abstract = True
+
+
+class CampaignCreation(CommonTargetingItem):
 
     account_creation = models.ForeignKey(
         AccountCreation, related_name="campaign_creations",
@@ -129,8 +218,6 @@ class CampaignCreation(UniqueItem):
     budget = models.DecimalField(
         null=True, blank=True, max_digits=10, decimal_places=2,
     )
-    is_paused = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False)
 
     languages = models.ManyToManyField(
         'Language', related_name='campaigns', default=default_languages)
@@ -237,13 +324,57 @@ class CampaignCreation(UniqueItem):
         self.devices_raw = json.dumps(value)
     devices = property(get_devices, set_devices)
 
+    # content exclusions
+    VIDEO_RATING_DV_MA_CONTENT_LABEL = "VIDEO_RATING_DV_MA"
+    VIDEO_NOT_YET_RATED_CONTENT_LABEL = "VIDEO_NOT_YET_RATED"
+    CONTENT_LABELS = (
+        ("ADULTISH", "Sexually suggestive content"),
+        ("AFE", "Error pages"),
+        ("BELOW_THE_FOLD", "Below the fold placements"),
+        ("CONFLICT", "Military & international conflict"),
+        ("DP", "Parked domains"),
+        ("EMBEDDED_VIDEO", "Embedded video"),
+        ("GAMES", "Games"),
+        ("JUVENILE", "Juvenile, gross & bizarre content"),
+        ("PROFANITY", "Profanity & rough language"),
+
+        ("UGC_FORUMS", "Forums"),
+        ("UGC_IMAGES", "Image-sharing pages"),
+        ("UGC_SOCIAL", "Social networks"),
+        ("UGC_VIDEOS", "Video-sharing pages"),
+
+        ("SIRENS", "Crime, police & emergency"),
+        ("TRAGEDY", "Death & tragedy"),
+        ("VIDEO", "Video"),
+        ("VIDEO_RATING_DV_G", "Content rating: G"),
+        ("VIDEO_RATING_DV_PG", "Content rating: PG"),
+        ("VIDEO_RATING_DV_T", "Content rating: T"),
+        (VIDEO_RATING_DV_MA_CONTENT_LABEL, "Content rating: MA"),
+        (VIDEO_NOT_YET_RATED_CONTENT_LABEL, "Content rating: not yet rated"),
+        ("LIVE_STREAMING_VIDEO", "Live streaming video"),
+        ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
+    )
+    content_exclusions_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [VIDEO_RATING_DV_MA_CONTENT_LABEL, VIDEO_NOT_YET_RATED_CONTENT_LABEL]
+        ),
+    )
+
+    def get_content_exclusions(self):
+        return json.loads(self.content_exclusions_raw)
+
+    def set_content_exclusions(self, value):
+        self.content_exclusions_raw = json.dumps(value)
+
+    content_exclusions = property(get_content_exclusions, set_content_exclusions)
+
     class Meta:
         ordering = ['-id']
 
     @property
     def campaign_is_paused(self):
-        return (self.is_paused or self.account_management.is_paused or
-                self.account_management.is_ended)
+        return self.account_management.is_paused or self.account_management.is_ended
 
     def get_aws_code(self):
 
@@ -306,7 +437,7 @@ def save_campaign_receiver(sender, instance, created, **_):
     ).update(version=get_version(), is_changed=True)
 
 
-class AdGroupCreation(UniqueItem):
+class AdGroupCreation(CommonTargetingItem):
 
     campaign_creation = models.ForeignKey(
         CampaignCreation, related_name="ad_group_creations",
@@ -315,91 +446,6 @@ class AdGroupCreation(UniqueItem):
         "aw_reporting.AdGroup", related_name='ad_group_creation',
         on_delete=models.SET_NULL, null=True, blank=True,
     )
-    max_rate = models.DecimalField(null=True, blank=True,
-                                   max_digits=6, decimal_places=3)
-    video_url = models.URLField(validators=[VideoUrlValidator])
-    display_url = models.CharField(max_length=200, blank=True, null=True)
-    final_url = models.URLField(blank=True, null=True)
-    ct_overlay_text = models.CharField(max_length=250,
-                                       blank=True, null=True)
-
-    is_approved = models.BooleanField(default=False)
-
-    GENDER_FEMALE = "GENDER_FEMALE"
-    GENDER_MALE = "GENDER_MALE"
-    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
-    GENDERS = (
-        (GENDER_FEMALE, "Female"),
-        (GENDER_MALE, "Male"),
-        (GENDER_UNDETERMINED, "Undetermined"),
-    )
-    genders_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
-        )
-    )
-
-    def get_genders(self):
-        return json.loads(self.genders_raw)
-
-    def set_genders(self, value):
-        self.genders_raw = json.dumps(value)
-    genders = property(get_genders, set_genders)
-
-    PARENT_PARENT = "PARENT_PARENT"
-    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
-    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
-    PARENTS = (
-        (PARENT_PARENT, "Parent"),
-        (PARENT_NOT_A_PARENT, "Not a parent"),
-        (PARENT_UNDETERMINED, "Undetermined"),
-    )
-    parents_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
-        )
-    )
-
-    def get_parent(self):
-        return json.loads(self.parents_raw)
-
-    def set_parent(self, value):
-        self.parents_raw = json.dumps(value)
-    parents = property(get_parent, set_parent)
-
-    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
-    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
-    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
-    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
-    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
-    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
-    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
-    AGE_RANGES = (
-        (AGE_RANGE_18_24, "18-24"),
-        (AGE_RANGE_25_34, "25-34"),
-        (AGE_RANGE_35_44, "35-44"),
-        (AGE_RANGE_45_54, "45-54"),
-        (AGE_RANGE_55_64, "55-64"),
-        (AGE_RANGE_65_UP, "65+"),
-        (AGE_RANGE_UNDETERMINED, "Undetermined"),
-    )
-    age_ranges_raw = models.CharField(
-        max_length=200,
-        default=json.dumps(
-            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
-             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
-             AGE_RANGE_UNDETERMINED]
-        )
-    )
-
-    def get_age_ranges(self):
-        return json.loads(self.age_ranges_raw)
-
-    def set_age_ranges(self, value):
-        self.age_ranges_raw = json.dumps(value)
-    age_ranges = property(get_age_ranges, set_age_ranges)
 
     class Meta:
         ordering = ['-id']
@@ -454,6 +500,34 @@ class AdGroupCreation(UniqueItem):
             ),
         ]
         return " ".join(lines)
+
+# these targeting fields can be empty at the ad_group level,
+# because they are defined at the campaign level
+AdGroupCreation._meta.get_field('genders_raw').default = json.dumps([])
+AdGroupCreation._meta.get_field('parents_raw').default = json.dumps([])
+AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
+
+
+class AdCreation(UniqueItem):
+    ad_group_creation = models.ForeignKey(
+        AdGroupCreation, related_name="ad_creations",
+    )
+    video_url = models.URLField(validators=[VideoUrlValidator])
+    display_url = models.CharField(max_length=200, blank=True, null=True)
+    final_url = models.URLField(blank=True, null=True)
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+
+    def get_custom_params(self):
+        return json.loads(self.custom_params_raw)
+
+    def set_custom_params(self, value):
+        self.custom_params_raw = json.dumps(value)
+
+    custom_params_raw = models.CharField(max_length=250, default=json.dumps([]))
+    custom_params = property(get_custom_params, set_custom_params)
+
+    class Meta:
+        ordering = ['-id']
 
 
 @receiver(post_save, sender=AdGroupCreation,

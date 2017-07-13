@@ -13,14 +13,9 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name', 'account',
-        'status', 'start', 'end',
-        'is_optimization_active', 'is_changed', 'is_paused', 'is_approved',
-        'creative_count', 'keywords_count', 'videos_count', 'goal_units',
-        'channels_count', 'campaigns_count', 'ad_groups_count',
-        "weekly_chart", 'is_ended',
-
-        'structure', 'goal_charts', 'creative',
+        'id', 'name', 'status', 'start', 'end',
+        'is_optimization_active', 'is_changed', 'weekly_chart',
+        'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
     }
 
     def setUp(self):
@@ -33,7 +28,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(
             set(response.data.keys()),
-            self.details_keys | {"campaign_creations"}
+            {
+                'id', 'name', 'campaign_creations',
+                'updated_at', 'is_ended', 'is_paused', 'is_approved',
+            }
         )
 
         campaign_creation = response.data['campaign_creations'][0]
@@ -41,13 +39,11 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(campaign_creation.keys()),
             {
                 'id', 'name',
-                'is_approved', 'is_paused',
-                'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'ad_group_creations',
-                'goal_type', 'video_networks', 'type', 'video_ad_format', 'delivery_method', 'bidding_type',
+                'parents', 'content_exclusions', 'genders', 'age_ranges',
+                'start', 'end', 'budget', 'languages', 'devices',
+                'frequency_capping', 'ad_schedule_rules',
+                'location_rules', 'ad_group_creations',
+                'video_networks', 'video_ad_format', 'delivery_method',
             }
         )
 
@@ -55,11 +51,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad_group_creation.keys()),
             {
-                'id', 'name', 'thumbnail', 'is_approved',
-                'video_url', 'ct_overlay_text', 'display_url', 'final_url',
-                'max_rate',
-                'genders', 'parents', 'age_ranges',
-                'targeting',
+                'id', 'name', 'ad_creations',
+                'genders', 'parents', 'age_ranges', 'targeting',
             }
         )
 
@@ -106,11 +99,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
         AdGroupCreation.objects.create(
             name="", campaign_creation=camp_creation,
-            max_rate="0.07",
         )
         AdGroupCreation.objects.create(
             name="", campaign_creation=camp_creation,
-            max_rate="0.05",
         )
         CampaignCreation.objects.create(
             name="", account_creation=ac_creation, campaign=None,
@@ -143,7 +134,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(item.keys()),
             self.details_keys,
         )
-        self.assertEqual(item['account'], account.id)
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
@@ -163,9 +153,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             response.data['items_count'], 2,
             "The account has no end date that's why it's shown"
-        )
-        self.assertEqual(
-            response.data['items'][1]['status'], "Pending"
         )
 
     def test_hide_account_is_ended_true(self):
@@ -192,7 +179,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             response = self.client.get("{}?show_closed=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['items_count'], 2)
-        self.assertEqual(response.data['items'][1]['status'], "Ended")
 
     def test_show_hidden_account(self):
         AccountCreation.objects.create(
@@ -257,37 +243,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data['items_count'], 1)
         self.assertEqual(len(response.data['items']), 1)
 
-    def test_filter_status(self):
-        AccountCreation.objects.create(name="", owner=self.user)
-        AccountCreation.objects.create(name="", owner=self.user, is_paused=True)
-        # --
-        url = reverse("aw_creation_urls:account_creation_list")
-        status = "Paused"
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get("{}?status={}".format(url, status))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        for i in response.data['items']:
-            self.assertEqual(i['status'], status)
-
-    def test_filter_goal_units(self):
-        AccountCreation.objects.create(name="", owner=self.user)
-        ac = AccountCreation.objects.create(name="", owner=self.user)
-        CampaignCreation.objects.create(account_creation=ac, name="", goal_units=100)
-        # --
-        url = reverse("aw_creation_urls:account_creation_list")
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get("{}?min_goal_units=10&max_goal_units=1000".format(url))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertEqual(response.data['items'][0]['id'], ac.id)
-
     def test_filter_campaigns_count(self):
         AccountCreation.objects.create(name="", owner=self.user)
         ac = AccountCreation.objects.create(name="", owner=self.user)
@@ -302,32 +257,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['items']), 1)
         self.assertEqual(response.data['items'][0]['id'], ac.id)
-
-    def test_filter_is_changed(self):
-        AccountCreation.objects.create(name="", owner=self.user)
-        ac = AccountCreation.objects.create(name="", owner=self.user)
-        AccountCreation.objects.filter(id=ac.pk).update(is_changed=False)
-        # --
-        url = reverse("aw_creation_urls:account_creation_list")
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get("{}?is_changed=0".format(url))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 2)
-        for i in response.data['items']:
-            self.assertEqual(i['is_changed'], False)
-
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get("{}?is_changed=1".format(url))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        for i in response.data['items']:
-            self.assertEqual(i['is_changed'], True)
 
     def test_filter_start_date(self):
         ac = AccountCreation.objects.create(name="", owner=self.user)

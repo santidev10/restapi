@@ -1,12 +1,13 @@
 from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Value
+from django.db.models import Avg, Value, Count, Case, When, \
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView
+    GenericAPIView, ListCreateAPIView, RetrieveAPIView
 from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
@@ -22,6 +23,7 @@ from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
     TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
 from aw_reporting.models import GeoTarget, SUM_STATS, dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
+from aw_reporting.api.views import AnalyzeDetailsApiView
 from io import StringIO
 import calendar
 import csv
@@ -252,6 +254,7 @@ class CreationOptionsApiView(APIView):
                 ).order_by('priority', 'name')
             ],
             devices=opts_to_response(CampaignCreation.DEVICES),
+            content_exclusions=opts_to_response(CampaignCreation.CONTENT_LABELS),
             frequency_capping=dict(
                 event_type=opts_to_response(FrequencyCap.EVENT_TYPES),
                 level=opts_to_response(FrequencyCap.LEVELS),
@@ -318,8 +321,9 @@ class AccountCreationListApiView(ListAPIView):
         ).order_by('is_ended', sort_by)
         return queryset
 
-    filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
-               'is_changed', 'min_start', 'max_start', 'min_end', 'max_end')
+    filters = ('search', 'show_closed',
+               'min_campaigns_count', 'max_campaigns_count',
+               'min_start', 'max_start', 'min_end', 'max_end')
 
     def get_filters(self):
         filters = {}
@@ -331,41 +335,14 @@ class AccountCreationListApiView(ListAPIView):
         return filters
 
     def filter_queryset(self, queryset):
-        if self.request.query_params.get('show_closed') != "1":
+        filters = self.get_filters()
+
+        if filters.get('show_closed') != "1":
             queryset = queryset.filter(is_ended=False)
 
-        filters = self.get_filters()
         search = filters.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
-
-        status = filters.get('status')
-        if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True)
-            elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_ended=False)
-            elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
-            else:
-                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
-                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
-                if status == "Running":
-                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
-                elif status == "Approved":
-                    queryset = queryset.filter(camp_count=0, **approved_f)
-                else:
-                    logger.warning("Unknown status {}".format(status))
-                    queryset = queryset.none()
-
-        min_goal_units = filters.get('min_goal_units')
-        max_goal_units = filters.get('max_goal_units')
-        if min_goal_units or max_goal_units:
-            queryset = queryset.annotate(goal_units=Sum('campaign_creations__goal_units'))
-            if min_goal_units:
-                queryset = queryset.filter(goal_units__gte=min_goal_units)
-            if max_goal_units:
-                queryset = queryset.filter(goal_units__lte=max_goal_units)
 
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
@@ -394,10 +371,6 @@ class AccountCreationListApiView(ListAPIView):
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
 
-        is_changed = filters.get('is_changed')
-        if is_changed:
-            queryset = queryset.filter(is_changed=int(is_changed))
-
         return queryset
 
     def post(self, *a, **_):
@@ -417,14 +390,31 @@ class AccountCreationListApiView(ListAPIView):
                 campaign_creation=campaign_creation,
             )
 
-        data = AccountCreationDetailsSerializer(account_creation).data
+        data = AccountCreationSetupSerializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)
 
 
 @demo_view_decorator
-class OptimizationAccountApiView(RetrieveUpdateAPIView):
+class AccountCreationDetailsApiView(RetrieveAPIView):
 
-    serializer_class = AccountCreationDetailsSerializer
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        queryset = AccountCreation.objects.filter(owner=self.request.user)
+        try:
+            item = queryset.get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        if item.account:
+            data = AnalyzeDetailsApiView.get_details_data(item.account)
+        else:
+            data = {}
+        return Response(data)
+
+
+@demo_view_decorator
+class AccountCreationSetupApiView(RetrieveUpdateAPIView):
+
+    serializer_class = AccountCreationSetupSerializer
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(owner=self.request.user)
@@ -433,8 +423,9 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = OptimizationUpdateAccountSerializer(
-            instance, data=request.data, partial=partial)
+        serializer = AccountCreationUpdateSerializer(
+            instance, data=request.data, partial=partial
+        )
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
@@ -451,18 +442,16 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
 @demo_view_decorator
 class OptimizationAccountDuplicateApiView(APIView):
-    serializer_class = AccountCreationDetailsSerializer
+    serializer_class = AccountCreationSetupSerializer
 
     duplicate_sign = " (copy)"
     account_fields = (
-        "is_paused",  "is_ended", "type", "goal_type",
-        "delivery_method", "video_ad_format",
-        "bidding_type", "video_networks_raw",
-
+        "is_paused",  "is_ended",
     )
     campaign_fields = (
         "name", "start", "end", "goal_units", "max_rate", "budget",
-        "is_paused",  "is_approved", "devices_raw",
+        "is_paused",  "is_approved", "devices_raw", "type", "goal_type",
+        "delivery_method", "video_ad_format", "bidding_type", "video_networks_raw",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units",
@@ -550,8 +539,8 @@ class OptimizationAccountDuplicateApiView(APIView):
 
 
 @demo_view_decorator
-class OptimizationCampaignListApiView(ListCreateAPIView):
-    serializer_class = OptimizationCampaignsSerializer
+class CampaignCreationListSetupApiView(ListCreateAPIView):
+    serializer_class = CampaignCreationSetupSerializer
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -574,7 +563,7 @@ class OptimizationCampaignListApiView(ListCreateAPIView):
             count = self.get_queryset().count()
             request.data['name'] = "Campaign {}".format(count + 1)
 
-        serializer = OptimizationAppendCampaignSerializer(
+        serializer = AppendCampaignCreationSerializer(
             data=request.data)
         serializer.is_valid(raise_exception=True)
         campaign_creation = serializer.save()
@@ -584,8 +573,8 @@ class OptimizationCampaignListApiView(ListCreateAPIView):
 
 
 @demo_view_decorator
-class OptimizationCampaignApiView(RetrieveUpdateAPIView):
-    serializer_class = OptimizationCampaignsSerializer
+class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
+    serializer_class = CampaignCreationSetupSerializer
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -596,8 +585,9 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = OptimizationUpdateCampaignSerializer(
-            instance, data=request.data, partial=partial)
+        serializer = CampaignCreationUpdateSerializer(
+            instance, data=request.data, partial=partial
+        )
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
         self.update_related_models(obj.id, request.data)
@@ -692,8 +682,8 @@ class OptimizationCampaignApiView(RetrieveUpdateAPIView):
 
 
 @demo_view_decorator
-class OptimizationAdGroupListApiView(ListCreateAPIView):
-    serializer_class = OptimizationAdGroupSerializer
+class AdGroupCreationListSetupApiView(ListCreateAPIView):
+    serializer_class = AdGroupCreationSetupSerializer
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -716,7 +706,7 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
             count = self.get_queryset().count()
             request.data['name'] = "Ad Group {}".format(count + 1)
 
-        serializer = OptimizationAppendAdGroupSerializer(
+        serializer = AppendAdGroupCreationSetupSerializer(
             data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
@@ -726,8 +716,8 @@ class OptimizationAdGroupListApiView(ListCreateAPIView):
 
 
 @demo_view_decorator
-class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
-    serializer_class = OptimizationAdGroupSerializer
+class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
+    serializer_class = AdGroupCreationSetupSerializer
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -738,7 +728,61 @@ class OptimizationAdGroupApiView(RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = OptimizationAdGroupUpdateSerializer(
+        serializer = AdGroupCreationUpdateSerializer(
+            instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return self.retrieve(self, request, *args, **kwargs)
+
+
+@demo_view_decorator
+class AdCreationListSetupApiView(ListCreateAPIView):
+    serializer_class = AdCreationSetupSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = AdCreation.objects.filter(
+            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
+            ad_group_creation_id=pk
+        )
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        try:
+            ad_group_creation = AdGroupCreation.objects.get(
+                pk=kwargs.get("pk"), campaign_creation__account_creation__owner=request.user
+            )
+        except AdGroupCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        request.data['ad_group_creation'] = ad_group_creation.id
+        if not request.data.get('name'):
+            count = self.get_queryset().count()
+            request.data['name'] = "Ad {}".format(count + 1)
+
+        serializer = AppendAdCreationSetupSerializer(
+            data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+
+        data = self.get_serializer(instance=obj).data
+        return Response(data, status=HTTP_201_CREATED)
+
+
+@demo_view_decorator
+class AdCreationSetupApiView(RetrieveUpdateAPIView):
+    serializer_class = AdCreationSetupSerializer
+
+    def get_queryset(self):
+        queryset = AdCreation.objects.filter(
+            ad_group_creation__campaign_creation__account_creation__owner=self.request.user
+        )
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = AdCreationUpdateSerializer(
             instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()

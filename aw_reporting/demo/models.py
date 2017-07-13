@@ -55,7 +55,8 @@ class BaseDemo:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-        self.today = datetime.now().date()
+        self.now = datetime.now()
+        self.today = self.now.date()
         self.yesterday = datetime.now().date()
         self.start_date = self.today - timedelta(days=19)
         self.end_date = self.today + timedelta(days=10)
@@ -362,7 +363,34 @@ class BaseDemo:
             if self.video_views else None
 
 
+class DemoAd(BaseDemo):
+
+    @property
+    def creation_details(self):
+        data = dict(
+            id=self.id,
+            name=self.name,
+            display_url="www.channelfactory.com",
+            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            final_url="https://www.channelfactory.com",
+            video_url="https://www.youtube.com/watch?v=XEngrJr79Jg",
+            tracking_template="https://www.custom_tracking_service.us/?ad=XEngrr79Jg",
+            custom_params=[{"name": "ad", "value": "demo_ad"},
+                           {"name": "provider", "value": "ad_words"}],
+        )
+        return data
+
+
 class DemoAdGroup(BaseDemo):
+
+    def __init__(self, **kwargs):
+        super(DemoAdGroup, self).__init__(**kwargs)
+        self.children = [
+            DemoAd(id="{}".format(self.id),
+                   name="Demo ad #{}".format(self.id),
+                   parent=self)
+        ]
+
     items_proportion = 1 / TOTAL_DEMO_AD_GROUPS_COUNT
 
     @property
@@ -490,27 +518,21 @@ class DemoAdGroup(BaseDemo):
         data = dict(
             id=self.id,
             name=self.name,
-            ct_overlay_text="Demo overlay text",
-            parents=[
-                dict(id=uid, name=n)
-                for uid, n in AdGroupCreation.PARENTS
-            ],
+            ad_creations=[i.creation_details for i in self.children],
             targeting={t[0]: self.get_targeting_list(t[0])
                        for t in TargetingItem.TYPES},
-            is_approved=True,
             age_ranges=[
                 dict(id=uid, name=n)
                 for uid, n in AdGroupCreation.AGE_RANGES
             ],
-            display_url="www.channelfactory.com",
-            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
             genders=[
                 dict(id=uid, name=n)
                 for uid, n in AdGroupCreation.GENDERS
             ],
-            max_rate=0.1,
-            final_url="https://www.channelfactory.com",
-            video_url="https://www.youtube.com/watch?v=XEngrJr79Jg",
+            parents=[
+                dict(id=uid, name=n)
+                for uid, n in AdGroupCreation.PARENTS
+            ],
         )
         return data
 
@@ -555,7 +577,6 @@ class DemoCampaign(BaseDemo):
                 )
             ],
             languages=[dict(id=1000, name="English")],
-            goal_units=VIDEO_VIEWS / DEMO_CAMPAIGNS_COUNT,
             ad_group_creations=[
                 a.creation_details
                 for a in self.children
@@ -571,9 +592,6 @@ class DemoCampaign(BaseDemo):
                                    name=FrequencyCap.TIME_UNITS[0][1]),
                 )
             ],
-            max_rate=0.1,
-            is_paused=False,
-            is_approved=True,
             ad_schedule_rules=[
                 dict(
                     from_hour=18,
@@ -591,10 +609,6 @@ class DemoCampaign(BaseDemo):
                 id=CampaignCreation.VIDEO_AD_FORMATS[0][0],
                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1],
             ),
-            goal_type=dict(
-                id=CampaignCreation.GOAL_TYPES[0][0],
-                name=CampaignCreation.GOAL_TYPES[0][1],
-            ),
             delivery_method=dict(
                 id=CampaignCreation.DELIVERY_METHODS[0][0],
                 name=CampaignCreation.DELIVERY_METHODS[0][1],
@@ -603,14 +617,22 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=name)
                 for uid, name in CampaignCreation.VIDEO_NETWORKS
             ],
-            type=dict(
-                id=CampaignCreation.CAMPAIGN_TYPES[0][0],
-                name=CampaignCreation.CAMPAIGN_TYPES[0][1],
-            ),
-            bidding_type=dict(
-                id=CampaignCreation.BIDDING_TYPES[0][0],
-                name=CampaignCreation.BIDDING_TYPES[0][1],
-            ),
+            age_ranges=[
+                dict(id=uid, name=n)
+                for uid, n in CampaignCreation.AGE_RANGES
+            ],
+            genders=[
+                dict(id=uid, name=n)
+                for uid, n in CampaignCreation.GENDERS
+            ],
+            parents=[
+                dict(id=uid, name=n)
+                for uid, n in CampaignCreation.PARENTS
+            ],
+            content_exclusions=[
+                dict(id=uid, name=n)
+                for uid, n in CampaignCreation.CONTENT_LABELS[19:21]
+            ],
         )
         return data
 
@@ -786,21 +808,19 @@ class DemoAccount(BaseDemo):
 
         data = dict(
             id=self.id,
-            account=self.id,
             name=self.name,
             status="Running",
             start=self.start_date,
             end=self.end_date,
-            campaigns_count=len(self.children),
-            ad_groups_count=DEMO_CAMPAIGNS_COUNT * len(DEMO_AD_GROUPS),
-            keywords_count=len(self.keyword),
-            creative_count=len(self.creative),
-            videos_count=len(self.video),
-            channels_count=len(self.video),
-            goal_units=VIDEO_VIEWS,
             is_optimization_active=True,
             is_changed=False,
             weekly_chart=chart_lines[0]['trend'],
+            video_view_rate=self.video_view_rate,
+            impressions=self.impressions,
+            video_views=self.video_views,
+            cost=self.cost,
+            clicks=self.clicks,
+            ctr_v=self.ctr_v,
         )
         return data
 
@@ -849,8 +869,13 @@ class DemoAccount(BaseDemo):
 
     @property
     def creation_details_full(self):
-        data = dict(**self.creation_details)
-        data.update(
+        data = dict(
+            id=self.id,
+            name=self.name,
+            updated_at=self.now,
+            is_ended=False,
+            is_paused=False,
+            is_approved=True,
             campaign_creations=[
                 c.creation_details
                 for c in self.children

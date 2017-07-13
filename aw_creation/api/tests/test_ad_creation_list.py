@@ -11,7 +11,12 @@ from saas.utils_tests import ExtendedAPITestCase, \
 from unittest.mock import patch
 
 
-class AdGroupListAPITestCase(ExtendedAPITestCase):
+class AdCreationListAPITestCase(ExtendedAPITestCase):
+
+    detail_keys = {
+        'id', 'name', 'video_url', 'final_url',
+        'tracking_template', 'custom_params', 'display_url', 'thumbnail',
+    }
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -26,11 +31,14 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             start=today, end=today + timedelta(days=20),
         )
 
-        AdGroupCreation.objects.create(
+        ad_group = AdGroupCreation.objects.create(
             name="Wow", campaign_creation=campaign_creation,
         )
+        AdCreation.objects.create(
+            name="Mmm", ad_group_creation=ad_group,
+        )
 
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
                       args=(campaign_creation.id,))
 
         response = self.client.get(url)
@@ -41,27 +49,15 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.assertGreater(len(data), 0)
         self.assertEqual(
             set(data[0].keys()),
-            {
-                'id', 'name',
-                'is_approved',
-                'max_rate',
-                'video_url',
-                'final_url',
-                'targeting',
-                'age_ranges',
-                'ct_overlay_text',
-                'display_url',
-                'genders',
-                'parents',
-                'thumbnail',
-            }
+            self.detail_keys
         )
 
     def test_success_get_demo(self):
         account = DemoAccount()
         campaign = account.children[0]
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
-                      args=(campaign.id,))
+        ad_group = campaign.children[0]
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
+                      args=(ad_group.id,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -71,8 +67,9 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
     def test_fail_post_demo(self):
         account = DemoAccount()
         campaign = account.children[0]
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
-                      args=(campaign.id,))
+        ad_group = campaign.children[0]
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
+                      args=(ad_group.id,))
         response = self.client.post(
             url, json.dumps({}), content_type='application/json',
         )
@@ -87,9 +84,12 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             name="", account_creation=account_creation,
             start=today, end=today + timedelta(days=20),
         )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
 
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
-                      args=(campaign_creation.id,))
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
+                      args=(ad_group_creation.id,))
         post_data = dict()
 
         response = self.client.post(
@@ -98,20 +98,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
-            {
-                'id', 'name',
-                'is_approved',
-                'max_rate',
-                'video_url',
-                'final_url',
-                'targeting',
-                'age_ranges',
-                'ct_overlay_text',
-                'display_url',
-                'genders',
-                'parents',
-                'thumbnail',
-            }
+            self.detail_keys
         )
 
 
