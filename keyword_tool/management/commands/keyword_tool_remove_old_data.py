@@ -17,7 +17,7 @@ class Command(BaseCommand):
         query_res = Query.objects.filter(updated_at__lte=expired_date).delete()
         keywords_res = KeyWord.objects.filter(
             Q(updated_at__lte=expired_date) &
-            Q(average_cpc__isnull=True) | Q(average_cpc__lte=0) &
-            Q(competition__isnull=True) | Q(competition__lte=0) &
-            Q(search_volume__isnull=True) | Q(search_volume__lte=0)
+            (Q(average_cpc__isnull=True) | Q(average_cpc__lte=0)) &
+            (Q(competition__isnull=True) | Q(competition__lte=0)) &
+            (Q(search_volume__isnull=True) | Q(search_volume__lte=0))
         ).delete()
