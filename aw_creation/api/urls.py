@@ -46,13 +46,19 @@ urlpatterns = [
         views.AdCreationSetupApiView.as_view(),
         name="ad_creation_setup"),
 
-    # TODO: copy endpoints
-    # TODO: create account 1campaign 1ad group 1ad
-    # TODO: delete items: cannot delete the last one
+    url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
+        views.AccountCreationDuplicateApiView.as_view(),
+        name="account_creation_duplicate"),
 
-    url(r'^optimization_account_duplicate/(?P<pk>\w+)/$',
-        views.OptimizationAccountDuplicateApiView.as_view(),
-        name="optimization_account_duplicate"),
+    url(r'^campaign_creation_duplicate/(?P<pk>\w+)/$',
+        views.CampaignCreationDuplicateApiView.as_view(),
+        name="campaign_creation_duplicate"),
+    url(r'^ad_group_creation_duplicate/(?P<pk>\w+)/$',
+        views.AdGroupCreationDuplicateApiView.as_view(),
+        name="ad_group_creation_duplicate"),
+    url(r'^ad_creation_duplicate/(?P<pk>\w+)/$',
+        views.AdCreationDuplicateApiView.as_view(),
+        name="ad_creation_duplicate"),
 
     # optimization
     url(r'^optimization_filters/(?P<pk>\w+)/(?P<kpi>\w+)/$',

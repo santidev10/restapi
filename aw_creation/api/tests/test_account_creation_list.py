@@ -60,6 +60,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(ad_group_creation['targeting'].keys()),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
+        self.assertEqual(len(ad_group_creation['ad_creations']), 1)
+        self.assertEqual(
+            set(ad_group_creation['ad_creations'][0].keys()),
+            {
+                'id', 'name', 'tracking_template', 'final_url',
+                'video_url', 'thumbnail', 'custom_params', 'display_url',
+            }
+        )
 
     def test_fail_get_data_of_another_user(self):
         user = get_user_model().objects.create(

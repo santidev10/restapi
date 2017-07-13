@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
-    HTTP_403_FORBIDDEN
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.models import *
@@ -15,7 +15,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_ad(self, owner, start, end):
+    def create_ad(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
@@ -119,7 +119,23 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         for f, v in data.items():
             self.assertEqual(getattr(ad, f), v)
 
+    def test_fail_delete_the_only(self):
+        ad = self.create_ad(owner=self.user)
+        url = reverse("aw_creation_urls:ad_creation_setup",
+                      args=(ad.id,))
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_success_delete(self):
+        ad = self.create_ad(owner=self.user)
+        AdCreation.objects.create(
+            name="",
+            ad_group_creation=ad.ad_group_creation,
+        )
+        url = reverse("aw_creation_urls:ad_creation_setup",
+                      args=(ad.id,))
 
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
 

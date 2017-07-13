@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.models import *
@@ -264,5 +264,33 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "Because start date > end date")
 
+    def test_fail_delete_the_only_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign_creation.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_delete(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        CampaignCreation.objects.create(
+            name="1", account_creation=account_creation,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="2", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign_creation.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
 

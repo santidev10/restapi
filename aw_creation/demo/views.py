@@ -2,7 +2,7 @@ from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID, VIDEO_VIEWS, 
 from aw_reporting.demo.charts import DemoChart
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem
+    Language, TargetingItem, AdCreation
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN,\
     HTTP_404_NOT_FOUND
@@ -61,7 +61,46 @@ class AccountCreationSetupApiView:
         return method
 
 
-class OptimizationAccountDuplicateApiView:
+class AdCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class AdGroupCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class CampaignCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class AccountCreationDuplicateApiView:
     @staticmethod
     def post(original_method):
 
@@ -81,17 +120,11 @@ class OptimizationAccountDuplicateApiView:
                 for c in data['campaign_creations']:
                     camp_data = dict()
                     for f in view.campaign_fields:
-                        if f == "video_networks_raw":
-                            acc_data[f] = json.dumps(
-                                [i['id'] for i in c['video_networks']])
-
-                        elif f in ("video_ad_format", "delivery_method",
-                                   "bidding_type", "type", "goal_type"):
-                            acc_data[f] = c[f]["id"]
-
-                        elif f == "devices_raw":
+                        if f.endswith("_raw"):
                             camp_data[f] = json.dumps(
-                                [i['id'] for i in c['devices']])
+                                [i['id'] for i in c[f[:-4]]])
+                        elif f in ("video_ad_format", "delivery_method"):
+                            camp_data[f] = c[f]["id"]
                         else:
                             camp_data[f] = c[f]
                     c_duplicate = CampaignCreation.objects.create(
@@ -140,6 +173,11 @@ class OptimizationAccountDuplicateApiView:
                                     is_negative=i['is_negative'],
                                     criteria=i['criteria'],
                                 )
+                        for ad in a['ad_creations']:
+                            AdCreation.objects.create(
+                                ad_group_creation=a_duplicate,
+                                **{f: ad[f] for f in view.ad_fields}
+                            )
 
                 account_data = view.serializer_class(acc_duplicate).data
                 return Response(data=account_data)

@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
-    HTTP_403_FORBIDDEN
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
-from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
@@ -15,7 +14,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_ad_group(self, owner, start, end):
+    def create_ad_group(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
@@ -121,7 +120,23 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(ad_group.parents), set(data['parents']))
         self.assertEqual(set(ad_group.age_ranges), set(data['age_ranges']))
 
+    def test_fail_delete_the_only(self):
+        ad_group = self.create_ad_group(owner=self.user)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_success_delete(self):
+        ad_group = self.create_ad_group(owner=self.user)
+        AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=ad_group.campaign_creation,
+        )
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
 
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
 
