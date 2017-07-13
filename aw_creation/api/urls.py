@@ -49,7 +49,6 @@ urlpatterns = [
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
         name="account_creation_duplicate"),
-
     url(r'^campaign_creation_duplicate/(?P<pk>\w+)/$',
         views.CampaignCreationDuplicateApiView.as_view(),
         name="campaign_creation_duplicate"),
