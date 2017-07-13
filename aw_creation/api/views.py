@@ -386,7 +386,7 @@ class AccountCreationListApiView(ListAPIView):
                 account_creation=account_creation,
             )
             ad_group_creation = AdGroupCreation.objects.create(
-                name="AdGroup 1.1",
+                name="AdGroup 1",
                 campaign_creation=campaign_creation,
             )
             AdCreation.objects.create(
@@ -473,6 +473,15 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
             data=request.data)
         serializer.is_valid(raise_exception=True)
         campaign_creation = serializer.save()
+
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="AdGroup 1",
+            campaign_creation=campaign_creation,
+        )
+        AdCreation.objects.create(
+            name="Ad 1",
+            ad_group_creation=ad_group_creation,
+        )
 
         data = self.get_serializer(instance=campaign_creation).data
         return Response(data, status=HTTP_201_CREATED)
@@ -628,9 +637,13 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         serializer = AppendAdGroupCreationSetupSerializer(
             data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save()
+        ad_group_creation = serializer.save()
 
-        data = self.get_serializer(instance=obj).data
+        AdCreation.objects.create(
+            name="Ad 1",
+            ad_group_creation=ad_group_creation,
+        )
+        data = self.get_serializer(instance=ad_group_creation).data
         return Response(data, status=HTTP_201_CREATED)
 
 
