@@ -3,38 +3,23 @@ from datetime import datetime
 from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
-
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from .charts import DemoChart
 from .models import DemoAccount, DEMO_ACCOUNT_ID
 
 
 class AnalyzeAccountsListApiView:
-    """
-    Returns a demo list of accounts
-    """
     @staticmethod
-    def list(original_method):
+    def get(original_method):
         def method(view, request, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
-                account = DemoAccount()
-                accounts = [
-                    dict(
-                        id=account.id,
-                        name=account.name,
-                        start_date=account.start_date,
-                        end_date=account.end_date,
-                        is_ongoing=True,
-                        channels_count=1,
-                        videos_count=1,
-                    )
-                ]
-                return Response(status=HTTP_200_OK, data=accounts)
-            else:
-                return original_method(view, request, **kwargs)
+            response = original_method(view, request, **kwargs)
+            if response.status_code == HTTP_200_OK:
+                demo = DemoAccount()
+                filters = view.get_filters()
+                if demo.account_passes_filters(filters):
+                    response.data['items'].insert(0, demo.account_details)
+                    response.data['items_count'] += 1
+            return response
 
         return method
 
@@ -75,12 +60,16 @@ class AnalyzeDetailsApiView:
                 filters = view.get_filters()
 
                 account = DemoAccount()
+                data = account.account_details
+                data['details'] = account.details
+
                 account.set_period_proportion(filters['start_date'],
                                               filters['end_date'])
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                return Response(status=HTTP_200_OK, data=account.details)
+                data['overview'] = account.overview
+                return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
@@ -199,13 +188,12 @@ class TrackFiltersListApiView:
 
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 account = DemoAccount()
-                filters = dict(
+                data = dict(
                     accounts=[
                         dict(
                             id=account.id,
@@ -223,34 +211,19 @@ class TrackFiltersListApiView:
                             ]
                         )
                     ],
-                    indicator=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.indicators
-                    ],
-                    breakdown=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.breakdowns
-                    ],
-                    dimension=[
-                        dict(id=uid, name=name)
-                        for uid, name in view.dimensions
-                    ],
+                    **view.get_static_filters()
                 )
-                return Response(status=HTTP_200_OK, data=filters)
-            else:
-                return original_method(view, *args, **kwargs)
-
+            return Response(data=data)
         return method
 
 
 class TrackChartApiView:
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -261,20 +234,16 @@ class TrackChartApiView:
                 charts_obj = DemoChart(account, filters)
                 return Response(status=HTTP_200_OK,
                                 data=charts_obj.charts)
-            else:
-                return original_method(view, *args, **kwargs)
-
         return method
 
 
 class TrackAccountsDataApiView:
     @staticmethod
     def get(original_method):
-        def method(view, *args, **kwargs):
-            # TODO: check if the user has
-            # an active connected AdWords account,
-            # if he has then return result of the original method
-            if 1:
+        def method(view, request, **kwargs):
+            if request.user.aw_connections.count():
+                return original_method(view, request, **kwargs)
+            else:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -303,9 +272,5 @@ class TrackAccountsDataApiView:
                         trend=trend,
                     )
                 ]
-                return Response(status=HTTP_200_OK,
-                                data=accounts)
-            else:
-                return original_method(view, *args, **kwargs)
-
+                return Response(status=HTTP_200_OK, data=accounts)
         return method

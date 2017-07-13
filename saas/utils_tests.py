@@ -29,9 +29,11 @@ class ExtendedAPITestCase(APITestCase):
 
         if auth:
             token = Token.objects.create(user=user)
+            # pylint: disable=no-member
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(token.key)
             )
+            # pylint: enable=no-member
         return user
 
 
@@ -60,4 +62,4 @@ class SingleDatabaseApiConnectorPatcher:
             items = self.get_channel_list(*args, **kwargs).get("items")
         else:
             items = []
-        return items[:12]
+        return items[:kwargs.get('limit', 12)]

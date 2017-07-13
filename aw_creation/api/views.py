@@ -6,10 +6,12 @@ from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 
+# pylint: disable=import-error
 from apiclient.discovery import build
+# pylint: enable=import-error
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, Avg, Max, When, Case, Value, \
+from django.db.models import Q, Avg, Max, Min, Sum, Count, When, Case, Value, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -17,7 +19,7 @@ from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveDestroyAPIView
-from rest_framework.pagination import PageNumberPagination
+from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
@@ -44,6 +46,9 @@ from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
 from aw_reporting.models import GeoTarget, SUM_STATS, CONVERSIONS, \
     dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeoTargetListApiView(APIView):
@@ -206,20 +211,8 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         return item
 
 
-class OptimizationAccountListPaginator(PageNumberPagination):
-    page_size = 100
-
-    def get_paginated_response(self, data):
-        """
-        Update response to return
-        """
-        response_data = {
-            'items_count': self.page.paginator.count,
-            'items': data,
-            'current_page': self.page.number,
-            'max_page': self.page.paginator.num_pages,
-        }
-        return Response(response_data)
+class OptimizationAccountListPaginator(CustomPageNumberPaginator):
+    page_size = 20
 
 
 class OptimizationOptionsApiView(APIView):
@@ -348,46 +341,92 @@ class OptimizationAccountListApiView(ListAPIView):
         if sort_by != "name":
             sort_by = "-created_at"
 
-        today = datetime.now().date()
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).annotate(
-            campaigns_status=Max(
-                Case(
-                    When(
-                        campaign_creations__end__lt=today,
-                        then=Value(2),  # ended
-                    ),
-                    When(
-                        campaign_creations__end__gte=today,
-                        then=Value(1),  # live
-                    ),
-                    default=Value(0),
-                    output_field=AggrIntegerField()
-                )
-            )
-        ).annotate(
-            ended_status=Case(
-                When(
-                    campaigns_status__lt=2,
-                    is_ended=False,
-                    then=Value(0),  # shown by default
-                ),
-                default=Value(1),
-                output_field=AggrIntegerField()
-            )
-        ).order_by('ended_status', sort_by)
+        ).order_by('is_ended', sort_by)
         return queryset
+
+    filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
+               'is_changed', 'min_start', 'max_start', 'min_end', 'max_end')
+
+    def get_filters(self):
+        filters = {}
+        query_params = self.request.query_params
+        for f in self.filters:
+            v = query_params.get(f)
+            if v:
+                filters[f] = v
+        return filters
 
     def filter_queryset(self, queryset):
         if self.request.query_params.get('show_closed') != "1":
-            queryset = queryset.filter(
-                ended_status__lt=1,
-            )
-        search = self.request.query_params.get('search', '').strip()
+            queryset = queryset.filter(is_ended=False)
+
+        filters = self.get_filters()
+        search = filters.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
+
+        status = filters.get('status')
+        if status:
+            if status == "Ended":
+                queryset = queryset.filter(is_ended=True)
+            elif status == "Paused":
+                queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False)  # all
+            else:
+                queryset = queryset.annotate(camp_count=Count("account__campaigns"))
+                approved_f = dict(is_approved=True, is_paused=False, is_ended=False)
+                if status == "Running":
+                    queryset = queryset.filter(camp_count__gt=0, **approved_f)
+                elif status == "Approved":
+                    queryset = queryset.filter(camp_count=0, **approved_f)
+                else:
+                    logger.warning("Unknown status {}".format(status))
+                    queryset = queryset.none()
+
+        min_goal_units = filters.get('min_goal_units')
+        max_goal_units = filters.get('max_goal_units')
+        if min_goal_units or max_goal_units:
+            queryset = queryset.annotate(goal_units=Sum('campaign_creations__goal_units'))
+            if min_goal_units:
+                queryset = queryset.filter(goal_units__gte=min_goal_units)
+            if max_goal_units:
+                queryset = queryset.filter(goal_units__lte=max_goal_units)
+
+        min_campaigns_count = filters.get('min_campaigns_count')
+        max_campaigns_count = filters.get('max_campaigns_count')
+        if min_campaigns_count or max_campaigns_count:
+            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
+            if min_campaigns_count:
+                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+            if max_campaigns_count:
+                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+
+        min_start = filters.get('min_start')
+        max_start = filters.get('max_start')
+        if min_start or max_start:
+            queryset = queryset.annotate(start=Min("campaign_creations__start"))
+            if min_start:
+                queryset = queryset.filter(start__gte=min_start)
+            if max_start:
+                queryset = queryset.filter(start__lte=max_start)
+
+        min_end = filters.get('min_end')
+        max_end = filters.get('max_end')
+        if min_end or max_end:
+            queryset = queryset.annotate(end=Max("campaign_creations__end"))
+            if min_end:
+                queryset = queryset.filter(end__gte=min_end)
+            if max_end:
+                queryset = queryset.filter(end__lte=max_end)
+
+        is_changed = filters.get('is_changed')
+        if is_changed:
+            queryset = queryset.filter(is_changed=int(is_changed))
+
         return queryset
 
     def post(self, request, *args, **kwargs):
@@ -429,9 +468,7 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
     serializer_class = OptimizationAccountDetailsSerializer
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            owner=self.request.user
-        )
+        queryset = AccountCreation.objects.filter(owner=self.request.user)
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -445,6 +482,9 @@ class OptimizationAccountApiView(RetrieveUpdateAPIView):
 
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
+        if instance.account is not None:
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data=dict(error="You cannot delete approved setups"))
         instance.is_deleted = True
         instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -484,11 +524,11 @@ class OptimizationAccountDuplicateApiView(APIView):
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
-            owner=self.request.user
+            owner=self.request.user,
         )
         return queryset
 
-    def post(self, request, pk, **kwargs):
+    def post(self, *args, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
         except AccountCreation.DoesNotExist:
@@ -856,33 +896,21 @@ class UserListsImportMixin:
 
     @staticmethod
     def get_lists_items_ids(ids, list_type):
-        from segment.models import Segment
+        from segment.models import get_segment_model_by_type
         from keyword_tool.models import KeywordsList
 
-        if list_type == "channel":
-            item_ids = Segment.objects.filter(
-                id__in=ids, channels__channel_id__isnull=False
-            ).values_list(
-                "channels__channel_id", flat=True
-            ).order_by("channels__channel_id").distinct()
-
-        elif list_type == "video":
-            item_ids = Segment.objects.filter(
-                id__in=ids, videos__video_id__isnull=False
-            ).values_list(
-                "videos__video_id", flat=True
-            ).order_by("videos__video_id").distinct()
-
-        elif list_type == "keyword":
+        if list_type == "keyword":
             item_ids = KeywordsList.objects.filter(
                 id__in=ids, keywords__text__isnull=False
             ).values_list(
                 "keywords__text", flat=True
             ).order_by("keywords__text").distinct()
-
         else:
-            raise NotImplementedError("Unknown type: {}".format(list_type))
-
+            manager = get_segment_model_by_type(list_type).objects
+            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False)\
+                              .values_list('related__related_id', flat=True)\
+                              .order_by('related__related_id')\
+                              .distinct()
         return item_ids
 
 
@@ -1393,10 +1421,10 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data[1:]:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                if is_negative is "True":
+                if is_negative == "True":
                     is_negative = True
-                elif is_negative is "False":
-                    is_negative = True
+                elif is_negative == "False":
+                    is_negative = False
                 else:
                     is_negative = None
             elif len(line):
@@ -1482,7 +1510,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
@@ -1510,7 +1538,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         for line in data:
             if len(line) > 1:
                 criteria, is_negative, *_ = line
-                is_negative = is_negative == "True"
+                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
             elif len(line):
                 criteria, is_negative = line[0], False
             else:
@@ -1714,8 +1742,7 @@ class OptimizationTargetingApiView(OptimizationFiltersApiView,
 
     @staticmethod
     def add_items_stats(items, kpi, value):
-        stat_names = SUM_STATS + CONVERSIONS
-        stats = dict(zip(stat_names, (0 for _ in range(len(stat_names)))))
+        stats = dict(zip(SUM_STATS, (0 for _ in range(len(SUM_STATS)))))
         dict_add_calculated_stats(stats)
         for i in items:
             i.update(stats)

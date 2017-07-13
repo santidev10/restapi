@@ -208,6 +208,14 @@ class OptimizeQueryApiView(ListAPIView):
         #         dict_add_calculated_stats(item)
 
 
+class KeywordsListApiView(OptimizeQueryApiView):
+    def get_queryset(self):
+        queryset = KeyWord.objects.all()
+        queryset = self.filter(queryset)
+        queryset = self.sort(queryset)
+        return queryset
+
+
 class ViralKeywordsApiView(OptimizeQueryApiView):
     def get_queryset(self):
         viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
@@ -314,7 +322,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
             kwargs["fields"] = set(fields.split(","))
 
         if page is not None:
-            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
+            serializer = SavedListNameSerializer(page, many=True, request=request, **kwargs)
             return self.get_paginated_response(serializer.data)
 
         serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
@@ -333,7 +341,9 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
                 category=category
             )
             # create relations
+            # pylint: disable=no-member
             keywords_relation = KeywordsList.keywords.through
+            # pylint: enable=no-member
             kw_relations = [keywords_relation(keyword_id=kw_id,
                                               keywordslist_id=new_list.id)
                             for kw_id in keywords]
@@ -352,6 +362,16 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
 
 
 class SavedListApiView(ListParentApiView):
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        try:
+            obj = KeywordsList.objects.get(pk=pk)
+        except KeywordsList.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        return Response(data=SavedListNameSerializer(
+            obj, request=request).data,
+                        status=HTTP_202_ACCEPTED)
+
     def put(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
         email = self.request.user.email
@@ -430,7 +450,9 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
         ids_to_save = set(queryset.values_list('text', flat=True))
 
         if ids_to_save:
+            # pylint: disable=no-member
             keywords_relation = KeywordsList.keywords.through
+            # pylint: enable=no-member
             kw_relations = [keywords_relation(keyword_id=kw_id,
                                               keywordslist_id=obj.id)
                             for kw_id in ids_to_save]
@@ -461,7 +483,9 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
         ids_to_save = set(queryset.values_list('text', flat=True))
         count = 0
         if ids_to_save:
+            # pylint: disable=no-member
             keywords_relation = KeywordsList.keywords.through
+            # pylint: enable=no-member
             count, details = keywords_relation.objects.filter(
                 keywordslist_id=obj.id,
                 keyword_id__in=ids_to_save,
@@ -482,6 +506,7 @@ class ListsDuplicateApiView(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         kw_list = self.get_object()
+        # pylint: disable=no-member
         keywords = kw_list.keywords.through.objects.filter(
             keywordslist_id=kw_list.id).values_list('keyword_id', flat=True)
         new_list = KeywordsList.objects.create(
@@ -490,6 +515,7 @@ class ListsDuplicateApiView(GenericAPIView):
             category="private"
         )
         keywords_relation = KeywordsList.keywords.through
+        # pylint: enable=no-member
         kw_relations = [keywords_relation(keyword_id=kw_id,
                                           keywordslist_id=new_list.id)
                         for kw_id in keywords]

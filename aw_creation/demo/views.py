@@ -1,4 +1,4 @@
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID, VIDEO_VIEWS, DEMO_CAMPAIGNS_COUNT
 from aw_reporting.demo.charts import DemoChart
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
@@ -19,8 +19,10 @@ class OptimizationAccountListApiView:
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
                 demo = DemoAccount()
-                response.data['items'].insert(0, demo.creation_details)
-                response.data['items_count'] += 1
+                filters = view.get_filters()
+                if demo.account_passes_filters(filters):
+                    response.data['items'].insert(0, demo.creation_details)
+                    response.data['items_count'] += 1
             return response
         return method
 
