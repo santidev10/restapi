@@ -787,6 +787,7 @@ class DemoAccount(BaseDemo):
             end=self.end_date,
             is_optimization_active=True,
             is_changed=False,
+            is_managed=True,
             weekly_chart=chart_lines[0]['trend'],
             video_view_rate=self.video_view_rate,
             impressions=self.impressions,

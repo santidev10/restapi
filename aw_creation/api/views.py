@@ -28,7 +28,7 @@ from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSer
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
-    Topic, Audience
+    Topic, Audience, Account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -320,6 +320,27 @@ class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
 
+    def get(self, request, *args, **kwargs):
+        # import "read only" accounts:
+        # user has access to them, but they are not connected to his account creations
+        read_accounts = Account.user_objects(self.request.user).filter(
+            can_manage_clients=False,
+        ).exclude(
+            account_creations__owner=request.user
+        ).values("id", "name")
+        bulk_create = [
+            AccountCreation(
+                account_id=i['id'],
+                name=i['name'],
+                owner=request.user,
+                is_managed=False,
+            )
+            for i in read_accounts
+        ]
+        if bulk_create:
+            AccountCreation.objects.bulk_create(bulk_create)
+        return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
+
     def get_queryset(self, **filters):
         sort_by = self.request.query_params.get('sort_by')
         if sort_by != "name":
@@ -428,7 +449,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AccountCreationSetupSerializer
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(owner=self.request.user)
+        queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -466,7 +487,9 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         try:
             account_creation = AccountCreation.objects.get(
-                pk=kwargs.get("pk"), owner=request.user
+                pk=kwargs.get("pk"),
+                owner=request.user,
+                is_managed=True,
             )
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -788,6 +811,7 @@ class AccountCreationDuplicateApiView(APIView):
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
             owner=self.request.user,
+            is_managed=True,
         )
         return queryset
 

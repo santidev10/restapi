@@ -13,7 +13,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name', 'status', 'start', 'end',
+        'id', 'name', 'status', 'start', 'end', 'is_managed',
         'is_optimization_active', 'is_changed', 'weekly_chart',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
     }
@@ -299,3 +299,65 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['items']), 1)
         self.assertEqual(response.data['items'][0]['id'], ac.id)
+
+    def test_success_get_import_historical_accounts(self):
+        from aw_reporting.models import AWConnection, AWConnectionToUserRelation, AWAccountPermission, Account
+
+        connection = AWConnection.objects.create(
+            email="test@gmail.com",
+            refresh_token="1/stxUUgC2fNCe-z1al",
+        )
+        AWConnectionToUserRelation.objects.create(
+            user=self.user,
+            connection=connection,
+        )
+        manager = Account.objects.create(id="1", name="")
+        AWAccountPermission.objects.get_or_create(
+            aw_connection=connection, account=manager,
+        )
+        account = Account.objects.create(id="2", name="Weird name")
+        account.managers.add(manager)
+
+        # create a few users that also can see it
+        for i in range(3):
+            user = get_user_model().objects.create(
+                email="another{}@mail.au".format(i),
+            )
+            AccountCreation.objects.create(
+                name="", owner=user, account=account,
+            )
+
+        # and create an usual running account creation
+        created_account = Account.objects.create(id="3", name="")
+        created_account.managers.add(manager)
+        AccountCreation.objects.create(name="", owner=self.user, account=created_account)
+
+        # --
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                'max_page',
+                'items_count',
+                'items',
+                'current_page',
+            }
+        )
+        self.assertEqual(response.data['items_count'], 3)
+        self.assertEqual(len(response.data['items']), 3)
+        item = response.data['items'][1]
+        self.assertEqual(
+            set(item.keys()),
+            self.details_keys,
+        )
+        self.assertEqual(item['is_managed'], False)

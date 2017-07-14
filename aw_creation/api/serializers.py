@@ -424,7 +424,7 @@ class AccountCreationListSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "status",
+            "id", "name", "start", "end", "status", "is_managed",
             "is_optimization_active", "is_changed", "weekly_chart",
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
