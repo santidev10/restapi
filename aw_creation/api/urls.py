@@ -13,7 +13,7 @@ urlpatterns = [
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
 
-    # creation functionality
+    # <<< Setup
     url(r'^creation_options/$',
         views.CreationOptionsApiView.as_view(),
         name="creation_options"),
@@ -58,6 +58,27 @@ urlpatterns = [
     url(r'^ad_creation_duplicate/(?P<pk>\w+)/$',
         views.AdCreationDuplicateApiView.as_view(),
         name="ad_creation_duplicate"),
+    # >>> Setup
+    # <<< Performance
+    url(r'^performance_account_campaigns/(?P<pk>\w+)/$',
+        views.PerformanceAccountCampaignsListApiView.as_view(),
+        name="performance_account_campaigns"),
+    url(r'^performance_account_details/(?P<pk>\w+)/$',
+        views.PerformanceAccountDetailsApiView.as_view(),
+        name="performance_account_details"),
+    url(r'^performance_chart/(?P<pk>\w+)/',
+        views.PerformanceChartApiView.as_view(),
+        name="performance_chart"),
+    url(r'^performance_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
+        views.PerformanceChartItemsApiView.as_view(),
+        name="performance_chart_items"),
+    url(r'^performance_export/(?P<pk>\w+)/',
+        views.PerformanceExportApiView.as_view(),
+        name="performance_export"),
+    url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
+        views.PerformanceExportWeeklyReport.as_view(),
+        name="performance_export_weekly_report"),
+    # >>> Performance
 
     # optimization
     url(r'^optimization_filters/(?P<pk>\w+)/(?P<kpi>\w+)/$',

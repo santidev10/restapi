@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
@@ -17,16 +17,24 @@ from rest_framework.views import APIView
 from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
-from aw_creation.models import BULK_CREATE_CAMPAIGNS_COUNT, \
-    BULK_CREATE_AD_GROUPS_COUNT, AccountCreation, CampaignCreation, \
+from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
     TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
-from aw_reporting.models import GeoTarget, SUM_STATS, dict_add_calculated_stats, Topic, Audience
 from aw_reporting.demo import demo_view_decorator
-from aw_reporting.api.views import AnalyzeDetailsApiView
+from aw_reporting.api.views import DATE_FORMAT
+from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
+from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
+    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
+    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
+    Topic, Audience
+from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.charts import DeliveryChart
+from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
+from datetime import timedelta
 from io import StringIO
 import calendar
 import csv
+import pytz
 import logging
 
 logger = logging.getLogger(__name__)
@@ -408,11 +416,8 @@ class AccountCreationDetailsApiView(RetrieveAPIView):
             item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-        if item.account:
-            data = AnalyzeDetailsApiView.get_details_data(item.account)
-        else:
-            data = {}
-        return Response(data)
+        data = PerformanceAccountDetailsApiView.get_details_data(item)
+        return Response(data=data)
 
 
 @demo_view_decorator
@@ -950,6 +955,507 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
         )
         data = self.serializer_class(duplicate).data
         return data
+
+
+# <<< Performance
+@demo_view_decorator
+class PerformanceAccountCampaignsListApiView(ListAPIView):
+    serializer_class = CampaignListSerializer
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        queryset = Campaign.objects.filter(
+            account__account_creation__id=pk,
+            account__account_creation__owner=self.request.user,
+        )
+        return queryset
+
+
+@demo_view_decorator
+class PerformanceAccountDetailsApiView(APIView):
+
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
+        )
+        return filters
+
+    def post(self, request, pk, **_):
+        try:
+            account_creation = AccountCreation.objects.filter(
+                owner=self.request.user
+            ).get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = AccountCreationListSerializer(account_creation).data  # header data
+        data['details'] = self.get_details_data(account_creation)
+        data['overview'] = self.get_overview_data(account_creation)
+        return Response(data=data)
+
+    def get_overview_data(self, account_creation):
+        filters = self.get_filters()
+        fs = dict(ad_group__campaign__account=account_creation.account)
+        if filters['campaigns']:
+            fs["ad_group__campaign__id__in"] = filters['campaigns']
+        if filters['ad_groups']:
+            fs["ad_group__id__in"] = filters['ad_groups']
+        if filters['start_date']:
+            fs["date__gte"] = filters['start_date']
+        if filters['end_date']:
+            fs["date__lte"] = filters['end_date']
+
+        data = AdGroupStatistic.objects.filter(**fs).aggregate(
+            **all_stats_aggregate
+        )
+        dict_norm_base_stats(data)
+        dict_calculate_stats(data)
+        dict_quartiles_to_rates(data)
+        del data['video_impressions']
+
+        # 'age', 'gender', 'device', 'location'
+        annotate = dict(v=Sum('cost'))
+        gender = GenderStatistic.objects.filter(**fs).values(
+            'gender_id').order_by('gender_id').annotate(**annotate)
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+
+        age = AgeRangeStatistic.objects.filter(**fs).values(
+            "age_range_id").order_by("age_range_id").annotate(**annotate)
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+
+        device = AdGroupStatistic.objects.filter(**fs).values(
+            "device_id").order_by("device_id").annotate(**annotate)
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+
+        location = CityStatistic.objects.filter(**fs).values(
+            "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
+        location = [dict(name=i['city__name'], value=i['v']) for i in location]
+
+        data.update(gender=gender, age=age, device=device, location=location)
+
+        # this and last week base stats
+        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_start = week_end - timedelta(days=6)
+        prev_week_end = week_start - timedelta(days=1)
+        prev_week_start = prev_week_end - timedelta(days=6)
+
+        annotate = {
+            "{}_{}_week".format(s, k): Sum(
+                Case(
+                    When(
+                        date__gte=sd,
+                        date__lte=ed,
+                        then=s,
+                    ),
+                    output_field=IntegerField()
+                )
+            )
+            for k, sd, ed in (("this", week_start, week_end),
+                              ("last", prev_week_start, prev_week_end))
+            for s in BASE_STATS
+        }
+        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(**annotate)
+        data.update(weeks_stats)
+
+        # top and bottom rates
+        annotate = dict(
+            average_cpv=ExpressionWrapper(
+                Case(
+                    When(
+                        cost__sum__isnull=False,
+                        video_views__sum__gt=0,
+                        then=F("cost__sum") / F("video_views__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr=ExpressionWrapper(
+                Case(
+                    When(
+                        clicks__sum__isnull=False,
+                        impressions__sum__gt=0,
+                        then=F("clicks__sum") * Value(100.0) / F("impressions__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr_v=ExpressionWrapper(
+                Case(
+                    When(
+                        clicks__sum__isnull=False,
+                        video_views__sum__gt=0,
+                        then=F("clicks__sum") * Value(100.0) / F("video_views__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            video_view_rate=ExpressionWrapper(
+                Case(
+                    When(
+                        video_views__sum__isnull=False,
+                        impressions__sum__gt=0,
+                        then=F("video_views__sum") * Value(100.0) / F("impressions__sum"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+        )
+        fields = tuple(annotate.keys())
+        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values("date").order_by("date").annotate(
+            *[Sum(s) for s in BASE_STATS]
+        ).annotate(**annotate).aggregate(
+            **{"{}_{}".format(s, n): a(s)
+               for s in fields
+               for n, a in (("top", Max), ("bottom", Min))}
+        )
+        data.update(top_bottom_stats)
+        return data
+
+    @staticmethod
+    def get_details_data(account_creation):
+        fs = dict(ad_group__campaign__account=account_creation.account)
+        data = AdGroupStatistic.objects.filter(**fs).aggregate(
+            average_position=Avg(
+                Case(
+                    When(
+                        average_position__gt=0,
+                        then=F('average_position'),
+                    ),
+                    output_field=FloatField(),
+                )
+            ),
+            impressions=Sum("impressions"),
+            **{s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
+        )
+        dict_quartiles_to_rates(data)
+        del data['impressions']
+
+        annotate = dict(v=Sum('cost'))
+        creative = VideoCreativeStatistic.objects.filter(**fs).values(
+            "creative_id").annotate(**annotate).order_by('v')[:3]
+        if creative:
+            ids = [i['creative_id'] for i in creative]
+            creative = []
+            try:
+                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=list(ids),
+                    limit=len(ids),
+                )
+            except SingleDatabaseApiConnectorException as e:
+                logger.critical(e)
+            else:
+                video_info = {i['id']: i for i in channel_info}
+                for video_id in ids:
+                    info = video_info.get(video_id, {})
+                    creative.append(
+                        dict(
+                            id=video_id,
+                            name=info.get("title"),
+                            thumbnail=info.get('thumbnail_image_url'),
+                        )
+                    )
+        data.update(creative=creative)
+
+        # second section
+        gender = GenderStatistic.objects.filter(**fs).values(
+            'gender_id').order_by('gender_id').annotate(**annotate)
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+
+        age = AgeRangeStatistic.objects.filter(**fs).values(
+            "age_range_id").order_by("age_range_id").annotate(**annotate)
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+
+        device = AdGroupStatistic.objects.filter(**fs).values(
+            "device_id").order_by("device_id").annotate(**annotate)
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+        data.update(gender=gender, age=age, device=device)
+
+        # third section
+        charts = []
+        stats = AdGroupStatistic.objects.filter(
+            **fs
+        ).values("date").order_by("date").annotate(
+            views=Sum("video_views"),
+            impressions=Sum("impressions"),
+        )
+        if stats:
+            if any(i['views'] for i in stats):
+                charts.append(
+                    dict(
+                        label='Views',
+                        trend=[
+                            dict(label=i['date'], value=i['views'])
+                            for i in stats
+                        ]
+                    )
+                )
+
+            if any(i['impressions'] for i in stats):
+                charts.append(
+                    dict(
+                        label='Impressions',
+                        trend=[
+                            dict(label=i['date'], value=i['impressions'])
+                            for i in stats
+                        ]
+                    )
+                )
+        data['delivery_trend'] = charts
+
+        return data
+
+
+@demo_view_decorator
+class PerformanceChartApiView(APIView):
+    """
+    Send filters to get data for charts
+
+    Body example:
+
+    {"indicator": "impressions", "dimension": "device"}
+    """
+
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
+            indicator=data.get("indicator", "average_cpv"),
+            dimension=data.get("dimension"),
+        )
+        return filters
+
+    def post(self, request, pk, **_):
+        try:
+            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        account_ids = []
+        if item.account:
+            account_ids.append(item.account.id)
+        chart = DeliveryChart(account_ids, segmented_by="campaigns", **filters)
+        chart_data = chart.get_response()
+        return Response(data=chart_data)
+
+
+@demo_view_decorator
+class PerformanceChartItemsApiView(APIView):
+    """
+    Send filters to get a list of targeted items
+
+    Body example:
+
+    {"segmented": false}
+    """
+
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
+            segmented_by=data.get("segmented"),
+        )
+        return filters
+
+    def post(self, request, pk, **kwargs):
+        dimension = kwargs.get('dimension')
+        try:
+            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        accounts = []
+        if item.account:
+            accounts.append(item.account.id)
+        chart = DeliveryChart(
+            accounts=accounts,
+            dimension=dimension,
+            **filters
+        )
+        items = chart.get_items()
+        return Response(data=items)
+
+
+@demo_view_decorator
+class PerformanceExportApiView(APIView):
+    """
+    Send filters to download a csv report
+
+    Body example:
+
+    {"campaigns": ["1", "2"]}
+    """
+
+    def post(self, request, pk, **_):
+        try:
+            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        def data_generator():
+            return self.get_export_data(item)
+
+        return self.stream_response(item.name, data_generator)
+
+    file_name = "{title}-analyze-{timestamp}.csv"
+
+    column_names = (
+        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
+        "25%", "50%", "75%", "100%",
+    )
+    column_keys = (
+        'name', 'impressions', 'video_views', 'cost', 'average_cpm',
+        'average_cpv', 'clicks', 'ctr', 'ctr_v', 'video_view_rate',
+        'video25rate', 'video50rate', 'video75rate', 'video100rate',
+    )
+    tabs = (
+        'device', 'gender', 'age', 'topic', 'interest', 'remarketing',
+        'keyword', 'location', 'creative', 'ad', 'channel', 'video',
+    )
+
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get('campaigns'),
+            ad_groups=data.get('ad_groups'),
+        )
+        return filters
+
+    @staticmethod
+    def stream_response_generator(data_generator):
+        for row in data_generator():
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(row)
+            yield output.getvalue()
+
+    def stream_response(self, item_name, generator):
+        generator = self.stream_response_generator(generator)
+        response = StreamingHttpResponse(generator,
+                                         content_type='text/csv')
+        filename = self.file_name.format(
+            title=re.sub(r"\W", item_name, '-'),
+            timestamp=datetime.now().strftime("%Y%m%d"),
+        )
+        response['Content-Disposition'] = 'attachment; ' \
+                                          'filename="{}"'.format(filename)
+        return response
+
+    def get_export_data(self, item):
+        filters = self.get_filters()
+        data = dict(name=item.name)
+
+        account = item.account
+
+        fs = {'ad_group__campaign__account': account}
+        if filters['start_date']:
+            fs['date__gte'] = filters['start_date']
+        if filters['end_date']:
+            fs['date__lte'] = filters['end_date']
+        if filters['ad_groups']:
+            fs['ad_group_id__in'] = filters['ad_groups']
+        elif filters['campaigns']:
+            fs['ad_group__campaign_id__in'] = filters['campaigns']
+
+        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            **all_stats_aggregate
+        )
+        dict_norm_base_stats(stats)
+        dict_quartiles_to_rates(stats)
+        dict_calculate_stats(stats)
+        data.update(stats)
+
+        yield self.column_names
+        yield ['Summary'] + [data.get(n) for n in self.column_keys]
+
+        accounts = []
+        if account:
+            accounts.append(account.id)
+
+        for dimension in self.tabs:
+            chart = DeliveryChart(
+                accounts=accounts,
+                dimension=dimension,
+                **filters
+            )
+            items = chart.get_items()
+            for data in items['items']:
+                yield [dimension.capitalize()] + [data[n] for n in self.column_keys]
+
+
+@demo_view_decorator
+class PerformanceExportWeeklyReport(APIView):
+    """
+    Send filters to download weekly report
+
+    Body example:
+
+    {"campaigns": ["1", "2"]}
+    """
+
+    def get_filters(self):
+        data = self.request.data
+        filters = dict(
+            campaigns=data.get('campaigns'),
+            ad_groups=data.get('ad_groups'),
+        )
+        return filters
+
+    def post(self, request, pk, **_):
+        try:
+            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        filters = self.get_filters()
+        report = AnalyzeWeeklyReport(item.account, **filters)
+
+        response = HttpResponse(
+            report.get_content(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
+            'Report {}.xlsx"'.format(
+            item.name,
+            datetime.now().date().strftime("%m.%d.%y")
+        )
+        return response
 
 
 class UserListsImportMixin:

@@ -1,11 +1,13 @@
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID, VIDEO_VIEWS, DEMO_CAMPAIGNS_COUNT
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN,\
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+from django.http import HttpResponse
+from datetime import datetime
 import json
 DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
 
@@ -343,6 +345,165 @@ class AdCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class PerformanceAccountCampaignsListApiView:
+    @staticmethod
+    def get(original_method):
+        def method(*args, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                campaigns = [
+                    dict(
+                        id=c.id,
+                        name=c.name,
+                        start_date=c.start_date,
+                        end_date=c.end_date,
+                        status=c.status,
+                        ad_groups=[
+                            dict(id=a.id, name=a.name, status=a.status)
+                            for a in c.children
+                        ],
+                    )
+                    for c in account.children
+                ]
+                return Response(status=HTTP_200_OK, data=campaigns)
+            else:
+                return original_method(*args, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceAccountDetailsApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+
+                account = DemoAccount()
+                data = account.header_data
+                data['details'] = account.details
+
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                data['overview'] = account.overview
+                return Response(status=HTTP_200_OK, data=data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceChartApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                filters['segmented'] = True
+                charts_obj = DemoChart(account, filters)
+                return Response(status=HTTP_200_OK, data=charts_obj.charts)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceChartItemsApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, dimension, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                filters['dimension'] = dimension
+                charts_obj = DemoChart(account, filters)
+                return Response(status=HTTP_200_OK,
+                                data=charts_obj.chart_items)
+            else:
+                return original_method(view, request, pk=pk,
+                                       dimension=dimension, **kwargs)
+
+        return method
+
+
+class PerformanceExportApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+
+                def data_generator():
+                    data = account.details
+                    yield view.column_names
+                    yield ['Summary'] + [data.get(n)
+                                         for n in view.column_keys]
+                    for dimension in view.tabs:
+                        filters['dimension'] = dimension
+                        charts_obj = DemoChart(account, filters)
+                        items = charts_obj.chart_items
+                        for data in items['items']:
+                            yield [dimension.capitalize()] + \
+                                  [data[n] for n in view.column_keys]
+
+                return view.stream_response(account.name, data_generator)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceExportWeeklyReport:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                report = DemoAnalyzeWeeklyReport(account)
+
+                response = HttpResponse(
+                    report.get_content(),
+                    content_type='application/vnd.openxmlformats-'
+                                 'officedocument.spreadsheetml.sheet'
+                )
+                response[
+                    'Content-Disposition'
+                ] = 'attachment; filename="Channel Factory {} Weekly ' \
+                    'Report {}.xlsx"'.format(
+                        account.name,
+                        datetime.now().date().strftime("%m.%d.%y")
+                )
+                return response
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
