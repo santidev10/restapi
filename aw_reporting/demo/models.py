@@ -370,6 +370,7 @@ class DemoAd(BaseDemo):
         data = dict(
             id=self.id,
             name=self.name,
+            updated_at=self.now,
             display_url="www.channelfactory.com",
             thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
             final_url="https://www.channelfactory.com",
@@ -518,6 +519,7 @@ class DemoAdGroup(BaseDemo):
         data = dict(
             id=self.id,
             name=self.name,
+            updated_at=self.now,
             ad_creations=[i.creation_details for i in self.children],
             targeting={t[0]: self.get_targeting_list(t[0])
                        for t in TargetingItem.TYPES},
@@ -561,6 +563,7 @@ class DemoCampaign(BaseDemo):
         data = dict(
             id=self.id,
             name=self.name,
+            updated_at=self.now,
             budget=self.budget,
             devices=[
                 dict(id=d, name=n) for d, n in CampaignCreation.DEVICES

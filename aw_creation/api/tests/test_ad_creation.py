@@ -55,7 +55,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',
+                'id', 'name',  'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'thumbnail', 'custom_params',
             }

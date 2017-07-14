@@ -46,7 +46,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'ad_creations',
+                'id', 'name',  'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
                 'targeting',
             }
@@ -64,7 +64,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad.keys()),
             {
-                'id', 'custom_params', 'name', 'tracking_template',
+                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
                 'video_url', 'display_url', 'final_url', 'thumbnail',
             }
         )

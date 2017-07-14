@@ -107,7 +107,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',
+                'id', 'name', 'updated_at',
                 'is_paused', 'is_ended', 'is_approved', 'updated_at',
                 'campaign_creations',
             }
@@ -117,7 +117,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name',
+                'id', 'name', 'updated_at',
                 'start', 'end',
                 'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
@@ -199,7 +199,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'ad_creations',
+                'id', 'updated_at', 'name', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
                 # targeting
                 'targeting',
@@ -218,7 +218,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad.keys()),
             {
-                'id', 'custom_params', 'name', 'tracking_template',
+                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
                 'video_url', 'display_url', 'final_url', 'thumbnail',
             }
         )

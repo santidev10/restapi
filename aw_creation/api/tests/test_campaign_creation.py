@@ -74,7 +74,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'start', 'end',
+                'id', 'name', 'updated_at', 'start', 'end',
                 'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
@@ -87,7 +87,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'ad_creations',
+                'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
                 'targeting',
             }

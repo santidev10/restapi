@@ -14,7 +14,7 @@ from unittest.mock import patch
 class CampaignListAPITestCase(ExtendedAPITestCase):
 
     detail_keys = {
-        'id', 'name', 'start', 'end',
+        'id', 'name', 'start', 'end', 'updated_at',
         'budget', 'languages',
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',

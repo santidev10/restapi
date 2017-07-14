@@ -47,6 +47,9 @@ class UniqueItem(models.Model):
 
     name = models.CharField(max_length=250, validators=[NameValidator])
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         abstract = True
 
@@ -70,15 +73,18 @@ class AccountCreation(UniqueItem):
         "aw_reporting.Account", related_name='account_creation',
         on_delete=models.SET_NULL, null=True, blank=True,
     )
-
     is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
-    is_changed = models.BooleanField(default=True)
-    version = models.CharField(max_length=8, default=get_version)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    is_managed = models.BooleanField(default=True)
+    sync_at = models.DateTimeField(null=True)
+
+    @property
+    def is_changed(self):
+        if self.sync_at and self.sync_at > self.updated_at:
+            return False
+        return True
 
     def get_aws_code(self):
         if self.account_id:
@@ -90,15 +96,6 @@ class AccountCreation(UniqueItem):
                     self.account_id, self.version)
             )
             return " ".join(lines)
-
-
-@receiver(post_save,
-          sender=AccountCreation, dispatch_uid="save_account_receiver")
-def save_account_receiver(sender, instance, created, **kwargs):
-    if not created:
-        sender.objects.filter(pk=instance.pk).update(
-            version=get_version(), is_changed=True
-        )
 
 
 def default_languages():
@@ -432,9 +429,7 @@ class CampaignCreation(CommonTargetingItem):
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
-    AccountCreation.objects.filter(
-        id=instance.account_creation_id,
-    ).update(version=get_version(), is_changed=True)
+    instance.account_creation.save()
 
 
 class AdGroupCreation(CommonTargetingItem):
@@ -508,6 +503,12 @@ AdGroupCreation._meta.get_field('parents_raw').default = json.dumps([])
 AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
 
 
+@receiver(post_save, sender=AdGroupCreation,
+          dispatch_uid="save_group_receiver")
+def save_group_receiver(sender, instance, created, **_):
+    instance.campaign_creation.account_creation.save()
+
+
 class AdCreation(UniqueItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
@@ -530,12 +531,10 @@ class AdCreation(UniqueItem):
         ordering = ['-id']
 
 
-@receiver(post_save, sender=AdGroupCreation,
+@receiver(post_save, sender=AdCreation,
           dispatch_uid="save_group_receiver")
-def save_group_receiver(sender, instance, created, **_):
-    AccountCreation.objects.filter(
-        campaign_creations__id=instance.campaign_creation_id,
-    ).update(version=get_version(), is_changed=True)
+def save_ad_receiver(sender, instance, created, **_):
+    instance.ad_group_creation.campaign_creation.account_creation.save()
 
 
 class LocationRule(models.Model):

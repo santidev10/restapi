@@ -1,5 +1,5 @@
 from urllib.parse import urlencode
-
+from django.utils import timezone
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
@@ -24,8 +24,9 @@ class TopicTargetingListTestCase(ExtendedAPITestCase):
             id="1", name="",
             campaign_creation=campaign_creation,
         )
-        account.is_changed = False
-        account.save()
+        AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())
+        account.refresh_from_db()
+        self.assertEqual(account.is_changed, False)
         return ad_group_creation
 
     def test_success_get(self):
@@ -85,10 +86,7 @@ class TopicTargetingListTestCase(ExtendedAPITestCase):
             False,
         )
         ad_group.campaign_creation.account_creation.refresh_from_db()
-        self.assertIs(
-            ad_group.campaign_creation.account_creation.is_changed,
-            True,
-        )
+        self.assertIs(ad_group.campaign_creation.account_creation.is_changed, True)
 
     def test_success_post_negative(self):
         ad_group = self.create_ad_group()

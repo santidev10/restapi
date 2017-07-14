@@ -1,6 +1,6 @@
 from urllib.parse import urlencode
-
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_401_UNAUTHORIZED
 from rest_framework.authtoken.models import Token
@@ -22,6 +22,9 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
             id="1", name="",
             campaign_creation=campaign_creation,
         )
+        AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())
+        account.refresh_from_db()
+        self.assertEqual(account.is_changed, False)
         return ad_group_creation
 
     def test_success_get(self):
@@ -64,8 +67,6 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         ad_group = self.create_ad_group(user)
         account = ad_group.campaign_creation.account_creation
-        AccountCreation.objects.filter(
-            id=account.id).update(is_changed=False)
 
         for i in range(10):
             Audience.objects.create(
@@ -99,8 +100,7 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         ad_group = self.create_ad_group(user)
         account = ad_group.campaign_creation.account_creation
-        AccountCreation.objects.filter(
-            id=account.id).update(is_changed=False)
+
         for i in range(10):
             Audience.objects.create(
                 id=i, name="Interest#{}".format(i),
@@ -145,8 +145,6 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
                 is_negative=i % 2,
             )
         account = ad_group.campaign_creation.account_creation
-        AccountCreation.objects.filter(
-            id=account.id).update(is_changed=False)
 
         url = reverse(
             "aw_creation_urls:optimization_ad_group_targeting",
@@ -210,8 +208,6 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
             )
 
         account = ad_group.campaign_creation.account_creation
-        AccountCreation.objects.filter(
-            id=account.id).update(is_changed=False)
 
         url = reverse(
             "aw_creation_urls:optimization_ad_group_targeting_import",

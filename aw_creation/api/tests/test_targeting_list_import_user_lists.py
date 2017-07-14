@@ -1,4 +1,5 @@
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 from aw_creation.models import *
 from aw_reporting.demo.models import DemoAccount
@@ -21,8 +22,9 @@ class TargetingListImportFromUserListTestCase(ExtendedAPITestCase):
             id="1", name="",
             campaign_creation=campaign_creation,
         )
-        account.is_changed = False
-        account.save()
+        AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())
+        account.refresh_from_db()
+        self.assertEqual(account.is_changed, False)
         return ad_group_creation
 
     def test_success_import_keyword_list(self):

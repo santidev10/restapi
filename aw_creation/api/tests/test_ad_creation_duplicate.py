@@ -45,7 +45,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'custom_params', 'name', 'tracking_template',
+                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
                 'video_url', 'display_url', 'final_url', 'thumbnail',
             }
         )

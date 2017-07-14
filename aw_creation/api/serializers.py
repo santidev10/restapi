@@ -1,6 +1,6 @@
 from django.db.models import Min, Max, Sum, Q
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, ValidationError
+    SerializerMethodField, ListField, ValidationError, BooleanField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, AdCreation
@@ -140,7 +140,7 @@ class AdCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdCreation
         fields = (
-            'id', 'name',
+            'id', 'name', 'updated_at',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params',
             'thumbnail',
@@ -173,7 +173,7 @@ class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSeri
     class Meta:
         model = AdGroupCreation
         fields = (
-            'id', 'name',
+            'id', 'name', 'updated_at',
             'age_ranges', 'genders', 'parents', 'targeting',
             'ad_creations',
         )
@@ -311,7 +311,7 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
     class Meta:
         model = CampaignCreation
         fields = (
-            'id', 'name',
+            'id', 'name', 'updated_at',
             'start', 'end', 'budget', 'languages',
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'video_networks', 'delivery_method', 'video_ad_format',
@@ -327,11 +327,12 @@ class StatField(SerializerMethodField):
 
 
 class AccountCreationListSerializer(ModelSerializer):
+    is_changed = BooleanField()
     is_optimization_active = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     status = SerializerMethodField()
-    start = StatField()
-    end = StatField()
+    start = SerializerMethodField()
+    end = SerializerMethodField()
     impressions = StatField()
     video_views = StatField()
     cost = StatField()
@@ -346,16 +347,36 @@ class AccountCreationListSerializer(ModelSerializer):
     def get_is_optimization_active(*_):
         return True
 
-    def get_status(self, obj):
-        stats = self.stats.get(obj.id)
-        if stats:
-            statuses = stats.get("statuses")
-            if statuses:
-                for s in Campaign.SERVING_STATUSES:
-                    if s in statuses:
-                        return s.capitalize()
+    def get_start(self, obj):
+        settings = self.settings.get(obj.id)
+        if settings:
+            return settings['start']
+        else:
+            return self.stats.get(obj.id, {}).get("start")
+
+    def get_end(self, obj):
+        settings = self.settings.get(obj.id)
+        if settings:
+            return settings['end']
+        else:
+            return self.stats.get(obj.id, {}).get("end")
+
+    @staticmethod
+    def get_status(obj):
+        if obj.is_ended:
+            s = "ended"
+        elif obj.is_paused:
+            s = "paused"
+        elif obj.account:
+            s = "running"
+        elif obj.is_approved:
+            s = "approved"
+        else:
+            s = "pending"
+        return s.capitalize()
 
     def __init__(self, instance=None, *args, **kwargs):
+        self.settings = {}
         self.stats = {}
         self.daily_chart = defaultdict(list)
         if args:
@@ -366,12 +387,18 @@ class AccountCreationListSerializer(ModelSerializer):
             else:
                 ids = [args[0].id]
 
+            settings = CampaignCreation.objects.filter(
+                account_creation_id__in=ids
+            ).values('account_creation_id').order_by('account_creation_id').annotate(
+                start=Min("start"), end=Max("end"),
+            )
+            self.settings = {s['account_creation_id']: s for s in settings}
+
             data = Campaign.objects.filter(
                 account__account_creation_id__in=ids
             ).values('account__account_creation_id').order_by('account__account_creation_id').annotate(
                 start=Min("start_date"),
                 end=Max("end_date"),
-                statuses=ConcatAggregate("status", distinct=True),
                 **base_stats_aggregate
             )
             for i in data:

@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
@@ -23,6 +24,9 @@ class TargetingListTestCase(ExtendedAPITestCase):
             id="1", name="",
             campaign_creation=campaign_creation,
         )
+        AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())
+        account.refresh_from_db()
+        self.assertEqual(account.is_changed, False)
         return ad_group_creation
 
     def test_success_get(self):

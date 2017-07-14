@@ -93,7 +93,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'campaign_creations', 'updated_at',
+                'id', 'name', 'updated_at', 'campaign_creations', 'updated_at',
                 'is_ended', 'is_approved', 'is_paused',
             }
         )
@@ -101,7 +101,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name', 'start', 'end',
+                'id', 'name', 'updated_at', 'start', 'end',
                 'budget', 'delivery_method',  'video_ad_format', 'video_networks', 'languages',
                 'frequency_capping', 'ad_schedule_rules', 'location_rules',
                 'devices',
@@ -198,7 +198,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'ad_creations',
+                'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
                 'targeting',
             }
