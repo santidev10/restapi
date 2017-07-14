@@ -967,9 +967,9 @@ class PerformanceAccountCampaignsListApiView(ListAPIView):
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = Campaign.objects.filter(
-            account__account_creation__id=pk,
-            account__account_creation__owner=self.request.user,
-        )
+            account__account_creations__id=pk,
+            account__account_creations__owner=self.request.user,
+        ).order_by("name", "id").distinct()
         return queryset
 
 

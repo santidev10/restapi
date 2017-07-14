@@ -69,9 +69,9 @@ class AccountCreation(UniqueItem):
     aw_manager_id = models.CharField(
         max_length=15, null=True,  blank=True,
     )
-    account = models.OneToOneField(
-        "aw_reporting.Account", related_name='account_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
+    account = models.ForeignKey(
+        "aw_reporting.Account", related_name='account_creations',
+        null=True, blank=True,
     )
     is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
