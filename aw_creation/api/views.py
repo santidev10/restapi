@@ -1,4 +1,6 @@
+# pylint: disable=import-error
 from apiclient.discovery import build
+# pylint: enable=import-error
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \

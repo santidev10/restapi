@@ -1,7 +1,9 @@
 """
 Feedback api serializers module
 """
-from rest_framework.serializers import Serializer
+import phonenumbers
+
+from rest_framework.serializers import Serializer, ValidationError
 from rest_framework.fields import CharField, EmailField
 
 
@@ -13,5 +15,12 @@ class ContactMessageSendSerializer(Serializer):
     email = EmailField(max_length=255, required=True)
     subject = CharField(max_length=100, required=True)
     message = CharField(required=True)
-    company = CharField(max_length=100, required=False)
-    phone = CharField(max_length=30, required=False)
+    company = CharField(max_length=100, required=True)
+    phone = CharField(max_length=30, required=True)
+
+    def validate_phone(self, value):
+        try:
+            phonenumbers.parse(value)
+        except phonenumbers.NumberParseException:
+            raise ValidationError("Incorrect phone number format")
+        return value

@@ -12,7 +12,9 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.utils import timezone
 
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 
 from utils.models import Timestampable
 
@@ -91,8 +93,6 @@ class BaseSegment(Timestampable):
 
     def obtain_singledb_data(self):
         ids = list(self.get_related_ids())
-        if not ids:
-            return []
         return self.singledb_method(ids=ids, top=3, minidash=1)
 
     @task

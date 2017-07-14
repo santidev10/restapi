@@ -72,8 +72,10 @@ class Query(models.Model):
     @classmethod
     def create_from_aw_response(cls, query, response):
         # models
+        # pylint: disable=no-member
         interest_relation = KeyWord.interests.through
         query_relation = KeyWord.queries.through
+        # pylint: enable=no-member
 
         # get ids
         interest_ids = set(
@@ -141,11 +143,11 @@ class Query(models.Model):
 
 class KeyWord(BaseModel):
     text = models.CharField(max_length=250, primary_key=True)
-
     interests = models.ManyToManyField(Interest)
     queries = models.ManyToManyField(Query, related_name="keywords")
     average_cpc = models.FloatField(null=True)
     competition = models.FloatField(null=True)
+    updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
 

@@ -211,7 +211,7 @@ EMAIL_PORT = 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # this is default development key
-YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
+YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
 SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
 
@@ -243,6 +243,13 @@ LANDING_CONTACTS = {
         'chf.team@sigma.software',
     ],
 }
+
+REGISTRATION_ACTION_EMAIL_ADDRESSES = [
+    "yuriy.matso@channelfactory.com",
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
 
 try:
     from .local_settings import *

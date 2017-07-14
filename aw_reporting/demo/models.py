@@ -1,8 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 from aw_reporting.models import *
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+# pylint: enable=import-error
 
 logger = logging.getLogger(__name__)
 

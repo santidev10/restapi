@@ -7,7 +7,9 @@ from django.db.models import Avg
 @task
 def update_keywords_stats(data):
     from .models import KeyWord, Interest
+    # pylint: disable=no-member
     interest_relation = KeyWord.interests.through
+    # pylint: enable=no-member
 
     for k in data:
         try:
@@ -58,7 +60,9 @@ def update_keywords_stats(data):
 @task
 def update_kw_list_stats(obj, _kw_class):
     cum_counter = Counter()
+    # pylint: disable=no-member
     kw_querry = obj.keywords.through.objects.filter(keywordslist_id=obj.id)
+    # pylint: enable=no-member
     kw_ids = kw_querry.values_list('keyword__text', flat=True)
     count_data = kw_querry.aggregate(average_volume=Avg('keyword__search_volume'),
                                      average_cpc=Avg('keyword__average_cpc'),
