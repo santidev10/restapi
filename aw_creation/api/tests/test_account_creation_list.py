@@ -22,6 +22,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_post(self):
+        for uid, name in ((1000, "English"), (1003, "Spanish")):
+            Language.objects.get_or_create(id=uid, name=name)
+
         url = reverse("aw_creation_urls:account_creation_list")
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
@@ -46,6 +49,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'video_networks', 'video_ad_format', 'delivery_method',
             }
         )
+        self.assertEqual(len(campaign_creation['languages']), 2)
 
         ad_group_creation = campaign_creation['ad_group_creations'][0]
         self.assertEqual(

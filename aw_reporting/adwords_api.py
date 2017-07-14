@@ -180,3 +180,29 @@ def get_all_customers(client, page_size=1000, limit=None):
             break
 
     return customers
+
+
+def create_customer_account(manager_id, refresh_token, name, currency_code, timezone):
+    client = get_web_app_client(
+        client_customer_id=manager_id,
+        refresh_token=refresh_token,
+    )
+    managed_customer_service = client.GetService(
+        'ManagedCustomerService', version=API_VERSION,
+    )
+    operations = [
+        {
+            'operator': 'ADD',
+            'operand': {
+                'name': name,
+                'currencyCode': currency_code,
+                'dateTimeZone': timezone,
+            }
+        }
+    ]
+    accounts = managed_customer_service.mutate(operations)
+
+    for account in accounts['value']:
+        return account['customerId']  # I expect only one result
+
+    logger.error("Unexpected acc creation response:{}".format(accounts))

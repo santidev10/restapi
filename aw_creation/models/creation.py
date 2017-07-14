@@ -216,6 +216,8 @@ class CampaignCreation(CommonTargetingItem):
         null=True, blank=True, max_digits=10, decimal_places=2,
     )
 
+    DEFAIL_LANGIAGES = (1000)
+
     languages = models.ManyToManyField(
         'Language', related_name='campaigns', default=default_languages)
 

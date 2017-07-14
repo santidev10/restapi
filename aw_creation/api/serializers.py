@@ -375,7 +375,7 @@ class AccountCreationListSerializer(ModelSerializer):
             s = "pending"
         return s.capitalize()
 
-    def __init__(self, instance=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.settings = {}
         self.stats = {}
         self.daily_chart = defaultdict(list)
@@ -395,8 +395,8 @@ class AccountCreationListSerializer(ModelSerializer):
             self.settings = {s['account_creation_id']: s for s in settings}
 
             data = Campaign.objects.filter(
-                account__account_creation_id__in=ids
-            ).values('account__account_creation_id').order_by('account__account_creation_id').annotate(
+                account__account_creations__id__in=ids
+            ).values('account__account_creations__id').order_by('account__account_creations__id').annotate(
                 start=Min("start_date"),
                 end=Max("end_date"),
                 **base_stats_aggregate
@@ -404,13 +404,14 @@ class AccountCreationListSerializer(ModelSerializer):
             for i in data:
                 dict_norm_base_stats(i)
                 dict_calculate_stats(i)
-                self.stats[i['account__account_creation_id']] = i
+                self.stats[i['account__account_creations__id']] = i
 
             # data for weekly charts
-            account_id_key = "ad_group__campaign__account__account_creation_id"
+            account_id_key = "ad_group__campaign__account__account_creations__id"
             group_by = (account_id_key, "date")
+
             daily_stats = AdGroupStatistic.objects.filter(
-                ad_group__campaign__account_id__in=ids
+                ad_group__campaign__account__account_creations__id__in=ids
             ).values(*group_by).order_by(*group_by).annotate(
                 views=Sum("video_views")
             )
@@ -419,7 +420,7 @@ class AccountCreationListSerializer(ModelSerializer):
                     dict(label=s['date'], value=s['views'])
                 )
 
-        super(AccountCreationListSerializer, self).__init__(instance, *args, **kwargs)
+        super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
 
     class Meta:
         model = AccountCreation

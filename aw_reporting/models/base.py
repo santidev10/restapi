@@ -228,6 +228,13 @@ class Account(models.Model):
         return "Account: {}".format(self.name)
 
     @classmethod
+    def user_mcc_objects(cls, user):
+        qs = Account.objects.filter(
+            mcc_permissions__aw_connection__user_relations__user=user
+        ).order_by('id').distinct()
+        return qs
+
+    @classmethod
     def user_objects(cls, user):
         manager_ids = set(
             Account.objects.filter(

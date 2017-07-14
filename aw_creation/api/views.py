@@ -21,14 +21,15 @@ from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
-    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning
+    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning, default_languages
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
-    Topic, Audience, Account
+    Topic, Audience, Account, AWConnection
+from aw_reporting.adwords_api import create_customer_account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -339,6 +340,7 @@ class AccountCreationListApiView(ListAPIView):
         ]
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
+
         return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
 
     def get_queryset(self, **filters):
@@ -425,6 +427,9 @@ class AccountCreationListApiView(ListAPIView):
                 ad_group_creation=ad_group_creation,
             )
 
+        for language in default_languages():
+            campaign_creation.languages.add(language)
+
         data = AccountCreationSetupSerializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)
 
@@ -452,9 +457,48 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)
         return queryset
 
+    @staticmethod
+    def account_creation(account_creation, mcc_account, connection):
+
+        aw_id = create_customer_account(
+            mcc_account.id, connection.refresh_token,
+            account_creation.name, mcc_account.currency_code, mcc_account.timezone,
+        )
+        # save to db
+        customer = Account.objects.create(
+            id=aw_id,
+            name=account_creation.name,
+            currency_code=mcc_account.currency_code,
+            timezone=mcc_account.timezone,
+        )
+        customer.managers.add(mcc_account)
+        account_creation.account = customer
+        account_creation.save()
+
+        return customer
+
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        data = request.data
+        # approve rules
+        if "is_approved" in data:
+            if data["is_approved"]:
+                if not instance.is_approved:  # create account
+                    mcc_account = Account.user_mcc_objects(request.user).first()
+                    if mcc_account:
+                        connection = AWConnection.objects.filter(
+                            mcc_permissions__account=mcc_account,
+                            user_relations__user=request.user,
+                        ).first()
+                        self.account_creation(instance, mcc_account, connection)
+                    else:
+                        return Response(status=HTTP_400_BAD_REQUEST,
+                                        data=dict(error="You have no connected MCC account"))
+
+            elif instance.account:
+                return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="You cannot disapprove a running account"))
+
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial
         )
