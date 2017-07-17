@@ -44,7 +44,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             {
                 'id', 'name', 'targeting', 'updated_at',
                 'age_ranges', 'genders', 'parents',
-                'ad_creations',
+                'ad_creations', 'max_rate',
             }
         )
 

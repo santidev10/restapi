@@ -33,11 +33,11 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             value="2.2"
         )
         AdGroupCreation.objects.create(
-            name="AdGroup without tuning",
+            name="AdGroup without tuning", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            name="AdGroup with tuning",
+            name="AdGroup with tuning", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         AdGroupOptimizationTuning.objects.create(
@@ -46,7 +46,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             value="12.345",
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            name="Second AdGroup with tuning",
+            name="Second AdGroup with tuning", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         AdGroupOptimizationTuning.objects.create(
@@ -60,7 +60,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation,
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            name="AdGroup with tuning",
+            name="AdGroup with tuning", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         AdGroupOptimizationTuning.objects.create(
@@ -74,7 +74,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             value="2.2",
         )
         AdGroupCreation.objects.create(
-            name="AdGroup without tuning",
+            name="AdGroup without tuning", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         return account_creation

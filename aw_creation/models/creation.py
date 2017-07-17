@@ -66,9 +66,7 @@ class AccountCreation(UniqueItem):
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations")
-    aw_manager_id = models.CharField(
-        max_length=15, null=True,  blank=True,
-    )
+
     account = models.ForeignKey(
         "aw_reporting.Account", related_name='account_creations',
         null=True, blank=True,
@@ -89,11 +87,11 @@ class AccountCreation(UniqueItem):
     def get_aws_code(self):
         if self.account_id:
             lines = []
-            for c in self.campaign_managements.filter(is_approved=True):
+            for c in self.campaign_managements.all():
                 lines.append(c.get_aws_code())
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.version)
+                    self.account_id, self.updated_at)
             )
             return " ".join(lines)
 
@@ -215,8 +213,6 @@ class CampaignCreation(CommonTargetingItem):
     budget = models.DecimalField(
         null=True, blank=True, max_digits=10, decimal_places=2,
     )
-
-    DEFAIL_LANGIAGES = (1000)
 
     languages = models.ManyToManyField(
         'Language', related_name='campaigns', default=default_languages)
@@ -373,55 +369,55 @@ class CampaignCreation(CommonTargetingItem):
 
     @property
     def campaign_is_paused(self):
-        return self.account_management.is_paused or self.account_management.is_ended
+        am = self.account_management
+        return am.is_paused or am.is_ended or am.is_deleted
 
     def get_aws_code(self):
 
         lines = [
-            "var campaign = createOrUpdateCampaign('{}', '{}', {}, '{}', "
-            "'{}', {}, '{}', '{}', {}, {}, {}, {}, {}, {}, {});".format(
-                self.id,
-                self.unique_name,
-                self.budget,
-                self.start.strftime("%Y-%m-%d"),
-                "cpm"
-                if self.video_ad_format == CampaignCreation.BUMPER_AD
-                else "cpv",
-                'true' if self.campaign_is_paused else 'false',
-                self.start.strftime("%Y%m%d"),
-                self.end.strftime("%Y%m%d"),
-                self.video_networks,
-                list(self.languages.values_list('id', flat=True)),
-                self.devices,
-                [
-                    "{} {} {} {} {}".format(
-                        WEEKDAYS[s.day - 1].upper(), s.from_hour,
-                        s.from_minute, s.to_hour, s.to_minute
-                    ) for s in self.ad_schedule_rules.all()
-                ],
-                {
-                    f["event_type"]:f
-                    for f in self.frequency_capping.all().values(
-                        "event_type", "level", "time_unit", "limit"
-                    )
-                },
-                list(
-                    self.location_rules.filter(
-                        geo_target_id__isnull=False
-                    ).values_list("geo_target_id", flat=True)
-                ),
-                [
-                    " ".join(
-                        ("{}".format(l.latitude).rstrip('0'),
-                         "{}".format(l.longitude).rstrip('0'),
-                         str(l.radius), l.radius_units)
-                    ) for l in self.location_rules.filter(
-                        radius__gte=0, latitude__isnull=False,
-                        longitude__isnull=False)
-                ],
+            "var campaign = createOrUpdateCampaign({});".format(
+                json.dumps(dict(
+                    id=self.id,
+                    name=self.unique_name,
+                    budget=self.budget,
+                    start_for_creation=self.start.strftime("%Y-%m-%d"),
+                    budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
+                    is_paused='true' if self.campaign_is_paused else 'false',
+                    start=self.start.strftime("%Y%m%d"),
+                    end=self.end.strftime("%Y%m%d"),
+                    video_networks=self.video_networks,
+                    lang_ids=list(self.languages.values_list('id', flat=True)),
+                    devices=self.devices,
+                    schedules=[
+                        "{} {} {} {} {}".format(
+                            WEEKDAYS[s.day - 1].upper(), s.from_hour,
+                            s.from_minute, s.to_hour, s.to_minute
+                        ) for s in self.ad_schedule_rules.all()
+                    ],
+                    freq_caps={
+                        f["event_type"]: f
+                        for f in self.frequency_capping.all(
+                        ).values("event_type", "level", "time_unit", "limit")
+                    },
+                    locations=list(
+                        self.location_rules.filter(
+                            geo_target_id__isnull=False
+                        ).values_list("geo_target_id", flat=True)
+                    ),
+                    proximities=[
+                        " ".join(
+                            ("{}".format(l.latitude).rstrip('0'),
+                             "{}".format(l.longitude).rstrip('0'),
+                             str(l.radius), l.radius_units)
+                        ) for l in self.location_rules.filter(radius__gte=0,
+                                                              latitude__isnull=False,
+                                                              longitude__isnull=False)
+                    ],
+                    content_exclusions=self.content_exclusions,
+                ))
             )
         ]
-        for ag in self.ad_group_managements.filter(is_approved=True):
+        for ag in self.ad_group_managements.all():
             code = ag.get_aws_code()
             if code:
                 lines.append(code)
@@ -436,6 +432,7 @@ def save_campaign_receiver(sender, instance, created, **_):
 
 class AdGroupCreation(CommonTargetingItem):
 
+    max_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     campaign_creation = models.ForeignKey(
         CampaignCreation, related_name="ad_group_creations",
     )
@@ -466,36 +463,47 @@ class AdGroupCreation(CommonTargetingItem):
                 values = [int(i) for i in values]
             return values
 
-        kwargs = (
-            self.max_rate,
-            self.genders,
-            self.parents,
-            self.age_ranges,
-            qs_to_list(channels.filter(is_negative=False)),
-            qs_to_list(channels.filter(is_negative=True)),
-            qs_to_list(videos.filter(is_negative=False)),
-            qs_to_list(videos.filter(is_negative=True)),
-            qs_to_list(topics.filter(is_negative=False), to_int=True),
-            qs_to_list(topics.filter(is_negative=True), to_int=True),
-            qs_to_list(interests.filter(is_negative=False), to_int=True),
-            qs_to_list(interests.filter(is_negative=True), to_int=True),
-            qs_to_list(keywords.filter(is_negative=False)),
-            qs_to_list(keywords.filter(is_negative=True)),
+        cp = self.campaign_management
+        params = dict(
+            id=self.id,
+            name=self.unique_name,
+            ad_format="VIDEO_{}".format(cp.video_ad_format),
+            cpv=self.max_rate,
+            genders=self.genders or cp.genders,
+            parents=self.parents or cp.parents,
+            ages=self.age_ranges or cp.age_ranges,
+            channels=qs_to_list(channels.filter(is_negative=False)),
+            channels_negative=qs_to_list(channels.filter(is_negative=True)),
+            videos=qs_to_list(videos.filter(is_negative=False)),
+            videos_negative=qs_to_list(videos.filter(is_negative=True)),
+            topics=qs_to_list(topics.filter(is_negative=False), to_int=True),
+            topics_negative=qs_to_list(topics.filter(is_negative=True), to_int=True),
+            interests=qs_to_list(interests.filter(is_negative=False), to_int=True),
+            interests_negative=qs_to_list(interests.filter(is_negative=True), to_int=True),
+            keywords=qs_to_list(keywords.filter(is_negative=False)),
+            keywords_negative=qs_to_list(keywords.filter(is_negative=True)),
         )
         lines = [
-            "var ad_group = createOrUpdateAdGroup(campaign, "
-            "'{}', '{}', 'VIDEO_{}', {});".format(
-                self.id,
-                self.unique_name,
-                self.campaign_management.video_ad_format,
-                ", ".join(str(i) for i in kwargs)
-            ),
-            "createOrUpdateVideoAd(ad_group, '{}', '{}', '{}');".format(
-                self.video_url,
-                self.display_url if self.display_url else "",
-                self.final_url if self.final_url else "",
+            "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
+               json.dumps(params)
             ),
         ]
+        for ad in self.ad_creations.all():
+            ad_params = dict(
+                id=ad.id,
+                name=ad.unique_name,
+                video_url=ad.video_url,
+                display_url=ad.display_url or ad.video_url,
+                final_url=ad.final_url or ad.video_url,
+                tracking_template=ad.tracking_template,
+                custom_params={p['name']: p['value'] for p in ad.custom_params},
+            )
+            lines.append(
+                "createOrUpdateVideoAd(ad_group, {});".format(
+                    json.dumps(ad_params)
+                )
+            )
+
         return " ".join(lines)
 
 # these targeting fields can be empty at the ad_group level,

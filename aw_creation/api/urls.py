@@ -126,14 +126,13 @@ urlpatterns = [
         name="optimization_ad_group_targeting_import_lists"),
 
     # aws script endpoints
-    # url(r'^aw_creation_changed_accounts_list/(?P<manager_id>\d+)/$',
-    #     views.AwCreationChangedAccountsListAPIView.as_view(),
-    #     name="aw_creation_changed_accounts_list"),
-    # url(r'^aw_creation_code/(?P<account_id>\d+)/$',
-    #     views.AwCreationCodeRetrieveAPIView.as_view(),
-    #     name="aw_creation_code"),
-    # url(r'^aw_creation_changes_status/'
-    #     r'(?P<account_id>\d+)/(?P<version>[\da-f]+)/$',
-    #     views.AwCreationChangesStatusAPIView.as_view(),
-    #     name="aw_creation_changes_status"),
+    url(r'^aw_creation_changed_accounts_list/(?P<manager_id>\d+)/$',
+        views.AwCreationChangedAccountsListAPIView.as_view(),
+        name="aw_creation_changed_accounts_list"),
+    url(r'^aw_creation_code/(?P<account_id>\d+)/$',
+        views.AwCreationCodeRetrieveAPIView.as_view(),
+        name="aw_creation_code"),
+    url(r'^aw_creation_changes_status/(?P<account_id>\d+)/$',
+        views.AwCreationChangesStatusAPIView.as_view(),
+        name="aw_creation_changes_status"),
 ]

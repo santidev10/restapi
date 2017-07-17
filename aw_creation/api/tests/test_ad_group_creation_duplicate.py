@@ -48,7 +48,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name',  'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                'targeting',
+                'targeting', 'max_rate',
             }
         )
         self.assertEqual(

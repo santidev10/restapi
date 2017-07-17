@@ -7,6 +7,7 @@ from django.db.models import Avg, Value, Count, Case, When, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveAPIView
@@ -2188,3 +2189,51 @@ class OptimizationTargetingApiView(OptimizationFiltersApiView,
         for i in items:
             i.update(stats)
             i['bigger_than_value'] = (i.get(kpi) or 0) > (value or 0)
+
+
+class AwCreationChangedAccountsListAPIView(GenericAPIView):
+    permission_classes = tuple()
+
+    @staticmethod
+    def get(*_, **kwargs):
+        manager_id = kwargs.get('manager_id')
+        ids = AccountCreation.objects.filter(
+            account__managers__id=manager_id,
+            account_id__isnull=False,
+            updated_at__gte=F("sync_at"),
+            is_managed=True,
+        ).values_list(
+            "account_id", flat=True
+        ).order_by("account_id").distinct()
+        return Response(data=ids)
+
+
+class AwCreationCodeRetrieveAPIView(GenericAPIView):
+    permission_classes = tuple()
+
+    @staticmethod
+    def get(*_, **kwargs):
+        try:
+            account_management = AccountCreation.objects.get(
+                account_id=kwargs.get('account_id'),
+                is_managed=True,
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        with open('aw_campaign_creation/aws_functions.js') as f:
+            functions = f.read()
+        code = functions + account_management.get_aws_code()
+        return Response(data={'code': code})
+
+
+class AwCreationChangesStatusAPIView(GenericAPIView):
+    permission_classes = tuple()
+
+    @staticmethod
+    def patch(request, account_id, **_):
+        updated_at = request.data.get("updated_at")
+        AccountCreation.objects.filter(
+            account_id=account_id, updated_at__lte=updated_at,
+        ).update(sync_at=timezone.now())
+        return Response()

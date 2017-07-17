@@ -521,6 +521,7 @@ class DemoAdGroup(BaseDemo):
         data = dict(
             id=self.id,
             name=self.name,
+            max_rate=0.07,
             updated_at=self.now,
             ad_creations=[i.creation_details for i in self.children],
             targeting={t[0]: self.get_targeting_list(t[0])

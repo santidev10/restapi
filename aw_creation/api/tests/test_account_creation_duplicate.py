@@ -200,7 +200,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad_group_data.keys()),
             {
                 'id', 'updated_at', 'name', 'ad_creations',
-                'genders', 'parents', 'age_ranges',
+                'genders', 'parents', 'age_ranges', 'max_rate',
                 # targeting
                 'targeting',
             }

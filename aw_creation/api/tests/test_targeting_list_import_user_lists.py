@@ -19,7 +19,7 @@ class TargetingListImportFromUserListTestCase(ExtendedAPITestCase):
             account_creation=account, name="", 
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            id="1", name="",
+            id="1", name="", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())

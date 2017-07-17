@@ -153,7 +153,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'updated_at', 'ad_creations',
+                'id', 'name', 'updated_at', 'ad_creations', 'max_rate',
                 'genders', 'parents', 'age_ranges',
                 # targeting
                 'targeting',

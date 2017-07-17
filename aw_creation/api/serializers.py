@@ -173,7 +173,7 @@ class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSeri
     class Meta:
         model = AdGroupCreation
         fields = (
-            'id', 'name', 'updated_at',
+            'id', 'name', 'updated_at', 'max_rate',
             'age_ranges', 'genders', 'parents', 'targeting',
             'ad_creations',
         )

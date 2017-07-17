@@ -29,53 +29,53 @@ function createCampaign(name, budget, start, type) {
 
 var DEVICE_NAMES = {HighEndMobile: 'MOBILE_DEVICE', Desktop: 'DESKTOP_DEVICE', Tablet: 'TABLET_DEVICE'};
 
-function createOrUpdateCampaign(uid, name, budget, start_for_creation, budget_type, is_paused, start, end, video_networks, lang_ids, devices, schedules, freq_caps, locations, proximities){
+function createOrUpdateCampaign(params){
 
-    var campaign = getOrCreateCampaign(uid, name, budget, start_for_creation, budget_type);
+    var campaign = getOrCreateCampaign(params.id, params.name, params.budget, params.start_for_creation, params.budget_type);
 
-    campaign.setName(name);
+    campaign.setName(params.name);
 
-    if(is_paused){
+    if(params.is_paused){
         campaign.pause();
     }else{
         campaign.enable();
     }
 
     var start_date = date_to_string(campaign.getStartDate());
-    if(start_date != start){
-        campaign.setStartDate(start);
+    if(start_date != params.start){
+        campaign.setStartDate(params.start);
     }
     var end_date = date_to_string(campaign.getEndDate());
-    if(end_date != end){
-        campaign.setEndDate(end);
+    if(end_date != params.end){
+        campaign.setEndDate(params.end);
     }
 
     var budget_obj = campaign.getBudget();
-    budget_obj.setAmount(budget);
+    budget_obj.setAmount(params.budget);
 
-    campaign.setNetworks(video_networks);
+    campaign.setNetworks(params.video_networks);
 
 
     var targeting = campaign.targeting();
     var languages = targeting.languages().get();
     while(languages.hasNext()) {
         var lang = languages.next();
-        var index = lang_ids.indexOf(lang.getId());
+        var index = params.lang_ids.indexOf(lang.getId());
         if(index == -1){
             lang.remove();
         }else{
-            lang_ids.splice(index, 1);
+            params.lang_ids.splice(index, 1);
         }
     }
-    for(var i=0;i<lang_ids.length;i++){
-        campaign.addLanguage(lang_ids[i]);
+    for(var i=0;i<params.lang_ids.length;i++){
+        campaign.addLanguage(params.lang_ids[i]);
     }
 
     var platforms = targeting.platforms().get();
     while(platforms.hasNext()) {
         var platform = platforms.next();
         var name = DEVICE_NAMES[platform.getName()];
-        if(devices.indexOf(name) == -1){
+        if(params.devices.indexOf(name) == -1){
             platform.setBidModifier(0);
         }else{
             platform.setBidModifier(1);
@@ -86,15 +86,15 @@ function createOrUpdateCampaign(uid, name, budget, start_for_creation, budget_ty
     while (ad_schedules.hasNext()) {
         var s = ad_schedules.next();
         var repr = [s.getDayOfWeek(), s.getStartHour(), s.getStartMinute(), s.getEndHour(), s.getEndMinute()].join(" ");
-        var index = schedules.indexOf(repr);
+        var index = params.schedules.indexOf(repr);
         if(index == -1){
             s.remove();
         }else{
-            schedules.splice(index, 1);
+            params.schedules.splice(index, 1);
         }
     }
-    for(var i=0;i<schedules.length;i++){
-        var s = schedules[i].split(" ");;
+    for(var i=0;i<params.schedules.length;i++){
+        var s = params.schedules[i].split(" ");;
         campaign.addAdSchedule({
             dayOfWeek: s[0],
             startHour: parseInt(s[1]),
@@ -110,7 +110,7 @@ function createOrUpdateCampaign(uid, name, budget, start_for_creation, budget_ty
     for(var i=0;i<cap_types.length;i++){
         var type = cap_types[i];
         var isc = saved_caps.getFrequencyCapFor(type);
-        var im_cap = freq_caps[type];
+        var im_cap = params.freq_caps[type];
         if(!isc || !im_cap || isc.getLevel() != im_cap['level'] || isc.getTimeUnit() != im_cap['time_unit'] || isc.getLimit() != im_cap['limit']){
             if(isc){
                 Logger.log("Drop freq cap " + type);
@@ -127,15 +127,15 @@ function createOrUpdateCampaign(uid, name, budget, start_for_creation, budget_ty
     var target_locations = targeting.targetedLocations().get();
     while (target_locations.hasNext()) {
         var item = target_locations.next();
-        var index = locations.indexOf(item.getId());
+        var index = params.locations.indexOf(item.getId());
         if(index == -1){  // item isn't in the list
             item.remove();
         }else{
-            locations.splice(index, 1);
+            params.locations.splice(index, 1);
         }
     }
-    for(var i=0;i<locations.length;i++){
-        campaign.addLocation(locations[i]);
+    for(var i=0;i<params.locations.length;i++){
+        campaign.addLocation(params.locations[i]);
     }
 
 
@@ -143,17 +143,30 @@ function createOrUpdateCampaign(uid, name, budget, start_for_creation, budget_ty
     while (target_proximities.hasNext()) {
         var item = target_proximities.next();
         var repr = [item.getLatitude(), item.getLongitude(), item.getRadius(), item.getRadiusUnits()].join(" ");
-        var index = proximities.indexOf(repr);
+        var index = params.proximities.indexOf(repr);
         if(index == -1){
             item.remove();
         }else{
-            proximities.splice(index, 1);
+            params.proximities.splice(index, 1);
         }
     }
-    for(var i=0;i<proximities.length;i++){
-        Logger.log(proximities[i]);
-        var args = proximities[i].split(" ");
+    for(var i=0;i<params.proximities.length;i++){
+        var args = params.proximities[i].split(" ");
         campaign.addProximity(parseFloat(args[0]), parseFloat(args[1]), parseInt(args[2]), args[3]);
+    }
+
+    var exclusions_iterator = targeting.excludedContentLabels().get();
+    while(exclusions_iterator.hasNext()) {
+        var exclusion = exclusions_iterator.next();
+        var index = params.content_exclusions.indexOf(exclusion.getId());
+        if(index == -1){
+            exclusion.remove();
+        }else{
+            params.content_exclusions.splice(index, 1);
+        }
+    }
+    for(var i=0;i<params.content_exclusions.length;i++){
+        campaign.excludeContentLabel(params.content_exclusions[i]);
     }
 
     return campaign;
@@ -189,43 +202,43 @@ function getOrCreateAdGroup(campaign, uid, name, ad_format, cpv){
     return ad_group
 }
 
-function createOrUpdateAdGroup(campaign, uid, name, ad_format, cpv, genders, parents, ages, channels, channels_negative, videos, videos_negative, topics, topics_negative, interests, interests_negative, keywords, keywords_negative){
-    var ad_group = getOrCreateAdGroup(campaign, uid, name, ad_format, cpv);
+function createOrUpdateAdGroup(campaign, params){
+    var ad_group = getOrCreateAdGroup(campaign, params.uid, params.name, params.ad_format, params.cpv);
 
-    ad_group.setName(name);
+    ad_group.setName(params.name);
     var bidding = ad_group.bidding();
-    bidding.setCpv(cpv);
+    bidding.setCpv(params.cpv);
 
     var targeting = ad_group.videoTargeting();
     //genders
-    var iterator = targeting.excludedGenders().withCondition("GenderType IN [" + genders.join() + "]").get();
+    var iterator = targeting.excludedGenders().withCondition("GenderType IN [" + params.genders.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.include();
     }
-    var iterator = targeting.genders().withCondition("GenderType NOT_IN [" + genders.join() + "]").get();
+    var iterator = targeting.genders().withCondition("GenderType NOT_IN [" + params.genders.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.exclude();
     }
     // parental
-    var iterator = targeting.excludedParentalStatuses().withCondition("ParentType IN [" + parents.join() + "]").get();
+    var iterator = targeting.excludedParentalStatuses().withCondition("ParentType IN [" + params.parents.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.include();
     }
-    var iterator = targeting.parentalStatuses().withCondition("ParentType NOT_IN [" + parents.join() + "]").get();
+    var iterator = targeting.parentalStatuses().withCondition("ParentType NOT_IN [" + params.parents.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.exclude();
     }
     // age ranges
-    var iterator = targeting.excludedAges().withCondition("AgeRangeType IN [" + ages.join() + "]").get();
+    var iterator = targeting.excludedAges().withCondition("AgeRangeType IN [" + params.ages.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.include();
     }
-    var iterator = targeting.ages().withCondition("AgeRangeType NOT_IN [" + ages.join() + "]").get();
+    var iterator = targeting.ages().withCondition("AgeRangeType NOT_IN [" + params.ages.join() + "]").get();
     while (iterator.hasNext()) {
         var item = iterator.next();
         item.exclude();
@@ -235,71 +248,71 @@ function createOrUpdateAdGroup(campaign, uid, name, ad_format, cpv, genders, par
     var selector = targeting.youTubeChannels().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = channels.indexOf(item.getChannelId());
+        var index = params.channels.indexOf(item.getChannelId());
         if(index == -1){
             item.remove();
         }else{
-            channels.splice(index, 1);
+            params.channels.splice(index, 1);
         }
     }
     var selector = targeting.excludedYouTubeChannels().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = channels_negative.indexOf(item.getChannelId());
+        var index = params.channels_negative.indexOf(item.getChannelId());
         if(index == -1){
             item.remove();
         }else{
-            channels_negative.splice(index, 1);
+            params.channels_negative.splice(index, 1);
         }
     }
 
     var builder = targeting.newYouTubeChannelBuilder();
-    for(var i=0;i<channels.length;i++){
-        builder.withChannelId(channels[i]).build();
+    for(var i=0;i<params.channels.length;i++){
+        builder.withChannelId(params.channels[i]).build();
     }
-    for(var i=0;i<channels_negative.length;i++){
-        builder.withChannelId(channels_negative[i]).exclude();
+    for(var i=0;i<params.channels_negative.length;i++){
+        builder.withChannelId(params.channels_negative[i]).exclude();
     }
 
     // videos, videos_negative
     var selector = targeting.youTubeVideos().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = videos.indexOf(item.getVideoId());
+        var index = params.videos.indexOf(item.getVideoId());
         if(index == -1){
             item.remove();
         }else{
-            videos.splice(index, 1);
+            params.videos.splice(index, 1);
         }
     }
     var selector = targeting.excludedYouTubeVideos().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = videos_negative.indexOf(item.getVideoId());
+        var index = params.videos_negative.indexOf(item.getVideoId());
         if(index == -1){
             item.remove();
         }else{
-            videos_negative.splice(index, 1);
+            params.videos_negative.splice(index, 1);
         }
     }
 
     var builder = targeting.newYouTubeVideoBuilder();
-    for(var i=0;i<videos.length;i++){
-        builder.withVideoId(videos[i]).build();
+    for(var i=0;i<params.videos.length;i++){
+        builder.withVideoId(params.videos[i]).build();
     }
-    for(var i=0;i<videos_negative.length;i++){
-        builder.withVideoId(videos_negative[i]).exclude();
+    for(var i=0;i<params.videos_negative.length;i++){
+        builder.withVideoId(params.videos_negative[i]).exclude();
     }
 
     //topics, topics_negative
     var selector = targeting.topics().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = topics.indexOf(item.getTopicId());
+        var index = params.topics.indexOf(item.getTopicId());
         if(index == -1){
             item.remove();
         }else{
-            topics.splice(index, 1);
+            params.topics.splice(index, 1);
         }
     }
     var selector = targeting.excludedTopics().get();
@@ -309,76 +322,76 @@ function createOrUpdateAdGroup(campaign, uid, name, ad_format, cpv, genders, par
         if(index == -1){
             item.remove();
         }else{
-            topics_negative.splice(index, 1);
+            params.topics_negative.splice(index, 1);
         }
     }
 
     var builder = targeting.newTopicBuilder();
-    for(var i=0;i<topics.length;i++){
-        builder.withTopicId(topics[i]).build();
+    for(var i=0;i<params.topics.length;i++){
+        builder.withTopicId(params.topics[i]).build();
     }
-    for(var i=0;i<topics_negative.length;i++){
-        builder.withTopicId(topics_negative[i]).exclude();
+    for(var i=0;i<params.topics_negative.length;i++){
+        builder.withTopicId(params.topics_negative[i]).exclude();
     }
 
     // interests, interests_negative
     var selector = targeting.audiences().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = interests.indexOf(parseInt(item.getAudienceId()));
+        var index = params.interests.indexOf(parseInt(item.getAudienceId()));
         if(index == -1){
             item.remove();
         }else{
-            interests.splice(index, 1);
+            params.interests.splice(index, 1);
         }
     }
     var selector = targeting.excludedAudiences().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = interests_negative.indexOf(parseInt(item.getAudienceId()));
+        var index = params.interests_negative.indexOf(parseInt(item.getAudienceId()));
         if(index == -1){
             item.remove();
         }else{
-            interests_negative.splice(index, 1);
+            params.interests_negative.splice(index, 1);
         }
     }
 
     var builder = targeting.newAudienceBuilder().withAudienceType('USER_INTEREST');
-    for(var i=0;i<interests.length;i++){
-        builder.withAudienceId(interests[i]).build();
+    for(var i=0;i<params.interests.length;i++){
+        builder.withAudienceId(params.interests[i]).build();
     }
-    for(var i=0;i<interests_negative.length;i++){
-        builder.withAudienceId(interests_negative[i]).exclude();
+    for(var i=0;i<params.interests_negative.length;i++){
+        builder.withAudienceId(params.interests_negative[i]).exclude();
     }
 
     //keywords, keywords_negative
     var selector = targeting.keywords().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = keywords.indexOf(item.getText());
+        var index = params.keywords.indexOf(item.getText());
         if(index == -1){
             item.remove();
         }else{
-            keywords.splice(index, 1);
+            params.keywords.splice(index, 1);
         }
     }
     var selector = targeting.excludedKeywords().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = keywords_negative.indexOf(item.getText());
+        var index = params.keywords_negative.indexOf(item.getText());
         if(index == -1){
             item.remove();
         }else{
-            keywords_negative.splice(index, 1);
+            params.keywords_negative.splice(index, 1);
         }
     }
 
     var builder = targeting.newKeywordBuilder();
-    for(var i=0;i<keywords.length;i++){
-        builder.withText(keywords[i]).build();
+    for(var i=0;i<params.keywords.length;i++){
+        builder.withText(params.keywords[i]).build();
     }
-    for(var i=0;i<keywords_negative.length;i++){
-        builder.withText(keywords_negative[i]).exclude();
+    for(var i=0;i<params.keywords_negative.length;i++){
+        builder.withText(params.keywords_negative[i]).exclude();
     }
 
     return ad_group;
@@ -405,27 +418,33 @@ function getOrCreateVideo(video_id){
     return video;
 }
 
-function createOrUpdateVideoAd(ad_group, video_url, display_url, final_url){
-    display_url = display_url || video_url
-    final_url = final_url || video_url
-    var video_id = getYTId(video_url);
-    var video = getOrCreateVideo(video_id);
+function createOrUpdateVideoAd(ad_group, params){
+    var video_id = getYTId(params.video_url);
+    var video = getOrCreateVideo(params.video_id);
 
     var not_exists = true;
     var iterator = ad_group.videoAds().get();
+
+    var iterator = ad_group.videoAds().withCondition('Name CONTAINS "#' + params.id + '"').get();
+
     while (iterator.hasNext()) {
         var video_ad = iterator.next();
-        var current_final_url = video_ad.urls().getFinalUrl();
-        if(video_ad.getVideoId() == video_id && video_ad.getDisplayUrl() == display_url && current_final_url == final_url){
+        var urls = video_ad.urls();
+        if(video_ad.getVideoId() == video_id && video_ad.getDisplayUrl() == params.display_url &&
+            video_ad.getName() == params.name && urls.getFinalUrl() == params.final_url &&
+            urls.getCustomParameters() == params.custom_params &&
+            urls.getTrackingTemplate() == params.tracking_template
+        ){
             not_exists = false;
         }else{
             video_ad.remove();
         }
     }
     if(not_exists){
-        var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName("InStreamAd")
-        .withDisplayUrl(display_url)
-        .withFinalUrl(final_url).withVideo(video).build();
+        var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
+        .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
+        .withTrackingTemplate(params.tracking_template)
+        .withFinalUrl(params.final_url).withVideo(params.video).build();
     }
 }
 
