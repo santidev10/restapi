@@ -178,7 +178,7 @@ function getOrCreateAdGroup(campaign, uid, name, ad_format, cpv){
         var ad_group = ad_groups.next();
     }else{
         campaign.newVideoAdGroupBuilder().withName(name).withAdGroupType(ad_format).withCpv(cpv).build();
-        Utilities.sleep(5000);
+        Utilities.sleep(30000);
         ad_group = getOrCreateAdGroup(campaign, uid, name, ad_format, cpv);
 
         // targeting initialization
@@ -203,7 +203,7 @@ function getOrCreateAdGroup(campaign, uid, name, ad_format, cpv){
 }
 
 function createOrUpdateAdGroup(campaign, params){
-    var ad_group = getOrCreateAdGroup(campaign, params.uid, params.name, params.ad_format, params.cpv);
+    var ad_group = getOrCreateAdGroup(campaign, params.id, params.name, params.ad_format, params.cpv);
 
     ad_group.setName(params.name);
     var bidding = ad_group.bidding();
@@ -420,42 +420,42 @@ function getOrCreateVideo(video_id){
 
 function createOrUpdateVideoAd(ad_group, params){
     var video_id = getYTId(params.video_url);
-    var video = getOrCreateVideo(params.video_id);
+    var video = getOrCreateVideo(video_id);
 
     var not_exists = true;
     var iterator = ad_group.videoAds().get();
 
-    var iterator = ad_group.videoAds().withCondition('Name CONTAINS "#' + params.id + '"').get();
-
     while (iterator.hasNext()) {
         var video_ad = iterator.next();
-        var urls = video_ad.urls();
-        if(video_ad.getVideoId() == video_id && video_ad.getDisplayUrl() == params.display_url &&
-            video_ad.getName() == params.name && urls.getFinalUrl() == params.final_url &&
-            urls.getCustomParameters() == params.custom_params &&
-            urls.getTrackingTemplate() == params.tracking_template
-        ){
-            not_exists = false;
-        }else{
-            video_ad.remove();
+        if(video_ad.getName().indexOf("#" + params.id) != -1){
+            var urls = video_ad.urls();
+            if(video_ad.getVideoId() == video_id && params.display_url.indexOf(video_ad.getDisplayUrl()) != -1
+               && video_ad.getName() == params.name && urls.getFinalUrl() == params.final_url
+               && JSON.stringify(urls.getCustomParameters()) == JSON.stringify(params.custom_params)
+               && urls.getTrackingTemplate() == params.tracking_template
+            ){
+                not_exists = false;
+            }else{
+                video_ad.remove();
+            }
         }
     }
     if(not_exists){
         var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
         .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
         .withTrackingTemplate(params.tracking_template)
-        .withFinalUrl(params.final_url).withVideo(params.video).build();
+        .withFinalUrl(params.final_url).withVideo(video).build();
     }
 }
 
-function sendChangesStatus(account_id, code){
+function sendChangesStatus(account_id, updated_at){
     if (!AdWordsApp.getExecutionInfo().isPreview()) {
         var options = {
             muteHttpExceptions : true,
             method: "PATCH",
-            payload:{is_changed:false},
+            payload:{updated_at: updated_at},
         };
-        var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGES_STATUS + account_id + '/' + code + '/', options);
+        var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGES_STATUS_PATH + account_id + '/', options);
         if(resp.getResponseCode() == 200) {
             return resp.getContentText();
         }else{

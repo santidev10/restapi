@@ -19,10 +19,10 @@ function get_account_id(){
   return AdWordsApp.currentAccount().getCustomerId().split('-').join('');
 }
 
-var IQ_API_HOST = "https://iq-dev.channelfactory.com/api/v1/";
+var IQ_API_HOST = "https://saas.channelfactory.com/api/v1/";
 var CHANGED_ACCOUNTS = "aw_creation_changed_accounts_list/";
 var CODE_ENDPOINT = "aw_creation_code/";
-var CHANGES_STATUS = "aw_creation_changes_status/";
+var CHANGES_STATUS_PATH = "aw_creation_changes_status/";
 
 
 function get_changed_account_ids(manager_id){

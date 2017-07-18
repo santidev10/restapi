@@ -132,7 +132,7 @@ urlpatterns = [
     url(r'^aw_creation_code/(?P<account_id>\d+)/$',
         views.AwCreationCodeRetrieveAPIView.as_view(),
         name="aw_creation_code"),
-    url(r'^aw_creation_changes_status/(?P<account_id>\d+)/$',
-        views.AwCreationChangesStatusAPIView.as_view(),
-        name="aw_creation_changes_status"),
+    url(r'^aw_creation_change_status/(?P<account_id>\d+)/$',
+        views.AwCreationChangeStatusAPIView.as_view(),
+        name="aw_creation_change_status"),
 ]

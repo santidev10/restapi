@@ -87,13 +87,17 @@ class AccountCreation(UniqueItem):
     def get_aws_code(self):
         if self.account_id:
             lines = []
-            for c in self.campaign_managements.all():
+            for c in self.campaign_creations.filter(
+                start__isnull=False,
+                end__isnull=False,
+                budget__isnull=False,
+            ):
                 lines.append(c.get_aws_code())
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(
                     self.account_id, self.updated_at)
             )
-            return " ".join(lines)
+            return "\n".join(lines)
 
 
 def default_languages():
@@ -323,31 +327,31 @@ class CampaignCreation(CommonTargetingItem):
     VIDEO_RATING_DV_MA_CONTENT_LABEL = "VIDEO_RATING_DV_MA"
     VIDEO_NOT_YET_RATED_CONTENT_LABEL = "VIDEO_NOT_YET_RATED"
     CONTENT_LABELS = (
-        ("ADULTISH", "Sexually suggestive content"),
-        ("AFE", "Error pages"),
-        ("BELOW_THE_FOLD", "Below the fold placements"),
-        ("CONFLICT", "Military & international conflict"),
-        ("DP", "Parked domains"),
+        # ("ADULTISH", "Sexually suggestive content"),
+        # ("AFE", "Error pages"),
+        # ("BELOW_THE_FOLD", "Below the fold placements"),
+        # ("CONFLICT", "Military & international conflict"),
+        # ("DP", "Parked domains"),
         ("EMBEDDED_VIDEO", "Embedded video"),
         ("GAMES", "Games"),
-        ("JUVENILE", "Juvenile, gross & bizarre content"),
-        ("PROFANITY", "Profanity & rough language"),
+        # ("JUVENILE", "Juvenile, gross & bizarre content"),
+        # ("PROFANITY", "Profanity & rough language"),
 
-        ("UGC_FORUMS", "Forums"),
-        ("UGC_IMAGES", "Image-sharing pages"),
-        ("UGC_SOCIAL", "Social networks"),
-        ("UGC_VIDEOS", "Video-sharing pages"),
+        # ("UGC_FORUMS", "Forums"),
+        # ("UGC_IMAGES", "Image-sharing pages"),
+        # ("UGC_SOCIAL", "Social networks"),
+        # ("UGC_VIDEOS", "Video-sharing pages"),
 
-        ("SIRENS", "Crime, police & emergency"),
-        ("TRAGEDY", "Death & tragedy"),
-        ("VIDEO", "Video"),
+        # ("SIRENS", "Crime, police & emergency"),
+        # ("TRAGEDY", "Death & tragedy"),
+        # ("VIDEO", "Video"),
         ("VIDEO_RATING_DV_G", "Content rating: G"),
         ("VIDEO_RATING_DV_PG", "Content rating: PG"),
         ("VIDEO_RATING_DV_T", "Content rating: T"),
         (VIDEO_RATING_DV_MA_CONTENT_LABEL, "Content rating: MA"),
         (VIDEO_NOT_YET_RATED_CONTENT_LABEL, "Content rating: not yet rated"),
         ("LIVE_STREAMING_VIDEO", "Live streaming video"),
-        ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
+        # ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
     )
     content_exclusions_raw = models.CharField(
         max_length=100,
@@ -369,8 +373,8 @@ class CampaignCreation(CommonTargetingItem):
 
     @property
     def campaign_is_paused(self):
-        am = self.account_management
-        return am.is_paused or am.is_ended or am.is_deleted
+        ac = self.account_creation
+        return ac.is_paused or ac.is_ended or ac.is_deleted
 
     def get_aws_code(self):
 
@@ -379,7 +383,7 @@ class CampaignCreation(CommonTargetingItem):
                 json.dumps(dict(
                     id=self.id,
                     name=self.unique_name,
-                    budget=self.budget,
+                    budget=str(self.budget),
                     start_for_creation=self.start.strftime("%Y-%m-%d"),
                     budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
                     is_paused='true' if self.campaign_is_paused else 'false',
@@ -417,11 +421,11 @@ class CampaignCreation(CommonTargetingItem):
                 ))
             )
         ]
-        for ag in self.ad_group_managements.all():
+        for ag in self.ad_group_creations.filter(max_rate__isnull=False):
             code = ag.get_aws_code()
             if code:
                 lines.append(code)
-        return " ".join(lines)
+        return "\n".join(lines)
 
 
 @receiver(post_save, sender=CampaignCreation,
@@ -461,17 +465,17 @@ class AdGroupCreation(CommonTargetingItem):
             values = qs.values_list('criteria', flat=True)
             if to_int:
                 values = [int(i) for i in values]
-            return values
+            return list(values)
 
-        cp = self.campaign_management
+        campaign = self.campaign_creation
         params = dict(
             id=self.id,
             name=self.unique_name,
-            ad_format="VIDEO_{}".format(cp.video_ad_format),
-            cpv=self.max_rate,
-            genders=self.genders or cp.genders,
-            parents=self.parents or cp.parents,
-            ages=self.age_ranges or cp.age_ranges,
+            ad_format="VIDEO_{}".format(campaign.video_ad_format),
+            cpv=str(self.max_rate),
+            genders=self.genders or campaign.genders,
+            parents=self.parents or campaign.parents,
+            ages=self.age_ranges or campaign.age_ranges,
             channels=qs_to_list(channels.filter(is_negative=False)),
             channels_negative=qs_to_list(channels.filter(is_negative=True)),
             videos=qs_to_list(videos.filter(is_negative=False)),
@@ -488,7 +492,9 @@ class AdGroupCreation(CommonTargetingItem):
                json.dumps(params)
             ),
         ]
-        for ad in self.ad_creations.all():
+        for ad in self.ad_creations.exclude(
+            video_url="",
+        ):
             ad_params = dict(
                 id=ad.id,
                 name=ad.unique_name,
@@ -504,7 +510,7 @@ class AdGroupCreation(CommonTargetingItem):
                 )
             )
 
-        return " ".join(lines)
+        return "\n".join(lines)
 
 # these targeting fields can be empty at the ad_group level,
 # because they are defined at the campaign level

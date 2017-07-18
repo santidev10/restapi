@@ -2200,8 +2200,9 @@ class AwCreationChangedAccountsListAPIView(GenericAPIView):
         ids = AccountCreation.objects.filter(
             account__managers__id=manager_id,
             account_id__isnull=False,
-            updated_at__gte=F("sync_at"),
             is_managed=True,
+        ).exclude(
+            sync_at__gte=F("updated_at"),
         ).values_list(
             "account_id", flat=True
         ).order_by("account_id").distinct()
@@ -2212,28 +2213,28 @@ class AwCreationCodeRetrieveAPIView(GenericAPIView):
     permission_classes = tuple()
 
     @staticmethod
-    def get(*_, **kwargs):
+    def get(request, account_id, **_):
         try:
             account_management = AccountCreation.objects.get(
-                account_id=kwargs.get('account_id'),
+                account_id=account_id,
                 is_managed=True,
             )
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        with open('aw_campaign_creation/aws_functions.js') as f:
+        with open('aw_creation/aws_functions.js') as f:
             functions = f.read()
-        code = functions + account_management.get_aws_code()
+        code = functions + "\n" + account_management.get_aws_code()
         return Response(data={'code': code})
 
 
-class AwCreationChangesStatusAPIView(GenericAPIView):
+class AwCreationChangeStatusAPIView(GenericAPIView):
     permission_classes = tuple()
 
     @staticmethod
     def patch(request, account_id, **_):
         updated_at = request.data.get("updated_at")
         AccountCreation.objects.filter(
-            account_id=account_id, updated_at__lte=updated_at,
+            account_id=account_id, updated_at__lte=updated_at, is_managed=True,
         ).update(sync_at=timezone.now())
         return Response()
