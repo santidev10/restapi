@@ -69,8 +69,9 @@ def update_kw_list_stats(obj, _kw_class):
                                      competition=Avg('keyword__competition'))
     obj_kw = _kw_class.objects.filter(text__in=kw_ids).order_by('-search_volume')
     for item in obj_kw:
-        for date_search in item.monthly_searches:
-            cum_counter.update(**{date_search['label']: date_search['value']})
+        if item.monthly_searches:
+            for date_search in item.monthly_searches:
+                cum_counter.update(**{date_search['label']: date_search['value']})
     top_keywords = obj_kw[:10]
 
     obj.num_keywords = kw_querry.count()
