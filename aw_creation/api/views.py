@@ -539,13 +539,12 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        request.data['account_creation'] = account_creation.id
-        if not request.data.get('name'):
-            count = self.get_queryset().count()
-            request.data['name'] = "Campaign {}".format(count + 1)
-
-        serializer = AppendCampaignCreationSerializer(
-            data=request.data)
+        count = self.get_queryset().count()
+        data = dict(
+            name="Campaign {}".format(count + 1),
+            account_creation=account_creation.id,
+        )
+        serializer = AppendCampaignCreationSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         campaign_creation = serializer.save()
 
@@ -704,13 +703,12 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         except CampaignCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        request.data['campaign_creation'] = campaign_creation.id
-        if not request.data.get('name'):
-            count = self.get_queryset().count()
-            request.data['name'] = "Ad Group {}".format(count + 1)
-
-        serializer = AppendAdGroupCreationSetupSerializer(
-            data=request.data)
+        count = self.get_queryset().count()
+        data = dict(
+            name="Ad Group {}".format(count + 1),
+            campaign_creation=campaign_creation.id,
+        )
+        serializer = AppendAdGroupCreationSetupSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         ad_group_creation = serializer.save()
 
@@ -775,13 +773,12 @@ class AdCreationListSetupApiView(ListCreateAPIView):
         except AdGroupCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        request.data['ad_group_creation'] = ad_group_creation.id
-        if not request.data.get('name'):
-            count = self.get_queryset().count()
-            request.data['name'] = "Ad {}".format(count + 1)
-
-        serializer = AppendAdCreationSetupSerializer(
-            data=request.data)
+        count = self.get_queryset().count()
+        data = dict(
+            name="Ad {}".format(count + 1),
+            ad_group_creation=ad_group_creation.id,
+        )
+        serializer = AppendAdCreationSetupSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save()
 

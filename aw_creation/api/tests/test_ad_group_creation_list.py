@@ -64,9 +64,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         campaign = account.children[0]
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign.id,))
-        response = self.client.post(
-            url, json.dumps({}), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
@@ -81,11 +79,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
-        post_data = dict()
-
-        response = self.client.post(
-            url, json.dumps(post_data), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.perform_get_format_check([response.data])
 

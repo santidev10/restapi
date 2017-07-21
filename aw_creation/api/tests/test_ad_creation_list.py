@@ -70,9 +70,7 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         ad_group = campaign.children[0]
         url = reverse("aw_creation_urls:ad_creation_list_setup",
                       args=(ad_group.id,))
-        response = self.client.post(
-            url, json.dumps({}), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):

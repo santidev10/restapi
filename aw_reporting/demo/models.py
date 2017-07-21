@@ -637,7 +637,7 @@ class DemoCampaign(BaseDemo):
             ],
             content_exclusions=[
                 dict(id=uid, name=n)
-                for uid, n in CampaignCreation.CONTENT_LABELS[19:21]
+                for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
             ],
         )
         return data

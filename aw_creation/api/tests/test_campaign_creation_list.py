@@ -70,11 +70,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))
-        post_data = dict()
-
-        response = self.client.post(
-            url, json.dumps(post_data), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
