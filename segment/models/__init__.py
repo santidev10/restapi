@@ -25,9 +25,9 @@ def get_segment_model_by_type(segment_type):
             return model
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
-def total_update_segments(forced=False):
+def total_update_segments():
     SegmentVideo.objects.update_youtube_segments()
     for model in SEGMENT_MODELS.fget():
         if model == SegmentVideo:
             continue
-        model.objects.update_statistics(forced=forced)
+        model.objects.update_statistics()
