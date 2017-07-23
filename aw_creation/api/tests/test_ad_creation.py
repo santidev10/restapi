@@ -55,7 +55,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',  'updated_at',
+                'id', 'name',  'updated_at', 'video_thumbnail',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'thumbnail', 'custom_params',
             }
@@ -104,15 +104,42 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         ad = self.create_ad(**defaults)
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))
+        with open('aw_creation/fixtures/video_thumbnail.png', 'rb') as fp:
+            data = dict(
+                name="Ad Group  1",
+                final_url="https://wtf.com",
+                tracking_template="https://track.com?why",
+                custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
+                video_thumbnail=fp,
+            )
+            response = self.client.patch(url, data, format='multipart')
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ad.refresh_from_db()
+
+        self.assertEqual(ad.name, data['name'])
+        self.assertEqual(ad.final_url, data['final_url'])
+        self.assertEqual(ad.tracking_template, data['tracking_template'])
+        self.assertEqual(ad.custom_params_raw, data['custom_params'])
+        self.assertIsNotNone(ad.video_thumbnail)
+
+    def test_success_update_json(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad = self.create_ad(**defaults)
+        url = reverse("aw_creation_urls:ad_creation_setup",
+                      args=(ad.id,))
         data = dict(
             name="Ad Group  1",
             final_url="https://wtf.com",
             tracking_template="https://track.com?why",
             custom_params=[{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}],
         )
-        response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
-        )
+        response = self.client.patch(url, json.dumps(data), content_type='application/json')
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         ad.refresh_from_db()
 

@@ -1,4 +1,5 @@
 from django.db.models import Min, Max, Sum, Q
+from django.http import QueryDict
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
@@ -11,6 +12,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
 from decimal import Decimal
 from collections import OrderedDict, defaultdict
 from datetime import datetime
+import json
 import re
 import logging
 
@@ -140,7 +142,7 @@ class AdCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdCreation
         fields = (
-            'id', 'name', 'updated_at',
+            'id', 'name', 'updated_at', 'video_thumbnail',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params',
             'thumbnail',
@@ -558,10 +560,13 @@ class AdCreationUpdateSerializer(ModelSerializer):
         exclude = ('ad_group_creation',)
 
     def validate(self, data):
+        if 'custom_params' in data:
+            custom_params = data['custom_params']
+            if isinstance(custom_params, list) and len(custom_params) == 1 \
+               and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
+                custom_params = json.loads(custom_params[0])
+            data['custom_params'] = custom_params
 
-        # approving process
-        custom_params = data.get("custom_params")
-        if custom_params:
             if len(custom_params) > 3:
                 raise ValidationError(
                     'You cannot use more than 3 custom parameters'

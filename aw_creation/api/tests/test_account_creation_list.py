@@ -69,7 +69,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(ad_group_creation['ad_creations'][0].keys()),
             {
                 'id', 'name', 'updated_at', 'tracking_template', 'final_url',
-                'video_url', 'thumbnail', 'custom_params', 'display_url',
+                'video_url', 'thumbnail', 'custom_params', 'display_url', 'video_thumbnail',
             }
         )
 

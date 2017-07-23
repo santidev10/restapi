@@ -380,6 +380,7 @@ class DemoAd(BaseDemo):
             tracking_template="https://www.custom_tracking_service.us/?ad=XEngrr79Jg",
             custom_params=[{"name": "ad", "value": "demo_ad"},
                            {"name": "provider", "value": "ad_words"}],
+            video_thumbnail=None,
         )
         return data
 

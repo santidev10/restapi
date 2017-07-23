@@ -46,7 +46,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(data.keys()),
             {
                 'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail',
+                'video_url', 'display_url', 'final_url', 'thumbnail', 'video_thumbnail',
             }
         )
 

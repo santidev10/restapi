@@ -800,7 +800,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = AdCreationUpdateSerializer(
-            instance, data=request.data, partial=partial)
+            instance, data=request.data, partial=partial,
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return self.retrieve(self, request, *args, **kwargs)
@@ -844,7 +845,7 @@ class AccountCreationDuplicateApiView(APIView):
         "name", "genders_raw", "parents_raw", "age_ranges_raw",
     )
     ad_fields = (
-        "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params",
+        "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'video_thumbnail',
     )
     targeting_fields = (
         "criteria", "type", "is_negative",

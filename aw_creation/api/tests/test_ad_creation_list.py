@@ -14,7 +14,7 @@ from unittest.mock import patch
 class AdCreationListAPITestCase(ExtendedAPITestCase):
 
     detail_keys = {
-        'id', 'name', 'updated_at', 'video_url', 'final_url',
+        'id', 'name', 'updated_at', 'video_url', 'final_url', 'video_thumbnail',
         'tracking_template', 'custom_params', 'display_url', 'thumbnail',
     }
 

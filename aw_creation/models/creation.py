@@ -530,6 +530,7 @@ class AdCreation(UniqueItem):
         AdGroupCreation, related_name="ad_creations",
     )
     video_url = models.URLField(validators=[VideoUrlValidator])
+    video_thumbnail = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, blank=True, null=True)
     final_url = models.URLField(blank=True, null=True)
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
