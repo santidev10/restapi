@@ -167,14 +167,15 @@ class AccountCreationDuplicateApiView:
                         a_duplicate = AdGroupCreation.objects.create(
                             campaign_creation=c_duplicate, **ag_data
                         )
-                        for list_type, items in a["targeting"].items():
-                            for i in items:
-                                TargetingItem.objects.create(
-                                    ad_group_creation=a_duplicate,
-                                    type=list_type,
-                                    is_negative=i['is_negative'],
-                                    criteria=i['criteria'],
-                                )
+                        for list_type, item_groups in a["targeting"].items():
+                            for k, items in item_groups.items():
+                                for i in items:
+                                    TargetingItem.objects.create(
+                                        ad_group_creation=a_duplicate,
+                                        type=list_type,
+                                        is_negative=i['is_negative'],
+                                        criteria=i['criteria'],
+                                    )
                         for ad in a['ad_creations']:
                             AdCreation.objects.create(
                                 ad_group_creation=a_duplicate,

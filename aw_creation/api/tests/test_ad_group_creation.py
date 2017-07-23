@@ -109,16 +109,54 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                      AdGroupCreation.PARENT_UNDETERMINED],
             age_ranges=[AdGroupCreation.AGE_RANGE_55_64,
                         AdGroupCreation.AGE_RANGE_65_UP],
+            targeting={
+                "keyword": {"positive": ["spam", "ham"], "negative": ["ai", "neural nets"]},
+                "video": {"positive": ["iTKJ_itifQg"], "negative": ["1112yt"]},
+            }
         )
-        response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
-        )
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.patch(
+                url, json.dumps(data), content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         ad_group.refresh_from_db()
         self.assertEqual(ad_group.name, data['name'])
         self.assertEqual(set(ad_group.genders), set(data['genders']))
         self.assertEqual(set(ad_group.parents), set(data['parents']))
         self.assertEqual(set(ad_group.age_ranges), set(data['age_ranges']))
+        self.assertEqual(
+            set(
+                ad_group.targeting_items.filter(
+                    type="keyword", is_negative=False
+                ).values_list("criteria", flat=True)
+            ),
+            set(data['targeting']['keyword']['positive'])
+        )
+        self.assertEqual(
+            set(
+                ad_group.targeting_items.filter(
+                    type="keyword", is_negative=True
+                ).values_list("criteria", flat=True)
+            ),
+            set(data['targeting']['keyword']['negative'])
+        )
+        self.assertEqual(
+            set(
+                ad_group.targeting_items.filter(
+                    type="video", is_negative=False
+                ).values_list("criteria", flat=True)
+            ),
+            set(data['targeting']['video']['positive'])
+        )
+        self.assertEqual(
+            set(
+                ad_group.targeting_items.filter(
+                    type="video", is_negative=True
+                ).values_list("criteria", flat=True)
+            ),
+            set(data['targeting']['video']['negative'])
+        )
 
     def test_fail_delete_the_only(self):
         ad_group = self.create_ad_group(owner=self.user)

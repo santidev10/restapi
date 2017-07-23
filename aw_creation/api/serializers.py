@@ -1,16 +1,14 @@
 from django.db.models import Min, Max, Sum, Q
-from django.http import QueryDict
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, ValidationError, BooleanField
+    SerializerMethodField, ListField, ValidationError, BooleanField, DictField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, AdCreation
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
-    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, ConcatAggregate
+    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-from decimal import Decimal
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from datetime import datetime
 import json
 import re
@@ -160,15 +158,16 @@ class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSeri
 
     @staticmethod
     def get_targeting(obj):
-        targeting = {k[0]: [] for k in TargetingItem.TYPES}
-        items = obj.targeting_items.all().values(
-            'type', 'criteria', 'is_negative')
-        for i in items:
-            targeting[i['type']].append(i)
+        items = obj.targeting_items.all().values('type', 'criteria', 'is_negative')
 
-        for list_type, items in targeting.items():
-            if len(items):
-                add_targeting_list_items_info(items, list_type)
+        for t_type, _ in TargetingItem.TYPES:
+            t_items = list(filter(lambda e: e['type'] == t_type, items))
+            if t_items:
+                add_targeting_list_items_info(t_items, t_type)
+
+        targeting = {k[0]: {"positive": [], "negative": []} for k in TargetingItem.TYPES}
+        for item in items:
+            targeting[item['type']]["negative" if item['is_negative'] else "positive"].append(item)
 
         return targeting
 
@@ -537,6 +536,55 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
     genders = ListField()
     parents = ListField()
     age_ranges = ListField()
+    targeting = DictField()
+
+    def update(self, instance, validated_data):
+        instance = super(AdGroupCreationUpdateSerializer, self).update(instance, validated_data)
+
+        targeting = validated_data.get("targeting")
+        if targeting:
+            bulk_items = []
+            for list_type, item_lists in targeting.items():
+                for list_key, item_ids in item_lists.items():
+                    kwargs = dict(
+                        ad_group_creation=instance,
+                        type=list_type,
+                        is_negative=list_key == "negative",
+                    )
+                    queryset = TargetingItem.objects.filter(**kwargs)
+                    # delete items not in the list
+                    queryset.exclude(criteria__in=item_ids).delete()
+
+                    # insert new items
+                    existed_ids = queryset.values_list("criteria", flat=True)
+                    to_insert_ids = set(item_ids) - set(existed_ids)
+                    if to_insert_ids:
+                        bulk_items.extend(
+                            TargetingItem(criteria=uid, **kwargs) for uid in to_insert_ids
+                        )
+
+            if bulk_items:
+                TargetingItem.objects.bulk_create(bulk_items)
+
+        return instance
+
+    @staticmethod
+    def validate_targeting(value):
+        allowed_keys = set(t for t, _ in TargetingItem.TYPES)
+        error_text = 'Targeting items must be sent in the following format: ' \
+                     '{"keyword": {"positive": ["spam", "ham"], "negative": ["adult films"]}, ...}.\n' \
+                     'Allowed keys are %s' % allowed_keys
+        unknown_keys = value.keys() - allowed_keys
+        if unknown_keys:
+            raise ValidationError(error_text)
+        second_lvl_keys = {"positive", "negative"}
+        for v in value.values():
+            if not isinstance(v, dict) or set(v.keys()) != second_lvl_keys:
+                raise ValidationError(error_text)
+            for lists in v.values():
+                if not isinstance(lists, list):
+                    raise ValidationError(error_text)
+        return value
 
     class Meta:
         model = AdGroupCreation

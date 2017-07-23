@@ -56,7 +56,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
         self.assertEqual(
-            set(data['targeting']['keyword'][0]),
+            set(data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
 

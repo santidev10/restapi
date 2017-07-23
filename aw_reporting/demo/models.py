@@ -519,14 +519,27 @@ class DemoAdGroup(BaseDemo):
     @property
     def creation_details(self):
         from aw_creation.models import AdGroupCreation, TargetingItem
+
+        targeting = {}
+        for t, _ in TargetingItem.TYPES:
+            items = self.get_targeting_list(t)
+            positive = []
+            negative = []
+            for item in self.get_targeting_list(t):
+                if item['is_negative']:
+                    negative.append(item)
+                else:
+                    positive.append(item)
+            targeting[t] = {"positive": positive, "negative": negative}
+
+
         data = dict(
             id=self.id,
             name=self.name,
             max_rate=0.07,
             updated_at=self.now,
             ad_creations=[i.creation_details for i in self.children],
-            targeting={t[0]: self.get_targeting_list(t[0])
-                       for t in TargetingItem.TYPES},
+            targeting=targeting,
             age_ranges=[
                 dict(id=uid, name=n)
                 for uid, n in AdGroupCreation.AGE_RANGES

@@ -210,7 +210,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
         self.assertEqual(
-            set(ad_group_data['targeting']['keyword'][0]),
+            set(ad_group_data['targeting']['keyword']["negative"][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
 
