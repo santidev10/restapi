@@ -229,6 +229,43 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         return Response(data=self.format_item(items[0]))
 
 
+class ItemsFromSegmentIdsApiView(APIView):
+
+    def post(self, request, segment_type, **_):
+
+        method = "get_{}_item_ids".format(segment_type)
+        item_ids = getattr(self, method)(request.data)
+        items = [dict(criteria=uid) for uid in item_ids]
+        add_targeting_list_items_info(items, segment_type)
+
+        return Response(data=items)
+
+    @staticmethod
+    def get_video_item_ids(ids):
+        from segment.models import SegmentRelatedVideo
+        ids = SegmentRelatedVideo.objects.filter(
+            segment_id__in=ids
+        ).values_list("related_id", flat=True).order_by("related_id").distinct()
+        return ids
+
+    @staticmethod
+    def get_channel_item_ids(ids):
+        from segment.models import SegmentRelatedChannel
+        ids = SegmentRelatedChannel.objects.filter(
+            segment_id__in=ids
+        ).values_list("related_id", flat=True).order_by("related_id").distinct()
+        return ids
+
+    @staticmethod
+    def get_keyword_item_ids(ids):
+        from keyword_tool.models import KeyWord
+        ids = KeyWord.objects.filter(
+            text__isnull=False,
+            lists__in=ids,
+        ).values_list("text", flat=True).order_by("text").distinct()
+        return ids
+
+
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):
     page_size = 20
 

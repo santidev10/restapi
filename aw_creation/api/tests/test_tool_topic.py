@@ -22,7 +22,7 @@ class TopicToolTestCase(ExtendedAPITestCase):
         self.create_topic()
 
         # optimization_topic_tool
-        url = reverse("aw_creation_urls:optimization_topic_tool")
+        url = reverse("aw_creation_urls:setup_topic_tool")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -42,7 +42,7 @@ class TopicToolTestCase(ExtendedAPITestCase):
         self.create_topic("Parent#1", uid=20000)
 
         url = reverse(
-            "aw_creation_urls:optimization_topic_tool_export",
+            "aw_creation_urls:setup_topic_tool_export",
         )
         url = "{}?{}".format(
             str(url),
@@ -59,7 +59,7 @@ class TopicToolTestCase(ExtendedAPITestCase):
         children = parent_1.children.first()
 
         url = reverse(
-            "aw_creation_urls:optimization_topic_tool_export",
+            "aw_creation_urls:setup_topic_tool_export",
         )
         url = "{}?{}".format(
             str(url),

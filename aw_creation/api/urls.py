@@ -12,9 +12,8 @@ urlpatterns = [
     url(r'^youtube_video_search/(?P<query>.+)/$',
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
-    url(r'^youtube_video_from_url/(?P<url>.+)/$',
-        views.YoutubeVideoFromUrlApiView.as_view(),
-        name="youtube_video_from_url"),
+
+
 
     # <<< Setup
     url(r'^creation_options/$',
@@ -48,6 +47,14 @@ urlpatterns = [
     url(r'^ad_creation_setup/(?P<pk>\w+)/$',
         views.AdCreationSetupApiView.as_view(),
         name="ad_creation_setup"),
+    # for ad management
+    url(r'^youtube_video_from_url/(?P<url>.+)/$',
+        views.YoutubeVideoFromUrlApiView.as_view(),
+        name="youtube_video_from_url"),
+    # for targeting management
+    url(r'^items_from_segment_ids/(?P<segment_type>\w+)/$',
+        views.ItemsFromSegmentIdsApiView.as_view(),
+        name="items_from_segment_ids"),
 
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
@@ -96,19 +103,19 @@ urlpatterns = [
         name="optimization_targeting"),
 
     # tools
-    url(r'^optimization_topic_tool/$',
+    url(r'^setup_topic_tool/$',
         views.TopicToolListApiView.as_view(),
-        name="optimization_topic_tool"),
-    url(r'^optimization_topic_tool_export/$',
+        name="setup_topic_tool"),
+    url(r'^setup_topic_tool_export/$',
         views.TopicToolListExportApiView.as_view(),
-        name="optimization_topic_tool_export"),
+        name="setup_topic_tool_export"),
 
-    url(r'^optimization_audience_tool/$',
+    url(r'^setup_audience_tool/$',
         views.AudienceToolListApiView.as_view(),
-        name="optimization_audience_tool"),
-    url(r'^optimization_audience_tool_export/$',
+        name="setup_audience_tool"),
+    url(r'^setup_audience_tool_export/$',
         views.AudienceToolListExportApiView.as_view(),
-        name="optimization_audience_tool_export"),
+        name="setup_audience_tool_export"),
 
     # ad group targeting lists
     url(r'^optimization_ad_group_targeting/'
