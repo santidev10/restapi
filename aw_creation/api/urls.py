@@ -12,6 +12,9 @@ urlpatterns = [
     url(r'^youtube_video_search/(?P<query>.+)/$',
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
+    url(r'^youtube_video_from_url/(?P<url>.+)/$',
+        views.YoutubeVideoFromUrlApiView.as_view(),
+        name="youtube_video_from_url"),
 
     # <<< Setup
     url(r'^creation_options/$',

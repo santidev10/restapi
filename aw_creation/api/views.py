@@ -22,7 +22,7 @@ from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
-    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning, default_languages
+    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning, default_languages, get_yt_id_from_url
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
@@ -187,7 +187,9 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         thumbnails = snippet.get("thumbnails", {})
         thumbnail = thumbnails.get("high") if "high" in thumbnails \
             else thumbnails.get("default")
-        uid = data.get("id", {}).get("videoId")
+        uid = data.get("id", {})
+        if isinstance(uid, dict):
+            uid = uid.get("videoId")
         item = dict(
             id=uid,
             title=snippet.get("title"),
@@ -200,6 +202,29 @@ class YoutubeVideoSearchApiView(GenericAPIView):
             ),
         )
         return item
+
+
+class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
+    def get(self, request, url, **_):
+        yt_id = get_yt_id_from_url(url)
+        if not yt_id:
+            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
+
+        youtube = build(
+            "youtube", "v3",
+            developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
+        )
+        options = {
+            'id': yt_id,
+            'part': 'snippet',
+            'maxResults': 1,
+        }
+        results = youtube.videos().list(**options).execute()
+        items = results.get("items", [])
+        if not items:
+            return Response(status=HTTP_404_NOT_FOUND, data=dict(error="There is no such a video"))
+
+        return Response(data=self.format_item(items[0]))
 
 
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):
