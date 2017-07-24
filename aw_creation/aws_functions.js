@@ -418,6 +418,19 @@ function getOrCreateVideo(video_id){
     return video;
 }
 
+function getOrCreateImage(image_url){
+    var images = AdWordsApp.adMedia().media().withCondition("Type = IMAGE AND Name = '" + image_url + "'").get();
+    if(images.hasNext()){
+         var image = images.next();
+    }else{
+         var imageBlob = UrlFetchApp.fetch(image_url).getBlob();
+         var mediaOperation = AdWordsApp.adMedia().newImageBuilder()
+            .withName(image_url).withData(imageBlob).build();
+         var image = mediaOperation.getResult();
+    }
+    return image;
+}
+
 function createOrUpdateVideoAd(ad_group, params){
     var video_id = getYTId(params.video_url);
     var video = getOrCreateVideo(video_id);
@@ -433,6 +446,7 @@ function createOrUpdateVideoAd(ad_group, params){
                && video_ad.getName() == params.name && urls.getFinalUrl() == params.final_url
                && JSON.stringify(urls.getCustomParameters()) == JSON.stringify(params.custom_params)
                && urls.getTrackingTemplate() == params.tracking_template
+               && video_ad
             ){
                 not_exists = false;
             }else{
@@ -444,7 +458,13 @@ function createOrUpdateVideoAd(ad_group, params){
         var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
         .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
         .withTrackingTemplate(params.tracking_template)
-        .withFinalUrl(params.final_url).withVideo(video).build();
+        .withFinalUrl(params.final_url).withVideo(video);
+
+        if(params['video_thumbnail']){
+            var imageMedia = getOrCreateImage(params['video_thumbnail']);
+            ad_builder = ad_builder.withCompanionBanner(imageMedia);
+        }
+        ad_builder.build();
     }
 }
 

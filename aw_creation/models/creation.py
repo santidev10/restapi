@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-
+from PIL import Image
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
 from django.db import models
@@ -13,7 +13,7 @@ import re
 
 logger = logging.getLogger(__name__)
 
-
+VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
 BULK_CREATE_CAMPAIGNS_COUNT = 5
 BULK_CREATE_AD_GROUPS_COUNT = 5
 
@@ -493,14 +493,16 @@ class AdGroupCreation(CommonTargetingItem):
             ),
         ]
         for ad in self.ad_creations.exclude(
-            video_url="",
+            models.Q(video_url="") | models.Q(display_url="") | models.Q(display_url__isnull=True) |
+            models.Q(final_url="") | models.Q(final_url__isnull=True)
         ):
             ad_params = dict(
                 id=ad.id,
                 name=ad.unique_name,
                 video_url=ad.video_url,
-                display_url=ad.display_url or ad.video_url,
-                final_url=ad.final_url or ad.video_url,
+                video_thumbnail=ad.video_thumbnail.url if ad.video_thumbnail else None,
+                display_url=ad.display_url,
+                final_url=ad.final_url,
                 tracking_template=ad.tracking_template,
                 custom_params={p['name']: p['value'] for p in ad.custom_params},
             )
@@ -546,6 +548,15 @@ class AdCreation(UniqueItem):
 
     class Meta:
         ordering = ['-id']
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        super(AdCreation, self).save(force_insert, force_update, using, update_fields)
+
+        if self.video_thumbnail:
+            image = Image.open(self.video_thumbnail)
+            if VIDEO_AD_THUMBNAIL_SIZE != image.size:
+                image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
+                image.save(self.video_thumbnail.path)
 
 
 @receiver(post_save, sender=AdCreation,

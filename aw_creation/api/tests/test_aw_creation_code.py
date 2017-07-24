@@ -3,6 +3,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 
 class CreationCodeAPITestCase(AwReportingAPITestCase):
@@ -33,6 +34,13 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         AdCreation.objects.create(
             name="Spoke", ad_group_creation=ad_group_creation,
             video_url="https://www.youtube.com/watch?v=5HJyfoSZ2kw",
+            display_url="www.nasdaq.com",
+            final_url="https://www.nasdaq.com",
+            video_thumbnail=SimpleUploadedFile(
+                name='video_thumbnail.png',
+                content=open("aw_creation/fixtures/video_thumbnail.png", 'rb').read(),
+                content_type='image/png',
+            ),
             tracking_template="https://iq.channelfactory.com",
             custom_params_raw='[{"name": "name", "value": "value1"}]',
         )
@@ -46,7 +54,6 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-
         # with open("code.js", "w") as f:
         #     f.write(data['code'])
 
