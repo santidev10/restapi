@@ -457,7 +457,7 @@ class DemoAdGroup(BaseDemo):
     def view_through(self):
         return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
 
-    def get_targeting_list(self, list_type):
+    def get_targeting_list(self, list_type, sub_list_type=None):
         from aw_creation.models import TargetingItem
         items = []
         if list_type == TargetingItem.VIDEO_TYPE:
@@ -514,6 +514,9 @@ class DemoAdGroup(BaseDemo):
                 )
                 for n, i in enumerate(self.keyword)
             ]
+        if sub_list_type:
+            is_negative = sub_list_type == "negative"
+            items = list(filter(lambda i: i["is_negative"] == is_negative, items))
         return items
 
     @property

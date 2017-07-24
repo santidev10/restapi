@@ -154,8 +154,8 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
             )
 
         url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting_export",
-            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
+            "aw_creation_urls:ad_group_creation_targeting_export",
+            args=(ad_group.id, TargetingItem.KEYWORD_TYPE, "positive"),
         )
         url = "{}?{}".format(
             str(url),
@@ -164,24 +164,4 @@ class KeywordTargetingListTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
-        self.assertEqual(len(lines), 11)
-
-    def test_import_list(self):
-        ad_group = self.create_ad_group()
-
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting_import",
-            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
-        )
-        with open('aw_creation/fixtures/keywords.csv', 'rb') as fp:
-            response = self.client.post(url, {'file': fp},
-                                        format='multipart')
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        ad_group.campaign_creation.account_creation.refresh_from_db()
-        self.assertIs(
-            ad_group.campaign_creation.account_creation.is_changed,
-            True,
-        )
-
+        self.assertEqual(len(lines), 6)

@@ -1898,7 +1898,7 @@ class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
 
 
 @demo_view_decorator
-class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
+class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
     permission_classes = (IsAuthQueryTokenPermission,)
 
@@ -1909,13 +1909,13 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
 
     def get_data(self):
         queryset = self.get_queryset()
+        sub_list_type = self.kwargs["sub_list_type"]
+        queryset = queryset.filter(is_negative=sub_list_type == "negative")
         data = self.get_serializer(queryset, many=True).data
         self.add_items_info(data)
         return data
 
-    def get(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
+    def get(self, request, pk, list_type, sub_list_type, **_):
         data = self.get_data()
 
         def generator():
@@ -1925,28 +1925,25 @@ class AdGroupTargetingListExportApiView(TargetingListBaseAPIClass):
                 writer.writerow(line)
                 return output.getvalue()
 
-            fields = ['criteria', 'is_negative', 'name']
+            fields = ['criteria', 'name']
             yield to_line(fields)
             for item in data:
                 yield to_line(tuple(item.get(f) for f in fields))
+
         response = StreamingHttpResponse(generator(), content_type='text/csv')
-        filename = "ad_group_targeting_list_{}_{}_{}.csv".format(
-            datetime.now().strftime("%Y%m%d"), pk, list_type
+        filename = "targeting_list_{}_{}_{}_{}.csv".format(
+            datetime.now().strftime("%Y%m%d"), pk, list_type, sub_list_type
         )
         response['Content-Disposition'] = 'attachment; filename=' \
                                           '"{}"'.format(filename)
         return response
 
 
-@demo_view_decorator
-class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
-                                        DocumentImportBaseAPIView):
+class TargetingItemsImportApiView(DocumentImportBaseAPIView):
     parser_classes = (FileUploadParser,)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, list_type, **_):
 
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
         method = "import_{}_criteria".format(list_type)
         if not hasattr(self, method):
             return Response(
@@ -1970,65 +1967,23 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
 
             criteria_list.extend(getattr(self, method)(data))
 
-        if criteria_list:
-            existed_criteria = list(
-                self.get_queryset().filter(
-                    criteria__in=[i['criteria'] for i in criteria_list]
-                ).values_list('criteria', flat=True)
-            )
+        add_targeting_list_items_info(criteria_list, list_type)
 
-            to_create = []
-            for i in criteria_list:
-                criteria = str(i['criteria'])
-                if criteria not in existed_criteria:
-                    existed_criteria.append(criteria)
-                    to_create.append(i)
-
-            if to_create:
-                is_negative = request.GET.get('is_negative', False)
-                for i in to_create:
-                    if i.get('is_negative') is None:
-                        i['is_negative'] = is_negative
-                    i['ad_group_creation'] = pk
-                    i['type'] = list_type
-
-                serializer = AdGroupTargetingListUpdateSerializer(
-                    data=to_create, many=True)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-
-                try:
-                    ad_group_creation = AdGroupCreation.objects.get(
-                        pk=pk
-                    )
-                    ad_group_creation.save()
-                except AdGroupCreation.DoesNotExsist:
-                    pass
-
-        response = self.get(request, *args, **kwargs)
-        return response
+        return Response(criteria_list)
 
     @staticmethod
     def import_keyword_criteria(data):
         kws = []
         data = list(data)
         for line in data[1:]:
-            if len(line) > 1:
-                criteria, is_negative, *_ = line
-                if is_negative == "True":
-                    is_negative = True
-                elif is_negative == "False":
-                    is_negative = False
-                else:
-                    is_negative = None
-            elif len(line):
-                criteria, is_negative = line[0], None
+            if len(line):
+                criteria = line[0]
             else:
                 continue
 
             if re.search(r"\w+", criteria):
                 kws.append(
-                    dict(criteria=criteria, is_negative=is_negative)
+                    dict(criteria=criteria)
                 )
         return kws
 
@@ -2038,14 +1993,9 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         channel_pattern = re.compile(r"[\w-]{24}")
 
         for line in data:
-            criteria, is_negative = None, None
+            criteria = None
             if len(line) > 1:
                 first, second, *_ = line
-                if second is "True":
-                    is_negative = True
-                elif second is "False":
-                    is_negative = False
-
             elif len(line):
                 first, second = line[0], ""
             else:
@@ -2061,7 +2011,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
 
             if criteria:
                 channels.append(
-                    dict(criteria=criteria, is_negative=is_negative)
+                    dict(criteria=criteria)
                 )
         return channels
 
@@ -2070,14 +2020,9 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         videos = []
         pattern = re.compile(r"[\w-]{11}")
         for line in data:
-            criteria, is_negative = None, None
+            criteria = None
             if len(line) > 1:
                 first, second, *_ = line
-                if second is "True":
-                    is_negative = True
-                elif second is "False":
-                    is_negative = False
-
             elif len(line):
                 first, second = line[0], ""
             else:
@@ -2093,7 +2038,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
 
             if criteria:
                 videos.append(
-                    dict(criteria=criteria, is_negative=is_negative)
+                    dict(criteria=criteria)
                 )
         return videos
 
@@ -2102,11 +2047,8 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
         objects = []
         topic_ids = set(Topic.objects.values_list('id', flat=True))
         for line in data:
-            if len(line) > 1:
-                criteria, is_negative, *_ = line
-                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
-            elif len(line):
-                criteria, is_negative = line[0], False
+            if len(line):
+                criteria = line[0]
             else:
                 continue
 
@@ -2117,7 +2059,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
             else:
                 if criteria in topic_ids:
                     objects.append(
-                        dict(criteria=criteria, is_negative=is_negative)
+                        dict(criteria=criteria)
                     )
         return objects
 
@@ -2130,11 +2072,8 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
             ).values_list('id', flat=True)
         )
         for line in data:
-            if len(line) > 1:
-                criteria, is_negative, *_ = line
-                is_negative = is_negative == "True" if is_negative in ("True", "False") else None
-            elif len(line):
-                criteria, is_negative = line[0], False
+            if len(line):
+                criteria = line[0]
             else:
                 continue
 
@@ -2145,7 +2084,7 @@ class AdGroupTargetingListImportApiView(AdGroupTargetingListApiView,
             else:
                 if criteria in interest_ids:
                     objects.append(
-                        dict(criteria=criteria, is_negative=is_negative)
+                        dict(criteria=criteria)
                     )
         return objects
 

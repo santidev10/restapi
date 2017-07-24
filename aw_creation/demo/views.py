@@ -658,7 +658,7 @@ class AdGroupTargetingListApiView:
         return method
 
 
-class AdGroupTargetingListExportApiView:
+class AdGroupCreationTargetingExportApiView:
     @staticmethod
     def get_data(original_method):
         def method(view):
@@ -669,7 +669,8 @@ class AdGroupTargetingListExportApiView:
                     for a in c.children:
                         if a.id == pk:
                             list_type = view.kwargs.get("list_type")
-                            data = a.get_targeting_list(list_type)
+                            sub_list_type = view.kwargs.get("sub_list_type")
+                            data = a.get_targeting_list(list_type, sub_list_type)
                             return data
                 return Response(status=HTTP_404_NOT_FOUND)
             else:

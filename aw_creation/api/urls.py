@@ -57,6 +57,15 @@ urlpatterns = [
     url(r'^targeting_items_search/(?P<list_type>\w+)/(?P<query>.+)/$',
         views.TargetingItemsSearchApiView.as_view(),
         name="targeting_items_search"),
+    # import & export targeting
+    url(r'^ad_group_creation_targeting_export/'
+        r'(?P<pk>\w+)/(?P<list_type>\w+)/(?P<sub_list_type>positive|negative)/$',
+        views.AdGroupCreationTargetingExportApiView.as_view(),
+        name="ad_group_creation_targeting_export"),
+    url(r'^targeting_items_import/(?P<list_type>\w+)/$',
+        views.TargetingItemsImportApiView.as_view(),
+        name="targeting_items_import"),
+
 
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
@@ -124,14 +133,7 @@ urlpatterns = [
         r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
         views.AdGroupTargetingListApiView.as_view(),
         name="optimization_ad_group_targeting"),
-    url(r'^optimization_ad_group_targeting_export/'
-        r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.AdGroupTargetingListExportApiView.as_view(),
-        name="optimization_ad_group_targeting_export"),
-    url(r'^optimization_ad_group_targeting_import/'
-        r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.AdGroupTargetingListImportApiView.as_view(),
-        name="optimization_ad_group_targeting_import"),
+
     url(r'^optimization_ad_group_targeting_import_lists/'
         r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
         views.AdGroupTargetingListImportListsApiView.as_view(),
