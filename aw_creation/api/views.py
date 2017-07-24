@@ -266,6 +266,96 @@ class ItemsFromSegmentIdsApiView(APIView):
         return ids
 
 
+class TargetingItemsSearchApiView(APIView):
+
+    def get(self, request, list_type, query, **_):
+
+        method = "search_{}_items".format(list_type)
+        items = getattr(self, method)(query)
+        # items = [dict(criteria=uid) for uid in item_ids]
+        # add_targeting_list_items_info(items, list_type)
+
+        return Response(data=items)
+
+    @staticmethod
+    def search_video_items(query):
+        connector = SingleDatabaseApiConnector()
+        try:
+            response = connector.get_custom_query_result(
+                model_name="video",
+                fields=["id", "title", "thumbnail_image_url"],
+                title__icontains=query,
+                limit=50,
+            )
+        except SingleDatabaseApiConnectorException as e:
+            logger.error(e)
+            items = []
+        else:
+            items = [
+                dict(id=i['id'], criteria=i['id'],
+                     name=i['title'], thumbnail=i['thumbnail_image_url'])
+                for i in response
+            ]
+        return items
+
+    @staticmethod
+    def search_channel_items(query):
+        connector = SingleDatabaseApiConnector()
+        try:
+            response = connector.get_custom_query_result(
+                model_name="channel",
+                fields=["id", "title", "thumbnail_image_url"],
+                title__icontains=query,
+                limit=50,
+            )
+        except SingleDatabaseApiConnectorException as e:
+            logger.error(e)
+            items = []
+        else:
+            items = [
+                dict(id=i['id'], criteria=i['id'],
+                     name=i['title'], thumbnail=i['thumbnail_image_url'])
+                for i in response
+            ]
+        return items
+
+    @staticmethod
+    def search_keyword_items(query):
+        from keyword_tool.models import KeyWord
+        keywords = KeyWord.objects.filter(
+            text__icontains=query,
+        ).values_list("text", flat=True).order_by("text")
+        items = [
+            dict(criteria=k, name=k)
+            for k in keywords
+        ]
+        return items
+
+    @staticmethod
+    def search_interest_items(query):
+        audiences = Audience.objects.filter(
+            name__icontains=query,
+            type__in=[Audience.AFFINITY_TYPE, Audience.IN_MARKET_TYPE],
+        ).values('name', 'id').order_by('name', 'id')
+
+        items = [
+            dict(criteria=a['id'], name=a['name'])
+            for a in audiences
+        ]
+        return items
+
+    @staticmethod
+    def search_topic_items(query):
+        topics = Topic.objects.filter(
+            name__icontains=query,
+        ).values("id", "name").order_by('name')
+        items = [
+            dict(criteria=k['id'], name=k['name'])
+            for k in topics
+        ]
+        return items
+
+
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):
     page_size = 20
 

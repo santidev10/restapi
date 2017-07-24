@@ -13,8 +13,6 @@ urlpatterns = [
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
 
-
-
     # <<< Setup
     url(r'^creation_options/$',
         views.CreationOptionsApiView.as_view(),
@@ -55,6 +53,10 @@ urlpatterns = [
     url(r'^items_from_segment_ids/(?P<segment_type>\w+)/$',
         views.ItemsFromSegmentIdsApiView.as_view(),
         name="items_from_segment_ids"),
+    # targeting items search
+    url(r'^targeting_items_search/(?P<list_type>\w+)/(?P<query>.+)/$',
+        views.TargetingItemsSearchApiView.as_view(),
+        name="targeting_items_search"),
 
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
