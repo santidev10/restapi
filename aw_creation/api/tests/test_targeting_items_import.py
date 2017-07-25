@@ -42,7 +42,6 @@ class TargetingImportTestCase(ExtendedAPITestCase):
                                         format='multipart')
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        print(response.data)
         self.assertEqual(len(response.data), 3)
         for i in response.data:
             self.assertEqual(set(i.keys()), {"criteria", "name"})

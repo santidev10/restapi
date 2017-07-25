@@ -928,15 +928,6 @@ class ConnectAWAccountApiView(APIView):
 
 class AwHistoricalDataApiView(APIView):
 
-    def get_queryset(self):
-        item_type = self.kwargs.get('item_type')  # Http404
-        if item_type == "channel":
-            return YTChannelStatistic.objects.all()
-        elif item_type == "video":
-            return YTVideoStatistic.objects.all()
-        else:
-            raise NotImplementedError("Item type not found: {}".format(item_type))
-
     @staticmethod
     def get(request, item_type, pk, **_):
         accounts = Account.user_objects(request.user)

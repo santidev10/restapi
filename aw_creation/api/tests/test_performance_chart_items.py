@@ -189,3 +189,30 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertGreater(len(response.data), 1)
 
+    def test_success_get_view_rate_calculation(self):
+        user = self.create_test_user()
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        campaign = Campaign.objects.create(id=1, name="", account=account)
+        ad_group_cpv = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        ad_group_cpm = AdGroup.objects.create(id=2, name="", campaign=campaign)
+        date = datetime.now()
+        for views, ad_group in enumerate((ad_group_cpm, ad_group_cpv)):
+            AdGroupStatistic.objects.create(
+                date=date,
+                ad_group=ad_group,
+                average_position=1,
+                impressions=10,
+                video_views=views,
+            )
+
+        url = reverse("aw_creation_urls:performance_chart_items",
+                      args=(account_creation.id, 'device'))
+
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        item = data['items'][0]
+        self.assertEqual(item['video_view_rate'], 10)  # 10 %
+
