@@ -44,4 +44,9 @@ urlpatterns = [
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
         name="connect_aw_account"),
+
+    # channel and video historical data
+    url(r'^aw_historical_data/(?P<item_type>\w+)/(?P<pk>[\w-]+)/$',
+        views.AwHistoricalDataApiView.as_view(),
+        name="aw_historical_data"),
 ]

@@ -2,7 +2,7 @@ import csv
 import re
 from datetime import datetime, timedelta
 from io import StringIO
-from django.http import StreamingHttpResponse, HttpResponse
+from django.http import StreamingHttpResponse, HttpResponse, HttpResponseBadRequest
 from django.db import transaction
 from django.db.models import Min, Max, Sum, Count, Q, Avg, Case, When, Value, IntegerField, FloatField, F, \
     ExpressionWrapper
@@ -19,7 +19,8 @@ from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
     Campaign, AdGroupStatistic, DATE_FORMAT, VideoCreativeStatistic, YTChannelStatistic, \
-    AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, all_stats_aggregate
+    AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, \
+    all_stats_aggregate, YTVideoStatistic, base_stats_aggregate
 
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
@@ -925,8 +926,104 @@ class ConnectAWAccountApiView(APIView):
         return flow
 
 
+class AwHistoricalDataApiView(APIView):
 
+    def get_queryset(self):
+        item_type = self.kwargs.get('item_type')  # Http404
+        if item_type == "channel":
+            return YTChannelStatistic.objects.all()
+        elif item_type == "video":
+            return YTVideoStatistic.objects.all()
+        else:
+            raise NotImplementedError("Item type not found: {}".format(item_type))
 
+    @staticmethod
+    def get(request, item_type, pk, **_):
+        accounts = Account.user_objects(request.user)
+        filters = dict(ad_group__campaign__account__in=accounts, yt_id=pk)
+        if item_type == "channel":
+            queryset = YTChannelStatistic.objects.filter(**filters)
+        elif item_type == "video":
+            queryset = YTVideoStatistic.objects.filter(**filters)
+        else:
+            return Response(data=dict(error="Item type not found: {}".format(item_type)),
+                            status=HTTP_400_BAD_REQUEST)
+        # base stats
+        base_stats = ('clicks', 'impressions', 'video_views')
 
+        # this and lat week stats
+        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_start = week_end - timedelta(days=6)
+        prev_week_end = week_start - timedelta(days=1)
+        prev_week_start = prev_week_end - timedelta(days=6)
+        aggregate = {
+            "{}_{}_week".format(s, k): Sum(
+                Case(
+                    When(
+                        date__gte=sd,
+                        date__lte=ed,
+                        then=s,
+                    ),
+                    output_field=IntegerField()
+                )
+            )
+            for k, sd, ed in (("this", week_start, week_end),
+                              ("last", prev_week_start, prev_week_end))
+            for s in base_stats
+        }
+        aggregate.update(base_stats_aggregate)
+        data = queryset.aggregate(**aggregate)
+        dict_norm_base_stats(data)
+        dict_calculate_stats(data)
+        del data['average_cpv'], data['video_impressions'], data['cost'], data['average_cpm']
+
+        annotate = dict(
+            ctr=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_clicks__isnull=False,
+                        sum_impressions__gt=0,
+                        then=F("sum_clicks") * Value(100.0) / F("sum_impressions"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr_v=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_clicks__isnull=False,
+                        sum_video_views__gt=0,
+                        then=F("sum_clicks") * Value(100.0) / F("sum_video_views"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            video_view_rate=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_video_views__isnull=False,
+                        video_impressions__gt=0,
+                        then=F("sum_video_views") * Value(100.0) / F("video_impressions"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+        )
+
+        top_bottom_data = queryset.values("date").order_by("date").annotate(
+            **base_stats_aggregate
+        ).annotate(**annotate).aggregate(
+            **{
+                "{}_{}".format(s, n): a(s)
+                for s in annotate.keys()
+                for n, a in (("top", Max), ("bottom", Min))
+            }
+        )
+        data.update(top_bottom_data)
+
+        return Response(data=data)
 
 
