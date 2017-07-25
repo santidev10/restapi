@@ -1952,8 +1952,6 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
         criteria_list = []
         for _, file_obj in request.data.items():
-
-            file_obj = request.data['file']
             fct = file_obj.content_type
             if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 data = self.get_xlsx_contents(file_obj, return_lines=True)
