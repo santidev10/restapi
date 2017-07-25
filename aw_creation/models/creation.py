@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-
+from PIL import Image
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
 from django.db import models
@@ -13,7 +13,7 @@ import re
 
 logger = logging.getLogger(__name__)
 
-
+VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
 BULK_CREATE_CAMPAIGNS_COUNT = 5
 BULK_CREATE_AD_GROUPS_COUNT = 5
 
@@ -23,6 +23,10 @@ NameValidator = RegexValidator(r"^[^#']*$",
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
                  r"(?:/watch\?v=|/video/)([^\s&]+)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
+TrackingTemplateValidator = RegexValidator(
+    r"(https?://\S+)|(\{lpurl\}\S*)",
+    "Tracking url template must ba a valid URL or start with {lpurl} tag",
+)
 
 
 def get_uid(length=12):
@@ -43,6 +47,9 @@ class UniqueItem(models.Model):
 
     name = models.CharField(max_length=250, validators=[NameValidator])
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         abstract = True
 
@@ -59,23 +66,161 @@ class AccountCreation(UniqueItem):
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations")
-    aw_manager_id = models.CharField(
-        max_length=15, null=True,  blank=True,
-    )
-    account = models.OneToOneField(
-        "aw_reporting.Account", related_name='account_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
-    )
 
+    account = models.ForeignKey(
+        "aw_reporting.Account", related_name='account_creations',
+        null=True, blank=True,
+    )
     is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
-    is_changed = models.BooleanField(default=True)
-    version = models.CharField(max_length=8, default=get_version)
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_managed = models.BooleanField(default=True)
+    sync_at = models.DateTimeField(null=True)
 
-    # new common fields that were moved up to the account level
+    @property
+    def is_changed(self):
+        if self.sync_at and self.sync_at > self.updated_at:
+            return False
+        return True
+
+    def get_aws_code(self):
+        if self.account_id:
+            lines = []
+            for c in self.campaign_creations.filter(
+                start__isnull=False,
+                end__isnull=False,
+                budget__isnull=False,
+            ):
+                lines.append(c.get_aws_code())
+            lines.append(
+                "sendChangesStatus('{}', '{}');".format(
+                    self.account_id, self.updated_at)
+            )
+            return "\n".join(lines)
+
+
+def default_languages():
+    return Language.objects.filter(pk__in=(1000, 1003))
+
+
+class Language(models.Model):
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=5)
+
+
+class CommonTargetingItem(UniqueItem):
+    GENDER_FEMALE = "GENDER_FEMALE"
+    GENDER_MALE = "GENDER_MALE"
+    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
+    GENDERS = (
+        (GENDER_FEMALE, "Female"),
+        (GENDER_MALE, "Male"),
+        (GENDER_UNDETERMINED, "Undetermined"),
+    )
+    genders_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
+        )
+    )
+
+    def get_genders(self):
+        return json.loads(self.genders_raw)
+
+    def set_genders(self, value):
+        self.genders_raw = json.dumps(value)
+
+    genders = property(get_genders, set_genders)
+
+    PARENT_PARENT = "PARENT_PARENT"
+    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
+    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
+    PARENTS = (
+        (PARENT_PARENT, "Parent"),
+        (PARENT_NOT_A_PARENT, "Not a parent"),
+        (PARENT_UNDETERMINED, "Undetermined"),
+    )
+    parents_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
+        )
+    )
+
+    def get_parent(self):
+        return json.loads(self.parents_raw)
+
+    def set_parent(self, value):
+        self.parents_raw = json.dumps(value)
+
+    parents = property(get_parent, set_parent)
+
+    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
+    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
+    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
+    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
+    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
+    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
+    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
+    AGE_RANGES = (
+        (AGE_RANGE_18_24, "18-24"),
+        (AGE_RANGE_25_34, "25-34"),
+        (AGE_RANGE_35_44, "35-44"),
+        (AGE_RANGE_45_54, "45-54"),
+        (AGE_RANGE_55_64, "55-64"),
+        (AGE_RANGE_65_UP, "65+"),
+        (AGE_RANGE_UNDETERMINED, "Undetermined"),
+    )
+    age_ranges_raw = models.CharField(
+        max_length=200,
+        default=json.dumps(
+            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
+             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
+             AGE_RANGE_UNDETERMINED]
+        )
+    )
+
+    def get_age_ranges(self):
+        return json.loads(self.age_ranges_raw)
+
+    def set_age_ranges(self, value):
+        self.age_ranges_raw = json.dumps(value)
+
+    age_ranges = property(get_age_ranges, set_age_ranges)
+
+    class Meta:
+        abstract = True
+
+
+class CampaignCreation(CommonTargetingItem):
+
+    account_creation = models.ForeignKey(
+        AccountCreation, related_name="campaign_creations",
+    )
+    campaign = models.OneToOneField(
+        "aw_reporting.Campaign", related_name='campaign_creation',
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    # fields
+    start = models.DateField(null=True, blank=True)
+    end = models.DateField(null=True, blank=True)
+    goal_units = models.PositiveIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1)],
+    )
+
+    max_rate = models.DecimalField(
+        null=True, blank=True, max_digits=6, decimal_places=3,
+    )
+    budget = models.DecimalField(
+        null=True, blank=True, max_digits=10, decimal_places=2,
+    )
+
+    languages = models.ManyToManyField(
+        'Language', related_name='campaigns', default=default_languages)
+
     VIDEO_TYPE = 'VIDEO'
     DISPLAY_TYPE = 'DISPLAY'
     CAMPAIGN_TYPES = ((VIDEO_TYPE, "Video"),
@@ -148,8 +293,6 @@ class AccountCreation(UniqueItem):
             [YOUTUBE_SEARCH, YOUTUBE_VIDEO, VIDEO_PARTNER_DISPLAY_NETWORK]
         ),
     )
-    # Cannot target display network
-    # without first targeting YouTube video network
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
@@ -157,66 +300,6 @@ class AccountCreation(UniqueItem):
     def set_video_networks(self, value):
         self.video_networks_raw = json.dumps(value)
     video_networks = property(get_video_networks, set_video_networks)
-
-    def get_aws_code(self):
-        if self.account_id:
-            lines = []
-            for c in self.campaign_managements.filter(is_approved=True):
-                lines.append(c.get_aws_code())
-            lines.append(
-                "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.version)
-            )
-            return " ".join(lines)
-
-
-@receiver(post_save,
-          sender=AccountCreation, dispatch_uid="save_account_receiver")
-def save_account_receiver(sender, instance, created, **kwargs):
-    if not created:
-        sender.objects.filter(pk=instance.pk).update(
-            version=get_version(), is_changed=True
-        )
-
-
-def default_languages():
-    return Language.objects.filter(pk__in=(1000, 1003))
-
-
-class Language(models.Model):
-    name = models.CharField(max_length=50)
-    code = models.CharField(max_length=5)
-
-
-class CampaignCreation(UniqueItem):
-
-    account_creation = models.ForeignKey(
-        AccountCreation, related_name="campaign_creations",
-    )
-    campaign = models.OneToOneField(
-        "aw_reporting.Campaign", related_name='campaign_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
-    )
-
-    # fields
-    start = models.DateField(null=True, blank=True)
-    end = models.DateField(null=True, blank=True)
-    goal_units = models.PositiveIntegerField(
-        null=True, blank=True,
-        validators=[MinValueValidator(1)],
-    )
-
-    max_rate = models.DecimalField(
-        null=True, blank=True, max_digits=6, decimal_places=3,
-    )
-    budget = models.DecimalField(
-        null=True, blank=True, max_digits=10, decimal_places=2,
-    )
-    is_paused = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False)
-
-    languages = models.ManyToManyField(
-        'Language', related_name='campaigns', default=default_languages)
 
     DESKTOP_DEVICE = 'DESKTOP_DEVICE'
     MOBILE_DEVICE = 'MOBILE_DEVICE'
@@ -233,9 +316,6 @@ class CampaignCreation(UniqueItem):
         ),
     )
 
-    class Meta:
-        ordering = ['-id']
-
     def get_devices(self):
         return json.loads(self.devices_raw)
 
@@ -243,74 +323,120 @@ class CampaignCreation(UniqueItem):
         self.devices_raw = json.dumps(value)
     devices = property(get_devices, set_devices)
 
+    # content exclusions
+    VIDEO_RATING_DV_MA_CONTENT_LABEL = "VIDEO_RATING_DV_MA"
+    VIDEO_NOT_YET_RATED_CONTENT_LABEL = "VIDEO_NOT_YET_RATED"
+    CONTENT_LABELS = (
+        # ("ADULTISH", "Sexually suggestive content"),
+        # ("AFE", "Error pages"),
+        # ("BELOW_THE_FOLD", "Below the fold placements"),
+        # ("CONFLICT", "Military & international conflict"),
+        # ("DP", "Parked domains"),
+        ("EMBEDDED_VIDEO", "Embedded video"),
+        ("GAMES", "Games"),
+        # ("JUVENILE", "Juvenile, gross & bizarre content"),
+        # ("PROFANITY", "Profanity & rough language"),
+
+        # ("UGC_FORUMS", "Forums"),
+        # ("UGC_IMAGES", "Image-sharing pages"),
+        # ("UGC_SOCIAL", "Social networks"),
+        # ("UGC_VIDEOS", "Video-sharing pages"),
+
+        # ("SIRENS", "Crime, police & emergency"),
+        # ("TRAGEDY", "Death & tragedy"),
+        # ("VIDEO", "Video"),
+        ("VIDEO_RATING_DV_G", "Content rating: G"),
+        ("VIDEO_RATING_DV_PG", "Content rating: PG"),
+        ("VIDEO_RATING_DV_T", "Content rating: T"),
+        (VIDEO_RATING_DV_MA_CONTENT_LABEL, "Content rating: MA"),
+        (VIDEO_NOT_YET_RATED_CONTENT_LABEL, "Content rating: not yet rated"),
+        ("LIVE_STREAMING_VIDEO", "Live streaming video"),
+        # ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
+    )
+    content_exclusions_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [VIDEO_RATING_DV_MA_CONTENT_LABEL, VIDEO_NOT_YET_RATED_CONTENT_LABEL]
+        ),
+    )
+
+    def get_content_exclusions(self):
+        return json.loads(self.content_exclusions_raw)
+
+    def set_content_exclusions(self, value):
+        self.content_exclusions_raw = json.dumps(value)
+
+    content_exclusions = property(get_content_exclusions, set_content_exclusions)
+
+    class Meta:
+        ordering = ['-id']
+
     @property
     def campaign_is_paused(self):
-        return (self.is_paused or self.account_management.is_paused or
-                self.account_management.is_ended)
+        ac = self.account_creation
+        return ac.is_paused or ac.is_ended or ac.is_deleted
 
     def get_aws_code(self):
 
         lines = [
-            "var campaign = createOrUpdateCampaign('{}', '{}', {}, '{}', "
-            "'{}', {}, '{}', '{}', {}, {}, {}, {}, {}, {}, {});".format(
-                self.id,
-                self.unique_name,
-                self.budget,
-                self.start.strftime("%Y-%m-%d"),
-                "cpm"
-                if self.video_ad_format == CampaignCreation.BUMPER_AD
-                else "cpv",
-                'true' if self.campaign_is_paused else 'false',
-                self.start.strftime("%Y%m%d"),
-                self.end.strftime("%Y%m%d"),
-                self.video_networks,
-                list(self.languages.values_list('id', flat=True)),
-                self.devices,
-                [
-                    "{} {} {} {} {}".format(
-                        WEEKDAYS[s.day - 1].upper(), s.from_hour,
-                        s.from_minute, s.to_hour, s.to_minute
-                    ) for s in self.ad_schedule_rules.all()
-                ],
-                {
-                    f["event_type"]:f
-                    for f in self.frequency_capping.all().values(
-                        "event_type", "level", "time_unit", "limit"
-                    )
-                },
-                list(
-                    self.location_rules.filter(
-                        geo_target_id__isnull=False
-                    ).values_list("geo_target_id", flat=True)
-                ),
-                [
-                    " ".join(
-                        ("{}".format(l.latitude).rstrip('0'),
-                         "{}".format(l.longitude).rstrip('0'),
-                         str(l.radius), l.radius_units)
-                    ) for l in self.location_rules.filter(
-                        radius__gte=0, latitude__isnull=False,
-                        longitude__isnull=False)
-                ],
+            "var campaign = createOrUpdateCampaign({});".format(
+                json.dumps(dict(
+                    id=self.id,
+                    name=self.unique_name,
+                    budget=str(self.budget),
+                    start_for_creation=self.start.strftime("%Y-%m-%d"),
+                    budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
+                    is_paused='true' if self.campaign_is_paused else 'false',
+                    start=self.start.strftime("%Y%m%d"),
+                    end=self.end.strftime("%Y%m%d"),
+                    video_networks=self.video_networks,
+                    lang_ids=list(self.languages.values_list('id', flat=True)),
+                    devices=self.devices,
+                    schedules=[
+                        "{} {} {} {} {}".format(
+                            WEEKDAYS[s.day - 1].upper(), s.from_hour,
+                            s.from_minute, s.to_hour, s.to_minute
+                        ) for s in self.ad_schedule_rules.all()
+                    ],
+                    freq_caps={
+                        f["event_type"]: f
+                        for f in self.frequency_capping.all(
+                        ).values("event_type", "level", "time_unit", "limit")
+                    },
+                    locations=list(
+                        self.location_rules.filter(
+                            geo_target_id__isnull=False
+                        ).values_list("geo_target_id", flat=True)
+                    ),
+                    proximities=[
+                        " ".join(
+                            ("{}".format(l.latitude).rstrip('0'),
+                             "{}".format(l.longitude).rstrip('0'),
+                             str(l.radius), l.radius_units)
+                        ) for l in self.location_rules.filter(radius__gte=0,
+                                                              latitude__isnull=False,
+                                                              longitude__isnull=False)
+                    ],
+                    content_exclusions=self.content_exclusions,
+                ))
             )
         ]
-        for ag in self.ad_group_managements.filter(is_approved=True):
+        for ag in self.ad_group_creations.filter(max_rate__isnull=False):
             code = ag.get_aws_code()
             if code:
                 lines.append(code)
-        return " ".join(lines)
+        return "\n".join(lines)
 
 
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
-    AccountCreation.objects.filter(
-        id=instance.account_creation_id,
-    ).update(version=get_version(), is_changed=True)
+    instance.account_creation.save()
 
 
-class AdGroupCreation(UniqueItem):
+class AdGroupCreation(CommonTargetingItem):
 
+    max_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     campaign_creation = models.ForeignKey(
         CampaignCreation, related_name="ad_group_creations",
     )
@@ -318,91 +444,6 @@ class AdGroupCreation(UniqueItem):
         "aw_reporting.AdGroup", related_name='ad_group_creation',
         on_delete=models.SET_NULL, null=True, blank=True,
     )
-    max_rate = models.DecimalField(null=True, blank=True,
-                                   max_digits=6, decimal_places=3)
-    video_url = models.URLField(validators=[VideoUrlValidator])
-    display_url = models.CharField(max_length=200, blank=True, null=True)
-    final_url = models.URLField(blank=True, null=True)
-    ct_overlay_text = models.CharField(max_length=250,
-                                       blank=True, null=True)
-
-    is_approved = models.BooleanField(default=False)
-
-    GENDER_FEMALE = "GENDER_FEMALE"
-    GENDER_MALE = "GENDER_MALE"
-    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
-    GENDERS = (
-        (GENDER_FEMALE, "Female"),
-        (GENDER_MALE, "Male"),
-        (GENDER_UNDETERMINED, "Undetermined"),
-    )
-    genders_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
-        )
-    )
-
-    def get_genders(self):
-        return json.loads(self.genders_raw)
-
-    def set_genders(self, value):
-        self.genders_raw = json.dumps(value)
-    genders = property(get_genders, set_genders)
-
-    PARENT_PARENT = "PARENT_PARENT"
-    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
-    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
-    PARENTS = (
-        (PARENT_PARENT, "Parent"),
-        (PARENT_NOT_A_PARENT, "Not a parent"),
-        (PARENT_UNDETERMINED, "Undetermined"),
-    )
-    parents_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
-        )
-    )
-
-    def get_parent(self):
-        return json.loads(self.parents_raw)
-
-    def set_parent(self, value):
-        self.parents_raw = json.dumps(value)
-    parents = property(get_parent, set_parent)
-
-    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
-    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
-    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
-    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
-    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
-    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
-    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
-    AGE_RANGES = (
-        (AGE_RANGE_18_24, "18-24"),
-        (AGE_RANGE_25_34, "25-34"),
-        (AGE_RANGE_35_44, "35-44"),
-        (AGE_RANGE_45_54, "45-54"),
-        (AGE_RANGE_55_64, "55-64"),
-        (AGE_RANGE_65_UP, "65+"),
-        (AGE_RANGE_UNDETERMINED, "Undetermined"),
-    )
-    age_ranges_raw = models.CharField(
-        max_length=200,
-        default=json.dumps(
-            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
-             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
-             AGE_RANGE_UNDETERMINED]
-        )
-    )
-
-    def get_age_ranges(self):
-        return json.loads(self.age_ranges_raw)
-
-    def set_age_ranges(self, value):
-        self.age_ranges_raw = json.dumps(value)
-    age_ranges = property(get_age_ranges, set_age_ranges)
 
     class Meta:
         ordering = ['-id']
@@ -424,47 +465,104 @@ class AdGroupCreation(UniqueItem):
             values = qs.values_list('criteria', flat=True)
             if to_int:
                 values = [int(i) for i in values]
-            return values
+            return list(values)
 
-        kwargs = (
-            self.max_rate,
-            self.genders,
-            self.parents,
-            self.age_ranges,
-            qs_to_list(channels.filter(is_negative=False)),
-            qs_to_list(channels.filter(is_negative=True)),
-            qs_to_list(videos.filter(is_negative=False)),
-            qs_to_list(videos.filter(is_negative=True)),
-            qs_to_list(topics.filter(is_negative=False), to_int=True),
-            qs_to_list(topics.filter(is_negative=True), to_int=True),
-            qs_to_list(interests.filter(is_negative=False), to_int=True),
-            qs_to_list(interests.filter(is_negative=True), to_int=True),
-            qs_to_list(keywords.filter(is_negative=False)),
-            qs_to_list(keywords.filter(is_negative=True)),
+        campaign = self.campaign_creation
+        params = dict(
+            id=self.id,
+            name=self.unique_name,
+            ad_format="VIDEO_{}".format(campaign.video_ad_format),
+            cpv=str(self.max_rate),
+            genders=self.genders or campaign.genders,
+            parents=self.parents or campaign.parents,
+            ages=self.age_ranges or campaign.age_ranges,
+            channels=qs_to_list(channels.filter(is_negative=False)),
+            channels_negative=qs_to_list(channels.filter(is_negative=True)),
+            videos=qs_to_list(videos.filter(is_negative=False)),
+            videos_negative=qs_to_list(videos.filter(is_negative=True)),
+            topics=qs_to_list(topics.filter(is_negative=False), to_int=True),
+            topics_negative=qs_to_list(topics.filter(is_negative=True), to_int=True),
+            interests=qs_to_list(interests.filter(is_negative=False), to_int=True),
+            interests_negative=qs_to_list(interests.filter(is_negative=True), to_int=True),
+            keywords=qs_to_list(keywords.filter(is_negative=False)),
+            keywords_negative=qs_to_list(keywords.filter(is_negative=True)),
         )
         lines = [
-            "var ad_group = createOrUpdateAdGroup(campaign, "
-            "'{}', '{}', 'VIDEO_{}', {});".format(
-                self.id,
-                self.unique_name,
-                self.campaign_management.video_ad_format,
-                ", ".join(str(i) for i in kwargs)
-            ),
-            "createOrUpdateVideoAd(ad_group, '{}', '{}', '{}');".format(
-                self.video_url,
-                self.display_url if self.display_url else "",
-                self.final_url if self.final_url else "",
+            "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
+               json.dumps(params)
             ),
         ]
-        return " ".join(lines)
+        for ad in self.ad_creations.exclude(
+            models.Q(video_url="") | models.Q(display_url="") | models.Q(display_url__isnull=True) |
+            models.Q(final_url="") | models.Q(final_url__isnull=True)
+        ):
+            ad_params = dict(
+                id=ad.id,
+                name=ad.unique_name,
+                video_url=ad.video_url,
+                video_thumbnail=ad.video_thumbnail.url if ad.video_thumbnail else None,
+                display_url=ad.display_url,
+                final_url=ad.final_url,
+                tracking_template=ad.tracking_template,
+                custom_params={p['name']: p['value'] for p in ad.custom_params},
+            )
+            lines.append(
+                "createOrUpdateVideoAd(ad_group, {});".format(
+                    json.dumps(ad_params)
+                )
+            )
+
+        return "\n".join(lines)
+
+# these targeting fields can be empty at the ad_group level,
+# because they are defined at the campaign level
+AdGroupCreation._meta.get_field('genders_raw').default = json.dumps([])
+AdGroupCreation._meta.get_field('parents_raw').default = json.dumps([])
+AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
 
 
 @receiver(post_save, sender=AdGroupCreation,
           dispatch_uid="save_group_receiver")
 def save_group_receiver(sender, instance, created, **_):
-    AccountCreation.objects.filter(
-        campaign_creations__id=instance.campaign_creation_id,
-    ).update(version=get_version(), is_changed=True)
+    instance.campaign_creation.account_creation.save()
+
+
+class AdCreation(UniqueItem):
+    ad_group_creation = models.ForeignKey(
+        AdGroupCreation, related_name="ad_creations",
+    )
+    video_url = models.URLField(validators=[VideoUrlValidator])
+    video_thumbnail = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
+    display_url = models.CharField(max_length=200, blank=True, null=True)
+    final_url = models.URLField(blank=True, null=True)
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+
+    def get_custom_params(self):
+        return json.loads(self.custom_params_raw)
+
+    def set_custom_params(self, value):
+        self.custom_params_raw = json.dumps(value)
+
+    custom_params_raw = models.CharField(max_length=250, default=json.dumps([]))
+    custom_params = property(get_custom_params, set_custom_params)
+
+    class Meta:
+        ordering = ['-id']
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        super(AdCreation, self).save(force_insert, force_update, using, update_fields)
+
+        if self.video_thumbnail:
+            image = Image.open(self.video_thumbnail)
+            if VIDEO_AD_THUMBNAIL_SIZE != image.size:
+                image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
+                image.save(self.video_thumbnail.path)
+
+
+@receiver(post_save, sender=AdCreation,
+          dispatch_uid="save_group_receiver")
+def save_ad_receiver(sender, instance, created, **_):
+    instance.ad_group_creation.campaign_creation.account_creation.save()
 
 
 class LocationRule(models.Model):

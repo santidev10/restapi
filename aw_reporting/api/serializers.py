@@ -53,6 +53,7 @@ class StatField(SerializerMethodField):
 
 class AccountsListSerializer(ModelSerializer):
     # header
+    account_creation = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     start = SerializerMethodField()
     end = SerializerMethodField()
@@ -65,6 +66,10 @@ class AccountsListSerializer(ModelSerializer):
     ctr_v = StatField()
 
     status = SerializerMethodField()
+
+    @staticmethod
+    def get_account_creation(obj):
+        pass
 
     def get_status(self, obj):
         stats = self.stats.get(obj.id)

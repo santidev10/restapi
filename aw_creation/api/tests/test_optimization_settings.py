@@ -25,7 +25,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation,
         )
         AdGroupCreation.objects.create(
-            name="11",
+            name="11", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         campaign_creation = CampaignCreation.objects.create(
@@ -33,7 +33,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation,
         )
         AdGroupCreation.objects.create(
-            name="21",
+            name="21", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
         return account_creation
@@ -95,7 +95,7 @@ class OptimizationSettingsAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation,
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            name="11",
+            name="11", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
 

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.models import *
@@ -64,8 +64,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_campaign(**defaults)
-        url = reverse("aw_creation_urls:optimization_campaign",
-                      args=(ac.id,))
+        url = reverse("aw_creation_urls:campaign_creation_setup", args=(ac.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -75,12 +74,12 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',
-                'is_approved', 'is_paused',
-                'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
+                'id', 'name', 'updated_at', 'start', 'end',
+                'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
+                'delivery_method', 'video_ad_format', 'video_networks',
+                'genders', 'age_ranges', 'parents', 'content_exclusions',
                 'ad_group_creations',
             }
         )
@@ -88,20 +87,11 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'thumbnail', 'is_approved',
-                'video_url', 'ct_overlay_text', 'display_url', 'final_url',
-                'max_rate',
+                'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                # targeting
-                'targeting',
+                'targeting', 'max_rate',
             }
         )
-        for f in ('age_ranges', 'genders', 'parents'):
-            self.assertGreater(len(ad_group_data[f]), 1)
-            self.assertEqual(
-                set(ad_group_data[f][0].keys()),
-                {'id', 'name'}
-            )
         self.assertEqual(
             set(ad_group_data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
@@ -111,7 +101,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         ac = DemoAccount()
         campaign = ac.children[0]
 
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign.id,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -123,7 +113,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         ac = DemoAccount()
         campaign = ac.children[0]
 
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign.id,))
 
         response = self.client.patch(
@@ -139,11 +129,11 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         campaign = self.create_campaign(**defaults)
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign.id,))
 
+        content_exclusions = [CampaignCreation.CONTENT_LABELS[1][0]]
         request_data = dict(
-            is_paused=True,
             ad_schedule_rules=[
                 dict(day=1, from_hour=6, to_hour=18),
                 dict(day=2, from_hour=6, to_hour=18),
@@ -157,56 +147,18 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 dict(latitude=100, longitude=200, radius=2),
             ],
             devices=['DESKTOP_DEVICE'],
+            content_exclusions=content_exclusions,
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['is_paused'], True)
         self.assertEqual(len(response.data['ad_schedule_rules']), 2)
         self.assertEqual(len(response.data['frequency_capping']), 2)
         self.assertEqual(len(response.data['location_rules']), 2)
         self.assertEqual(len(response.data['devices']), 1)
-
-    def test_fail_approve(self):
-        account_creation = AccountCreation.objects.create(
-            name="Pep", owner=self.user,
-        )
-        campaign_creation = CampaignCreation.objects.create(
-            name="", account_creation=account_creation,
-        )
-        url = reverse("aw_creation_urls:optimization_campaign",
-                      args=(campaign_creation.id,))
-
-        request_data = dict(is_approved=True)
-        response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(
-            response.data['non_field_errors'][0],
-            "These fields are required for approving: "
-            "start date, end date, budget, max rate, goal"
-        )
-
-    def test_success_approve(self):
-        account_creation = AccountCreation.objects.create(
-            name="Pep", owner=self.user,
-        )
-        today = datetime.now().date()
-        campaign_creation = CampaignCreation.objects.create(
-            name="", account_creation=account_creation,
-            start=today, end=today + timedelta(days=1),
-            budget="20.5", max_rate="2.2", goal_units=1000,
-        )
-        url = reverse("aw_creation_urls:optimization_campaign",
-                      args=(campaign_creation.id,))
-
-        request_data = dict(is_approved=True)
-        response = self.client.patch(
-            url, json.dumps(request_data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['content_exclusions']), 1)
+        self.assertEqual(response.data['content_exclusions'][0]['id'], content_exclusions[0])
 
     def test_fail_set_wrong_order_dates(self):
         account_creation = AccountCreation.objects.create(
@@ -215,7 +167,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign_creation.id,))
 
         today = datetime.now().date()
@@ -236,7 +188,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign_creation.id,))
 
         today = datetime.now().date()
@@ -256,7 +208,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign_creation.id,))
 
         today = datetime.now().date()
@@ -279,7 +231,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             start=today - timedelta(days=10),
             end=today - timedelta(days=2),
         )
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign_creation.id,))
 
         request_data = dict(
@@ -300,7 +252,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             start=today - timedelta(days=10),
             end=today - timedelta(days=2),
         )
-        url = reverse("aw_creation_urls:optimization_campaign",
+        url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign_creation.id,))
 
         request_data = dict(
@@ -312,5 +264,33 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "Because start date > end date")
 
+    def test_fail_delete_the_only_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign_creation.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_delete(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        CampaignCreation.objects.create(
+            name="1", account_creation=account_creation,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="2", account_creation=account_creation,
+        )
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign_creation.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
 

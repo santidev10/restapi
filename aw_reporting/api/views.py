@@ -52,7 +52,7 @@ class AnalyzeAccountsListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Account.user_objects(self.request.user).filter(
             can_manage_clients=False,
-        ).prefetch_related("account_creation").order_by("name", "id")
+        ).order_by("name", "id")
         return queryset
 
     filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
@@ -927,15 +927,6 @@ class ConnectAWAccountApiView(APIView):
 
 
 class AwHistoricalDataApiView(APIView):
-
-    def get_queryset(self):
-        item_type = self.kwargs.get('item_type')  # Http404
-        if item_type == "channel":
-            return YTChannelStatistic.objects.all()
-        elif item_type == "video":
-            return YTVideoStatistic.objects.all()
-        else:
-            raise NotImplementedError("Item type not found: {}".format(item_type))
 
     @staticmethod
     def get(request, item_type, pk, **_):

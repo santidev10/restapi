@@ -1,21 +1,16 @@
-from django.db.models import QuerySet, Min, Max, Count, F, Case, When, Sum, Q, \
-    IntegerField as AggrIntegerField, FloatField as AggrFloatField, \
-    DecimalField as AggrDecimalField, DateField as AggrDateField
+from django.db.models import Min, Max, Sum, Q
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, ValidationError
-from aw_reporting.utils import get_dates_range
+    SerializerMethodField, ListField, ValidationError, BooleanField, DictField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, \
-    get_yt_id_from_url
-from aw_reporting.models import AdGroup, VideoCreativeStatistic, GeoTarget, Topic, Audience, DATE_FORMAT, SUM_STATS, \
-    dict_add_calculated_stats, YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AdGroupStatistic
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, AdCreation
+from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
+    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-from decimal import Decimal
-from collections import OrderedDict
+from collections import defaultdict
 from datetime import datetime
-import math
+import json
 import re
 import logging
 
@@ -97,27 +92,7 @@ def add_targeting_list_items_info(data, list_type):
                 item['name'] = item['criteria']
 
 
-class OptimizationAdGroupSerializer(ModelSerializer):
-
-    thumbnail = SerializerMethodField()
-    targeting = SerializerMethodField()
-    age_ranges = SerializerMethodField()
-    genders = SerializerMethodField()
-    parents = SerializerMethodField()
-
-    @staticmethod
-    def get_targeting(obj):
-        targeting = {k[0]: [] for k in TargetingItem.TYPES}
-        items = obj.targeting_items.all().values(
-            'type', 'criteria', 'is_negative')
-        for i in items:
-            targeting[i['type']].append(i)
-
-        for list_type, items in targeting.items():
-            if len(items):
-                add_targeting_list_items_info(items, list_type)
-
-        return targeting
+class CommonTargetingItemSerializerMix:
 
     @staticmethod
     def get_age_ranges(obj):
@@ -146,6 +121,10 @@ class OptimizationAdGroupSerializer(ModelSerializer):
         ]
         return parents
 
+
+class AdCreationSetupSerializer(ModelSerializer):
+    thumbnail = SerializerMethodField()
+
     @staticmethod
     def get_thumbnail(obj):
         match = re.match(
@@ -159,16 +138,45 @@ class OptimizationAdGroupSerializer(ModelSerializer):
         return
 
     class Meta:
+        model = AdCreation
+        fields = (
+            'id', 'name', 'updated_at', 'video_thumbnail',
+            'final_url', 'video_url', 'display_url',
+            'tracking_template', 'custom_params',
+            'thumbnail',
+        )
+
+
+class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSerializer):
+
+    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
+
+    targeting = SerializerMethodField()
+    age_ranges = SerializerMethodField()
+    genders = SerializerMethodField()
+    parents = SerializerMethodField()
+
+    @staticmethod
+    def get_targeting(obj):
+        items = obj.targeting_items.all().values('type', 'criteria', 'is_negative')
+
+        for t_type, _ in TargetingItem.TYPES:
+            t_items = list(filter(lambda e: e['type'] == t_type, items))
+            if t_items:
+                add_targeting_list_items_info(t_items, t_type)
+
+        targeting = {k[0]: {"positive": [], "negative": []} for k in TargetingItem.TYPES}
+        for item in items:
+            targeting[item['type']]["negative" if item['is_negative'] else "positive"].append(item)
+
+        return targeting
+
+    class Meta:
         model = AdGroupCreation
         fields = (
-            'id', 'name', 'is_approved', 'max_rate',
-            'final_url',
-            'video_url',
-            'ct_overlay_text',
-            'display_url',
-            'thumbnail',
-            'age_ranges', 'genders', 'parents',
-            'targeting',
+            'id', 'name', 'updated_at', 'max_rate',
+            'age_ranges', 'genders', 'parents', 'targeting',
+            'ad_creations',
         )
 
 
@@ -238,14 +246,53 @@ class FrequencyCapSerializer(ModelSerializer):
         exclude = ("id", 'campaign_creation')
 
 
-class OptimizationCampaignsSerializer(ModelSerializer):
-    ad_group_creations = OptimizationAdGroupSerializer(many=True,
-                                                       read_only=True)
-    languages = SerializerMethodField()
-    devices = SerializerMethodField()
+class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerializerMix):
+    ad_group_creations = AdGroupCreationSetupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
     frequency_capping = FrequencyCapSerializer(many=True, read_only=True)
+
+    languages = SerializerMethodField()
+    devices = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
+    delivery_method = SerializerMethodField()
+    video_networks = SerializerMethodField()
+
+    age_ranges = SerializerMethodField()
+    genders = SerializerMethodField()
+    parents = SerializerMethodField()
+    content_exclusions = SerializerMethodField()
+
+    @staticmethod
+    def get_content_exclusions(obj):
+        content_exclusions = [
+            dict(id=uid, name=n)
+            for uid, n in CampaignCreation.CONTENT_LABELS
+            if uid in obj.content_exclusions
+        ]
+        return content_exclusions
+
+    @staticmethod
+    def get_video_ad_format(obj):
+        item_id = obj.video_ad_format
+        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_delivery_method(obj):
+        item_id = obj.delivery_method
+        options = dict(obj.__class__.DELIVERY_METHODS)
+        return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_video_networks(obj):
+        ids = obj.video_networks
+        video_networks = [
+            dict(id=uid, name=n)
+            for uid, n in obj.__class__.VIDEO_NETWORKS
+            if uid in ids
+        ]
+        return video_networks
 
     @staticmethod
     def get_languages(obj):
@@ -265,318 +312,139 @@ class OptimizationCampaignsSerializer(ModelSerializer):
     class Meta:
         model = CampaignCreation
         fields = (
-            'id', 'name',
-            'is_paused', 'is_approved',
-            'start', 'end',
-            'budget',
-            'max_rate',
-            'languages',
+            'id', 'name', 'updated_at',
+            'start', 'end', 'budget', 'languages',
+            'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
+            'video_networks', 'delivery_method', 'video_ad_format',
+            'age_ranges', 'genders', 'parents',
+            'content_exclusions',
             'ad_group_creations',
-            'devices',
-            'location_rules',
-            'frequency_capping',
-            'goal_units',
-            'ad_schedule_rules',
         )
 
 
-class OptimizationAccountListSerializer(ModelSerializer):
+class StatField(SerializerMethodField):
+    def to_representation(self, value):
+        return self.parent.stats.get(value.id, {}).get(self.field_name)
+
+
+class AccountCreationListSerializer(ModelSerializer):
+    is_changed = BooleanField()
     is_optimization_active = SerializerMethodField()
+    weekly_chart = SerializerMethodField()
     status = SerializerMethodField()
-    goal_units = SerializerMethodField()
     start = SerializerMethodField()
     end = SerializerMethodField()
-    weekly_chart = SerializerMethodField()
-    campaigns_count = SerializerMethodField()
-    ad_groups_count = SerializerMethodField()
-    creative_count = SerializerMethodField()
-    channels_count = SerializerMethodField()
-    videos_count = SerializerMethodField()
-    keywords_count = SerializerMethodField()
+    impressions = StatField()
+    video_views = StatField()
+    cost = StatField()
+    clicks = StatField()
+    video_view_rate = StatField()
+    ctr_v = StatField()
 
-    video_ad_format = SerializerMethodField()
-    type = SerializerMethodField()
-    goal_type = SerializerMethodField()
-    delivery_method = SerializerMethodField()
-    bidding_type = SerializerMethodField()
-    video_networks = SerializerMethodField()
-
-    structure = SerializerMethodField()
-    creative = SerializerMethodField()
-    goal_charts = SerializerMethodField()
-
-    @staticmethod
-    def get_goal_units(obj):
-        data = obj.campaign_creations.aggregate(goal_units=Sum('goal_units'))
-        return data['goal_units']
-
-    @staticmethod
-    def get_start(obj):
-        data = obj.campaign_creations.aggregate(value=Min('start'))
-        return data['value']
-
-    @staticmethod
-    def get_end(obj):
-        data = obj.campaign_creations.aggregate(value=Max('end'))
-        return data['value']
-
-    @staticmethod
-    def get_goal_charts(obj):
-        charts = []
-        data = obj.campaign_creations.aggregate(
-            start=Min('start'), end=Max('end'), goal_units=Sum('goal_units'),
-        )
-        start, end, ordered_units = data["start"], data["end"], data["goal_units"]
-        if start and end and ordered_units:
-            dates = list(get_dates_range(start, end))
-            daily = ordered_units / len(dates)
-            values = [math.ceil((n + 1) * daily)
-                      for n in range(len(dates))]
-            goal_chart = dict(
-                label='View Goal',
-                value=ordered_units,
-                trend=[
-                    dict(label=d, value=v)
-                    for d, v in zip(dates, values)
-                ]
-            )
-            charts.append(goal_chart)
-
-        if obj.account:
-            stats = AdGroupStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).values("date").order_by("date").annotate(views=Sum("video_views"))
-            if stats:
-                delivery_chart = dict(
-                    label='AW',
-                    value=sum(i['views'] for i in stats),
-                    trend=[
-                        dict(label=i['date'], value=i['views'])
-                        for i in stats
-                    ]
-                )
-                charts.append(delivery_chart)
-
-        return charts
-
-    @staticmethod
-    def get_structure(obj):
-
-        def get_ad_groups(cid):
-            return AdGroupCreation.objects.filter(campaign_creation_id=cid)
-
-        structure = [
-            dict(
-                id=c['id'],
-                name=c['name'],
-                ad_group_creations=[
-                    dict(id=a['id'], name=a['name'])
-                    for a in get_ad_groups(c['id']).values('id', 'name').order_by('name')
-                ]
-            )
-            for c in obj.campaign_creations.values("id", "name").order_by("name")
-        ]
-        return structure
-
-    @staticmethod
-    def get_creative(obj):
-        video_urls = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation_id=obj
-        ).values_list("video_url", flat=True).order_by("video_url").distinct()[:1]
-        video_ids = list(filter(None, set(get_yt_id_from_url(url) for url in video_urls)))
-
-        if video_ids:
-            video_id = video_ids[0]
-            connector = SingleDatabaseApiConnector()
-            try:
-                items = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id=video_id,
-                    limit=1,
-                )
-            except SingleDatabaseApiConnectorException as e:
-                logger.critical(e)
-            else:
-                if items:
-                    item = items[0]
-                    response = dict(
-                        id=item['id'],
-                        name=item['title'],
-                        thumbnail=item['thumbnail_image_url'],
-                    )
-                    return response
-            response = dict(
-                name=video_id,
-                thumbnail="https://i.ytimg.com/vi/{}/hqdefault.jpg".format(video_id)
-            )
-            return response
-
-    @staticmethod
-    def get_video_ad_format(obj):
-        item_id = obj.video_ad_format
-        options = dict(obj.__class__.VIDEO_AD_FORMATS)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_type(obj):
-        item_id = obj.type
-        options = dict(obj.__class__.CAMPAIGN_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_goal_type(obj):
-        item_id = obj.goal_type
-        options = dict(obj.__class__.GOAL_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_delivery_method(obj):
-        item_id = obj.delivery_method
-        options = dict(obj.__class__.DELIVERY_METHODS)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_bidding_type(obj):
-        item_id = obj.bidding_type
-        options = dict(obj.__class__.BIDDING_TYPES)
-        return dict(id=item_id, name=options[item_id])
-
-    @staticmethod
-    def get_video_networks(obj):
-        ids = obj.video_networks
-        video_networks = [
-            dict(id=uid, name=n)
-            for uid, n in obj.__class__.VIDEO_NETWORKS
-            if uid in ids
-        ]
-        return video_networks
-
-    @staticmethod
-    def get_channels_count(obj):
-        c = TargetingItem.objects.filter(
-            ad_group_creation__campaign_creation__account_creation=obj,
-            type=TargetingItem.CHANNEL_TYPE
-        ).count()
-        return c
-
-    @staticmethod
-    def get_videos_count(obj):
-        c = TargetingItem.objects.filter(
-            ad_group_creation__campaign_creation__account_creation=obj,
-            type=TargetingItem.VIDEO_TYPE
-        ).count()
-        return c
-
-    @staticmethod
-    def get_keywords_count(obj):
-        c = TargetingItem.objects.filter(
-            ad_group_creation__campaign_creation__account_creation=obj,
-            type=TargetingItem.KEYWORD_TYPE
-        ).count()
-        return c
-
-    @staticmethod
-    def get_campaigns_count(obj):
-        return obj.campaign_creations.count()
-
-    @staticmethod
-    def get_ad_groups_count(obj):
-        return AdGroupCreation.objects.filter(campaign_creation__account_creation=obj).count()
-
-    @staticmethod
-    def get_creative_count(obj):
-        return AdGroupCreation.objects.filter(campaign_creation__account_creation=obj).count()
-
-    @staticmethod
-    def get_weekly_chart(obj):
-        if obj.account:
-            data = AdGroupStatistic.objects.filter(
-                ad_group__campaign__account=obj.account
-            ).values("date").order_by("-date").annotate(
-                views=Sum("video_views")
-            )[:7]
-            chart_data = [dict(label=i['date'], value=i['views']) for i in reversed(data)]
-            return chart_data
-
-    def __init__(self, instance=None, *args, **kwargs):
-        self.ordering = {}
-        if instance:
-            ids = None
-            if isinstance(instance, AccountCreation):
-                ids = (instance.id,)
-            elif isinstance(instance, QuerySet):
-                ids = instance.values_list('id', flat=True).distinct()
-            elif isinstance(instance, list):
-                ids = [i.id for i in instance]
-
-            if ids:
-                queryset = AccountCreation.objects.filter(
-                    id__in=ids
-                ).values('id').order_by('id')
-
-                order_data = queryset.annotate(
-                    start=Min('campaign_creations__start'),
-                    end=Max('campaign_creations__end'),
-                    goal_units=Sum('campaign_creations__goal_units'),
-                )
-                for e in order_data:
-                    self.ordering[e['id']] = e
-
-        super(OptimizationAccountListSerializer,
-              self).__init__(instance, *args, **kwargs)
-
-        self.today = datetime.now().date()
-
-    class Meta:
-        model = AccountCreation
-        fields = (
-            "id", "account", "name",
-            "is_optimization_active", "is_changed",
-            # from the campaigns
-            "start", "end", "status",
-            # delivered stats
-            "goal_units", 'weekly_chart', 'campaigns_count', 'ad_groups_count', 'creative_count',
-            'channels_count', 'videos_count', 'keywords_count',
-
-            'creative', 'structure', 'goal_charts',
-
-            'bidding_type', 'video_networks', 'delivery_method', 'video_ad_format', 'type', 'goal_type',
-            'is_paused', 'is_approved', 'is_ended',
-        )
+    def get_weekly_chart(self, obj):
+        return self.daily_chart[obj.id][-7:]
 
     @staticmethod
     def get_is_optimization_active(*_):
         return True
 
+    def get_start(self, obj):
+        settings = self.settings.get(obj.id)
+        if settings:
+            return settings['start']
+        else:
+            return self.stats.get(obj.id, {}).get("start")
+
+    def get_end(self, obj):
+        settings = self.settings.get(obj.id)
+        if settings:
+            return settings['end']
+        else:
+            return self.stats.get(obj.id, {}).get("end")
+
     @staticmethod
     def get_status(obj):
         if obj.is_ended:
-            return "Ended"
+            s = "ended"
         elif obj.is_paused:
-            return "Paused"
+            s = "paused"
+        elif obj.account:
+            s = "running"
         elif obj.is_approved:
-            if 0:  # campaign is launched on AdWords
-                return "Running"
-            else:
-                return "Approved"
+            s = "approved"
         else:
-            return "Pending"
+            s = "pending"
+        return s.capitalize()
+
+    def __init__(self, *args, **kwargs):
+        self.settings = {}
+        self.stats = {}
+        self.daily_chart = defaultdict(list)
+        if args:
+            if isinstance(args[0], AccountCreation):
+                ids = [args[0].id]
+            elif type(args[0]) is list:
+                ids = [i.id for i in args[0]]
+            else:
+                ids = [args[0].id]
+
+            settings = CampaignCreation.objects.filter(
+                account_creation_id__in=ids
+            ).values('account_creation_id').order_by('account_creation_id').annotate(
+                start=Min("start"), end=Max("end"),
+            )
+            self.settings = {s['account_creation_id']: s for s in settings}
+
+            data = Campaign.objects.filter(
+                account__account_creations__id__in=ids
+            ).values('account__account_creations__id').order_by('account__account_creations__id').annotate(
+                start=Min("start_date"),
+                end=Max("end_date"),
+                **base_stats_aggregate
+            )
+            for i in data:
+                dict_norm_base_stats(i)
+                dict_calculate_stats(i)
+                self.stats[i['account__account_creations__id']] = i
+
+            # data for weekly charts
+            account_id_key = "ad_group__campaign__account__account_creations__id"
+            group_by = (account_id_key, "date")
+
+            daily_stats = AdGroupStatistic.objects.filter(
+                ad_group__campaign__account__account_creations__id__in=ids
+            ).values(*group_by).order_by(*group_by).annotate(
+                views=Sum("video_views")
+            )
+            for s in daily_stats:
+                self.daily_chart[s[account_id_key]].append(
+                    dict(label=s['date'], value=s['views'])
+                )
+
+        super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
+
+    class Meta:
+        model = AccountCreation
+        fields = (
+            "id", "name", "start", "end", "status", "is_managed",
+            "is_optimization_active", "is_changed", "weekly_chart",
+            # delivered stats
+            'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
+        )
 
 
-class OptimizationAccountDetailsSerializer(OptimizationAccountListSerializer):
+class AccountCreationSetupSerializer(ModelSerializer):
 
-    campaign_creations = OptimizationCampaignsSerializer(many=True,
+    campaign_creations = CampaignCreationSetupSerializer(many=True,
                                                          read_only=True)
 
     class Meta:
         model = AccountCreation
-        fields = OptimizationAccountListSerializer.Meta.fields + ('campaign_creations',)
+        fields = ('id', 'name', 'is_ended', 'is_approved', 'is_paused',
+                  'campaign_creations', 'updated_at')
 
 
-class OptimizationUpdateAccountSerializer(ModelSerializer):
-
-    video_networks = ListField()
+class AccountCreationUpdateSerializer(ModelSerializer):
 
     class Meta:
         model = AccountCreation
@@ -585,87 +453,46 @@ class OptimizationUpdateAccountSerializer(ModelSerializer):
             'is_ended',
             'is_paused',
             'is_approved',
-            'goal_type',
-            'type',
-            'video_ad_format',
-            'bidding_type',
-            'delivery_method',
-            'video_networks',
         )
 
-    def validate(self, data):
-        for f in ('devices', 'video_networks', 'languages'):
-            if f in data and not data[f]:
-                raise ValidationError(
-                    "{}: empty set is not allowed".format(f))
-        if 'video_networks' in data:
-            video_networks = data['video_networks']
-            if AccountCreation.VIDEO_PARTNER_DISPLAY_NETWORK in video_networks and AccountCreation.YOUTUBE_VIDEO not in video_networks:
-                raise ValidationError(
-                    "Cannot target display network without first "
-                    "targeting YouTube video network")
 
-        if data.get("is_approved") is True:
-            raise ValidationError(
-                "You cannot approve account creations "
-                "unless you have at least one connected MCC account"
-            )
-
-        return super(OptimizationUpdateAccountSerializer, self).validate(data)
-
-
-class OptimizationCreateAccountSerializer(
-        OptimizationUpdateAccountSerializer):
-
-    class Meta:
-        model = AccountCreation
-        fields = OptimizationUpdateAccountSerializer.Meta.fields + ('owner',)
-
-
-class OptimizationUpdateCampaignSerializer(ModelSerializer):
-
+class CampaignCreationUpdateSerializer(ModelSerializer):
+    video_networks = ListField()
     devices = ListField()
+    genders = ListField()
+    parents = ListField()
+    age_ranges = ListField()
+    content_exclusions = ListField()
 
     class Meta:
         model = CampaignCreation
         fields = (
-            'name',
-            'is_approved',
-            'is_paused',
-            'start',
-            'end',
-            'goal_units',
-            'budget',
-            'languages',
-            'devices',
-            'max_rate',
+            'name', 'start', 'end', 'budget',
+            'languages', 'devices',
+            'video_ad_format', 'delivery_method', 'video_networks',
+            'genders', 'parents', 'age_ranges',
+            'content_exclusions',
         )
 
     def validate(self, data):
         if "devices" in data and not data["devices"]:
             raise ValidationError("devices: empty set is not allowed")
 
-        # approving process
-        if self.instance and data.get("is_approved") is True:
-            required_fields = OrderedDict([
-                ("start", "start date"),
-                ("end", "end date"),
-                ("budget", "budget"),
-                ("max_rate", "max rate"),
-                ("goal_units", "goal"),
-            ])
-            empty_fields = [
-                required_fields[f] for f in required_fields
-                if not getattr(self.instance, f)
-            ]
-            if empty_fields:
+        for f in ('devices', 'video_networks', 'languages', 'genders', 'parents', 'age_ranges'):
+            if f in data and not data[f]:
                 raise ValidationError(
-                    'These fields are required for approving: '
-                    '{}'.format(", ".join(empty_fields))
-                )
+                    "{}: empty set is not allowed".format(f))
+
+        if 'video_networks' in data:
+            video_networks = data['video_networks']
+            if CampaignCreation.VIDEO_PARTNER_DISPLAY_NETWORK in video_networks and\
+               CampaignCreation.YOUTUBE_VIDEO not in video_networks:
+                raise ValidationError(
+                    "Cannot target display network without first "
+                    "targeting YouTube video network")
 
         # if one of the following fields is provided
-        if {"is_approved", "start", "end"} & set(data.keys()):
+        if {"start", "end"} & set(data.keys()):
             today = datetime.now().date()
 
             start, end = None, None
@@ -688,11 +515,10 @@ class OptimizationUpdateCampaignSerializer(ModelSerializer):
                 raise ValidationError(
                     'Wrong date period: start date > end date')
 
-        return super(OptimizationUpdateCampaignSerializer,
-                     self).validate(data)
+        return super(CampaignCreationUpdateSerializer, self).validate(data)
 
 
-class OptimizationAppendCampaignSerializer(ModelSerializer):
+class AppendCampaignCreationSerializer(ModelSerializer):
 
     class Meta:
         model = CampaignCreation
@@ -701,74 +527,122 @@ class OptimizationAppendCampaignSerializer(ModelSerializer):
         )
 
 
-class OptimizationCreateCampaignSerializer(
-    OptimizationUpdateCampaignSerializer):
-    class Meta:
-        model = CampaignCreation
-        fields = OptimizationUpdateCampaignSerializer.Meta.fields + (
-            'account_creation', )
-
-
 class OptimizationLocationRuleUpdateSerializer(ModelSerializer):
     class Meta:
         model = LocationRule
 
 
-class OptimizationAdGroupUpdateSerializer(ModelSerializer):
+class AdGroupCreationUpdateSerializer(ModelSerializer):
     genders = ListField()
     parents = ListField()
     age_ranges = ListField()
+    targeting = DictField()
+
+    def update(self, instance, validated_data):
+        instance = super(AdGroupCreationUpdateSerializer, self).update(instance, validated_data)
+
+        targeting = validated_data.get("targeting")
+        if targeting:
+            bulk_items = []
+            for list_type, item_lists in targeting.items():
+                for list_key, item_ids in item_lists.items():
+                    kwargs = dict(
+                        ad_group_creation=instance,
+                        type=list_type,
+                        is_negative=list_key == "negative",
+                    )
+                    queryset = TargetingItem.objects.filter(**kwargs)
+                    # delete items not in the list
+                    queryset.exclude(criteria__in=item_ids).delete()
+
+                    # insert new items
+                    existed_ids = queryset.values_list("criteria", flat=True)
+                    to_insert_ids = set(item_ids) - set(existed_ids)
+                    if to_insert_ids:
+                        bulk_items.extend(
+                            TargetingItem(criteria=uid, **kwargs) for uid in to_insert_ids
+                        )
+
+            if bulk_items:
+                TargetingItem.objects.bulk_create(bulk_items)
+
+        return instance
+
+    @staticmethod
+    def validate_targeting(value):
+        allowed_keys = set(t for t, _ in TargetingItem.TYPES)
+        error_text = 'Targeting items must be sent in the following format: ' \
+                     '{"keyword": {"positive": ["spam", "ham"], "negative": ["adult films"]}, ...}.\n' \
+                     'Allowed keys are %s' % allowed_keys
+        unknown_keys = value.keys() - allowed_keys
+        if unknown_keys:
+            raise ValidationError(error_text)
+        second_lvl_keys = {"positive", "negative"}
+        for v in value.values():
+            if not isinstance(v, dict) or set(v.keys()) != second_lvl_keys:
+                raise ValidationError(error_text)
+            for lists in v.values():
+                if not isinstance(lists, list):
+                    raise ValidationError(error_text)
+        return value
 
     class Meta:
         model = AdGroupCreation
-        exclude = ('genders_raw', 'age_ranges_raw', 'parents_raw')
-
-    def validate(self, data):
-        for f in ('genders', 'parents', 'age_ranges'):
-            if f in data and not data[f]:
-                raise ValidationError(
-                    "{}: empty set is not allowed".format(f))
-
-        # SAAS-158: CPv that is entered on ad group level
-        # should be less than Max CPV at placement level
-        if "max_rate" in data and self.instance:
-            campaign_rate = self.instance.campaign_creation.max_rate
-            if campaign_rate is not None:
-                if Decimal(data['max_rate']) > campaign_rate:
-                    raise ValidationError(
-                        "Max rate at ad group level shouldn't be bigger "
-                        "than the max rate at placement level"
-                    )
-
-        # approving process
-        if self.instance and data.get("is_approved") is True:
-            required_fields = OrderedDict([
-                ("max_rate", "max CPV"),
-                ("video_url", "video URL"),
-                ("display_url", "display URL"),
-                ("final_url", "final URL"),
-            ])
-            empty_fields = [
-                required_fields[f] for f in required_fields
-                if not getattr(self.instance, f)
-            ]
-            if empty_fields:
-                raise ValidationError(
-                    'These fields are required for approving: '
-                    '{}'.format(", ".join(empty_fields))
-                )
-
-        return super(OptimizationAdGroupUpdateSerializer,
-                     self).validate(data)
+        exclude = ('genders_raw', 'age_ranges_raw', 'parents_raw', 'campaign_creation')
 
 
-class OptimizationAppendAdGroupSerializer(ModelSerializer):
+class AppendAdGroupCreationSetupSerializer(ModelSerializer):
 
     class Meta:
         model = AdGroupCreation
         fields = (
             'name', 'campaign_creation',
         )
+
+
+class AdCreationUpdateSerializer(ModelSerializer):
+    custom_params = ListField()
+
+    class Meta:
+        model = AdCreation
+        exclude = ('ad_group_creation',)
+
+    def validate(self, data):
+        if 'custom_params' in data:
+            custom_params = data['custom_params']
+            if isinstance(custom_params, list) and len(custom_params) == 1 \
+               and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
+                custom_params = json.loads(custom_params[0])
+            data['custom_params'] = custom_params
+
+            if len(custom_params) > 3:
+                raise ValidationError(
+                    'You cannot use more than 3 custom parameters'
+                )
+            keys = {"name", "value"}
+            for i in custom_params:
+                if type(i) is not dict or set(i.keys()) != keys:
+                    # all(ord(c) < 128 for c in test)  test.isalpha()
+                    raise ValidationError(
+                        'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
+                    )
+                if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
+                    raise ValidationError(
+                        'Invalid character in custom parameter key'
+                    )
+                if " " in i['value']:
+                    raise ValidationError(
+                        'Invalid character in custom parameter value'
+                    )
+
+        return super(AdCreationUpdateSerializer, self).validate(data)
+
+
+class AppendAdCreationSetupSerializer(ModelSerializer):
+
+    class Meta:
+        model = AdCreation
+        fields = ('name', 'ad_group_creation')
 
 
 class TopicHierarchySerializer(ModelSerializer):

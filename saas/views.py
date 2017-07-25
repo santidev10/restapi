@@ -13,10 +13,9 @@ class ApiRootView(APIView):
     Root endpoint
     """
     sections = (
-        "create",
-        "optimize",
+        "advertise",
         "analyze",
-        "track",
+        "charts",
     )
 
     def get(self, request, format=None):
@@ -37,57 +36,88 @@ class ApiRootView(APIView):
             return Response(OrderedDict(sections))
 
     @staticmethod
-    def get_optimize_section(request, format=None):
-        from aw_creation.models import CampaignCreation, AdGroupCreation
-        demo_pk = "demo"
-        campaigns = CampaignCreation.objects.filter(
-            account_creation__owner=request.user
-        )[:1]
-        campaign_id = campaigns[0].id if campaigns else demo_pk
+    def get_advertise_section(request, format=None):
+        from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
+        from aw_reporting.demo.models import DemoAccount
+        demo_account = DemoAccount()
+        demo_campaign = demo_account.children[0]
+        demo_ad_group = demo_campaign.children[0]
+        demo_ad = demo_ad_group.children[0]
 
-        ad_groups = AdGroupCreation.objects.filter(
+        account = AccountCreation.objects.filter(owner=request.user).first()
+        account_id = account.id if account else demo_account.id
+
+        campaign = CampaignCreation.objects.filter(
+            account_creation__owner=request.user
+        ).first()
+        campaign_id = campaign.id if campaign else demo_campaign.id
+
+        ad_group = AdGroupCreation.objects.filter(
             campaign_creation__account_creation__owner=request.user
-        )[:1]
-        ad_group_id = ad_groups[0].id if ad_groups else demo_pk
+        ).first()
+        ad_group_id = ad_group.id if ad_group else demo_ad_group.id
+
+        ad = AdCreation.objects.filter(
+            ad_group_creation__campaign_creation__account_creation__owner=request.user
+        ).first()
+        ad_id = ad.id if ad else demo_ad.id
 
         response = OrderedDict([
             ('Options for updating/creating', reverse(
-                'aw_creation_urls:optimization_options',
+                'aw_creation_urls:creation_options',
                 request=request,
                 format=format
             )),
             ('Your account creations list', reverse(
-                'aw_creation_urls:optimization_account_list',
+                'aw_creation_urls:account_creation_list',
                 request=request,
                 format=format
             )),
             ("Account creation's details", reverse(
-                'aw_creation_urls:optimization_account',
-                args=(demo_pk,),
+                'aw_creation_urls:account_creation_details',
+                args=(account_id,),
+                request=request,
+                format=format
+            )),
+            ("Account creation full settings", reverse(
+                'aw_creation_urls:account_creation_setup',
+                args=(account_id,),
                 request=request,
                 format=format
             )),
             ("Account's campaigns", reverse(
-                'aw_creation_urls:optimization_campaign_list',
-                args=(demo_pk,),
+                'aw_creation_urls:campaign_creation_list_setup',
+                args=(account_id,),
                 request=request,
                 format=format
             )),
-            ("Campaign's details", reverse(
-                'aw_creation_urls:optimization_campaign',
+            ("Campaign's settings", reverse(
+                'aw_creation_urls:campaign_creation_setup',
                 args=(campaign_id,),
                 request=request,
                 format=format
             )),
             ("A list of ad groups of specified campaign", reverse(
-                'aw_creation_urls:optimization_ad_group_list',
+                'aw_creation_urls:ad_group_creation_list_setup',
                 args=(campaign_id,),
                 request=request,
                 format=format
             )),
-            ("Ad-group's details", reverse(
-                'aw_creation_urls:optimization_ad_group',
+            ("Ad-group details", reverse(
+                'aw_creation_urls:ad_group_creation_setup',
                 args=(ad_group_id,),
+                request=request,
+                format=format
+            )),
+            ("A list of ads of specified ad-group", reverse(
+                'aw_creation_urls:ad_creation_list_setup',
+                args=(ad_group_id,),
+                request=request,
+                format=format
+            )),
+            ("Ad details", reverse(
+                'aw_creation_urls:ad_creation_setup',
+                args=(ad_id,),
                 request=request,
                 format=format
             )),
@@ -158,7 +188,7 @@ class ApiRootView(APIView):
         return Response(response)
 
     @staticmethod
-    def get_track_section(request, format=None):
+    def get_charts_section(request, format=None):
         response = OrderedDict([
             ('Filters', reverse(
                 'aw_reporting_urls:track_filters',
@@ -174,39 +204,6 @@ class ApiRootView(APIView):
                 'aw_reporting_urls:track_accounts_data',
                 request=request,
                 format=format
-            )),
-        ])
-        return Response(response)
-
-    @staticmethod
-    def get_create_section(request, format=None):
-        response = OrderedDict([
-            ('Options', reverse(
-                'aw_creation_urls:creation_options',
-                request=request,
-                format=format
-            )),
-            ('Post account', reverse(
-                'aw_creation_urls:creation_account',
-                request=request,
-                format=format
-            )),
-            ('List of geo-targets', reverse(
-                'aw_creation_urls:geo_target_list',
-                request=request,
-                format=format
-            )),
-            ('Import document', reverse(
-                'aw_creation_urls:document_to_changes',
-                request=request,
-                format=format,
-                args=("postal_codes",),
-            )),
-            ('Youtube search', reverse(
-                'aw_creation_urls:youtube_video_search',
-                request=request,
-                format=format,
-                args=("My little pony",),
             )),
         ])
         return Response(response)
