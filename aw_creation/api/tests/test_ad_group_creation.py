@@ -158,6 +158,31 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             set(data['targeting']['video']['negative'])
         )
 
+    def test_success_put(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {"keyword": {"positive": [], "negative": []}, "topic": {"positive": [], "negative": []},
+                          "interest": {"positive": [], "negative": []}, "channel": {"positive": [], "negative": []},
+                          "video": {"positive": [], "negative": []}}, "age_ranges": ["AGE_RANGE_UNDETERMINED"],
+            "parents": [], "genders": []
+        }
+
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.put(
+                url, json.dumps(data), content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_fail_delete_the_only(self):
         ad_group = self.create_ad_group(owner=self.user)
         url = reverse("aw_creation_urls:ad_group_creation_setup",

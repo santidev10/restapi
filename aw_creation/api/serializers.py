@@ -588,7 +588,7 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
     class Meta:
         model = AdGroupCreation
-        exclude = ('genders_raw', 'age_ranges_raw', 'parents_raw')
+        exclude = ('genders_raw', 'age_ranges_raw', 'parents_raw', 'campaign_creation')
 
 
 class AppendAdGroupCreationSetupSerializer(ModelSerializer):
