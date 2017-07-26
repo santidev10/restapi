@@ -97,17 +97,19 @@ class UserActionListCreateApiView(ListCreateAPIView):
     pagination_class = UserActionPaginator
     serializer_class = UserActionRetrieveSerializer
     create_serializer_class = UserActionCreateSerializer
+    permission_classes = tuple()
 
     def post(self, request, *args, **kwargs):
         """
         Add current user to post data
         """
         # add user id to data
-        request.data["user"] = request.user.id
+        data = request.data.copy()
+        data["user"] = request.user.id
         # serialization procedure
         serializer_class = self.create_serializer_class
         kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(data=request.data, *args, **kwargs)
+        serializer = serializer_class(data=data, *args, **kwargs)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         headers = self.get_success_headers(serializer.data)
