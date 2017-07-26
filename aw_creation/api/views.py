@@ -702,6 +702,9 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         campaign_creation = serializer.save()
 
+        for language in default_languages():
+            campaign_creation.languages.add(language)
+
         ad_group_creation = AdGroupCreation.objects.create(
             name="AdGroup 1",
             campaign_creation=campaign_creation,

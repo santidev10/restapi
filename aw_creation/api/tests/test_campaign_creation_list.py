@@ -68,6 +68,9 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             name="Pep", owner=self.user,
         )
 
+        for lid in (1000, 1003):
+            Language.objects.get_or_create(id=lid, defaults=dict(name=""))
+
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))
         response = self.client.post(url)
@@ -76,6 +79,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             self.detail_keys,
         )
+        self.assertEqual(len(response.data['languages']), 2)
 
     def test_fail_post_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
