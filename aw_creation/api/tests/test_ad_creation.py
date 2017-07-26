@@ -54,9 +54,11 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',  'updated_at', 'video_thumbnail',
+                'id', 'name',  'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'thumbnail', 'custom_params',
+                'companion_banner',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )
         if len(data["custom_params"]) > 0:
@@ -109,7 +111,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 final_url="https://wtf.com",
                 tracking_template="https://track.com?why",
                 custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
-                video_thumbnail=fp,
+                companion_banner=fp,
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -118,8 +120,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.name, data['name'])
         self.assertEqual(ad.final_url, data['final_url'])
         self.assertEqual(ad.tracking_template, data['tracking_template'])
-        self.assertEqual(ad.custom_params_raw, data['custom_params'])
-        self.assertIsNotNone(ad.video_thumbnail)
+        self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
+                                            {"name": "name2", "value": "value2"}])
+        self.assertIsNotNone(ad.companion_banner)
 
     def test_success_update_json(self):
         today = datetime.now().date()

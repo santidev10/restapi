@@ -219,6 +219,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad.keys()),
             {
                 'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail', 'video_thumbnail',
+                'video_url', 'display_url', 'final_url', 'thumbnail',
+                'companion_banner',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )

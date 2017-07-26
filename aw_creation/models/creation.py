@@ -500,7 +500,7 @@ class AdGroupCreation(CommonTargetingItem):
                 id=ad.id,
                 name=ad.unique_name,
                 video_url=ad.video_url,
-                video_thumbnail=ad.video_thumbnail.url if ad.video_thumbnail else None,
+                video_thumbnail=ad.companion_banner.url if ad.companion_banner else None,
                 display_url=ad.display_url,
                 final_url=ad.final_url,
                 tracking_template=ad.tracking_template,
@@ -532,10 +532,17 @@ class AdCreation(UniqueItem):
         AdGroupCreation, related_name="ad_creations",
     )
     video_url = models.URLField(validators=[VideoUrlValidator])
-    video_thumbnail = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
+    companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, blank=True, null=True)
     final_url = models.URLField(blank=True, null=True)
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+
+    # video details
+    video_id = models.CharField(max_length=20, blank=True, null=True)
+    video_title = models.CharField(max_length=250, blank=True, null=True)
+    video_description = models.TextField(blank=True, null=True)
+    video_thumbnail = models.URLField(blank=True, null=True)
+    video_channel_title = models.CharField(max_length=250, blank=True, null=True)
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)
@@ -552,11 +559,11 @@ class AdCreation(UniqueItem):
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         super(AdCreation, self).save(force_insert, force_update, using, update_fields)
 
-        if self.video_thumbnail:
-            image = Image.open(self.video_thumbnail)
+        if self.companion_banner:
+            image = Image.open(self.companion_banner)
             if VIDEO_AD_THUMBNAIL_SIZE != image.size:
                 image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
-                image.save(self.video_thumbnail.path)
+                image.save(self.companion_banner.path)
 
 
 @receiver(post_save, sender=AdCreation,

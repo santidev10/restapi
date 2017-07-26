@@ -140,10 +140,11 @@ class AdCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdCreation
         fields = (
-            'id', 'name', 'updated_at', 'video_thumbnail',
+            'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params',
             'thumbnail',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
         )
 
 
