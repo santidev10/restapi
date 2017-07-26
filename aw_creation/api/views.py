@@ -208,7 +208,9 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
     def get(self, request, url, **_):
+        print(url)
         yt_id = get_yt_id_from_url(url)
+        print(yt_id)
         if not yt_id:
             return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
 
