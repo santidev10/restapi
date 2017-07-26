@@ -3,6 +3,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 from aw_reporting.demo.models import DemoAccount
+from aw_reporting.models import Account
 from aw_creation.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
@@ -14,10 +15,11 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_ad_group(self, owner, start=None, end=None):
+    def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
+            account=account,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="",
@@ -201,5 +203,18 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
+    def test_fail_delete_running(self):
+        account = Account.objects.create(id=1, name="")
+        ad_group = self.create_ad_group(owner=self.user, account=account)
+        AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=ad_group.campaign_creation,
+        )
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
 
