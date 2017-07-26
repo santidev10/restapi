@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
@@ -17,10 +16,11 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.user = self.create_test_user()
 
     @staticmethod
-    def create_account_creation(owner, start=None, end=None):
+    def create_account_creation(owner, start=None, end=None, is_managed=True):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
+            is_managed=is_managed,
         )
 
         campaign_creation = CampaignCreation.objects.create(
@@ -284,6 +284,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                 url, json.dumps(request_data), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
+            ac.refresh_from_db()
+            self.assertEqual(ac.account.id, "uid_from_ad_words")
 
     def test_fail_disapprove(self):
         account = Account.objects.create(id=1, name="")

@@ -380,7 +380,12 @@ class DemoAd(BaseDemo):
             tracking_template="https://www.custom_tracking_service.us/?ad=XEngrr79Jg",
             custom_params=[{"name": "ad", "value": "demo_ad"},
                            {"name": "provider", "value": "ad_words"}],
-            video_thumbnail=None,
+            video_id="XEngrJr79Jg",
+            video_title="Channel Factory Social Video Marketing",
+            video_channel_title="Channel Factory",
+            video_description="Channel Factory is a pioneer in the native advertising ecosystem, building a leading Global Next-Generation Media Company. In this new world of fragmented marketing opportunities, we use data and technology to provide a unified solution.",
+            companion_banner=None,
+            video_thumbnail="http://img.youtube.com/vi/XEngrJr79Jg/hqdefault.jpg",
         )
         return data
 

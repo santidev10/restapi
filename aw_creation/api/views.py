@@ -702,6 +702,9 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         campaign_creation = serializer.save()
 
+        for language in default_languages():
+            campaign_creation.languages.add(language)
+
         ad_group_creation = AdGroupCreation.objects.create(
             name="AdGroup 1",
             campaign_creation=campaign_creation,
@@ -999,7 +1002,8 @@ class AccountCreationDuplicateApiView(APIView):
         "name", "genders_raw", "parents_raw", "age_ranges_raw",
     )
     ad_fields = (
-        "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'video_thumbnail',
+        "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
+        'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
     )
     targeting_fields = (
         "criteria", "type", "is_negative",
