@@ -84,7 +84,7 @@ class AccountCreation(UniqueItem):
             return False
         return True
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
         if self.account_id:
             lines = []
             for c in self.campaign_creations.filter(
@@ -92,7 +92,7 @@ class AccountCreation(UniqueItem):
                 end__isnull=False,
                 budget__isnull=False,
             ):
-                lines.append(c.get_aws_code())
+                lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(
                     self.account_id, self.updated_at)
@@ -376,7 +376,7 @@ class CampaignCreation(CommonTargetingItem):
         ac = self.account_creation
         return ac.is_paused or ac.is_ended or ac.is_deleted
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
 
         lines = [
             "var campaign = createOrUpdateCampaign({});".format(
@@ -422,7 +422,7 @@ class CampaignCreation(CommonTargetingItem):
             )
         ]
         for ag in self.ad_group_creations.filter(max_rate__isnull=False):
-            code = ag.get_aws_code()
+            code = ag.get_aws_code(request)
             if code:
                 lines.append(code)
         return "\n".join(lines)
@@ -448,7 +448,7 @@ class AdGroupCreation(CommonTargetingItem):
     class Meta:
         ordering = ['-id']
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
         """
         "campaign" variable have to be defined above
         :return:
@@ -500,7 +500,8 @@ class AdGroupCreation(CommonTargetingItem):
                 id=ad.id,
                 name=ad.unique_name,
                 video_url=ad.video_url,
-                video_thumbnail=ad.companion_banner.url if ad.companion_banner else None,
+                video_thumbnail=request.build_absolute_uri(ad.companion_banner.url)
+                if ad.companion_banner else None,
                 display_url=ad.display_url,
                 final_url=ad.final_url,
                 tracking_template=ad.tracking_template,

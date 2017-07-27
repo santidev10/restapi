@@ -36,7 +36,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             video_url="https://www.youtube.com/watch?v=5HJyfoSZ2kw",
             display_url="www.nasdaq.com",
             final_url="https://www.nasdaq.com",
-            video_thumbnail=SimpleUploadedFile(
+            companion_banner=SimpleUploadedFile(
                 name='video_thumbnail.png',
                 content=open("aw_creation/fixtures/video_thumbnail.png", 'rb').read(),
                 content_type='image/png',
@@ -54,7 +54,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-        # with open("code.js", "w") as f:
-        #     f.write(data['code'])
+        with open("code.js", "w") as f:
+            f.write(data['code'])
 
 

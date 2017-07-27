@@ -2310,7 +2310,7 @@ class AwCreationCodeRetrieveAPIView(GenericAPIView):
 
         with open('aw_creation/aws_functions.js') as f:
             functions = f.read()
-        code = functions + "\n" + account_management.get_aws_code()
+        code = functions + "\n" + account_management.get_aws_code(request)
         return Response(data={'code': code})
 
 
