@@ -207,9 +207,13 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
+    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/)([^\s&]+)$"
+
     def get(self, request, url, **_):
-        yt_id = get_yt_id_from_url(url)
-        if not yt_id:
+        match = re.match(self.url_regex, url)
+        if match:
+            yt_id = match.group(1)
+        else:
             return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
 
         youtube = build(
