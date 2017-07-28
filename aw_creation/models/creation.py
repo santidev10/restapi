@@ -532,18 +532,18 @@ class AdCreation(UniqueItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
-    video_url = models.URLField(validators=[VideoUrlValidator])
+    video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
-    display_url = models.CharField(max_length=200, blank=True, null=True)
-    final_url = models.URLField(blank=True, null=True)
-    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+    display_url = models.CharField(max_length=200, default="")
+    final_url = models.URLField(default="")
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
 
     # video details
-    video_id = models.CharField(max_length=20, blank=True, null=True)
-    video_title = models.CharField(max_length=250, blank=True, null=True)
-    video_description = models.TextField(blank=True, null=True)
-    video_thumbnail = models.URLField(blank=True, null=True)
-    video_channel_title = models.CharField(max_length=250, blank=True, null=True)
+    video_id = models.CharField(max_length=20, default="")
+    video_title = models.CharField(max_length=250, default="")
+    video_description = models.TextField(default="")
+    video_thumbnail = models.URLField(default="")
+    video_channel_title = models.CharField(max_length=250, default="")
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)
@@ -563,7 +563,16 @@ class AdCreation(UniqueItem):
         if self.companion_banner:
             image = Image.open(self.companion_banner)
             if VIDEO_AD_THUMBNAIL_SIZE != image.size:
-                image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
+                new_width = VIDEO_AD_THUMBNAIL_SIZE[0]
+                percent = new_width / image.size[0]
+                new_height = int(image.size[1] * percent)
+                if new_height < VIDEO_AD_THUMBNAIL_SIZE[1]:  # a wide image
+                    new_height = VIDEO_AD_THUMBNAIL_SIZE[1]
+                    percent = new_height / image.size[1]
+                    new_width = int(image.size[0] * percent)
+
+                image = image.resize((new_width, new_height), Image.ANTIALIAS)
+                image = image.crop((0, 0, VIDEO_AD_THUMBNAIL_SIZE[0], VIDEO_AD_THUMBNAIL_SIZE[1]))
                 image.save(self.companion_banner.path)
 
 
