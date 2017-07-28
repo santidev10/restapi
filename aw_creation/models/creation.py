@@ -532,18 +532,18 @@ class AdCreation(UniqueItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
-    video_url = models.URLField(validators=[VideoUrlValidator], blank=True, null=True)
+    video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
-    display_url = models.CharField(max_length=200, blank=True, null=True)
-    final_url = models.URLField(blank=True, null=True)
-    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], blank=True, null=True)
+    display_url = models.CharField(max_length=200, default="")
+    final_url = models.URLField(default="")
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
 
     # video details
-    video_id = models.CharField(max_length=20, blank=True, null=True)
-    video_title = models.CharField(max_length=250, blank=True, null=True)
-    video_description = models.TextField(blank=True, null=True)
-    video_thumbnail = models.URLField(blank=True, null=True)
-    video_channel_title = models.CharField(max_length=250, blank=True, null=True)
+    video_id = models.CharField(max_length=20, default="")
+    video_title = models.CharField(max_length=250, default="")
+    video_description = models.TextField(default="")
+    video_thumbnail = models.URLField(default="")
+    video_channel_title = models.CharField(max_length=250, default="")
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)
