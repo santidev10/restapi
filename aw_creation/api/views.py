@@ -1691,6 +1691,28 @@ class PerformanceExportWeeklyReport(APIView):
         return response
 
 
+class PerformanceTargetingFilters(APIView):
+
+    def get_queryset(self):
+        return AccountCreation.objects.filter(owner=self.request.user)
+
+    def get(self, request, pk, **_):
+        try:
+            item = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        data = AdGroupStatistic.objects.filter(ad_group__campaign__account=item.account).aanotate(
+            min_date=Min("date"), max_date=Min("date"),
+        )
+
+        filters = dict(
+            start_date=data["min_date"],
+            end_date=data["max_date"],
+        )
+        return Response(data=filters)
+
+
 class UserListsImportMixin:
 
     @staticmethod
