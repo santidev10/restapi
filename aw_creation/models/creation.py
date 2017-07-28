@@ -563,7 +563,11 @@ class AdCreation(UniqueItem):
         if self.companion_banner:
             image = Image.open(self.companion_banner)
             if VIDEO_AD_THUMBNAIL_SIZE != image.size:
-                image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
+                new_width = VIDEO_AD_THUMBNAIL_SIZE[0]
+                percent = new_width / image.size[0]
+                new_height = int(image.size[1] * percent)
+                image = image.resize((new_width, new_height), Image.ANTIALIAS)
+                image = image.crop((0, 0, *VIDEO_AD_THUMBNAIL_SIZE))
                 image.save(self.companion_banner.path)
 
 
