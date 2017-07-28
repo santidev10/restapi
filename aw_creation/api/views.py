@@ -30,7 +30,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
     Topic, Audience, Account, AWConnection
-from aw_reporting.adwords_api import create_customer_account
+from aw_reporting.adwords_api import create_customer_account, update_customer_account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -657,6 +657,19 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 
             elif instance.account:
                 return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="You cannot disapprove a running account"))
+
+        if "name" in data and data['name'] != instance.name:
+            connections = AWConnection.objects.filter(
+                mcc_permissions__account=instance.account.managers.all(),
+                user_relations__user=request.user,
+            ).values("mcc_permissions__account_id", "refresh_token")
+            if connections:
+                connection = connections[0]
+                update_customer_account(
+                    connection['mcc_permissions__account_id'],
+                    connection['refresh_token'],
+                    instance.account.id, data['name']
+                )
 
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial

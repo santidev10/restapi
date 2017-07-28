@@ -206,3 +206,25 @@ def create_customer_account(manager_id, refresh_token, name, currency_code, time
         return account['customerId']  # I expect only one result
 
     logger.error("Unexpected acc creation response:{}".format(accounts))
+
+
+def update_customer_account(manager_id, refresh_token, account_id, name):
+    client = get_web_app_client(
+        client_customer_id=manager_id,
+        refresh_token=refresh_token,
+    )
+    managed_customer_service = client.GetService(
+        'ManagedCustomerService', version=API_VERSION,
+    )
+    operations = [
+        {
+            'operator': 'SET',
+            'operand': {
+                'customerId': account_id,
+                'name': name,
+            }
+        }
+    ]
+    results = managed_customer_service.mutate(operations)
+    for account in results['value']:
+        logger.info(account)

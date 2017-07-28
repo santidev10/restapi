@@ -287,6 +287,41 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             ac.refresh_from_db()
             self.assertEqual(ac.account.id, "uid_from_ad_words")
 
+    def test_success_update_name(self):
+        # creating of a MCC account
+        manager = Account.objects.create(id="7155851537", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="anna.chumak1409@gmail.com",
+            refresh_token="1/MJsHAtsAl1YYus3lMX0Tr_oCFGzHbZn7oupW-2SyAcs",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+        account = Account.objects.create(id="7514485750", name="@")
+        account.managers.add(manager)
+        account_creation = AccountCreation.objects.create(
+            name="Pep",
+            owner=self.user,
+            account=account,
+        )
+
+        # account creation to approve it
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
+
+        request_data = dict(name="Account 15")
+        with patch("aw_creation.api.views.update_customer_account") as update_method:
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(update_method.call_count, 1)
+
     def test_fail_disapprove(self):
         account = Account.objects.create(id=1, name="")
         ac = self.create_account_creation(self.user)
