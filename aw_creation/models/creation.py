@@ -532,11 +532,11 @@ class AdCreation(UniqueItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
-    video_url = models.URLField(validators=[VideoUrlValidator])
+    video_url = models.URLField(validators=[VideoUrlValidator], blank=True, null=True)
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, blank=True, null=True)
     final_url = models.URLField(blank=True, null=True)
-    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], blank=True, null=True)
 
     # video details
     video_id = models.CharField(max_length=20, blank=True, null=True)
