@@ -30,7 +30,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
     Topic, Audience, Account, AWConnection
-from aw_reporting.adwords_api import create_customer_account
+from aw_reporting.adwords_api import create_customer_account, update_customer_account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -207,9 +207,13 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
+    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/)([^\s&]+)$"
+
     def get(self, request, url, **_):
-        yt_id = get_yt_id_from_url(url)
-        if not yt_id:
+        match = re.match(self.url_regex, url)
+        if match:
+            yt_id = match.group(1)
+        else:
             return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
 
         youtube = build(
@@ -639,7 +643,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
-                if not instance.is_approved:  # create account
+                if not instance.is_approved and not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
@@ -653,6 +657,19 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 
             elif instance.account:
                 return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="You cannot disapprove a running account"))
+
+        if "name" in data and data['name'] != instance.name and instance.account:
+            connections = AWConnection.objects.filter(
+                mcc_permissions__account=instance.account.managers.all(),
+                user_relations__user=request.user,
+            ).values("mcc_permissions__account_id", "refresh_token")
+            if connections:
+                connection = connections[0]
+                update_customer_account(
+                    connection['mcc_permissions__account_id'],
+                    connection['refresh_token'],
+                    instance.account.id, data['name']
+                )
 
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial
@@ -982,17 +999,14 @@ class AccountCreationDuplicateApiView(APIView):
     serializer_class = AccountCreationSetupSerializer
 
     duplicate_sign = " (copy)"
-    account_fields = (
-        "is_paused", "is_ended",
-    )
+    account_fields = ("is_paused", "is_ended")
     campaign_fields = (
         "name", "start", "end", "budget",
         "devices_raw", "delivery_method", "video_ad_format", "video_networks_raw",
         'content_exclusions_raw', 'genders_raw', 'age_ranges_raw', 'parents_raw',
     )
     loc_rules_fields = (
-        "geo_target", "latitude", "longitude", "radius", "radius_units",
-        "bid_modifier",
+        "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",
     )
     freq_cap_fields = ("event_type", "level", "limit", "time_unit")
     ad_schedule_fields = (
@@ -1005,9 +1019,7 @@ class AccountCreationDuplicateApiView(APIView):
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
         'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
     )
-    targeting_fields = (
-        "criteria", "type", "is_negative",
-    )
+    targeting_fields = ("criteria", "type", "is_negative")
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(
@@ -1022,10 +1034,26 @@ class AccountCreationDuplicateApiView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data = self.duplicate_item(instance)
-        return Response(data=data)
+        bulk_items = defaultdict(list)
+        duplicate = self.duplicate_item(instance, bulk_items)
+        self.insert_bulk_items(bulk_items)
 
-    def duplicate_item(self, account):
+        response = self.serializer_class(duplicate).data
+        return Response(data=response)
+
+    def duplicate_item(self, item, bulk_items):
+        if isinstance(item, AccountCreation):
+            return self.duplicate_account(item, bulk_items)
+        elif isinstance(item, CampaignCreation):
+            return self.duplicate_campaign(item.account_creation, item, bulk_items)
+        elif isinstance(item, AdGroupCreation):
+            return self.duplicate_ad_group(item.campaign_creation, item, bulk_items)
+        elif isinstance(item, AdCreation):
+            return self.duplicate_ad(item.ad_group_creation, item, bulk_items)
+        else:
+            raise NotImplementedError("Unknown item type: {}".format(type(item)))
+
+    def duplicate_account(self, account, bulk_items):
         account_data = dict(
             name=self.get_duplicate_name(account.name),
             owner=self.request.user,
@@ -1035,51 +1063,98 @@ class AccountCreationDuplicateApiView(APIView):
         acc_duplicate = AccountCreation.objects.create(**account_data)
 
         for c in account.campaign_creations.all():
-            camp_data = {f: getattr(c, f) for f in self.campaign_fields}
-            c_duplicate = CampaignCreation.objects.create(
-                account_creation=acc_duplicate, **camp_data
+            self.duplicate_campaign(acc_duplicate, c, bulk_items)
+
+        return acc_duplicate
+
+    def duplicate_campaign(self, account, campaign, bulk_items):
+        camp_data = {f: getattr(campaign, f) for f in self.campaign_fields}
+        c_duplicate = CampaignCreation.objects.create(
+            account_creation=account, **camp_data
+        )
+        # through
+        language_through = CampaignCreation.languages.through
+        for lid in campaign.languages.values_list('id', flat=True):
+            bulk_items['languages'].append(
+                language_through(campaigncreation_id=c_duplicate.id, language_id=lid)
             )
-            for l in c.languages.all():
-                c_duplicate.languages.add(l)
-            for r in c.location_rules.all():
-                LocationRule.objects.create(
+
+        for r in campaign.location_rules.all():
+            bulk_items['location_rules'].append(
+                LocationRule(
                     campaign_creation=c_duplicate,
                     **{f: getattr(r, f) for f in self.loc_rules_fields}
                 )
-            for i in c.frequency_capping.all():
-                FrequencyCap.objects.create(
+            )
+
+        for i in campaign.frequency_capping.all():
+            bulk_items['frequency_capping'].append(
+                FrequencyCap(
                     campaign_creation=c_duplicate,
                     **{f: getattr(i, f) for f in self.freq_cap_fields}
                 )
-            for i in c.ad_schedule_rules.all():
-                AdScheduleRule.objects.create(
+            )
+
+        for i in campaign.ad_schedule_rules.all():
+            bulk_items['ad_schedule_rules'].append(
+                AdScheduleRule(
                     campaign_creation=c_duplicate,
                     **{f: getattr(i, f) for f in self.ad_schedule_fields}
                 )
-            for a in c.ad_group_creations.all():
-                a_duplicate = AdGroupCreation.objects.create(
-                    campaign_creation=c_duplicate,
-                    **{f: getattr(a, f) for f in self.ad_group_fields}
-                )
-                for i in a.targeting_items.all():
-                    TargetingItem.objects.create(
-                        ad_group_creation=a_duplicate,
-                        **{f: getattr(i, f) for f in self.targeting_fields}
-                    )
-                for ad in a.ad_creations.all():
-                    AdCreation.objects.create(
-                        ad_group_creation=a_duplicate,
-                        **{f: getattr(ad, f) for f in self.ad_fields}
-                    )
+            )
 
-        account_data = self.serializer_class(acc_duplicate).data
-        return account_data
+        for a in campaign.ad_group_creations.all():
+            self.duplicate_ad_group(c_duplicate, a, bulk_items)
+
+        return c_duplicate
+
+    def duplicate_ad_group(self, campaign, ad_group, bulk_items):
+        a_duplicate = AdGroupCreation.objects.create(
+            campaign_creation=campaign,
+            **{f: getattr(ad_group, f) for f in self.ad_group_fields}
+        )
+        for i in ad_group.targeting_items.all():
+            bulk_items['targeting_items'].append(
+                TargetingItem(
+                    ad_group_creation=a_duplicate,
+                    **{f: getattr(i, f) for f in self.targeting_fields}
+                )
+            )
+
+        for ad in ad_group.ad_creations.all():
+            self.duplicate_ad(a_duplicate, ad, bulk_items)
+
+        return a_duplicate
+
+    def duplicate_ad(self, ad_group, ad, bulk_items):
+        ad_duplicate = AdCreation.objects.create(
+            ad_group_creation=ad_group,
+            **{f: getattr(ad, f) for f in self.ad_fields}
+        )
+        return ad_duplicate
 
     def get_duplicate_name(self, name):
         if len(name) + len(self.duplicate_sign) <= 250 and \
                         self.duplicate_sign not in name:
             name += self.duplicate_sign
         return name
+
+    @staticmethod
+    def insert_bulk_items(bulk_items):
+        if bulk_items['languages']:
+            CampaignCreation.languages.through.objects.bulk_create(bulk_items['languages'])
+
+        if bulk_items['location_rules']:
+            LocationRule.objects.bulk_create(bulk_items['location_rules'])
+
+        if bulk_items['frequency_capping']:
+            FrequencyCap.objects.bulk_create(bulk_items['frequency_capping'])
+
+        if bulk_items['ad_schedule_rules']:
+            AdScheduleRule.objects.bulk_create(bulk_items['ad_schedule_rules'])
+
+        if bulk_items['targeting_items']:
+            TargetingItem.objects.bulk_create(bulk_items['targeting_items'])
 
 
 @demo_view_decorator
@@ -1092,48 +1167,6 @@ class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
         )
         return queryset
 
-    def duplicate_item(self, item):
-        duplicate = CampaignCreation.objects.create(
-            account_creation=item.account_creation,
-            **{f: getattr(item, f) for f in self.campaign_fields}
-        )
-        for l in item.languages.all():
-            duplicate.languages.add(l)
-
-        for r in item.location_rules.all():
-            LocationRule.objects.create(
-                campaign_creation=duplicate,
-                **{f: getattr(r, f) for f in self.loc_rules_fields}
-            )
-
-        for i in item.frequency_capping.all():
-            FrequencyCap.objects.create(
-                campaign_creation=duplicate,
-                **{f: getattr(i, f) for f in self.freq_cap_fields}
-            )
-        for i in item.ad_schedule_rules.all():
-            AdScheduleRule.objects.create(
-                campaign_creation=duplicate,
-                **{f: getattr(i, f) for f in self.ad_schedule_fields}
-            )
-        for a in item.ad_group_creations.all():
-            a_duplicate = AdGroupCreation.objects.create(
-                campaign_creation=duplicate,
-                **{f: getattr(a, f) for f in self.ad_group_fields}
-            )
-            for i in a.targeting_items.all():
-                TargetingItem.objects.create(
-                    ad_group_creation=a_duplicate,
-                    **{f: getattr(i, f) for f in self.targeting_fields}
-                )
-            for ad in a.ad_creations.all():
-                AdCreation.objects.create(
-                    ad_group_creation=a_duplicate,
-                    **{f: getattr(ad, f) for f in self.ad_fields}
-                )
-        data = self.serializer_class(duplicate).data
-        return data
-
 
 @demo_view_decorator
 class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
@@ -1145,25 +1178,6 @@ class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
         )
         return queryset
 
-    def duplicate_item(self, item):
-        duplicate = AdGroupCreation.objects.create(
-            campaign_creation=item.campaign_creation,
-            **{f: getattr(item, f) for f in self.ad_group_fields}
-        )
-        for i in item.targeting_items.all():
-            TargetingItem.objects.create(
-                ad_group_creation=duplicate,
-                **{f: getattr(i, f) for f in self.targeting_fields}
-            )
-
-        for ad in item.ad_creations.all():
-            AdCreation.objects.create(
-                ad_group_creation=duplicate,
-                **{f: getattr(ad, f) for f in self.ad_fields}
-            )
-        data = self.serializer_class(duplicate).data
-        return data
-
 
 @demo_view_decorator
 class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
@@ -1174,14 +1188,6 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
             ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
         )
         return queryset
-
-    def duplicate_item(self, item):
-        duplicate = AdCreation.objects.create(
-            ad_group_creation=item.ad_group_creation,
-            **{f: getattr(item, f) for f in self.ad_fields}
-        )
-        data = self.serializer_class(duplicate).data
-        return data
 
 
 # <<< Performance
@@ -2317,7 +2323,7 @@ class AwCreationCodeRetrieveAPIView(GenericAPIView):
 
         with open('aw_creation/aws_functions.js') as f:
             functions = f.read()
-        code = functions + "\n" + account_management.get_aws_code()
+        code = functions + "\n" + account_management.get_aws_code(request)
         return Response(data={'code': code})
 
 

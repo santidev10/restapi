@@ -318,7 +318,7 @@ function createOrUpdateAdGroup(campaign, params){
     var selector = targeting.excludedTopics().get();
     while (selector.hasNext()) {
         var item = selector.next();
-        var index = topics_negative.indexOf(item.getTopicId());
+        var index = params.topics_negative.indexOf(item.getTopicId());
         if(index == -1){
             item.remove();
         }else{

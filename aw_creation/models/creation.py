@@ -20,7 +20,7 @@ BULK_CREATE_AD_GROUPS_COUNT = 5
 WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
-YT_VIDEO_REGEX = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
+YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
                  r"(?:/watch\?v=|/video/)([^\s&]+)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
@@ -84,7 +84,7 @@ class AccountCreation(UniqueItem):
             return False
         return True
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
         if self.account_id:
             lines = []
             for c in self.campaign_creations.filter(
@@ -92,7 +92,7 @@ class AccountCreation(UniqueItem):
                 end__isnull=False,
                 budget__isnull=False,
             ):
-                lines.append(c.get_aws_code())
+                lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(
                     self.account_id, self.updated_at)
@@ -354,7 +354,7 @@ class CampaignCreation(CommonTargetingItem):
         # ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
     )
     content_exclusions_raw = models.CharField(
-        max_length=100,
+        max_length=200,
         default=json.dumps(
             [VIDEO_RATING_DV_MA_CONTENT_LABEL, VIDEO_NOT_YET_RATED_CONTENT_LABEL]
         ),
@@ -376,7 +376,7 @@ class CampaignCreation(CommonTargetingItem):
         ac = self.account_creation
         return ac.is_paused or ac.is_ended or ac.is_deleted
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
 
         lines = [
             "var campaign = createOrUpdateCampaign({});".format(
@@ -422,7 +422,7 @@ class CampaignCreation(CommonTargetingItem):
             )
         ]
         for ag in self.ad_group_creations.filter(max_rate__isnull=False):
-            code = ag.get_aws_code()
+            code = ag.get_aws_code(request)
             if code:
                 lines.append(code)
         return "\n".join(lines)
@@ -448,7 +448,7 @@ class AdGroupCreation(CommonTargetingItem):
     class Meta:
         ordering = ['-id']
 
-    def get_aws_code(self):
+    def get_aws_code(self, request):
         """
         "campaign" variable have to be defined above
         :return:
@@ -500,7 +500,8 @@ class AdGroupCreation(CommonTargetingItem):
                 id=ad.id,
                 name=ad.unique_name,
                 video_url=ad.video_url,
-                video_thumbnail=ad.companion_banner.url if ad.companion_banner else None,
+                video_thumbnail=request.build_absolute_uri(ad.companion_banner.url)
+                if ad.companion_banner else None,
                 display_url=ad.display_url,
                 final_url=ad.final_url,
                 tracking_template=ad.tracking_template,
@@ -531,18 +532,18 @@ class AdCreation(UniqueItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
-    video_url = models.URLField(validators=[VideoUrlValidator])
+    video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
-    display_url = models.CharField(max_length=200, blank=True, null=True)
-    final_url = models.URLField(blank=True, null=True)
-    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator])
+    display_url = models.CharField(max_length=200, default="")
+    final_url = models.URLField(default="")
+    tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
 
     # video details
-    video_id = models.CharField(max_length=20, blank=True, null=True)
-    video_title = models.CharField(max_length=250, blank=True, null=True)
-    video_description = models.TextField(blank=True, null=True)
-    video_thumbnail = models.URLField(blank=True, null=True)
-    video_channel_title = models.CharField(max_length=250, blank=True, null=True)
+    video_id = models.CharField(max_length=20, default="")
+    video_title = models.CharField(max_length=250, default="")
+    video_description = models.TextField(default="")
+    video_thumbnail = models.URLField(default="")
+    video_channel_title = models.CharField(max_length=250, default="")
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)
@@ -562,7 +563,16 @@ class AdCreation(UniqueItem):
         if self.companion_banner:
             image = Image.open(self.companion_banner)
             if VIDEO_AD_THUMBNAIL_SIZE != image.size:
-                image = image.resize(VIDEO_AD_THUMBNAIL_SIZE, Image.ANTIALIAS)
+                new_width = VIDEO_AD_THUMBNAIL_SIZE[0]
+                percent = new_width / image.size[0]
+                new_height = int(image.size[1] * percent)
+                if new_height < VIDEO_AD_THUMBNAIL_SIZE[1]:  # a wide image
+                    new_height = VIDEO_AD_THUMBNAIL_SIZE[1]
+                    percent = new_height / image.size[1]
+                    new_width = int(image.size[0] * percent)
+
+                image = image.resize((new_width, new_height), Image.ANTIALIAS)
+                image = image.crop((0, 0, VIDEO_AD_THUMBNAIL_SIZE[0], VIDEO_AD_THUMBNAIL_SIZE[1]))
                 image.save(self.companion_banner.path)
 
 
