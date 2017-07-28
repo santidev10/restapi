@@ -127,15 +127,15 @@ class AdCreationSetupSerializer(ModelSerializer):
 
     @staticmethod
     def get_thumbnail(obj):
-        match = re.match(
-            r'(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)'
-            r'(?:/watch\?v=|/video/|/)([^\s&\?]+)',
-            obj.video_url,
-        )
-        if match:
-            uid = match.group(1)
-            return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
-        return
+        if obj.video_url:
+            match = re.match(
+                r'(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)'
+                r'(?:/watch\?v=|/video/|/)([^\s&\?]+)',
+                obj.video_url,
+            )
+            if match:
+                uid = match.group(1)
+                return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
 
     class Meta:
         model = AdCreation
