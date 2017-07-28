@@ -354,7 +354,7 @@ class CampaignCreation(CommonTargetingItem):
         # ("ALLOWED_GAMBLING_CONTENT", "Allowed gambling content"),
     )
     content_exclusions_raw = models.CharField(
-        max_length=100,
+        max_length=200,
         default=json.dumps(
             [VIDEO_RATING_DV_MA_CONTENT_LABEL, VIDEO_NOT_YET_RATED_CONTENT_LABEL]
         ),
