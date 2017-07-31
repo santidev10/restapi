@@ -9,6 +9,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator, \
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import datetime
+import pytz
 import re
 
 logger = logging.getLogger(__name__)
@@ -88,8 +90,6 @@ class AccountCreation(UniqueItem):
         if self.account_id:
             lines = []
             for c in self.campaign_creations.filter(
-                start__isnull=False,
-                end__isnull=False,
                 budget__isnull=False,
             ):
                 lines.append(c.get_aws_code(request))
@@ -376,6 +376,19 @@ class CampaignCreation(CommonTargetingItem):
         ac = self.account_creation
         return ac.is_paused or ac.is_ended or ac.is_deleted
 
+    @property
+    def start_for_creation(self):
+        if self.start:
+            return self.start
+        elif self.account_creation.account:
+            timezone = self.account_creation.account.timezone
+            if not timezone:
+                from aw_reporting.models import DEFAULT_TIMEZONE
+                timezone = DEFAULT_TIMEZONE
+
+            today = datetime.now(tz=pytz.timezone(timezone))
+            return today
+
     def get_aws_code(self, request):
 
         lines = [
@@ -384,11 +397,11 @@ class CampaignCreation(CommonTargetingItem):
                     id=self.id,
                     name=self.unique_name,
                     budget=str(self.budget),
-                    start_for_creation=self.start.strftime("%Y-%m-%d"),
+                    start_for_creation=self.start_for_creation.strftime("%Y-%m-%d"),
                     budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
                     is_paused='true' if self.campaign_is_paused else 'false',
-                    start=self.start.strftime("%Y%m%d"),
-                    end=self.end.strftime("%Y%m%d"),
+                    start=self.start.strftime("%Y%m%d") if self.start else None,
+                    end=self.end.strftime("%Y%m%d") if self.end else None,
                     video_networks=self.video_networks,
                     lang_ids=list(self.languages.values_list('id', flat=True)),
                     devices=self.devices,
