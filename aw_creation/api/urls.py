@@ -101,8 +101,11 @@ urlpatterns = [
         name="performance_export_weekly_report"),
 
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
-        views.PerformanceTargetingFilters.as_view(),
+        views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),
+    url(r'^performance_targeting_report/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+        views.PerformanceTargetingReportAPIView.as_view(),
+        name="performance_targeting_report"),
     # >>> Performance
 
     # optimization

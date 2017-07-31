@@ -29,7 +29,8 @@ from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSer
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
-    Topic, Audience, Account, AWConnection
+    Topic, Audience, Account, AWConnection, AdGroup, \
+    YTChannelStatistic, YTVideoStatistic, KeywordStatistic
 from aw_reporting.adwords_api import create_customer_account, update_customer_account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
@@ -1691,10 +1692,52 @@ class PerformanceExportWeeklyReport(APIView):
         return response
 
 
-class PerformanceTargetingFilters(APIView):
+@demo_view_decorator
+class PerformanceTargetingFiltersAPIView(APIView):
 
     def get_queryset(self):
         return AccountCreation.objects.filter(owner=self.request.user)
+
+    @staticmethod
+    def get_campaigns(item):
+        ad_groups = AdGroup.objects.filter(campaign__account=item.account).values(
+            "campaign__name", "campaign_id", "name", "id",
+            "campaign__status", "campaign__start_date", "campaign__end_date", "status",
+        ).order_by(
+            "campaign__name", "campaign_id", "name", "id",
+        )
+        campaigns = []
+        for ad_group in ad_groups:
+            if not campaigns or ad_group['campaign_id'] != campaigns[-1]['id']:
+                campaigns.append(
+                    dict(
+                        id=ad_group['campaign_id'],
+                        name=ad_group['campaign__name'],
+                        start_date=ad_group['campaign__start_date'],
+                        end_date=ad_group['campaign__end_date'],
+                        status=ad_group['campaign__status'],
+                        ad_groups=[]
+                    )
+                )
+            campaigns[-1]['ad_groups'].append(
+                dict(
+                    id=ad_group['id'],
+                    name=ad_group['name'],
+                    status=ad_group['status'],
+                )
+            )
+        return campaigns
+
+    @staticmethod
+    def get_static_filters():
+        filters = dict(
+            average_cpv=dict(min=0, max=10),
+            average_cpm=dict(min=0, max=100),
+            ctr=dict(min=0, max=10),
+            ctr_v=dict(min=0, max=20),
+            video_view_rate=dict(min=0, max=100),
+        )
+        return filters
 
     def get(self, request, pk, **_):
         try:
@@ -1702,15 +1745,70 @@ class PerformanceTargetingFilters(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data = AdGroupStatistic.objects.filter(ad_group__campaign__account=item.account).aanotate(
-            min_date=Min("date"), max_date=Min("date"),
+        dates = AdGroupStatistic.objects.filter(ad_group__campaign__account=item.account).aggregate(
+            min_date=Min("date"), max_date=Max("date"),
         )
-
-        filters = dict(
-            start_date=data["min_date"],
-            end_date=data["max_date"],
-        )
+        filters = self.get_static_filters()
+        filters["start_date"] = dates["min_date"]
+        filters["end_date"] = dates["max_date"]
+        filters["campaigns"] = self.get_campaigns(item)
         return Response(data=filters)
+
+
+@demo_view_decorator
+class PerformanceTargetingReportAPIView(APIView):
+
+    def get_queryset(self):
+        return AccountCreation.objects.filter(owner=self.request.user)
+
+    def get_filters(self):
+        data = self.request.data
+        filters = dict(
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"),
+        )
+        return filters
+
+    def post(self, request, pk, list_type, **_):
+        try:
+            item = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        method = "get_{}_queryset".format(list_type)
+        queryset = getattr(self, method)(item.account, self.get_filters())
+
+        order_by = ("ad_group__campaign__name", "ad_group__campaign__id")
+        values = order_by + ("ad_group__campaign__status",
+                             "ad_group__campaign__start_date",
+                             "ad_group__campaign__end_date")
+        data = queryset.values(*values).order_by(*order_by).annotate(
+            **base_stats_aggregate
+        )
+        for i in data:
+            for f in values:
+                i[f[20:]] = i[f]
+                del i[f]
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+
+        return Response(data=data)
+
+    @staticmethod
+    def get_channel_queryset(account, filters):
+        f = dict(ad_group__campaign__account=account)
+        if filters["start_date"]:
+            f["date__gte"] = filters["start_date"]
+        if filters["end_date"]:
+            f["date__lte"] = filters["end_date"]
+        if filters["ad_groups"]:
+            f["ad_group_id__in"] = filters["ad_groups"]
+        if filters["campaigns"]:
+            f["ad_group__campaign_id__in"] = filters["campaigns"]
+        queryset = YTChannelStatistic.objects.filter(**f)
+        return queryset
 
 
 class UserListsImportMixin:

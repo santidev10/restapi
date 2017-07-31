@@ -1,9 +1,10 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, DEMO_AD_GROUPS
-from aw_reporting.models import Account, Campaign, AdGroup
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
+from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic
 from saas.utils_tests import ExtendedAPITestCase
+from datetime import datetime
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -13,42 +14,37 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
 
-        campaigns_count = 3
-        ad_groups_count = 2
-        for i in range(campaigns_count):
-            c = Campaign.objects.create(id=i, name="", account=account)
-
-            for j in range(ad_groups_count):
-                AdGroup.objects.create(id="{}{}".format(i, j), name="", campaign=c)
+        campaign = Campaign.objects.create(id=1, name="", account=account)
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        start = datetime(2009, 3, 10).date()
+        end = datetime(2017, 1, 1).date()
+        stats = dict(
+            ad_group=ad_group,
+            impressions=10,
+            video_views=5,
+            clicks=1,
+            cost=1,
+            average_position=1
+        )
+        AdGroupStatistic.objects.create(date=start, **stats)
+        AdGroupStatistic.objects.create(date=end, **stats)
 
         url = reverse("aw_creation_urls:performance_targeting_filters",
                       args=(account_creation.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), campaigns_count)
-        campaign = response.data[0]
         self.assertEqual(
-            set(campaign.keys()),
+            set(response.data.keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
-                'status',
-                'ad_groups',
+                'start_date', 'end_date',
+                'campaigns',
+                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
             }
         )
-        self.assertEqual(len(campaign['ad_groups']), ad_groups_count)
-        ad_group = campaign['ad_groups'][0]
-        self.assertEqual(
-            set(ad_group.keys()),
-            {
-                'id',
-                'name',
-                'status',
-            }
-        )
+        self.assertEqual(len(response.data['campaigns']), 1)
+        self.assertEqual(response.data['start_date'], start)
+        self.assertEqual(response.data['end_date'], end)
 
     def test_success_get_demo(self):
         self.create_test_user()
@@ -56,26 +52,15 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), DEMO_CAMPAIGNS_COUNT)
-        campaign = response.data[0]
         self.assertEqual(
-            set(campaign.keys()),
+            set(response.data.keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
-                'status',
-                'ad_groups',
+                'start_date', 'end_date',
+                'campaigns',
+                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
             }
         )
-        self.assertEqual(len(campaign['ad_groups']), len(DEMO_AD_GROUPS))
-        ad_group = campaign['ad_groups'][0]
-        self.assertEqual(
-            set(ad_group.keys()),
-            {
-                'id',
-                'name',
-                'status',
-            }
-        )
+        self.assertEqual(len(response.data['campaigns']), 2)
+        account = DemoAccount()
+        self.assertEqual(response.data['start_date'], account.start_date)
+        self.assertEqual(response.data['end_date'], account.end_date)

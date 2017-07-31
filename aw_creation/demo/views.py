@@ -508,6 +508,68 @@ class PerformanceExportWeeklyReport:
         return method
 
 
+class PerformanceTargetingFiltersAPIView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                filters = view.get_static_filters()
+                filters["start_date"] = account.start_date
+                filters["end_date"] = account.end_date
+                filters["campaigns"] = [
+                    dict(
+                        id=c.id,
+                        name=c.name,
+                        start_date=c.start_date,
+                        end_date=c.end_date,
+                        status=c.status,
+                        ad_groups=[
+                            dict(
+                                id=a.id,
+                                name=a.name,
+                                status=a.status,
+                            )
+                            for a in c.children
+                        ],
+                    )
+                    for c in account.children
+                ]
+                return Response(data=filters)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceTargetingReportAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                fields = (
+                    "id", "name", "status", 'start_date', 'end_date',
+                    'average_cpv', 'cost', 'video_impressions', 'ctr_v', 'clicks',
+                    'video_views', 'ctr', 'impressions', 'video_view_rate', 'average_cpm',
+                )
+                data = [
+                    {f: getattr(c, f) for f in fields}
+                    for c in account.children
+                ]
+                return Response(status=HTTP_200_OK, data=data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
 class OptimizationSettingsApiView:
     @staticmethod
     def get(original_method):
