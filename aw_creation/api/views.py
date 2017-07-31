@@ -513,21 +513,8 @@ class AccountCreationListApiView(ListAPIView):
         ).order_by('is_ended', sort_by)
         return queryset
 
-    filters = ('search', 'show_closed',
-               'min_campaigns_count', 'max_campaigns_count',
-               'min_start', 'max_start', 'min_end', 'max_end')
-
-    def get_filters(self):
-        filters = {}
-        query_params = self.request.query_params
-        for f in self.filters:
-            v = query_params.get(f)
-            if v:
-                filters[f] = v
-        return filters
-
     def filter_queryset(self, queryset):
-        filters = self.get_filters()
+        filters = self.request.query_params
 
         if filters.get('show_closed') != "1":
             queryset = queryset.filter(is_ended=False)
@@ -562,6 +549,77 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
+
+        status = filters.get('status')
+        if status:
+            if status == "Running":
+                queryset = queryset.filter(account__isnull=False)
+            elif status == "Ended":
+                queryset = queryset.filter(is_ended=True)
+            elif status == "Paused":
+                queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Approved":
+                queryset = queryset.filter(is_approved=True, is_paused=False, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False, account__isnull=True)
+
+        annotates = {}
+        second_annotates = {}
+        having = {}
+        for metric in ("impressions", "video_views", "clicks", "video_view_rate", "ctr_v"):
+            for is_max, option in enumerate(("min", "max")):
+                filter_value = filters.get("{}_{}".format(option, metric))
+                if filter_value:
+                    if metric in BASE_STATS:
+                        annotate_key = "sum_{}".format(metric)
+                        annotates[annotate_key] = Sum("account__campaigns__{}".format(metric))
+                        having["{}__{}".format(annotate_key, "lte" if is_max else "gte")] = filter_value
+                    elif metric == "video_view_rate":
+                        annotates['video_impressions'] = Sum(
+                            Case(
+                                When(
+                                    account__campaigns__video_views__gt=0,
+                                    then="account__campaigns__impressions",
+                                ),
+                                output_field=IntegerField()
+                            )
+                        )
+                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        second_annotates[metric] = Case(
+                            When(
+                                sum_video_views__isnull=False,
+                                video_impressions__gt=0,
+                                then=F("sum_video_views") * 100. / F("video_impressions"),
+                            ),
+                            output_field=FloatField()
+                        )
+                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+                    elif metric == "ctr_v":
+                        annotates['video_clicks'] = Sum(
+                            Case(
+                                When(
+                                    account__campaigns__video_views__gt=0,
+                                    then="account__campaigns__clicks",
+                                ),
+                                output_field=IntegerField()
+                            )
+                        )
+                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        second_annotates[metric] = Case(
+                            When(
+                                video_clicks__isnull=False,
+                                sum_video_views__gt=0,
+                                then=F("video_clicks") * 100. / F("sum_video_views"),
+                            ),
+                            output_field=FloatField()
+                        )
+                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+        if annotates:
+            queryset = queryset.annotate(**annotates)
+        if second_annotates:
+            queryset = queryset.annotate(**second_annotates)
+        if having:
+            queryset = queryset.filter(**having)
 
         return queryset
 

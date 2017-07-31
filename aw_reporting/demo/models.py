@@ -912,51 +912,61 @@ class DemoAccount(BaseDemo):
         return data
 
     def account_passes_filters(self, filters):
-        show = True
-
         search = filters.get('search')
         if search and search not in self.name:
-            show = False
+            return
 
         status = filters.get('status')
         if status and status != "Running":
-            show = False
+            return
 
         min_goal_units = filters.get('min_goal_units')
         if min_goal_units and int(min_goal_units) > VIDEO_VIEWS:
-            show = False
+            return
 
         max_goal_units = filters.get('max_goal_units')
         if max_goal_units and int(max_goal_units) < VIDEO_VIEWS:
-            show = False
+            return
 
         min_campaigns_count = filters.get('min_campaigns_count')
         if min_campaigns_count and int(min_campaigns_count) > DEMO_CAMPAIGNS_COUNT:
-            show = False
+            return
 
         max_campaigns_count = filters.get('max_campaigns_count')
         if max_campaigns_count and int(max_campaigns_count) < DEMO_CAMPAIGNS_COUNT:
-            show = False
+            return
 
         min_start = filters.get('min_start')
         if min_start and min_start > str(self.start_date):
-            show = False
+            return
 
         max_start = filters.get('max_start')
         if max_start and max_start < str(self.start_date):
-            show = False
+            return
 
         min_end = filters.get('min_end')
         if min_end and min_end > str(self.end_date):
-            show = False
+            return
 
         max_end = filters.get('max_end')
         if max_end and max_end < str(self.end_date):
-            show = False
+            return
 
         is_changed = filters.get('is_changed')
         if is_changed:
             if int(is_changed):
-                show = False
+                return
 
-        return show
+        for metric in ("impressions", "video_views", "clicks", "video_view_rate", "ctr_v"):
+            for is_max, option in enumerate(("min", "max")):
+                filter_value = filters.get("{}_{}".format(option, metric))
+                if filter_value:
+                    filter_value = float(filter_value)
+                    demo_value =  getattr(self, metric)
+                    if is_max:
+                        if demo_value > filter_value:
+                            return
+                    else:
+                        if demo_value < filter_value:
+                            return
+        return True
