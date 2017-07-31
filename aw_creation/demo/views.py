@@ -21,7 +21,7 @@ class AccountCreationListApiView:
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
                 demo = DemoAccount()
-                filters = view.get_filters()
+                filters = request.query_params
                 if demo.account_passes_filters(filters):
                     response.data['items'].insert(0, demo.header_data)
                     response.data['items_count'] += 1

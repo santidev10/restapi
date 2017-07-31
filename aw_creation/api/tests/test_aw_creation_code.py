@@ -17,7 +17,8 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="Sm name", account_creation=account_creation,
             budget="333.333",
-            start="2017-05-10", end="2018-03-04",
+            # start="2017-05-10",
+            # end="2018-03-04",
             content_exclusions_raw=json.dumps(
                 [i[0] for i in CampaignCreation.CONTENT_LABELS]
             ),

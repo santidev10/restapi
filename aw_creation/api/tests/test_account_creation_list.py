@@ -149,6 +149,110 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             self.details_keys,
         )
 
+    def test_success_metrics_filter(self):
+        AccountCreation.objects.create(name="Empty", owner=self.user,
+                                       is_ended=False, is_paused=False, is_approved=True)
+        account = Account.objects.create(id=1, name="")
+        AccountCreation.objects.create(
+            name="Maximum", owner=self.user, account=account,
+        )
+        Campaign.objects.create(
+            id=1, name="", account=account,
+            impressions=10, video_views=10, clicks=10, cost=10,
+        )
+        account = Account.objects.create(id=2, name="")
+        AccountCreation.objects.create(
+            name="Minimum", owner=self.user, account=account,
+        )
+        Campaign.objects.create(
+            id=2, name="", account=account,
+            impressions=4, video_views=2, clicks=1, cost=1,
+        )
+        # --
+        test_filters = (
+            ("impressions", 1, 5, 2, 11),
+            ("video_views", 1, 2, 3, 11),
+            ("clicks", 1, 2, 2, 10),
+            ("video_view_rate", 50, 75, 75, 100),
+            ("ctr_v", 25, 50, 75, 100),
+        )
+        base_url = reverse("aw_creation_urls:account_creation_list")
+
+        for metric, min1, max1, min2, max2 in test_filters:
+            with patch(
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                with patch(
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+                ):
+                    response = self.client.get(
+                        "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                            base_url=base_url, metric=metric, min=min1, max=max1)
+                    )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data['items'][-1]['name'], "Minimum")
+            for item in response.data['items']:
+                self.assertGreaterEqual(item[metric], min1)
+                self.assertLessEqual(item[metric], max1)
+
+            with patch(
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                with patch(
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+                ):
+                    response = self.client.get(
+                        "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                            base_url=base_url, metric=metric, min=min2, max=max2)
+                    )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data['items'][-1]['name'], "Maximum")
+            for item in response.data['items']:
+                self.assertGreaterEqual(item[metric], min2)
+                self.assertLessEqual(item[metric], max2)
+
+    def test_success_status_filter(self):
+        AccountCreation.objects.create(name="Pending", owner=self.user)
+        AccountCreation.objects.create(name="Ended", owner=self.user,
+                                       is_ended=True, is_paused=True, is_approved=True)
+        AccountCreation.objects.create(name="Paused", owner=self.user,
+                                       is_ended=False, is_paused=True, is_approved=True)
+        AccountCreation.objects.create(name="Approved", owner=self.user,
+                                       is_ended=False, is_paused=False, is_approved=True)
+        AccountCreation.objects.create(
+            name="Running", owner=self.user,
+            account=Account.objects.create(id="123", name=""),
+        )
+        # --
+        expected = (
+            ("Pending", 1),
+            ("Ended", 1),
+            ("Paused", 1),
+            ("Approved", 1),
+            ("Running", 2),  # +DemoAccount
+        )
+        base_url = reverse("aw_creation_urls:account_creation_list")
+
+        for status, count in expected:
+            with patch(
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+            ):
+                with patch(
+                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                        new=SingleDatabaseApiConnectorPatcher
+                ):
+                    response = self.client.get("{}?show_closed=1&status={}".format(base_url, status))
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data['items_count'], count)
+            self.assertEqual(response.data['items'][-1]['name'], status)
+            for i in response.data['items']:
+                self.assertEqual(i['status'], status)
+
     # ended account cases
     def test_success_get_account_no_end_date(self):
         ac_creation = AccountCreation.objects.create(
