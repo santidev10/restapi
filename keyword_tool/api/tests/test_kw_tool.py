@@ -38,9 +38,9 @@ class KWToolAPITestCase(APITestCase):
         call_command("load_product_and_services")
         optimize_keyword.return_value = deepcopy(RESP)
         query = "pokemon"
-        self.url = reverse("keyword_tool_urls:kw_tool_optimize_query",
-                           args=(query,))
-        response = self.client.get(self.url)
+        url = reverse("keyword_tool_urls:kw_tool_optimize_query",
+                      args=(query,))
+        response = self.client.get(url)
         optimize_keyword.assert_called_with([query])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -63,25 +63,25 @@ class KWToolAPITestCase(APITestCase):
                     'keyword_text',
                     'monthly_searches',
                     'interests',
+                    'updated_at',
 
-                    # 'campaigns_count',
-                    # 'average_cpm',
-                    # 'average_cpv',
-                    # 'clicks',
-                    # 'cost',
-                    # 'ctr',
-                    # 'ctr_v',
-                    # 'impressions',
-                    # 'video100rate',
-                    # 'video25rate',
-                    # 'video50rate',
-                    # 'video75rate',
-                    # 'video_view_rate',
-                    # 'video_views',
+                    'campaigns_count',
+                    'average_cpm',
+                    'average_cpv',
+                    'clicks',
+                    'cost',
+                    'ctr',
+                    'ctr_v',
+                    'impressions',
+                    'video_view_rate',
+                    'video_views',
                 }
             )
 
-            for key, value in item.items():
+            json_keys = ('search_volume', 'average_cpc', 'competition', 'keyword_text',
+                         'monthly_searches', 'interests')
+            for key in json_keys:
+                value = item[key]
                 if key == 'interests':
                     self.assertEqual(
                         set(
@@ -103,7 +103,7 @@ class KWToolAPITestCase(APITestCase):
 
         # test again
         optimize_keyword.return_value = deepcopy(RESP)
-        self.client.get(self.url)
+        self.client.get(url)
         optimize_keyword.assert_called_once_with([query])  # was not called
 
     @patch("keyword_tool.api.views.optimize_keyword")

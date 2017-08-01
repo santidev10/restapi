@@ -183,29 +183,33 @@ class OptimizeQueryApiView(ListAPIView):
 
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
-        # if response.status_code == 200:
-        #     self.add_ad_words_data(response.data['items'])
+        if response.status_code == 200:
+            self.add_ad_words_data(response.data['items'])
         return response
 
-        # TODO uncomment when adwords stats will be created is saas
-        # @staticmethod
-        # def add_ad_words_data(items):
-        #     from aw_reporting.models import KeywordStatistic
-        #     stats = KeywordStatistic.objects.filter(
-        #         keyword_id__in=set(i['keyword_text'] for i in items)
-        #     ).values('keyword_id').order_by('keyword_id').annotate(
-        #         campaigns_count=Count('ad_group__campaign_id', distinct=True),
-        #         **{n: Sum(n) for n in SUM_STATS + QUARTILE_STATS}
-        #     )
-        #     stats = {s['keyword_id']: s for s in stats}
-        #
-        #     for item in items:
-        #         item_stats = stats.get(item['keyword_text'], {})
-        #         item['campaigns_count'] = item_stats.get('campaigns_count', 0)
-        #         for s in SUM_STATS + QUARTILE_STATS:
-        #             item[s] = item_stats.get(s)
-        #         dict_quartiles_to_rates(item)
-        #         dict_add_calculated_stats(item)
+    def add_ad_words_data(self, items):
+        from aw_reporting.models import Account, KeywordStatistic, base_stats_aggregate,\
+            BASE_STATS, CALCULATED_STATS, dict_norm_base_stats, dict_calculate_stats
+
+        accounts = Account.user_objects(self.request.user)
+        stats = KeywordStatistic.objects.filter(
+            ad_group__campaign__account__in=accounts,
+            keyword__in=set(i['keyword_text'] for i in items)
+        ).values('keyword').order_by('keyword').annotate(
+            campaigns_count=Count('ad_group__campaign_id', distinct=True),
+            **base_stats_aggregate
+        )
+        stats = {s['keyword']: s for s in stats}
+        aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
+        for item in items:
+            item_stats = stats.get(item['keyword_text'])
+            if item_stats:
+                dict_norm_base_stats(item_stats)
+                dict_calculate_stats(item_stats)
+                del item_stats['keyword']
+                item.update(item_stats)
+            else:
+                item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 
 
 class KeywordsListApiView(OptimizeQueryApiView):
@@ -350,10 +354,7 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
             keywords_relation.objects.bulk_create(kw_relations)
 
             update_kw_list_stats.delay(new_list, KeyWord)
-            serializer = SavedListNameSerializer(instance=new_list,
-                                                 data=self.request.data,
-                                                 request=request)
-            serializer.is_valid(raise_exception=True)
+            serializer = SavedListNameSerializer(new_list, request=request)
             return Response(status=HTTP_202_ACCEPTED,
                             data=serializer.data)
 
@@ -368,9 +369,7 @@ class SavedListApiView(ListParentApiView):
             obj = KeywordsList.objects.get(pk=pk)
         except KeywordsList.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-        return Response(data=SavedListNameSerializer(
-            obj, request=request).data,
-                        status=HTTP_202_ACCEPTED)
+        return Response(data=SavedListNameSerializer(obj, request=request).data)
 
     def put(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
