@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
 from keyword_tool.models import *
 from unittest.mock import patch
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -70,6 +70,24 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
         self.assertAlmostEqual(returned_list['video_view_rate'], 33.33, 2)
         self.assertEqual(returned_list['ctr_v'], 50)
 
+    def test_fail_create_chf_saved_lists(self):
+        keywords = []
+        for i in range(1, 4):
+            keyword = KeyWord.objects.create(text="kw #%s" % i)
+            keywords.append(keyword.text)
+
+        url = reverse("keyword_tool_urls:kw_tool_saved_lists")
+        response = self.client.post(
+            url,
+            dict(
+                name="My list",
+                keywords=keywords,
+                category='chf',
+            )
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertIn('category', response.data)
+
     def test_create_saved_lists(self):
         name = "My list"
         keywords = []
@@ -90,6 +108,7 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
             )
             self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
             self.assertEqual(response.data['name'], name)
+            self.assertEqual(response.data['category'], category)
             self.assertEqual(patched_task.delay.call_count, 1)
 
     def test_get_saved_list(self):

@@ -333,33 +333,27 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        name = self.request.data.get('name')
         keywords = self.request.data.get('keywords')
-        category = self.request.data.get('category')
+        if not keywords:
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data="'keywords' is a required param")
 
-        if name and keywords and category:
-            # create list
-            new_list = KeywordsList.objects.create(
-                user_email=self.request.user.email,
-                name=name,
-                category=category
-            )
-            # create relations
-            # pylint: disable=no-member
-            keywords_relation = KeywordsList.keywords.through
-            # pylint: enable=no-member
-            kw_relations = [keywords_relation(keyword_id=kw_id,
-                                              keywordslist_id=new_list.id)
-                            for kw_id in keywords]
-            keywords_relation.objects.bulk_create(kw_relations)
+        request.data['user_email'] = self.request.user.email
+        serializer = SavedListCreateSerializer(data=request.data, request=request)
+        serializer.is_valid(raise_exception=True)
+        new_list = serializer.save()
 
-            update_kw_list_stats.delay(new_list, KeyWord)
-            serializer = SavedListNameSerializer(new_list, request=request)
-            return Response(status=HTTP_202_ACCEPTED,
-                            data=serializer.data)
+        # pylint: disable=no-member
+        keywords_relation = KeywordsList.keywords.through
+        # pylint: enable=no-member
+        kw_relations = [keywords_relation(keyword_id=kw_id,
+                                          keywordslist_id=new_list.id)
+                        for kw_id in keywords]
+        keywords_relation.objects.bulk_create(kw_relations)
 
-        return Response(status=HTTP_400_BAD_REQUEST,
-                        data="'name' and 'keywords' and 'category are required params")
+        update_kw_list_stats.delay(new_list, KeyWord)
+        serializer = SavedListNameSerializer(new_list, request=request)
+        return Response(status=HTTP_202_ACCEPTED, data=serializer.data)
 
 
 class SavedListApiView(ListParentApiView):
