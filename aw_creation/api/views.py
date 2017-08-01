@@ -1075,7 +1075,7 @@ class AccountCreationDuplicateApiView(APIView):
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
