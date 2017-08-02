@@ -13,7 +13,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name', 'status', 'start', 'end', 'is_managed',
+        'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_optimization_active', 'is_changed', 'weekly_chart',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
     }
@@ -32,10 +32,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'id', 'name', 'campaign_creations',
+                'id', 'name', 'account', 'campaign_creations',
                 'updated_at', 'is_ended', 'is_paused', 'is_approved',
             }
         )
+
+        item = AccountCreation.objects.get(pk=response.data['id'])
+        self.assertEqual(item.is_deleted, True)  # item is hidden
 
         campaign_creation = response.data['campaign_creations'][0]
         self.assertEqual(
@@ -149,6 +152,44 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             self.details_keys,
         )
 
+    def test_success_sort_by(self):
+        account1 = Account.objects.create(id="123", name="")
+        stats = dict(account=account1,  name="", impressions=10, video_views=10, clicks=10, cost=10)
+        Campaign.objects.create(id=1, **stats)
+        Campaign.objects.create(id=2, **stats)
+        top_account = AccountCreation.objects.create(
+            name="Top account", owner=self.user, account=account1,
+        )
+
+        account2 = Account.objects.create(id="456", name="")
+        stats = dict(account=account2, name="", impressions=3, video_views=2, clicks=1, cost=3)
+        Campaign.objects.create(id=3, **stats)
+        Campaign.objects.create(id=4, **stats)
+        AccountCreation.objects.create(
+            name="Bottom account", owner=self.user, account=account2,
+        )
+
+        # --
+        url = reverse("aw_creation_urls:account_creation_list")
+
+        for sort_by in (
+                "impressions", "video_views", "clicks", "cost",
+                "video_view_rate",
+                "ctr_v"):
+            with patch(
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                with patch(
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+                ):
+                    response = self.client.get("{}?sort_by={}".format(url, sort_by))
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data['items']
+            expected_top_account = items[1]
+            self.assertEqual(top_account.name, expected_top_account['name'])
+
     def test_success_metrics_filter(self):
         AccountCreation.objects.create(name="Empty", owner=self.user,
                                        is_ended=False, is_paused=False, is_approved=True)
@@ -224,8 +265,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(name="Approved", owner=self.user,
                                        is_ended=False, is_paused=False, is_approved=True)
         AccountCreation.objects.create(
-            name="Running", owner=self.user,
-            account=Account.objects.create(id="123", name=""),
+            name="Running", owner=self.user, sync_at=datetime.now(),
         )
         # --
         expected = (
@@ -272,54 +312,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             response.data['items_count'], 2,
             "The account has no end date that's why it's shown"
         )
-
-    def test_hide_account_is_ended_true(self):
-        ac_creation = AccountCreation.objects.create(
-            name="", owner=self.user, is_ended=True
-        )
-        CampaignCreation.objects.create(
-            name="", account_creation=ac_creation,
-            end=datetime.now().date() + timedelta(days=1),
-        )
-        # 1
-        url = reverse("aw_creation_urls:account_creation_list")
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            response.data['items_count'], 1,
-            "The account isn't shown because of the flag 'is_ended' "
-        )
-        # 2
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get("{}?show_closed=1".format(url))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 2)
-
-    def test_show_hidden_account(self):
-        AccountCreation.objects.create(
-            name="A", owner=self.user, is_ended=True
-        )
-        live_account = AccountCreation.objects.create(
-            name="B", owner=self.user,
-        )
-        base_url = reverse("aw_creation_urls:account_creation_list")
-        url = "{}?{}".format(
-            base_url,
-            urlencode(dict(
-                show_closed="1",
-                sort_by="name",
-            )),
-        )
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 3)
-        self.assertEqual(response.data['items'][1]['name'],
-                         live_account.name)
 
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:account_creation_list")

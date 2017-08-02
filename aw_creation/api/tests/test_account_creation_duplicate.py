@@ -107,7 +107,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'updated_at',
+                'id', 'name', 'account', 'updated_at',
                 'is_paused', 'is_ended', 'is_approved', 'updated_at',
                 'campaign_creations',
             }

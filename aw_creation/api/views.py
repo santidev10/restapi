@@ -4,7 +4,7 @@ from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -479,6 +479,41 @@ class AccountCreationListApiView(ListAPIView):
 
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
+    annotate_sorts = dict(
+        impressions=(None, Sum("account__campaigns__impressions")),
+        video_views=(None, Sum("account__campaigns__video_views")),
+        video_impressions=(None, Sum(Case(
+            When(
+                account__campaigns__video_views__gt=0,
+                then="account__campaigns__impressions",
+            ),
+            output_field=AggrIntegerField()
+        ))),
+        clicks=(None, Sum("account__campaigns__clicks")),
+        cost=(None, Sum("account__campaigns__cost")),
+        video_view_rate=(('video_views', 'video_impressions'), ExpressionWrapper(
+            Case(
+                When(
+                    video_views__isnull=False,
+                    video_impressions__gt=0,
+                    then=F("video_views") / F("video_impressions"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        )),
+        ctr_v=(('clicks', 'video_views'), ExpressionWrapper(
+            Case(
+                When(
+                    clicks__isnull=False,
+                    video_views__gt=0,
+                    then=F("clicks") / F("video_views"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        ))
+    )
 
     def get(self, request, *args, **kwargs):
         # import "read only" accounts:
@@ -503,21 +538,28 @@ class AccountCreationListApiView(ListAPIView):
         return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
 
     def get_queryset(self, **filters):
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by != "name":
-            sort_by = "-created_at"
-
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).order_by('is_ended', sort_by)
+        )
+        sort_by = self.request.query_params.get('sort_by')
+
+        if sort_by in self.annotate_sorts:
+            dependencies, annotate = self.annotate_sorts[sort_by]
+            if dependencies:
+                queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
+
+            queryset = queryset.annotate(**{sort_by: annotate})
+            sort_by = "-{}".format(sort_by)
+
+        elif sort_by != "name":
+            sort_by = "-created_at"
+
+        queryset = queryset.order_by('is_ended', sort_by)
         return queryset
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
-
-        if filters.get('show_closed') != "1":
-            queryset = queryset.filter(is_ended=False)
 
         search = filters.get('search')
         if search:
@@ -552,16 +594,16 @@ class AccountCreationListApiView(ListAPIView):
 
         status = filters.get('status')
         if status:
-            if status == "Running":
-                queryset = queryset.filter(account__isnull=False)
-            elif status == "Ended":
+            if status == "Ended":
                 queryset = queryset.filter(is_ended=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Running":
+                queryset = queryset.filter(sync_at__isnull=False, is_paused=False, is_ended=False)
             elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_paused=False, is_ended=False)
+                queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_paused=False, is_ended=False)
             elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False, account__isnull=True)
+                queryset = queryset.filter(is_approved=False, sync_at__isnull=True, is_paused=False, is_ended=False)
 
         annotates = {}
         second_annotates = {}
@@ -628,8 +670,7 @@ class AccountCreationListApiView(ListAPIView):
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1),
-                owner=self.request.user,
+                name="Account {}".format(account_count + 1), owner=self.request.user,
             )
             campaign_creation = CampaignCreation.objects.create(
                 name="Campaign 1",
@@ -643,6 +684,8 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
+            account_creation.is_deleted = True   # do not show it in the list
+            account_creation.save()
 
         for language in default_languages():
             campaign_creation.languages.add(language)
@@ -701,7 +744,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
-                if not instance.is_approved and not instance.account:  # create account
+                if not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
@@ -1071,11 +1114,11 @@ class AccountCreationDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "name", "genders_raw", "parents_raw", "age_ranges_raw",
+        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw",
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
@@ -2358,6 +2401,7 @@ class AwCreationChangedAccountsListAPIView(GenericAPIView):
             account__managers__id=manager_id,
             account_id__isnull=False,
             is_managed=True,
+            is_approved=True,
         ).exclude(
             sync_at__gte=F("updated_at"),
         ).values_list(
@@ -2392,6 +2436,6 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
     def patch(request, account_id, **_):
         updated_at = request.data.get("updated_at")
         AccountCreation.objects.filter(
-            account_id=account_id, updated_at__lte=updated_at, is_managed=True,
-        ).update(sync_at=timezone.now())
+            account_id=account_id, is_managed=True,
+        ).update(sync_at=updated_at)
         return Response()

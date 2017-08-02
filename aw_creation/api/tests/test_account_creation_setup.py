@@ -93,7 +93,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'updated_at', 'campaign_creations', 'updated_at',
+                'id', 'name', 'account', 'updated_at', 'campaign_creations', 'updated_at',
                 'is_ended', 'is_approved', 'is_paused',
             }
         )
@@ -279,13 +279,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_approved=True,
         )
         with patch("aw_creation.api.views.create_customer_account",
-                   new=lambda *_: "uid_from_ad_words"):
+                   new=lambda *_: "uid_from_aw"):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
             ac.refresh_from_db()
-            self.assertEqual(ac.account.id, "uid_from_ad_words")
+            self.assertEqual(ac.account.id, "uid_from_aw")
 
     def test_success_update_name(self):
         # creating of a MCC account

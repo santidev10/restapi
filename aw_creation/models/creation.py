@@ -82,7 +82,7 @@ class AccountCreation(UniqueItem):
 
     @property
     def is_changed(self):
-        if self.sync_at and self.sync_at > self.updated_at:
+        if self.sync_at and self.sync_at >= self.updated_at:
             return False
         return True
 
@@ -94,8 +94,7 @@ class AccountCreation(UniqueItem):
             ):
                 lines.append(c.get_aws_code(request))
             lines.append(
-                "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.updated_at)
+                "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
             )
             return "\n".join(lines)
 
@@ -444,6 +443,8 @@ class CampaignCreation(CommonTargetingItem):
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
+    instance.account_creation.is_approved = False
+    instance.account_creation.is_deleted = False
     instance.account_creation.save()
 
 
@@ -538,7 +539,10 @@ AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
 @receiver(post_save, sender=AdGroupCreation,
           dispatch_uid="save_group_receiver")
 def save_group_receiver(sender, instance, created, **_):
-    instance.campaign_creation.account_creation.save()
+    account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations=instance)
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class AdCreation(UniqueItem):
@@ -592,7 +596,10 @@ class AdCreation(UniqueItem):
 @receiver(post_save, sender=AdCreation,
           dispatch_uid="save_group_receiver")
 def save_ad_receiver(sender, instance, created, **_):
-    instance.ad_group_creation.campaign_creation.account_creation.save()
+    account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations__ad_creations=instance)
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class LocationRule(models.Model):
