@@ -13,7 +13,7 @@ import json
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
     account_list_header_fields = {
-        'id', 'name', 'end', 'start', 'status', 'weekly_chart', 'is_optimization_active', 'is_changed',
+        'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart', 'is_optimization_active', 'is_changed',
         'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v', 'is_managed',
     }
     overview_keys = {

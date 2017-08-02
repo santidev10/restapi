@@ -13,7 +13,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name', 'status', 'start', 'end', 'is_managed',
+        'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_optimization_active', 'is_changed', 'weekly_chart',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
     }
@@ -32,7 +32,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'id', 'name', 'campaign_creations',
+                'id', 'name', 'account', 'campaign_creations',
                 'updated_at', 'is_ended', 'is_paused', 'is_approved',
             }
         )

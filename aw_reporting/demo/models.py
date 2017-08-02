@@ -804,6 +804,7 @@ class DemoAccount(BaseDemo):
 
         data = dict(
             id=self.id,
+            account=self.id,
             name=self.name,
             status="Running",
             start=self.start_date,
@@ -899,6 +900,7 @@ class DemoAccount(BaseDemo):
     def creation_details_full(self):
         data = dict(
             id=self.id,
+            account=self.id,
             name=self.name,
             updated_at=self.now,
             is_ended=False,

@@ -427,7 +427,7 @@ class AccountCreationListSerializer(ModelSerializer):
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "status", "is_managed",
+            "id", "name", "start", "end", "account", "status", "is_managed",
             "is_optimization_active", "is_changed", "weekly_chart",
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
@@ -441,7 +441,7 @@ class AccountCreationSetupSerializer(ModelSerializer):
 
     class Meta:
         model = AccountCreation
-        fields = ('id', 'name', 'is_ended', 'is_approved', 'is_paused',
+        fields = ('id', 'name', 'account', 'is_ended', 'is_approved', 'is_paused',
                   'campaign_creations', 'updated_at')
 
 
