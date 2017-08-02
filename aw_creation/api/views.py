@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField
+from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -549,14 +550,13 @@ class AccountCreationListApiView(ListAPIView):
             if dependencies:
                 queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
 
-            queryset = queryset.annotate(**{sort_by: annotate})
-            sort_by = "-{}".format(sort_by)
+            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
+            sort_by = "-sort_by"
 
         elif sort_by != "name":
             sort_by = "-created_at"
 
-        queryset = queryset.order_by('is_ended', sort_by)
-        return queryset
+        return queryset.order_by('is_ended', sort_by)
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
