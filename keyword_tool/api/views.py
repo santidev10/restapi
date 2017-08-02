@@ -120,7 +120,7 @@ class OptimizeQueryApiView(ListAPIView):
     def filter(self, queryset):
         query_params = self.request.query_params
 
-        for field in ('volume', 'competition'):
+        for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
                 f = "{pref}_{field}".format(field=field, pref=pref)
                 if f in query_params:
