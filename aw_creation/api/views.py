@@ -4,7 +4,7 @@ from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -479,6 +479,41 @@ class AccountCreationListApiView(ListAPIView):
 
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
+    annotate_sorts = dict(
+        impressions=(None, Sum("account__campaigns__impressions")),
+        video_views=(None, Sum("account__campaigns__video_views")),
+        video_impressions=(None, Sum(Case(
+            When(
+                account__campaigns__video_views__gt=0,
+                then="account__campaigns__impressions",
+            ),
+            output_field=AggrIntegerField()
+        ))),
+        clicks=(None, Sum("account__campaigns__clicks")),
+        cost=(None, Sum("account__campaigns__cost")),
+        video_view_rate=(('video_views', 'video_impressions'), ExpressionWrapper(
+            Case(
+                When(
+                    video_views__isnull=False,
+                    video_impressions__gt=0,
+                    then=F("video_views") / F("video_impressions"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        )),
+        ctr_v=(('clicks', 'video_views'), ExpressionWrapper(
+            Case(
+                When(
+                    clicks__isnull=False,
+                    video_views__gt=0,
+                    then=F("clicks") / F("video_views"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        ))
+    )
 
     def get(self, request, *args, **kwargs):
         # import "read only" accounts:
@@ -503,21 +538,28 @@ class AccountCreationListApiView(ListAPIView):
         return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
 
     def get_queryset(self, **filters):
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by != "name":
-            sort_by = "-created_at"
-
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).order_by('is_ended', sort_by)
+        )
+        sort_by = self.request.query_params.get('sort_by')
+
+        if sort_by in self.annotate_sorts:
+            dependencies, annotate = self.annotate_sorts[sort_by]
+            if dependencies:
+                queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
+
+            queryset = queryset.annotate(**{sort_by: annotate})
+            sort_by = "-{}".format(sort_by)
+
+        elif sort_by != "name":
+            sort_by = "-created_at"
+
+        queryset = queryset.order_by('is_ended', sort_by)
         return queryset
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
-
-        if filters.get('show_closed') != "1":
-            queryset = queryset.filter(is_ended=False)
 
         search = filters.get('search')
         if search:

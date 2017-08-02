@@ -39,9 +39,8 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         AdCreation.objects.create(
             name="Mmm", ad_group_creation=ad_group,
         )
-
         url = reverse("aw_creation_urls:ad_creation_list_setup",
-                      args=(campaign_creation.id,))
+                      args=(ad_group.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
