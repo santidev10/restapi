@@ -172,10 +172,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:account_creation_list")
 
-        for sort_by in (
-                "impressions", "video_views", "clicks", "cost",
-                "video_view_rate",
-                "ctr_v"):
+        for sort_by in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
             with patch(
                 "aw_creation.api.serializers.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
