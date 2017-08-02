@@ -82,7 +82,7 @@ class AccountCreation(UniqueItem):
 
     @property
     def is_changed(self):
-        if self.sync_at and self.sync_at > self.updated_at:
+        if self.sync_at and self.sync_at >= self.updated_at:
             return False
         return True
 
