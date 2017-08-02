@@ -444,6 +444,7 @@ class CampaignCreation(CommonTargetingItem):
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
+    instance.account_creation.is_approved = False
     instance.account_creation.is_deleted = False
     instance.account_creation.save()
 
@@ -540,6 +541,7 @@ AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
           dispatch_uid="save_group_receiver")
 def save_group_receiver(sender, instance, created, **_):
     account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations=instance)
+    account_creation.is_approved = False
     account_creation.is_deleted = False
     account_creation.save()
 
@@ -596,6 +598,7 @@ class AdCreation(UniqueItem):
           dispatch_uid="save_group_receiver")
 def save_ad_receiver(sender, instance, created, **_):
     account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations__ad_creations=instance)
+    account_creation.is_approved = False
     account_creation.is_deleted = False
     account_creation.save()
 

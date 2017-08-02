@@ -702,7 +702,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
-                if not instance.is_approved and not instance.account:  # create account
+                if not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
@@ -2359,6 +2359,7 @@ class AwCreationChangedAccountsListAPIView(GenericAPIView):
             account__managers__id=manager_id,
             account_id__isnull=False,
             is_managed=True,
+            is_approved=True,
         ).exclude(
             sync_at__gte=F("updated_at"),
         ).values_list(
