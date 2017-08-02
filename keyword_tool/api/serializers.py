@@ -124,7 +124,7 @@ class SavedListNameSerializer(SavedListCreateSerializer):
                     
                     """.format(
                         ",".join(str(i) for i in list_ids),
-                        ",".join(accounts),
+                        "'{}'".format("', '".join(accounts)) if accounts else "NULL",
                     )
                 )
                 for i in data:
