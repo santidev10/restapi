@@ -265,8 +265,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(name="Approved", owner=self.user,
                                        is_ended=False, is_paused=False, is_approved=True)
         AccountCreation.objects.create(
-            name="Running", owner=self.user,
-            account=Account.objects.create(id="123", name=""),
+            name="Running", owner=self.user, sync_at=datetime.now(),
         )
         # --
         expected = (

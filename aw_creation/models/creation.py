@@ -94,8 +94,7 @@ class AccountCreation(UniqueItem):
             ):
                 lines.append(c.get_aws_code(request))
             lines.append(
-                "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.updated_at)
+                "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
             )
             return "\n".join(lines)
 

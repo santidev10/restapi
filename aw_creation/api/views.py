@@ -594,16 +594,16 @@ class AccountCreationListApiView(ListAPIView):
 
         status = filters.get('status')
         if status:
-            if status == "Running":
-                queryset = queryset.filter(account__isnull=False)
-            elif status == "Ended":
+            if status == "Ended":
                 queryset = queryset.filter(is_ended=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_ended=False)
+            elif status == "Running":
+                queryset = queryset.filter(sync_at__isnull=False, is_paused=False, is_ended=False)
             elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_paused=False, is_ended=False)
+                queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_paused=False, is_ended=False)
             elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_paused=False, is_ended=False, account__isnull=True)
+                queryset = queryset.filter(is_approved=False, sync_at__isnull=True, is_paused=False, is_ended=False)
 
         annotates = {}
         second_annotates = {}
@@ -2436,6 +2436,6 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
     def patch(request, account_id, **_):
         updated_at = request.data.get("updated_at")
         AccountCreation.objects.filter(
-            account_id=account_id, updated_at__lte=updated_at, is_managed=True,
-        ).update(sync_at=timezone.now())
+            account_id=account_id, is_managed=True,
+        ).update(sync_at=updated_at)
         return Response()

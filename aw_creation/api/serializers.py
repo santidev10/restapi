@@ -369,7 +369,7 @@ class AccountCreationListSerializer(ModelSerializer):
             s = "ended"
         elif obj.is_paused:
             s = "paused"
-        elif obj.account:
+        elif obj.sync_at:
             s = "running"
         elif obj.is_approved:
             s = "approved"
