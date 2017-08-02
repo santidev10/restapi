@@ -628,8 +628,7 @@ class AccountCreationListApiView(ListAPIView):
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1),
-                owner=self.request.user,
+                name="Account {}".format(account_count + 1), owner=self.request.user,
             )
             campaign_creation = CampaignCreation.objects.create(
                 name="Campaign 1",
@@ -643,6 +642,8 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
+            account_creation.is_deleted = True   # do not show it in the list
+            account_creation.save()
 
         for language in default_languages():
             campaign_creation.languages.add(language)

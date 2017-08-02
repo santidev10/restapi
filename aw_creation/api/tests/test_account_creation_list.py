@@ -37,6 +37,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             }
         )
 
+        item = AccountCreation.objects.get(pk=response.data['id'])
+        self.assertEqual(item.is_deleted, True)  # item is hidden
+
         campaign_creation = response.data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_creation.keys()),

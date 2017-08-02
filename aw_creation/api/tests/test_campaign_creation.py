@@ -129,6 +129,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         campaign = self.create_campaign(**defaults)
+        account_creation = campaign.account_creation
+        account_creation.is_deleted = True
+        account_creation.save()
+
         url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign.id,))
 
@@ -153,6 +157,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, False)
+
         self.assertEqual(len(response.data['ad_schedule_rules']), 2)
         self.assertEqual(len(response.data['frequency_capping']), 2)
         self.assertEqual(len(response.data['location_rules']), 2)
