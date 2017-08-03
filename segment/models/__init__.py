@@ -28,6 +28,4 @@ def get_segment_model_by_type(segment_type):
 def total_update_segments():
     SegmentVideo.objects.update_youtube_segments()
     for model in SEGMENT_MODELS.fget():
-        if model == SegmentVideo:
-            continue
         model.objects.update_statistics()
