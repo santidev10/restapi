@@ -35,7 +35,7 @@ from aw_reporting.adwords_api import create_customer_account, update_customer_ac
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
-from datetime import timedelta
+from datetime import timedelta, datetime
 from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal

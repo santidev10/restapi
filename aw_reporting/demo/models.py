@@ -805,11 +805,11 @@ class DemoAccount(BaseDemo):
         data = dict(
             id=self.id,
             account=self.id,
+            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
             name=self.name,
             status="Running",
             start=self.start_date,
             end=self.end_date,
-            is_optimization_active=True,
             is_changed=False,
             is_managed=True,
             weekly_chart=chart_lines[0]['trend'],
