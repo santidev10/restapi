@@ -350,7 +350,9 @@ class AccountCreationListSerializer(ModelSerializer):
         else:
             settings = self.settings.get(obj.id)
             if settings:
-                return settings['video_thumbnail']
+                thumbnails = settings['video_thumbnail']
+                if thumbnails:
+                    return thumbnails.split(", ")[0]
 
     def get_start(self, obj):
         settings = self.settings.get(obj.id)
