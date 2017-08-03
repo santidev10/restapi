@@ -287,6 +287,37 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             ac.refresh_from_db()
             self.assertEqual(ac.account.id, "uid_from_aw")
 
+    def test_fail_approve_out_of_date(self):
+        # creating of a MCC account
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        # account creation to approve it
+        today = datetime.now()
+        ac = self.create_account_creation(self.user, start=today - timedelta(days=2), end=today)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        with patch("aw_creation.api.views.create_customer_account",
+                   new=lambda *_: "uid_from_aw"):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_success_update_name(self):
         # creating of a MCC account
         manager = Account.objects.create(id="7155851537", name="Management Account")

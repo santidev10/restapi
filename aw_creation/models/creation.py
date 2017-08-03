@@ -86,6 +86,17 @@ class AccountCreation(UniqueItem):
             return False
         return True
 
+    @property
+    def timezone(self):
+        if self.account and self.account.timezone:
+            return self.account.timezone
+        else:
+            from aw_reporting.models import DEFAULT_TIMEZONE
+            return DEFAULT_TIMEZONE
+
+    def get_today_date(self):
+        return datetime.now(tz=pytz.timezone(self.timezone)).date()
+
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
@@ -380,11 +391,7 @@ class CampaignCreation(CommonTargetingItem):
         if self.start:
             return self.start
         elif self.account_creation.account:
-            timezone = self.account_creation.account.timezone
-            if not timezone:
-                from aw_reporting.models import DEFAULT_TIMEZONE
-                timezone = DEFAULT_TIMEZONE
-
+            timezone = self.account_creation.timezone
             today = datetime.now(tz=pytz.timezone(timezone))
             return today
 

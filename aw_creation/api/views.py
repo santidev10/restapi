@@ -744,6 +744,13 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
+                # check dates
+                today = instance.get_today_date()
+                for c in instance.campaign_creations.all():
+                    if c.start and c.start < today or c.end and c.end < today:
+                        return Response(status=HTTP_400_BAD_REQUEST,
+                                        data=dict(error="The dates cannot be in the past: {}".format(c.name)))
+
                 if not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:

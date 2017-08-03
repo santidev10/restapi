@@ -201,7 +201,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         today = datetime.now().date()
         request_data = dict(
-            start=str(today - timedelta(days=1)),
+            start=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',
@@ -221,7 +221,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         today = datetime.now().date()
         request_data = dict(
-            end=str(today - timedelta(days=1)),
+            end=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',
