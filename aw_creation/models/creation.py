@@ -457,9 +457,10 @@ class CampaignCreation(CommonTargetingItem):
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
-    instance.account_creation.is_approved = False
-    instance.account_creation.is_deleted = False
-    instance.account_creation.save()
+    account_creation = instance.account_creation
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class AdGroupCreation(CommonTargetingItem):
