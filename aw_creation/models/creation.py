@@ -110,6 +110,13 @@ class AccountCreation(UniqueItem):
             return "\n".join(lines)
 
 
+@receiver(post_save, sender=AccountCreation, dispatch_uid="save_account_receiver")
+def save_account_receiver(sender, instance, created, **_):
+    if instance.is_deleted and not created:
+        instance.is_deleted = False
+        instance.save()
+
+
 def default_languages():
     return Language.objects.filter(pk__in=(1000, 1003))
 

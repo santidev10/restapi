@@ -685,8 +685,7 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
-            account_creation.is_deleted = True   # do not show it in the list
-            account_creation.save()
+            AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)  # do not show it in the list
 
         for language in default_languages():
             campaign_creation.languages.add(language)
@@ -792,8 +791,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         if instance.account is not None:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete approved setups"))
-        instance.is_deleted = True
-        instance.save()
+        AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
         return Response(status=HTTP_204_NO_CONTENT)
 
 
