@@ -290,6 +290,42 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             for i in response.data['items']:
                 self.assertEqual(i['status'], status)
 
+    def test_success_dates_filter(self):
+        today = datetime(2015, 1, 1).date()
+        max_end, min_start = today, today - timedelta(days=10)
+
+        AccountCreation.objects.create(name="Empty", owner=self.user)
+        ac = AccountCreation.objects.create(name="Settings+", owner=self.user)
+        CampaignCreation.objects.create(name="", account_creation=ac, start=min_start, end=max_end)
+
+        ac = AccountCreation.objects.create(name="Settings-", owner=self.user)
+        CampaignCreation.objects.create(name="", account_creation=ac, start=min_start, end=max_end + timedelta(days=1))
+
+        account = Account.objects.create(id=1, name="")
+        Campaign.objects.create(id=1, name="", account=account, start_date=min_start, end_date=max_end)
+        AccountCreation.objects.create(name="Improted+", owner=self.user, account=account)
+
+        account = Account.objects.create(id=2, name="")
+        Campaign.objects.create(id=2, name="", account=account,
+                                start_date=min_start - timedelta(days=1), end_date=max_end)
+        AccountCreation.objects.create(name="Improted-", owner=self.user, account=account)
+
+        base_url = reverse("aw_creation_urls:account_creation_list")
+
+        with patch(
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get("{}?min_start={}&max_end={}".format(base_url, min_start, max_end))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 2)
+        for item in response.data['items']:
+            self.assertIs(item['name'].endswith("+"), True)
+
     # ended account cases
     def test_success_get_account_no_end_date(self):
         ac_creation = AccountCreation.objects.create(
