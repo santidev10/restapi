@@ -497,7 +497,7 @@ class AccountCreationListApiView(ListAPIView):
                 When(
                     video_views__isnull=False,
                     video_impressions__gt=0,
-                    then=F("video_views") / F("video_impressions"),
+                    then=F("video_views") * 1.0 / F("video_impressions"),
                 ),
                 output_field=AggrFloatField()
             ),
@@ -508,7 +508,7 @@ class AccountCreationListApiView(ListAPIView):
                 When(
                     clicks__isnull=False,
                     video_views__gt=0,
-                    then=F("clicks") / F("video_views"),
+                    then=F("clicks") * 1.0 / F("video_views"),
                 ),
                 output_field=AggrFloatField()
             ),

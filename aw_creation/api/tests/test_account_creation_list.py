@@ -164,7 +164,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_sort_by(self):
         account1 = Account.objects.create(id="123", name="")
-        stats = dict(account=account1,  name="", impressions=10, video_views=10, clicks=10, cost=10)
+        stats = dict(account=account1,  name="", impressions=10, video_views=9, clicks=9, cost=9)
         Campaign.objects.create(id=1, **stats)
         Campaign.objects.create(id=2, **stats)
         top_account = AccountCreation.objects.create(
