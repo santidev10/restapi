@@ -10,6 +10,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from collections import defaultdict
 from datetime import datetime
+import pytz
 import json
 import re
 import logging
@@ -475,6 +476,16 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             'content_exclusions',
         )
 
+    def validate_start(self, value):
+        if value < self.instance.account_creation.get_today_date():
+            raise ValidationError("This date is in the past")
+        return value
+
+    def validate_end(self, value):
+        if value < self.instance.account_creation.get_today_date():
+            raise ValidationError("This date is in the past")
+        return value
+
     def validate(self, data):
         if "devices" in data and not data["devices"]:
             raise ValidationError("devices: empty set is not allowed")
@@ -494,8 +505,6 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
         # if one of the following fields is provided
         if {"start", "end"} & set(data.keys()):
-            today = datetime.now().date()
-
             start, end = None, None
             if self.instance:
                 start, end = self.instance.start, self.instance.end
@@ -505,16 +514,8 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             if data.get("end"):
                 end = data.get("end")
 
-            for f_name, date in (("start", start), ("end", end)):
-                if date and date < today:
-                    if data.get(f_name) or data.get("is_approved") is True:
-                        raise ValidationError(
-                            'Wrong date period: '
-                            'dates in the past are not allowed')
-
             if start and end and start > end:
-                raise ValidationError(
-                    'Wrong date period: start date > end date')
+                raise ValidationError('Wrong date period: start date > end date')
 
         return super(CampaignCreationUpdateSerializer, self).validate(data)
 

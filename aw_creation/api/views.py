@@ -577,7 +577,8 @@ class AccountCreationListApiView(ListAPIView):
         min_start = filters.get('min_start')
         max_start = filters.get('max_start')
         if min_start or max_start:
-            queryset = queryset.annotate(start=Min("campaign_creations__start"))
+            queryset = queryset.annotate(start=Coalesce(Min("campaign_creations__start"),
+                                                        Min("account__campaigns__start_date")))
             if min_start:
                 queryset = queryset.filter(start__gte=min_start)
             if max_start:
@@ -586,12 +587,12 @@ class AccountCreationListApiView(ListAPIView):
         min_end = filters.get('min_end')
         max_end = filters.get('max_end')
         if min_end or max_end:
-            queryset = queryset.annotate(end=Max("campaign_creations__end"))
+            queryset = queryset.annotate(end=Coalesce(Max("campaign_creations__end"),
+                                                      Max("account__campaigns__end_date")))
             if min_end:
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
-
         status = filters.get('status')
         if status:
             if status == "Ended":
@@ -684,8 +685,7 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
-            account_creation.is_deleted = True   # do not show it in the list
-            account_creation.save()
+            AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)  # do not show it in the list
 
         for language in default_languages():
             campaign_creation.languages.add(language)
@@ -744,6 +744,13 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
+                # check dates
+                today = instance.get_today_date()
+                for c in instance.campaign_creations.all():
+                    if c.start and c.start < today or c.end and c.end < today:
+                        return Response(status=HTTP_400_BAD_REQUEST,
+                                        data=dict(error="The dates cannot be in the past: {}".format(c.name)))
+
                 if not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
@@ -784,8 +791,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         if instance.account is not None:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete approved setups"))
-        instance.is_deleted = True
-        instance.save()
+        AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
         return Response(status=HTTP_204_NO_CONTENT)
 
 
