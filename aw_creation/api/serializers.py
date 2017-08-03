@@ -3,14 +3,14 @@ from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField, DictField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, AdCreation
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, \
+    AdCreation, YT_VIDEO_REGEX
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
-    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats
+    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
+    ConcatAggregate, VideoCreativeStatistic
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from collections import defaultdict
-from datetime import datetime
-import pytz
 import json
 import re
 import logging
@@ -129,11 +129,7 @@ class AdCreationSetupSerializer(ModelSerializer):
     @staticmethod
     def get_thumbnail(obj):
         if obj.video_url:
-            match = re.match(
-                r'(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)'
-                r'(?:/watch\?v=|/video/|/)([^\s&\?]+)',
-                obj.video_url,
-            )
+            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
             if match:
                 uid = match.group(1)
                 return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
@@ -331,7 +327,7 @@ class StatField(SerializerMethodField):
 
 class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
-    is_optimization_active = SerializerMethodField()
+    thumbnail = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     status = SerializerMethodField()
     start = SerializerMethodField()
@@ -346,9 +342,15 @@ class AccountCreationListSerializer(ModelSerializer):
     def get_weekly_chart(self, obj):
         return self.daily_chart[obj.id][-7:]
 
-    @staticmethod
-    def get_is_optimization_active(*_):
-        return True
+    def get_thumbnail(self, obj):
+        video_ads_data = self.video_ads_data.get(obj.id)
+        if video_ads_data:
+            _, yt_id = sorted(video_ads_data)[-1]
+            return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(yt_id)
+        else:
+            settings = self.settings.get(obj.id)
+            if settings:
+                return settings['video_thumbnail']
 
     def get_start(self, obj):
         settings = self.settings.get(obj.id)
@@ -394,6 +396,7 @@ class AccountCreationListSerializer(ModelSerializer):
                 account_creation_id__in=ids
             ).values('account_creation_id').order_by('account_creation_id').annotate(
                 start=Min("start"), end=Max("end"),
+                video_thumbnail=ConcatAggregate("ad_group_creations__ad_creations__video_thumbnail", distinct=True)
             )
             self.settings = {s['account_creation_id']: s for s in settings}
 
@@ -423,13 +426,26 @@ class AccountCreationListSerializer(ModelSerializer):
                     dict(label=s['date'], value=s['views'])
                 )
 
+            # thumbnails
+            group_key = "ad_group__campaign__account__account_creations__id"
+            video_ads_data = VideoCreativeStatistic.objects.filter(
+                ad_group__campaign__account__account_creations__id__in=ids
+            ).values(group_key, "creative_id").order_by(group_key, "creative_id").annotate(
+                impressions=Sum("impressions")
+            )
+            self.video_ads_data = defaultdict(list)
+            for v in video_ads_data:
+                self.video_ads_data[v[group_key]].append(
+                    (v['impressions'], v['creative_id'])
+                )
+
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
 
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "account", "status", "is_managed",
-            "is_optimization_active", "is_changed", "weekly_chart",
+            "id", "name", "start", "end", "account", "status", "is_managed", "thumbnail",
+            "is_changed", "weekly_chart",
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
         )

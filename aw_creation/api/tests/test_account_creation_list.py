@@ -14,7 +14,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
         'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
-        'is_optimization_active', 'is_changed', 'weekly_chart',
+        'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
     }
 
@@ -105,6 +105,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
+        campaign = Campaign.objects.create(id=1, name="", account=account)
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
+        creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
+        date = datetime.now()
+        VideoCreativeStatistic.objects.create(creative=creative1, date=date, ad_group=ad_group, impressions=10)
+        VideoCreativeStatistic.objects.create(creative=creative2, date=date, ad_group=ad_group, impressions=12)
+
         ac_creation = AccountCreation.objects.create(
             name="", owner=self.user, account=account,
         )
@@ -114,9 +122,11 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             start=datetime.now() - timedelta(days=10),
             end=datetime.now() + timedelta(days=10),
         )
-        AdGroupCreation.objects.create(
+        ad_group_creation = AdGroupCreation.objects.create(
             name="", campaign_creation=camp_creation,
         )
+        AdCreation.objects.create(name="", ad_group_creation=ad_group_creation,
+                                  video_thumbnail="http://some.url.com")
         AdGroupCreation.objects.create(
             name="", campaign_creation=camp_creation,
         )
