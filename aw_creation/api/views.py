@@ -595,16 +595,21 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get('status')
         if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True)
+            if status == "From AdWords":
+                queryset = queryset.filter(is_managed=False)
+            elif status == "Ended":
+                queryset = queryset.filter(is_ended=True, is_managed=True)
             elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_ended=False)
+                queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)
             elif status == "Running":
-                queryset = queryset.filter(sync_at__isnull=False, is_paused=False, is_ended=False)
+                queryset = queryset.filter(sync_at__isnull=False, is_managed=True,
+                                           is_paused=False, is_ended=False)
             elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_paused=False, is_ended=False)
+                queryset = queryset.filter(is_approved=True, is_managed=True, sync_at__isnull=True,
+                                           is_paused=False, is_ended=False)
             elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, sync_at__isnull=True, is_paused=False, is_ended=False)
+                queryset = queryset.filter(is_approved=False, is_managed=True, sync_at__isnull=True,
+                                           is_paused=False, is_ended=False)
 
         annotates = {}
         second_annotates = {}

@@ -370,17 +370,18 @@ class AccountCreationListSerializer(ModelSerializer):
 
     @staticmethod
     def get_status(obj):
-        if obj.is_ended:
-            s = "ended"
+        if not obj.is_managed:
+            return "From AdWords"
+        elif obj.is_ended:
+            return "Ended"
         elif obj.is_paused:
-            s = "paused"
+            return "Paused"
         elif obj.sync_at:
-            s = "running"
+            return "Running"
         elif obj.is_approved:
-            s = "approved"
+            return "Approved"
         else:
-            s = "pending"
-        return s.capitalize()
+            return "Pending"
 
     def __init__(self, *args, **kwargs):
         self.settings = {}

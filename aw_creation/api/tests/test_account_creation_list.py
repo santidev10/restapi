@@ -274,8 +274,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="Running", owner=self.user, sync_at=datetime.now(),
         )
+        AccountCreation.objects.create(
+            name="From AdWords", owner=self.user, is_managed=False,
+        )
         # --
         expected = (
+            ("From AdWords", 1),
             ("Pending", 1),
             ("Ended", 1),
             ("Paused", 1),
