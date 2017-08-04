@@ -495,12 +495,12 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         )
 
     def validate_start(self, value):
-        if value < self.instance.account_creation.get_today_date():
+        if value and value < self.instance.account_creation.get_today_date():
             raise ValidationError("This date is in the past")
         return value
 
     def validate_end(self, value):
-        if value < self.instance.account_creation.get_today_date():
+        if value and value < self.instance.account_creation.get_today_date():
             raise ValidationError("This date is in the past")
         return value
 
