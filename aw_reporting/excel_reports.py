@@ -541,7 +541,7 @@ class AnalyzeWeeklyReport:
                 device = "Other*"
             rows.append(
                 (device, obj['impressions'], obj['video_views'],
-                 "{}%".format(obj['video_views']), obj['clicks'],
+                 "{}%".format(obj['video_view_rate']), obj['clicks'],
                  "{}%".format(obj['ctr']),
                  "{}%".format(obj['video100rate']))
             )
