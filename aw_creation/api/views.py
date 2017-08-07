@@ -569,17 +569,17 @@ class AccountCreationListApiView(ListAPIView):
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
         if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaigns_count=Count(
-                Case(
+            queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations"))
+
+            queryset = queryset.annotate(campaigns_count=Case(
                     When(
-                        is_managed=True,
-                        then="campaign_creations__id",
+                        campaign_creations_count=0,
+                        then=Count("account__campaigns"),
                     ),
-                    default="account__campaigns__id",
-                    output_field=AggrCharField(),
+                    default="campaign_creations_count",
+                    output_field=AggrIntegerField(),
                 ),
-                distinct=True
-            ))
+            )
 
             if min_campaigns_count:
                 queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
