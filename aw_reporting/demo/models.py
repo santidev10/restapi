@@ -959,7 +959,7 @@ class DemoAccount(BaseDemo):
             if int(is_changed):
                 return
 
-        for metric in ("impressions", "video_views", "clicks", "video_view_rate", "ctr_v"):
+        for metric in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
