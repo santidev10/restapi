@@ -416,6 +416,22 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data['items']), 1)
         self.assertEqual(response.data['items'][0]['id'], ac.id)
 
+    def test_filter_campaigns_count_from_ad_words(self):
+        account = Account.objects.create(id=1, name="")
+        Campaign.objects.create(id=1, name="", account=account)
+        ac = AccountCreation.objects.create(name="", account=account, owner=self.user, is_managed=False)
+        AccountCreation.objects.create(name="", owner=self.user)
+        # --
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+        ):
+            response = self.client.get("{}?min_campaigns_count=1&max_campaigns_count=1".format(url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(response.data['items'][0]['id'], ac.id)
+
     def test_filter_start_date(self):
         ac = AccountCreation.objects.create(name="", owner=self.user)
         CampaignCreation.objects.create(account_creation=ac, name="", start="2017-01-10")

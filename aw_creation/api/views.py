@@ -4,7 +4,8 @@ from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
+    CharField as AggrCharField
 from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
@@ -568,7 +569,18 @@ class AccountCreationListApiView(ListAPIView):
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
         if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
+            queryset = queryset.annotate(campaigns_count=Count(
+                Case(
+                    When(
+                        is_managed=True,
+                        then="campaign_creations__id",
+                    ),
+                    default="account__campaigns__id",
+                    output_field=AggrCharField(),
+                ),
+                distinct=True
+            ))
+
             if min_campaigns_count:
                 queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
             if max_campaigns_count:
