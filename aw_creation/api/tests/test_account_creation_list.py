@@ -221,6 +221,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             ("impressions", 1, 5, 2, 11),
             ("video_views", 1, 2, 3, 11),
             ("clicks", 1, 2, 2, 10),
+            ("cost", 1, 2, 2, 10),
             ("video_view_rate", 50, 75, 75, 100),
             ("ctr_v", 25, 50, 75, 100),
         )
