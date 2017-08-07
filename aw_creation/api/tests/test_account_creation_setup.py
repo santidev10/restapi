@@ -1,27 +1,26 @@
 from datetime import datetime, timedelta
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
-from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
-class AccountAPITestCase(AwReportingAPITestCase):
+class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
 
     @staticmethod
-    def create_account_creation(owner, start, end):
+    def create_account_creation(owner, start=None, end=None, is_managed=True):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
+            is_managed=is_managed,
         )
 
         campaign_creation = CampaignCreation.objects.create(
@@ -73,7 +72,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(ac.id,))
 
         response = self.client.get(url)
@@ -82,7 +81,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(DEMO_ACCOUNT_ID,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -94,65 +93,35 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                # common details
-                'id', 'name', 'status', 'account',
-                'is_ended', 'is_approved', 'is_paused', 'is_changed',
-                'is_optimization_active', "campaign_creations",
-
-                'weekly_chart', 'campaigns_count', 'ad_groups_count',
-                'creative_count', 'goal_units', 'channels_count', 'videos_count', 'keywords_count',
-
-                "goal_type", "type", "video_ad_format", "delivery_method",
-                "video_networks", "bidding_type",
-                'start', 'end', 'creative', 'structure', 'goal_charts',
+                'id', 'name', 'account', 'updated_at', 'campaign_creations', 'updated_at',
+                'is_ended', 'is_approved', 'is_paused',
             }
         )
-        self.assertIsNotNone(data['start'])
-        self.assertIsNotNone(data['end'])
-        self.assertEqual(
-            data['video_ad_format'],
-            dict(id=AccountCreation.IN_STREAM_TYPE,
-                 name=AccountCreation.VIDEO_AD_FORMATS[0][1]),
-        )
-        self.assertEqual(
-            data['type'],
-            dict(id=AccountCreation.VIDEO_TYPE,
-                 name=AccountCreation.CAMPAIGN_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['goal_type'],
-            dict(id=AccountCreation.GOAL_VIDEO_VIEWS,
-                 name=AccountCreation.GOAL_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['delivery_method'],
-            dict(id=AccountCreation.STANDARD_DELIVERY,
-                 name=AccountCreation.DELIVERY_METHODS[0][1]),
-        )
-        self.assertEqual(
-            data['bidding_type'],
-            dict(id=AccountCreation.MANUAL_CPV_BIDDING,
-                 name=AccountCreation.BIDDING_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['video_networks'],
-            [dict(id=uid, name=n)
-             for uid, n in AccountCreation.VIDEO_NETWORKS],
-        )
-
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name',
-                'is_approved', 'is_paused',
-                'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
+                'id', 'name', 'updated_at', 'start', 'end',
+                'budget', 'delivery_method',  'video_ad_format', 'video_networks', 'languages',
+                'frequency_capping', 'ad_schedule_rules', 'location_rules',
+                'devices',
+                'genders', 'parents', 'age_ranges',
+                'content_exclusions',
                 'ad_group_creations',
             }
         )
+        self.assertEqual(len(campaign_data['content_exclusions']), 2)
+        self.assertEqual(
+            set(campaign_data['content_exclusions'][0].keys()),
+            {'id', 'name'}
+        )
+        for f in ('age_ranges', 'genders', 'parents'):
+            self.assertGreater(len(campaign_data[f]), 0)
+            self.assertEqual(
+                set(campaign_data[f][0].keys()),
+                {'id', 'name'}
+            )
+
         self.assertEqual(len(campaign_data['languages']), 1)
         self.assertEqual(
             campaign_data['languages'][0],
@@ -210,30 +179,42 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'day',
             }
         )
+        self.assertEqual(
+            campaign_data['video_ad_format'],
+            dict(id=CampaignCreation.IN_STREAM_TYPE,
+                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['delivery_method'],
+            dict(id=CampaignCreation.STANDARD_DELIVERY,
+                 name=CampaignCreation.DELIVERY_METHODS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['video_networks'],
+            [dict(id=uid, name=n)
+             for uid, n in CampaignCreation.VIDEO_NETWORKS],
+        )
         ad_group_data = campaign_data['ad_group_creations'][0]
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'thumbnail', 'is_approved',
-                'video_url', 'ct_overlay_text', 'display_url', 'final_url',
-                'max_rate',
+                'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                # targeting
-                'targeting',
+                'targeting', 'max_rate',
             }
         )
         for f in ('age_ranges', 'genders', 'parents'):
-            self.assertGreater(len(ad_group_data[f]), 1)
-            self.assertEqual(
-                set(ad_group_data[f][0].keys()),
-                {'id', 'name'}
-            )
+            if len(ad_group_data[f]) > 0:
+                self.assertEqual(
+                    set(ad_group_data[f][0].keys()),
+                    {'id', 'name'}
+                )
         self.assertEqual(
             set(ad_group_data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
         self.assertEqual(
-            set(ad_group_data['targeting']['keyword'][0]),
+            set(ad_group_data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
 
@@ -246,54 +227,156 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
         ac = self.create_account_creation(**defaults)
 
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(ac.id,))
 
         request_data = dict(
+            name="New 3344334 name",
             is_paused=True,
             is_ended=True,
-            video_networks=[
-                AccountCreation.YOUTUBE_SEARCH,
-                AccountCreation.YOUTUBE_VIDEO,
-            ]
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['is_paused'], True)
-        self.assertEqual(response.data['is_ended'], True)
-        self.assertEqual(
-            set(i['id'] for i in response.data['video_networks']),
-            set(request_data['video_networks']),
+        for k, v in request_data.items():
+            self.assertEqual(response.data[k], v)
+
+    def test_fail_approve(self):
+        ac = self.create_account_creation(self.user)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_approve(self):
+        # creating of a MCC account
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
         )
 
+        # account creation to approve it
+        ac = self.create_account_creation(self.user)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        with patch("aw_creation.api.views.create_customer_account",
+                   new=lambda *_: "uid_from_aw"):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            ac.refresh_from_db()
+            self.assertEqual(ac.account.id, "uid_from_aw")
+
+    def test_fail_approve_out_of_date(self):
+        # creating of a MCC account
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        # account creation to approve it
+        today = datetime.now()
+        ac = self.create_account_creation(self.user, start=today - timedelta(days=2), end=today)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        with patch("aw_creation.api.views.create_customer_account",
+                   new=lambda *_: "uid_from_aw"):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_success_update_name(self):
+        # creating of a MCC account
+        manager = Account.objects.create(id="7155851537", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="anna.chumak1409@gmail.com",
+            refresh_token="1/MJsHAtsAl1YYus3lMX0Tr_oCFGzHbZn7oupW-2SyAcs",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+        account = Account.objects.create(id="7514485750", name="@")
+        account.managers.add(manager)
+        account_creation = AccountCreation.objects.create(
+            name="Pep",
+            owner=self.user,
+            account=account,
+        )
+
+        # account creation to approve it
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
+
+        request_data = dict(name="Account 15")
+        with patch("aw_creation.api.views.update_customer_account") as update_method:
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(update_method.call_count, 1)
+
+    def test_fail_disapprove(self):
+        account = Account.objects.create(id=1, name="")
+        ac = self.create_account_creation(self.user)
+        ac.account = account
+        ac.is_approved = True
+        ac.save()
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+        request_data = dict(
+            is_approved=False,
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_fail_update_demo(self):
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.patch(
             url, json.dumps(dict(is_paused=True)),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_fail_approve(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
-                      args=(ac.id,))
-        data = dict(
-            is_approved=True,
-        )
-        response = self.client.patch(
-            url, json.dumps(data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_name_validation(self):
         today = datetime.now().date()
@@ -303,7 +386,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(ac.id,))
         data = dict(
             name="Campaign '",
@@ -325,7 +408,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(ac.id,))
 
         response = self.client.delete(url)
@@ -335,7 +418,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertIs(ac.is_deleted, True)
 
     def test_fail_delete_demo(self):
-        url = reverse("aw_creation_urls:optimization_account",
+        url = reverse("aw_creation_urls:account_creation_setup",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

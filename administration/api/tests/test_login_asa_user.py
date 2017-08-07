@@ -49,6 +49,7 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
                 'date_joined',
                 'last_name',
                 'is_staff',
+                'has_aw_accounts',
             }
         )
 

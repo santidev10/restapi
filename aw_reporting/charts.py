@@ -167,10 +167,9 @@ class DeliveryChart:
                         }
                     )
                     for f in fields:
-                        ff = "sum_%s" % f
-                        v = item[ff]
+                        v = item[f]
                         if v:
-                            summaries[ff] += v
+                            summaries[f] += v
 
             # if not empty chart
             if any(i['value'] for i in results):
@@ -203,23 +202,19 @@ class DeliveryChart:
 
         if indicator in CALCULATED_STATS:
             info = CALCULATED_STATS[indicator]
-            fields = info['dependencies']
             receipt = info['receipt']
 
             def value_func(data):
-                return receipt(*[data.get("sum_%s" % a) for a in fields])
+                dict_norm_base_stats(data)
+                return receipt(**data)
 
         elif indicator in SUM_STATS:
             def value_func(data):
-                return data.get("sum_%s" % indicator)
+                dict_norm_base_stats(data)
+                return data.get(indicator)
         else:
             raise ValueError("Unexpected indicator: %s" % indicator)
         return value_func
-
-    @staticmethod
-    def norm_stat_names(stat):
-        return {(f[4:] if f.startswith("sum_") else f): v
-                for f, v in stat.items()}
 
     # chart items -------------
     def get_items(self):
@@ -247,6 +242,7 @@ class DeliveryChart:
             if not stats:
                 continue
             stat = stats[0]
+            dict_norm_base_stats(stat)
 
             for n, v in stat.items():
                 if v is not None and type(v) is not str and n != 'id':
@@ -255,10 +251,9 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
-            stat = self.norm_stat_names(stat)
-
-            dict_add_calculated_stats(stat)
+            dict_calculate_stats(stat)
             dict_quartiles_to_rates(stat)
+            del stat['video_impressions']
 
             if 'label' in stat:
                 stat['name'] = stat['label']
@@ -269,11 +264,11 @@ class DeliveryChart:
                 stat
             )
 
-        response['summary'] = self.norm_stat_names(response['summary'])
-        dict_add_calculated_stats(response['summary'])
+        dict_calculate_stats(response['summary'])
+        if 'video_impressions' in response['summary']:
+            del response['summary']['video_impressions']
         if average_positions:
             response['summary']['average_position'] = sum(average_positions) / len(average_positions)
-
         dict_quartiles_to_rates(response['summary'])
 
         top_by = self.get_top_by()
@@ -344,21 +339,27 @@ class DeliveryChart:
         return queryset
 
     def add_annotate(self, queryset):
-        fields = self.get_fields()
-        all_sum_stats = SUM_STATS + CONVERSIONS + QUARTILE_STATS
-        kwargs = {"sum_%s" % v: Sum(v) for v in fields
-                  if v in all_sum_stats}
-
-        if queryset.model is AdStatistic:
-            kwargs['average_position'] = Avg(
-                Case(
-                    When(
-                        average_position__gt=0,
-                        then=F('average_position'),
-                    ),
-                    output_field=FloatField(),
+        if not self.params['date']:
+            kwargs = dict(**all_stats_aggregate)
+            if queryset.model is AdStatistic:
+                kwargs['average_position'] = Avg(
+                    Case(
+                        When(
+                            average_position__gt=0,
+                            then=F('average_position'),
+                        ),
+                        output_field=FloatField(),
+                    )
                 )
-            )
+        else:
+            kwargs = {}
+            fields = self.get_fields()
+            all_sum_stats = SUM_STATS + CONVERSIONS + QUARTILE_STATS
+            for v in fields:
+                if v in all_sum_stats:
+                    kwargs["sum_%s" % v] = Sum(v)
+                elif v in base_stats_aggregate:
+                    kwargs[v] = base_stats_aggregate[v]
         return queryset.annotate(**kwargs)
 
     @staticmethod

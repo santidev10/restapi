@@ -108,7 +108,7 @@ class AnalyzeWeeklyReport:
         self.workbook = xlsxwriter.Workbook(self.output, {'in_memory': True})
         # clean up account name
         bad_characters = '[]:*?\/'
-        account_name = self.account.name[:31]
+        account_name = self.account.name[:31] if self.account else ""
         for char in account_name:
             if char in bad_characters:
                 account_name = account_name.replace(char, "")
@@ -212,13 +212,13 @@ class AnalyzeWeeklyReport:
         # TODO replace N/A
         # campaign
         campaign_title = "Campaign: "
-        campaign_data = "{}\n".format(self.account.name)
+        campaign_data = "{}\n".format(self.account.name) if self.account else "N/A"
         # flight
         flight_title = "Flight: "
         flight_start_date = self.account.start_date.strftime("%m/%d/%y")\
-            if self.account.start_date is not None else "N/A"
+            if self.account and self.account.start_date is not None else "N/A"
         flight_end_date = self.account.end_date.strftime("%m/%d/%y")\
-            if self.account.end_date is not None else "N/A"
+            if self.account and self.account.end_date is not None else "N/A"
         flight_data = "{} - {}\n".format(flight_start_date, flight_end_date)
         # budget
         budget_title = "Budget: "
@@ -399,10 +399,7 @@ class AnalyzeWeeklyReport:
 
     def get_interest_data(self):
         queryset = AudienceStatistic.objects.filter(**self.get_filters())
-        interest_data = queryset.filter(
-            ad_group__campaign__account__id=self.account.id,
-            date__gte=self.date_delta
-        ).values("audience__name").annotate(
+        interest_data = queryset.values("audience__name").annotate(
             **all_stats_aggregate
         ).order_by("audience__name")
         for i in interest_data:
@@ -437,10 +434,7 @@ class AnalyzeWeeklyReport:
 
     def get_topic_data(self):
         queryset = TopicStatistic.objects.filter(**self.get_filters())
-        topic_data = queryset.filter(
-            ad_group__campaign__account__id=self.account.id,
-            date__gte=self.date_delta
-        ).values("topic__name").order_by("topic__name").annotate(
+        topic_data = queryset.values("topic__name").order_by("topic__name").annotate(
             **all_stats_aggregate
         )
         for i in topic_data:
@@ -547,7 +541,7 @@ class AnalyzeWeeklyReport:
                 device = "Other*"
             rows.append(
                 (device, obj['impressions'], obj['video_views'],
-                 "{}%".format(obj['video_views']), obj['clicks'],
+                 "{}%".format(obj['video_view_rate']), obj['clicks'],
                  "{}%".format(obj['ctr']),
                  "{}%".format(obj['video100rate']))
             )

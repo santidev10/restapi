@@ -25,14 +25,11 @@ class SegmentManager(Manager):
     """
     Extend default segment manager
     """
-    def update_statistics(self, forced=False):
+    def update_statistics(self):
         """
         Make re-count of all segments statistic and mini-dash fields
         """
         segments = self.all()
-        if not forced:
-            time_delta = timezone.now() - timedelta(hours=23)
-            segments = segments.filter(updated_at__lte=time_delta)
         for segment in segments:
             logger.info('Updating statistics for {}-segment [{} ids]: {}'.format(segment.segment_type, len(segment.related_ids_list), segment.title))
             segment.update_statistics(segment)

@@ -6,11 +6,10 @@ from django.http import StreamingHttpResponse, HttpResponse
 from django.db import transaction
 from django.db.models import Min, Max, Sum, Count, Q, Avg, Case, When, Value, IntegerField, FloatField, F, \
     ExpressionWrapper
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
@@ -19,7 +18,8 @@ from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
     Campaign, AdGroupStatistic, DATE_FORMAT, VideoCreativeStatistic, YTChannelStatistic, \
-    AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, all_stats_aggregate
+    AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, \
+    all_stats_aggregate, YTVideoStatistic, base_stats_aggregate
 
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
@@ -51,7 +51,7 @@ class AnalyzeAccountsListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Account.user_objects(self.request.user).filter(
             can_manage_clients=False,
-        ).prefetch_related("account_creation").order_by("name", "id")
+        ).order_by("name", "id")
         return queryset
 
     filters = ('status', 'search', 'min_goal_units', 'max_goal_units', 'min_campaigns_count', 'max_campaigns_count',
@@ -843,7 +843,7 @@ class ConnectAWAccountApiView(APIView):
                 else:
                     return Response(
                         data=dict(error=self.lost_perm_error),
-                        status=HTTP_500_INTERNAL_SERVER_ERROR,
+                        status=HTTP_400_BAD_REQUEST,
                     )
             else:
                 # update token
@@ -925,8 +925,95 @@ class ConnectAWAccountApiView(APIView):
         return flow
 
 
+class AwHistoricalDataApiView(APIView):
 
+    @staticmethod
+    def get(request, item_type, pk, **_):
+        accounts = Account.user_objects(request.user)
+        filters = dict(ad_group__campaign__account__in=accounts, yt_id=pk)
+        if item_type == "channel":
+            queryset = YTChannelStatistic.objects.filter(**filters)
+        elif item_type == "video":
+            queryset = YTVideoStatistic.objects.filter(**filters)
+        else:
+            return Response(data=dict(error="Item type not found: {}".format(item_type)),
+                            status=HTTP_400_BAD_REQUEST)
+        # base stats
+        base_stats = ('clicks', 'impressions', 'video_views')
 
+        # this and lat week stats
+        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_start = week_end - timedelta(days=6)
+        prev_week_end = week_start - timedelta(days=1)
+        prev_week_start = prev_week_end - timedelta(days=6)
+        aggregate = {
+            "{}_{}_week".format(s, k): Sum(
+                Case(
+                    When(
+                        date__gte=sd,
+                        date__lte=ed,
+                        then=s,
+                    ),
+                    output_field=IntegerField()
+                )
+            )
+            for k, sd, ed in (("this", week_start, week_end),
+                              ("last", prev_week_start, prev_week_end))
+            for s in base_stats
+        }
+        aggregate.update(base_stats_aggregate)
+        data = queryset.aggregate(**aggregate)
+        dict_norm_base_stats(data)
+        dict_calculate_stats(data)
+        del data['average_cpv'], data['video_impressions'], data['cost'], data['average_cpm']
 
+        annotate = dict(
+            ctr=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_clicks__isnull=False,
+                        sum_impressions__gt=0,
+                        then=F("sum_clicks") * Value(100.0) / F("sum_impressions"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            ctr_v=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_clicks__isnull=False,
+                        sum_video_views__gt=0,
+                        then=F("sum_clicks") * Value(100.0) / F("sum_video_views"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+            video_view_rate=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_video_views__isnull=False,
+                        video_impressions__gt=0,
+                        then=F("sum_video_views") * Value(100.0) / F("video_impressions"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
+        )
+
+        top_bottom_data = queryset.values("date").order_by("date").annotate(
+            **base_stats_aggregate
+        ).annotate(**annotate).aggregate(
+            **{
+                "{}_{}".format(s, n): a(s)
+                for s in annotate.keys()
+                for n, a in (("top", Max), ("bottom", Min))
+            }
+        )
+        data.update(top_bottom_data)
+
+        return Response(data=data)
 
 

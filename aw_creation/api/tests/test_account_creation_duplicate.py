@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
-from aw_creation.api.views import OptimizationAccountListApiView
 from aw_reporting.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
@@ -62,6 +61,10 @@ class AccountAPITestCase(AwReportingAPITestCase):
             type=TargetingItem.KEYWORD_TYPE,
             is_negative=True,
         )
+        AdCreation.objects.create(
+            name="FF",
+            ad_group_creation=ad_group_creation,
+        )
         return account_creation
 
     def test_success_post(self):
@@ -72,7 +75,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:optimization_account_duplicate",
+        url = reverse("aw_creation_urls:account_creation_duplicate",
                       args=(ac.id,))
 
         response = self.client.post(url)
@@ -83,7 +86,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['name'], "Pep (copy)")
 
     def test_success_post_demo(self):
-        url = reverse("aw_creation_urls:optimization_account_duplicate",
+        url = reverse("aw_creation_urls:account_creation_duplicate",
                       args=(DEMO_ACCOUNT_ID,))
         with patch(
             "aw_creation.api.serializers.SingleDatabaseApiConnector",
@@ -104,70 +107,39 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                # common details
-                'id', 'name', 'status', 'account',
-                'is_ended', 'is_approved', 'is_paused', 'is_changed',
-                'is_optimization_active', "campaign_creations",
-                'weekly_chart', 'campaigns_count', 'ad_groups_count',
-
-                'creative_count', 'goal_units',
-                'channels_count', 'videos_count',
-                'keywords_count',
-
-                # details below header
-                "goal_type", "type", "video_ad_format", "delivery_method",
-                "video_networks", "bidding_type",
-                # details below header (readonly)
-                'start', 'end',
-
-                'creative', 'structure', 'goal_charts',
+                'id', 'name', 'account', 'updated_at',
+                'is_paused', 'is_ended', 'is_approved', 'updated_at',
+                'campaign_creations',
             }
-        )
-        self.assertIsNotNone(data['start'])
-        self.assertIsNotNone(data['end'])
-        self.assertEqual(
-            data['video_ad_format'],
-            dict(id=AccountCreation.IN_STREAM_TYPE,
-                 name=AccountCreation.VIDEO_AD_FORMATS[0][1]),
-        )
-        self.assertEqual(
-            data['type'],
-            dict(id=AccountCreation.VIDEO_TYPE,
-                 name=AccountCreation.CAMPAIGN_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['goal_type'],
-            dict(id=AccountCreation.GOAL_VIDEO_VIEWS,
-                 name=AccountCreation.GOAL_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['delivery_method'],
-            dict(id=AccountCreation.STANDARD_DELIVERY,
-                 name=AccountCreation.DELIVERY_METHODS[0][1]),
-        )
-        self.assertEqual(
-            data['bidding_type'],
-            dict(id=AccountCreation.MANUAL_CPV_BIDDING,
-                 name=AccountCreation.BIDDING_TYPES[0][1]),
-        )
-        self.assertEqual(
-            data['video_networks'],
-            [dict(id=uid, name=n)
-             for uid, n in AccountCreation.VIDEO_NETWORKS],
         )
 
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name',
-                'is_approved', 'is_paused',
+                'id', 'name', 'updated_at',
                 'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
+                'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'ad_group_creations',
+                'location_rules', 'ad_group_creations',
+                "video_ad_format", "delivery_method", "video_networks",
+                'content_exclusions', 'genders', 'age_ranges', 'parents',
             }
+        )
+        self.assertEqual(
+            campaign_data['video_ad_format'],
+            dict(id=CampaignCreation.IN_STREAM_TYPE,
+                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['delivery_method'],
+            dict(id=CampaignCreation.STANDARD_DELIVERY,
+                 name=CampaignCreation.DELIVERY_METHODS[0][1]),
+        )
+        self.assertEqual(
+            campaign_data['video_networks'],
+            [dict(id=uid, name=n)
+             for uid, n in CampaignCreation.VIDEO_NETWORKS],
         )
         self.assertEqual(len(campaign_data['languages']), 1)
         self.assertEqual(
@@ -227,25 +199,28 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(ad_group_data.keys()),
             {
-                'id', 'name', 'thumbnail', 'is_approved',
-                'video_url', 'ct_overlay_text', 'display_url', 'final_url',
-                'max_rate',
-                'genders', 'parents', 'age_ranges',
+                'id', 'updated_at', 'name', 'ad_creations',
+                'genders', 'parents', 'age_ranges', 'max_rate',
                 # targeting
                 'targeting',
             }
         )
-        for f in ('age_ranges', 'genders', 'parents'):
-            self.assertGreater(len(ad_group_data[f]), 1)
-            self.assertEqual(
-                set(ad_group_data[f][0].keys()),
-                {'id', 'name'}
-            )
         self.assertEqual(
             set(ad_group_data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
         self.assertEqual(
-            set(ad_group_data['targeting']['keyword'][0]),
+            set(ad_group_data['targeting']['keyword']["negative"][0]),
             {'criteria', 'is_negative', 'type', 'name'}
+        )
+
+        ad = ad_group_data['ad_creations'][0]
+        self.assertEqual(
+            set(ad.keys()),
+            {
+                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
+                'video_url', 'display_url', 'final_url', 'thumbnail',
+                'companion_banner',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+            }
         )

@@ -43,7 +43,8 @@ PROJECT_APPS = (
     "userprofile",
     "segment",
     "keyword_tool",
-    "landing"
+    "landing",
+    "administration"
 )
 
 THIRD_PARTY_APPS = (
@@ -73,6 +74,8 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
 
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
@@ -138,16 +141,6 @@ REST_FRAMEWORK = {
     )
 }
 
-if DEBUG:  # for the api root
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    )
-    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] += (
-        'rest_framework.renderers.BrowsableAPIRenderer',
-    )
-
-
 LOGS_DIRECTORY = '.'
 
 LOGGING = {
@@ -211,7 +204,7 @@ EMAIL_PORT = 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # this is default development key
-YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyAdRi5XQ3rn91z6V7cU3iiWBbHsGUMhrS0'
+YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
 SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
 

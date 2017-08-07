@@ -13,6 +13,16 @@ from unittest.mock import patch
 
 class CampaignListAPITestCase(ExtendedAPITestCase):
 
+    detail_keys = {
+        'id', 'name', 'start', 'end', 'updated_at',
+        'budget', 'languages',
+        'devices', 'frequency_capping', 'ad_schedule_rules',
+        'location_rules',
+        'video_networks', 'video_ad_format', 'delivery_method',
+        'age_ranges', 'genders', 'parents', 'content_exclusions',
+        'ad_group_creations',
+    }
+
     def setUp(self):
         self.user = self.create_test_user()
 
@@ -30,7 +40,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             start=today, end=today + timedelta(days=20),
         )
 
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))
 
         response = self.client.get(url)
@@ -38,7 +48,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.perform_get_format_check(response.data)
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -50,15 +60,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(
             set(data[0].keys()),
-            {
-                'id', 'name',
-                'is_approved', 'is_paused',
-                'start', 'end',
-                'goal_units', 'budget', 'max_rate', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'ad_group_creations',
-            }
+            self.detail_keys
         )
 
     def test_success_post(self):
@@ -66,37 +68,21 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             name="Pep", owner=self.user,
         )
 
-        url = reverse("aw_creation_urls:optimization_campaign_list",
-                      args=(account_creation.id,))
-        post_data = dict()
+        for lid in (1000, 1003):
+            Language.objects.get_or_create(id=lid, defaults=dict(name=""))
 
-        response = self.client.post(
-            url, json.dumps(post_data), content_type='application/json',
-        )
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
+                      args=(account_creation.id,))
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
-            {
-                'id',
-                'ad_group_creations',
-                'ad_schedule_rules',
-                'budget',
-                'location_rules',
-                'is_approved',
-                'frequency_capping',
-                'max_rate',
-                'name',
-                'devices',
-                'is_paused',
-                'goal_units',
-                'languages',
-                'end',
-                'start',
-            }
+            self.detail_keys,
         )
+        self.assertEqual(len(response.data['languages']), 2)
 
     def test_fail_post_demo(self):
-        url = reverse("aw_creation_urls:optimization_campaign_list",
+        url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.post(
             url, json.dumps(dict()), content_type='application/json',

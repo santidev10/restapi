@@ -1,16 +1,18 @@
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID, VIDEO_VIEWS, DEMO_CAMPAIGNS_COUNT
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem
+    Language, TargetingItem, AdCreation
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN,\
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+from django.http import HttpResponse
+from datetime import datetime
 import json
 DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
 
 
-class OptimizationAccountListApiView:
+class AccountCreationListApiView:
 
     @staticmethod
     def get(original_method):
@@ -19,15 +21,15 @@ class OptimizationAccountListApiView:
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
                 demo = DemoAccount()
-                filters = view.get_filters()
+                filters = request.query_params
                 if demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.creation_details)
+                    response.data['items'].insert(0, demo.header_data)
                     response.data['items_count'] += 1
             return response
         return method
 
 
-class OptimizationAccountApiView:
+class AccountCreationSetupApiView:
     @staticmethod
     def get(original_method):
 
@@ -61,7 +63,46 @@ class OptimizationAccountApiView:
         return method
 
 
-class OptimizationAccountDuplicateApiView:
+class AdCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class AdGroupCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class CampaignCreationDuplicateApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class AccountCreationDuplicateApiView:
     @staticmethod
     def post(original_method):
 
@@ -75,22 +116,17 @@ class OptimizationAccountDuplicateApiView:
                     owner=view.request.user,
                 )
                 for f in view.account_fields:
-                    if f == "video_networks_raw":
-                        acc_data[f] = json.dumps(
-                            [i['id'] for i in data['video_networks']])
-                    elif f in ("video_ad_format", "delivery_method",
-                               "bidding_type", "type", "goal_type"):
-                        acc_data[f] = data[f]["id"]
-                    else:
-                        acc_data[f] = data[f]
+                    acc_data[f] = data[f]
                 acc_duplicate = AccountCreation.objects.create(**acc_data)
 
                 for c in data['campaign_creations']:
                     camp_data = dict()
                     for f in view.campaign_fields:
-                        if f == "devices_raw":
+                        if f.endswith("_raw"):
                             camp_data[f] = json.dumps(
-                                [i['id'] for i in c['devices']])
+                                [i['id'] for i in c[f[:-4]]])
+                        elif f in ("video_ad_format", "delivery_method"):
+                            camp_data[f] = c[f]["id"]
                         else:
                             camp_data[f] = c[f]
                     c_duplicate = CampaignCreation.objects.create(
@@ -131,14 +167,20 @@ class OptimizationAccountDuplicateApiView:
                         a_duplicate = AdGroupCreation.objects.create(
                             campaign_creation=c_duplicate, **ag_data
                         )
-                        for list_type, items in a["targeting"].items():
-                            for i in items:
-                                TargetingItem.objects.create(
-                                    ad_group_creation=a_duplicate,
-                                    type=list_type,
-                                    is_negative=i['is_negative'],
-                                    criteria=i['criteria'],
-                                )
+                        for list_type, item_groups in a["targeting"].items():
+                            for k, items in item_groups.items():
+                                for i in items:
+                                    TargetingItem.objects.create(
+                                        ad_group_creation=a_duplicate,
+                                        type=list_type,
+                                        is_negative=i['is_negative'],
+                                        criteria=i['criteria'],
+                                    )
+                        for ad in a['ad_creations']:
+                            AdCreation.objects.create(
+                                ad_group_creation=a_duplicate,
+                                **{f: ad[f] for f in view.ad_fields}
+                            )
 
                 account_data = view.serializer_class(acc_duplicate).data
                 return Response(data=account_data)
@@ -148,7 +190,7 @@ class OptimizationAccountDuplicateApiView:
         return method
 
 
-class OptimizationCampaignListApiView:
+class CampaignCreationListSetupApiView:
     @staticmethod
     def get(original_method):
 
@@ -173,7 +215,7 @@ class OptimizationCampaignListApiView:
         return method
 
 
-class OptimizationCampaignApiView:
+class CampaignCreationSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -199,7 +241,7 @@ class OptimizationCampaignApiView:
         return method
 
 
-class OptimizationAdGroupApiView:
+class AdGroupCreationSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -226,7 +268,7 @@ class OptimizationAdGroupApiView:
         return method
 
 
-class OptimizationAdGroupListApiView:
+class AdGroupCreationListSetupApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
@@ -249,6 +291,220 @@ class OptimizationAdGroupListApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationSetupApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for ag in c.children:
+                        for a in ag.children:
+                            if a.id == pk:
+                                return Response(data=a.creation_details)
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationListSetupApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                demo = DemoAccount()
+                for c in demo.children:
+                    for ag in c.children:
+                        if ag.id == pk:
+                            return Response(data=[a.creation_details for a in ag.children])
+                return Response(status=HTTP_404_NOT_FOUND)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class PerformanceAccountCampaignsListApiView:
+    @staticmethod
+    def get(original_method):
+        def method(*args, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                campaigns = [
+                    dict(
+                        id=c.id,
+                        name=c.name,
+                        start_date=c.start_date,
+                        end_date=c.end_date,
+                        status=c.status,
+                        ad_groups=[
+                            dict(id=a.id, name=a.name, status=a.status)
+                            for a in c.children
+                        ],
+                    )
+                    for c in account.children
+                ]
+                return Response(status=HTTP_200_OK, data=campaigns)
+            else:
+                return original_method(*args, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceAccountDetailsApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+
+                account = DemoAccount()
+                data = account.header_data
+                data['details'] = account.details
+
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                data['overview'] = account.overview
+                return Response(status=HTTP_200_OK, data=data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceChartApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                filters['segmented'] = True
+                charts_obj = DemoChart(account, filters)
+                return Response(status=HTTP_200_OK, data=charts_obj.charts)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceChartItemsApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, dimension, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                filters['dimension'] = dimension
+                charts_obj = DemoChart(account, filters)
+                return Response(status=HTTP_200_OK,
+                                data=charts_obj.chart_items)
+            else:
+                return original_method(view, request, pk=pk,
+                                       dimension=dimension, **kwargs)
+
+        return method
+
+
+class PerformanceExportApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+
+                def data_generator():
+                    data = account.details
+                    yield view.column_names
+                    yield ['Summary'] + [data.get(n)
+                                         for n in view.column_keys]
+                    for dimension in view.tabs:
+                        filters['dimension'] = dimension
+                        charts_obj = DemoChart(account, filters)
+                        items = charts_obj.chart_items
+                        for data in items['items']:
+                            yield [dimension.capitalize()] + \
+                                  [data[n] for n in view.column_keys]
+
+                return view.stream_response(account.name, data_generator)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceExportWeeklyReport:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                report = DemoAnalyzeWeeklyReport(account)
+
+                response = HttpResponse(
+                    report.get_content(),
+                    content_type='application/vnd.openxmlformats-'
+                                 'officedocument.spreadsheetml.sheet'
+                )
+                response[
+                    'Content-Disposition'
+                ] = 'attachment; filename="Channel Factory {} Weekly ' \
+                    'Report {}.xlsx"'.format(
+                        account.name,
+                        datetime.now().date().strftime("%m.%d.%y")
+                )
+                return response
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -402,7 +658,7 @@ class AdGroupTargetingListApiView:
         return method
 
 
-class AdGroupTargetingListExportApiView:
+class AdGroupCreationTargetingExportApiView:
     @staticmethod
     def get_data(original_method):
         def method(view):
@@ -413,7 +669,8 @@ class AdGroupTargetingListExportApiView:
                     for a in c.children:
                         if a.id == pk:
                             list_type = view.kwargs.get("list_type")
-                            data = a.get_targeting_list(list_type)
+                            sub_list_type = view.kwargs.get("sub_list_type")
+                            data = a.get_targeting_list(list_type, sub_list_type)
                             return data
                 return Response(status=HTTP_404_NOT_FOUND)
             else:

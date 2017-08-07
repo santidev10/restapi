@@ -50,6 +50,36 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         self.assertEqual(set(i['value'] for i in trend),
                          {test_impressions})
 
+    def test_success_get_view_rate_calculation(self):
+        cpm_ad_group = AdGroup.objects.create(
+            id="2", name="", campaign=self.campaign
+        )
+        today = datetime.now().date()
+        test_impressions = 10
+        for video_views, ad_group in enumerate((cpm_ad_group, self.ad_group)):
+            AdGroupStatistic.objects.create(
+                ad_group=ad_group,
+                average_position=1,
+                date=today,
+                impressions=test_impressions,
+                video_views=video_views,
+            )
+        url = reverse("aw_reporting_urls:track_chart")
+        today = datetime.now().date()
+        filters = dict(
+            start_date=today - timedelta(days=1),
+            end_date=today,
+            indicator="video_view_rate",
+        )
+        url = "{}?{}".format(url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1, "one chart")
+        self.assertEqual(len(response.data[0]['data']), 1, "one line")
+        trend = response.data[0]['data'][0]['trend']
+        self.assertEqual(len(trend), 1)
+        self.assertEqual(set(i['value'] for i in trend), {10})  # 10% video view rate
+
     def test_success_dimension_device(self):
         today = datetime.now().date()
         test_days = 10

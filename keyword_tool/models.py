@@ -143,11 +143,11 @@ class Query(models.Model):
 
 class KeyWord(BaseModel):
     text = models.CharField(max_length=250, primary_key=True)
-
     interests = models.ManyToManyField(Interest)
     queries = models.ManyToManyField(Query, related_name="keywords")
     average_cpc = models.FloatField(null=True)
     competition = models.FloatField(null=True)
+    updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
 

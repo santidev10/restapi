@@ -4,7 +4,8 @@ Administration api urls module
 from django.conf.urls import url
 
 from administration.api.views import UserListAdminApiView, \
-    UserDeleteAdminApiView, AuthAsAUserAdminApiView
+    UserDeleteAdminApiView, AuthAsAUserAdminApiView, \
+    UserActionListCreateApiView, UserActionDeleteAdminApiView
 
 urlpatterns = [
     url(r'^users/$', UserListAdminApiView.as_view(), name="user_list"),
@@ -12,4 +13,8 @@ urlpatterns = [
         name="user_details"),
     url(r'^users/(?P<pk>\d+)/auth/$', AuthAsAUserAdminApiView.as_view(),
         name="user_auth_admin"),
+    url(r'^user_actions/$', UserActionListCreateApiView.as_view(),
+        name="user_action_list"),
+    url(r'^user_actions/(?P<pk>\d+)/$', UserActionDeleteAdminApiView.as_view(),
+        name="user_action_details"),
 ]

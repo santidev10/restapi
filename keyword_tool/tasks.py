@@ -69,14 +69,15 @@ def update_kw_list_stats(obj, _kw_class):
                                      competition=Avg('keyword__competition'))
     obj_kw = _kw_class.objects.filter(text__in=kw_ids).order_by('-search_volume')
     for item in obj_kw:
-        for date_search in item.monthly_searches:
-            cum_counter.update(**{date_search['label']: date_search['value']})
+        if item.monthly_searches:
+            for date_search in item.monthly_searches:
+                cum_counter.update(**{date_search['label']: date_search['value']})
     top_keywords = obj_kw[:10]
 
     obj.num_keywords = kw_querry.count()
-    obj.average_volume = count_data['average_volume']
-    obj.average_cpc = count_data['average_cpc']
-    obj.competition = count_data['competition']
+    obj.average_volume = count_data['average_volume'] or 0
+    obj.average_cpc = count_data['average_cpc'] or 0
+    obj.competition = count_data['competition'] or 0
     obj.top_keywords = [{'keyword': kw.text,
                          'value': kw.search_volume} for kw in top_keywords]
     obj.cum_average_volume = dict(cum_counter)

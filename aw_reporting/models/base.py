@@ -34,9 +34,11 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 def get_average_cpv(*args, **kwargs):
     if len(args) == 2:
         cost, video_views = args
-    else:
+    elif 'cost' in kwargs and 'video_views' in kwargs:
         cost = kwargs['cost']
         video_views = kwargs['video_views']
+    else:
+        return
 
     if video_views:
         return cost / video_views
@@ -45,9 +47,11 @@ def get_average_cpv(*args, **kwargs):
 def get_average_cpm(*args, **kwargs):
     if len(args) == 2:
         cost, impressions = args
-    else:
+    elif 'cost' in kwargs and 'impressions' in kwargs:
         cost = kwargs['cost']
         impressions = kwargs['impressions']
+    else:
+        return
 
     if cost is None or not impressions:
         return None
@@ -57,9 +61,11 @@ def get_average_cpm(*args, **kwargs):
 def get_video_view_rate(*args, **kwargs):
     if len(args) == 2:
         views, impressions = args
-    else:
+    elif 'video_impressions' in kwargs and 'video_views' in kwargs:
         views = kwargs['video_views']
         impressions = kwargs['video_impressions']
+    else:
+        return
 
     if impressions:
         return 100 * views / impressions
@@ -68,9 +74,11 @@ def get_video_view_rate(*args, **kwargs):
 def get_ctr(*args, **kwargs):
     if len(args) == 2:
         clicks, impressions = args
-    else:
+    elif 'clicks' in kwargs and 'impressions' in kwargs:
         clicks = kwargs['clicks']
         impressions = kwargs['impressions']
+    else:
+        return
 
     if impressions:
         return 100 * clicks / impressions
@@ -79,9 +87,11 @@ def get_ctr(*args, **kwargs):
 def get_ctr_v(*args, **kwargs):
     if len(args) == 2:
         clicks, video_views = args
-    else:
+    elif 'clicks' in kwargs and 'video_views' in kwargs:
         clicks = kwargs['clicks']
         video_views = kwargs['video_views']
+    else:
+        return
 
     if video_views:
         return 100 * clicks / video_views
@@ -89,7 +99,7 @@ def get_ctr_v(*args, **kwargs):
 
 CALCULATED_STATS = {
     'video_view_rate': {
-        'dependencies': ('video_views', 'impressions'),
+        'dependencies': ('video_views', 'video_impressions'),
         'receipt': get_video_view_rate,
     },
     'ctr': {
@@ -226,6 +236,13 @@ class Account(models.Model):
 
     def __str__(self):
         return "Account: {}".format(self.name)
+
+    @classmethod
+    def user_mcc_objects(cls, user):
+        qs = Account.objects.filter(
+            mcc_permissions__aw_connection__user_relations__user=user
+        ).order_by('id').distinct()
+        return qs
 
     @classmethod
     def user_objects(cls, user):

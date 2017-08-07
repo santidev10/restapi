@@ -30,7 +30,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             name="Wow", campaign_creation=campaign_creation,
         )
 
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
+        url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
 
         response = self.client.get(url)
@@ -42,25 +42,16 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data[0].keys()),
             {
-                'id', 'name',
-                'is_approved',
-                'max_rate',
-                'video_url',
-                'final_url',
-                'targeting',
-                'age_ranges',
-                'ct_overlay_text',
-                'display_url',
-                'genders',
-                'parents',
-                'thumbnail',
+                'id', 'name', 'targeting', 'updated_at',
+                'age_ranges', 'genders', 'parents',
+                'ad_creations', 'max_rate',
             }
         )
 
     def test_success_get_demo(self):
         account = DemoAccount()
         campaign = account.children[0]
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
+        url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign.id,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -71,11 +62,9 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
     def test_fail_post_demo(self):
         account = DemoAccount()
         campaign = account.children[0]
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
+        url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign.id,))
-        response = self.client.post(
-            url, json.dumps({}), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
@@ -88,31 +77,11 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             start=today, end=today + timedelta(days=20),
         )
 
-        url = reverse("aw_creation_urls:optimization_ad_group_list",
+        url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
-        post_data = dict()
-
-        response = self.client.post(
-            url, json.dumps(post_data), content_type='application/json',
-        )
+        response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(
-            set(response.data.keys()),
-            {
-                'id', 'name',
-                'is_approved',
-                'max_rate',
-                'video_url',
-                'final_url',
-                'targeting',
-                'age_ranges',
-                'ct_overlay_text',
-                'display_url',
-                'genders',
-                'parents',
-                'thumbnail',
-            }
-        )
+        self.perform_get_format_check([response.data])
 
 
 
