@@ -15,7 +15,6 @@ class Command(BaseCommand):
         expired_date = timezone.now().date() - timedelta(days=7)
         Query.objects.filter(updated_at__lte=expired_date).delete()
         self.filter_by_volume()
-        # self.remove_old_data(expired_date)
 
     def filter_by_volume(self):
         KeyWord.objects.filter(search_volume__lte=100000).delete()
