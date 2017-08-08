@@ -20,6 +20,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
         ad_group_creation = AdGroupCreation.objects.create(
             name="", campaign_creation=campaign_creation,
+            max_rate="666.666",
         )
         TargetingItem.objects.create(
             ad_group_creation=ad_group_creation,
@@ -51,6 +52,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'targeting', 'max_rate',
             }
         )
+        self.assertEqual(data['max_rate'], ac.max_rate)
         self.assertEqual(
             set(data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}

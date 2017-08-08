@@ -16,16 +16,14 @@ class CampaignAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def create_campaign(self, owner, start, end):
+    def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
             name="Pep",
             owner=owner,
         )
         campaign_creation = CampaignCreation.objects.create(
-            name="",
-            account_creation=account_creation,
-            start=start,
-            end=end,
+            name="", account_creation=account_creation,
+            start=start, end=end,
         )
         english, _ = Language.objects.get_or_create(id=1000,
                                                     name="English")
@@ -129,6 +127,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         campaign = self.create_campaign(**defaults)
+        account_creation = campaign.account_creation
+        account_creation.is_deleted = True
+        account_creation.save()
+
         url = reverse("aw_creation_urls:campaign_creation_setup",
                       args=(campaign.id,))
 
@@ -153,12 +155,51 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             url, json.dumps(request_data), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, False)
+
         self.assertEqual(len(response.data['ad_schedule_rules']), 2)
         self.assertEqual(len(response.data['frequency_capping']), 2)
         self.assertEqual(len(response.data['location_rules']), 2)
         self.assertEqual(len(response.data['devices']), 1)
         self.assertEqual(len(response.data['content_exclusions']), 1)
         self.assertEqual(response.data['content_exclusions'][0]['id'], content_exclusions[0])
+
+    def test_success_update_empty_dates(self):
+        campaign = self.create_campaign(owner=self.user)
+        account_creation = campaign.account_creation
+        AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)
+
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, True)
+
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign.id,))
+
+        request_data = {
+            "name": "Campaign 1",
+            "budget": 12,
+            "devices": ["DESKTOP_DEVICE", "MOBILE_DEVICE", "TABLET_DEVICE"],
+            "start": None, "end": None,
+            "frequency_capping": [],
+            "location_rules": [],
+            "languages": [1000],
+            "ad_schedule_rules": [],
+            "age_ranges": ["AGE_RANGE_18_24", "AGE_RANGE_25_34", "AGE_RANGE_35_44","AGE_RANGE_45_54",
+                           "AGE_RANGE_55_64", "AGE_RANGE_65_UP", "AGE_RANGE_UNDETERMINED"],
+            "content_exclusions": ["VIDEO_RATING_DV_MA", "VIDEO_NOT_YET_RATED"],
+            "parents": ["PARENT_PARENT", "PARENT_NOT_A_PARENT", "PARENT_UNDETERMINED"],
+            "genders": ["GENDER_FEMALE", "GENDER_MALE", "GENDER_UNDETERMINED"],
+            "video_networks": ["YOUTUBE_SEARCH", "YOUTUBE_VIDEO", "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"],
+        }
+        response = self.client.put(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, False)
 
     def test_fail_set_wrong_order_dates(self):
         account_creation = AccountCreation.objects.create(
@@ -193,7 +234,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         today = datetime.now().date()
         request_data = dict(
-            start=str(today - timedelta(days=1)),
+            start=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',
@@ -213,7 +254,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         today = datetime.now().date()
         request_data = dict(
-            end=str(today - timedelta(days=1)),
+            end=str(today - timedelta(days=2)),
         )
         response = self.client.patch(
             url, json.dumps(request_data), content_type='application/json',

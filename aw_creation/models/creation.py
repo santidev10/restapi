@@ -9,6 +9,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator, \
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import datetime
+import pytz
 import re
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
-                 r"(?:/watch\?v=|/video/)([^\s&]+)$"
+                 r"(?:/watch\?v=|/video/|/)([^\s&\?]+)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
     r"(https?://\S+)|(\{lpurl\}\S*)",
@@ -80,24 +82,39 @@ class AccountCreation(UniqueItem):
 
     @property
     def is_changed(self):
-        if self.sync_at and self.sync_at > self.updated_at:
+        if self.sync_at and self.sync_at >= self.updated_at:
             return False
         return True
+
+    @property
+    def timezone(self):
+        if self.account and self.account.timezone:
+            return self.account.timezone
+        else:
+            from aw_reporting.models import DEFAULT_TIMEZONE
+            return DEFAULT_TIMEZONE
+
+    def get_today_date(self):
+        return datetime.now(tz=pytz.timezone(self.timezone)).date()
 
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
             for c in self.campaign_creations.filter(
-                start__isnull=False,
-                end__isnull=False,
                 budget__isnull=False,
             ):
                 lines.append(c.get_aws_code(request))
             lines.append(
-                "sendChangesStatus('{}', '{}');".format(
-                    self.account_id, self.updated_at)
+                "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
             )
             return "\n".join(lines)
+
+
+@receiver(post_save, sender=AccountCreation, dispatch_uid="save_account_receiver")
+def save_account_receiver(sender, instance, created, **_):
+    if instance.is_deleted and not created:
+        instance.is_deleted = False
+        instance.save()
 
 
 def default_languages():
@@ -376,6 +393,15 @@ class CampaignCreation(CommonTargetingItem):
         ac = self.account_creation
         return ac.is_paused or ac.is_ended or ac.is_deleted
 
+    @property
+    def start_for_creation(self):
+        if self.start:
+            return self.start
+        elif self.account_creation.account:
+            timezone = self.account_creation.timezone
+            today = datetime.now(tz=pytz.timezone(timezone))
+            return today
+
     def get_aws_code(self, request):
 
         lines = [
@@ -384,11 +410,11 @@ class CampaignCreation(CommonTargetingItem):
                     id=self.id,
                     name=self.unique_name,
                     budget=str(self.budget),
-                    start_for_creation=self.start.strftime("%Y-%m-%d"),
+                    start_for_creation=self.start_for_creation.strftime("%Y-%m-%d"),
                     budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
                     is_paused='true' if self.campaign_is_paused else 'false',
-                    start=self.start.strftime("%Y%m%d"),
-                    end=self.end.strftime("%Y%m%d"),
+                    start=self.start.strftime("%Y%m%d") if self.start else None,
+                    end=self.end.strftime("%Y%m%d") if self.end else None,
                     video_networks=self.video_networks,
                     lang_ids=list(self.languages.values_list('id', flat=True)),
                     devices=self.devices,
@@ -431,7 +457,10 @@ class CampaignCreation(CommonTargetingItem):
 @receiver(post_save, sender=CampaignCreation,
           dispatch_uid="save_campaign_receiver")
 def save_campaign_receiver(sender, instance, created, **_):
-    instance.account_creation.save()
+    account_creation = instance.account_creation
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class AdGroupCreation(CommonTargetingItem):
@@ -525,7 +554,10 @@ AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
 @receiver(post_save, sender=AdGroupCreation,
           dispatch_uid="save_group_receiver")
 def save_group_receiver(sender, instance, created, **_):
-    instance.campaign_creation.account_creation.save()
+    account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations=instance)
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class AdCreation(UniqueItem):
@@ -579,7 +611,10 @@ class AdCreation(UniqueItem):
 @receiver(post_save, sender=AdCreation,
           dispatch_uid="save_group_receiver")
 def save_ad_receiver(sender, instance, created, **_):
-    instance.ad_group_creation.campaign_creation.account_creation.save()
+    account_creation = AccountCreation.objects.get(campaign_creations__ad_group_creations__ad_creations=instance)
+    account_creation.is_approved = False
+    account_creation.is_deleted = False
+    account_creation.save()
 
 
 class LocationRule(models.Model):

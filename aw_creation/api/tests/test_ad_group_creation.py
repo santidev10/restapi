@@ -17,9 +17,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
-            name="Pep",
-            owner=owner,
-            account=account,
+            name="Pep", owner=owner, account=account,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="",
@@ -101,6 +99,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         ad_group = self.create_ad_group(**defaults)
+        account_creation = ad_group.campaign_creation.account_creation
+        account_creation.is_deleted = True
+        account_creation.save()
+
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
         data = dict(
@@ -122,6 +124,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 url, json.dumps(data), content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, False)
+
         ad_group.refresh_from_db()
         self.assertEqual(ad_group.name, data['name'])
         self.assertEqual(set(ad_group.genders), set(data['genders']))

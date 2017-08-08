@@ -103,6 +103,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         ad = self.create_ad(**defaults)
+        account_creation = ad.ad_group_creation.campaign_creation.account_creation
+        account_creation.is_deleted = True
+        account_creation.save()
+
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))
         with open('aw_creation/fixtures/video_thumbnail.png', 'rb') as fp:
@@ -115,8 +119,11 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
-        ad.refresh_from_db()
 
+        account_creation.refresh_from_db()
+        self.assertIs(account_creation.is_deleted, False)
+
+        ad.refresh_from_db()
         self.assertEqual(ad.name, data['name'])
         self.assertEqual(ad.final_url, data['final_url'])
         self.assertEqual(ad.tracking_template, data['tracking_template'])

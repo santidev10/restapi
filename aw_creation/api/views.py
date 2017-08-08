@@ -4,7 +4,9 @@ from apiclient.discovery import build
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField
+    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
+    CharField as AggrCharField
+from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -35,7 +37,7 @@ from aw_reporting.adwords_api import create_customer_account, update_customer_ac
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
-from datetime import timedelta
+from datetime import timedelta, datetime
 from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal
@@ -480,6 +482,41 @@ class AccountCreationListApiView(ListAPIView):
 
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
+    annotate_sorts = dict(
+        impressions=(None, Sum("account__campaigns__impressions")),
+        video_views=(None, Sum("account__campaigns__video_views")),
+        video_impressions=(None, Sum(Case(
+            When(
+                account__campaigns__video_views__gt=0,
+                then="account__campaigns__impressions",
+            ),
+            output_field=AggrIntegerField()
+        ))),
+        clicks=(None, Sum("account__campaigns__clicks")),
+        cost=(None, Sum("account__campaigns__cost")),
+        video_view_rate=(('video_views', 'video_impressions'), ExpressionWrapper(
+            Case(
+                When(
+                    video_views__isnull=False,
+                    video_impressions__gt=0,
+                    then=F("video_views") * 1.0 / F("video_impressions"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        )),
+        ctr_v=(('clicks', 'video_views'), ExpressionWrapper(
+            Case(
+                When(
+                    clicks__isnull=False,
+                    video_views__gt=0,
+                    then=F("clicks") * 1.0 / F("video_views"),
+                ),
+                output_field=AggrFloatField()
+            ),
+            output_field=AggrFloatField()
+        ))
+    )
 
     def get(self, request, *args, **kwargs):
         # import "read only" accounts:
@@ -504,34 +541,27 @@ class AccountCreationListApiView(ListAPIView):
         return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
 
     def get_queryset(self, **filters):
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by != "name":
-            sort_by = "-created_at"
-
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
-        ).order_by('is_ended', sort_by)
-        return queryset
+        )
+        sort_by = self.request.query_params.get('sort_by')
 
-    filters = ('search', 'show_closed',
-               'min_campaigns_count', 'max_campaigns_count',
-               'min_start', 'max_start', 'min_end', 'max_end')
+        if sort_by in self.annotate_sorts:
+            dependencies, annotate = self.annotate_sorts[sort_by]
+            if dependencies:
+                queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
 
-    def get_filters(self):
-        filters = {}
-        query_params = self.request.query_params
-        for f in self.filters:
-            v = query_params.get(f)
-            if v:
-                filters[f] = v
-        return filters
+            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
+            sort_by = "-sort_by"
+
+        elif sort_by != "name":
+            sort_by = "-created_at"
+
+        return queryset.order_by('is_ended', sort_by)
 
     def filter_queryset(self, queryset):
-        filters = self.get_filters()
-
-        if filters.get('show_closed') != "1":
-            queryset = queryset.filter(is_ended=False)
+        filters = self.request.query_params
 
         search = filters.get('search')
         if search:
@@ -540,7 +570,18 @@ class AccountCreationListApiView(ListAPIView):
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
         if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaigns_count=Count('campaign_creations'))
+            queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations"))
+
+            queryset = queryset.annotate(campaigns_count=Case(
+                    When(
+                        campaign_creations_count=0,
+                        then=Count("account__campaigns"),
+                    ),
+                    default="campaign_creations_count",
+                    output_field=AggrIntegerField(),
+                ),
+            )
+
             if min_campaigns_count:
                 queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
             if max_campaigns_count:
@@ -549,7 +590,8 @@ class AccountCreationListApiView(ListAPIView):
         min_start = filters.get('min_start')
         max_start = filters.get('max_start')
         if min_start or max_start:
-            queryset = queryset.annotate(start=Min("campaign_creations__start"))
+            queryset = queryset.annotate(start=Coalesce(Min("campaign_creations__start"),
+                                                        Min("account__campaigns__start_date")))
             if min_start:
                 queryset = queryset.filter(start__gte=min_start)
             if max_start:
@@ -558,11 +600,87 @@ class AccountCreationListApiView(ListAPIView):
         min_end = filters.get('min_end')
         max_end = filters.get('max_end')
         if min_end or max_end:
-            queryset = queryset.annotate(end=Max("campaign_creations__end"))
+            queryset = queryset.annotate(end=Coalesce(Max("campaign_creations__end"),
+                                                      Max("account__campaigns__end_date")))
             if min_end:
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
+        status = filters.get('status')
+        if status:
+            if status == "From AdWords":
+                queryset = queryset.filter(is_managed=False)
+            elif status == "Ended":
+                queryset = queryset.filter(is_ended=True, is_managed=True)
+            elif status == "Paused":
+                queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)
+            elif status == "Running":
+                queryset = queryset.filter(sync_at__isnull=False, is_managed=True,
+                                           is_paused=False, is_ended=False)
+            elif status == "Approved":
+                queryset = queryset.filter(is_approved=True, is_managed=True, sync_at__isnull=True,
+                                           is_paused=False, is_ended=False)
+            elif status == "Pending":
+                queryset = queryset.filter(is_approved=False, is_managed=True, sync_at__isnull=True,
+                                           is_paused=False, is_ended=False)
+
+        annotates = {}
+        second_annotates = {}
+        having = {}
+        for metric in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
+            for is_max, option in enumerate(("min", "max")):
+                filter_value = filters.get("{}_{}".format(option, metric))
+                if filter_value:
+                    if metric in BASE_STATS:
+                        annotate_key = "sum_{}".format(metric)
+                        annotates[annotate_key] = Sum("account__campaigns__{}".format(metric))
+                        having["{}__{}".format(annotate_key, "lte" if is_max else "gte")] = filter_value
+                    elif metric == "video_view_rate":
+                        annotates['video_impressions'] = Sum(
+                            Case(
+                                When(
+                                    account__campaigns__video_views__gt=0,
+                                    then="account__campaigns__impressions",
+                                ),
+                                output_field=IntegerField()
+                            )
+                        )
+                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        second_annotates[metric] = Case(
+                            When(
+                                sum_video_views__isnull=False,
+                                video_impressions__gt=0,
+                                then=F("sum_video_views") * 100. / F("video_impressions"),
+                            ),
+                            output_field=FloatField()
+                        )
+                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+                    elif metric == "ctr_v":
+                        annotates['video_clicks'] = Sum(
+                            Case(
+                                When(
+                                    account__campaigns__video_views__gt=0,
+                                    then="account__campaigns__clicks",
+                                ),
+                                output_field=IntegerField()
+                            )
+                        )
+                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        second_annotates[metric] = Case(
+                            When(
+                                video_clicks__isnull=False,
+                                sum_video_views__gt=0,
+                                then=F("video_clicks") * 100. / F("sum_video_views"),
+                            ),
+                            output_field=FloatField()
+                        )
+                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+        if annotates:
+            queryset = queryset.annotate(**annotates)
+        if second_annotates:
+            queryset = queryset.annotate(**second_annotates)
+        if having:
+            queryset = queryset.filter(**having)
 
         return queryset
 
@@ -571,8 +689,7 @@ class AccountCreationListApiView(ListAPIView):
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1),
-                owner=self.request.user,
+                name="Account {}".format(account_count + 1), owner=self.request.user,
             )
             campaign_creation = CampaignCreation.objects.create(
                 name="Campaign 1",
@@ -586,6 +703,7 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
+            AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)  # do not show it in the list
 
         for language in default_languages():
             campaign_creation.languages.add(language)
@@ -644,7 +762,14 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
-                if not instance.is_approved and not instance.account:  # create account
+                # check dates
+                today = instance.get_today_date()
+                for c in instance.campaign_creations.all():
+                    if c.start and c.start < today or c.end and c.end < today:
+                        return Response(status=HTTP_400_BAD_REQUEST,
+                                        data=dict(error="The dates cannot be in the past: {}".format(c.name)))
+
+                if not instance.account:  # create account
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
@@ -684,8 +809,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         if instance.account is not None:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete approved setups"))
-        instance.is_deleted = True
-        instance.save()
+        AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -1014,11 +1138,11 @@ class AccountCreationDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "name", "genders_raw", "parents_raw", "age_ranges_raw",
+        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw",
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
@@ -2420,6 +2544,7 @@ class AwCreationChangedAccountsListAPIView(GenericAPIView):
             account__managers__id=manager_id,
             account_id__isnull=False,
             is_managed=True,
+            is_approved=True,
         ).exclude(
             sync_at__gte=F("updated_at"),
         ).values_list(
@@ -2454,6 +2579,6 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
     def patch(request, account_id, **_):
         updated_at = request.data.get("updated_at")
         AccountCreation.objects.filter(
-            account_id=account_id, updated_at__lte=updated_at, is_managed=True,
-        ).update(sync_at=timezone.now())
+            account_id=account_id, is_managed=True,
+        ).update(sync_at=updated_at)
         return Response()

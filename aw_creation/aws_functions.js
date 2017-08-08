@@ -42,11 +42,11 @@ function createOrUpdateCampaign(params){
     }
 
     var start_date = date_to_string(campaign.getStartDate());
-    if(start_date != params.start){
+    if(params.start && start_date != params.start){
         campaign.setStartDate(params.start);
     }
     var end_date = date_to_string(campaign.getEndDate());
-    if(end_date != params.end){
+    if(params.end && end_date != params.end){
         campaign.setEndDate(params.end);
     }
 

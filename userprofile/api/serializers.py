@@ -87,6 +87,7 @@ class UserSerializer(ModelSerializer):
     phone_number = CharField(
         max_length=15, required=True, validators=[PHONE_REGEX])
     token = SerializerMethodField()
+    has_aw_accounts = SerializerMethodField()
 
     class Meta:
         """
@@ -103,14 +104,20 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "token"
+            "token",
+            "has_aw_accounts",
         )
         read_only_fields = (
             "is_staff",
             "last_login",
             "date_joined",
-            "token"
+            "token",
+            "has_aw_accounts",
         )
+
+    @staticmethod
+    def get_has_aw_accounts(obj):
+        return obj.aw_connections.count() > 0
 
     def get_token(self, obj):
         """

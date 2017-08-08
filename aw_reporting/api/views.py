@@ -2,15 +2,14 @@ import csv
 import re
 from datetime import datetime, timedelta
 from io import StringIO
-from django.http import StreamingHttpResponse, HttpResponse, HttpResponseBadRequest
+from django.http import StreamingHttpResponse, HttpResponse
 from django.db import transaction
 from django.db.models import Min, Max, Sum, Count, Q, Avg, Case, When, Value, IntegerField, FloatField, F, \
     ExpressionWrapper
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
@@ -844,7 +843,7 @@ class ConnectAWAccountApiView(APIView):
                 else:
                     return Response(
                         data=dict(error=self.lost_perm_error),
-                        status=HTTP_500_INTERNAL_SERVER_ERROR,
+                        status=HTTP_400_BAD_REQUEST,
                     )
             else:
                 # update token

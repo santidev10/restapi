@@ -3,13 +3,14 @@ from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField, DictField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, AdCreation
+    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, \
+    AdCreation, YT_VIDEO_REGEX
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
-    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats
+    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
+    ConcatAggregate, VideoCreativeStatistic
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from collections import defaultdict
-from datetime import datetime
 import json
 import re
 import logging
@@ -128,11 +129,7 @@ class AdCreationSetupSerializer(ModelSerializer):
     @staticmethod
     def get_thumbnail(obj):
         if obj.video_url:
-            match = re.match(
-                r'(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)'
-                r'(?:/watch\?v=|/video/|/)([^\s&\?]+)',
-                obj.video_url,
-            )
+            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
             if match:
                 uid = match.group(1)
                 return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
@@ -330,7 +327,7 @@ class StatField(SerializerMethodField):
 
 class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
-    is_optimization_active = SerializerMethodField()
+    thumbnail = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     status = SerializerMethodField()
     start = SerializerMethodField()
@@ -345,9 +342,17 @@ class AccountCreationListSerializer(ModelSerializer):
     def get_weekly_chart(self, obj):
         return self.daily_chart[obj.id][-7:]
 
-    @staticmethod
-    def get_is_optimization_active(*_):
-        return True
+    def get_thumbnail(self, obj):
+        video_ads_data = self.video_ads_data.get(obj.id)
+        if video_ads_data:
+            _, yt_id = sorted(video_ads_data)[-1]
+            return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(yt_id)
+        else:
+            settings = self.settings.get(obj.id)
+            if settings:
+                thumbnails = settings['video_thumbnail']
+                if thumbnails:
+                    return thumbnails.split(", ")[0]
 
     def get_start(self, obj):
         settings = self.settings.get(obj.id)
@@ -365,17 +370,18 @@ class AccountCreationListSerializer(ModelSerializer):
 
     @staticmethod
     def get_status(obj):
-        if obj.is_ended:
-            s = "ended"
+        if not obj.is_managed:
+            return "From AdWords"
+        elif obj.is_ended:
+            return "Ended"
         elif obj.is_paused:
-            s = "paused"
-        elif obj.account:
-            s = "running"
+            return "Paused"
+        elif obj.sync_at:
+            return "Running"
         elif obj.is_approved:
-            s = "approved"
+            return "Approved"
         else:
-            s = "pending"
-        return s.capitalize()
+            return "Pending"
 
     def __init__(self, *args, **kwargs):
         self.settings = {}
@@ -393,6 +399,7 @@ class AccountCreationListSerializer(ModelSerializer):
                 account_creation_id__in=ids
             ).values('account_creation_id').order_by('account_creation_id').annotate(
                 start=Min("start"), end=Max("end"),
+                video_thumbnail=ConcatAggregate("ad_group_creations__ad_creations__video_thumbnail", distinct=True)
             )
             self.settings = {s['account_creation_id']: s for s in settings}
 
@@ -422,13 +429,26 @@ class AccountCreationListSerializer(ModelSerializer):
                     dict(label=s['date'], value=s['views'])
                 )
 
+            # thumbnails
+            group_key = "ad_group__campaign__account__account_creations__id"
+            video_ads_data = VideoCreativeStatistic.objects.filter(
+                ad_group__campaign__account__account_creations__id__in=ids
+            ).values(group_key, "creative_id").order_by(group_key, "creative_id").annotate(
+                impressions=Sum("impressions")
+            )
+            self.video_ads_data = defaultdict(list)
+            for v in video_ads_data:
+                self.video_ads_data[v[group_key]].append(
+                    (v['impressions'], v['creative_id'])
+                )
+
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
 
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "status", "is_managed",
-            "is_optimization_active", "is_changed", "weekly_chart",
+            "id", "name", "start", "end", "account", "status", "is_managed", "thumbnail",
+            "is_changed", "weekly_chart",
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
         )
@@ -441,7 +461,7 @@ class AccountCreationSetupSerializer(ModelSerializer):
 
     class Meta:
         model = AccountCreation
-        fields = ('id', 'name', 'is_ended', 'is_approved', 'is_paused',
+        fields = ('id', 'name', 'account', 'is_ended', 'is_approved', 'is_paused',
                   'campaign_creations', 'updated_at')
 
 
@@ -475,6 +495,16 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             'content_exclusions',
         )
 
+    def validate_start(self, value):
+        if value and value < self.instance.account_creation.get_today_date():
+            raise ValidationError("This date is in the past")
+        return value
+
+    def validate_end(self, value):
+        if value and value < self.instance.account_creation.get_today_date():
+            raise ValidationError("This date is in the past")
+        return value
+
     def validate(self, data):
         if "devices" in data and not data["devices"]:
             raise ValidationError("devices: empty set is not allowed")
@@ -494,8 +524,6 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
         # if one of the following fields is provided
         if {"start", "end"} & set(data.keys()):
-            today = datetime.now().date()
-
             start, end = None, None
             if self.instance:
                 start, end = self.instance.start, self.instance.end
@@ -505,16 +533,8 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             if data.get("end"):
                 end = data.get("end")
 
-            for f_name, date in (("start", start), ("end", end)):
-                if date and date < today:
-                    if data.get(f_name) or data.get("is_approved") is True:
-                        raise ValidationError(
-                            'Wrong date period: '
-                            'dates in the past are not allowed')
-
             if start and end and start > end:
-                raise ValidationError(
-                    'Wrong date period: start date > end date')
+                raise ValidationError('Wrong date period: start date > end date')
 
         return super(CampaignCreationUpdateSerializer, self).validate(data)
 
