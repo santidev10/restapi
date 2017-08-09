@@ -215,9 +215,9 @@ class CampaignCreation(CommonTargetingItem):
     account_creation = models.ForeignKey(
         AccountCreation, related_name="campaign_creations",
     )
-    campaign = models.OneToOneField(
+    campaign = models.ForeignKey(
         "aw_reporting.Campaign", related_name='campaign_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
+        null=True, blank=True,
     )
 
     # fields
@@ -469,9 +469,9 @@ class AdGroupCreation(CommonTargetingItem):
     campaign_creation = models.ForeignKey(
         CampaignCreation, related_name="ad_group_creations",
     )
-    ad_group = models.OneToOneField(
+    ad_group = models.ForeignKey(
         "aw_reporting.AdGroup", related_name='ad_group_creation',
-        on_delete=models.SET_NULL, null=True, blank=True,
+        null=True, blank=True,
     )
 
     class Meta:

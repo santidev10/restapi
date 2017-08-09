@@ -24,7 +24,7 @@ from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
-    TargetingItem, CampaignOptimizationTuning, AdGroupOptimizationTuning, default_languages, get_yt_id_from_url
+    TargetingItem, default_languages, CampaignOptimizationSetting, AccountOptimizationSetting
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
@@ -32,7 +32,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
     Topic, Audience, Account, AWConnection, AdGroup, \
-    YTChannelStatistic, YTVideoStatistic, KeywordStatistic
+    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
 from aw_reporting.adwords_api import create_customer_account, update_customer_account
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
@@ -1824,22 +1824,25 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
     @staticmethod
     def get_campaigns(item):
-        ad_groups = AdGroup.objects.filter(campaign__account=item.account).values(
-            "campaign__name", "campaign_id", "name", "id",
-            "campaign__status", "campaign__start_date", "campaign__end_date", "status",
+        ad_groups = AdGroupCreation.objects.filter(campaign_creation__account_creation=item).values(
+            "campaign_creation__name", "campaign_creation_id", "name", "id",
+            "campaign_creation__campaign__status", "ad_group__status",
         ).order_by(
-            "campaign__name", "campaign_id", "name", "id",
+            "campaign_creation__name", "campaign_creation_id", "name", "id",
+        ).annotate(
+            start=Coalesce("campaign_creation__start", "campaign_creation__campaign__start_date"),
+            end=Coalesce("campaign_creation__end", "campaign_creation__campaign__end_date"),
         )
         campaigns = []
         for ad_group in ad_groups:
-            if not campaigns or ad_group['campaign_id'] != campaigns[-1]['id']:
+            if not campaigns or ad_group['campaign_creation_id'] != campaigns[-1]['id']:
                 campaigns.append(
                     dict(
-                        id=ad_group['campaign_id'],
-                        name=ad_group['campaign__name'],
-                        start_date=ad_group['campaign__start_date'],
-                        end_date=ad_group['campaign__end_date'],
-                        status=ad_group['campaign__status'],
+                        id=ad_group['campaign_creation_id'],
+                        name=ad_group['campaign_creation__name'],
+                        start_date=ad_group['start'],
+                        end_date=ad_group['end'],
+                        status=ad_group['campaign_creation__campaign__status'],
                         ad_groups=[]
                     )
                 )
@@ -1847,7 +1850,7 @@ class PerformanceTargetingFiltersAPIView(APIView):
                 dict(
                     id=ad_group['id'],
                     name=ad_group['name'],
-                    status=ad_group['status'],
+                    status=ad_group['ad_group__status'],
                 )
             )
         return campaigns
@@ -1869,6 +1872,9 @@ class PerformanceTargetingFiltersAPIView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
+        if not item.is_managed and item.account:
+            self.create_manage_objects(item)
+
         dates = AdGroupStatistic.objects.filter(ad_group__campaign__account=item.account).aggregate(
             min_date=Min("date"), max_date=Max("date"),
         )
@@ -1877,6 +1883,48 @@ class PerformanceTargetingFiltersAPIView(APIView):
         filters["end_date"] = dates["max_date"]
         filters["campaigns"] = self.get_campaigns(item)
         return Response(data=filters)
+
+    @staticmethod
+    def create_manage_objects(account_creation):
+        """
+        The method creates campaign_creation and ad_group_creation instances from campaigns and ad groups
+        :param account_creation:
+        :return:
+        """
+        account = account_creation.account
+
+        # create campaign creations
+        existed_c_ids = account_creation.campaign_creations.all().values_list("campaign_id", flat=True)
+        campaign_data = account.campaigns.exclude(id__in=existed_c_ids).values("id", "name")
+        bulk_campaign = []
+        for c in campaign_data:
+            bulk_campaign.append(
+                CampaignCreation(name=c["name"], campaign_id=c["id"], account_creation=account_creation)
+            )
+        if bulk_campaign:
+            CampaignCreation.objects.bulk_create(bulk_campaign)
+
+        # create ad_group_creations
+        existed_a_ids = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation=account_creation
+        ).values_list("ad_group_id", flat=True)
+        ad_group_data = AdGroup.objects.filter(
+            campaign__account=account
+        ).exclude(id__in=existed_a_ids).values(
+            "id", "name", "campaign_id"
+        )
+        campaign_creations_ids = account_creation.campaign_creations.all().values("id", "campaign_id")
+        campaign_creations_ids = {c["campaign_id"]: c["id"] for c in campaign_creations_ids}
+        bulk_ad_group = []
+        for a in ad_group_data:
+            campaign_creation_id = campaign_creations_ids.get(a["campaign_id"])
+            if campaign_creation_id:
+                bulk_ad_group.append(
+                    AdGroupCreation(name=a['name'], ad_group_id=a["id"],
+                                    campaign_creation_id=campaign_creation_id)
+                )
+        if bulk_ad_group:
+            AdGroupCreation.objects.bulk_create(bulk_ad_group)
 
 
 @demo_view_decorator
@@ -1901,38 +1949,353 @@ class PerformanceTargetingReportAPIView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        method = "get_{}_queryset".format(list_type)
-        queryset = getattr(self, method)(item.account, self.get_filters())
+        order_by = ("campaign_creation__name", "campaign_creation_id", "name", "id")
+        values = order_by + ("campaign_creation__campaign__status",)
 
-        order_by = ("ad_group__campaign__name", "ad_group__campaign__id")
-        values = order_by + ("ad_group__campaign__status",
-                             "ad_group__campaign__start_date",
-                             "ad_group__campaign__end_date")
-        data = queryset.values(*values).order_by(*order_by).annotate(
-            **base_stats_aggregate
+        queryset = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation=item
+        ).values(*values).order_by(*values).annotate(
+            start=Coalesce("campaign_creation__start", "campaign_creation__campaign__start_date"),
+            end=Coalesce("campaign_creation__end", "campaign_creation__campaign__end_date"),
         )
-        for i in data:
-            for f in values:
-                i[f[20:]] = i[f]
-                del i[f]
-            dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+        queryset = self.filter_queryset(queryset)
 
-        return Response(data=data)
+        data = self.add_annotate(queryset, list_type)
+
+        campaigns = []
+        base_keys = set(base_stats_aggregate.keys())
+        for i in data:
+            campaign = campaigns[-1] if campaigns else None
+            if not campaign or campaign['id'] != i['campaign_creation_id']:
+                campaign = dict(
+                    id=i['campaign_creation_id'],
+                    name=i['campaign_creation__name'],
+                    start_date=i['start'],
+                    end_date=i['end'],
+                    status=i['campaign_creation__campaign__status'],
+                    ad_groups=[],
+                    **{k: 0 for k in base_keys}
+                )
+                campaigns.append(campaign)
+
+            ad_group = dict(
+                id=i['id'],
+                name=i['name'],
+                **{k: i[k] for k in base_keys}
+            )
+            dict_norm_base_stats(ad_group)
+            dict_calculate_stats(ad_group)
+            campaign['ad_groups'].append(ad_group)
+
+            for key in base_keys:
+                campaign[key] += i[key] or 0
+
+        for c in campaigns:
+            dict_norm_base_stats(c)
+            dict_calculate_stats(c)
+
+        return Response(data=campaigns)
+
+    def filter_queryset(self, qs):
+        f = {}
+        filters = self.get_filters()
+        if filters["ad_groups"]:
+            f["id__in"] = filters["ad_groups"]
+        if filters["campaigns"]:
+            f["campaign_creation_id__in"] = filters["campaigns"]
+        qs = qs.filter(**f)
+        return qs
+
+    lookups = dict(
+        channel="channel_statistics",
+        video="managed_video_statistics",
+        keyword="keywords",
+        topic="topics",
+        interest="audiences",
+    )
+
+    def add_annotate(self, qs, lt):
+        lookup = self.lookups[lt]
+
+        f = {}
+        filters = self.get_filters()
+        if filters["start_date"]:
+            f["ad_group__{}__date__gte".format(lookup)] = filters["start_date"]
+        if filters["end_date"]:
+            f["ad_group__{}__date__lte".format(lookup)] = filters["end_date"]
+
+        impressions_field = "ad_group__{}__impressions".format(lookup)
+        views_field = "ad_group__{}__video_views".format(lookup)
+        clicks_field = "ad_group__{}__clicks".format(lookup)
+        cost_field = "ad_group__{}__cost".format(lookup)
+        qs = qs.annotate(
+            sum_impressions=Sum(
+                Case(
+                    When(
+                        **f,
+                        then=impressions_field,
+                    ),
+                    output_field=AggrIntegerField()
+                )
+                if f else impressions_field
+            ),
+            video_impressions=Sum(
+                Case(
+                    When(
+                        **{
+                            "ad_group__{}__video_views__gt".format(lookup): 0,
+                            "then": "ad_group__{}__impressions".format(lookup),
+                            **f
+                        }
+                    ),
+                    output_field=AggrIntegerField()
+                )
+            ),
+            sum_video_views=Sum(
+                Case(
+                    When(
+                        **f,
+                        then=views_field,
+                    ),
+                    output_field=AggrIntegerField()
+                )
+                if f else views_field
+            ),
+            sum_clicks=Sum(
+                Case(
+                    When(
+                        **f,
+                        then=clicks_field,
+                    ),
+                    output_field=AggrIntegerField()
+                )
+                if f else clicks_field
+            ),
+            sum_cost=Sum(
+                Case(
+                    When(
+                        **f,
+                        then=cost_field,
+                    ),
+                    output_field=AggrIntegerField()
+                )
+                if f else cost_field
+            ),
+        )
+        return qs
+
+
+@demo_view_decorator
+class PerformanceTargetingReportDetailsAPIView(APIView):
+
+    def get_filters(self):
+        data = self.request.data
+        filters = dict(
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+        )
+        return filters
+
+    def get_queryset(self):
+        qs = AdGroupCreation.objects.filter(
+            campaign_creation__account_creation__owner=self.request.user
+        )
+        return qs
+
+    def post(self, request, pk, list_type, **_):
+        try:
+            item = self.get_queryset().get(pk=pk)
+        except AdGroupCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        method = "get_{}_items".format(list_type)
+        items = getattr(self, method)(item.ad_group)
+        return Response(data=items)
 
     @staticmethod
-    def get_channel_queryset(account, filters):
-        f = dict(ad_group__campaign__account=account)
-        if filters["start_date"]:
-            f["date__gte"] = filters["start_date"]
-        if filters["end_date"]:
-            f["date__lte"] = filters["end_date"]
-        if filters["ad_groups"]:
-            f["ad_group_id__in"] = filters["ad_groups"]
-        if filters["campaigns"]:
-            f["ad_group__campaign_id__in"] = filters["campaigns"]
-        queryset = YTChannelStatistic.objects.filter(**f)
-        return queryset
+    def get_channel_items(ad_group):
+        items = YTChannelStatistic.objects.filter(
+            ad_group=ad_group
+        ).values("yt_id").order_by("yt_id").annotate(
+            **base_stats_aggregate
+        )
+
+        info = {}
+        ids = {i['yt_id'] for i in items}
+        if ids:
+            connector = SingleDatabaseApiConnector()
+            try:
+                resp = connector.get_custom_query_result(
+                    model_name="channel",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=list(ids),
+                    limit=len(ids),
+                )
+                info = {r['id']: r for r in resp}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+
+        for i in items:
+            item_details = info.get(i['yt_id'])
+            i["id"] = i['yt_id']
+            i["name"] = item_details.get("title", i['yt_id'])
+            i["thumbnail"] = item_details.get("thumbnail_image_url")
+            del i['yt_id']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+        return items
+
+    @staticmethod
+    def get_video_items(ad_group):
+        items = YTVideoStatistic.objects.filter(
+            ad_group=ad_group
+        ).values("yt_id").order_by("yt_id").annotate(
+            **base_stats_aggregate
+        )
+
+        info = {}
+        ids = {i['yt_id'] for i in items}
+        if ids:
+            connector = SingleDatabaseApiConnector()
+            try:
+                resp = connector.get_custom_query_result(
+                    model_name="video",
+                    fields=["id", "title", "thumbnail_image_url"],
+                    id__in=list(ids),
+                    limit=len(ids),
+                )
+                info = {r['id']: r for r in resp}
+            except SingleDatabaseApiConnectorException as e:
+                logger.error(e)
+
+        for i in items:
+            item_details = info.get(i['yt_id'])
+            i["id"] = i['yt_id']
+            i["name"] = item_details.get("title", i['yt_id'])
+            i["thumbnail"] = item_details.get("thumbnail_image_url")
+            del i['yt_id']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+        return items
+
+    @staticmethod
+    def get_keyword_items(ad_group):
+        items = KeywordStatistic.objects.filter(
+            ad_group=ad_group
+        ).values("keyword").order_by("keyword").annotate(
+            **base_stats_aggregate
+        )
+        for i in items:
+            i["id"] = i['keyword']
+            i["name"] = i['keyword']
+            del i['keyword']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+        return items
+
+    @staticmethod
+    def get_interest_items(ad_group):
+        group_by = ("audience__id", "audience__name")
+        items = AudienceStatistic.objects.filter(
+            ad_group=ad_group
+        ).values(*group_by).order_by(*group_by).annotate(
+            **base_stats_aggregate
+        )
+        for i in items:
+            i["id"] = i['audience__id']
+            i["name"] = i['audience__name']
+            del i['audience__id'], i['audience__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+        return items
+
+    @staticmethod
+    def get_topic_items(ad_group):
+        group_by = ("topic__id", "topic__name")
+        items = TopicStatistic.objects.filter(
+            ad_group=ad_group
+        ).values(*group_by).order_by(*group_by).annotate(
+            **base_stats_aggregate
+        )
+        for i in items:
+            i["id"] = i['topic__id']
+            i["name"] = i['topic__name']
+            del i['topic__id'], i['topic__name']
+            dict_norm_base_stats(i)
+            dict_calculate_stats(i)
+        return items
+
+
+@demo_view_decorator
+class PerformanceTargetingSettingsAPIView(APIView):
+
+    default_settings = dict(
+        average_cpv=0,
+        average_cpm=0,
+        video_view_rate=30,
+        ctr=0,
+        ctr_v=0,
+    )
+
+    def get_queryset(self):
+        return AccountCreation.objects.filter(owner=self.request.user)
+
+    def get(self, request, pk, **kwargs):
+        try:
+            account_creation = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        return Response(data=self.get_settings(account_creation))
+
+    def get_settings(self, account_creation):
+        fields = AccountOptimizationSetting.KPI_TYPES
+
+        account_settings = dict(
+            id=account_creation.id,
+            name=account_creation.name,
+            campaign_creations=[],
+        )
+        try:
+            saved_settings = account_creation.optimization_setting
+        except AccountOptimizationSetting.DoesNotExist:
+            account_settings.update(self.default_settings)
+        else:
+            account_settings.update(**{k: getattr(saved_settings, k) for k in fields})
+
+        campaign_data = account_creation.campaign_creations.all().values("id", "name")
+
+        campaign_settings = CampaignOptimizationSetting.objects.filter(
+            item__in=set(i['id'] for i in campaign_data)
+        ).values("item_id", *CampaignOptimizationSetting.KPI_TYPES)
+        campaign_settings = {i['item_id']: i for i in campaign_settings}
+
+        for e in campaign_data:
+            if e['id'] in campaign_settings:
+                s = campaign_settings[e['id']]
+                e.update(**{k: s[k] for k in fields})
+            else:
+                e.update(self.default_settings)
+            account_settings['campaign_creations'].append(e)
+        return account_settings
+
+    def put(self, request, pk, **kwargs):
+        try:
+            account_creation = self.get_queryset().get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        data = request.data
+        fields = AccountOptimizationSetting.KPI_TYPES
+        AccountOptimizationSetting.objects.update_or_create(
+            item=account_creation, defaults={f: data[f] for f in fields if f in data}
+        )
+
+        for c_data in data.get("campaign_creations", []):
+            campaign_creation = account_creation.campaign_creations.get(id=c_data["id"])
+            CampaignOptimizationSetting.objects.update_or_create(
+                item=campaign_creation, defaults={f: c_data[f] for f in fields if f in c_data}
+            )
+
+        return Response(data=self.get_settings(account_creation), status=HTTP_202_ACCEPTED)
 
 
 class UserListsImportMixin:
@@ -2381,157 +2744,6 @@ class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
 
     def delete(self, request, *args, **kwargs):
         raise NotImplementedError
-
-
-# optimize tab
-@demo_view_decorator
-class OptimizationFiltersApiView(APIView):
-
-    def get_object(self):
-        pk = self.kwargs.get("pk")
-        account = get_object_or_404(
-            AccountCreation,
-            owner=self.request.user,
-            pk=pk,
-        )
-        return account
-
-    def get(self, request, pk, kpi, **_):
-        account_creation = self.get_object()
-        queryset = account_creation.campaign_creations.filter(
-            Q(optimization_tuning__value__isnull=False,
-              optimization_tuning__kpi=kpi) |
-            Q(ad_group_creations__optimization_tuning__value__isnull=False,
-              ad_group_creations__optimization_tuning__kpi=kpi)
-        ).order_by('id').distinct()
-        data = OptimizationFiltersCampaignSerializer(
-            queryset, many=True, kpi=kpi,
-        ).data
-        return Response(data=data)
-
-
-@demo_view_decorator
-class OptimizationSettingsApiView(OptimizationFiltersApiView):
-    """
-    Settings at the Optimization tab
-    """
-
-    def get(self, request, pk, kpi, **_):
-        account_creation = self.get_object()
-        data = OptimizationSettingsSerializer(
-            account_creation, kpi=kpi).data
-        return Response(data=data)
-
-    def put(self, request, pk, kpi, **kwargs):
-        account_creation = self.get_object()
-
-        campaign_creations = request.data.get('campaign_creations', [])
-        if campaign_creations:
-            c_ids = set(
-                CampaignCreation.objects.filter(
-                    account_creation=account_creation
-                ).values_list('id', flat=True)
-            )
-            for i in campaign_creations:
-                if i['id'] in c_ids:
-                    CampaignOptimizationTuning.objects.update_or_create(
-                        dict(value=i['value']),
-                        item_id=i['id'],
-                        kpi=kpi,
-                    )
-
-        ad_group_creations = request.data.get('ad_group_creations', [])
-        if ad_group_creations:
-            a_ids = set(
-                AdGroupCreation.objects.filter(
-                    campaign_creation__account_creation=account_creation
-                ).values_list('id', flat=True)
-            )
-            for i in ad_group_creations:
-                if i['id'] in a_ids:
-                    AdGroupOptimizationTuning.objects.update_or_create(
-                        dict(value=i['value']),
-                        item_id=i['id'],
-                        kpi=kpi,
-                    )
-
-        return self.get(request, pk, kpi, **kwargs)
-
-
-@demo_view_decorator
-class OptimizationTargetingApiView(OptimizationFiltersApiView,
-                                   TargetingListBaseAPIClass):
-
-    def get_filters(self):
-        filters = {}
-        qp = self.request.query_params
-        campaign_creations = [
-            uid
-            for uid in qp.get('campaign_creations', "").split(",")
-            if uid
-        ]
-        if campaign_creations:
-            filters['campaign_creation_id__in'] = campaign_creations
-
-        ad_group_creations = [
-            uid
-            for uid in qp.get('ad_group_creations', "").split(",")
-            if uid
-        ]
-        if ad_group_creations:
-            filters['id__in'] = ad_group_creations
-        return filters
-
-    def get(self, request, pk, kpi, list_type, **_):
-        account_creation = self.get_object()
-        filters = self.get_filters()
-        ad_group_creations = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation=account_creation,
-            **filters
-        ).filter(
-            Q(optimization_tuning__value__isnull=False,
-              optimization_tuning__kpi=kpi) |
-            Q(campaign_creation__optimization_tuning__value__isnull=False,
-              campaign_creation__optimization_tuning__kpi=kpi)
-        )
-
-        values = ad_group_creations.aggregate(
-            value=Avg(
-                Case(
-                    When(
-                        campaign_creation__optimization_tuning__value__isnull=False,
-                        campaign_creation__optimization_tuning__kpi=kpi,
-                        then="campaign_creation__optimization_tuning__value",
-                    ),
-                    When(
-                        optimization_tuning__value__isnull=False,
-                        optimization_tuning__kpi=kpi,
-                        then="optimization_tuning__value",
-                    ),
-                    output_field=AggrDecimalField()
-                )
-            )
-        )
-        value = values['value']
-        items = []
-        if ad_group_creations:
-            items = TargetingItem.objects.filter(
-                ad_group_creation__in=ad_group_creations,
-                type=list_type,
-                is_negative=False,
-            ).values('criteria').order_by('criteria').distinct()
-            self.add_items_info(items)
-            self.add_items_stats(items, kpi, value)
-
-        return Response(data=dict(items=items, value=value))
-
-    @staticmethod
-    def add_items_stats(items, kpi, value):
-        stats = dict(zip(SUM_STATS, (0 for _ in range(len(SUM_STATS)))))
-        dict_add_calculated_stats(stats)
-        for i in items:
-            i.update(stats)
-            i['bigger_than_value'] = (i.get(kpi) or 0) > (value or 0)
 
 
 class AwCreationChangedAccountsListAPIView(GenericAPIView):
