@@ -1994,7 +1994,48 @@ class PerformanceTargetingReportAPIView(APIView):
             dict_norm_base_stats(c)
             dict_calculate_stats(c)
 
+        campaigns_settings = self.get_campaigns_settings(item)
+        self.set_passes_fields(campaigns, campaigns_settings)
         return Response(data=campaigns)
+
+    @staticmethod
+    def get_campaigns_settings(account_creation):
+        fields = CampaignOptimizationSetting.KPI_TYPES
+        try:
+            saved_settings = account_creation.optimization_setting
+        except AccountOptimizationSetting.DoesNotExist:
+            account_settings = AccountOptimizationSetting.default_settings
+        else:
+            account_settings = {k: getattr(saved_settings, k) for k in fields}
+
+        campaign_settings = CampaignCreation.objects.filter(
+            account_creation=account_creation
+        ).values("id", *["optimization_setting__{}".format(f) for f in fields])
+
+        response = {}
+        for c in campaign_settings:
+            c_settings = dict(**account_settings)
+            c_settings.update(
+                {f: c["optimization_setting__{}".format(f)]
+                 for f in fields
+                 if c["optimization_setting__{}".format(f)] is not None}
+            )
+            response[c['id']] = c_settings
+
+        return response
+
+    def set_passes_fields(self, campaigns, campaigns_settings):
+        for campaign in campaigns:
+            c_settings = campaigns_settings[campaign['id']]
+            self.set_item_passes_fields(campaign, c_settings)
+            for ad_group in campaign["ad_groups"]:
+                self.set_item_passes_fields(ad_group, c_settings)
+
+    @staticmethod
+    def set_item_passes_fields(item, options):
+        for k, v in options.items():
+            if v is not None and item[k] is not None:
+                item[k] = dict(value=item[k], passes=float(item[k]) >= float(v))
 
     def filter_queryset(self, qs):
         f = {}
@@ -2110,7 +2151,41 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
 
         method = "get_{}_items".format(list_type)
         items = getattr(self, method)(item.ad_group)
+
+        ag_settings = self.get_ad_group_settings(item)
+        self.set_passes_fields(items, ag_settings)
+
         return Response(data=items)
+
+    @staticmethod
+    def get_ad_group_settings(ad_group):
+        fields = AccountOptimizationSetting.KPI_TYPES
+        try:
+            saved_settings = ad_group.campaign_creation.account_creation.optimization_setting
+        except AccountOptimizationSetting.DoesNotExist:
+            account_settings = AccountOptimizationSetting.default_settings
+        else:
+            account_settings = {k: getattr(saved_settings, k) for k in fields}
+
+        try:
+            campaign_settings = ad_group.campaign_creation.optimization_setting
+        except CampaignOptimizationSetting.DoesNotExist:
+            campaign_settings = account_settings
+        else:
+            campaign_settings.update(
+                **{k: account_settings[k] for k in fields if account_settings[k] is not None}
+            )
+        return campaign_settings
+
+    @staticmethod
+    def set_passes_fields(items, options):
+        sort_fields = {k for k, v in options.items() if v is not None}
+        if sort_fields:
+            items = list(sorted(items, key=lambda i: tuple(i[f] for f in sort_fields), reverse=True))
+            for item in items:
+                for k, v in options.items():
+                    if v is not None and item[k] is not None:
+                        item[k] = dict(value=item[k], passes=float(item[k]) >= float(v))
 
     @staticmethod
     def get_channel_items(ad_group):
@@ -2229,14 +2304,6 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
 @demo_view_decorator
 class PerformanceTargetingSettingsAPIView(APIView):
 
-    default_settings = dict(
-        average_cpv=0,
-        average_cpm=0,
-        video_view_rate=30,
-        ctr=0,
-        ctr_v=0,
-    )
-
     def get_queryset(self):
         return AccountCreation.objects.filter(owner=self.request.user)
 
@@ -2247,7 +2314,8 @@ class PerformanceTargetingSettingsAPIView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         return Response(data=self.get_settings(account_creation))
 
-    def get_settings(self, account_creation):
+    @staticmethod
+    def get_settings(account_creation):
         fields = AccountOptimizationSetting.KPI_TYPES
 
         account_settings = dict(
@@ -2258,7 +2326,7 @@ class PerformanceTargetingSettingsAPIView(APIView):
         try:
             saved_settings = account_creation.optimization_setting
         except AccountOptimizationSetting.DoesNotExist:
-            account_settings.update(self.default_settings)
+            account_settings.update(AccountOptimizationSetting.default_settings)
         else:
             account_settings.update(**{k: getattr(saved_settings, k) for k in fields})
 
@@ -2274,7 +2342,7 @@ class PerformanceTargetingSettingsAPIView(APIView):
                 s = campaign_settings[e['id']]
                 e.update(**{k: s[k] for k in fields})
             else:
-                e.update(self.default_settings)
+                e.update(AccountOptimizationSetting.default_settings)
             account_settings['campaign_creations'].append(e)
         return account_settings
 

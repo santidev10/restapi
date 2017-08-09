@@ -4,7 +4,7 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem, AdCreation
+    Language, TargetingItem, AdCreation, AccountOptimizationSetting
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from django.http import HttpResponse
@@ -569,6 +569,8 @@ class PerformanceTargetingReportAPIView:
                                            for a in c.children]
                     data.append(c_data)
 
+                view.set_passes_fields(data, {c.id: AccountOptimizationSetting.default_settings
+                                              for c in account.children})
                 return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
@@ -592,9 +594,10 @@ class PerformanceTargetingReportDetailsAPIView:
                 for i in items:
                     if 'id' not in i:
                         i['id'] = i['name']
-                    i['video_impressions'] = i['impressions']
                     for k in exclude_keys:
                         del i[k]
+
+                view.set_passes_fields(items, AccountOptimizationSetting.default_settings)
                 return Response(status=HTTP_200_OK, data=items)
             else:
                 return original_method(view, request, pk=pk, list_type=list_type, **kwargs)
@@ -607,24 +610,22 @@ class PerformanceTargetingSettingsAPIView:
     def get(original_method):
         def method(view, request, pk, **kwargs):
             if pk == DEMO_ACCOUNT_ID:
-
                 account = DemoAccount()
-                settings = dict(
+                data = dict(
                     id=account.id,
                     name=account.name,
                     campaign_creations=[],
-                    **view.default_settings,
+                    **AccountOptimizationSetting.default_settings,
                 )
                 for c in account.children:
-                    settings['campaign_creations'].append(
+                    data['campaign_creations'].append(
                         dict(
                             id=c.id,
                             name=c.name,
-                            **view.default_settings,
+                            **AccountOptimizationSetting.default_settings,
                         )
                     )
-
-                return Response(status=HTTP_200_OK, data=settings)
+                return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 

@@ -57,6 +57,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                     keys.add("thumbnail")
 
                 self.assertEqual(set(data[0].keys()), keys)
+                self.assertEqual(set(data[0]['video_view_rate'].keys()), {"value", "passes"})
 
     def test_success_post_demo(self):
         self.create_test_user()
@@ -79,3 +80,4 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                     keys.add("thumbnail")
 
                 self.assertEqual(set(data[0].keys()), keys)
+                self.assertEqual(set(data[0]["video_view_rate"].keys()), {"value", "passes"})

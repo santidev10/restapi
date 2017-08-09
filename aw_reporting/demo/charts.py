@@ -48,8 +48,7 @@ class DemoChart:
     def _get_items(self, item, dimension):
         dimensions = deepcopy(getattr(item, dimension))
         all_stats = (
-            'average_cpm', 'average_cpv', 'clicks', 'cost', 'ctr',
-            'ctr_v', 'impressions', 'video_view_rate', 'video_views',
+            'clicks', 'cost', 'impressions', 'video_impressions', 'video_views',
             'video25rate', 'video50rate', 'video75rate', 'video100rate',
             'view_through', 'conversions', 'all_conversions',
         )
@@ -60,20 +59,19 @@ class DemoChart:
             value = getattr(item, stat)
             summary[stat] = value
 
-            if stat in SUM_STATS:
+            if stat in VIEW_RATE_STATS:
+                for item_stat in items.values():
+                    item_stat[stat] = value
+            else:
                 values = self.explode_value(value, stat, dim_len)
                 for item_stat, v in zip(items.values(), values):
                     item_stat[stat] = v
-
-            elif stat in VIEW_RATE_STATS:
-                for item_stat in items.values():
-                    item_stat[stat] = value
 
         res_items = []
         for name, stats in items.items():
             stats['name'] = name
             del stats['label']
-            dict_add_calculated_stats(stats)
+            dict_calculate_stats(stats)
             res_items.append(stats)
 
         return dict(

@@ -2,6 +2,13 @@ from django.db import models
 
 
 class OptimizationSetting(models.Model):
+    default_settings = dict(
+        average_cpv=None,
+        average_cpm=None,
+        video_view_rate=30,
+        ctr=None,
+        ctr_v=None,
+    )
 
     CTR_KPI = "ctr"
     CTR_V_KPI = "ctr_v"

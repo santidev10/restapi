@@ -73,12 +73,17 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_data['status'], campaign.status)
         self.assertEqual(campaign_data['average_cpv'], .2)
         self.assertEqual(campaign_data['video_views'], 5)
+        self.assertEqual(set(campaign_data['video_view_rate'].keys()), {"passes", "value"})
+        self.assertEqual(campaign_data['video_view_rate']['value'], 50)
+        self.assertEqual(campaign_data['video_view_rate']['passes'], True)
 
         ad_group = campaign_data['ad_groups'][0]
         self.assertEqual(
             set(ad_group.keys()),
             self.ad_groups_keys,
         )
+        self.assertEqual(ad_group['video_view_rate']['value'], 50)
+        self.assertEqual(ad_group['video_view_rate']['passes'], True)
 
     def test_success_post_all_dimensions(self):
         user = self.create_test_user()
@@ -96,9 +101,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                       args=(DEMO_ACCOUNT_ID, "channel"))
         account = DemoAccount()
         campaign = account.children[0]
+        ad_group = campaign.children[0]
         response = self.client.post(
             url, json.dumps(dict(
-                campaigns=[campaign.id]
+                campaigns=[campaign.id],
+                ad_groups=[ad_group.id],
             )),
             content_type='application/json',
         )
@@ -115,9 +122,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_data['start_date'], campaign.start_date)
         self.assertEqual(campaign_data['end_date'], campaign.end_date)
         self.assertEqual(campaign_data['status'], campaign.status)
+        self.assertEqual(len(campaign_data['ad_groups']), 1)
 
-        ad_group = campaign_data['ad_groups'][0]
+        ad_group_data = campaign_data['ad_groups'][0]
         self.assertEqual(
-            set(ad_group.keys()),
+            set(ad_group_data.keys()),
             self.ad_groups_keys,
         )
