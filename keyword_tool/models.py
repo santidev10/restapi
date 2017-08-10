@@ -175,7 +175,6 @@ class KeyWord(BaseModel):
         return top_kw_interests
 
 
-
 class KeywordsList(BaseModel):
     name = models.TextField()
     user_email = models.EmailField(db_index=True)
