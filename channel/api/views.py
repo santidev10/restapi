@@ -92,3 +92,17 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 class ChannelSetApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_channels
+
+
+class ChannelsVideosByKeywords(SingledbApiView):
+    def get(self, request, *args, **kwargs):
+        keyword = kwargs.get('keyword')
+        query_params = request.query_params
+        connector = Connector()
+        try:
+            response_data = connector.get_channel_videos_by_keywords(query_params, keyword)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        return Response(response_data)
