@@ -393,16 +393,25 @@ class CampaignCreation(CommonTargetingItem):
         ac = self.account_creation
         return ac.is_paused or ac.is_ended or ac.is_deleted
 
-    @property
-    def start_for_creation(self):
-        if self.start:
-            return self.start
-        elif self.account_creation.account:
-            timezone = self.account_creation.timezone
-            today = datetime.now(tz=pytz.timezone(timezone))
-            return today
+    def get_creation_dates(self):
+        start, end = self.start, self.end
+
+        timezone = self.account_creation.timezone
+        today = datetime.now(tz=pytz.timezone(timezone)).date()
+
+        if start and start < today and (not end or end >= today):
+            start = today
+
+        if start:
+            start_for_creation = start
+        else:
+            start_for_creation = today
+
+        return start_for_creation, start, end
 
     def get_aws_code(self, request):
+
+        start_for_creation, start, end = self.get_creation_dates()
 
         lines = [
             "var campaign = createOrUpdateCampaign({});".format(
@@ -410,11 +419,11 @@ class CampaignCreation(CommonTargetingItem):
                     id=self.id,
                     name=self.unique_name,
                     budget=str(self.budget),
-                    start_for_creation=self.start_for_creation.strftime("%Y-%m-%d"),
+                    start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
                     budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
                     is_paused='true' if self.campaign_is_paused else 'false',
-                    start=self.start.strftime("%Y%m%d") if self.start else None,
-                    end=self.end.strftime("%Y%m%d") if self.end else None,
+                    start=start.strftime("%Y%m%d") if start else None,
+                    end=end.strftime("%Y%m%d") if end else None,
                     video_networks=self.video_networks,
                     lang_ids=list(self.languages.values_list('id', flat=True)),
                     devices=self.devices,
