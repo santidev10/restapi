@@ -961,7 +961,19 @@ class AwHistoricalDataApiView(APIView):
                               ("last", prev_week_start, prev_week_end))
             for s in base_stats
         }
-        aggregate.update(base_stats_aggregate)
+        base_aggregate = {"sum_{}".format(s): Sum(s) for s in BASE_STATS}
+        base_aggregate.update(
+            video_impressions=Sum(
+                Case(
+                    When(
+                        ad_group__video_views__gt=0,
+                        then="impressions",
+                    ),
+                    output_field=IntegerField()
+                )
+            )
+        )
+        aggregate.update(base_aggregate)
         data = queryset.aggregate(**aggregate)
         dict_norm_base_stats(data)
         dict_calculate_stats(data)
@@ -1004,7 +1016,7 @@ class AwHistoricalDataApiView(APIView):
         )
 
         top_bottom_data = queryset.values("date").order_by("date").annotate(
-            **base_stats_aggregate
+            **base_aggregate
         ).annotate(**annotate).aggregate(
             **{
                 "{}_{}".format(s, n): a(s)
