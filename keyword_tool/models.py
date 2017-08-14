@@ -169,7 +169,7 @@ class KeyWord(BaseModel):
         top_kw_interests = {}
         interests_ids = self.interests.all().values_list('id', flat=True)
         for interests_id in interests_ids:
-            keywords = Interest.objects.get(id=interests_id).keyword_set.all().order_by('search_volume').values_list(
+            keywords = Interest.objects.get(id=interests_id).keyword_set.all().order_by('-search_volume').values_list(
                 'text', flat=True)[:5]
             top_kw_interests[interests_id] = keywords
         return top_kw_interests
