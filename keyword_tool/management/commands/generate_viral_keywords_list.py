@@ -34,15 +34,23 @@ class Command(BaseCommand):
                         self.get_awd_response(query=[q.strip() for q in query.split(',') if q.strip()],
                                               client=client)
                     )
-
             # get all viral keywords
-            keywords = {i for i in KeyWord.objects.filter(search_volume__gte=10000) if
-                        i.monthly_searches[-1]['value'] > i.monthly_searches[-2]['value'] +
-                        i.monthly_searches[-2]['value'] * 0.5}
+            keywords = self.get_viral(KeyWord.objects.filter(search_volume__gte=10000))
 
             # create relations
             kv_to_save = [ViralKeywords(keyword=keyword) for keyword in keywords]
             ViralKeywords.objects.bulk_create(kv_to_save)
+
+    def get_viral(self, queryset):
+        result = []
+        for elem in queryset:
+            top_month = max(elem.monthly_searches, key=lambda x: x['value'])
+            is_viral = elem.monthly_searches[-1]['value'] > elem.monthly_searches[-2]['value'] + \
+                                                            elem.monthly_searches[-2]['value'] * 0.5
+            is_valid = top_month['value'] / elem.monthly_searches[-1]['value'] < 10
+            if is_viral and is_valid:
+                result.append(elem)
+        return set(result)
 
     def get_awd_response(self, query, client):
         while True:
