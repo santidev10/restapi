@@ -2069,6 +2069,11 @@ class PerformanceTargetingReportAPIView(APIView):
         views_field = "ad_group__{}__video_views".format(lookup)
         clicks_field = "ad_group__{}__clicks".format(lookup)
         cost_field = "ad_group__{}__cost".format(lookup)
+        video_impressions_cond = {
+            "ad_group__{}__video_views__gt".format(lookup): 0,
+            "then": "ad_group__{}__impressions".format(lookup),
+        }
+        video_impressions_cond.update(f)
         qs = qs.annotate(
             sum_impressions=Sum(
                 Case(
@@ -2082,13 +2087,7 @@ class PerformanceTargetingReportAPIView(APIView):
             ),
             video_impressions=Sum(
                 Case(
-                    When(
-                        **{
-                            "ad_group__{}__video_views__gt".format(lookup): 0,
-                            "then": "ad_group__{}__impressions".format(lookup),
-                            **f
-                        }
-                    ),
+                    When(**video_impressions_cond),
                     output_field=AggrIntegerField()
                 )
             ),
