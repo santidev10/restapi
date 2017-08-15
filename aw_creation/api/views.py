@@ -2073,8 +2073,8 @@ class PerformanceTargetingReportAPIView(APIView):
             sum_impressions=Sum(
                 Case(
                     When(
-                        **f,
                         then=impressions_field,
+                        **f
                     ),
                     output_field=AggrIntegerField()
                 )
@@ -2095,8 +2095,8 @@ class PerformanceTargetingReportAPIView(APIView):
             sum_video_views=Sum(
                 Case(
                     When(
-                        **f,
                         then=views_field,
+                        **f
                     ),
                     output_field=AggrIntegerField()
                 )
@@ -2105,8 +2105,8 @@ class PerformanceTargetingReportAPIView(APIView):
             sum_clicks=Sum(
                 Case(
                     When(
-                        **f,
                         then=clicks_field,
+                        **f
                     ),
                     output_field=AggrIntegerField()
                 )
@@ -2115,8 +2115,8 @@ class PerformanceTargetingReportAPIView(APIView):
             sum_cost=Sum(
                 Case(
                     When(
-                        **f,
                         then=cost_field,
+                        **f
                     ),
                     output_field=AggrIntegerField()
                 )
