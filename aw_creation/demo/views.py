@@ -615,14 +615,14 @@ class PerformanceTargetingSettingsAPIView:
                     id=account.id,
                     name=account.name,
                     campaign_creations=[],
-                    **AccountOptimizationSetting.default_settings,
+                    **AccountOptimizationSetting.default_settings
                 )
                 for c in account.children:
                     data['campaign_creations'].append(
                         dict(
                             id=c.id,
                             name=c.name,
-                            **AccountOptimizationSetting.default_settings,
+                            **AccountOptimizationSetting.default_settings
                         )
                     )
                 return Response(status=HTTP_200_OK, data=data)
