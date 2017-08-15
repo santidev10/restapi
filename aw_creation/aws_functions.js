@@ -435,37 +435,28 @@ function createOrUpdateVideoAd(ad_group, params){
     var video_id = getYTId(params.video_url);
     var video = getOrCreateVideo(video_id);
 
-    var not_exists = true;
     var iterator = ad_group.videoAds().get();
 
+    // drop if exists
     while (iterator.hasNext()) {
         var video_ad = iterator.next();
         if(video_ad.getName().indexOf("#" + params.id) != -1){
             var urls = video_ad.urls();
-            if(video_ad.getVideoId() == video_id && params.display_url.indexOf(video_ad.getDisplayUrl()) != -1
-               && video_ad.getName() == params.name && urls.getFinalUrl() == params.final_url
-               && JSON.stringify(urls.getCustomParameters()) == JSON.stringify(params.custom_params)
-               && urls.getTrackingTemplate() == params.tracking_template
-               && video_ad
-            ){
-                not_exists = false;
-            }else{
-                video_ad.remove();
-            }
+            video_ad.remove();
         }
     }
-    if(not_exists){
-        var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
-        .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
-        .withTrackingTemplate(params.tracking_template)
-        .withFinalUrl(params.final_url).withVideo(video);
 
-        if(params['video_thumbnail']){
-            var imageMedia = getOrCreateImage(params['video_thumbnail']);
-            ad_builder = ad_builder.withCompanionBanner(imageMedia);
-        }
-        ad_builder.build();
+    // create it
+    var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
+    .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
+    .withTrackingTemplate(params.tracking_template)
+    .withFinalUrl(params.final_url).withVideo(video);
+
+    if(params['video_thumbnail']){
+        var imageMedia = getOrCreateImage(params['video_thumbnail']);
+        ad_builder = ad_builder.withCompanionBanner(imageMedia);
     }
+    ad_builder.build();
 }
 
 function sendChangesStatus(account_id, updated_at){

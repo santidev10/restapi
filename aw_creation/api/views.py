@@ -2461,4 +2461,16 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
         AccountCreation.objects.filter(
             account_id=account_id, is_managed=True,
         ).update(sync_at=updated_at)
+        CampaignCreation.objects.not_empty().filter(
+            account_creation__account_id=account_id,
+            account_creation__is_managed=True,
+        ).update(sync_at=updated_at)
+        AdGroupCreation.objects.not_empty().filter(
+            campaign_creation__account_creation__account_id=account_id,
+            campaign_creation__account_creation__is_managed=True,
+        ).update(sync_at=updated_at)
+        AdCreation.objects.not_empty().filter(
+            ad_group_creation__campaign_creation__account_creation__account_id=account_id,
+            ad_group_creation__campaign_creation__account_creation__is_managed=True,
+        ).update(sync_at=updated_at)
         return Response()
