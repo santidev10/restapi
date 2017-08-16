@@ -126,7 +126,7 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         :param keyword: str
         """
-        endpoint = "channels/video_by_keyword/{}/".format(keyword)
+        endpoint = "channels/video_by_keyword/{}".format(keyword)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
