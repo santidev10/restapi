@@ -15,6 +15,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             name="", owner=user, account=account, is_approved=True
         )
         campaign_creation = CampaignCreation.objects.create(
+            id=1,
             name="Sm name", account_creation=account_creation,
             budget="333.333",
             # start="2017-05-10",
@@ -26,13 +27,14 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         for language in default_languages():
             campaign_creation.languages.add(language)
         CampaignCreation.objects.create(
-            name="", account_creation=account_creation
+            id=2, name="", account_creation=account_creation
         )
-        AdGroupCreation.objects.create(name="", campaign_creation=campaign_creation)
+        AdGroupCreation.objects.create(id=1, name="", campaign_creation=campaign_creation)
         ad_group_creation = AdGroupCreation.objects.create(
-            name="Not empty", campaign_creation=campaign_creation, max_rate="0.07")
+            id=2, name="Not empty", campaign_creation=campaign_creation, max_rate="0.07")
 
         AdCreation.objects.create(
+            id=1,
             name="Spoke", ad_group_creation=ad_group_creation,
             video_url="https://www.youtube.com/watch?v=5HJyfoSZ2kw",
             display_url="www.nasdaq.com",
@@ -45,7 +47,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             tracking_template="https://iq.channelfactory.com",
             custom_params_raw='[{"name": "name", "value": "value1"}]',
         )
-        AdCreation.objects.create(name="", ad_group_creation=ad_group_creation)
+        AdCreation.objects.create(id=2, name="", ad_group_creation=ad_group_creation)
         # --
         url = reverse("aw_creation_urls:aw_creation_code", args=(account.id,))
         response = self.client.get(url)
@@ -55,7 +57,29 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
 
         self.assertIsInstance(data, dict)
         self.assertIn("code", data)
-        with open("code.js", "w") as f:
-            f.write(data['code'])
+        code = data['code']
+
+        self.assertIsNotNone(
+            re.search(r"createOrUpdateCampaign\(.*?\"id\": 1", code, re.MULTILINE)
+        )
+        self.assertIsNone(
+            re.search(r"createOrUpdateCampaign\(.*?\"id\": 2", code, re.MULTILINE)
+        )
+
+        self.assertIsNotNone(
+            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 2", code, re.MULTILINE)
+        )
+        self.assertIsNone(
+            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 1", code, re.MULTILINE)
+        )
+
+        self.assertIsNotNone(
+            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 1", code, re.MULTILINE)
+        )
+        self.assertIsNone(
+            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 2", code, re.MULTILINE)
+        )
+        # with open("code.js", "w") as f:
+        #     f.write(code)
 
 

@@ -41,6 +41,7 @@ from datetime import timedelta, datetime
 from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal
+from suds import WebFault
 import calendar
 import csv
 import pytz
@@ -762,21 +763,28 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         # approve rules
         if "is_approved" in data:
             if data["is_approved"]:
-                # check dates
-                today = instance.get_today_date()
-                for c in instance.campaign_creations.all():
-                    if c.start and c.start < today or c.end and c.end < today:
-                        return Response(status=HTTP_400_BAD_REQUEST,
-                                        data=dict(error="The dates cannot be in the past: {}".format(c.name)))
-
                 if not instance.account:  # create account
+                    # check dates
+                    today = instance.get_today_date()
+                    for c in instance.campaign_creations.all():
+                        if c.start and c.start < today or c.end and c.end < today:
+                            return Response(status=HTTP_400_BAD_REQUEST,
+                                            data=dict(error="The dates cannot be in the past: {}".format(c.name)))
+
                     mcc_account = Account.user_mcc_objects(request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
                             mcc_permissions__account=mcc_account,
                             user_relations__user=request.user,
                         ).first()
-                        self.account_creation(instance, mcc_account, connection)
+                        try:
+                            self.account_creation(instance, mcc_account, connection)
+                        except WebFault as e:
+                            error_msg = str(e)
+                            if "NOT_AUTHORIZED" in error_msg:
+                                error_msg = "You do not have permission to edit this " \
+                                            "MCC Account: {}".format(mcc_account.name)
+                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error_msg))
                     else:
                         return Response(status=HTTP_400_BAD_REQUEST,
                                         data=dict(error="You have no connected MCC account"))
@@ -2859,5 +2867,17 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
         updated_at = request.data.get("updated_at")
         AccountCreation.objects.filter(
             account_id=account_id, is_managed=True,
+        ).update(sync_at=updated_at)
+        CampaignCreation.objects.not_empty().filter(
+            account_creation__account_id=account_id,
+            account_creation__is_managed=True,
+        ).update(sync_at=updated_at)
+        AdGroupCreation.objects.not_empty().filter(
+            campaign_creation__account_creation__account_id=account_id,
+            campaign_creation__account_creation__is_managed=True,
+        ).update(sync_at=updated_at)
+        AdCreation.objects.not_empty().filter(
+            ad_group_creation__campaign_creation__account_creation__account_id=account_id,
+            ad_group_creation__campaign_creation__account_creation__is_managed=True,
         ).update(sync_at=updated_at)
         return Response()
