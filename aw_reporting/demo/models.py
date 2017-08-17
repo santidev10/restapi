@@ -101,7 +101,7 @@ class BaseDemo:
             try:
                 items = connector.get_custom_query_result(
                     model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
+                    fields=["id", "title", "thumbnail_image_url", "duration"],
                     limit=12,
                     order_by="-views",
                     **self.video_criteria
@@ -131,6 +131,7 @@ class BaseDemo:
                 id=i['id'],
                 label=i['title'],
                 thumbnail=i['thumbnail_image_url'],
+                duration=i.get("duration"),
             )
             for i in self.get_videos()[:6]
             ]
