@@ -27,14 +27,27 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
         url = reverse("aw_creation_urls:aw_creation_change_status", args=(account.id,))
         account_creation.refresh_from_db()
         self.client.patch(
-            url, json.dumps({"updated_at": str(account_creation.updated_at - timedelta(seconds=2))}),
+            url, json.dumps(
+                {"updated_at": str(account_creation.updated_at - timedelta(seconds=2))}
+            ),
             content_type='application/json',
         )
         account_creation.refresh_from_db()
         self.assertEqual(account_creation.is_changed, True)
 
+        campaigns = [
+            dict(id="123", name=campaign_creation.unique_name, ad_groups=[
+                dict(id="456", name=ad_group_creation.unique_name)
+            ])
+        ]
+
         self.client.patch(
-            url, json.dumps({"updated_at": str(account_creation.updated_at)}), content_type='application/json',
+            url, json.dumps(
+                {
+                    "updated_at": str(account_creation.updated_at),
+                    "campaigns": campaigns,
+                }
+            ), content_type='application/json',
         )
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_changed, False)
@@ -47,4 +60,6 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
         empty_ad_creation.refresh_from_db()
         self.assertIs(empty_ad_creation.is_changed, True)
 
-
+        # check campaign and ad group objects and relations
+        self.assertEqual(campaign_creation.campaign_id, campaigns[0]['id'])
+        self.assertEqual(ad_group_creation.ad_group_id, campaigns[0]['ad_groups'][0]['id'])
