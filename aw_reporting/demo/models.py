@@ -144,6 +144,7 @@ class BaseDemo:
                 id=i['id'],
                 label=i['title'],
                 thumbnail=i['thumbnail_image_url'],
+                duration=i.get("duration"),
             )
             for i in self.get_videos()[6:12]
             ]
@@ -246,6 +247,10 @@ class BaseDemo:
     @property
     def impressions(self):
         return sum(i.impressions for i in self.children)
+
+    @property
+    def video_impressions(self):
+        return self.impressions
 
     @property
     def impressions_this_week(self):
