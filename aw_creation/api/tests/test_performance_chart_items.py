@@ -93,6 +93,52 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             }
         )
 
+    def test_success_get_video(self):
+        user = self.create_test_user()
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        self.create_stats(account)
+        url = reverse("aw_creation_urls:performance_chart_items",
+                      args=(account_creation.id, 'video'))
+
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        data = response.data
+        self.assertEqual(
+            set(data.keys()),
+            {'items', 'summary'}
+        )
+        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(
+            set(data['items'][0].keys()),
+            {
+                'id',
+                'name',
+                'thumbnail',
+                'duration',
+                'video_view_rate',
+                'conversions',
+                'ctr',
+                'view_through',
+                'all_conversions',
+                'average_cpv',
+                'video100rate',
+                'video_views',
+                'video50rate',
+                'clicks',
+                'impressions',
+                'video75rate',
+                'cost',
+                'video25rate',
+                'average_cpm',
+                'ctr_v',
+            }
+        )
+
     def test_success_demo(self):
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_chart_items",
@@ -131,6 +177,49 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video50rate',
                 'clicks',
                 'average_position',
+                'impressions',
+                'video75rate',
+                'cost',
+                'video25rate',
+                'average_cpm',
+                'ctr_v',
+            }
+        )
+
+    def test_success_get_demo_video(self):
+        self.create_test_user()
+        url = reverse("aw_creation_urls:performance_chart_items",
+                      args=(DEMO_ACCOUNT_ID, 'video'))
+
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        data = response.data
+        self.assertEqual(
+            set(data.keys()),
+            {'items', 'summary'}
+        )
+        self.assertGreater(len(data['items']), 1)
+        self.assertEqual(
+            set(data['items'][0].keys()),
+            {
+                'id',
+                'name',
+                'thumbnail',
+                'duration',
+                'video_view_rate',
+                'conversions',
+                'ctr',
+                'view_through',
+                'all_conversions',
+                'average_cpv',
+                'video100rate',
+                'video_views',
+                'video50rate',
+                'clicks',
                 'impressions',
                 'video75rate',
                 'cost',
