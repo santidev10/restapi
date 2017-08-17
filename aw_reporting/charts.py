@@ -444,7 +444,7 @@ class DeliveryChart:
     def _get_creative_data(self):
         result = defaultdict(list)
         raw_stats = self.get_raw_stats(
-            VideoCreativeStatistic.objects.all(), ['creative_id', 'creative__duration'],
+            VideoCreativeStatistic.objects.all(), ['creative_id'],
             date=self.params['date']
         )
         if raw_stats:
@@ -470,7 +470,7 @@ class DeliveryChart:
                 item['thumbnail'] = info.get('thumbnail_image_url')
                 item['label'] = info.get('title', youtube_id)
                 item['duration'] = info.get('duration')
-                del item['creative_id'], item['creative__duration']
+                del item['creative_id']
                 result[youtube_id].append(item)
         else:
             group_by = ['ad__creative_name']
