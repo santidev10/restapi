@@ -78,6 +78,8 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                 keys = set(self.data_keys)
                 if dimension in ("channel", "video"):
                     keys.add("thumbnail")
+                if dimension == "video":
+                    keys.add("duration")
 
-                self.assertEqual(set(data[0].keys()), keys)
+                self.assertEqual(set(data[0].keys()), keys - {"video_impressions"})
                 self.assertEqual(set(data[0]["video_view_rate"].keys()), {"value", "passes"})

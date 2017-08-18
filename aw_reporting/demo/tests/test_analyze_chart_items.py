@@ -57,7 +57,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
-                'video_impressions',
             }
         )
 

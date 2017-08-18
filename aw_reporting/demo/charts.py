@@ -48,7 +48,7 @@ class DemoChart:
     def _get_items(self, item, dimension):
         dimensions = deepcopy(getattr(item, dimension))
         all_stats = (
-            'clicks', 'cost', 'impressions', 'video_impressions', 'video_views',
+            'clicks', 'cost',  'impressions', 'video_impressions', 'video_views',
             'video25rate', 'video50rate', 'video75rate', 'video100rate',
             'view_through', 'conversions', 'all_conversions',
         )
@@ -70,8 +70,8 @@ class DemoChart:
         res_items = []
         for name, stats in items.items():
             stats['name'] = name
-            del stats['label']
             dict_calculate_stats(stats)
+            del stats['label'], stats['video_impressions']
             res_items.append(stats)
 
         return dict(
