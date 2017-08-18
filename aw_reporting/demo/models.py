@@ -370,6 +370,10 @@ class BaseDemo:
         return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
 
+    @property
+    def video_impressions(self):
+        return self.impressions
+
 
 class DemoAd(BaseDemo):
 
@@ -692,6 +696,11 @@ class DemoAccount(BaseDemo):
             self.children = [c for c in self.children if c.id in campaigns]
 
     def set_period_proportion(self, start_date, end_date):
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, DATE_FORMAT).date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, DATE_FORMAT).date()
+
         start_date = start_date or self.start_date
         start_date = min(start_date, self.yesterday)
 

@@ -3,8 +3,7 @@ from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField, DictField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdGroupOptimizationTuning, CampaignOptimizationTuning, \
-    AdCreation, YT_VIDEO_REGEX
+    FrequencyCap, AdCreation, YT_VIDEO_REGEX
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
     Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
     ConcatAggregate, VideoCreativeStatistic
@@ -706,87 +705,3 @@ class AdGroupTargetingListUpdateSerializer(ModelSerializer):
         model = TargetingItem
         exclude = ('id',)
 
-
-# Optimize / Optimization
-
-class OptimizationFiltersAdGroupSerializer(ModelSerializer):
-
-    class Meta:
-        model = AdGroupCreation
-        fields = ('id', 'name')
-
-
-class OptimizationFiltersCampaignSerializer(ModelSerializer):
-
-    ad_group_creations = SerializerMethodField()
-
-    def __init__(self, *args, kpi, **kwargs):
-        self.kpi = kpi
-        super(OptimizationFiltersCampaignSerializer, self).__init__(
-                *args, **kwargs)
-
-    def get_ad_group_creations(self, obj):
-        queryset = AdGroupCreation.objects.filter(
-            campaign_creation=obj,
-        ).filter(
-            Q(optimization_tuning__value__isnull=False,
-              optimization_tuning__kpi=self.kpi) |
-            Q(campaign_creation__optimization_tuning__value__isnull=False,
-              campaign_creation__optimization_tuning__kpi=self.kpi)
-        ).distinct()
-        items = OptimizationFiltersAdGroupSerializer(queryset, many=True).data
-        return items
-
-    class Meta:
-        model = CampaignCreation
-        fields = ('id', 'name', 'ad_group_creations')
-
-
-class OptimizationSettingsAdGroupSerializer(ModelSerializer):
-
-    value = SerializerMethodField()
-
-    def get_value(self, obj):
-        kpi = self.parent.parent.parent.parent.kpi
-        try:
-            s = AdGroupOptimizationTuning.objects.get(item=obj, kpi=kpi)
-        except AdGroupOptimizationTuning.DoesNotExist:
-            pass
-        else:
-            return s.value
-
-    class Meta:
-        model = AdGroupCreation
-        fields = ('id', 'name', 'value')
-
-
-class OptimizationSettingsCampaignsSerializer(ModelSerializer):
-
-    ad_group_creations = OptimizationSettingsAdGroupSerializer(many=True)
-    value = SerializerMethodField()
-
-    def get_value(self, obj):
-        kpi = self.parent.parent.kpi
-        try:
-            s = CampaignOptimizationTuning.objects.get(item=obj, kpi=kpi)
-        except CampaignOptimizationTuning.DoesNotExist:
-            pass
-        else:
-            return s.value
-
-    class Meta:
-        model = CampaignCreation
-        fields = ('id', 'name', 'value', 'ad_group_creations')
-
-
-class OptimizationSettingsSerializer(ModelSerializer):
-
-    def __init__(self, *args, kpi, **kwargs):
-        self.kpi = kpi
-        super(OptimizationSettingsSerializer, self).__init__(*args, **kwargs)
-
-    campaign_creations = OptimizationSettingsCampaignsSerializer(many=True)
-
-    class Meta:
-        model = AccountCreation
-        fields = ('id', 'name', 'campaign_creations')

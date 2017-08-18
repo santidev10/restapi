@@ -99,19 +99,20 @@ urlpatterns = [
     url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
         views.PerformanceExportWeeklyReport.as_view(),
         name="performance_export_weekly_report"),
-    # >>> Performance
 
-    # optimization
-    url(r'^optimization_filters/(?P<pk>\w+)/(?P<kpi>\w+)/$',
-        views.OptimizationFiltersApiView.as_view(),
-        name="optimization_filters"),
-    url(r'^optimization_settings/(?P<pk>\w+)/(?P<kpi>\w+)/$',
-        views.OptimizationSettingsApiView.as_view(),
-        name="optimization_settings"),
-    url(r'^optimization_targeting/'
-        r'(?P<pk>\w+)/(?P<kpi>\w+)/(?P<list_type>\w+)/$',
-        views.OptimizationTargetingApiView.as_view(),
-        name="optimization_targeting"),
+    url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
+        views.PerformanceTargetingFiltersAPIView.as_view(),
+        name="performance_targeting_filters"),
+    url(r'^performance_targeting_report/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+        views.PerformanceTargetingReportAPIView.as_view(),
+        name="performance_targeting_report"),
+    url(r'^performance_targeting_report_details/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+        views.PerformanceTargetingReportDetailsAPIView.as_view(),
+        name="performance_targeting_report_details"),
+    url(r'^performance_targeting_settings/(?P<pk>\w+)/$',
+        views.PerformanceTargetingSettingsAPIView.as_view(),
+        name="performance_targeting_settings"),
+    # >>> Performance
 
     # tools
     url(r'^setup_topic_tool/$',

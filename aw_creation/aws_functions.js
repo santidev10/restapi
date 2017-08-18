@@ -459,12 +459,28 @@ function createOrUpdateVideoAd(ad_group, params){
     ad_builder.build();
 }
 
+function getBaseCampaignsInfo() {
+    var campaigns = [];
+    var campaignIterator = AdWordsApp.videoCampaigns().get();
+    while (campaignIterator.hasNext()) {
+        var campaign = campaignIterator.next();
+        var ad_groups = [];
+        var agIterator = campaign.videoAdGroups().get();
+        while (agIterator.hasNext()) {
+            var ad_group = agIterator.next();
+            ad_groups.push({id: ad_group.getId(), name: ad_group.getName()});
+        }
+        campaigns.push({id: campaign.getId(), name: campaign.getName(), ad_groups: ad_groups});
+    }
+    return campaigns;
+}
+
 function sendChangesStatus(account_id, updated_at){
     if (!AdWordsApp.getExecutionInfo().isPreview()) {
         var options = {
             muteHttpExceptions : true,
             method: "PATCH",
-            payload:{updated_at: updated_at},
+            payload:{updated_at: updated_at, campaigns: getBaseCampaignsInfo()},
         };
         var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGES_STATUS_PATH + account_id + '/', options);
         if(resp.getResponseCode() == 200) {
