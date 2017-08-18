@@ -2189,7 +2189,7 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
     def set_passes_fields(items, options):
         sort_fields = {k for k, v in options.items() if v is not None}
         if sort_fields:
-            items = list(sorted(items, key=lambda i: tuple(i[f] for f in sort_fields), reverse=True))
+            items = list(sorted(items, key=lambda i: tuple(i[f] or 0 for f in sort_fields), reverse=True))
             for item in items:
                 for k, v in options.items():
                     if v is not None and item[k] is not None:
