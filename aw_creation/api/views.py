@@ -2170,19 +2170,20 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
         try:
             saved_settings = ad_group.campaign_creation.account_creation.optimization_setting
         except AccountOptimizationSetting.DoesNotExist:
-            account_settings = AccountOptimizationSetting.default_settings
+            ad_group_settings = dict(**AccountOptimizationSetting.default_settings)
         else:
-            account_settings = {k: getattr(saved_settings, k) for k in fields}
+            ad_group_settings = {k: getattr(saved_settings, k) for k in fields}
 
         try:
             campaign_settings = ad_group.campaign_creation.optimization_setting
         except CampaignOptimizationSetting.DoesNotExist:
-            campaign_settings = account_settings
+            pass
         else:
-            campaign_settings.update(
-                **{k: account_settings[k] for k in fields if account_settings[k] is not None}
+            campaign_settings = {k: getattr(campaign_settings, k) for k in fields}
+            ad_group_settings.update(
+                **{k: campaign_settings[k] for k in fields if campaign_settings[k] is not None}
             )
-        return campaign_settings
+        return ad_group_settings
 
     @staticmethod
     def set_passes_fields(items, options):
