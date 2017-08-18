@@ -370,11 +370,6 @@ class BaseDemo:
         return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
 
-    @property
-    def video_impressions(self):
-        return self.impressions
-
-
 class DemoAd(BaseDemo):
 
     @property
