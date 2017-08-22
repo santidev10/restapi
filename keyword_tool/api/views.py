@@ -12,12 +12,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword
-from keyword_tool.models import Query, ViralKeywords
+from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
+from keyword_tool.tasks import update_kw_list_stats
+from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
+from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
 
 logger = logging.getLogger(__name__)
 
@@ -188,75 +190,33 @@ class OptimizeQueryApiView(ListAPIView):
         return response
 
     def add_ad_words_data(self, items):
-        from aw_reporting.models import Account, KeywordStatistic, base_stats_aggregate,\
-            BASE_STATS, CALCULATED_STATS, dict_norm_base_stats, dict_calculate_stats
-        from django.db.models import Min, Max, Count, Case, When, Value, FloatField, F, \
-            ExpressionWrapper
+        from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
+            dict_norm_base_stats, dict_calculate_stats
+
         accounts = Account.user_objects(self.request.user)
-        stats = KeywordStatistic.objects.filter(
-            ad_group__campaign__account__in=accounts,
-            keyword__in=set(i['keyword_text'] for i in items)
-        ).values('keyword').order_by('keyword').annotate(
-            campaigns_count=Count('ad_group__campaign_id', distinct=True),
-            **base_stats_aggregate
-        )
-        stats = {s['keyword']: s for s in stats}
+        cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+        keywords = set(i['keyword_text'] for i in items)
+        stats = get_keywords_aw_stats(accounts, keywords)
+        top_bottom_stats = get_keywords_aw_top_bottom_stats(accounts, keywords)
+
+        kw_without_stats = keywords - set(stats.keys())
+        if kw_without_stats:  # show CF account stats
+            cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats)
+            stats.update(cf_stats)
+            cf_top_bottom_stats = get_keywords_aw_top_bottom_stats(cf_accounts, kw_without_stats)
+            top_bottom_stats.update(cf_top_bottom_stats)
+
         aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
-
-        annotate = dict(
-            ctr=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_clicks__isnull=False,
-                        sum_impressions__gt=0,
-                        then=F("sum_clicks") * Value(100.0) / F("sum_impressions"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-            ctr_v=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_clicks__isnull=False,
-                        sum_video_views__gt=0,
-                        then=F("sum_clicks") * Value(100.0) / F("sum_video_views"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-            video_view_rate=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_video_views__isnull=False,
-                        video_impressions__gt=0,
-                        then=F("sum_video_views") * Value(100.0) / F("video_impressions"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-        )
-
         for item in items:
             item_stats = stats.get(item['keyword_text'])
             if item_stats:
                 dict_norm_base_stats(item_stats)
                 dict_calculate_stats(item_stats)
-                top_bottom_data = KeywordStatistic.objects.filter(keyword=item['keyword_text']).values("date").order_by(
-                    "date").annotate(
-                    **base_stats_aggregate
-                ).annotate(**annotate).aggregate(
-                    **{
-                        "{}_{}".format(s, n): a(s)
-                        for s in annotate.keys()
-                        for n, a in (("top", Max), ("bottom", Min))
-                        }
-                )
                 del item_stats['keyword']
                 item.update(item_stats)
-                item.update(top_bottom_data)
+
+                item_top_bottom_stats = top_bottom_stats.get(item['keyword_text'])
+                item.update(item_top_bottom_stats)
             else:
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 
