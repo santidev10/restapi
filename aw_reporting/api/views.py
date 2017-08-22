@@ -938,6 +938,12 @@ class AwHistoricalDataApiView(APIView):
         else:
             return Response(data=dict(error="Item type not found: {}".format(item_type)),
                             status=HTTP_400_BAD_REQUEST)
+
+        if not queryset.count():  # if there is no data, show cf data
+            accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+            filters['ad_group__campaign__account__in'] = accounts
+            queryset = queryset.model.objects.filter(**filters)
+
         # base stats
         base_stats = ('clicks', 'impressions', 'video_views')
 

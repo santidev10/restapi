@@ -33,7 +33,7 @@ def get_customers(refresh_token, **kwargs):
 
 
 def _get_client(developer_token, client_id, client_secret, user_agent,
-                refresh_token, client_customer_id=None):
+                refresh_token, client_customer_id=None, **_):
     oauth2_client = oauth2.GoogleRefreshTokenClient(
         client_id, client_secret, refresh_token
     )

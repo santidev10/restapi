@@ -12,12 +12,13 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword
+from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
 from keyword_tool.tasks import update_kw_list_stats
 from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
+from keyword_tool.api.utils import get_keywords_aw_stats
 
 logger = logging.getLogger(__name__)
 
@@ -188,18 +189,19 @@ class OptimizeQueryApiView(ListAPIView):
         return response
 
     def add_ad_words_data(self, items):
-        from aw_reporting.models import Account, KeywordStatistic, base_stats_aggregate,\
-            BASE_STATS, CALCULATED_STATS, dict_norm_base_stats, dict_calculate_stats
+        from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
+            dict_norm_base_stats, dict_calculate_stats
 
         accounts = Account.user_objects(self.request.user)
-        stats = KeywordStatistic.objects.filter(
-            ad_group__campaign__account__in=accounts,
-            keyword__in=set(i['keyword_text'] for i in items)
-        ).values('keyword').order_by('keyword').annotate(
-            campaigns_count=Count('ad_group__campaign_id', distinct=True),
-            **base_stats_aggregate
-        )
-        stats = {s['keyword']: s for s in stats}
+        keywords = set(i['keyword_text'] for i in items)
+        stats = get_keywords_aw_stats(accounts, keywords)
+
+        kw_without_stats = keywords - set(stats.keys())
+        if kw_without_stats:  # show CF account stats
+            cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+            cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats)
+            stats.update(cf_stats)
+
         aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
         for item in items:
             item_stats = stats.get(item['keyword_text'])
