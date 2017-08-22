@@ -13,11 +13,16 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     def handle(self, *args, **options):
         expired_date = timezone.now().date() - timedelta(days=7)
+        Query.objects.filter(updated_at__lte=expired_date).delete()
+        self.delete_by_volume()
 
-        query_res = Query.objects.filter(updated_at__lte=expired_date).delete()
-        keywords_res = KeyWord.objects.filter(
+    def delete_by_volume(self):
+        KeyWord.objects.filter(search_volume__lte=100000).delete()
+
+    def delete_by_stats(self, expired_date):
+        KeyWord.objects.filter(
             Q(updated_at__lte=expired_date) &
-            Q(average_cpc__gte=0) &
-            Q(competition__gte=0) &
-            Q(search_volume__gte=0)
+            (Q(average_cpc__isnull=True) | Q(average_cpc__lte=0)) &
+            (Q(competition__isnull=True) | Q(competition__lte=0)) &
+            (Q(search_volume__isnull=True) | Q(search_volume__lte=0))
         ).delete()

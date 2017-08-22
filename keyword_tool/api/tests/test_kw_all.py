@@ -1,5 +1,6 @@
 from django.core.urlresolvers import reverse
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
 from saas.utils_tests import ExtendedAPITestCase as APITestCase
@@ -22,7 +23,10 @@ class KWToolAPITestCase(APITestCase):
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         today = timezone.now()
         for keyword in texts:
-            KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword=keyword, impressions=10)
+            KeywordStatistic.objects.create(date=today - timedelta(days=1), ad_group=ad_group, keyword=keyword,
+                                            impressions=10, video_views=1)
+            KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword=keyword,
+                                            impressions=10, video_views=5)
 
         url = reverse("keyword_tool_urls:kw_tool_all")
         response = self.client.get(url)
@@ -30,5 +34,7 @@ class KWToolAPITestCase(APITestCase):
         self.assertEqual(len(response.data['items']), len(texts))
 
         for i in response.data['items']:
-            self.assertEqual(i['impressions'], 10)
+            self.assertEqual(i['impressions'], 20)
+            self.assertEqual(i['video_view_rate_bottom'], 10)
+            self.assertEqual(i['video_view_rate_top'], 50)
 

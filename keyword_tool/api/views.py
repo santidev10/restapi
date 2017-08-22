@@ -16,9 +16,10 @@ from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
 from keyword_tool.tasks import update_kw_list_stats
 from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
+from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
-from keyword_tool.api.utils import get_keywords_aw_stats
+from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ class OptimizeQueryApiView(ListAPIView):
     def filter(self, queryset):
         query_params = self.request.query_params
 
-        for field in ('volume', 'competition'):
+        for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
                 f = "{pref}_{field}".format(field=field, pref=pref)
                 if f in query_params:
@@ -193,14 +194,17 @@ class OptimizeQueryApiView(ListAPIView):
             dict_norm_base_stats, dict_calculate_stats
 
         accounts = Account.user_objects(self.request.user)
+        cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
         keywords = set(i['keyword_text'] for i in items)
         stats = get_keywords_aw_stats(accounts, keywords)
+        top_bottom_stats = get_keywords_aw_top_bottom_stats(accounts, keywords)
 
         kw_without_stats = keywords - set(stats.keys())
         if kw_without_stats:  # show CF account stats
-            cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
             cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats)
             stats.update(cf_stats)
+            cf_top_bottom_stats = get_keywords_aw_top_bottom_stats(cf_accounts, kw_without_stats)
+            top_bottom_stats.update(cf_top_bottom_stats)
 
         aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
         for item in items:
@@ -210,6 +214,9 @@ class OptimizeQueryApiView(ListAPIView):
                 dict_calculate_stats(item_stats)
                 del item_stats['keyword']
                 item.update(item_stats)
+
+                item_top_bottom_stats = top_bottom_stats.get(item['keyword_text'])
+                item.update(item_top_bottom_stats)
             else:
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 

@@ -95,6 +95,13 @@ def optimize_keyword(query, client=None, request_type='IDEAS'):
                     'targetPartnerSearchNetwork': False,
                 }
             },
+            {
+                'xsi_type': 'SearchVolumeSearchParameter',
+                'operation': {
+                    'minimum': 100000
+                }
+
+            }
         ],
         'ideaType': 'KEYWORD',
         'requestType': request_type,
