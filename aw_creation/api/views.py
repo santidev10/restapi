@@ -1014,6 +1014,9 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         data = dict(
             name="Ad Group {}".format(count + 1),
             campaign_creation=campaign_creation.id,
+            genders_raw=campaign_creation.genders_raw,
+            age_ranges_raw=campaign_creation.age_ranges_raw,
+            parents_raw=campaign_creation.parents_raw,
         )
         serializer = AppendAdGroupCreationSetupSerializer(data=data)
         serializer.is_valid(raise_exception=True)

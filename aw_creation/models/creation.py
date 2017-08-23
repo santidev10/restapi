@@ -563,12 +563,6 @@ class AdGroupCreation(CommonTargetingItem):
 
         return "\n".join(lines)
 
-# these targeting fields can be empty at the ad_group level,
-# because they are defined at the campaign level
-AdGroupCreation._meta.get_field('genders_raw').default = json.dumps([])
-AdGroupCreation._meta.get_field('parents_raw').default = json.dumps([])
-AdGroupCreation._meta.get_field('age_ranges_raw').default = json.dumps([])
-
 
 @receiver(post_save, sender=AdGroupCreation,
           dispatch_uid="save_group_receiver")
