@@ -37,7 +37,9 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
         )
         KeywordStatistic.objects.create(keyword="blow", **stats)
         YTChannelStatistic.objects.create(yt_id="UC-lHJZR3Gqxm24_Vd_AJ5Yw", **stats)
+        YTChannelStatistic.objects.create(yt_id="unknown", **stats)
         YTVideoStatistic.objects.create(yt_id="9bZkp7q19f0", **stats)
+        YTVideoStatistic.objects.create(yt_id="unknown", **stats)
         topic, _ = Topic.objects.get_or_create(name="AC")
         TopicStatistic.objects.create(topic=topic, **stats)
         audience = Audience.objects.create(name="What", type=Audience.CUSTOM_AFFINITY_TYPE)
@@ -51,7 +53,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                 response = self.client.post(url)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 data = response.data
-                self.assertEqual(len(data), 1)
+                self.assertGreaterEqual(len(data), 1)
                 keys = set(self.data_keys)
                 if dimension in ("channel", "video"):
                     keys.add("thumbnail")
