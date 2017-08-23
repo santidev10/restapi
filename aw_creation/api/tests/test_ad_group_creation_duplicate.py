@@ -71,6 +71,19 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )
+        self.assertEqual(data['name'], "{} (1)".format(ac.name))
+
+    def test_success_post_increment_name(self):
+        ag = self.create_ad_group_creation(owner=self.user)
+        ag.name = "FF 1 (199)"
+        ag.save()
+        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
+                      args=(ag.id,))
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data['name'], "FF 1 (200)")
 
     def test_success_post_demo(self):
         ac = DemoAccount()

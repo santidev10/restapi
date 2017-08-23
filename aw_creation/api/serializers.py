@@ -505,9 +505,6 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         return value
 
     def validate(self, data):
-        if "devices" in data and not data["devices"]:
-            raise ValidationError("devices: empty set is not allowed")
-
         for f in ('devices', 'video_networks', 'languages', 'genders', 'parents', 'age_ranges'):
             if f in data and not data[f]:
                 raise ValidationError(
@@ -606,6 +603,13 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
                     raise ValidationError(error_text)
         return value
 
+    def validate(self, data):
+        for f in ('genders', 'parents', 'age_ranges'):
+            if f in data and not data[f]:
+                raise ValidationError("{}: empty set is not allowed".format(f))
+
+        return super(AdGroupCreationUpdateSerializer, self).validate(data)
+
     class Meta:
         model = AdGroupCreation
         exclude = ('genders_raw', 'age_ranges_raw', 'parents_raw', 'campaign_creation')
@@ -616,7 +620,7 @@ class AppendAdGroupCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = AdGroupCreation
         fields = (
-            'name', 'campaign_creation',
+            'name', 'campaign_creation', 'genders_raw', 'age_ranges_raw', 'parents_raw',
         )
 
 

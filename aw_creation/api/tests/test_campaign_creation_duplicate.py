@@ -80,6 +80,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'content_exclusions', 'genders', 'age_ranges', 'parents',
             }
         )
+        self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))
         self.assertEqual(
             campaign_data['video_ad_format'],
             dict(id=CampaignCreation.IN_STREAM_TYPE,
@@ -177,6 +178,17 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )
+
+    def test_success_post_increment_name(self):
+        c = self.create_campaign_creation(self.user)
+        c.name = "FF 1 (665)"
+        c.save()
+        url = reverse("aw_creation_urls:campaign_creation_duplicate",
+                      args=(c.id,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data['name'], "FF 1 (666)")
 
     def test_success_post_demo(self):
         ac = DemoAccount()

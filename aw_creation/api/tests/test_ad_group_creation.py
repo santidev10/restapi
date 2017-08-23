@@ -180,8 +180,11 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             "name": "AdGroup 1", "max_rate": 0,
             "targeting": {"keyword": {"positive": [], "negative": []}, "topic": {"positive": [], "negative": []},
                           "interest": {"positive": [], "negative": []}, "channel": {"positive": [], "negative": []},
-                          "video": {"positive": [], "negative": []}}, "age_ranges": ["AGE_RANGE_UNDETERMINED"],
-            "parents": [], "genders": []
+                          "video": {"positive": [], "negative": []}},
+            "age_ranges": [CommonTargetingItem.AGE_RANGE_18_24,
+                           CommonTargetingItem.AGE_RANGE_25_34],
+            "parents": [CommonTargetingItem.PARENT_NOT_A_PARENT],
+            "genders": [CommonTargetingItem.GENDER_FEMALE],
         }
 
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
