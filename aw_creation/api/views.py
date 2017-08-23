@@ -2260,7 +2260,7 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
                 logger.error(e)
 
         for i in items:
-            item_details = info.get(i['yt_id'])
+            item_details = info.get(i['yt_id'], {})
             i["id"] = i['yt_id']
             i["name"] = item_details.get("title", i['yt_id'])
             i["thumbnail"] = item_details.get("thumbnail_image_url")
@@ -2293,7 +2293,7 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
                 logger.error(e)
 
         for i in items:
-            item_details = info.get(i['yt_id'])
+            item_details = info.get(i['yt_id'], {})
             i["id"] = i['yt_id']
             i["name"] = item_details.get("title", i['yt_id'])
             i["thumbnail"] = item_details.get("thumbnail_image_url")
