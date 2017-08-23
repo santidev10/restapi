@@ -113,7 +113,7 @@ class AccountCreationDuplicateApiView:
                 data = demo.creation_details_full
 
                 acc_data = dict(
-                    name=view.increment_name(data['name']),
+                    name=view.increment_name(data['name'], view.get_queryset().values_list("name", flat=True)),
                     owner=view.request.user,
                 )
                 for f in view.account_fields:

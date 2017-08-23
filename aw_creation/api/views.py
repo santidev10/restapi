@@ -1178,19 +1178,26 @@ class AccountCreationDuplicateApiView(APIView):
 
     def duplicate_item(self, item, bulk_items):
         if isinstance(item, AccountCreation):
-            return self.duplicate_account(item, bulk_items, increment_name=True)
+            return self.duplicate_account(item, bulk_items,
+                                          all_names=self.get_queryset().values_list("name", flat=True))
         elif isinstance(item, CampaignCreation):
-            return self.duplicate_campaign(item.account_creation, item, bulk_items, increment_name=True)
+            parent = item.account_creation
+            return self.duplicate_campaign(parent, item, bulk_items,
+                                           all_names=parent.campaign_creations.values_list("name", flat=True))
         elif isinstance(item, AdGroupCreation):
-            return self.duplicate_ad_group(item.campaign_creation, item, bulk_items, increment_name=True)
+            parent = item.campaign_creation
+            return self.duplicate_ad_group(parent, item, bulk_items,
+                                           all_names=parent.ad_group_creations.values_list("name", flat=True))
         elif isinstance(item, AdCreation):
-            return self.duplicate_ad(item.ad_group_creation, item, bulk_items, increment_name=True)
+            parent = item.ad_group_creation
+            return self.duplicate_ad(parent, item, bulk_items,
+                                     all_names=parent.ad_creations.values_list("name", flat=True))
         else:
             raise NotImplementedError("Unknown item type: {}".format(type(item)))
 
-    def duplicate_account(self, account, bulk_items, **_):
+    def duplicate_account(self, account, bulk_items, all_names):
         account_data = dict(
-            name=self.increment_name(account.name),
+            name=self.increment_name(account.name, all_names),
             owner=self.request.user,
         )
         for f in self.account_fields:
@@ -1202,13 +1209,13 @@ class AccountCreationDuplicateApiView(APIView):
 
         return acc_duplicate
 
-    def duplicate_campaign(self, account, campaign, bulk_items, increment_name=False):
+    def duplicate_campaign(self, account, campaign, bulk_items, all_names=None):
         camp_data = {f: getattr(campaign, f) for f in self.campaign_fields}
         c_duplicate = CampaignCreation.objects.create(
             account_creation=account, **camp_data
         )
-        if increment_name:
-            c_duplicate.name = self.increment_name(c_duplicate.name)
+        if all_names:
+            c_duplicate.name = self.increment_name(c_duplicate.name, all_names)
             c_duplicate.save()
         # through
         language_through = CampaignCreation.languages.through
@@ -1246,13 +1253,13 @@ class AccountCreationDuplicateApiView(APIView):
 
         return c_duplicate
 
-    def duplicate_ad_group(self, campaign, ad_group, bulk_items, increment_name=False):
+    def duplicate_ad_group(self, campaign, ad_group, bulk_items, all_names=None):
         a_duplicate = AdGroupCreation.objects.create(
             campaign_creation=campaign,
             **{f: getattr(ad_group, f) for f in self.ad_group_fields}
         )
-        if increment_name:
-            a_duplicate.name = self.increment_name(a_duplicate.name)
+        if all_names:
+            a_duplicate.name = self.increment_name(a_duplicate.name, all_names)
             a_duplicate.save()
 
         for i in ad_group.targeting_items.all():
@@ -1268,28 +1275,38 @@ class AccountCreationDuplicateApiView(APIView):
 
         return a_duplicate
 
-    def duplicate_ad(self, ad_group, ad, *_, increment_name=False):
+    def duplicate_ad(self, ad_group, ad, *_, all_names=None):
         ad_duplicate = AdCreation.objects.create(
             ad_group_creation=ad_group,
             **{f: getattr(ad, f) for f in self.ad_fields}
         )
-        if increment_name:
-            ad_duplicate.name = self.increment_name(ad_duplicate.name)
+        if all_names:
+            ad_duplicate.name = self.increment_name(ad_duplicate.name, all_names)
             ad_duplicate.save()
         return ad_duplicate
 
     @staticmethod
-    def increment_name(name):
+    def increment_name(name, all_names):
         len_limit = 250
-        mark_match = re.match(r".*( \((\d+)\))$", name)
+        mark_match = re.match(r".*( \(\d+\))$", name)
+
+        # clear name from mark
         if mark_match:
             mark_str = mark_match.group(1)
             name = name[:-len(mark_str)]  # crop a previous mark from a name
-            copy_number = int(mark_match.group(2)) + 1
-        else:
-            copy_number = 1
+            # copy_number = int(mark_match.group(2)) + 1
 
-        copy_sign = " ({})".format(copy_number)
+        # find top mark number
+        max_number = 0
+        for n in all_names:
+            n_match = re.match(r"(.*) \((\d+)\)$", n)
+            if n_match and n_match.group(1) == name:
+                number = int(n_match.group(2))
+                if number > max_number:
+                    max_number = number
+
+        # create new name
+        copy_sign = " ({})".format(max_number + 1)
         max_len = len_limit - len(copy_sign)
         if len(name) >= max_len:
             name = name[:max_len - 2] + ".."
