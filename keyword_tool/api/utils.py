@@ -68,7 +68,7 @@ def get_keywords_aw_top_bottom_stats(accounts, keywords):
     )
     for f in fields:
         min_field, max_field = "{}_bottom".format(f), "{}_top".format(f)
-        for r in raw_stats:
+        for r in filter(lambda e: e[f] is not None, raw_stats):
             min_value, max_value = top_bottom_data[r['keyword']][min_field], top_bottom_data[r['keyword']][max_field]
             top_bottom_data[r['keyword']][min_field] = r[f] if min_value is None else min(min_value, r[f])
             top_bottom_data[r['keyword']][max_field] = r[f] \

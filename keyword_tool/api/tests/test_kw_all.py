@@ -27,6 +27,7 @@ class KWToolAPITestCase(APITestCase):
                                             impressions=10, video_views=1)
             KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword=keyword,
                                             impressions=10, video_views=5)
+            KeywordStatistic.objects.create(date=today + timedelta(days=1), ad_group=ad_group, keyword=keyword)
 
         url = reverse("keyword_tool_urls:kw_tool_all")
         response = self.client.get(url)
