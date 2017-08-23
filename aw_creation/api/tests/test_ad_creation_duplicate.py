@@ -54,11 +54,18 @@ class AccountAPITestCase(AwReportingAPITestCase):
 
     def test_success_post_increment_name(self):
         ad = self.create_ad_creation(owner=self.user)
-        ad.name = "FF 1 (199)"
-        ad.save()
+        AdCreation.objects.create(
+            name="FF 1 (199)",  # add another cloned ad
+            ad_group_creation=ad.ad_group_creation,
+            video_url="https://www.youtube.com/watch?v=gHviuIGQ8uo",
+            display_url="www.gg.com",
+            final_url="http://www.gg.com",
+            tracking_template="http://custom.com",
+            custom_params_raw='[{"name": "name 1", "value": "value 1"}]',
+        )
+
         url = reverse("aw_creation_urls:ad_creation_duplicate",
                       args=(ad.id,))
-
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
