@@ -1872,35 +1872,36 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
     @staticmethod
     def get_campaigns(item):
-        ad_groups = AdGroupCreation.objects.filter(campaign_creation__account_creation=item).values(
-            "campaign_creation__name", "campaign_creation_id", "name", "id",
-            "campaign_creation__campaign__status", "ad_group__status",
+        rows = CampaignCreation.objects.filter(account_creation=item).values(
+            "name", "id", "ad_group_creations__name", "ad_group_creations__id",
+            "campaign__status", "ad_group_creations__ad_group__status",
         ).order_by(
-            "campaign_creation__name", "campaign_creation_id", "name", "id",
+            "name", "id", "ad_group_creations__name", "ad_group_creations__id",
         ).annotate(
-            start=Coalesce("campaign_creation__start", "campaign_creation__campaign__start_date"),
-            end=Coalesce("campaign_creation__end", "campaign_creation__campaign__end_date"),
+            start=Coalesce("start", "campaign__start_date"),
+            end=Coalesce("end", "campaign__end_date"),
         )
         campaigns = []
-        for ad_group in ad_groups:
-            if not campaigns or ad_group['campaign_creation_id'] != campaigns[-1]['id']:
+        for row in rows:
+            if not campaigns or row['id'] != campaigns[-1]['id']:
                 campaigns.append(
                     dict(
-                        id=ad_group['campaign_creation_id'],
-                        name=ad_group['campaign_creation__name'],
-                        start_date=ad_group['start'],
-                        end_date=ad_group['end'],
-                        status=ad_group['campaign_creation__campaign__status'],
+                        id=row['id'],
+                        name=row['name'],
+                        start_date=row['start'],
+                        end_date=row['end'],
+                        status=row['campaign__status'],
                         ad_groups=[]
                     )
                 )
-            campaigns[-1]['ad_groups'].append(
-                dict(
-                    id=ad_group['id'],
-                    name=ad_group['name'],
-                    status=ad_group['ad_group__status'],
+            if row['ad_group_creations__id'] is not None:
+                campaigns[-1]['ad_groups'].append(
+                    dict(
+                        id=row['ad_group_creations__id'],
+                        name=row['ad_group_creations__name'],
+                        status=row['ad_group_creations__ad_group__status'],
+                    )
                 )
-            )
         return campaigns
 
     @staticmethod
