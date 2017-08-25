@@ -119,6 +119,8 @@ class SavedListNameSerializer(SavedListCreateSerializer):
                         if kw["text"] in stats:
                             kw_stats = stats[kw["text"]]
                             for f in fields:
+                                if not kw_stats.get(f):
+                                    continue
                                 list_stats[f] += kw_stats[f]
                     dict_norm_base_stats(list_stats)
                     dict_calculate_stats(list_stats)
