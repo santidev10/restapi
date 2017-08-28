@@ -10,7 +10,7 @@ from aw_reporting.utils import get_dates_range
 class AwHistoricalDataAPITestCase(AwReportingAPITestCase):
     keys = {
         'clicks', 'impressions', 'video_views',
-        'ctr', 'ctr_v', 'video_view_rate',
+        'ctr', 'ctr_v', 'video_view_rate', 'average_cpv',
 
         'video_views_this_week', 'video_views_last_week',
         'clicks_this_week', 'clicks_last_week',
@@ -18,6 +18,7 @@ class AwHistoricalDataAPITestCase(AwReportingAPITestCase):
 
         'video_view_rate_top', 'video_view_rate_bottom',
         'ctr_v_top', 'ctr_v_bottom', 'ctr_bottom', 'ctr_top',
+        'average_cpv_top', 'average_cpv_bottom',
     }
 
     def setUp(self):
