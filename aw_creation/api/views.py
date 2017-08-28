@@ -2220,9 +2220,9 @@ class PerformanceTargetingReportDetailsAPIView(APIView):
         except CampaignOptimizationSetting.DoesNotExist:
             pass
         else:
-            campaign_settings = {k: getattr(campaign_settings, k) for k in fields}
             ad_group_settings.update(
-                **{k: campaign_settings[k] for k in fields if campaign_settings[k] is not None}
+                {k: getattr(campaign_settings, k) for k in fields
+                 if getattr(campaign_settings, k) is not None}
             )
         return ad_group_settings
 

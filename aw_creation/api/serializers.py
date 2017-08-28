@@ -1,6 +1,6 @@
 from django.db.models import Min, Max, Sum, Q
 from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, ValidationError, BooleanField, DictField
+    SerializerMethodField, ListField, ValidationError, BooleanField, DictField, CharField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdCreation, YT_VIDEO_REGEX
@@ -328,7 +328,7 @@ class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
     thumbnail = SerializerMethodField()
     weekly_chart = SerializerMethodField()
-    status = SerializerMethodField()
+    status = CharField()
     start = SerializerMethodField()
     end = SerializerMethodField()
     impressions = StatField()
@@ -366,21 +366,6 @@ class AccountCreationListSerializer(ModelSerializer):
             return settings['end']
         else:
             return self.stats.get(obj.id, {}).get("end")
-
-    @staticmethod
-    def get_status(obj):
-        if not obj.is_managed:
-            return "From AdWords"
-        elif obj.is_ended:
-            return "Ended"
-        elif obj.is_paused:
-            return "Paused"
-        elif obj.sync_at:
-            return "Running"
-        elif obj.is_approved:
-            return "Approved"
-        else:
-            return "Pending"
 
     def __init__(self, *args, **kwargs):
         self.settings = {}

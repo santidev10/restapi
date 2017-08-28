@@ -51,17 +51,17 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
         ad_group_creation = AdGroupCreation.objects.create(name="", campaign_creation=campaign_creation)
         ad_creation = AdCreation.objects.create(name="", ad_group_creation=ad_group_creation)
 
-        sleep(1)
+        sleep(2)
 
         ad_creation.save()  # this updates all the parents
 
         time = ad_creation.updated_at.replace(microsecond=0)
 
         ad_group_creation.refresh_from_db()
-        self.assertEqual(ad_group_creation.updated_at.replace(microsecond=0), time)
+        self.assertLessEqual((ad_group_creation.updated_at.replace(microsecond=0) - time).seconds, 1)
 
         campaign_creation.refresh_from_db()
-        self.assertEqual(campaign_creation.updated_at.replace(microsecond=0), time)
+        self.assertLessEqual((campaign_creation.updated_at.replace(microsecond=0) - time).seconds, 1)
 
         account_creation.refresh_from_db()
-        self.assertEqual(account_creation.updated_at.replace(microsecond=0), time)
+        self.assertLessEqual((account_creation.updated_at.replace(microsecond=0) - time).seconds, 1)

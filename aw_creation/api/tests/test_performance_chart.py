@@ -6,7 +6,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad
+    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
+    AWConnection, AWConnectionToUserRelation
 from aw_creation.models import AccountCreation
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
@@ -45,7 +46,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart",
@@ -71,7 +72,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart",
@@ -90,7 +91,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_all_dimensions(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart",
@@ -114,6 +115,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_no_account(self):
         user = self.create_test_user()
+        # add a connection not to show demo data
+        connection = AWConnection.objects.create(
+            email=user.email,
+            refresh_token="",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=user,
+        )
+
         account_creation = AccountCreation.objects.create(name="", owner=user)
 
         account = Account.objects.create(id=1, name="")
@@ -139,6 +150,30 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_chart",
                       args=(DEMO_ACCOUNT_ID,))
+
+        today = datetime.now().date()
+        response = self.client.post(
+            url,
+            json.dumps(dict(
+                start_date=str(today - timedelta(days=2)),
+                end_date=str(today - timedelta(days=1)),
+                indicator="impressions",
+            )),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data), 3)
+        self.assertEqual(data[0]['title'], "Summary for 2 campaigns")
+        self.assertEqual(len(data[0]['data'][0]['trend']), 2)
+        self.assertEqual(data[1]['title'], "Campaign #demo1")
+        self.assertEqual(data[2]['title'], "Campaign #demo2")
+
+    def test_success_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user)
+        url = reverse("aw_creation_urls:performance_chart",
+                      args=(account_creation.id,))
 
         today = datetime.now().date()
         response = self.client.post(

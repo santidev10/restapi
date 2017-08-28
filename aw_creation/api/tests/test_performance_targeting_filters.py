@@ -84,3 +84,23 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         account = DemoAccount()
         self.assertEqual(response.data['start_date'], account.start_date)
         self.assertEqual(response.data['end_date'], account.end_date)
+
+    def test_success_get_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_filters",
+                      args=(account_creation.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                'start_date', 'end_date',
+                'campaigns',
+                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
+            }
+        )
+        self.assertEqual(len(response.data['campaigns']), 2)
+        account = DemoAccount()
+        self.assertEqual(response.data['start_date'], account.start_date)
+        self.assertEqual(response.data['end_date'], account.end_date)
