@@ -20,6 +20,17 @@ def get_keywords_aw_stats(accounts, keywords, fields=None):
 
 def get_keywords_aw_top_bottom_stats(accounts, keywords):
     annotate = dict(
+        average_cpv=ExpressionWrapper(
+            Case(
+                When(
+                    sum_cost__isnull=False,
+                    sum_video_views__gt=0,
+                    then=F("sum_cost") / F("sum_video_views"),
+                ),
+                output_field=FloatField()
+            ),
+            output_field=FloatField()
+        ),
         ctr=ExpressionWrapper(
             Case(
                 When(
