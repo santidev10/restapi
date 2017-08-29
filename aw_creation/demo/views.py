@@ -402,6 +402,11 @@ class PerformanceAccountDetailsApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 data['overview'] = account.overview
+
+                if pk != DEMO_ACCOUNT_ID:
+                    original_data = original_method(view, request, pk=pk, **kwargs).data
+                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
+                        data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
