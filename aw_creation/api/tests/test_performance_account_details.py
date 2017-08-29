@@ -213,7 +213,6 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         
-        self.assertEqual(data['id'], account_creation.id)
         self.assertEqual(data['name'], account_creation.name)
         self.assertEqual(data['status'], account_creation.status)
         self.assertEqual(data['thumbnail'], ad_creation.video_thumbnail)
