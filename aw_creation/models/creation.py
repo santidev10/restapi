@@ -117,6 +117,28 @@ class AccountCreation(UniqueCreationItem):
             )
             return "\n".join(lines)
 
+    STATUS_FROM_AW = "From AdWords"
+    STATUS_ENDED = "Ended"
+    STATUS_PAUSED = "Paused"
+    STATUS_RUNNING = "Running"
+    STATUS_APPROVED = "Approved"
+    STATUS_PENDING = "Pending"
+
+    @property
+    def status(self):
+        if not self.is_managed:
+            return self.STATUS_FROM_AW
+        elif self.is_ended:
+            return self.STATUS_ENDED
+        elif self.is_paused:
+            return self.STATUS_PAUSED
+        elif self.sync_at:
+            return self.STATUS_RUNNING
+        elif self.is_approved:
+            return self.STATUS_APPROVED
+        else:
+            return self.STATUS_PENDING
+
 
 @receiver(post_save, sender=AccountCreation, dispatch_uid="save_account_receiver")
 def save_account_receiver(sender, instance, created, **_):

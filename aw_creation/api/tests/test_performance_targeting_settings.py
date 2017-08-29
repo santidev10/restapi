@@ -17,7 +17,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user, is_managed=False)
         CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
 
         url = reverse("aw_creation_urls:performance_targeting_settings",
@@ -35,7 +35,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_put(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id="1", name="AC", owner=user)
+        account_creation = AccountCreation.objects.create(id="1", name="AC", owner=user, is_managed=False)
         CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
 
         url = reverse("aw_creation_urls:performance_targeting_settings",
@@ -76,7 +76,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_pre_saved(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user, is_managed=False)
         campaign_creation = CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
         account_settings = dict(
             average_cpv="0.7",
@@ -123,3 +123,19 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(len(data["campaign_creations"]), 2)
         self.assertEqual(set(data["campaign_creations"][0].keys()), self.data_keys - {"campaign_creations"})
+
+    def test_success_get_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_settings",
+                      args=(account_creation.id,))
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(
+            set(data.keys()),
+            self.data_keys,
+        )
+        self.assertEqual(data['id'], DEMO_ACCOUNT_ID)
+        self.assertEqual(len(data["campaign_creations"]), 2)

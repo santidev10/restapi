@@ -15,7 +15,7 @@ class AnalyzeExportAPITestCase(ExtendedAPITestCase):
     def test_success(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
 
         url = reverse("aw_creation_urls:performance_export_weekly_report",
                       args=(account_creation.id,))

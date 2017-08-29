@@ -45,7 +45,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart_items",
@@ -96,7 +96,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_video(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
         url = reverse("aw_creation_urls:performance_chart_items",
                       args=(account_creation.id, 'video'))
@@ -232,7 +232,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart_items",
@@ -263,7 +263,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_demo_all_dimensions(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
 
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
@@ -281,7 +281,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group_cpv = AdGroup.objects.create(id=1, name="", campaign=campaign)
         ad_group_cpm = AdGroup.objects.create(id=2, name="", campaign=campaign)
@@ -305,3 +305,43 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         item = data['items'][0]
         self.assertEqual(item['video_view_rate'], 10)  # 10 %
 
+    def test_success_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user)
+        url = reverse("aw_creation_urls:performance_chart_items",
+                      args=(account_creation.id, 'ad'))
+
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(
+            set(data.keys()),
+            {'items', 'summary'}
+        )
+        self.assertEqual(len(data['items']), 10)
+        self.assertEqual(
+            set(data['items'][0].keys()),
+            {
+                'name',
+                'video_view_rate',
+                'conversions',
+                'ctr',
+                'status',
+                'view_through',
+                'all_conversions',
+                'average_cpv',
+                'video100rate',
+                'video_views',
+                'video50rate',
+                'clicks',
+                'average_position',
+                'impressions',
+                'video75rate',
+                'cost',
+                'video25rate',
+                'average_cpm',
+                'ctr_v',
+            }
+        )
