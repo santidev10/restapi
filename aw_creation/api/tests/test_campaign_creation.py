@@ -77,8 +77,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
                 'delivery_method', 'video_ad_format', 'video_networks',
-                'genders', 'age_ranges', 'parents', 'content_exclusions',
-                'ad_group_creations',
+                'content_exclusions', 'ad_group_creations',
             }
         )
         ad_group_data = data['ad_group_creations'][0]
@@ -262,10 +261,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 start=str(campaign_creation.start),
                 end=str(campaign_creation.end),
                 content_exclusions=campaign_creation.content_exclusions,
-                parents=campaign_creation.parents,
-                genders=campaign_creation.genders,
                 devices=campaign_creation.devices,
-                age_ranges=campaign_creation.age_ranges,
                 video_networks=campaign_creation.video_networks,
             )), content_type='application/json',
         )

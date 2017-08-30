@@ -42,6 +42,7 @@ from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal
 from suds import WebFault
+import itertools
 import calendar
 import csv
 import pytz
@@ -332,10 +333,10 @@ class TargetingItemsSearchApiView(APIView):
         from keyword_tool.models import KeyWord
         keywords = KeyWord.objects.filter(
             text__icontains=query,
-        ).values_list("text", flat=True).order_by("text")
+        ).exclude(text=query).values_list("text", flat=True).order_by("text")
         items = [
             dict(criteria=k, name=k)
-            for k in keywords
+            for k in itertools.chain((query,), keywords)
         ]
         return items
 
@@ -1014,9 +1015,6 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         data = dict(
             name="Ad Group {}".format(count + 1),
             campaign_creation=campaign_creation.id,
-            genders_raw=campaign_creation.genders_raw,
-            age_ranges_raw=campaign_creation.age_ranges_raw,
-            parents_raw=campaign_creation.parents_raw,
         )
         serializer = AppendAdGroupCreationSetupSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -1138,7 +1136,7 @@ class AccountCreationDuplicateApiView(APIView):
     campaign_fields = (
         "name", "start", "end", "budget",
         "devices_raw", "delivery_method", "video_ad_format", "video_networks_raw",
-        'content_exclusions_raw', 'genders_raw', 'age_ranges_raw', 'parents_raw',
+        'content_exclusions_raw',
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",

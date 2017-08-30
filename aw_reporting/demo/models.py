@@ -650,18 +650,6 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=name)
                 for uid, name in CampaignCreation.VIDEO_NETWORKS
             ],
-            age_ranges=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.AGE_RANGES
-            ],
-            genders=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.GENDERS
-            ],
-            parents=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.PARENTS
-            ],
             content_exclusions=[
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
