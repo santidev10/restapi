@@ -19,8 +19,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',
         'video_networks', 'video_ad_format', 'delivery_method',
-        'age_ranges', 'genders', 'parents', 'content_exclusions',
-        'ad_group_creations',
+        'content_exclusions', 'ad_group_creations',
     }
 
     def setUp(self):

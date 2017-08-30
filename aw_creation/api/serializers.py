@@ -92,7 +92,36 @@ def add_targeting_list_items_info(data, list_type):
                 item['name'] = item['criteria']
 
 
-class CommonTargetingItemSerializerMix:
+class AdCreationSetupSerializer(ModelSerializer):
+    thumbnail = SerializerMethodField()
+
+    @staticmethod
+    def get_thumbnail(obj):
+        if obj.video_url:
+            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
+            if match:
+                uid = match.group(1)
+                return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
+
+    class Meta:
+        model = AdCreation
+        fields = (
+            'id', 'name', 'updated_at', 'companion_banner',
+            'final_url', 'video_url', 'display_url',
+            'tracking_template', 'custom_params',
+            'thumbnail',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        )
+
+
+class AdGroupCreationSetupSerializer(ModelSerializer):
+
+    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
+
+    targeting = SerializerMethodField()
+    age_ranges = SerializerMethodField()
+    genders = SerializerMethodField()
+    parents = SerializerMethodField()
 
     @staticmethod
     def get_age_ranges(obj):
@@ -120,38 +149,6 @@ class CommonTargetingItemSerializerMix:
             if uid in obj.parents
         ]
         return parents
-
-
-class AdCreationSetupSerializer(ModelSerializer):
-    thumbnail = SerializerMethodField()
-
-    @staticmethod
-    def get_thumbnail(obj):
-        if obj.video_url:
-            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
-            if match:
-                uid = match.group(1)
-                return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
-
-    class Meta:
-        model = AdCreation
-        fields = (
-            'id', 'name', 'updated_at', 'companion_banner',
-            'final_url', 'video_url', 'display_url',
-            'tracking_template', 'custom_params',
-            'thumbnail',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
-        )
-
-
-class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSerializer):
-
-    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
-
-    targeting = SerializerMethodField()
-    age_ranges = SerializerMethodField()
-    genders = SerializerMethodField()
-    parents = SerializerMethodField()
 
     @staticmethod
     def get_targeting(obj):
@@ -243,7 +240,7 @@ class FrequencyCapSerializer(ModelSerializer):
         exclude = ("id", 'campaign_creation')
 
 
-class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerializerMix):
+class CampaignCreationSetupSerializer(ModelSerializer):
     ad_group_creations = AdGroupCreationSetupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
@@ -255,9 +252,6 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
     delivery_method = SerializerMethodField()
     video_networks = SerializerMethodField()
 
-    age_ranges = SerializerMethodField()
-    genders = SerializerMethodField()
-    parents = SerializerMethodField()
     content_exclusions = SerializerMethodField()
 
     @staticmethod
@@ -313,9 +307,7 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
             'start', 'end', 'budget', 'languages',
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'video_networks', 'delivery_method', 'video_ad_format',
-            'age_ranges', 'genders', 'parents',
-            'content_exclusions',
-            'ad_group_creations',
+            'content_exclusions', 'ad_group_creations',
         )
 
 
@@ -479,9 +471,6 @@ class AccountCreationUpdateSerializer(ModelSerializer):
 class CampaignCreationUpdateSerializer(ModelSerializer):
     video_networks = ListField()
     devices = ListField()
-    genders = ListField()
-    parents = ListField()
-    age_ranges = ListField()
     content_exclusions = ListField()
 
     class Meta:
@@ -489,9 +478,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         fields = (
             'name', 'start', 'end', 'budget',
             'languages', 'devices',
-            'video_ad_format', 'delivery_method', 'video_networks',
-            'genders', 'parents', 'age_ranges',
-            'content_exclusions',
+            'video_ad_format', 'delivery_method', 'video_networks', 'content_exclusions',
         )
 
     def validate_start(self, value):

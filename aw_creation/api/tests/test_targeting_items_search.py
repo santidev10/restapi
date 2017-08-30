@@ -40,5 +40,6 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data), 3)
         self.assertEqual(set(response.data[0].keys()), {"name", "criteria"})
+        self.assertEqual(response.data[0]["name"], "am")

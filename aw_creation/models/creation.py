@@ -134,90 +134,6 @@ class Language(models.Model):
     code = models.CharField(max_length=5)
 
 
-class CommonTargetingItem(UniqueCreationItem):
-    GENDER_FEMALE = "GENDER_FEMALE"
-    GENDER_MALE = "GENDER_MALE"
-    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
-    GENDERS = (
-        (GENDER_FEMALE, "Female"),
-        (GENDER_MALE, "Male"),
-        (GENDER_UNDETERMINED, "Undetermined"),
-    )
-    genders_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
-        )
-    )
-
-    def get_genders(self):
-        return json.loads(self.genders_raw)
-
-    def set_genders(self, value):
-        self.genders_raw = json.dumps(value)
-
-    genders = property(get_genders, set_genders)
-
-    PARENT_PARENT = "PARENT_PARENT"
-    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
-    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
-    PARENTS = (
-        (PARENT_PARENT, "Parent"),
-        (PARENT_NOT_A_PARENT, "Not a parent"),
-        (PARENT_UNDETERMINED, "Undetermined"),
-    )
-    parents_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
-        )
-    )
-
-    def get_parent(self):
-        return json.loads(self.parents_raw)
-
-    def set_parent(self, value):
-        self.parents_raw = json.dumps(value)
-
-    parents = property(get_parent, set_parent)
-
-    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
-    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
-    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
-    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
-    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
-    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
-    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
-    AGE_RANGES = (
-        (AGE_RANGE_18_24, "18-24"),
-        (AGE_RANGE_25_34, "25-34"),
-        (AGE_RANGE_35_44, "35-44"),
-        (AGE_RANGE_45_54, "45-54"),
-        (AGE_RANGE_55_64, "55-64"),
-        (AGE_RANGE_65_UP, "65+"),
-        (AGE_RANGE_UNDETERMINED, "Undetermined"),
-    )
-    age_ranges_raw = models.CharField(
-        max_length=200,
-        default=json.dumps(
-            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
-             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
-             AGE_RANGE_UNDETERMINED]
-        )
-    )
-
-    def get_age_ranges(self):
-        return json.loads(self.age_ranges_raw)
-
-    def set_age_ranges(self, value):
-        self.age_ranges_raw = json.dumps(value)
-
-    age_ranges = property(get_age_ranges, set_age_ranges)
-
-    class Meta:
-        abstract = True
-
-
 class CampaignCreationQueryset(CreationItemQueryset):
 
     def not_empty(self):
@@ -225,7 +141,7 @@ class CampaignCreationQueryset(CreationItemQueryset):
         return qs
 
 
-class CampaignCreation(CommonTargetingItem):
+class CampaignCreation(UniqueCreationItem):
 
     objects = CampaignCreationQueryset.as_manager()
 
@@ -496,7 +412,7 @@ class AdGroupCreationQueryset(CreationItemQueryset):
         return qs
 
 
-class AdGroupCreation(CommonTargetingItem):
+class AdGroupCreation(UniqueCreationItem):
     objects = AdGroupCreationQueryset.as_manager()
 
     max_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
@@ -507,6 +423,85 @@ class AdGroupCreation(CommonTargetingItem):
         "aw_reporting.AdGroup", related_name='ad_group_creation',
         null=True, blank=True,
     )
+
+    GENDER_FEMALE = "GENDER_FEMALE"
+    GENDER_MALE = "GENDER_MALE"
+    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
+    GENDERS = (
+        (GENDER_FEMALE, "Female"),
+        (GENDER_MALE, "Male"),
+        (GENDER_UNDETERMINED, "Undetermined"),
+    )
+    genders_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
+        )
+    )
+
+    def get_genders(self):
+        return json.loads(self.genders_raw)
+
+    def set_genders(self, value):
+        self.genders_raw = json.dumps(value)
+
+    genders = property(get_genders, set_genders)
+
+    PARENT_PARENT = "PARENT_PARENT"
+    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
+    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
+    PARENTS = (
+        (PARENT_PARENT, "Parent"),
+        (PARENT_NOT_A_PARENT, "Not a parent"),
+        (PARENT_UNDETERMINED, "Undetermined"),
+    )
+    parents_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
+        )
+    )
+
+    def get_parent(self):
+        return json.loads(self.parents_raw)
+
+    def set_parent(self, value):
+        self.parents_raw = json.dumps(value)
+
+    parents = property(get_parent, set_parent)
+
+    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
+    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
+    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
+    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
+    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
+    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
+    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
+    AGE_RANGES = (
+        (AGE_RANGE_18_24, "18-24"),
+        (AGE_RANGE_25_34, "25-34"),
+        (AGE_RANGE_35_44, "35-44"),
+        (AGE_RANGE_45_54, "45-54"),
+        (AGE_RANGE_55_64, "55-64"),
+        (AGE_RANGE_65_UP, "65+"),
+        (AGE_RANGE_UNDETERMINED, "Undetermined"),
+    )
+    age_ranges_raw = models.CharField(
+        max_length=200,
+        default=json.dumps(
+            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
+             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
+             AGE_RANGE_UNDETERMINED]
+        )
+    )
+
+    def get_age_ranges(self):
+        return json.loads(self.age_ranges_raw)
+
+    def set_age_ranges(self, value):
+        self.age_ranges_raw = json.dumps(value)
+
+    age_ranges = property(get_age_ranges, set_age_ranges)
 
     class Meta:
         ordering = ['-id']
