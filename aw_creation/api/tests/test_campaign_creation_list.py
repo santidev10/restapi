@@ -79,7 +79,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             self.detail_keys,
         )
-        self.assertEqual(len(response.data['languages']), 2)
+        self.assertEqual(len(response.data['languages']), 1)
 
     def test_fail_post_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",

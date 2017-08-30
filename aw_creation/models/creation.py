@@ -126,7 +126,7 @@ def save_account_receiver(sender, instance, created, **_):
 
 
 def default_languages():
-    return Language.objects.filter(pk__in=(1000, 1003))
+    return Language.objects.filter(pk=1000)
 
 
 class Language(models.Model):

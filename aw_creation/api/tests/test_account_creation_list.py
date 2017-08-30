@@ -52,7 +52,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'video_networks', 'video_ad_format', 'delivery_method',
             }
         )
-        self.assertEqual(len(campaign_creation['languages']), 2)
+        self.assertEqual(len(campaign_creation['languages']), 1)
 
         ad_group_creation = campaign_creation['ad_group_creations'][0]
         self.assertEqual(
