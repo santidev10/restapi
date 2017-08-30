@@ -49,4 +49,9 @@ urlpatterns = [
     url(r'^aw_historical_data/(?P<item_type>\w+)/(?P<pk>[\w-]+)/$',
         views.AwHistoricalDataApiView.as_view(),
         name="aw_historical_data"),
+
+    # benchmark
+    url(r'^benchmarks/$',
+        views.BenchmarkChartApiView.as_view(),
+        name="benchmarks"),
 ]
