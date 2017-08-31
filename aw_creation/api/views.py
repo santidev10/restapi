@@ -531,7 +531,7 @@ class AccountCreationListApiView(ListAPIView):
         bulk_create = [
             AccountCreation(
                 account_id=i['id'],
-                name=i['name'],
+                name="",
                 owner=request.user,
                 is_managed=False,
             )
@@ -567,7 +567,8 @@ class AccountCreationListApiView(ListAPIView):
 
         search = filters.get('search')
         if search:
-            queryset = queryset.filter(name__icontains=search)
+            queryset = queryset.filter(Q(name__icontains=search) |
+                                       (Q(is_managed=False) & Q(account__name__icontains=search)))
 
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
