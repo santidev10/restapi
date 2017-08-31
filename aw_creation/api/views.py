@@ -33,7 +33,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
     Topic, Audience, Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
-from aw_reporting.adwords_api import create_customer_account, update_customer_account
+from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -778,14 +778,9 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                             mcc_permissions__account=mcc_account,
                             user_relations__user=request.user,
                         ).first()
-                        try:
-                            self.account_creation(instance, mcc_account, connection)
-                        except WebFault as e:
-                            error_msg = str(e)
-                            if "NOT_AUTHORIZED" in error_msg:
-                                error_msg = "You do not have permission to edit this " \
-                                            "MCC Account: {}".format(mcc_account.name)
-                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error_msg))
+                        _, error = handle_aw_api_errors(self.account_creation, instance, mcc_account, connection)
+                        if error:
+                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
                     else:
                         return Response(status=HTTP_400_BAD_REQUEST,
                                         data=dict(error="You have no connected MCC account"))
@@ -800,11 +795,14 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
             ).values("mcc_permissions__account_id", "refresh_token")
             if connections:
                 connection = connections[0]
-                update_customer_account(
+                _, error = handle_aw_api_errors(
+                    update_customer_account,
                     connection['mcc_permissions__account_id'],
                     connection['refresh_token'],
-                    instance.account.id, data['name']
+                    instance.account.id, data['name'],
                 )
+                if error:
+                    return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
 
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial

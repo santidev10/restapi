@@ -9,6 +9,7 @@ from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch, Mock
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from suds import WebFault
+from oauth2client.client import HttpAccessTokenRefreshError
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
@@ -335,6 +336,38 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         fault = Mock()
         fault.faultstring = "[ManagedCustomerServiceError.NOT_AUTHORIZED @ operations[0]]"
         write_operation = Mock(side_effect=WebFault(fault, None))
+        with patch("aw_creation.api.views.create_customer_account", new=write_operation):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertIn("error", response.data)
+
+    def test_fail_approve_token_expired(self):
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        # account creation to approve it
+        ac = self.create_account_creation(self.user)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        write_operation = Mock(
+            side_effect=HttpAccessTokenRefreshError("invalid_grant: Token has been expired or revoked.")
+        )
         with patch("aw_creation.api.views.create_customer_account", new=write_operation):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
