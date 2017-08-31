@@ -318,6 +318,7 @@ class StatField(SerializerMethodField):
 
 class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
+    name = SerializerMethodField()
     thumbnail = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     status = CharField()
@@ -329,6 +330,12 @@ class AccountCreationListSerializer(ModelSerializer):
     clicks = StatField()
     video_view_rate = StatField()
     ctr_v = StatField()
+
+    @staticmethod
+    def get_name(obj):
+        if not obj.is_managed:
+            return obj.account.name
+        return obj.name
 
     def get_weekly_chart(self, obj):
         return self.daily_chart[obj.id][-7:]

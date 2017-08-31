@@ -274,8 +274,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="Running", owner=self.user, sync_at=datetime.now(),
         )
+        account = Account.objects.create(id="111", name="From AdWords")
         AccountCreation.objects.create(
-            name="From AdWords", owner=self.user, is_managed=False,
+            name="", owner=self.user, is_managed=False, account=account,
         )
         # --
         expected = (
@@ -525,4 +526,5 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(item.keys()),
             self.details_keys,
         )
+        self.assertEqual(item['name'], account.name)
         self.assertEqual(item['is_managed'], False)
