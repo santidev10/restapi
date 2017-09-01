@@ -13,6 +13,7 @@ from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 # pylint: enable=import-error
+from utils.csv_export import CSVExport
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
@@ -67,6 +68,49 @@ class VideoListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+    def post(self, request):
+        """
+        Export channels procedure
+        """
+        # make call
+        connector = Connector()
+        filters = request.data
+        # WARN: flat param may freeze SBD
+        filters["flat"] = 1
+        fields_to_request = [
+            "id",
+            "title",
+            "views",
+            "likes",
+            "dislikes",
+            "comments",
+            "youtube_published_at"
+        ]
+        filters["fields"] = ",".join(fields_to_request)
+        try:
+            response_data = connector.get_video_list(query_params=filters)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        file_fields = [
+            "title",
+            "youtube_link",
+            "views",
+            "likes",
+            "dislikes",
+            "comments",
+            "youtube_published_at"
+        ]
+        countable_fields = {
+            "youtube_link"
+        }
+        csv_generator = CSVExport(
+            fields=file_fields, data=response_data,
+            obj_type="video", countable_fields=countable_fields)
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class VideoListFiltersApiView(SingledbApiView):

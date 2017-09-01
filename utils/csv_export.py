@@ -49,7 +49,9 @@ class CSVExport(object):
         Generate obj youtube_link
         """
         if self.obj_type == "channel":
-            return "https://youtube.com/channek/{}/".format(obj_data.get("id"))
+            return "https://youtube.com/channel/{}/".format(obj_data.get("id"))
+        if self.obj_type == "video":
+            return "https://youtube.com/watch?v={}/".format(obj_data.get("id"))
 
     def export_generator(self):
         """
@@ -80,10 +82,10 @@ class CSVExport(object):
 
         response = StreamingHttpResponse(
             stream_generator(), content_type='text/csv')
-        filename = "channels_export_report {date}.csv".format(
+        filename = "{name}_export_report {date}.csv".format(
+            name=self.obj_type.capitalize(),
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(
             filename)
         return response
-

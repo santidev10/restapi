@@ -105,7 +105,7 @@ class ChannelListApiView(APIView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-        file_fields = {
+        file_fields = [
             "title",
             "youtube_link",
             "country",
@@ -118,7 +118,7 @@ class ChannelListApiView(APIView):
             "views_per_video",
             "sentiment",
             "engage_rate"
-        }
+        ]
         countable_fields = {
             "youtube_link"
         }
