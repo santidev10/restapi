@@ -352,10 +352,8 @@ class AdCreationListSetupApiView:
 
 
 def show_demo_data(request, pk):
-    if not request.user.aw_connections.count():
-        obj = get_object_or_404(AccountCreation, pk=pk)
-        return obj.status == AccountCreation.STATUS_PENDING
-    return False
+    return not request.user.aw_connections.count() or \
+        get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
 
 
 class PerformanceAccountCampaignsListApiView:

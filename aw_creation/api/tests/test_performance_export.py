@@ -8,7 +8,8 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad
+    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
+    AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
 
@@ -45,6 +46,10 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
 
     def test_success(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)

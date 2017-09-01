@@ -2,7 +2,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic
+from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, \
+    AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
 from datetime import datetime
 import json
@@ -24,6 +25,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_post(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
@@ -87,6 +92,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_post_all_dimensions(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False)
 
         for dimension in ("channel", "video", "keyword", "interest", "topic"):

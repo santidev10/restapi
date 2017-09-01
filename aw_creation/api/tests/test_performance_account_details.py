@@ -1,6 +1,7 @@
 from unittest.mock import patch
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
@@ -44,6 +45,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_get(self):
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=self.user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", is_managed=False, owner=self.user, account=account)
         stats = dict(
@@ -93,16 +98,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
-        connection = AWConnection.objects.create(
-            email=self.user.email,
-            refresh_token="",
-        )
-        AWConnectionToUserRelation.objects.create(
-            connection=connection,
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=self.user,
         )
 
-        account_creation = AccountCreation.objects.create(name="", owner=self.user)
+        account_creation = AccountCreation.objects.create(name="", owner=self.user, sync_at=timezone.now())
 
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(id=1, name="", account=account)
@@ -114,11 +115,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_account_details",
                       args=(account_creation.id,))
-
-        response = self.client.post(
-            url,
-            content_type='application/json',
-        )
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
