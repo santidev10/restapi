@@ -403,7 +403,7 @@ class PerformanceAccountDetailsApiView:
 
                 if pk != DEMO_ACCOUNT_ID:
                     original_data = original_method(view, request, pk=pk, **kwargs).data
-                    for k in ('name', 'status', 'thumbnail', 'is_changed'):
+                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             else:
@@ -645,7 +645,7 @@ class PerformanceTargetingSettingsAPIView:
     @staticmethod
     def put(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
             else:

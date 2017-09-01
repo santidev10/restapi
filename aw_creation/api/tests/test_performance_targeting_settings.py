@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AccountOptimizationSetting, CampaignOptimizationSetting
 from aw_reporting.models import AWConnectionToUserRelation, AWConnection
@@ -152,3 +152,13 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(data['id'], DEMO_ACCOUNT_ID)
         self.assertEqual(len(data["campaign_creations"]), 2)
+
+    def test_success_put_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_settings",
+                      args=(account_creation.id,))
+        response = self.client.put(
+            url, json.dumps(dict()), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
