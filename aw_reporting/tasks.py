@@ -186,7 +186,7 @@ def detect_success_aw_read_permissions():
 
 
 def get_campaigns(client, account, today):
-    from aw_reporting.models import Campaign
+    from aw_reporting.models import Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report
 
     campaign_ids = set(
@@ -210,7 +210,7 @@ def get_campaigns(client, account, today):
                                                 GET_DF),
                 'end_date': end_date,
                 'budget': float(row_obj.Amount)/1000000,
-                'status': row_obj.ServingStatus,
+                'status': row_obj.CampaignStatus if row_obj.CampaignStatus in ACTION_STATUSES else row_obj.ServingStatus,
             }
             stats.update(get_base_stats(row_obj))
 
