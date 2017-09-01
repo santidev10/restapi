@@ -2,7 +2,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation, CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic
+from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
 from datetime import datetime
 
@@ -11,6 +11,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_is_managed_false(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
         start = datetime(2009, 3, 10).date()
@@ -55,6 +59,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_no_ad_group_creations(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
         CampaignCreation.objects.create(id=1, name="", account_creation=account_creation)
