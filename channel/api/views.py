@@ -8,12 +8,15 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from utils.csv_export import CSVExport
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+
 # pylint: enable=import-error
 
 
@@ -71,6 +74,59 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+    def post(self, request):
+        """
+        Export channels procedure
+        """
+        # make call
+        connector = Connector()
+        filters = request.data
+        # WARN: flat param may freeze SBD
+        filters["flat"] = 1
+        fields_to_request = [
+            "id",
+            "title",
+            "country",
+            "category",
+            "emails",
+            "description",
+            "subscribers",
+            "thirty_days_subscribers",
+            "thirty_days_views",
+            "views_per_video",
+            "sentiment",
+            "engage_rate"
+        ]
+        filters["fields"] = ",".join(fields_to_request)
+        try:
+            response_data = connector.get_channel_list(query_params=filters)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        file_fields = {
+            "title",
+            "youtube_link",
+            "country",
+            "category",
+            "emails",
+            "description",
+            "subscribers",
+            "thirty_days_subscribers",
+            "thirty_days_views",
+            "views_per_video",
+            "sentiment",
+            "engage_rate"
+        }
+        countable_fields = {
+            "youtube_link"
+        }
+        csv_generator = CSVExport(
+            fields=file_fields, data=response_data,
+            obj_type="channel", countable_fields=countable_fields)
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ChannelListFiltersApiView(SingledbApiView):
