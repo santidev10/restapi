@@ -314,9 +314,9 @@ def campaign_performance_report(client, dates=None, fields=None, include_zero_im
 def ad_group_performance_report(client, dates=None):
     fields = [
         'CampaignId',
-        'AdGroupId', 'AdGroupName', 'AdGroupStatus',
+        'AdGroupId', 'AdGroupName', 'AdGroupStatus', 'AdGroupType',
         'Date', 'Device', 'AdNetworkType1',
-        "AveragePosition",
+        'AveragePosition', 'ActiveViewImpressions', 'Engagements'
     ] + main_statistics + completed_fields
 
     selector = {

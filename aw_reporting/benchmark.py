@@ -7,8 +7,11 @@ from aw_reporting.models import Campaign
 
 
 class BenchMarkChart:
+    run_command = ('calc param', 'calc param', 'result value', 'сalculation method', 'chart name')
+
     def __init__(self, request):
-        self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
+        # self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
+        self.accounts_ids = Account.objects.all().values_list("id", flat=True)
         self.campains_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
         self.options = self.prepare_query_params(request.query_params)
 
@@ -23,7 +26,7 @@ class BenchMarkChart:
 
         return options
 
-    def get_charts(self, calc_val_a, calc_val_b, output_field, method):
+    def get_chart(self, calc_val_a, calc_val_b, output_field, method):
         queryset = self.get_queryset()
         for item in queryset:
             param_a = item.get(calc_val_a)
@@ -36,6 +39,7 @@ class BenchMarkChart:
         queryset = AdGroupStatistic.objects.all()
         queryset = self.filter_queryset(queryset)
         queryset = self.annotate_queryset(queryset)
+        queryset = self.aggregate_queryset(queryset)
         return queryset
 
     def filter_queryset(self, queryset):
@@ -60,8 +64,11 @@ class BenchMarkChart:
             .order_by(frequency)
         return queryset
 
+    def aggregate_queryset(selfs, queryset):
+        return queryset
+
     def get_video_view_rate(self, views, impressions):
-        return 100 * views / impressions
+        return views / impressions * 100
 
     def get_average_cpm_cost(self, cost, impressions):
         return cost / impressions
@@ -75,8 +82,20 @@ class BenchMarkChart:
     def get_average_cpv_click(self, click, video_views):
         return click / video_views * 100
 
+    def get_engagement_rate(self, engagements, impressions):
+        return engagements / impressions * 100
+
+    def get_viewability_rate(self, active_view_impressions, impressions):
+        return active_view_impressions / impressions * 100
+
 
 class ViewRateChart(BenchMarkChart):
+    run_command = ('sum_video_views',
+                   'video_impressions',
+                   'video_view_rate',
+                   'get_video_view_rate',
+                   'view_rate_chart')
+
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         filters = {}
@@ -101,6 +120,12 @@ class ViewRateChart(BenchMarkChart):
 
 
 class ClickRateCpmChart(BenchMarkChart):
+    run_command = ('sum_clicks',
+                   'sum_impressions',
+                   'average_cpm',
+                   'get_average_cpm_click',
+                   'click_rate_cpm_chart')
+
     def annotate_queryset(self, queryset):
         queryset = super().annotate_queryset(queryset)
         annotate = {}
@@ -110,6 +135,12 @@ class ClickRateCpmChart(BenchMarkChart):
 
 
 class ClickRateCpvChart(BenchMarkChart):
+    run_command = ('sum_clicks',
+                   'sum_video_views',
+                   'average_cpv',
+                   'get_average_cpv_click',
+                   'click_rate_cpv_chart')
+
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         filters = {}
@@ -126,6 +157,12 @@ class ClickRateCpvChart(BenchMarkChart):
 
 
 class AverageCostRateCpmChart(BenchMarkChart):
+    run_command = ('sum_cost',
+                   'sum_impressions',
+                   'average_cpm',
+                   'get_average_cpm_cost',
+                   'average_cost_rate_cpm_chart')
+
     def annotate_queryset(self, queryset):
         queryset = super().annotate_queryset(queryset)
         annotate = {}
@@ -135,6 +172,12 @@ class AverageCostRateCpmChart(BenchMarkChart):
 
 
 class AverageCostRateCpvChart(BenchMarkChart):
+    run_command = ('sum_cost',
+                   'sum_video_views',
+                   'average_cpv',
+                   'get_average_cpv_cost',
+                   'average_cost_rate_cpv_chart')
+
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         filters = {}
@@ -150,27 +193,86 @@ class AverageCostRateCpvChart(BenchMarkChart):
         return queryset.annotate(**annotate)
 
 
+class ViewabilityRateChart(BenchMarkChart):
+    run_command = ('sum_active_view_impressions',
+                   'sum_impressions',
+                   'viewability_rate',
+                   'get_viewability_rate',
+                   'viewability_rate_chart')
+
+    def annotate_queryset(self, queryset):
+        queryset = super().annotate_queryset(queryset)
+        annotate = {}
+        annotate['sum_active_view_impressions'] = Sum(F('active_view_impressions'))
+        annotate['sum_impressions'] = Sum(F('impressions'))
+        return queryset.annotate(**annotate)
+
+
+class EngagementRateChart(BenchMarkChart):
+    run_command = ('sum_engagements',
+                   'sum_impressions',
+                   'engagement_rate',
+                   'get_engagement_rate',
+                   'engagement_rate_chart')
+
+    def annotate_queryset(self, queryset):
+        queryset = super().annotate_queryset(queryset)
+        annotate = {}
+        annotate['sum_engagements'] = Sum(F('engagements'))
+        annotate['sum_impressions'] = Sum(F('impressions'))
+        return queryset.annotate(**annotate)
+
+
+class QuartileCompletionRateChart(BenchMarkChart):
+    run_command = (['video_views_25_quartile',
+                    'video_views_50_quartile',
+                    'video_views_75_quartile',
+                    'video_views_100_quartile'],
+                   'sum_impressions',
+                   'auto',
+                   'get_video_view_rate',
+                   'view_rate_%_chart')
+
+    def annotate_queryset(self, queryset):
+        return queryset
+
+    def aggregate_queryset(selfs, queryset):
+        aggregate = {}
+        aggregate['sum_impressions'] = Sum(F('impressions'))
+        aggregate['video_views_25_quartile'] = Sum(F('video_views_25_quartile'))
+        aggregate['video_views_50_quartile'] = Sum(F('video_views_50_quartile'))
+        aggregate['video_views_75_quartile'] = Sum(F('video_views_75_quartile'))
+        aggregate['video_views_100_quartile'] = Sum(F('video_views_100_quartile'))
+        return queryset.aggregate(**aggregate)
+
+    def get_chart(self, calc_val_a, calc_val_b, output_field, method):
+        queryset = self.get_queryset()
+        for view_type in calc_val_a:
+            param_a = queryset.get(view_type)
+            param_b = queryset.get(calc_val_b)
+            if param_a and param_b:
+                queryset[view_type] = getattr(self, method)(param_a, param_b)
+        return queryset
+
+
 class ChartsHandler:
-    # {cls : calc param, calc param, result value, сalculation method, chart name}
-    chart_base = {
-        ViewRateChart: (
-        'sum_video_views', 'video_impressions', 'video_view_rate', 'get_video_view_rate', 'view_rate_chart'),
-        ClickRateCpmChart: (
-        'sum_clicks', 'sum_impressions', 'average_cpm', 'get_average_cpm_click', 'click_rate_cpm_chart'),
-        ClickRateCpvChart: (
-        'sum_clicks', 'sum_video_views', 'average_cpv', 'get_average_cpv_click', 'click_rate_cpv_chart'),
-        AverageCostRateCpmChart: (
-        'sum_cost', 'sum_impressions', 'average_cpm', 'get_average_cpm_cost', 'average_cost_rate_cpm_chart'),
-        AverageCostRateCpvChart: (
-        'sum_cost', 'sum_video_views', 'average_cpv', 'get_average_cpv_cost', 'average_cost_rate_cpv_chart')
-    }
+    charts_pool = (
+        ViewRateChart,
+        ClickRateCpmChart,
+        ClickRateCpvChart,
+        AverageCostRateCpmChart,
+        AverageCostRateCpvChart,
+        QuartileCompletionRateChart,
+        EngagementRateChart,
+        ViewabilityRateChart,
+    )
 
     def __init__(self, request):
         self.request = request
 
     def data(self):
         charts = {}
-        for class_name, value in self.chart_base.items():
-            *params, chart_name = value
-            charts[chart_name] = class_name(self.request).get_charts(*params)
+        for class_name in self.charts_pool:
+            *params, chart_name = class_name.run_command
+            charts[chart_name] = class_name(self.request).get_chart(*params)
         return charts

@@ -259,6 +259,7 @@ def get_ad_groups_and_stats(client, account, today):
                     stats = {
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
+                        'type': row_obj.AdGroupType,
                         'campaign_id': row_obj.CampaignId,
                     }
                     if ad_group_id in ad_group_ids:
@@ -276,6 +277,8 @@ def get_ad_groups_and_stats(client, account, today):
                     'device_id': Devices.index(row_obj.Device),
                     'ad_group_id': ad_group_id,
                     'average_position': row_obj.AveragePosition,
+                    'engagements': row_obj.Engagements,
+                    'active_view_impressions': row_obj.ActiveViewImpressions,
                     'video_views_25_quartile': quart_views(row_obj, 25),
                     'video_views_50_quartile': quart_views(row_obj, 50),
                     'video_views_75_quartile': quart_views(row_obj, 75),
