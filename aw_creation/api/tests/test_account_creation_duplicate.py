@@ -83,7 +83,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.assertNotEqual(ac.id, data['id'])
         self.perform_details_check(data)
-        self.assertEqual(data['name'], "Pep (copy)")
+        self.assertEqual(data['name'], "Pep (1)")
 
     def test_success_post_demo(self):
         url = reverse("aw_creation_urls:account_creation_duplicate",
@@ -101,7 +101,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.assertNotEqual(DEMO_ACCOUNT_ID, data['id'])
         self.perform_details_check(data)
-        self.assertEqual(data['name'], "Demo (copy)")
+        self.assertEqual(data['name'], "Demo (1)")
 
     def perform_details_check(self, data):
         self.assertEqual(
@@ -123,7 +123,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules', 'ad_group_creations',
                 "video_ad_format", "delivery_method", "video_networks",
-                'content_exclusions', 'genders', 'age_ranges', 'parents',
+                'content_exclusions',
             }
         )
         self.assertEqual(

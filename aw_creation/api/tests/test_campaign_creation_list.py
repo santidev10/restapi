@@ -19,8 +19,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',
         'video_networks', 'video_ad_format', 'delivery_method',
-        'age_ranges', 'genders', 'parents', 'content_exclusions',
-        'ad_group_creations',
+        'content_exclusions', 'ad_group_creations',
     }
 
     def setUp(self):
@@ -79,7 +78,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             self.detail_keys,
         )
-        self.assertEqual(len(response.data['languages']), 2)
+        self.assertEqual(len(response.data['languages']), 1)
 
     def test_fail_post_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",

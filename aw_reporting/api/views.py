@@ -938,6 +938,12 @@ class AwHistoricalDataApiView(APIView):
         else:
             return Response(data=dict(error="Item type not found: {}".format(item_type)),
                             status=HTTP_400_BAD_REQUEST)
+
+        if not queryset.count():  # if there is no data, show cf data
+            accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+            filters['ad_group__campaign__account__in'] = accounts
+            queryset = queryset.model.objects.filter(**filters)
+
         # base stats
         base_stats = ('clicks', 'impressions', 'video_views')
 
@@ -961,13 +967,36 @@ class AwHistoricalDataApiView(APIView):
                               ("last", prev_week_start, prev_week_end))
             for s in base_stats
         }
-        aggregate.update(base_stats_aggregate)
+        base_aggregate = {"sum_{}".format(s): Sum(s) for s in BASE_STATS}
+        base_aggregate.update(
+            video_impressions=Sum(
+                Case(
+                    When(
+                        ad_group__video_views__gt=0,
+                        then="impressions",
+                    ),
+                    output_field=IntegerField()
+                )
+            )
+        )
+        aggregate.update(base_aggregate)
         data = queryset.aggregate(**aggregate)
         dict_norm_base_stats(data)
         dict_calculate_stats(data)
-        del data['average_cpv'], data['video_impressions'], data['cost'], data['average_cpm']
+        del data['video_impressions'], data['cost'], data['average_cpm']
 
         annotate = dict(
+            average_cpv=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_cost__isnull=False,
+                        sum_video_views__gt=0,
+                        then=F("sum_cost") / F("sum_video_views"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
             ctr=ExpressionWrapper(
                 Case(
                     When(
@@ -1004,7 +1033,7 @@ class AwHistoricalDataApiView(APIView):
         )
 
         top_bottom_data = queryset.values("date").order_by("date").annotate(
-            **base_stats_aggregate
+            **base_aggregate
         ).annotate(**annotate).aggregate(
             **{
                 "{}_{}".format(s, n): a(s)

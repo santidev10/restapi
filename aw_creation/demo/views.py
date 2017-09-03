@@ -1,12 +1,14 @@
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
 from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem, AdCreation
+    Language, TargetingItem, AdCreation, AccountOptimizationSetting
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from datetime import datetime
 import json
 DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
@@ -112,7 +114,7 @@ class AccountCreationDuplicateApiView:
                 data = demo.creation_details_full
 
                 acc_data = dict(
-                    name=view.get_duplicate_name(data['name']),
+                    name=view.increment_name(data['name'], view.get_queryset().values_list("name", flat=True)),
                     owner=view.request.user,
                 )
                 for f in view.account_fields:
@@ -349,11 +351,16 @@ class AdCreationListSetupApiView:
         return method
 
 
+def show_demo_data(request, pk):
+    return not request.user.aw_connections.count() or \
+        get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
+
+
 class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
-        def method(*args, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 account = DemoAccount()
                 campaigns = [
                     dict(
@@ -371,7 +378,7 @@ class PerformanceAccountCampaignsListApiView:
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
             else:
-                return original_method(*args, pk=pk, **kwargs)
+                return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
@@ -380,7 +387,7 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
 
                 account = DemoAccount()
@@ -393,6 +400,11 @@ class PerformanceAccountDetailsApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 data['overview'] = account.overview
+
+                if pk != DEMO_ACCOUNT_ID:
+                    original_data = original_method(view, request, pk=pk, **kwargs).data
+                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
+                        data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
@@ -404,7 +416,7 @@ class PerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -425,7 +437,7 @@ class PerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -448,7 +460,7 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -481,7 +493,7 @@ class PerformanceExportWeeklyReport:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
@@ -508,114 +520,136 @@ class PerformanceExportWeeklyReport:
         return method
 
 
-class OptimizationSettingsApiView:
+class PerformanceTargetingFiltersAPIView:
     @staticmethod
     def get(original_method):
-        def method(view, request, pk, kpi, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                demo = DemoAccount()
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                account = DemoAccount()
+                filters = view.get_static_filters()
+                filters["start_date"] = account.start_date
+                filters["end_date"] = account.end_date
+                filters["campaigns"] = [
+                    dict(
+                        id=c.id,
+                        name=c.name,
+                        start_date=c.start_date,
+                        end_date=c.end_date,
+                        status=c.status,
+                        ad_groups=[
+                            dict(
+                                id=a.id,
+                                name=a.name,
+                                status=a.status,
+                            )
+                            for a in c.children
+                        ],
+                    )
+                    for c in account.children
+                ]
+                return Response(data=filters)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceTargetingReportAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                common_fields = (
+                    'average_cpv', 'cost', 'video_impressions', 'ctr_v', 'clicks',
+                    'video_views', 'ctr', 'impressions', 'video_view_rate', 'average_cpm',
+                )
+                c_fields = ("id", "name", "status", 'start_date', 'end_date') + common_fields
+                a_fields = ("id", "name") + common_fields
+
+                data = []
+                for c in account.children:
+                    c_data = {f: getattr(c, f) for f in c_fields}
+                    c_data['ad_groups'] = [{f: getattr(a, f) for f in a_fields}
+                                           for a in c.children]
+                    data.append(c_data)
+
+                view.set_passes_fields(data, {c.id: AccountOptimizationSetting.default_settings
+                                              for c in account.children})
+                return Response(status=HTTP_200_OK, data=data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class PerformanceTargetingReportDetailsAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, list_type, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'], filters['end_date'])
+                account.filter_out_items([], [pk])
+                filters['dimension'] = list_type
+                charts_obj = DemoChart(account, filters)
+                items = charts_obj.chart_items['items']
+                exclude_keys = VIEW_RATE_STATS + CONVERSIONS
+                for i in items:
+                    if 'id' not in i:
+                        i['id'] = i['name']
+                    for k in exclude_keys:
+                        del i[k]
+
+                view.set_passes_fields(items, AccountOptimizationSetting.default_settings)
+                return Response(status=HTTP_200_OK, data=items)
+            else:
+                return original_method(view, request, pk=pk, list_type=list_type, **kwargs)
+
+        return method
+
+
+class PerformanceTargetingSettingsAPIView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                account = DemoAccount()
                 data = dict(
-                    id=demo.id,
-                    name=demo.name,
-                    campaign_creations=[
+                    id=account.id,
+                    name=account.name,
+                    campaign_creations=[],
+                    **AccountOptimizationSetting.default_settings
+                )
+                for c in account.children:
+                    data['campaign_creations'].append(
                         dict(
                             id=c.id,
                             name=c.name,
-                            value=None,
-                            ad_group_creations=[
-                                dict(
-                                    id=a.id,
-                                    name=a.name,
-                                    value=getattr(
-                                        a,
-                                        "optimization_{}_value".format(kpi)
-                                    ),
-                                )
-                                for a in c.children
-                            ]
+                            **AccountOptimizationSetting.default_settings
                         )
-                        for c in demo.children
-                    ],
-                )
-                return Response(data=data)
+                    )
+                return Response(status=HTTP_200_OK, data=data)
             else:
-                return original_method(view, request,
-                                       pk=pk, kpi=kpi, **kwargs)
+                return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
     @staticmethod
     def put(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
-        return method
-
-
-class OptimizationFiltersApiView:
-    @staticmethod
-    def get(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                demo = DemoAccount()
-                data = [
-                    dict(
-                        id=c.id,
-                        name=c.name,
-                        ad_group_creations=[
-                            dict(
-                                id=a.id,
-                                name=a.name,
-                            )
-                            for a in c.children
-                        ]
-                    )
-                    for c in demo.children
-                ]
-                return Response(data=data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
-        return method
-
-
-class OptimizationTargetingApiView:
-    @staticmethod
-    def get(original_method):
-        def method(view, request, pk, kpi, list_type, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                acc = DemoAccount()
-                value = getattr(acc, "optimization_{}_value".format(kpi))
-
-                filters = view.get_filters()
-                filters['dimension'] = list_type
-                acc.filter_out_items(
-                    filters.get('campaign_creation_id__in'),
-                    filters.get('id__in'),
-                )
-                charts_obj = DemoChart(acc, filters)
-                items = charts_obj.chart_items['items']
-                for i in items:
-                    i['bigger_than_value'] = i[kpi] and i[kpi] > value
-                    i['criteria'] = i.get("id") or i['name']
-                    del i['video25rate']
-                    del i['video50rate']
-                    del i['video75rate']
-                    del i['video100rate']
-
-                response = dict(
-                    items=items,
-                    value=value,
-                )
-                return Response(data=response)
-            else:
-                return original_method(view, request, pk=pk, kpi=kpi,
-                                       list_type=list_type, **kwargs)
-
         return method
 
 

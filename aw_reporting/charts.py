@@ -444,7 +444,7 @@ class DeliveryChart:
     def _get_creative_data(self):
         result = defaultdict(list)
         raw_stats = self.get_raw_stats(
-            VideoCreativeStatistic.objects.all(), ['creative_id', 'creative__duration'],
+            VideoCreativeStatistic.objects.all(), ['creative_id'],
             date=self.params['date']
         )
         if raw_stats:
@@ -453,7 +453,7 @@ class DeliveryChart:
                 ids = [s['creative_id'] for s in raw_stats]
                 items = connector.get_custom_query_result(
                     model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
+                    fields=["id", "title", "thumbnail_image_url", "duration"],
                     limit=len(ids),
                     id__in=ids,
                 )
@@ -469,8 +469,8 @@ class DeliveryChart:
                 item['id'] = youtube_id
                 item['thumbnail'] = info.get('thumbnail_image_url')
                 item['label'] = info.get('title', youtube_id)
-                item['duration'] = item['creative__duration']
-                del item['creative_id'], item['creative__duration']
+                item['duration'] = info.get('duration')
+                del item['creative_id']
                 result[youtube_id].append(item)
         else:
             group_by = ['ad__creative_name']
@@ -552,7 +552,7 @@ class DeliveryChart:
             ids = [s['yt_id'] for s in raw_stats]
             items = connector.get_custom_query_result(
                 model_name="video",
-                fields=["id", "title", "thumbnail_image_url"],
+                fields=["id", "title", "thumbnail_image_url", "duration"],
                 limit=len(ids),
                 id__in=ids,
             )
@@ -570,6 +570,7 @@ class DeliveryChart:
             item['id'] = youtube_id
             item['label'] = info.get('title', youtube_id)
             item['thumbnail'] = info.get('thumbnail_image_url')
+            item['duration'] = info.get('duration')
             title = info.get('title', youtube_id)
             result[title].append(item)
         return result

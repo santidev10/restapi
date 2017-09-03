@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from celery import task
 from django.db import transaction
-from django.db.models import Max, Min
+from django.db.models import Max, Min, Sum
 from collections import namedtuple
 from collections import defaultdict
 import csv
@@ -186,7 +186,7 @@ def detect_success_aw_read_permissions():
 
 
 def get_campaigns(client, account, today):
-    from aw_reporting.models import Campaign
+    from aw_reporting.models import Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report
 
     campaign_ids = set(
@@ -210,7 +210,7 @@ def get_campaigns(client, account, today):
                                                 GET_DF),
                 'end_date': end_date,
                 'budget': float(row_obj.Amount)/1000000,
-                'status': row_obj.ServingStatus,
+                'status': row_obj.CampaignStatus if row_obj.CampaignStatus in ACTION_STATUSES else row_obj.ServingStatus,
             }
             stats.update(get_base_stats(row_obj))
 
@@ -225,7 +225,7 @@ def get_campaigns(client, account, today):
 
 
 def get_ad_groups_and_stats(client, account, today):
-    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices
+    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
 
     stats_queryset = AdGroupStatistic.objects.filter(
@@ -289,6 +289,14 @@ def get_ad_groups_and_stats(client, account, today):
 
             if create_stats:
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
+
+        stats = stats_queryset.values("ad_group_id").order_by("ad_group_id").annotate(
+            **{s: Sum(s) for s in SUM_STATS}
+        )
+        for ag_stats in stats:
+            AdGroup.objects.filter(
+                id=ag_stats['ad_group_id']
+            ).update(**{s: ag_stats[s] for s in SUM_STATS})
 
 
 def get_videos(client, account, today):

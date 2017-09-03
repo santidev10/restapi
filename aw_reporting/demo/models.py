@@ -101,7 +101,7 @@ class BaseDemo:
             try:
                 items = connector.get_custom_query_result(
                     model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
+                    fields=["id", "title", "thumbnail_image_url", "duration"],
                     limit=12,
                     order_by="-views",
                     **self.video_criteria
@@ -131,6 +131,7 @@ class BaseDemo:
                 id=i['id'],
                 label=i['title'],
                 thumbnail=i['thumbnail_image_url'],
+                duration=i.get("duration"),
             )
             for i in self.get_videos()[:6]
             ]
@@ -143,6 +144,7 @@ class BaseDemo:
                 id=i['id'],
                 label=i['title'],
                 thumbnail=i['thumbnail_image_url'],
+                duration=i.get("duration"),
             )
             for i in self.get_videos()[6:12]
             ]
@@ -245,6 +247,10 @@ class BaseDemo:
     @property
     def impressions(self):
         return sum(i.impressions for i in self.children)
+
+    @property
+    def video_impressions(self):
+        return self.impressions
 
     @property
     def impressions_this_week(self):
@@ -363,7 +369,6 @@ class BaseDemo:
     def ctr_v_bottom(self):
         return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
-
 
 class DemoAd(BaseDemo):
 
@@ -645,18 +650,6 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=name)
                 for uid, name in CampaignCreation.VIDEO_NETWORKS
             ],
-            age_ranges=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.AGE_RANGES
-            ],
-            genders=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.GENDERS
-            ],
-            parents=[
-                dict(id=uid, name=n)
-                for uid, n in CampaignCreation.PARENTS
-            ],
             content_exclusions=[
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
@@ -686,6 +679,11 @@ class DemoAccount(BaseDemo):
             self.children = [c for c in self.children if c.id in campaigns]
 
     def set_period_proportion(self, start_date, end_date):
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, DATE_FORMAT).date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, DATE_FORMAT).date()
+
         start_date = start_date or self.start_date
         start_date = min(start_date, self.yesterday)
 

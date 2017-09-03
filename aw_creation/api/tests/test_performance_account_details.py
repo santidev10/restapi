@@ -1,11 +1,12 @@
 from unittest.mock import patch
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
-    GeoTarget, CityStatistic
-from aw_creation.models import AccountCreation
+    GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
+from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
 import json
@@ -44,8 +45,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_get(self):
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=self.user,
+        )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=self.user, account=account)
+        account_creation = AccountCreation.objects.create(name="", is_managed=False, owner=self.user, account=account)
         stats = dict(
             impressions=4, video_views=2, clicks=1, cost=1,
             video_views_25_quartile=4, video_views_50_quartile=3,
@@ -63,12 +68,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         url = reverse("aw_creation_urls:performance_account_details",
                       args=(account_creation.id,))
 
-        response = self.client.post(
-            url,
-            json.dumps(dict(start_date=str(date - timedelta(days=1)),
-                            end_date=str(date))),
-            content_type='application/json',
-        )
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url,
+                json.dumps(dict(start_date=str(date - timedelta(days=1)),
+                                end_date=str(date))),
+                content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
 
@@ -90,7 +97,13 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_no_account(self):
-        account_creation = AccountCreation.objects.create(name="", owner=self.user)
+        # add a connection not to show demo data
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=self.user,
+        )
+
+        account_creation = AccountCreation.objects.create(name="", owner=self.user, sync_at=timezone.now())
 
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(id=1, name="", account=account)
@@ -102,11 +115,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_account_details",
                       args=(account_creation.id,))
-
-        response = self.client.post(
-            url,
-            content_type='application/json',
-        )
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -184,4 +197,28 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             data['overview']['impressions'],
             IMPRESSIONS / TOTAL_DEMO_AD_GROUPS_COUNT * len(ad_groups),
         )
+
+    def test_success_get_demo_data(self):
+        account_creation = AccountCreation.objects.create(name="Name 123", owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(name="", account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(name="", campaign_creation=campaign_creation)
+        ad_creation = AdCreation.objects.create(name="", ad_group_creation=ad_group_creation,
+                                                video_thumbnail="https://f.i/123.jpeg")
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        
+        self.assertEqual(data['id'], account_creation.id)
+        self.assertEqual(data['name'], account_creation.name)
+        self.assertEqual(data['status'], account_creation.status)
+        self.assertEqual(data['thumbnail'], ad_creation.video_thumbnail)
+
+        self.assertIsNotNone(data['impressions'])
+        self.assertIsNotNone(data['overview']['impressions'])
 

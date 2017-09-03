@@ -1,8 +1,8 @@
-import logging
-from time import sleep
-
-import yaml
+from suds import WebFault
+from oauth2client.client import HttpAccessTokenRefreshError
 from googleads import adwords, oauth2
+import logging
+import yaml
 
 logger = logging.getLogger(__name__)
 API_VERSION = 'v201702'
@@ -33,7 +33,7 @@ def get_customers(refresh_token, **kwargs):
 
 
 def _get_client(developer_token, client_id, client_secret, user_agent,
-                refresh_token, client_customer_id=None):
+                refresh_token, client_customer_id=None, **_):
     oauth2_client = oauth2.GoogleRefreshTokenClient(
         client_id, client_secret, refresh_token
     )
@@ -95,6 +95,13 @@ def optimize_keyword(query, client=None, request_type='IDEAS'):
                     'targetPartnerSearchNetwork': False,
                 }
             },
+            {
+                'xsi_type': 'SearchVolumeSearchParameter',
+                'operation': {
+                    'minimum': 100000
+                }
+
+            }
         ],
         'ideaType': 'KEYWORD',
         'requestType': request_type,
@@ -228,3 +235,17 @@ def update_customer_account(manager_id, refresh_token, account_id, name):
     results = managed_customer_service.mutate(operations)
     for account in results['value']:
         logger.info(account)
+
+
+def handle_aw_api_errors(method, *args, **kwargs):
+    error = response = None
+    try:
+        response = method(*args, **kwargs)
+    except WebFault as e:
+        error = str(e)
+        if "NOT_AUTHORIZED" in error:
+            error = "You do not have permission to edit this MCC Account"
+    except HttpAccessTokenRefreshError as e:
+        error = str(e)
+    return response, error
+

@@ -6,8 +6,10 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_creation.models import *
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from suds import WebFault
+from oauth2client.client import HttpAccessTokenRefreshError
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
@@ -104,10 +106,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                 'id', 'name', 'updated_at', 'start', 'end',
                 'budget', 'delivery_method',  'video_ad_format', 'video_networks', 'languages',
                 'frequency_capping', 'ad_schedule_rules', 'location_rules',
-                'devices',
-                'genders', 'parents', 'age_ranges',
-                'content_exclusions',
-                'ad_group_creations',
+                'devices', 'content_exclusions', 'ad_group_creations',
             }
         )
         self.assertEqual(len(campaign_data['content_exclusions']), 2)
@@ -115,12 +114,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             set(campaign_data['content_exclusions'][0].keys()),
             {'id', 'name'}
         )
-        for f in ('age_ranges', 'genders', 'parents'):
-            self.assertGreater(len(campaign_data[f]), 0)
-            self.assertEqual(
-                set(campaign_data[f][0].keys()),
-                {'id', 'name'}
-            )
 
         self.assertEqual(len(campaign_data['languages']), 1)
         self.assertEqual(
@@ -317,6 +310,70 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                 url, json.dumps(request_data), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_fail_approve_read_only_permission(self):
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        # account creation to approve it
+        ac = self.create_account_creation(self.user)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        fault = Mock()
+        fault.faultstring = "[ManagedCustomerServiceError.NOT_AUTHORIZED @ operations[0]]"
+        write_operation = Mock(side_effect=WebFault(fault, None))
+        with patch("aw_creation.api.views.create_customer_account", new=write_operation):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertIn("error", response.data)
+
+    def test_fail_approve_token_expired(self):
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+
+        # account creation to approve it
+        ac = self.create_account_creation(self.user)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        request_data = dict(
+            is_approved=True,
+        )
+        write_operation = Mock(
+            side_effect=HttpAccessTokenRefreshError("invalid_grant: Token has been expired or revoked.")
+        )
+        with patch("aw_creation.api.views.create_customer_account", new=write_operation):
+            response = self.client.patch(
+                url, json.dumps(request_data), content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertIn("error", response.data)
 
     def test_success_update_name(self):
         # creating of a MCC account

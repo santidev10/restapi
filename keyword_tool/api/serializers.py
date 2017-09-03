@@ -1,9 +1,13 @@
 from rest_framework.serializers import ModelSerializer, ValidationError
 from rest_framework.serializers import SerializerMethodField
-from aw_reporting.models import Account, dict_calculate_stats
+from aw_reporting.models import Account, dict_calculate_stats, dict_norm_base_stats
+from aw_reporting.adwords_api import load_web_app_settings
 from keyword_tool.models import KeyWord, Interest, KeywordsList, AVAILABLE_KEYWORD_LIST_CATEGORIES
+from keyword_tool.api.utils import get_keywords_aw_stats
 from userprofile.models import UserProfile
 from django.db.models import QuerySet
+import itertools
+from collections import defaultdict
 
 
 class InterestsSerializer(ModelSerializer):
@@ -26,7 +30,7 @@ class KeywordSerializer(ModelSerializer):
         model = KeyWord
         fields = (
             "average_cpc", "competition", "interests", "updated_at",
-            "keyword_text", "monthly_searches", "search_volume",
+            "keyword_text", "monthly_searches", "search_volume", "interests_top_kw"
         )
 
 
@@ -96,49 +100,34 @@ class SavedListNameSerializer(SavedListCreateSerializer):
                 list_ids = [i.id for i in objects]
 
             if list_ids:
+                keywords_rows = KeyWord.objects.filter(
+                    lists__id__in=list_ids).values("text", "lists__id")
+                all_keywords = set(e["text"] for e in keywords_rows)
                 accounts = set(Account.user_objects(self.request.user).values_list("id", flat=True))
-                data = KeywordsList.keywords.through.objects.raw(
-                    """
-                    SELECT keywordslist_id AS id,
-                    SUM(CASE WHEN "aw_reporting_keywordstatistic"."video_views" > 0 
-                             THEN "aw_reporting_keywordstatistic"."impressions" 
-                             ELSE NULL END) AS "video_impressions",
-                    SUM("aw_reporting_keywordstatistic"."video_views") AS "sum_video_views", 
-                    SUM("aw_reporting_keywordstatistic"."cost") AS "sum_cost", 
-                    SUM("aw_reporting_keywordstatistic"."clicks") AS "sum_clicks",
-                    SUM("aw_reporting_keywordstatistic"."impressions") AS "sum_impressions"
-                    
-                    FROM keyword_tool_keywordslist_keywords 
-                    INNER JOIN "aw_reporting_keywordstatistic" 
-                        ON "aw_reporting_keywordstatistic"."keyword" = keyword_tool_keywordslist_keywords.keyword_id 
-                    INNER JOIN "aw_reporting_adgroup" 
-                        ON ("aw_reporting_keywordstatistic"."ad_group_id" = "aw_reporting_adgroup"."id")
-                    INNER JOIN "aw_reporting_campaign" 
-                        ON ("aw_reporting_adgroup"."campaign_id" = "aw_reporting_campaign"."id")
-                    
-                    WHERE "keyword_tool_keywordslist_keywords"."keywordslist_id" IN ({}) 
-                    AND "aw_reporting_campaign"."account_id" IN ({})
-                    
-                    GROUP BY "keyword_tool_keywordslist_keywords"."keywordslist_id" 
-                    ORDER BY "keyword_tool_keywordslist_keywords"."keywordslist_id" ASC
-                    
-                    """.format(
-                        ",".join(str(i) for i in list_ids),
-                        "'{}'".format("', '".join(accounts)) if accounts else "NULL",
-                    )
-                )
-                for i in data:
-                    stat = dict(
-                        video_views=i.sum_video_views,
-                        cost=i.sum_cost,
-                        clicks=i.sum_clicks,
-                        video_impressions=i.video_impressions,
-                        impressions=i.sum_impressions,
-                    )
-                    dict_calculate_stats(stat)
-                    self.aw_stats[i.id] = stat
 
-    def get_owner(self, obj):
+                fields = ("sum_clicks", "sum_video_views", "sum_cost", "video_impressions")
+                stats = get_keywords_aw_stats(accounts, all_keywords, fields)
+                kw_without_stats = all_keywords - set(stats.keys())
+                if kw_without_stats:  # add CF account stats for keywords without stats
+                    cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+                    cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats, fields)
+                    stats.update(cf_stats)
+
+                for list_id in list_ids:
+                    list_stats = dict(zip(fields, itertools.repeat(0)))
+                    for kw in filter(lambda r: r["lists__id"] == list_id, keywords_rows):
+                        if kw["text"] in stats:
+                            kw_stats = stats[kw["text"]]
+                            for f in fields:
+                                if not kw_stats.get(f):
+                                    continue
+                                list_stats[f] += kw_stats[f]
+                    dict_norm_base_stats(list_stats)
+                    dict_calculate_stats(list_stats)
+                    self.aw_stats[list_id] = list_stats
+
+    @staticmethod
+    def get_owner(obj):
         user = UserProfile.objects.get(email=obj.user_email)
         return "{} {}".format(user.first_name, user.last_name)
 
