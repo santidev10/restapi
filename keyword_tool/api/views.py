@@ -20,6 +20,7 @@ from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
 from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
+from utils.csv_export import CSVExport
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,10 @@ class OptimizeQueryApiView(ListAPIView):
     pagination_class = KWPaginator
 
     def sort(self, queryset):
-        query_params = self.request.query_params
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
         if 'sort_by' in query_params and query_params['sort_by'] in (
                 'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate',
@@ -120,7 +124,10 @@ class OptimizeQueryApiView(ListAPIView):
         return queryset
 
     def filter(self, queryset):
-        query_params = self.request.query_params
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
         for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
@@ -247,6 +254,41 @@ class KeywordsListApiView(OptimizeQueryApiView):
         queryset = self.filter(queryset)
         queryset = self.sort(queryset)
         return queryset
+
+    def post(self, *args, **kwargs):
+        """
+        Keywords export procedure
+        """
+        data = self.serializer_class(self.get_queryset()).data
+        file_fields = [
+            "keyword_text",
+            "average_cpc",
+            "average_cpm",
+            "average_cpv",
+            "average_cpv_bottom",
+            "average_cpv_top",
+            "campaigns_count",
+            "clicks",
+            "competition",
+            "cost",
+            "ctr",
+            "ctr_bottom",
+            "ctr_top",
+            "ctr_v",
+            "ctr_v_bottom",
+            "ctr_v_top",
+            "impressions",
+            "search_volume",
+            "video_impressions",
+            "video_view_rate",
+            "video_view_rate_bottom",
+            "video_view_rate_top",
+            "video_views"
+        ]
+        csv_generator = CSVExport(
+            fields=file_fields, data=data, obj_type="keyword")
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ViralKeywordsApiView(OptimizeQueryApiView):
