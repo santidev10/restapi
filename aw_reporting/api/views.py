@@ -1039,4 +1039,8 @@ class BenchmarkChartApiView(TrackApiBase):
     Return data for chart building
     """
     def get(self, request):
-        return Response(data=ChartsHandler(request=request).data())
+        result = {}
+        ch = ChartsHandler(request=request)
+        # result['base_charts'] = ch.base_charts()
+        result['product_type_charts'] = ch.product_charts()
+        return Response(result)

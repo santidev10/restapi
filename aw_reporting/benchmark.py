@@ -8,6 +8,8 @@ from aw_reporting.models import Campaign
 
 class BenchMarkChart:
     run_command = ('calc param', 'calc param', 'result value', 'сalculation method', 'chart name')
+    annotate = False
+    aggregate = False
 
     def __init__(self, request):
         # self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
@@ -22,24 +24,45 @@ class BenchMarkChart:
             options['start_date'] = params['start_date']
         if params.get('end_date'):
             options['end_date'] = params['end_date']
+        if params.get('product_type'):
+            options['product_type'] = params['product_type']
         options['frequency'] = params.get('frequency', 'month')
 
         return options
 
     def get_chart(self, calc_val_a, calc_val_b, output_field, method):
         queryset = self.get_queryset()
-        for item in queryset:
-            param_a = item.get(calc_val_a)
-            param_b = item.get(calc_val_b)
+        if self.annotate:
+            for item in queryset:
+                param_a = item.get(calc_val_a)
+                param_b = item.get(calc_val_b)
+                if param_a and param_b:
+                    item[output_field] = getattr(self, method)(param_a, param_b)
+        if self.aggregate:
+            param_a = queryset.get(calc_val_a)
+            param_b = queryset.get(calc_val_b)
             if param_a and param_b:
-                item[output_field] = getattr(self, method)(param_a, param_b)
+                queryset[output_field] = getattr(self, method)(param_a, param_b)
         return queryset
 
     def get_queryset(self):
         queryset = AdGroupStatistic.objects.all()
         queryset = self.filter_queryset(queryset)
-        queryset = self.annotate_queryset(queryset)
-        queryset = self.aggregate_queryset(queryset)
+        queryset = self.prepare_timing(queryset)
+        queryset = self.prepare_queryset(queryset)
+        return queryset
+
+    def prepare_timing(self, queryset):
+        """
+        Group by year, quarter, month, week, day
+        """
+        frequency = self.options['frequency']
+        queryset = queryset.extra({frequency: "Extract({} from date)".format(frequency)}) \
+            .values(frequency) \
+            .order_by(frequency)
+        return queryset
+
+    def prepare_queryset(self, queryset):
         return queryset
 
     def filter_queryset(self, queryset):
@@ -50,21 +73,10 @@ class BenchMarkChart:
             filters['date__lte'] = self.options['end_date']
         if self.campains_ids:
             filters['ad_group__campaign__id__in'] = self.campains_ids
+        if self.options.get('product_type'):
+            filters['ad_group__type'] = self.options['product_type']
         if filters:
             queryset = queryset.filter(**filters)
-        return queryset
-
-    def annotate_queryset(self, queryset):
-        """
-        Group by year, quarter, month, week, day
-        """
-        frequency = self.options['frequency']
-        queryset = queryset.extra({frequency: "Extract({} from date)".format(frequency)}) \
-            .values(frequency) \
-            .order_by(frequency)
-        return queryset
-
-    def aggregate_queryset(selfs, queryset):
         return queryset
 
     def get_video_view_rate(self, views, impressions):
@@ -103,11 +115,10 @@ class ViewRateChart(BenchMarkChart):
         queryset = queryset.filter(**filters)
         return queryset
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_video_views'] = Sum(F('video_views'))
-        annotate['video_impressions'] = Sum(
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_video_views'] = Sum(F('video_views'))
+        data['video_impressions'] = Sum(
             Case(
                 When(
                     video_views__gt=0,
@@ -116,7 +127,10 @@ class ViewRateChart(BenchMarkChart):
                 output_field=IntegerField()
             )
         )
-        return queryset.annotate(**annotate)
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class ClickRateCpmChart(BenchMarkChart):
@@ -126,12 +140,14 @@ class ClickRateCpmChart(BenchMarkChart):
                    'get_average_cpm_click',
                    'click_rate_cpm_chart')
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_clicks'] = Sum(F('clicks'))
-        annotate['sum_impressions'] = Sum(F('impressions'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_clicks'] = Sum(F('clicks'))
+        data['sum_impressions'] = Sum(F('impressions'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class ClickRateCpvChart(BenchMarkChart):
@@ -148,12 +164,14 @@ class ClickRateCpvChart(BenchMarkChart):
         queryset = queryset.filter(**filters)
         return queryset
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_clicks'] = Sum(F('clicks'))
-        annotate['sum_video_views'] = Sum(F('video_views'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_clicks'] = Sum(F('clicks'))
+        data['sum_video_views'] = Sum(F('video_views'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class AverageCostRateCpmChart(BenchMarkChart):
@@ -163,12 +181,14 @@ class AverageCostRateCpmChart(BenchMarkChart):
                    'get_average_cpm_cost',
                    'average_cost_rate_cpm_chart')
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_cost'] = Sum(F('cost'))
-        annotate['sum_impressions'] = Sum(F('impressions'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_cost'] = Sum(F('cost'))
+        data['sum_impressions'] = Sum(F('impressions'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class AverageCostRateCpvChart(BenchMarkChart):
@@ -185,12 +205,14 @@ class AverageCostRateCpvChart(BenchMarkChart):
         queryset = queryset.filter(**filters)
         return queryset
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_cost'] = Sum(F('cost'))
-        annotate['sum_video_views'] = Sum(F('video_views'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_cost'] = Sum(F('cost'))
+        data['sum_video_views'] = Sum(F('video_views'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class ViewabilityRateChart(BenchMarkChart):
@@ -200,12 +222,14 @@ class ViewabilityRateChart(BenchMarkChart):
                    'get_viewability_rate',
                    'viewability_rate_chart')
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_active_view_impressions'] = Sum(F('active_view_impressions'))
-        annotate['sum_impressions'] = Sum(F('impressions'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_active_view_impressions'] = Sum(F('active_view_impressions'))
+        data['sum_impressions'] = Sum(F('impressions'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class EngagementRateChart(BenchMarkChart):
@@ -215,12 +239,14 @@ class EngagementRateChart(BenchMarkChart):
                    'get_engagement_rate',
                    'engagement_rate_chart')
 
-    def annotate_queryset(self, queryset):
-        queryset = super().annotate_queryset(queryset)
-        annotate = {}
-        annotate['sum_engagements'] = Sum(F('engagements'))
-        annotate['sum_impressions'] = Sum(F('impressions'))
-        return queryset.annotate(**annotate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_engagements'] = Sum(F('engagements'))
+        data['sum_impressions'] = Sum(F('impressions'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
 
 class QuartileCompletionRateChart(BenchMarkChart):
@@ -233,25 +259,33 @@ class QuartileCompletionRateChart(BenchMarkChart):
                    'get_video_view_rate',
                    'view_rate_%_chart')
 
-    def annotate_queryset(self, queryset):
-        return queryset
-
-    def aggregate_queryset(selfs, queryset):
-        aggregate = {}
-        aggregate['sum_impressions'] = Sum(F('impressions'))
-        aggregate['video_views_25_quartile'] = Sum(F('video_views_25_quartile'))
-        aggregate['video_views_50_quartile'] = Sum(F('video_views_50_quartile'))
-        aggregate['video_views_75_quartile'] = Sum(F('video_views_75_quartile'))
-        aggregate['video_views_100_quartile'] = Sum(F('video_views_100_quartile'))
-        return queryset.aggregate(**aggregate)
+    def prepare_queryset(self, queryset):
+        data = {}
+        data['sum_impressions'] = Sum(F('impressions'))
+        data['video_views_25_quartile'] = Sum(F('video_views_25_quartile'))
+        data['video_views_50_quartile'] = Sum(F('video_views_50_quartile'))
+        data['video_views_75_quartile'] = Sum(F('video_views_75_quartile'))
+        data['video_views_100_quartile'] = Sum(F('video_views_100_quartile'))
+        if self.annotate:
+            return queryset.annotate(**data)
+        if self.aggregate:
+            return queryset.aggregate(**data)
 
     def get_chart(self, calc_val_a, calc_val_b, output_field, method):
         queryset = self.get_queryset()
-        for view_type in calc_val_a:
-            param_a = queryset.get(view_type)
-            param_b = queryset.get(calc_val_b)
-            if param_a and param_b:
-                queryset[view_type] = getattr(self, method)(param_a, param_b)
+        if self.aggregate:
+            for view_type in calc_val_a:
+                param_a = queryset.get(view_type)
+                param_b = queryset.get(calc_val_b)
+                if param_a and param_b:
+                    queryset[view_type] = getattr(self, method)(param_a, param_b)
+        if self.annotate:
+            for item in queryset:
+                for view_type in calc_val_a:
+                    param_a = item.get(view_type)
+                    param_b = item.get(calc_val_b)
+                    if param_a and param_b:
+                        item[view_type] = getattr(self, method)(param_a, param_b)
         return queryset
 
 
@@ -270,9 +304,27 @@ class ChartsHandler:
     def __init__(self, request):
         self.request = request
 
-    def data(self):
+    def base_charts(self):
         charts = {}
         for class_name in self.charts_pool:
+            class_name.annotate = True
+            if class_name == QuartileCompletionRateChart:
+                class_name.annotate = False
+                class_name.aggregate = True
+            *params, chart_name = class_name.run_command
+            charts[chart_name] = class_name(self.request).get_chart(*params)
+        return charts
+
+    def product_charts(self):
+        charts = {}
+        timing = self.request.query_params.get('timing', False)
+        for class_name in self.charts_pool:
+            if timing:
+                class_name.annotate = True
+                class_name.aggregate = False
+            else:
+                class_name.annotate = False
+                class_name.aggregate = True
             *params, chart_name = class_name.run_command
             charts[chart_name] = class_name(self.request).get_chart(*params)
         return charts
