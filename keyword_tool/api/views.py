@@ -259,31 +259,12 @@ class KeywordsListApiView(OptimizeQueryApiView):
         """
         Keywords export procedure
         """
-        data = self.serializer_class(self.get_queryset()).data
+        data = self.serializer_class(self.get_queryset(), many=True).data
         file_fields = [
             "keyword_text",
             "average_cpc",
-            "average_cpm",
-            "average_cpv",
-            "average_cpv_bottom",
-            "average_cpv_top",
-            "campaigns_count",
-            "clicks",
             "competition",
-            "cost",
-            "ctr",
-            "ctr_bottom",
-            "ctr_top",
-            "ctr_v",
-            "ctr_v_bottom",
-            "ctr_v_top",
-            "impressions",
-            "search_volume",
-            "video_impressions",
-            "video_view_rate",
-            "video_view_rate_bottom",
-            "video_view_rate_top",
-            "video_views"
+            "search_volume"
         ]
         csv_generator = CSVExport(
             fields=file_fields, data=data, obj_type="keyword")
