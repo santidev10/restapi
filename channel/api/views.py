@@ -81,9 +81,9 @@ class ChannelListApiView(APIView):
         """
         # make call
         connector = Connector()
-        filters = request.data
+        query_params = request.data
         # WARN: flat param may freeze SBD
-        filters["flat"] = 1
+        query_params["flat"] = 1
         fields_to_request = [
             "id",
             "title",
@@ -98,9 +98,10 @@ class ChannelListApiView(APIView):
             "sentiment",
             "engage_rate"
         ]
-        filters["fields"] = ",".join(fields_to_request)
+        query_params["fields"] = ",".join(fields_to_request)
         try:
-            response_data = connector.get_channel_list(query_params=filters)
+            response_data = connector.get_channel_list(
+                query_params=query_params)
         except SingleDatabaseApiConnectorException as e:
             return Response(
                 data={"error": " ".join(e.args)},
