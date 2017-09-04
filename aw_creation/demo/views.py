@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from datetime import datetime
 import json
-DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
+DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
 
 class AccountCreationListApiView:
