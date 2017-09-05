@@ -8,23 +8,22 @@ from aw_reporting.models import Campaign
 
 class BenchMarkChart:
     run_command = ('calc param', 'calc param', 'result value', 'сalculation method', 'chart name')
-    annotate = False
-    aggregate = False
 
-    def __init__(self, request):
-        # self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
-        self.accounts_ids = Account.objects.all().values_list("id", flat=True)
-        self.campains_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
+    def __init__(self, request, annotate, aggregate, product_type):
+        self.annotate = annotate
+        self.aggregate = aggregate
+        self.product_type = product_type
+        self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
+        self.campaigns_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
         self.options = self.prepare_query_params(request.query_params)
 
     def prepare_query_params(self, params):
         options = {}
-
         if params.get('start_date'):
             options['start_date'] = params['start_date']
         if params.get('end_date'):
             options['end_date'] = params['end_date']
-        if params.get('product_type'):
+        if params.get('product_type') and self.product_type:
             options['product_type'] = params['product_type']
         options['frequency'] = params.get('frequency', 'month')
 
@@ -71,8 +70,8 @@ class BenchMarkChart:
             filters['date__gte'] = self.options['start_date']
         if self.options.get('end_date'):
             filters['date__lte'] = self.options['end_date']
-        if self.campains_ids:
-            filters['ad_group__campaign__id__in'] = self.campains_ids
+        if self.campaigns_ids:
+            filters['ad_group__campaign__id__in'] = self.campaigns_ids
         if self.options.get('product_type'):
             filters['ad_group__type'] = self.options['product_type']
         if filters:
@@ -307,24 +306,32 @@ class ChartsHandler:
     def base_charts(self):
         charts = {}
         for class_name in self.charts_pool:
-            class_name.annotate = True
-            if class_name == QuartileCompletionRateChart:
-                class_name.annotate = False
-                class_name.aggregate = True
             *params, chart_name = class_name.run_command
-            charts[chart_name] = class_name(self.request).get_chart(*params)
+            if class_name == QuartileCompletionRateChart:
+                charts[chart_name] = class_name(self.request,
+                                                annotate=False,
+                                                aggregate=True,
+                                                product_type=False).get_chart(*params)
+                continue
+            charts[chart_name] = class_name(self.request,
+                                            annotate=True,
+                                            aggregate=False,
+                                            product_type=False).get_chart(*params)
         return charts
 
     def product_charts(self):
         charts = {}
-        timing = self.request.query_params.get('timing', False)
+        timing = self.request.query_params.get('timing')
         for class_name in self.charts_pool:
-            if timing:
-                class_name.annotate = True
-                class_name.aggregate = False
-            else:
-                class_name.annotate = False
-                class_name.aggregate = True
             *params, chart_name = class_name.run_command
-            charts[chart_name] = class_name(self.request).get_chart(*params)
+            if timing == '1':
+                charts[chart_name] = class_name(self.request,
+                                                annotate=True,
+                                                aggregate=False,
+                                                product_type=True).get_chart(*params)
+            elif timing == '0':
+                charts[chart_name] = class_name(self.request,
+                                                annotate=False,
+                                                aggregate=True,
+                                                product_type=True).get_chart(*params)
         return charts

@@ -1034,13 +1034,21 @@ class AwHistoricalDataApiView(APIView):
         return Response(data=data)
 
 
-class BenchmarkChartApiView(TrackApiBase):
+class BenchmarkBaseChartsApiView(TrackApiBase):
     """
     Return data for chart building
     """
+
     def get(self, request):
-        result = {}
         ch = ChartsHandler(request=request)
-        # result['base_charts'] = ch.base_charts()
-        result['product_type_charts'] = ch.product_charts()
-        return Response(result)
+        return Response(ch.base_charts())
+
+
+class BenchmarkProductChartsApiView(TrackApiBase):
+    """
+    Return data for chart building
+    """
+
+    def get(self, request):
+        ch = ChartsHandler(request=request)
+        return Response(ch.product_charts())

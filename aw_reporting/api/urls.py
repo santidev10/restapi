@@ -51,7 +51,10 @@ urlpatterns = [
         name="aw_historical_data"),
 
     # benchmark
-    url(r'^benchmarks/$',
-        views.BenchmarkChartApiView.as_view(),
-        name="benchmarks"),
+    url(r'^benchmarks/base_charts$',
+        views.BenchmarkBaseChartsApiView.as_view(),
+        name="benchmarks_base_charts"),
+    url(r'^benchmarks/product_charts$',
+        views.BenchmarkProductChartsApiView.as_view(),
+        name="benchmarks_product_charts$"),
 ]
