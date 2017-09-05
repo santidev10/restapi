@@ -1,3 +1,6 @@
+import itertools
+from datetime import datetime
+
 from django.db.models import IntegerField
 from django.db.models import Sum, Case, When, F
 
@@ -23,11 +26,25 @@ class BenchMarkChart:
             options['start_date'] = params['start_date']
         if params.get('end_date'):
             options['end_date'] = params['end_date']
+        if params.get('quarters'):
+            options['start_date'], options['end_date'] = self.get_quarters_date(params['quarters'])
         if params.get('product_type') and self.product_type:
             options['product_type'] = params['product_type']
         options['frequency'] = params.get('frequency', 'month')
 
         return options
+
+    def get_quarters_date(self, quarters):
+        year = datetime.now().date().year
+        quarters = quarters.split(',')
+        quarter_days = dict(
+            Q1=((1, 1), (3, 31)),
+            Q2=((4, 1), (6, 30)),
+            Q3=((7, 1), (9, 30)),
+            Q4=((10, 1), (12, 31)),
+        )
+        first, *rest, last = list((itertools.chain(*[quarter_days[q] for q in quarters])))
+        return datetime(year, *first).date(), datetime(year, *last).date()
 
     def get_chart(self, calc_val_a, calc_val_b, output_field, method):
         queryset = self.get_queryset()
