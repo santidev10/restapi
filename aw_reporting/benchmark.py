@@ -346,7 +346,7 @@ class ChartsHandler:
                                                 annotate=True,
                                                 aggregate=False,
                                                 product_type=True).get_chart(*params)
-            elif timing == '0':
+            else:
                 charts[chart_name] = class_name(self.request,
                                                 annotate=False,
                                                 aggregate=True,
