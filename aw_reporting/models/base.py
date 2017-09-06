@@ -27,7 +27,7 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 Genders = ("Undetermined", "Female", "Male")
 
 DATE_FORMAT = "%Y-%m-%d"
-
+ACTION_STATUSES = ("paused", "removed")
 DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 

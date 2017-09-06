@@ -24,9 +24,9 @@ class KWToolAPITestCase(APITestCase):
         today = timezone.now()
         for keyword in texts:
             KeywordStatistic.objects.create(date=today - timedelta(days=1), ad_group=ad_group, keyword=keyword,
-                                            impressions=10, video_views=1)
+                                            impressions=10, video_views=1, cost=1)
             KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword=keyword,
-                                            impressions=10, video_views=5)
+                                            impressions=10, video_views=5, cost=1)
             KeywordStatistic.objects.create(date=today + timedelta(days=1), ad_group=ad_group, keyword=keyword)
 
         url = reverse("keyword_tool_urls:kw_tool_all")
@@ -38,4 +38,8 @@ class KWToolAPITestCase(APITestCase):
             self.assertEqual(i['impressions'], 20)
             self.assertEqual(i['video_view_rate_bottom'], 10)
             self.assertEqual(i['video_view_rate_top'], 50)
+
+            self.assertAlmostEqual(i['average_cpv'], .33, places=2)
+            self.assertEqual(i['average_cpv_bottom'], .2)
+            self.assertEqual(i['average_cpv_top'], 1)
 

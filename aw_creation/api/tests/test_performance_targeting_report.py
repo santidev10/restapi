@@ -2,7 +2,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic
+from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, \
+    AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
 from datetime import datetime
 import json
@@ -24,8 +25,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_post(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
@@ -87,7 +92,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_post_all_dimensions(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False)
 
         for dimension in ("channel", "video", "keyword", "interest", "topic"):
             url = reverse("aw_creation_urls:performance_targeting_report",
@@ -116,6 +125,42 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(campaign_data.keys()),
             self.data_keys
+        )
+        self.assertEqual(campaign_data['id'], campaign.id)
+        self.assertEqual(campaign_data['name'], campaign.name)
+        self.assertEqual(campaign_data['start_date'], campaign.start_date)
+        self.assertEqual(campaign_data['end_date'], campaign.end_date)
+        self.assertEqual(campaign_data['status'], campaign.status)
+        self.assertEqual(len(campaign_data['ad_groups']), 1)
+
+        ad_group_data = campaign_data['ad_groups'][0]
+        self.assertEqual(
+            set(ad_group_data.keys()),
+            self.ad_groups_keys,
+        )
+
+    def test_success_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_report",
+                      args=(account_creation.id, "channel"))
+        account = DemoAccount()
+        campaign = account.children[0]
+        ad_group = campaign.children[0]
+        response = self.client.post(
+            url, json.dumps(dict(
+                campaigns=[campaign.id],
+                ad_groups=[ad_group.id],
+            )),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data), 1)
+        campaign_data = data[0]
+        self.assertEqual(
+            set(campaign_data.keys()),
+            self.data_keys,
         )
         self.assertEqual(campaign_data['id'], campaign.id)
         self.assertEqual(campaign_data['name'], campaign.name)

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-
+from django.utils import timezone
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
@@ -77,8 +77,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules',
                 'delivery_method', 'video_ad_format', 'video_networks',
-                'genders', 'age_ranges', 'parents', 'content_exclusions',
-                'ad_group_creations',
+                'content_exclusions', 'ad_group_creations',
             }
         )
         ad_group_data = data['ad_group_creations'][0]
@@ -241,6 +240,32 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST,
                          "dates in the past are not allowed")
+
+    def test_success_full_update_start_and_end_in_the_past(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        today = timezone.now().date()
+        campaign_creation = CampaignCreation.objects.create(
+            name="11", account_creation=account_creation,
+            start=today - timedelta(days=3),
+            end=today - timedelta(days=2),
+        )
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign_creation.id,))
+
+        campaign_creation.refresh_from_db()
+        response = self.client.put(
+            url, json.dumps(dict(
+                name=campaign_creation.name,
+                start=str(campaign_creation.start),
+                end=str(campaign_creation.end),
+                content_exclusions=campaign_creation.content_exclusions,
+                devices=campaign_creation.devices,
+                video_networks=campaign_creation.video_networks,
+            )), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_fail_set_end_in_the_past(self):
         account_creation = AccountCreation.objects.create(

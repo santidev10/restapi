@@ -982,9 +982,20 @@ class AwHistoricalDataApiView(APIView):
         data = queryset.aggregate(**aggregate)
         dict_norm_base_stats(data)
         dict_calculate_stats(data)
-        del data['average_cpv'], data['video_impressions'], data['cost'], data['average_cpm']
+        del data['video_impressions'], data['cost'], data['average_cpm']
 
         annotate = dict(
+            average_cpv=ExpressionWrapper(
+                Case(
+                    When(
+                        sum_cost__isnull=False,
+                        sum_video_views__gt=0,
+                        then=F("sum_cost") / F("sum_video_views"),
+                    ),
+                    output_field=FloatField()
+                ),
+                output_field=FloatField()
+            ),
             ctr=ExpressionWrapper(
                 Case(
                     When(

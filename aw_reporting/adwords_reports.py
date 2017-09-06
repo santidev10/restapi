@@ -287,8 +287,8 @@ def ad_performance_report(client, dates=None):
 def campaign_performance_report(client, dates=None, fields=None, include_zero_impressions=True):
     if fields is None:
         fields = [
-            'CampaignId', 'CampaignName', 'ServingStatus', 'StartDate',
-            'EndDate', 'Amount',  'AdvertisingChannelType'
+            'CampaignId', 'CampaignName', 'ServingStatus', 'CampaignStatus',
+            'StartDate', 'EndDate', 'Amount',  'AdvertisingChannelType',
         ] + completed_fields + main_statistics
     selector = {
         'fields': fields,

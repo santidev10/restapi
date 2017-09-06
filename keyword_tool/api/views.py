@@ -186,14 +186,15 @@ class OptimizeQueryApiView(ListAPIView):
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
         if response.status_code == 200:
-            self.add_ad_words_data(response.data['items'])
+            self.add_ad_words_data(self.request, response.data['items'])
         return response
 
-    def add_ad_words_data(self, items):
+    @staticmethod
+    def add_ad_words_data(request, items):
         from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
             dict_norm_base_stats, dict_calculate_stats
 
-        accounts = Account.user_objects(self.request.user)
+        accounts = Account.user_objects(request.user)
         cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
         keywords = set(i['keyword_text'] for i in items)
         stats = get_keywords_aw_stats(accounts, keywords)
@@ -219,6 +220,25 @@ class OptimizeQueryApiView(ListAPIView):
                 item.update(item_top_bottom_stats)
             else:
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
+
+
+class KeywordGetApiView(APIView):
+    queryset = KeyWord.objects.all()
+    serializer_class = KeywordSerializer
+
+    def get(self, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        try:
+            obj = self.queryset.get(text=pk)
+        except KeywordsList.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(obj)
+        result = serializer.data
+
+        # add ad words data for received keyword
+        OptimizeQueryApiView.add_ad_words_data(request=self.request,
+                                               items=[result, ])
+        return Response(result)
 
 
 class KeywordsListApiView(OptimizeQueryApiView):
