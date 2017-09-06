@@ -14,6 +14,7 @@ from oauth2client import client
 from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
+from aw_reporting.benchmark import ChartsHandler
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
@@ -226,7 +227,7 @@ class AnalyzeDetailsApiView(APIView):
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
             for s in BASE_STATS
-        }
+            }
         weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(**annotate)
         data.update(weeks_stats)
 
@@ -366,7 +367,7 @@ class AnalyzeDetailsApiView(APIView):
                         trend=[
                             dict(label=i['date'], value=i['views'])
                             for i in stats
-                        ]
+                            ]
                     )
                 )
 
@@ -377,7 +378,7 @@ class AnalyzeDetailsApiView(APIView):
                         trend=[
                             dict(label=i['date'], value=i['impressions'])
                             for i in stats
-                        ]
+                            ]
                     )
                 )
         data['delivery_trend'] = charts
@@ -489,7 +490,7 @@ class AnalyzeExportApiView(APIView):
     file_name = "{title}-analyze-{timestamp}.csv"
 
     column_names = (
-        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "", "Name", "Impressions", "Views", "Cost", "Average cpm",
         "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
         "25%", "50%", "75%", "100%",
     )
@@ -605,7 +606,7 @@ class AnalyzeExportWeeklyReport(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
-            'Report {}.xlsx"'.format(
+                                          'Report {}.xlsx"'.format(
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
@@ -669,15 +670,15 @@ class TrackFiltersListApiView(TrackApiBase):
             indicator=[
                 dict(id=uid, name=name)
                 for uid, name in self.indicators
-            ],
+                ],
             breakdown=[
                 dict(id=uid, name=name)
                 for uid, name in self.breakdowns
-            ],
+                ],
             dimension=[
                 dict(id=uid, name=name)
                 for uid, name in self.dimensions
-            ],
+                ],
         )
         return static_filters
 
@@ -703,10 +704,10 @@ class TrackFiltersListApiView(TrackApiBase):
                             end_date=c.end_date,
                         )
                         for c in account.campaigns.all()
-                    ]
+                        ]
                 )
                 for account in accounts
-            ],
+                ],
             **self.get_static_filters()
         )
         return Response(data=filters)
@@ -748,7 +749,6 @@ class TrackAccountsDataApiView(TrackApiBase):
 
 
 class ConnectAWAccountListApiView(ListAPIView):
-
     serializer_class = AWAccountConnectionRelationsSerializer
 
     def get_queryset(self):
@@ -848,7 +848,7 @@ class ConnectAWAccountApiView(APIView):
             else:
                 # update token
                 if refresh_token and \
-                   connection.refresh_token != refresh_token:
+                                connection.refresh_token != refresh_token:
                     connection.revoked_access = False
                     connection.refresh_token = refresh_token
                     connection.save()
@@ -926,7 +926,6 @@ class ConnectAWAccountApiView(APIView):
 
 
 class AwHistoricalDataApiView(APIView):
-
     @staticmethod
     def get(request, item_type, pk, **_):
         accounts = Account.user_objects(request.user)
@@ -966,7 +965,7 @@ class AwHistoricalDataApiView(APIView):
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
             for s in base_stats
-        }
+            }
         base_aggregate = {"sum_{}".format(s): Sum(s) for s in BASE_STATS}
         base_aggregate.update(
             video_impressions=Sum(
@@ -1039,10 +1038,28 @@ class AwHistoricalDataApiView(APIView):
                 "{}_{}".format(s, n): a(s)
                 for s in annotate.keys()
                 for n, a in (("top", Max), ("bottom", Min))
-            }
+                }
         )
         data.update(top_bottom_data)
 
         return Response(data=data)
 
 
+class BenchmarkBaseChartsApiView(TrackApiBase):
+    """
+    Return data for chart building
+    """
+
+    def get(self, request):
+        ch = ChartsHandler(request=request)
+        return Response(ch.base_charts())
+
+
+class BenchmarkProductChartsApiView(TrackApiBase):
+    """
+    Return data for chart building
+    """
+
+    def get(self, request):
+        ch = ChartsHandler(request=request)
+        return Response(ch.product_charts())
