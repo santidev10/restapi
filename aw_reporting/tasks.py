@@ -293,6 +293,7 @@ def get_ad_groups_and_stats(client, account, today):
             if create_stats:
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
+        SUM_STATS += ('engagements', 'active_view_impressions')
         stats = stats_queryset.values("ad_group_id").order_by("ad_group_id").annotate(
             **{s: Sum(s) for s in SUM_STATS}
         )
