@@ -19,39 +19,13 @@ class CSVExport(object):
     """
     Class for csv export
     """
-    def __init__(self, fields, data, obj_type, countable_fields=None):
+    def __init__(self, fields, data, file_title):
         """
         Set up params
         """
-        self.allowed_countable_fields = {
-            "youtube_link"
-        }
-        if countable_fields is not None:
-            if not countable_fields.issubset(self.allowed_countable_fields):
-                raise CSVExportException(
-                    "Not allowed countable fields were sent")
-            self.countable_fields = countable_fields
-        else:
-            self.countable_fields = set()
-        self.allowed_obj_types = {
-            "channel",
-            "video",
-            "keyword"
-        }
-        if obj_type not in self.allowed_obj_types:
-            raise CSVExportException("Not valid obj_type")
-        self.obj_type = obj_type
         self.fields = fields
         self.data = data
-
-    def prepare_youtube_link_field(self, obj_data):
-        """
-        Generate obj youtube_link
-        """
-        if self.obj_type == "channel":
-            return "https://youtube.com/channel/{}/".format(obj_data.get("id"))
-        if self.obj_type == "video":
-            return "https://youtube.com/watch?v={}/".format(obj_data.get("id"))
+        self.file_title = file_title
 
     def export_generator(self):
         """
@@ -61,10 +35,6 @@ class CSVExport(object):
         for obj in self.data:
             row = []
             for field in self.fields:
-                if field in self.countable_fields:
-                    row.append(
-                        getattr(self, "prepare_{}_field".format(field))(obj))
-                    continue
                 row.append(obj.get(field))
             yield row
 
@@ -82,8 +52,8 @@ class CSVExport(object):
 
         response = StreamingHttpResponse(
             stream_generator(), content_type='text/csv')
-        filename = "{name}_export_report {date}.csv".format(
-            name=self.obj_type.capitalize(),
+        filename = "{title}_export_report {date}.csv".format(
+            title=self.file_title,
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(

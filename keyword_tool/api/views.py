@@ -267,7 +267,7 @@ class KeywordsListApiView(OptimizeQueryApiView):
             "search_volume"
         ]
         csv_generator = CSVExport(
-            fields=file_fields, data=data, obj_type="keyword")
+            fields=file_fields, data=data, file_title="keyword")
         response = csv_generator.prepare_csv_file_response()
         return response
 

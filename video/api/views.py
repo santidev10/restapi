@@ -78,16 +78,16 @@ class VideoListApiView(APIView):
         query_params = request.data
         # WARN: flat param may freeze SBD
         query_params["flat"] = 1
-        fields_to_request = [
-            "id",
+        fields = [
             "title",
+            "url",
             "views",
             "likes",
             "dislikes",
             "comments",
             "youtube_published_at"
         ]
-        query_params["fields"] = ",".join(fields_to_request)
+        query_params["fields"] = ",".join(fields)
         try:
             response_data = connector.get_video_list(
                 query_params=query_params)
@@ -95,21 +95,8 @@ class VideoListApiView(APIView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-        file_fields = [
-            "title",
-            "youtube_link",
-            "views",
-            "likes",
-            "dislikes",
-            "comments",
-            "youtube_published_at"
-        ]
-        countable_fields = {
-            "youtube_link"
-        }
         csv_generator = CSVExport(
-            fields=file_fields, data=response_data,
-            obj_type="video", countable_fields=countable_fields)
+            fields=fields, data=response_data, file_title="video")
         response = csv_generator.prepare_csv_file_response()
         return response
 

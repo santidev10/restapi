@@ -84,9 +84,9 @@ class ChannelListApiView(APIView):
         query_params = request.data
         # WARN: flat param may freeze SBD
         query_params["flat"] = 1
-        fields_to_request = [
-            "id",
+        fields = [
             "title",
+            "url",
             "country",
             "category",
             "emails",
@@ -98,7 +98,7 @@ class ChannelListApiView(APIView):
             "sentiment",
             "engage_rate"
         ]
-        query_params["fields"] = ",".join(fields_to_request)
+        query_params["fields"] = ",".join(fields)
         try:
             response_data = connector.get_channel_list(
                 query_params=query_params)
@@ -106,26 +106,8 @@ class ChannelListApiView(APIView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-        file_fields = [
-            "title",
-            "youtube_link",
-            "country",
-            "category",
-            "emails",
-            "description",
-            "subscribers",
-            "thirty_days_subscribers",
-            "thirty_days_views",
-            "views_per_video",
-            "sentiment",
-            "engage_rate"
-        ]
-        countable_fields = {
-            "youtube_link"
-        }
         csv_generator = CSVExport(
-            fields=file_fields, data=response_data,
-            obj_type="channel", countable_fields=countable_fields)
+            fields=fields, data=response_data, file_title="channel")
         response = csv_generator.prepare_csv_file_response()
         return response
 
