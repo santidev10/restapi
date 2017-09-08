@@ -80,7 +80,9 @@ urlpatterns = [
         views.AdCreationDuplicateApiView.as_view(),
         name="ad_creation_duplicate"),
     # >>> Setup
+
     # <<< Performance
+    # Regarding SAAS-793 we return DEMO data if user has no connected MCC's for all the performance endpoints below
     url(r'^performance_account_campaigns/(?P<pk>\w+)/$',
         views.PerformanceAccountCampaignsListApiView.as_view(),
         name="performance_account_campaigns"),

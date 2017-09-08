@@ -1,7 +1,8 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_403_FORBIDDEN
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AccountOptimizationSetting, CampaignOptimizationSetting
+from aw_reporting.models import AWConnectionToUserRelation, AWConnection
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from saas.utils_tests import ExtendedAPITestCase
 from decimal import Decimal
@@ -17,7 +18,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user, is_managed=False)
         CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
 
         url = reverse("aw_creation_urls:performance_targeting_settings",
@@ -35,7 +40,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_put(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id="1", name="AC", owner=user)
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+        account_creation = AccountCreation.objects.create(id="1", name="AC", owner=user, is_managed=False)
         CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
 
         url = reverse("aw_creation_urls:performance_targeting_settings",
@@ -76,7 +85,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_pre_saved(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user, is_managed=False)
         campaign_creation = CampaignCreation.objects.create(id=1, name="CC", account_creation=account_creation)
         account_settings = dict(
             average_cpv="0.7",
@@ -123,3 +136,29 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(len(data["campaign_creations"]), 2)
         self.assertEqual(set(data["campaign_creations"][0].keys()), self.data_keys - {"campaign_creations"})
+
+    def test_success_get_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_settings",
+                      args=(account_creation.id,))
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(
+            set(data.keys()),
+            self.data_keys,
+        )
+        self.assertEqual(data['id'], DEMO_ACCOUNT_ID)
+        self.assertEqual(len(data["campaign_creations"]), 2)
+
+    def test_success_put_demo_data(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(id=1, name="AC", owner=user)
+        url = reverse("aw_creation_urls:performance_targeting_settings",
+                      args=(account_creation.id,))
+        response = self.client.put(
+            url, json.dumps(dict()), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
