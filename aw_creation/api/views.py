@@ -1137,7 +1137,7 @@ class AccountCreationDuplicateApiView(APIView):
     account_fields = ("is_paused", "is_ended")
     campaign_fields = (
         "name", "start", "end", "budget",
-        "devices_raw", "delivery_method", "video_ad_format", "video_networks_raw",
+        "devices_raw", "delivery_method", "type", "video_networks_raw",
         'content_exclusions_raw', 'genders_raw', 'age_ranges_raw', 'parents_raw',
     )
     loc_rules_fields = (

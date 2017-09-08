@@ -18,7 +18,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         'budget', 'languages',
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',
-        'video_networks', 'video_ad_format', 'delivery_method',
+        'video_networks', 'type', 'delivery_method',
         'age_ranges', 'genders', 'parents', 'content_exclusions',
         'ad_group_creations',
     }
