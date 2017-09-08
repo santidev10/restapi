@@ -6,15 +6,20 @@ from django.db.models import Sum, Case, When, F
 
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import RemarkStatistic
+from aw_reporting.models import TopicStatistic
 
 
 class BenchMarkChart:
-    run_command = ('calc param', 'calc param', 'result value', 'сalculation method', 'chart name')
-
-    def __init__(self, request, annotate, aggregate, product_type):
+    def __init__(self, request, filtered_groups, annotate, aggregate, product_type):
         self.annotate = annotate
         self.aggregate = aggregate
+        self.filtered_ad_groups = filtered_groups
         self.product_type = product_type
         self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
         self.campaigns_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
@@ -30,6 +35,10 @@ class BenchMarkChart:
             options['start_date'], options['end_date'] = self.get_quarters_date(params['quarters'])
         if params.get('product_type') and self.product_type:
             options['product_type'] = params['product_type']
+        if params.get('device_id'):
+            options['device_id'] = params['device_id'].split(',')
+        if params.get('ad_group_ids'):
+            options['ad_group_ids'] = params['ad_group_ids']
         options['frequency'] = params.get('frequency', 'month')
 
         return options
@@ -46,21 +55,6 @@ class BenchMarkChart:
         first, *rest, last = list((itertools.chain(*[quarter_days[q] for q in quarters])))
         return datetime(year, *first).date(), datetime(year, *last).date()
 
-    def get_chart(self, calc_val_a, calc_val_b, output_field, method):
-        queryset = self.get_queryset()
-        if self.annotate:
-            for item in queryset:
-                param_a = item.get(calc_val_a)
-                param_b = item.get(calc_val_b)
-                if param_a and param_b:
-                    item[output_field] = getattr(self, method)(param_a, param_b)
-        if self.aggregate:
-            param_a = queryset.get(calc_val_a)
-            param_b = queryset.get(calc_val_b)
-            if param_a and param_b:
-                queryset[output_field] = getattr(self, method)(param_a, param_b)
-        return queryset
-
     def get_queryset(self):
         queryset = AdGroupStatistic.objects.all()
         queryset = self.filter_queryset(queryset)
@@ -73,7 +67,7 @@ class BenchMarkChart:
         Group by year, quarter, month, week, day
         """
         frequency = self.options['frequency']
-        queryset = queryset.extra({frequency: "Extract({} from date)".format(frequency)}) \
+        queryset = queryset.extra({frequency: "Extract({} from aw_reporting_AdGroupStatistic.date)".format(frequency)}) \
             .values(frequency) \
             .order_by(frequency)
         return queryset
@@ -89,6 +83,8 @@ class BenchMarkChart:
             filters['date__lte'] = self.options['end_date']
         if self.campaigns_ids:
             filters['ad_group__campaign__id__in'] = self.campaigns_ids
+        if self.filtered_ad_groups:
+            filters['ad_group_id__in'] = self.filtered_ad_groups
         if self.options.get('product_type'):
             filters['ad_group__type'] = self.options['product_type']
         if filters:
@@ -96,34 +92,35 @@ class BenchMarkChart:
         return queryset
 
     def get_video_view_rate(self, views, impressions):
-        return views / impressions * 100
+        if views and impressions:
+            return views / impressions * 100
 
     def get_average_cpm_cost(self, cost, impressions):
-        return cost / impressions
+        if cost and impressions:
+            return cost / impressions
 
     def get_average_cpv_cost(self, cost, video_views):
-        return cost / video_views
+        if cost and video_views:
+            return cost / video_views
 
     def get_average_cpm_click(self, click, impressions):
-        return click / impressions * 100
+        if click and impressions:
+            return click / impressions * 100
 
     def get_average_cpv_click(self, click, video_views):
-        return click / video_views * 100
+        if click and video_views:
+            return click / video_views * 100
 
     def get_engagement_rate(self, engagements, impressions):
-        return engagements / impressions * 100
+        if engagements and impressions:
+            return engagements / impressions * 100
 
     def get_viewability_rate(self, active_view_impressions, impressions):
-        return active_view_impressions / impressions * 100
+        if active_view_impressions and impressions:
+            return active_view_impressions / impressions * 100
 
 
-class ViewRateChart(BenchMarkChart):
-    run_command = ('sum_video_views',
-                   'video_impressions',
-                   'video_view_rate',
-                   'get_video_view_rate',
-                   'view_rate_chart')
-
+class ViewsBasedChart(BenchMarkChart):
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         filters = {}
@@ -133,7 +130,14 @@ class ViewRateChart(BenchMarkChart):
 
     def prepare_queryset(self, queryset):
         data = {}
-        data['sum_video_views'] = Sum(F('video_views'))
+
+        # For CPV cost rate
+        data['sum_cost'] = Sum(F('cost'))
+
+        # For CPV click rate
+        data['sum_clicks'] = Sum(F('clicks'))
+
+        # for View rate
         data['video_impressions'] = Sum(
             Case(
                 When(
@@ -143,212 +147,283 @@ class ViewRateChart(BenchMarkChart):
                 output_field=IntegerField()
             )
         )
+
+        # For result value calculation
+        data['sum_video_views'] = Sum(F('video_views'))
+
         if self.annotate:
             return queryset.annotate(**data)
         if self.aggregate:
             return queryset.aggregate(**data)
 
-
-class ClickRateCpmChart(BenchMarkChart):
-    run_command = ('sum_clicks',
-                   'sum_impressions',
-                   'average_cpm',
-                   'get_average_cpm_click',
-                   'click_rate_cpm_chart')
-
-    def prepare_queryset(self, queryset):
-        data = {}
-        data['sum_clicks'] = Sum(F('clicks'))
-        data['sum_impressions'] = Sum(F('impressions'))
+    def get_chart(self):
+        queryset = self.get_queryset()
         if self.annotate:
-            return queryset.annotate(**data)
+            for item in queryset:
+                sum_cost = item.get('sum_cost')
+                sum_clicks = item.get('sum_clicks')
+                video_impressions = item.get('video_impressions')
+                sum_video_views = item.get('sum_video_views')
+                item['video_view_rate'] = self.get_video_view_rate(sum_video_views, video_impressions)
+                item['cpv_cost_rate'] = self.get_video_view_rate(sum_cost, video_impressions)
+                item['cpv_click_rate'] = self.get_video_view_rate(sum_clicks, video_impressions)
+
         if self.aggregate:
-            return queryset.aggregate(**data)
-
-
-class ClickRateCpvChart(BenchMarkChart):
-    run_command = ('sum_clicks',
-                   'sum_video_views',
-                   'average_cpv',
-                   'get_average_cpv_click',
-                   'click_rate_cpv_chart')
-
-    def filter_queryset(self, queryset):
-        queryset = super().filter_queryset(queryset)
-        filters = {}
-        filters['video_views__gt'] = 0
-        queryset = queryset.filter(**filters)
+            sum_cost = queryset.get('sum_cost')
+            sum_clicks = queryset.get('sum_clicks')
+            video_impressions = queryset.get('video_impressions')
+            sum_video_views = queryset.get('sum_video_views')
+            queryset['video_view_rate'] = self.get_video_view_rate(sum_video_views, video_impressions)
+            queryset['cpv_cost_rate'] = self.get_video_view_rate(sum_cost, video_impressions)
+            queryset['cpv_click_rate'] = self.get_video_view_rate(sum_clicks, video_impressions)
         return queryset
 
+
+class ImpressionsBasedChart(BenchMarkChart):
     def prepare_queryset(self, queryset):
         data = {}
-        data['sum_clicks'] = Sum(F('clicks'))
-        data['sum_video_views'] = Sum(F('video_views'))
-        if self.annotate:
-            return queryset.annotate(**data)
-        if self.aggregate:
-            return queryset.aggregate(**data)
-
-
-class AverageCostRateCpmChart(BenchMarkChart):
-    run_command = ('sum_cost',
-                   'sum_impressions',
-                   'average_cpm',
-                   'get_average_cpm_cost',
-                   'average_cost_rate_cpm_chart')
-
-    def prepare_queryset(self, queryset):
-        data = {}
-        data['sum_cost'] = Sum(F('cost'))
-        data['sum_impressions'] = Sum(F('impressions'))
-        if self.annotate:
-            return queryset.annotate(**data)
-        if self.aggregate:
-            return queryset.aggregate(**data)
-
-
-class AverageCostRateCpvChart(BenchMarkChart):
-    run_command = ('sum_cost',
-                   'sum_video_views',
-                   'average_cpv',
-                   'get_average_cpv_cost',
-                   'average_cost_rate_cpv_chart')
-
-    def filter_queryset(self, queryset):
-        queryset = super().filter_queryset(queryset)
-        filters = {}
-        filters['video_views__gt'] = 0
-        queryset = queryset.filter(**filters)
-        return queryset
-
-    def prepare_queryset(self, queryset):
-        data = {}
-        data['sum_cost'] = Sum(F('cost'))
-        data['sum_video_views'] = Sum(F('video_views'))
-        if self.annotate:
-            return queryset.annotate(**data)
-        if self.aggregate:
-            return queryset.aggregate(**data)
-
-
-class ViewabilityRateChart(BenchMarkChart):
-    run_command = ('sum_active_view_impressions',
-                   'sum_impressions',
-                   'viewability_rate',
-                   'get_viewability_rate',
-                   'viewability_rate_chart')
-
-    def prepare_queryset(self, queryset):
-        data = {}
-        data['sum_active_view_impressions'] = Sum(F('active_view_impressions'))
-        data['sum_impressions'] = Sum(F('impressions'))
-        if self.annotate:
-            return queryset.annotate(**data)
-        if self.aggregate:
-            return queryset.aggregate(**data)
-
-
-class EngagementRateChart(BenchMarkChart):
-    run_command = ('sum_engagements',
-                   'sum_impressions',
-                   'engagement_rate',
-                   'get_engagement_rate',
-                   'engagement_rate_chart')
-
-    def prepare_queryset(self, queryset):
-        data = {}
+        # For Engagement Rate
         data['sum_engagements'] = Sum(F('engagements'))
-        data['sum_impressions'] = Sum(F('impressions'))
-        if self.annotate:
-            return queryset.annotate(**data)
-        if self.aggregate:
-            return queryset.aggregate(**data)
 
+        # For Viewability rate
+        data['sum_active_view_impressions'] = Sum(F('active_view_impressions'))
 
-class QuartileCompletionRateChart(BenchMarkChart):
-    run_command = (['video_views_25_quartile',
-                    'video_views_50_quartile',
-                    'video_views_75_quartile',
-                    'video_views_100_quartile'],
-                   'sum_impressions',
-                   'auto',
-                   'get_video_view_rate',
-                   'view_rate_%_chart')
+        # For CPM cost rate
+        data['sum_cost'] = Sum(F('cost'))
 
-    def prepare_queryset(self, queryset):
-        data = {}
-        data['sum_impressions'] = Sum(F('impressions'))
+        # For CPM Click rate
+        data['sum_clicks'] = Sum(F('clicks'))
+
+        # For Quartile completion rate
         data['video_views_25_quartile'] = Sum(F('video_views_25_quartile'))
         data['video_views_50_quartile'] = Sum(F('video_views_50_quartile'))
         data['video_views_75_quartile'] = Sum(F('video_views_75_quartile'))
         data['video_views_100_quartile'] = Sum(F('video_views_100_quartile'))
+
+        # For result value calculation
+        data['sum_impressions'] = Sum(F('impressions'))
+
         if self.annotate:
             return queryset.annotate(**data)
         if self.aggregate:
             return queryset.aggregate(**data)
 
-    def get_chart(self, calc_val_a, calc_val_b, output_field, method):
+    def get_chart(self):
         queryset = self.get_queryset()
-        if self.aggregate:
-            for view_type in calc_val_a:
-                param_a = queryset.get(view_type)
-                param_b = queryset.get(calc_val_b)
-                if param_a and param_b:
-                    queryset[view_type] = getattr(self, method)(param_a, param_b)
         if self.annotate:
             for item in queryset:
-                for view_type in calc_val_a:
-                    param_a = item.get(view_type)
-                    param_b = item.get(calc_val_b)
-                    if param_a and param_b:
-                        item[view_type] = getattr(self, method)(param_a, param_b)
+                sum_engagements = item.get('sum_engagements')
+                sum_active_view_impressions = item.get('sum_active_view_impressions')
+                sum_cost = item.get('sum_cost')
+                sum_clicks = item.get('sum_clicks')
+                sum_impressions = item.get('sum_impressions')
+                video_views_25_quartile = item.get('video_views_25_quartile')
+                video_views_50_quartile = item.get('video_views_50_quartile')
+                video_views_75_quartile = item.get('video_views_75_quartile')
+                video_views_100_quartile = item.get('video_views_100_quartile')
+
+                item['viewability_chart'] = self.get_viewability_rate(sum_active_view_impressions, sum_impressions)
+                item['engagement_rate_chart'] = self.get_engagement_rate(sum_engagements, sum_impressions)
+                item['average_cpm_cost_chart'] = self.get_average_cpm_cost(sum_cost, sum_impressions)
+                item['average_cpm_click_chart'] = self.get_average_cpm_click(sum_clicks, sum_impressions)
+                item['video_views_25_quartile'] = self.get_video_view_rate(video_views_25_quartile, sum_impressions)
+                item['video_views_50_quartile'] = self.get_video_view_rate(video_views_50_quartile, sum_impressions)
+                item['video_views_75_quartile'] = self.get_video_view_rate(video_views_75_quartile, sum_impressions)
+                item['video_views_100_quartile'] = self.get_video_view_rate(video_views_100_quartile, sum_impressions)
+
+        if self.aggregate:
+            sum_engagements = queryset.get('sum_engagements')
+            sum_active_view_impressions = queryset.get('sum_active_view_impressions')
+            sum_cost = queryset.get('sum_cost')
+            sum_clicks = queryset.get('sum_clicks')
+            sum_impressions = queryset.get('sum_impressions')
+            video_views_25_quartile = queryset.get('video_views_25_quartile')
+            video_views_50_quartile = queryset.get('video_views_50_quartile')
+            video_views_75_quartile = queryset.get('video_views_75_quartile')
+            video_views_100_quartile = queryset.get('video_views_100_quartile')
+
+            queryset['viewability_chart'] = self.get_viewability_rate(sum_active_view_impressions, sum_impressions)
+            queryset['engagement_rate_chart'] = self.get_engagement_rate(sum_engagements, sum_impressions)
+            queryset['average_cpm_cost_chart'] = self.get_average_cpm_cost(sum_cost, sum_impressions)
+            queryset['average_cpm_click_chart'] = self.get_average_cpm_click(sum_clicks, sum_impressions)
+            queryset['video_views_25_quartile'] = self.get_video_view_rate(video_views_25_quartile, sum_impressions)
+            queryset['video_views_50_quartile'] = self.get_video_view_rate(video_views_50_quartile, sum_impressions)
+            queryset['video_views_75_quartile'] = self.get_video_view_rate(video_views_75_quartile, sum_impressions)
+            queryset['video_views_100_quartile'] = self.get_video_view_rate(video_views_100_quartile, sum_impressions)
         return queryset
 
 
+class FiltersHandler:
+    def __init__(self, options):
+        self.pool = []
+        self.events = self.fill_event_map(options)
+
+    def main(self):
+        import time
+        print('SQL for ids')
+        start_time = time.time()
+        run_queue = [(k, v) for (k, v) in self.events.items() if v is not None]
+        for method, param in run_queue:
+            getattr(self, method)(param)
+        print("--- %s seconds ---" % (time.time() - start_time))
+        start_time = time.time()
+        print('intersections for ids')
+        if self.pool:
+            first, *rest = self.pool
+            r = set(first).intersection(*rest)
+            print("--- %s seconds ---" % (time.time() - start_time))
+            return r
+        return None
+
+    def fill_event_map(self, options):
+        result = {}
+        if options.get('age_range'):
+            result['age_range_statistics'] = options.get('age_range').split(',')
+        if options.get('gender'):
+            result['gender_statistics'] = options.get('gender').split(',')
+        if options.get('topic'):
+            result['topic_statistics'] = options.get('topic').split(',')
+        if options.get('topic_targeting'):
+            result['topic_statistics_targeting'] = options.get('topic_targeting')
+        if options.get('interests'):
+            result['interests_statistics'] = options.get('interests').split(',')
+        if options.get('interests_targeting'):
+            result['interests_statistics_targeting'] = options.get('interests_targeting')
+        if options.get('remarketing_targeting'):
+            result['remarketing_statistics'] = options.get('remarketing_targeting')
+        if options.get('keywords_targeting'):
+            result['keywords_statistics'] = options.get('keywords_targeting')
+        return result
+
+    def age_range_statistics(self, age_range_ids=None):
+        if age_range_ids and 'all' not in age_range_ids:
+            age_range_ids_list = list(
+                AgeRangeStatistic.objects.filter(age_range_id__in=age_range_ids).values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(age_range_ids_list)
+        else:
+            age_range_ids_list = list(
+                AgeRangeStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(age_range_ids_list)
+
+    def gender_statistics(self, gender_ids=None):
+        if gender_ids and 'all' not in gender_ids:
+            gender_ids_list = list(
+                GenderStatistic.objects.filter(gender_id__in=gender_ids).values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(gender_ids_list)
+        else:
+            gender_ids_list = list(
+                GenderStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(gender_ids_list)
+
+    def topic_statistics(self, topic_ids=None):
+        if topic_ids:
+            topic_statistics_ids_list = list(
+                TopicStatistic.objects.filter(topic_id__in=topic_ids).values_list(
+                    'ad_group__id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(topic_statistics_ids_list)
+
+    def topic_statistics_targeting(self, topic=None):
+        if topic:
+            topic_statistics_ids_list = list(
+                TopicStatistic.objects.all().values_list(
+                    'ad_group__id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(topic_statistics_ids_list)
+
+    def interests_statistics(self, interests_ids=None):
+        if interests_ids:
+            topic_statistics_ids_list = list(
+                AudienceStatistic.objects.filter(audience_id__in=interests_ids).values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(topic_statistics_ids_list)
+
+    def interests_statistics_targeting(self, interests=None):
+        if interests:
+            topic_statistics_ids_list = list(
+                AudienceStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(topic_statistics_ids_list)
+
+    def remarketing_statistics(self, remark=None):
+        if remark:
+            remarketing_ids_list = list(
+                RemarkStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(remarketing_ids_list)
+
+    def keywords_statistics(self, keywords):
+        if keywords:
+            keywords_ids_list = list(
+                KeywordStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(keywords_ids_list)
+
+
 class ChartsHandler:
-    charts_pool = (
-        ViewRateChart,
-        ClickRateCpmChart,
-        ClickRateCpvChart,
-        AverageCostRateCpmChart,
-        AverageCostRateCpvChart,
-        QuartileCompletionRateChart,
-        EngagementRateChart,
-        ViewabilityRateChart,
+    impressions_based_charts = (
+        'viewability_chart',
+        'engagement_rate_chart',
+        'average_cpm_cost_chart',
+        'average_cpm_click_chart',
+        'video_views_25_quartile',
+        'video_views_50_quartile',
+        'video_views_75_quartile',
+        'video_views_100_quartile'
+    )
+    views_based_charts = (
+        'video_view_rate',
+        'cpv_cost_rate',
+        'cpv_click_rate'
     )
 
     def __init__(self, request):
         self.request = request
 
     def base_charts(self):
-        charts = {}
-        for class_name in self.charts_pool:
-            *params, chart_name = class_name.run_command
-            if class_name == QuartileCompletionRateChart:
-                charts[chart_name] = class_name(self.request,
-                                                annotate=False,
-                                                aggregate=True,
-                                                product_type=False).get_chart(*params)
-                continue
-            charts[chart_name] = class_name(self.request,
-                                            annotate=True,
-                                            aggregate=False,
-                                            product_type=False).get_chart(*params)
-        return charts
+        views_chart = ViewsBasedChart(self.request, None, annotate=True, aggregate=False,
+                                      product_type=False).get_chart()
+        impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
+                                           product_type=False).get_chart()
+        result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart)
+        return result
 
     def product_charts(self):
-        charts = {}
         timing = self.request.query_params.get('timing')
-        for class_name in self.charts_pool:
-            *params, chart_name = class_name.run_command
-            if timing == '1':
-                charts[chart_name] = class_name(self.request,
-                                                annotate=True,
-                                                aggregate=False,
-                                                product_type=True).get_chart(*params)
-            else:
-                charts[chart_name] = class_name(self.request,
-                                                annotate=False,
-                                                aggregate=True,
-                                                product_type=True).get_chart(*params)
+        ad_group_ids = FiltersHandler(self.request.query_params).main()
+        if timing == '1':
+            views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
+                                          product_type=True).get_chart()
+            impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
+                                               product_type=True).get_chart()
+            result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
+        else:
+            views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
+                                          product_type=True).get_chart()
+            impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
+                                               product_type=True).get_chart()
+            result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart)
+        return result
+
+    def charts_aggregator(self, impr_chart, views_chart, timing=None):
+        charts = {}
+        for impr_chart_type in self.impressions_based_charts:
+            charts.update(
+                self.charts_builder(impr_chart, impr_chart_type, self.request.query_params.get('frequency'), timing))
+        for view_chart_type in self.views_based_charts:
+            charts.update(
+                self.charts_builder(views_chart, view_chart_type, self.request.query_params.get('frequency'), timing))
         return charts
+
+    def charts_builder(self, chart, result_param, frequency, timing=None):
+        result = {}
+        result_chart_data = []
+        if timing:
+            for item in chart:
+                result_chart_data.append({k: v for k, v in item.items() if k == result_param or k == frequency})
+        else:
+            result_chart_data.append({k: v for k, v in chart.items() if k == result_param or k == frequency})
+        result[result_param] = result_chart_data
+        return result
