@@ -638,9 +638,9 @@ class DemoCampaign(BaseDemo):
             start=self.start_date,
             end=self.end_date,
 
-            video_ad_format=dict(
-                id=CampaignCreation.VIDEO_AD_FORMATS[0][0],
-                name=CampaignCreation.VIDEO_AD_FORMATS[0][1],
+            type=dict(
+                id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                name=CampaignCreation.CAMPAIGN_TYPES[0][1],
             ),
             delivery_method=dict(
                 id=CampaignCreation.DELIVERY_METHODS[0][0],

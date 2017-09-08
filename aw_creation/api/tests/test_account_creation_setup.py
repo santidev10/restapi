@@ -182,8 +182,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(
             campaign_data['video_ad_format'],
-            dict(id=CampaignCreation.IN_STREAM_TYPE,
-                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+            dict(id=AdGroupCreation.IN_STREAM_TYPE,
+                 name=AdGroupCreation.VIDEO_AD_FORMATS[0][1]),
         )
         self.assertEqual(
             campaign_data['delivery_method'],

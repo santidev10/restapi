@@ -123,23 +123,20 @@ class CommonTargetingItemSerializerMix:
 
 
 class AdCreationSetupSerializer(ModelSerializer):
-    thumbnail = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
 
     @staticmethod
-    def get_thumbnail(obj):
-        if obj.video_url:
-            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
-            if match:
-                uid = match.group(1)
-                return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
+    def get_video_ad_format(obj):
+        item_id = obj.ad_group_creation.video_ad_format
+        options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
 
     class Meta:
         model = AdCreation
         fields = (
             'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
-            'tracking_template', 'custom_params',
-            'thumbnail',
+            'tracking_template', 'custom_params', 'video_ad_format',
             'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
         )
 
@@ -251,7 +248,7 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
 
     languages = SerializerMethodField()
     devices = SerializerMethodField()
-    video_ad_format = SerializerMethodField()
+    type = SerializerMethodField()
     delivery_method = SerializerMethodField()
     video_networks = SerializerMethodField()
 
@@ -270,9 +267,9 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
         return content_exclusions
 
     @staticmethod
-    def get_video_ad_format(obj):
-        item_id = obj.video_ad_format
-        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+    def get_type(obj):
+        item_id = obj.type
+        options = dict(obj.__class__.CAMPAIGN_TYPES)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
@@ -312,7 +309,7 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
             'id', 'name', 'updated_at',
             'start', 'end', 'budget', 'languages',
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
-            'video_networks', 'delivery_method', 'video_ad_format',
+            'video_networks', 'delivery_method', 'type',
             'age_ranges', 'genders', 'parents',
             'content_exclusions',
             'ad_group_creations',
@@ -474,7 +471,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         fields = (
             'name', 'start', 'end', 'budget',
             'languages', 'devices',
-            'video_ad_format', 'delivery_method', 'video_networks',
+            'delivery_method', 'video_networks',
             'genders', 'parents', 'age_ranges',
             'content_exclusions',
         )

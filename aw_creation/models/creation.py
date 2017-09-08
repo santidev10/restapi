@@ -311,20 +311,6 @@ class CampaignCreation(CommonTargetingItem):
         default=STANDARD_DELIVERY,
     )
 
-    IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
-    DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
-    BUMPER_AD = 'BUMPER'
-    VIDEO_AD_FORMATS = (
-        (IN_STREAM_TYPE, "In-stream"),
-        (DISCOVERY_TYPE, "Discovery"),
-        (BUMPER_AD, "Bumper"),
-    )
-    video_ad_format = models.CharField(
-        max_length=20,
-        choices=VIDEO_AD_FORMATS,
-        default=IN_STREAM_TYPE,
-    )
-
     MANUAL_CPV_BIDDING = 'MANUAL_CPV'
     BIDDING_TYPES = (
         (MANUAL_CPV_BIDDING, "Manual CPV"),
@@ -448,6 +434,15 @@ class CampaignCreation(CommonTargetingItem):
 
         return start_for_creation, start, end
 
+    @property
+    def video_ad_format(self):
+        formats = list(
+            self.ad_group_creations.values_list(
+                "video_ad_format", flat=True
+            ).order_by("video_ad_format").distinct()
+        )
+        return formats
+
     def get_aws_code(self, request):
 
         start_for_creation, start, end = self.get_creation_dates()
@@ -459,7 +454,7 @@ class CampaignCreation(CommonTargetingItem):
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
-                    budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
+                    budget_type="cpm" if AdGroupCreation.BUMPER_AD in self.video_ad_format else "cpv",
                     is_paused='true' if self.campaign_is_paused else 'false',
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
@@ -530,6 +525,20 @@ class AdGroupCreation(CommonTargetingItem):
         null=True, blank=True,
     )
 
+    IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
+    DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
+    BUMPER_AD = 'BUMPER'
+    VIDEO_AD_FORMATS = (
+        (IN_STREAM_TYPE, "In-stream"),
+        (BUMPER_AD, "Bumper"),
+        (DISCOVERY_TYPE, "Discovery"),
+    )
+    video_ad_format = models.CharField(
+        max_length=20,
+        choices=VIDEO_AD_FORMATS,
+        default=IN_STREAM_TYPE,
+    )
+
     class Meta:
         ordering = ['-id']
 
@@ -556,7 +565,7 @@ class AdGroupCreation(CommonTargetingItem):
         params = dict(
             id=self.id,
             name=self.unique_name,
-            ad_format="VIDEO_{}".format(campaign.video_ad_format),
+            ad_format="VIDEO_{}".format(self.video_ad_format),
             cpv=str(self.max_rate),
             genders=self.genders or campaign.genders,
             parents=self.parents or campaign.parents,

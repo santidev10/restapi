@@ -389,7 +389,7 @@ class CreationOptionsApiView(APIView):
             name="string;max_length=250;required;validation=^[^#']*$",
             # create and update
             video_ad_format=opts_to_response(
-                CampaignCreation.VIDEO_AD_FORMATS[:1],
+                AdGroupCreation.VIDEO_AD_FORMATS[:2],
             ),
             # update
             goal_type=opts_to_response(
