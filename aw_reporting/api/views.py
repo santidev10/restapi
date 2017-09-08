@@ -924,6 +924,24 @@ class ConnectAWAccountApiView(APIView):
         )
         return flow
 
+    @staticmethod
+    def delete(request, email, **_):
+        try:
+            user_connection = AWConnectionToUserRelation.objects.get(
+                user=request.user,
+                connection__email=email,
+            )
+        except AWConnectionToUserRelation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        else:
+            user_connection.delete()
+
+        qs = AWConnectionToUserRelation.objects.filter(
+            user=request.user
+        ).order_by("connection__email")
+        data = AWAccountConnectionRelationsSerializer(qs, many=True).data
+        return Response(data)
+
 
 class AwHistoricalDataApiView(APIView):
 

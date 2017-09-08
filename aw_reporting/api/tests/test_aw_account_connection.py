@@ -1,13 +1,13 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
-from saas.utils_tests import ExtendedAPITestCase
 from urllib.parse import urlencode
 from unittest.mock import patch
-from aw_reporting.models import Account
+from aw_reporting.models import Account, AWConnectionToUserRelation, AWConnection
+from .base import AwReportingAPITestCase
 import json
 
 
-class AccountConnectionPITestCase(ExtendedAPITestCase):
+class AccountConnectionPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -91,4 +91,28 @@ class AccountConnectionPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(accounts), 1,
                          "MCC account is created and linked to the user")
         self.assertEqual(accounts[0].name, "MCC Account")
+
+    def test_success_delete(self):
+        emails = ("me@mail.kz", "you@mail.kz")
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(
+                email=emails[0],
+                refresh_token="",
+            ),
+            user=self.user,
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(
+                email=emails[1],
+                refresh_token="",
+            ),
+            user=self.user,
+        )
+        url = reverse("aw_reporting_urls:aw_account_connection", args=(emails[1],))
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['email'], emails[0])
+
+
 
