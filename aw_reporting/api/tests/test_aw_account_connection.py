@@ -2,7 +2,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from urllib.parse import urlencode
 from unittest.mock import patch
-from aw_reporting.models import Account, AWConnectionToUserRelation, AWConnection
+from aw_creation.models import AccountCreation
+from aw_reporting.models import Account, AWConnectionToUserRelation, AWConnection, AWAccountPermission
 from .base import AwReportingAPITestCase
 import json
 
@@ -93,26 +94,56 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[0].name, "MCC Account")
 
     def test_success_delete(self):
-        emails = ("me@mail.kz", "you@mail.kz")
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(
-                email=emails[0],
-                refresh_token="",
-            ),
-            user=self.user,
+        # first item
+        connection = AWConnection.objects.create(
+            email="me@mail.kz",
+            refresh_token="",
         )
         AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(
-                email=emails[1],
-                refresh_token="",
-            ),
+            connection=connection,
             user=self.user,
         )
-        url = reverse("aw_reporting_urls:aw_account_connection", args=(emails[1],))
+        account = Account.objects.create(id="1", name="")
+        manager = Account.objects.create(id="2", name="")
+        account.managers.add(manager)
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+        account_creation = AccountCreation.objects.create(
+            name="This item won't be deleted", account=account, owner=self.user,
+        )
+        # second item
+        connection_1 = AWConnection.objects.create(
+            email="you@mail.kz",
+            refresh_token="",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection_1,
+            user=self.user,
+        )
+        account_1 = Account.objects.create(id="3", name="")
+        manager_1 = Account.objects.create(id="4", name="")
+        account_1.managers.add(manager_1)
+        AWAccountPermission.objects.create(
+            aw_connection=connection_1,
+            account=manager_1,
+        )
+        account_creation_1 = AccountCreation.objects.create(
+            name="This item will be deleted", account=account_1, owner=self.user,
+        )
+        # the tests
+        url = reverse("aw_reporting_urls:aw_account_connection", args=(connection_1.email,))
         response = self.client.delete(url)
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['email'], emails[0])
+        self.assertEqual(response.data[0]['email'], connection.email)
+
+        self.assertRaises(AccountCreation.DoesNotExist, account_creation_1.refresh_from_db)
+        account_1.refresh_from_db()
+
+        account_creation.refresh_from_db()  # this works fine
 
 
 

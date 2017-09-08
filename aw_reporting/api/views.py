@@ -27,6 +27,7 @@ from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
+from aw_creation.models import AccountCreation
 from singledb.connector import SingleDatabaseApiConnector, SingleDatabaseApiConnectorException
 from utils.api_paginator import CustomPageNumberPaginator
 import pytz
@@ -934,6 +935,12 @@ class ConnectAWAccountApiView(APIView):
         except AWConnectionToUserRelation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         else:
+            # we need to remove account creations that created within the connection
+            mcc_connection = user_connection.connection
+            accounts = Account.objects.filter(managers__mcc_permissions__aw_connection=mcc_connection)
+            AccountCreation.objects.filter(owner=request.user, account__in=accounts).delete()
+
+            # now delete the relation itself
             user_connection.delete()
 
         qs = AWConnectionToUserRelation.objects.filter(
