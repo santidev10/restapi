@@ -145,7 +145,8 @@ def upload_initial_aw_data(connection_pk):
     )
 
     mcc_to_update = Account.objects.filter(
-        mcc_permissions__aw_connection=connection
+        mcc_permissions__aw_connection=connection,
+        update_time__isnull=True,  # they were not updated before
     ).distinct()
     for mcc in mcc_to_update:
         client.SetClientCustomerId(mcc.id)
@@ -154,6 +155,7 @@ def upload_initial_aw_data(connection_pk):
     accounts_to_update = Account.objects.filter(
         managers__mcc_permissions__aw_connection=connection,
         can_manage_clients=False,
+        update_time__isnull=True,  # they were not updated before
     )
     for account in accounts_to_update:
         client.SetClientCustomerId(account.id)
