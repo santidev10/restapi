@@ -5,6 +5,7 @@ from django.db.models import IntegerField
 from django.db.models import Sum, Case, When, F
 
 from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
@@ -13,6 +14,7 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreativeStatistic
 
 
 class BenchMarkChart:
@@ -35,7 +37,7 @@ class BenchMarkChart:
             options['start_date'], options['end_date'] = self.get_quarters_date(params['quarters'])
         if params.get('product_type') and self.product_type:
             options['product_type'] = params['product_type']
-        if params.get('device_id'):
+        if params.get('device_id') and self.product_type:
             options['device_id'] = params['device_id'].split(',')
         if params.get('ad_group_ids'):
             options['ad_group_ids'] = params['ad_group_ids']
@@ -79,6 +81,8 @@ class BenchMarkChart:
         filters = {}
         if self.options.get('start_date'):
             filters['date__gte'] = self.options['start_date']
+        else:
+            filters['date__gte'] = datetime(datetime.now().date().year, 1, 1).date()
         if self.options.get('end_date'):
             filters['date__lte'] = self.options['end_date']
         if self.campaigns_ids:
@@ -87,6 +91,8 @@ class BenchMarkChart:
             filters['ad_group_id__in'] = self.filtered_ad_groups
         if self.options.get('product_type'):
             filters['ad_group__type'] = self.options['product_type']
+        if self.options.get('device_id'):
+            filters['device_id__in'] = self.options['device_id']
         if filters:
             queryset = queryset.filter(**filters)
         return queryset
@@ -259,20 +265,13 @@ class FiltersHandler:
         self.events = self.fill_event_map(options)
 
     def main(self):
-        import time
-        print('SQL for ids')
-        start_time = time.time()
         run_queue = [(k, v) for (k, v) in self.events.items() if v is not None]
         for method, param in run_queue:
             getattr(self, method)(param)
-        print("--- %s seconds ---" % (time.time() - start_time))
-        start_time = time.time()
-        print('intersections for ids')
         if self.pool:
             first, *rest = self.pool
-            r = set(first).intersection(*rest)
-            print("--- %s seconds ---" % (time.time() - start_time))
-            return r
+            result = set(first).intersection(*rest)
+            return result
         return None
 
     def fill_event_map(self, options):
@@ -293,6 +292,8 @@ class FiltersHandler:
             result['remarketing_statistics'] = options.get('remarketing_targeting')
         if options.get('keywords_targeting'):
             result['keywords_statistics'] = options.get('keywords_targeting')
+        if options.get('creative_length'):
+            result['creative_length'] = options.get('creative_length').split(',')
         return result
 
     def age_range_statistics(self, age_range_ids=None):
@@ -361,6 +362,20 @@ class FiltersHandler:
                     'ad_group_id', flat=True).order_by('ad_group_id').distinct())
             self.pool.append(keywords_ids_list)
 
+    def creative_length(self, duration):
+        if duration and 'all' not in duration:
+            l_border, r_border = duration
+            filter = {}
+            filter['videos_stats__creative__duration__gt'] = l_border
+            filter['videos_stats__creative__duration__lte'] = r_border
+            creative_ids = list(AdGroup.objects.filter(**filter).values_list('id', flat=True).order_by('id').distinct())
+            self.pool.append(creative_ids)
+        else:
+            creative_ids = list(
+                VideoCreativeStatistic.objects.all().values_list(
+                    'ad_group_id', flat=True).order_by('ad_group_id').distinct())
+            self.pool.append(creative_ids)
+
 
 class ChartsHandler:
     impressions_based_charts = (
@@ -387,7 +402,7 @@ class ChartsHandler:
                                       product_type=False).get_chart()
         impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
                                            product_type=False).get_chart()
-        result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart)
+        result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
         return result
 
     def product_charts(self):
@@ -410,11 +425,9 @@ class ChartsHandler:
     def charts_aggregator(self, impr_chart, views_chart, timing=None):
         charts = {}
         for impr_chart_type in self.impressions_based_charts:
-            charts.update(
-                self.charts_builder(impr_chart, impr_chart_type, self.request.query_params.get('frequency'), timing))
+            charts.update(self.charts_builder(impr_chart, impr_chart_type, self.request.query_params.get('frequency', 'month'), timing))
         for view_chart_type in self.views_based_charts:
-            charts.update(
-                self.charts_builder(views_chart, view_chart_type, self.request.query_params.get('frequency'), timing))
+            charts.update(self.charts_builder(views_chart, view_chart_type, self.request.query_params.get('frequency', 'month'), timing))
         return charts
 
     def charts_builder(self, chart, result_param, frequency, timing=None):
