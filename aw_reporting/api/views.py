@@ -15,6 +15,8 @@ from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
 from aw_reporting.benchmark import ChartsHandler
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Audience
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
@@ -25,6 +27,7 @@ from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.models import Topic
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
@@ -1063,3 +1066,16 @@ class BenchmarkProductChartsApiView(TrackApiBase):
     def get(self, request):
         ch = ChartsHandler(request=request)
         return Response(ch.product_charts())
+
+
+class BenchmarkFiltersListApiView(ListAPIView):
+    """
+    Lists of the filter names and values
+    """
+
+    def get(self, request, *args, **kwargs):
+        result = {}
+        result['topics'] = Topic.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        result['interests'] = Audience.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        result['product_types'] = AdGroup.objects.all().values('type').distinct()
+        return Response(data=result)
