@@ -276,22 +276,23 @@ class FiltersHandler:
 
     def fill_event_map(self, options):
         result = {}
+        targeting = options.get('targeting', [])
         if options.get('age_range'):
             result['age_range_statistics'] = options.get('age_range').split(',')
         if options.get('gender'):
             result['gender_statistics'] = options.get('gender').split(',')
         if options.get('topic'):
             result['topic_statistics'] = options.get('topic').split(',')
-        if options.get('topic_targeting'):
-            result['topic_statistics_targeting'] = options.get('topic_targeting')
+        if 'topic_targeting' in targeting:
+            result['topic_statistics_targeting'] = True
         if options.get('interests'):
             result['interests_statistics'] = options.get('interests').split(',')
-        if options.get('interests_targeting'):
-            result['interests_statistics_targeting'] = options.get('interests_targeting')
-        if options.get('remarketing_targeting'):
-            result['remarketing_statistics'] = options.get('remarketing_targeting')
-        if options.get('keywords_targeting'):
-            result['keywords_statistics'] = options.get('keywords_targeting')
+        if 'interests_targeting' in targeting:
+            result['interests_statistics_targeting'] = True
+        if 'remarketing_targeting' in targeting:
+            result['remarketing_statistics'] = True
+        if 'keywords_targeting' in targeting:
+            result['keywords_statistics'] = True
         if options.get('creative_length'):
             result['creative_length'] = options.get('creative_length').split(',')
         return result
