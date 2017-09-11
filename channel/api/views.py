@@ -8,12 +8,15 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from utils.csv_export import CSVExport
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+
 # pylint: enable=import-error
 
 
@@ -71,6 +74,42 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+    def post(self, request):
+        """
+        Export channels procedure
+        """
+        # make call
+        connector = Connector()
+        query_params = request.data
+        # WARN: flat param may freeze SBD
+        query_params["flat"] = 1
+        fields = [
+            "title",
+            "url",
+            "country",
+            "category",
+            "emails",
+            "description",
+            "subscribers",
+            "thirty_days_subscribers",
+            "thirty_days_views",
+            "views_per_video",
+            "sentiment",
+            "engage_rate"
+        ]
+        query_params["fields"] = ",".join(fields)
+        try:
+            response_data = connector.get_channel_list(
+                query_params=query_params)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        csv_generator = CSVExport(
+            fields=fields, data=response_data, file_title="channel")
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ChannelListFiltersApiView(SingledbApiView):

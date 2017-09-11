@@ -96,7 +96,9 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels/"
         if 'ids' in query_params:
-            ids = query_params.get('ids').split(',')
+            ids = query_params.get('ids')
+            if isinstance(ids, str):
+                ids = ids.split(",")
             query_params.pop('ids')
             query_params['ids_hash'] = self.store_ids(ids)
         response_data = self.execute_get_call(endpoint, query_params)
@@ -164,7 +166,9 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "videos/"
         if 'ids' in query_params:
-            ids = query_params.get('ids').split(',')
+            ids = query_params.get('ids')
+            if isinstance(ids, str):
+                ids = ids.split(",")
             query_params.pop('ids')
             query_params['ids_hash'] = self.store_ids(ids)
         response_data = self.execute_get_call(endpoint, query_params)
