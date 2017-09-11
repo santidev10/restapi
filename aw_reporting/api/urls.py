@@ -60,4 +60,7 @@ urlpatterns = [
     url(r'^benchmarks/product_charts$',
         views.BenchmarkProductChartsApiView.as_view(),
         name="benchmarks_product_charts$"),
+    url(r'^benchmarks/filters$',
+        views.BenchmarkFiltersListApiView.as_view(),
+        name="benchmarks_filters$"),
 ]
