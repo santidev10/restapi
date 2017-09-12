@@ -1100,7 +1100,17 @@ class BenchmarkFiltersListApiView(ListAPIView):
 
     def get(self, request, *args, **kwargs):
         result = {}
-        result['topics'] = Topic.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
-        result['interests'] = Audience.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
-        result['product_types'] = AdGroup.objects.all().values('type').distinct()
+        filters = request.query_params.get('filters', [])
+        if 'topics' in filters:
+            result['topics'] = Topic.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        if 'interests' in filters:
+            result['interests'] = Audience.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        if 'product_types' in filters:
+            result['product_types'] = AdGroup.objects.all().values('type').distinct()
+        if 'age_range' in filters:
+            result['age_range'] = AgeRangeStatistic.objects.order_by().values('age_range_id').distinct()
+        if 'gender' in filters:
+            result['gender'] = GenderStatistic.objects.order_by().values('gender_id').distinct()
+        if 'device' in filters:
+            result['device'] = AdGroupStatistic.objects.order_by().values('device_id').distinct()
         return Response(data=result)
