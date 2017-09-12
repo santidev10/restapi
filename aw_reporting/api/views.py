@@ -1075,7 +1075,7 @@ class BenchmarkFiltersListApiView(ListAPIView):
 
     def get(self, request, *args, **kwargs):
         result = {}
-        filters = request.query_params.get('filters')
+        filters = request.query_params.get('filters', [])
         if 'topics' in filters:
             result['topics'] = Topic.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
         if 'interests' in filters:
