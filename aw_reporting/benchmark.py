@@ -2,6 +2,7 @@ import itertools
 from datetime import datetime
 
 from django.db.models import IntegerField
+from django.db.models import Q
 from django.db.models import Sum, Case, When, F
 
 from aw_reporting.models import Account
@@ -15,6 +16,16 @@ from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
+
+CREATIVE_LENGTH_FILTERS = {
+    1: [0, 6000],
+    2: [6000, 15000],
+    3: [16000, 30000],
+    4: [31000, 60000],
+    5: [6000, 120000],
+    6: [120000, 999999999],
+    7: 'all'
+}
 
 
 class BenchMarkChart:
@@ -294,7 +305,11 @@ class FiltersHandler:
         if 'keywords_targeting' in targeting:
             result['keywords_statistics'] = True
         if options.get('creative_length'):
-            result['creative_length'] = options.get('creative_length').split(',')
+            duration = []
+            creative_length_ids_list = options.get('creative_length').split(',')
+            for creative_length_id in creative_length_ids_list:
+                duration.append(CREATIVE_LENGTH_FILTERS[int(creative_length_id)])
+            result['creative_length'] = duration
         return result
 
     def age_range_statistics(self, age_range_ids=None):
@@ -365,11 +380,13 @@ class FiltersHandler:
 
     def creative_length(self, duration):
         if duration and 'all' not in duration:
-            l_border, r_border = duration
-            filter = {}
-            filter['videos_stats__creative__duration__gt'] = l_border
-            filter['videos_stats__creative__duration__lte'] = r_border
-            creative_ids = list(AdGroup.objects.filter(**filter).values_list('id', flat=True).order_by('id').distinct())
+            qr = None
+            for pair in duration:
+                l_border, r_border = pair
+                q = (Q(**{'videos_stats__creative__duration__gt': l_border,
+                          'videos_stats__creative__duration__lte': r_border}))
+                qr = qr | q if qr else q
+            creative_ids = list(AdGroup.objects.filter(qr).values_list('id', flat=True).order_by('id').distinct())
             self.pool.append(creative_ids)
         else:
             creative_ids = list(
