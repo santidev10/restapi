@@ -129,6 +129,8 @@ class AccountCreationDuplicateApiView:
                                 [i['id'] for i in c[f[:-4]]])
                         elif f in ("type", "delivery_method"):
                             camp_data[f] = c[f]["id"]
+                        elif f == "bid_strategy_type":
+                            camp_data[f] = CampaignCreation.CPV_STRATEGY
                         else:
                             camp_data[f] = c[f]
                     c_duplicate = CampaignCreation.objects.create(

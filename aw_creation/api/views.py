@@ -1192,9 +1192,8 @@ class AccountCreationDuplicateApiView(APIView):
 
     account_fields = ("is_paused", "is_ended")
     campaign_fields = (
-        "name", "start", "end", "budget",
-        "devices_raw", "delivery_method", "type", "video_networks_raw",
-        'content_exclusions_raw',
+        "name", "start", "end", "budget", "devices_raw", "delivery_method", "type", "bid_strategy_type",
+        "video_networks_raw", "content_exclusions_raw",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",
