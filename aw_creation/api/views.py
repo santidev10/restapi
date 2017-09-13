@@ -393,7 +393,7 @@ class CreationOptionsApiView(APIView):
             video_ad_format=[
                 dict(
                     id=i, name=n,
-                    thumbnail=request.build_absolute_uri(static("img/{}.jpg".format(i)))
+                    thumbnail=request.build_absolute_uri(static("img/{}.png".format(i)))
                 )
                 for i, n in AdGroupCreation.VIDEO_AD_FORMATS
             ],
