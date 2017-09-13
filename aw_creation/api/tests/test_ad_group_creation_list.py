@@ -44,7 +44,7 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
             {
                 'id', 'name', 'targeting', 'updated_at',
                 'age_ranges', 'genders', 'parents',
-                'ad_creations', 'max_rate',
+                'ad_creations', 'max_rate', 'video_ad_format',
             }
         )
 
@@ -75,9 +75,6 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today, end=today + timedelta(days=20),
-            age_ranges=[CommonTargetingItem.AGE_RANGE_18_24, CommonTargetingItem.AGE_RANGE_25_34],
-            parents=[CommonTargetingItem.PARENT_NOT_A_PARENT],
-            genders=[CommonTargetingItem.GENDER_FEMALE],
         )
 
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
@@ -85,12 +82,6 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.perform_get_format_check([response.data])
-        self.assertEqual(set(i['id'] for i in response.data['age_ranges']),
-                         set(campaign_creation.age_ranges))
-        self.assertEqual(set(i['id'] for i in response.data['parents']),
-                         set(campaign_creation.parents))
-        self.assertEqual(set(i['id'] for i in response.data['genders']),
-                         set(campaign_creation.genders))
 
 
 

@@ -79,6 +79,10 @@ class UniqueCreationItem(models.Model):
             return False
         return True
 
+    @property
+    def is_pulled_to_aw(self):
+        return self.sync_at and self.sync_at >= self.created_at
+
 
 class AccountCreation(UniqueCreationItem):
     id = models.CharField(primary_key=True, max_length=12,
@@ -148,96 +152,12 @@ def save_account_receiver(sender, instance, created, **_):
 
 
 def default_languages():
-    return Language.objects.filter(pk__in=(1000, 1003))
+    return Language.objects.filter(pk=1000)
 
 
 class Language(models.Model):
     name = models.CharField(max_length=50)
     code = models.CharField(max_length=5)
-
-
-class CommonTargetingItem(UniqueCreationItem):
-    GENDER_FEMALE = "GENDER_FEMALE"
-    GENDER_MALE = "GENDER_MALE"
-    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
-    GENDERS = (
-        (GENDER_FEMALE, "Female"),
-        (GENDER_MALE, "Male"),
-        (GENDER_UNDETERMINED, "Undetermined"),
-    )
-    genders_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
-        )
-    )
-
-    def get_genders(self):
-        return json.loads(self.genders_raw)
-
-    def set_genders(self, value):
-        self.genders_raw = json.dumps(value)
-
-    genders = property(get_genders, set_genders)
-
-    PARENT_PARENT = "PARENT_PARENT"
-    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
-    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
-    PARENTS = (
-        (PARENT_PARENT, "Parent"),
-        (PARENT_NOT_A_PARENT, "Not a parent"),
-        (PARENT_UNDETERMINED, "Undetermined"),
-    )
-    parents_raw = models.CharField(
-        max_length=100,
-        default=json.dumps(
-            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
-        )
-    )
-
-    def get_parent(self):
-        return json.loads(self.parents_raw)
-
-    def set_parent(self, value):
-        self.parents_raw = json.dumps(value)
-
-    parents = property(get_parent, set_parent)
-
-    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
-    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
-    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
-    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
-    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
-    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
-    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
-    AGE_RANGES = (
-        (AGE_RANGE_18_24, "18-24"),
-        (AGE_RANGE_25_34, "25-34"),
-        (AGE_RANGE_35_44, "35-44"),
-        (AGE_RANGE_45_54, "45-54"),
-        (AGE_RANGE_55_64, "55-64"),
-        (AGE_RANGE_65_UP, "65+"),
-        (AGE_RANGE_UNDETERMINED, "Undetermined"),
-    )
-    age_ranges_raw = models.CharField(
-        max_length=200,
-        default=json.dumps(
-            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
-             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
-             AGE_RANGE_UNDETERMINED]
-        )
-    )
-
-    def get_age_ranges(self):
-        return json.loads(self.age_ranges_raw)
-
-    def set_age_ranges(self, value):
-        self.age_ranges_raw = json.dumps(value)
-
-    age_ranges = property(get_age_ranges, set_age_ranges)
-
-    class Meta:
-        abstract = True
 
 
 class CampaignCreationQueryset(CreationItemQueryset):
@@ -247,7 +167,7 @@ class CampaignCreationQueryset(CreationItemQueryset):
         return qs
 
 
-class CampaignCreation(CommonTargetingItem):
+class CampaignCreation(UniqueCreationItem):
 
     objects = CampaignCreationQueryset.as_manager()
 
@@ -309,6 +229,18 @@ class CampaignCreation(CommonTargetingItem):
         max_length=15,
         choices=DELIVERY_METHODS,
         default=STANDARD_DELIVERY,
+    )
+
+    CPV_STRATEGY = 'CPV'
+    CPM_STRATEGY = 'CPM'
+    BID_STRATEGY_TYPES = (
+        (CPV_STRATEGY, CPV_STRATEGY),
+        (CPM_STRATEGY, CPM_STRATEGY),
+    )
+    bid_strategy_type = models.CharField(
+        max_length=3,
+        choices=BID_STRATEGY_TYPES,
+        default=CPV_STRATEGY,
     )
 
     MANUAL_CPV_BIDDING = 'MANUAL_CPV'
@@ -434,15 +366,6 @@ class CampaignCreation(CommonTargetingItem):
 
         return start_for_creation, start, end
 
-    @property
-    def video_ad_format(self):
-        formats = list(
-            self.ad_group_creations.values_list(
-                "video_ad_format", flat=True
-            ).order_by("video_ad_format").distinct()
-        )
-        return formats
-
     def get_aws_code(self, request):
 
         start_for_creation, start, end = self.get_creation_dates()
@@ -454,7 +377,7 @@ class CampaignCreation(CommonTargetingItem):
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
-                    budget_type="cpm" if AdGroupCreation.BUMPER_AD in self.video_ad_format else "cpv",
+                    budget_type=self.bid_strategy_type.lower(),
                     is_paused='true' if self.campaign_is_paused else 'false',
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
@@ -513,7 +436,7 @@ class AdGroupCreationQueryset(CreationItemQueryset):
         return qs
 
 
-class AdGroupCreation(CommonTargetingItem):
+class AdGroupCreation(UniqueCreationItem):
     objects = AdGroupCreationQueryset.as_manager()
 
     max_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
@@ -530,14 +453,110 @@ class AdGroupCreation(CommonTargetingItem):
     BUMPER_AD = 'BUMPER'
     VIDEO_AD_FORMATS = (
         (IN_STREAM_TYPE, "In-stream"),
-        (BUMPER_AD, "Bumper"),
         (DISCOVERY_TYPE, "Discovery"),
+        (BUMPER_AD, "Bumper"),
     )
     video_ad_format = models.CharField(
         max_length=20,
         choices=VIDEO_AD_FORMATS,
         default=IN_STREAM_TYPE,
     )
+
+    def get_available_ad_formats(self):
+
+        if self.sync_at is not None or self.ad_creations.count() > 1:
+            types = [self.video_ad_format]
+
+        elif self.campaign_creation.sync_at is not None or \
+                AdCreation.objects.filter(ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+
+            if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
+                types = [AdGroupCreation.BUMPER_AD]
+            else:
+                types = [AdGroupCreation.IN_STREAM_TYPE]
+        else:
+            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD]
+
+        return types
+
+    GENDER_FEMALE = "GENDER_FEMALE"
+    GENDER_MALE = "GENDER_MALE"
+    GENDER_UNDETERMINED = "GENDER_UNDETERMINED"
+    GENDERS = (
+        (GENDER_FEMALE, "Female"),
+        (GENDER_MALE, "Male"),
+        (GENDER_UNDETERMINED, "Undetermined"),
+    )
+    genders_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [GENDER_FEMALE, GENDER_MALE, GENDER_UNDETERMINED]
+        )
+    )
+
+    def get_genders(self):
+        return json.loads(self.genders_raw)
+
+    def set_genders(self, value):
+        self.genders_raw = json.dumps(value)
+
+    genders = property(get_genders, set_genders)
+
+    PARENT_PARENT = "PARENT_PARENT"
+    PARENT_NOT_A_PARENT = "PARENT_NOT_A_PARENT"
+    PARENT_UNDETERMINED = "PARENT_UNDETERMINED"
+    PARENTS = (
+        (PARENT_PARENT, "Parent"),
+        (PARENT_NOT_A_PARENT, "Not a parent"),
+        (PARENT_UNDETERMINED, "Undetermined"),
+    )
+    parents_raw = models.CharField(
+        max_length=100,
+        default=json.dumps(
+            [PARENT_PARENT, PARENT_NOT_A_PARENT, PARENT_UNDETERMINED]
+        )
+    )
+
+    def get_parent(self):
+        return json.loads(self.parents_raw)
+
+    def set_parent(self, value):
+        self.parents_raw = json.dumps(value)
+
+    parents = property(get_parent, set_parent)
+
+    AGE_RANGE_18_24 = "AGE_RANGE_18_24"
+    AGE_RANGE_25_34 = "AGE_RANGE_25_34"
+    AGE_RANGE_35_44 = "AGE_RANGE_35_44"
+    AGE_RANGE_45_54 = "AGE_RANGE_45_54"
+    AGE_RANGE_55_64 = "AGE_RANGE_55_64"
+    AGE_RANGE_65_UP = "AGE_RANGE_65_UP"
+    AGE_RANGE_UNDETERMINED = "AGE_RANGE_UNDETERMINED"
+    AGE_RANGES = (
+        (AGE_RANGE_18_24, "18-24"),
+        (AGE_RANGE_25_34, "25-34"),
+        (AGE_RANGE_35_44, "35-44"),
+        (AGE_RANGE_45_54, "45-54"),
+        (AGE_RANGE_55_64, "55-64"),
+        (AGE_RANGE_65_UP, "65+"),
+        (AGE_RANGE_UNDETERMINED, "Undetermined"),
+    )
+    age_ranges_raw = models.CharField(
+        max_length=200,
+        default=json.dumps(
+            [AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
+             AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
+             AGE_RANGE_UNDETERMINED]
+        )
+    )
+
+    def get_age_ranges(self):
+        return json.loads(self.age_ranges_raw)
+
+    def set_age_ranges(self, value):
+        self.age_ranges_raw = json.dumps(value)
+
+    age_ranges = property(get_age_ranges, set_age_ranges)
 
     class Meta:
         ordering = ['-id']
@@ -667,6 +686,7 @@ class AdCreation(UniqueCreationItem):
                 dict(
                     id=self.id,
                     name=self.unique_name,
+                    ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
                     video_url=self.video_url,
                     video_thumbnail=request.build_absolute_uri(self.companion_banner.url)
                     if self.companion_banner else None,

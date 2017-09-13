@@ -1,6 +1,7 @@
 # pylint: disable=import-error
 from apiclient.discovery import build
 # pylint: enable=import-error
+from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
@@ -33,7 +34,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
     CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
     Topic, Audience, Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
-from aw_reporting.adwords_api import create_customer_account, update_customer_account
+from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
 from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
@@ -42,6 +43,7 @@ from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal
 from suds import WebFault
+import itertools
 import calendar
 import csv
 import pytz
@@ -332,10 +334,10 @@ class TargetingItemsSearchApiView(APIView):
         from keyword_tool.models import KeyWord
         keywords = KeyWord.objects.filter(
             text__icontains=query,
-        ).values_list("text", flat=True).order_by("text")
+        ).exclude(text=query).values_list("text", flat=True).order_by("text")
         items = [
             dict(criteria=k, name=k)
-            for k in keywords
+            for k in itertools.chain((query,), keywords)
         ]
         return items
 
@@ -388,9 +390,13 @@ class CreationOptionsApiView(APIView):
             # create
             name="string;max_length=250;required;validation=^[^#']*$",
             # create and update
-            video_ad_format=opts_to_response(
-                AdGroupCreation.VIDEO_AD_FORMATS[:2],
-            ),
+            video_ad_format=[
+                dict(
+                    id=i, name=n,
+                    thumbnail=request.build_absolute_uri(static("img/{}.jpg".format(i)))
+                )
+                for i, n in AdGroupCreation.VIDEO_AD_FORMATS
+            ],
             # update
             goal_type=opts_to_response(
                 CampaignCreation.GOAL_TYPES[:1],
@@ -530,7 +536,7 @@ class AccountCreationListApiView(ListAPIView):
         bulk_create = [
             AccountCreation(
                 account_id=i['id'],
-                name=i['name'],
+                name="",
                 owner=request.user,
                 is_managed=False,
             )
@@ -566,7 +572,8 @@ class AccountCreationListApiView(ListAPIView):
 
         search = filters.get('search')
         if search:
-            queryset = queryset.filter(name__icontains=search)
+            queryset = queryset.filter(Q(name__icontains=search) |
+                                       (Q(is_managed=False) & Q(account__name__icontains=search)))
 
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
@@ -777,14 +784,9 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                             mcc_permissions__account=mcc_account,
                             user_relations__user=request.user,
                         ).first()
-                        try:
-                            self.account_creation(instance, mcc_account, connection)
-                        except WebFault as e:
-                            error_msg = str(e)
-                            if "NOT_AUTHORIZED" in error_msg:
-                                error_msg = "You do not have permission to edit this " \
-                                            "MCC Account: {}".format(mcc_account.name)
-                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error_msg))
+                        _, error = handle_aw_api_errors(self.account_creation, instance, mcc_account, connection)
+                        if error:
+                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
                     else:
                         return Response(status=HTTP_400_BAD_REQUEST,
                                         data=dict(error="You have no connected MCC account"))
@@ -799,11 +801,14 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
             ).values("mcc_permissions__account_id", "refresh_token")
             if connections:
                 connection = connections[0]
-                update_customer_account(
+                _, error = handle_aw_api_errors(
+                    update_customer_account,
                     connection['mcc_permissions__account_id'],
                     connection['refresh_token'],
-                    instance.account.id, data['name']
+                    instance.account.id, data['name'],
                 )
+                if error:
+                    return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
 
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial
@@ -1014,9 +1019,6 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         data = dict(
             name="Ad Group {}".format(count + 1),
             campaign_creation=campaign_creation.id,
-            genders_raw=campaign_creation.genders_raw,
-            age_ranges_raw=campaign_creation.age_ranges_raw,
-            parents_raw=campaign_creation.parents_raw,
         )
         serializer = AppendAdGroupCreationSetupSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -1109,6 +1111,50 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        data = request.data
+
+        if "video_ad_format" in data:
+            set_ad_format = data["video_ad_format"]
+            ad_group_creation = instance.ad_group_creation
+            campaign_creation = ad_group_creation.campaign_creation
+            video_ad_format = ad_group_creation.video_ad_format
+            if set_ad_format != video_ad_format:
+                # ad group restrictions
+                if ad_group_creation.is_pulled_to_aw:
+                    return Response(
+                        dict(error="{} is the only available ad type for this ad group".format(video_ad_format)),
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+
+                if ad_group_creation.ad_creations.count() > 1:
+                    return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
+                                    status=HTTP_400_BAD_REQUEST)
+
+                # campaign restrictions
+                set_bid_strategy = None
+                if set_ad_format == AdGroupCreation.BUMPER_AD and \
+                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
+                    set_bid_strategy = CampaignCreation.CPM_STRATEGY
+                elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.DISCOVERY_TYPE) and \
+                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
+                    set_bid_strategy = CampaignCreation.CPV_STRATEGY
+
+                if set_bid_strategy:
+                    if campaign_creation.is_pulled_to_aw:
+                        return Response(
+                            dict(error="You cannot use an ad of {} type in this campaign".format(set_bid_strategy)),
+                            status=HTTP_400_BAD_REQUEST,
+                        )
+
+                    if AdCreation.objects.filter(ad_group_creation__campaign_creation=campaign_creation).count() > 1:
+                        return Response(dict(error="Ad bid type cannot be changed for only one ad within a campaign"),
+                                        status=HTTP_400_BAD_REQUEST)
+
+                    CampaignCreation.objects.filter(id=campaign_creation.id).update(bid_strategy_type=set_bid_strategy)
+
+                AdGroupCreation.objects.filter(id=ad_group_creation.id).update(video_ad_format=set_ad_format)
+                ad_group_creation.video_ad_format = set_ad_format
+
         serializer = AdCreationUpdateSerializer(
             instance, data=request.data, partial=partial,
         )
@@ -1119,15 +1165,25 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
     def delete(self, *args, **_):
         instance = self.get_object()
         if instance.ad_group_creation.campaign_creation.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
+            return Response(dict(error="You cannot delete approved setups"), status=HTTP_400_BAD_REQUEST)
 
         count = AdCreation.objects.filter(ad_group_creation=instance.ad_group_creation).count()
         if count < 2:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete the only item"))
+            return Response(dict(error="You cannot delete the only item"), status=HTTP_400_BAD_REQUEST)
         instance.delete()
         return Response(status=HTTP_204_NO_CONTENT)
+
+
+@demo_view_decorator
+class AdCreationAvailableAdFormatsApiView(APIView):
+
+    def get(self, request, pk, **_):
+        try:
+            ad_creation = AdCreation.objects.get(pk=pk)
+        except AdCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        return Response(ad_creation.ad_group_creation.get_available_ad_formats())
 
 
 @demo_view_decorator
@@ -1138,7 +1194,7 @@ class AccountCreationDuplicateApiView(APIView):
     campaign_fields = (
         "name", "start", "end", "budget",
         "devices_raw", "delivery_method", "type", "video_networks_raw",
-        'content_exclusions_raw', 'genders_raw', 'age_ranges_raw', 'parents_raw',
+        'content_exclusions_raw',
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",
@@ -1148,7 +1204,7 @@ class AccountCreationDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw",
+        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw", "video_ad_format",
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',

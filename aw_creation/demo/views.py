@@ -127,7 +127,7 @@ class AccountCreationDuplicateApiView:
                         if f.endswith("_raw"):
                             camp_data[f] = json.dumps(
                                 [i['id'] for i in c[f[:-4]]])
-                        elif f in ("video_ad_format", "delivery_method"):
+                        elif f in ("type", "delivery_method"):
                             camp_data[f] = c[f]["id"]
                         else:
                             camp_data[f] = c[f]
@@ -164,6 +164,8 @@ class AccountCreationDuplicateApiView:
                                 ag_data[f] = json.dumps(
                                     [i["id"] for i in a[f[:-4]]]
                                 )
+                            elif f == "video_ad_format":
+                                ag_data[f] = a[f]['id']
                             else:
                                 ag_data[f] = a[f]
                         a_duplicate = AdGroupCreation.objects.create(
@@ -319,6 +321,17 @@ class AdCreationSetupApiView:
             if DEMO_ACCOUNT_ID in pk:
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationAvailableAdFormatsApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=[AdGroupCreation.IN_STREAM_TYPE])
             else:
                 return original_method(view, request, pk=pk, **kwargs)
         return method

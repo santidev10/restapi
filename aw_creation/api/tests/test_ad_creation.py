@@ -56,7 +56,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             {
                 'id', 'name',  'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
-                'thumbnail', 'custom_params',
+                'video_ad_format', 'custom_params',
                 'companion_banner',
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
@@ -116,6 +116,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 tracking_template="https://track.com?why",
                 custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
                 companion_banner=fp,
+                video_ad_format=AdGroupCreation.BUMPER_AD,
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -130,6 +131,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)
+
+        ad.ad_group_creation.refresh_from_db()
+        self.assertEqual(ad.ad_group_creation.video_ad_format, data["video_ad_format"])
 
     def test_success_update_json(self):
         today = datetime.now().date()

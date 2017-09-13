@@ -45,6 +45,9 @@ urlpatterns = [
     url(r'^ad_creation_setup/(?P<pk>\w+)/$',
         views.AdCreationSetupApiView.as_view(),
         name="ad_creation_setup"),
+    url(r'^ad_creation_available_ad_formats/(?P<pk>\w+)/$',
+        views.AdCreationAvailableAdFormatsApiView.as_view(),
+        name="ad_creation_available_ad_formats"),
     # for ad management
     url(r'^youtube_video_from_url/(?P<url>.+)/$',
         views.YoutubeVideoFromUrlApiView.as_view(),

@@ -49,7 +49,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name',  'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate',
+                'targeting', 'max_rate', 'video_ad_format',
             }
         )
         self.assertEqual(data['max_rate'], ac.max_rate)
@@ -67,7 +67,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad.keys()),
             {
                 'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail', 'companion_banner',
+                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )

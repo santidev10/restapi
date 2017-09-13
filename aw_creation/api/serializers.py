@@ -92,7 +92,40 @@ def add_targeting_list_items_info(data, list_type):
                 item['name'] = item['criteria']
 
 
-class CommonTargetingItemSerializerMix:
+class AdCreationSetupSerializer(ModelSerializer):
+    video_ad_format = SerializerMethodField()
+
+    @staticmethod
+    def get_video_ad_format(obj):
+        item_id = obj.ad_group_creation.video_ad_format
+        options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
+
+    class Meta:
+        model = AdCreation
+        fields = (
+            'id', 'name', 'updated_at', 'companion_banner',
+            'final_url', 'video_url', 'display_url',
+            'tracking_template', 'custom_params', 'video_ad_format',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        )
+
+
+class AdGroupCreationSetupSerializer(ModelSerializer):
+
+    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
+
+    targeting = SerializerMethodField()
+    age_ranges = SerializerMethodField()
+    genders = SerializerMethodField()
+    parents = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
+
+    @staticmethod
+    def get_video_ad_format(obj):
+        item_id = obj.video_ad_format
+        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
 
     @staticmethod
     def get_age_ranges(obj):
@@ -121,35 +154,6 @@ class CommonTargetingItemSerializerMix:
         ]
         return parents
 
-
-class AdCreationSetupSerializer(ModelSerializer):
-    video_ad_format = SerializerMethodField()
-
-    @staticmethod
-    def get_video_ad_format(obj):
-        item_id = obj.ad_group_creation.video_ad_format
-        options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
-        return dict(id=item_id, name=options[item_id])
-
-    class Meta:
-        model = AdCreation
-        fields = (
-            'id', 'name', 'updated_at', 'companion_banner',
-            'final_url', 'video_url', 'display_url',
-            'tracking_template', 'custom_params', 'video_ad_format',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
-        )
-
-
-class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSerializer):
-
-    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
-
-    targeting = SerializerMethodField()
-    age_ranges = SerializerMethodField()
-    genders = SerializerMethodField()
-    parents = SerializerMethodField()
-
     @staticmethod
     def get_targeting(obj):
         items = obj.targeting_items.all().values('type', 'criteria', 'is_negative')
@@ -170,7 +174,7 @@ class AdGroupCreationSetupSerializer(CommonTargetingItemSerializerMix, ModelSeri
         fields = (
             'id', 'name', 'updated_at', 'max_rate',
             'age_ranges', 'genders', 'parents', 'targeting',
-            'ad_creations',
+            'ad_creations', 'video_ad_format',
         )
 
 
@@ -240,7 +244,7 @@ class FrequencyCapSerializer(ModelSerializer):
         exclude = ("id", 'campaign_creation')
 
 
-class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerializerMix):
+class CampaignCreationSetupSerializer(ModelSerializer):
     ad_group_creations = AdGroupCreationSetupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
@@ -252,9 +256,6 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
     delivery_method = SerializerMethodField()
     video_networks = SerializerMethodField()
 
-    age_ranges = SerializerMethodField()
-    genders = SerializerMethodField()
-    parents = SerializerMethodField()
     content_exclusions = SerializerMethodField()
 
     @staticmethod
@@ -310,7 +311,6 @@ class CampaignCreationSetupSerializer(ModelSerializer, CommonTargetingItemSerial
             'start', 'end', 'budget', 'languages',
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'video_networks', 'delivery_method', 'type',
-            'age_ranges', 'genders', 'parents',
             'content_exclusions',
             'ad_group_creations',
         )
@@ -323,6 +323,7 @@ class StatField(SerializerMethodField):
 
 class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
+    name = SerializerMethodField()
     thumbnail = SerializerMethodField()
     weekly_chart = SerializerMethodField()
     status = CharField()
@@ -334,6 +335,12 @@ class AccountCreationListSerializer(ModelSerializer):
     clicks = StatField()
     video_view_rate = StatField()
     ctr_v = StatField()
+
+    @staticmethod
+    def get_name(obj):
+        if not obj.is_managed:
+            return obj.account.name
+        return obj.name
 
     def get_weekly_chart(self, obj):
         return self.daily_chart[obj.id][-7:]
@@ -461,9 +468,6 @@ class AccountCreationUpdateSerializer(ModelSerializer):
 class CampaignCreationUpdateSerializer(ModelSerializer):
     video_networks = ListField()
     devices = ListField()
-    genders = ListField()
-    parents = ListField()
-    age_ranges = ListField()
     content_exclusions = ListField()
 
     class Meta:
@@ -471,9 +475,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         fields = (
             'name', 'start', 'end', 'budget',
             'languages', 'devices',
-            'delivery_method', 'video_networks',
-            'genders', 'parents', 'age_ranges',
-            'content_exclusions',
+            'delivery_method', 'video_networks', 'content_exclusions',
         )
 
     def validate_start(self, value):

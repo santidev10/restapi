@@ -446,12 +446,18 @@ function createOrUpdateVideoAd(ad_group, params){
         }
     }
 
-    // create it
-    var ad_builder = ad_group.newVideoAd().inStreamAdBuilder().withAdName(params.name)
-    .withDisplayUrl(params.display_url).withCustomParameters(params.custom_params)
-    .withTrackingTemplate(params.tracking_template)
-    .withFinalUrl(params.final_url).withVideo(video);
-
+    if(params.ad_format == "VIDEO_TRUE_VIEW_IN_STREAM"){
+        var ad_builder = ad_group.newVideoAd().inStreamAdBuilder();
+    }else{
+        ad_builder = ad_group.newVideoAd().bumperAdBuilder();
+    }
+    ad_builder = ad_builder.withAdName(params.name).withDisplayUrl(params.display_url)
+    .withTrackingTemplate(params.tracking_template).withFinalUrl(params.final_url).withVideo(video);
+    try {
+        ad_builder = ad_builder.withCustomParameters(params.custom_params)
+    } catch(err) {
+        Logger.log("Error->" + err);
+    }
     if(params['video_thumbnail']){
         var imageMedia = getOrCreateImage(params['video_thumbnail']);
         ad_builder = ad_builder.withCompanionBanner(imageMedia);
