@@ -2,8 +2,7 @@ import itertools
 from datetime import datetime
 from operator import itemgetter
 
-from django.db.models import Func
-from django.db.models import IntegerField, CharField
+from django.db.models import IntegerField
 from django.db.models import Q
 from django.db.models import Sum, Case, When, F
 
@@ -19,23 +18,6 @@ from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 
-class Monday(Func):
-
-    function = 'Monday'
-    template = "date_trunc('week', %(field_name)s)::date"
-    output_field = CharField()
-
-    def as_sqlite(self, compiler, connection, *args, **kwargs):
-        return super(Monday, self).as_sql(
-            compiler, connection,
-            template=
-            "date(%(field_name)s, "
-            "CASE WHEN (strftime('%%w', %(field_name)s) + 0) > 0 "
-            "THEN ('-' || "
-            "(strftime('%%w', %(field_name)s) - 1) || ' days') "
-            "ELSE '-6 days' END)",
-            *args, **kwargs
-        )
 CREATIVE_LENGTH_FILTERS = {
     1: [0, 6000],
     2: [6000, 15000],
@@ -53,8 +35,7 @@ class BenchMarkChart:
         self.aggregate = aggregate
         self.filtered_ad_groups = filtered_groups
         self.product_type = product_type
-        # self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
-        self.accounts_ids = Account.objects.all().values_list("id", flat=True)
+        self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
         self.campaigns_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
         self.options = self.prepare_query_params(request.query_params)
 
