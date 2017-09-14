@@ -426,9 +426,9 @@ class ChartsHandler:
         return result
 
     def product_charts(self):
-        timing = self.request.query_params.get('timing')
+        timing = self.request.query_params.get('sort_by')
         ad_group_ids = FiltersHandler(self.request.query_params).main()
-        if timing == '1':
+        if timing == 'timing':
             views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
                                           product_type=True).get_chart()
             impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
