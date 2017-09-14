@@ -1,7 +1,9 @@
 import itertools
 from datetime import datetime
+from operator import itemgetter
 
-from django.db.models import IntegerField
+from django.db.models import Func
+from django.db.models import IntegerField, CharField
 from django.db.models import Q
 from django.db.models import Sum, Case, When, F
 
@@ -17,6 +19,23 @@ from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 
+class Monday(Func):
+
+    function = 'Monday'
+    template = "date_trunc('week', %(field_name)s)::date"
+    output_field = CharField()
+
+    def as_sqlite(self, compiler, connection, *args, **kwargs):
+        return super(Monday, self).as_sql(
+            compiler, connection,
+            template=
+            "date(%(field_name)s, "
+            "CASE WHEN (strftime('%%w', %(field_name)s) + 0) > 0 "
+            "THEN ('-' || "
+            "(strftime('%%w', %(field_name)s) - 1) || ' days') "
+            "ELSE '-6 days' END)",
+            *args, **kwargs
+        )
 CREATIVE_LENGTH_FILTERS = {
     1: [0, 6000],
     2: [6000, 15000],
@@ -34,7 +53,8 @@ class BenchMarkChart:
         self.aggregate = aggregate
         self.filtered_ad_groups = filtered_groups
         self.product_type = product_type
-        self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
+        # self.accounts_ids = Account.user_objects(request.user).values_list("id", flat=True)
+        self.accounts_ids = Account.objects.all().values_list("id", flat=True)
         self.campaigns_ids = Campaign.objects.filter(account_id__in=self.accounts_ids).values_list('id', flat=True)
         self.options = self.prepare_query_params(request.query_params)
 
@@ -80,7 +100,8 @@ class BenchMarkChart:
         Group by year, quarter, month, week, day
         """
         frequency = self.options['frequency']
-        queryset = queryset.extra({frequency: "Extract({} from aw_reporting_AdGroupStatistic.date)".format(frequency)}) \
+        queryset = queryset.extra({frequency: "concat(extract(isoyear from aw_reporting_AdGroupStatistic.date), "
+                                              "extract({} from aw_reporting_AdGroupStatistic.date))".format(frequency)}) \
             .values(frequency) \
             .order_by(frequency)
         return queryset
@@ -453,8 +474,19 @@ class ChartsHandler:
         result_chart_data = []
         if timing:
             for item in chart:
-                result_chart_data.append({k: v for k, v in item.items() if k == result_param or k == frequency})
+                param = item.get(result_param)
+                timing_date = item.get(frequency)
+                year, chart_frequency = timing_date[:4], timing_date[4:]
+                if self.is_year_from_past(year):
+                    continue
+                picklerick = {'title': param, 'value': int(chart_frequency)}
+                result_chart_data.append(picklerick)
         else:
-            result_chart_data.append({k: v for k, v in chart.items() if k == result_param or k == frequency})
+            result_chart_data.append({'value': v for k, v in chart.items() if k == result_param})
+        result_chart_data = sorted(result_chart_data, key=itemgetter('value'))
         result[result_param] = result_chart_data
         return result
+
+    def is_year_from_past(self, year):
+        start_date = self.request.query_params.get('start_date') or datetime(datetime.now().date().year, 1, 1).date()
+        return start_date.year > datetime(int(year), 1, 1).year
