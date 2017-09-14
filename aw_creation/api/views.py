@@ -834,7 +834,8 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = CampaignCreation.objects.filter(
             account_creation__owner=self.request.user,
-            account_creation_id=pk
+            account_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -879,21 +880,20 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
-            account_creation__owner=self.request.user
+            account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
 
-        campaigns_count = CampaignCreation.objects.filter(account_creation=instance.account_creation).count()
+        campaigns_count = self.get_queryset().filter(account_creation=instance.account_creation).count()
         if campaigns_count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete the only campaign"))
-        instance.delete()
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
@@ -1003,7 +1003,8 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = AdGroupCreation.objects.filter(
             campaign_creation__account_creation__owner=self.request.user,
-            campaign_creation_id=pk
+            campaign_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -1038,7 +1039,8 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation__owner=self.request.user
+            campaign_creation__account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
@@ -1053,15 +1055,12 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.campaign_creation.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
-
-        count = AdGroupCreation.objects.filter(campaign_creation=instance.campaign_creation).count()
+        count = self.get_queryset().filter(campaign_creation=instance.campaign_creation).count()
         if count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete the only item"))
-        instance.delete()
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -1073,7 +1072,8 @@ class AdCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = AdCreation.objects.filter(
             ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
-            ad_group_creation_id=pk
+            ad_group_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -1104,7 +1104,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
-            ad_group_creation__campaign_creation__account_creation__owner=self.request.user
+            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
@@ -1164,13 +1165,12 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.ad_group_creation.campaign_creation.account_creation.account is not None:
-            return Response(dict(error="You cannot delete approved setups"), status=HTTP_400_BAD_REQUEST)
 
-        count = AdCreation.objects.filter(ad_group_creation=instance.ad_group_creation).count()
+        count = self.get_queryset().filter(ad_group_creation=instance.ad_group_creation).count()
         if count < 2:
             return Response(dict(error="You cannot delete the only item"), status=HTTP_400_BAD_REQUEST)
-        instance.delete()
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
 

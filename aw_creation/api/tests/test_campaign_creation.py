@@ -359,21 +359,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
 
-    def test_fail_delete_running(self):
-        account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(
-            name="Pep", owner=self.user, account=account,
-        )
-        CampaignCreation.objects.create(
-            name="1", account_creation=account_creation,
-        )
-        campaign_creation = CampaignCreation.objects.create(
-            name="2", account_creation=account_creation,
-        )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
-                      args=(campaign_creation.id,))
-
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        campaign_creation.refresh_from_db()
+        self.assertIs(campaign_creation.is_deleted, True)
 
 

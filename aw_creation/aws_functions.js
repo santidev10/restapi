@@ -1,13 +1,13 @@
-function getOrCreateCampaign(uid, name, budget, start, type){
-    var videoCampaignIterator = AdWordsApp.videoCampaigns().withCondition('Name CONTAINS "#' + uid + '"').get();
+function getOrCreateCampaign(params){
+    var videoCampaignIterator = AdWordsApp.videoCampaigns().withCondition('Name CONTAINS "#' + params.id + '"').get();
     if(videoCampaignIterator.hasNext()) {
-        Logger.log('Campaign exists:' + name);
         var campaign = videoCampaignIterator.next();
+    }else if(params.is_deleted){
+        return null;
     }else{
-        Logger.log('Campaign creation:' + name);
-        createCampaign(name, budget, start, type);
+        createCampaign(params.name, params.budget, params.start_for_creation, params.budget_type);
         Utilities.sleep(5000);
-        campaign = getOrCreateCampaign(uid, name, budget, start, type);
+        campaign = getOrCreateCampaign(params);
     }
     return campaign;
 }
@@ -31,11 +31,15 @@ var DEVICE_NAMES = {HighEndMobile: 'MOBILE_DEVICE', Desktop: 'DESKTOP_DEVICE', T
 
 function createOrUpdateCampaign(params){
 
-    var campaign = getOrCreateCampaign(params.id, params.name, params.budget, params.start_for_creation, params.budget_type);
+    var campaign = getOrCreateCampaign(params);
+
+    if ( ! campaign){
+        return null;
+    }
 
     campaign.setName(params.name);
 
-    if(params.is_paused){
+    if(params.is_paused || params.is_deleted){
         campaign.pause();
     }else{
         campaign.enable();
@@ -172,14 +176,23 @@ function createOrUpdateCampaign(params){
     return campaign;
 }
 
-function getOrCreateAdGroup(campaign, uid, name, ad_format, cpv){
-    var ad_groups = campaign.videoAdGroups().withCondition('Name CONTAINS "#' + uid + '"').get();
+function getOrCreateAdGroup(campaign, params){
+    var ad_groups = campaign.videoAdGroups().withCondition('Name CONTAINS "#' + params.id + '"').get();
     if(ad_groups.hasNext()) {
         var ad_group = ad_groups.next();
+    }else if ( params.is_deleted ){
+        return null;
     }else{
-        campaign.newVideoAdGroupBuilder().withName(name).withAdGroupType(ad_format).withCpv(cpv).build();
+        var builder = campaign.newVideoAdGroupBuilder().withName(params.name).withAdGroupType(params.ad_format);
+        if(params.ad_format == "VIDEO_BUMPER"){
+            builder = builder.withCpm(params.max_rate);
+        }else{
+            builder = builder.withCpv(params.max_rate);
+        }
+        builder.build();
+
         Utilities.sleep(30000);
-        ad_group = getOrCreateAdGroup(campaign, uid, name, ad_format, cpv);
+        ad_group = getOrCreateAdGroup(campaign, params);
 
         // targeting initialization
         var targeting = ad_group.videoTargeting();
@@ -203,11 +216,26 @@ function getOrCreateAdGroup(campaign, uid, name, ad_format, cpv){
 }
 
 function createOrUpdateAdGroup(campaign, params){
-    var ad_group = getOrCreateAdGroup(campaign, params.id, params.name, params.ad_format, params.cpv);
+    if ( ! campaign){
+        return null;
+    }
+    var ad_group = getOrCreateAdGroup(campaign, params);
+    if ( ! ad_group){
+        return null;
+    }
+
+    if(params.is_deleted){
+        ad_group.pause();
+    }
 
     ad_group.setName(params.name);
+
     var bidding = ad_group.bidding();
-    bidding.setCpv(params.cpv);
+    if(params.ad_format == "VIDEO_BUMPER"){
+        bidding.setCpm(params.max_rate);
+    }else{
+        bidding.setCpv(params.max_rate);
+    }
 
     var targeting = ad_group.videoTargeting();
     //genders
@@ -432,6 +460,9 @@ function getOrCreateImage(image_url){
 }
 
 function createOrUpdateVideoAd(ad_group, params){
+    if ( ! ad_group ){  // if there is no ad_group we don't need to manage ads within it
+        return null;
+    }
     var video_id = getYTId(params.video_url);
     var video = getOrCreateVideo(video_id);
 
@@ -445,24 +476,25 @@ function createOrUpdateVideoAd(ad_group, params){
             video_ad.remove();
         }
     }
-
-    if(params.ad_format == "VIDEO_TRUE_VIEW_IN_STREAM"){
-        var ad_builder = ad_group.newVideoAd().inStreamAdBuilder();
-    }else{
-        ad_builder = ad_group.newVideoAd().bumperAdBuilder();
+    if( ! params.is_deleted){
+        if(params.ad_format == "VIDEO_TRUE_VIEW_IN_STREAM"){
+            var ad_builder = ad_group.newVideoAd().inStreamAdBuilder();
+        }else{
+            ad_builder = ad_group.newVideoAd().bumperAdBuilder();
+        }
+        ad_builder = ad_builder.withAdName(params.name).withDisplayUrl(params.display_url)
+        .withTrackingTemplate(params.tracking_template).withFinalUrl(params.final_url).withVideo(video);
+        try {
+            ad_builder = ad_builder.withCustomParameters(params.custom_params)
+        } catch(err) {
+            Logger.log("Error->" + err);
+        }
+        if(params['video_thumbnail']){
+            var imageMedia = getOrCreateImage(params['video_thumbnail']);
+            ad_builder = ad_builder.withCompanionBanner(imageMedia);
+        }
+        ad_builder.build();
     }
-    ad_builder = ad_builder.withAdName(params.name).withDisplayUrl(params.display_url)
-    .withTrackingTemplate(params.tracking_template).withFinalUrl(params.final_url).withVideo(video);
-    try {
-        ad_builder = ad_builder.withCustomParameters(params.custom_params)
-    } catch(err) {
-        Logger.log("Error->" + err);
-    }
-    if(params['video_thumbnail']){
-        var imageMedia = getOrCreateImage(params['video_thumbnail']);
-        ad_builder = ad_builder.withCompanionBanner(imageMedia);
-    }
-    ad_builder.build();
 }
 
 function getBaseCampaignsInfo() {

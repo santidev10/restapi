@@ -38,6 +38,11 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             name="2", account_creation=account_creation,
             start=today, end=today + timedelta(days=20),
         )
+        CampaignCreation.objects.create(
+            name="3", account_creation=account_creation,
+            start=today, end=today + timedelta(days=20),
+            is_deleted=True,
+        )
 
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(account_creation.id,))

@@ -29,12 +29,16 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         AdGroupCreation.objects.create(
             name="Wow", campaign_creation=campaign_creation,
         )
+        AdGroupCreation.objects.create(
+            name="Deleted", campaign_creation=campaign_creation, is_deleted=True,
+        )
 
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
                       args=(campaign_creation.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
         self.perform_get_format_check(response.data)
 
     def perform_get_format_check(self, data):

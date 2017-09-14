@@ -58,7 +58,7 @@ class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
     name = models.CharField(max_length=250, validators=[NameValidator])
-
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     sync_at = models.DateTimeField(null=True)
@@ -94,7 +94,6 @@ class AccountCreation(UniqueCreationItem):
         "aw_reporting.Account", related_name='account_creations',
         null=True, blank=True,
     )
-    is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
@@ -374,6 +373,7 @@ class CampaignCreation(UniqueCreationItem):
             "var campaign = createOrUpdateCampaign({});".format(
                 json.dumps(dict(
                     id=self.id,
+                    is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
@@ -583,9 +583,10 @@ class AdGroupCreation(UniqueCreationItem):
         campaign = self.campaign_creation
         params = dict(
             id=self.id,
+            is_deleted=self.is_deleted,
             name=self.unique_name,
             ad_format="VIDEO_{}".format(self.video_ad_format),
-            cpv=str(self.max_rate),
+            max_rate=str(self.max_rate),
             genders=self.genders or campaign.genders,
             parents=self.parents or campaign.parents,
             ages=self.age_ranges or campaign.age_ranges,
@@ -685,6 +686,7 @@ class AdCreation(UniqueCreationItem):
             json.dumps(
                 dict(
                     id=self.id,
+                    is_deleted=self.is_deleted,
                     name=self.unique_name,
                     ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
                     video_url=self.video_url,

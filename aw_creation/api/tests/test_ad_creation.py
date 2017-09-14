@@ -177,18 +177,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
-
-    def test_fail_delete_running(self):
-        account = Account.objects.create(id=1, name="")
-        ad = self.create_ad(owner=self.user, account=account)
-        AdCreation.objects.create(
-            name="",
-            ad_group_creation=ad.ad_group_creation,
-        )
-        url = reverse("aw_creation_urls:ad_creation_setup",
-                      args=(ad.id,))
-
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ad.refresh_from_db()
+        self.assertIs(ad.is_deleted, True)
 
 
