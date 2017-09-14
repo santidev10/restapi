@@ -8,7 +8,7 @@ from django.db.models import Avg, Value, Count, Case, When, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
     CharField as AggrCharField
 from django.db.models.functions import Coalesce
-from django.http import StreamingHttpResponse, HttpResponse
+from django.http import StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
@@ -1218,20 +1218,20 @@ class AccountCreationDuplicateApiView(APIView):
         )
         return queryset
 
-    def post(self, *args, pk, **kwargs):
+    def post(self, request, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
         bulk_items = defaultdict(list)
-        duplicate = self.duplicate_item(instance, bulk_items)
+        duplicate = self.duplicate_item(instance, bulk_items, request.GET.get("to"))
         self.insert_bulk_items(bulk_items)
 
         response = self.serializer_class(duplicate).data
         return Response(data=response)
 
-    def duplicate_item(self, item, bulk_items):
+    def duplicate_item(self, item, bulk_items, to_parent):
         if isinstance(item, AccountCreation):
             return self.duplicate_account(item, bulk_items,
                                           all_names=self.get_queryset().values_list("name", flat=True))
@@ -1240,13 +1240,32 @@ class AccountCreationDuplicateApiView(APIView):
             return self.duplicate_campaign(parent, item, bulk_items,
                                            all_names=parent.campaign_creations.values_list("name", flat=True))
         elif isinstance(item, AdGroupCreation):
-            parent = item.campaign_creation
-            return self.duplicate_ad_group(parent, item, bulk_items,
-                                           all_names=parent.ad_group_creations.values_list("name", flat=True))
+            if to_parent:
+                try:
+                    parent = CampaignCreation.objects.filter(account_creation__owner=self.request.user).get(pk=to_parent)
+                except CampaignCreation.DoesNotExist:
+                    raise Http404
+            else:
+                parent = item.campaign_creation
+
+            return self.duplicate_ad_group(
+                parent, item, bulk_items,
+                all_names=None if to_parent else parent.ad_group_creations.values_list("name", flat=True),
+            )
         elif isinstance(item, AdCreation):
-            parent = item.ad_group_creation
-            return self.duplicate_ad(parent, item, bulk_items,
-                                     all_names=parent.ad_creations.values_list("name", flat=True))
+            if to_parent:
+                try:
+                    parent = AdGroupCreation.objects.filter(
+                        campaign_creation__account_creation__owner=self.request.user
+                    ).get(pk=to_parent)
+                except AdGroupCreation.DoesNotExist:
+                    raise Http404
+            else:
+                parent = item.ad_group_creation
+            return self.duplicate_ad(
+                parent, item, bulk_items,
+                all_names=None if to_parent else parent.ad_creations.values_list("name", flat=True),
+            )
         else:
             raise NotImplementedError("Unknown item type: {}".format(type(item)))
 

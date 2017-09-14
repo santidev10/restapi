@@ -1,5 +1,6 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from django.contrib.auth import get_user_model
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -81,3 +82,53 @@ class AccountAPITestCase(AwReportingAPITestCase):
                       args=(ad.id,))
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_success_duplicate_to_another_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        ad_group_creation_1 = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        ad_group_creation_2 = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        ad = AdCreation.objects.create(name="Whiskey", ad_group_creation=ad_group_creation_1)
+
+        url = reverse("aw_creation_urls:ad_creation_duplicate", args=(ad.id,))
+        response = self.client.post("{}?to={}".format(url, ad_group_creation_2.id))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(ad_group_creation_1.ad_creations.count(), 1)
+        self.assertEqual(ad_group_creation_2.ad_creations.count(), 1)
+        self.assertEqual(data['name'], ad.name)
+
+    def test_fail_duplicate_to_another_not_found_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        account_creation_1 = AccountCreation.objects.create(
+            name="", owner=get_user_model().objects.create(email="me@text.com"),
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        campaign_creation_1 = CampaignCreation.objects.create(
+            name="", account_creation=account_creation_1,
+        )
+        ad_group_creation_1 = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation,
+        )
+        ad_group_creation_2 = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation_1,
+        )
+        ad = AdCreation.objects.create(name="Whiskey", ad_group_creation=ad_group_creation_1)
+
+        url = reverse("aw_creation_urls:ad_creation_duplicate", args=(ad.id,))
+        response = self.client.post("{}?to={}".format(url, ad_group_creation_2.id))
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
