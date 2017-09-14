@@ -1,5 +1,6 @@
 import itertools
 from datetime import datetime
+from operator import itemgetter
 
 from django.db.models import IntegerField
 from django.db.models import Q
@@ -80,7 +81,8 @@ class BenchMarkChart:
         Group by year, quarter, month, week, day
         """
         frequency = self.options['frequency']
-        queryset = queryset.extra({frequency: "Extract({} from aw_reporting_AdGroupStatistic.date)".format(frequency)}) \
+        queryset = queryset.extra({frequency: "concat(extract(isoyear from aw_reporting_AdGroupStatistic.date), "
+                                              "extract({} from aw_reporting_AdGroupStatistic.date))".format(frequency)}) \
             .values(frequency) \
             .order_by(frequency)
         return queryset
@@ -424,9 +426,9 @@ class ChartsHandler:
         return result
 
     def product_charts(self):
-        timing = self.request.query_params.get('timing')
+        timing = self.request.query_params.get('sort_by')
         ad_group_ids = FiltersHandler(self.request.query_params).main()
-        if timing == '1':
+        if timing == 'timing':
             views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
                                           product_type=True).get_chart()
             impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
@@ -453,8 +455,19 @@ class ChartsHandler:
         result_chart_data = []
         if timing:
             for item in chart:
-                result_chart_data.append({k: v for k, v in item.items() if k == result_param or k == frequency})
+                param = item.get(result_param)
+                timing_date = item.get(frequency)
+                year, chart_frequency = timing_date[:4], timing_date[4:]
+                if self.is_year_from_past(year):
+                    continue
+                picklerick = {'title': param, 'value': int(chart_frequency)}
+                result_chart_data.append(picklerick)
         else:
-            result_chart_data.append({k: v for k, v in chart.items() if k == result_param or k == frequency})
+            result_chart_data.append({'value': v for k, v in chart.items() if k == result_param})
+        result_chart_data = sorted(result_chart_data, key=itemgetter('value'))
         result[result_param] = result_chart_data
         return result
+
+    def is_year_from_past(self, year):
+        start_date = self.request.query_params.get('start_date') or datetime(datetime.now().date().year, 1, 1).date()
+        return start_date.year > datetime(int(year), 1, 1).year
