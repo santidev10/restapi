@@ -423,6 +423,7 @@ class ChartsHandler:
         impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
                                            product_type=False).get_chart()
         result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
+        result = self.prepare_view_quartile(result)
         return result
 
     def product_charts(self):
@@ -434,6 +435,7 @@ class ChartsHandler:
             impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
                                                product_type=True).get_chart()
             result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
+            result = self.prepare_view_quartile(result)
         else:
             views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
                                           product_type=True).get_chart()
@@ -471,3 +473,12 @@ class ChartsHandler:
     def is_year_from_past(self, year):
         start_date = self.request.query_params.get('start_date') or datetime(datetime.now().date().year, 1, 1).date()
         return start_date.year > datetime(int(year), 1, 1).year
+
+    def prepare_view_quartile(self, charts):
+        result = {}
+        views_per_quartile = ('video_views_25_quartile', 'video_views_50_quartile', 'video_views_75_quartile', 'video_views_100_quartile')
+        for view in views_per_quartile:
+            result[view] = float(sum(d['title'] for d in charts.get(view, []) if d.get('title'))) / len(charts.get(view, []))
+            del charts[view]
+        charts['view_quartile'] = result
+        return charts
