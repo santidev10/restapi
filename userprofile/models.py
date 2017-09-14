@@ -95,3 +95,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         # TODO add stripe subscription checking
         return self.is_subscribed
+
+    @property
+    def token(self):
+        """
+        User auth token
+        """
+        return self.auth_token.key

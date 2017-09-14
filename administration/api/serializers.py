@@ -106,4 +106,5 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "is_subscribed",
+            "token"
         )
