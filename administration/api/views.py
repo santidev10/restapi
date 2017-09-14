@@ -18,8 +18,8 @@ from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer, UserUpdateSerializer
-from administration.models import UserAction
 from administration.api.serializers import UserSerializer
+from administration.models import UserAction
 from userprofile.models import UserProfile
 from utils.api_paginator import CustomPageNumberPaginator
 
