@@ -462,11 +462,11 @@ class ChartsHandler:
                 year, chart_frequency = timing_date[:4], timing_date[4:]
                 if self.is_year_from_past(year):
                     continue
-                picklerick = {'title': param, 'value': int(chart_frequency)}
+                picklerick = {'title': int(chart_frequency), 'value': param}
                 result_chart_data.append(picklerick)
         else:
-            result_chart_data.append({'value': v for k, v in chart.items() if k == result_param})
-        result_chart_data = sorted(result_chart_data, key=itemgetter('value'))
+            result_chart_data.append({'title': v for k, v in chart.items() if k == result_param})
+        result_chart_data = sorted(result_chart_data, key=itemgetter('title'))
         result[result_param] = result_chart_data
         return result
 
@@ -482,7 +482,7 @@ class ChartsHandler:
         for view in views_per_quartile:
             division_by = len(charts.get(view))
             division_by = division_by if division_by else 1
-            result[view] = float(sum(d['title'] for d in charts.get(view, []) if d.get('title'))) / division_by
+            result[view] = float(sum(d['value'] for d in charts.get(view, []) if d.get('value'))) / division_by
             del charts[view]
         charts['view_quartile'] = result
         return charts
