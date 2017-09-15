@@ -472,13 +472,15 @@ class ChartsHandler:
 
     def is_year_from_past(self, year):
         start_date = self.request.query_params.get('start_date') or datetime(datetime.now().date().year, 1, 1).date()
-        return start_date.year > datetime(int(year), 1, 1).year
+        return datetime.strptime(start_date, '%Y-%M-%d').year > datetime(int(year), 1, 1).year
 
     def prepare_view_quartile(self, charts):
         result = {}
         views_per_quartile = ('video_views_25_quartile', 'video_views_50_quartile', 'video_views_75_quartile', 'video_views_100_quartile')
         for view in views_per_quartile:
-            result[view] = float(sum(d['title'] for d in charts.get(view, []) if d.get('title'))) / len(charts.get(view, []))
+            division_by = len(charts.get(view))
+            division_by = division_by if division_by else 1
+            result[view] = float(sum(d['title'] for d in charts.get(view, []) if d.get('title'))) / division_by
             del charts[view]
         charts['view_quartile'] = result
         return charts
