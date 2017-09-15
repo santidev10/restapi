@@ -471,8 +471,10 @@ class ChartsHandler:
         return result
 
     def is_year_from_past(self, year):
-        start_date = self.request.query_params.get('start_date') or datetime(datetime.now().date().year, 1, 1).date()
-        return datetime.strptime(start_date, '%Y-%M-%d').year > datetime(int(year), 1, 1).year
+        start_date = self.request.query_params.get('start_date')
+        if start_date:
+            return datetime.strptime(start_date, '%Y-%M-%d').year > datetime(int(year), 1, 1).year
+        return datetime(datetime.now().date().year, 1, 1).date().year > datetime(int(year), 1, 1).year
 
     def prepare_view_quartile(self, charts):
         result = {}
