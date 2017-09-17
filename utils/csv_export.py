@@ -59,3 +59,34 @@ class CSVExport(object):
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(
             filename)
         return response
+
+
+def list_export(method):
+    """
+    Decorator function for objects list export
+    """
+    def wrapper_get(self, request, *args, **kwargs):
+        """
+        Extended get method
+        """
+        is_export = request.query_params.get("export")
+        if is_export == "1":
+            # check required export options
+            assert self.fields_to_export and self.export_file_title
+            # prepare api call
+            request.query_params._mutable = True
+            request.query_params["flat"] = 1
+            response = method(
+                self=self, request=request, *args, **kwargs)
+            if response.status_code > 300:
+                return response
+            # generate csv file
+            csv_generator = CSVExport(
+                fields=self.fields_to_export,
+                data=response.data, file_title=self.export_file_title)
+            response = csv_generator.prepare_csv_file_response()
+            return response
+        response = method(
+            self=self, request=request, *args, **kwargs)
+        return response
+    return wrapper_get
