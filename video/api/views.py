@@ -21,6 +21,7 @@ class VideoListApiView(APIView):
     """
     Proxy view for video list
     """
+    # TODO Check additional auth logic
     fields_to_export = [
         "title",
         "url",
