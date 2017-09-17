@@ -75,7 +75,7 @@ def list_export(method):
             assert self.fields_to_export and self.export_file_title
             # prepare api call
             request.query_params._mutable = True
-            request.query_params["flat"] = 1
+            request.query_params["flat"] = "1"
             response = method(
                 self=self, request=request, *args, **kwargs)
             if response.status_code > 300:
