@@ -1,5 +1,6 @@
 import itertools
 from datetime import datetime
+from operator import itemgetter
 
 from django.db.models import IntegerField
 from django.db.models import Q
@@ -80,7 +81,8 @@ class BenchMarkChart:
         Group by year, quarter, month, week, day
         """
         frequency = self.options['frequency']
-        queryset = queryset.extra({frequency: "Extract({} from aw_reporting_AdGroupStatistic.date)".format(frequency)}) \
+        queryset = queryset.extra({frequency: "concat(extract(isoyear from aw_reporting_AdGroupStatistic.date), "
+                                              "extract({} from aw_reporting_AdGroupStatistic.date))".format(frequency)}) \
             .values(frequency) \
             .order_by(frequency)
         return queryset
@@ -421,17 +423,19 @@ class ChartsHandler:
         impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
                                            product_type=False).get_chart()
         result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
+        result = self.prepare_view_quartile(result)
         return result
 
     def product_charts(self):
-        timing = self.request.query_params.get('timing')
+        timing = self.request.query_params.get('sort_by')
         ad_group_ids = FiltersHandler(self.request.query_params).main()
-        if timing == '1':
+        if timing == 'timing':
             views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
                                           product_type=True).get_chart()
             impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
                                                product_type=True).get_chart()
             result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
+            result = self.prepare_view_quartile(result)
         else:
             views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
                                           product_type=True).get_chart()
@@ -453,8 +457,32 @@ class ChartsHandler:
         result_chart_data = []
         if timing:
             for item in chart:
-                result_chart_data.append({k: v for k, v in item.items() if k == result_param or k == frequency})
+                param = item.get(result_param)
+                timing_date = item.get(frequency)
+                year, chart_frequency = timing_date[:4], timing_date[4:]
+                if self.is_year_from_past(year):
+                    continue
+                picklerick = {'title': int(chart_frequency), 'value': param}
+                result_chart_data.append(picklerick)
         else:
-            result_chart_data.append({k: v for k, v in chart.items() if k == result_param or k == frequency})
+            result_chart_data.append({'title': v for k, v in chart.items() if k == result_param})
+        result_chart_data = sorted(result_chart_data, key=itemgetter('title'))
         result[result_param] = result_chart_data
         return result
+
+    def is_year_from_past(self, year):
+        start_date = self.request.query_params.get('start_date')
+        if start_date:
+            return datetime.strptime(start_date, '%Y-%M-%d').year > datetime(int(year), 1, 1).year
+        return datetime(datetime.now().date().year, 1, 1).date().year > datetime(int(year), 1, 1).year
+
+    def prepare_view_quartile(self, charts):
+        result = {}
+        views_per_quartile = ('video_views_25_quartile', 'video_views_50_quartile', 'video_views_75_quartile', 'video_views_100_quartile')
+        for view in views_per_quartile:
+            division_by = len(charts.get(view))
+            division_by = division_by if division_by else 1
+            result[view] = float(sum(d['value'] for d in charts.get(view, []) if d.get('value'))) / division_by
+            del charts[view]
+        charts['view_quartile'] = result
+        return charts
