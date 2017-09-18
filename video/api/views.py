@@ -14,13 +14,16 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 # pylint: enable=import-error
 from utils.csv_export import CSVExport
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
+    OnlyAdminUserOrSubscriber
 
 
 class VideoListApiView(APIView):
     """
     Proxy view for video list
     """
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     def obtain_segment(self, segment_id):
         """
         Try to get segment from db
@@ -102,15 +105,17 @@ class VideoListApiView(APIView):
 
 
 class VideoListFiltersApiView(SingledbApiView):
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     connector_get = Connector().get_video_filters_list
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
 
 
 class VideoSetApiView(SingledbApiView):
-    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_videos

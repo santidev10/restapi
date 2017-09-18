@@ -106,6 +106,8 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "has_aw_accounts",
+            "is_subscribed",
+            "has_subscription"
         )
         read_only_fields = (
             "is_staff",
@@ -113,6 +115,8 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "has_aw_accounts",
+            "is_subscribed",
+            "has_subscription"
         )
 
     @staticmethod
