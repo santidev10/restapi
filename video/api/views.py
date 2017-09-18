@@ -13,7 +13,7 @@ from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 # pylint: enable=import-error
-from utils.csv_export import CSVExport
+from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
@@ -21,6 +21,18 @@ class VideoListApiView(APIView):
     """
     Proxy view for video list
     """
+    # TODO Check additional auth logic
+    fields_to_export = [
+        "title",
+        "url",
+        "views",
+        "likes",
+        "dislikes",
+        "comments",
+        "youtube_published_at"
+    ]
+    export_file_title = "video"
+
     def obtain_segment(self, segment_id):
         """
         Try to get segment from db
@@ -36,6 +48,7 @@ class VideoListApiView(APIView):
             return None
         return segment
 
+    @list_export
     def get(self, request):
         # prepare query params
         query_params = request.query_params
@@ -68,37 +81,6 @@ class VideoListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
-
-    def post(self, request):
-        """
-        Export videos procedure
-        """
-        # make call
-        connector = Connector()
-        query_params = request.data
-        # WARN: flat param may freeze SBD
-        query_params["flat"] = 1
-        fields = [
-            "title",
-            "url",
-            "views",
-            "likes",
-            "dislikes",
-            "comments",
-            "youtube_published_at"
-        ]
-        query_params["fields"] = ",".join(fields)
-        try:
-            response_data = connector.get_video_list(
-                query_params=query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        csv_generator = CSVExport(
-            fields=fields, data=response_data, file_title="video")
-        response = csv_generator.prepare_csv_file_response()
-        return response
 
 
 class VideoListFiltersApiView(SingledbApiView):
