@@ -35,6 +35,7 @@ redis==2.10.5
 requests==2.8.1
 rsa==3.4.2
 six==1.10.0
+stripe==1.65.0
 suds-jurko==0.6
 uritemplate==3.0.0
 wrapt==1.10.10
