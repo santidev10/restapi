@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from segment.api.serializers import SegmentSerializer
 from segment.models import get_segment_model_by_type
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.permissions import OnlyAdminUserOrSubscriber
 
 
 class SegmentPaginator(CustomPageNumberPaginator):
@@ -41,6 +42,7 @@ class DynamicModelViewMixin(object):
 class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
+    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def do_filters(self, queryset):
         """
@@ -107,6 +109,7 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
 
 class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = SegmentSerializer
+    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
@@ -143,6 +146,7 @@ class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDe
 
 class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
     serializer_class = SegmentSerializer
+    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def post(self, request, pk):
         """
