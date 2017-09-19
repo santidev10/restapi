@@ -151,6 +151,59 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         for item in data[0]['items']:
             self.assertEqual(set(item.keys()), self.item_keys)
 
+    def test_success_campaign_kpi_settings(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+
+        start = datetime(2017, 1, 1).date()
+        end = datetime(2017, 1, 2).date()
+        campaign1 = Campaign.objects.create(id="1", name="A campaign", status="eligible",
+                                            account=account, start_date=start, end_date=end)
+        ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1, video_views=1)
+        campaign2 = Campaign.objects.create(id="2", name="B campaign", status="eligible",
+                                            account=account, start_date=start, end_date=end)
+        ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2, video_views=1)
+
+        YTChannelStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group1, video_views=5, impressions=10)
+        YTVideoStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group2, video_views=2, impressions=10)
+
+        url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
+
+        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(dict(
+                    start_date=str(start),
+                    end_date=str(start),
+                    group_by="campaign",
+                    targeting=["channel", "video"],
+                    video_view_rate={campaign1.id: 30, campaign2.id: 10},
+                )),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data), 2)
+
+        self.assertEqual(set(data[0].keys()), self.data_keys)
+        self.assertEqual(data[0]['label'], "A campaign")
+        self.assertEqual(len(data[0]["items"]), 1)
+        item = data[0]['items'][0]
+        self.assertEqual(item["video_view_rate"]["passes"], True)
+        self.assertEqual(item["video_view_rate"]["value"], 50)
+
+        self.assertEqual(set(data[0].keys()), self.data_keys)
+        self.assertEqual(data[1]['label'], "B campaign")
+        self.assertEqual(len(data[1]["items"]), 1)
+        item = data[1]['items'][0]
+        self.assertEqual(item["video_view_rate"]["passes"], True)
+        self.assertEqual(item["video_view_rate"]["value"], 20)
+
     def test_success_post_demo(self):
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_targeting_report",

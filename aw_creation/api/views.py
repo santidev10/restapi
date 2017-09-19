@@ -2019,11 +2019,22 @@ class PerformanceTargetingFiltersAPIView(APIView):
 class PerformanceTargetingReportAPIView(APIView):
 
     def get_settings(self):
+        """
+        There might be two ways to set kpi options
+        {"video_view_rate": 30}
+        or {"video_view_rate": {"some_campaign_id": 30, "another_campaign_id": 20}}
+        depend on "group_by" option
+        so we handle both cases
+        :return:
+        """
         data = self.request.data
         s = {}
         for n in ("average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate"):
             if data.get(n) is not None:
-                s[n] = float(data[n])
+                if isinstance(data[n], dict):
+                    s[n] = {k: float(v) for k, v in data[n].items()}
+                else:
+                    s[n] = float(data[n])
         return s
 
     def get_object(self):
@@ -2064,10 +2075,14 @@ class PerformanceTargetingReportAPIView(APIView):
         # set passed fields
         def set_item_passes(e):
             fail_c = 0
-            for n, t in options.items():
+            for n, option_value in options.items():
+                if isinstance(option_value, dict):  # see docstring of the get_settings method
+                    campaign_id = e.get("id") or e.get("campaign", {}).get("id")
+                    option_value = option_value.get(campaign_id)
+
                 value = e[n]
-                if value is not None:
-                    passes = value >= t
+                if value is not None and option_value is not None:
+                    passes = value >= option_value
                     e[n] = dict(passes=passes, value=value)
                     if not passes:
                         fail_c += 1
@@ -2089,9 +2104,10 @@ class PerformanceTargetingReportAPIView(APIView):
                 set_item_passes(i)
                 del i['video_impressions']
             dict_calculate_stats(summary)
-            set_item_passes(summary)
             del summary['video_impressions']
             report.update(summary)
+
+            set_item_passes(report)
 
             report["items"] = list(sorted(report["items"], key=sort_value, reverse=True))
 
