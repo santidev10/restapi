@@ -93,8 +93,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         Check user has saas subscription
         :return:
         """
-        # TODO add stripe subscription checking
-        return self.is_subscribed
+        from payments.models import Customer
+        from payments.stripe_api.subscriptions import is_valid
+        try:
+            customer = self.customer
+        except Customer.DoesNotExist:
+            return self.is_subscribed
+        return self.is_subscribed or any(
+            {is_valid(i) for i in customer.subscription_set.all()})
 
     @property
     def token(self):
