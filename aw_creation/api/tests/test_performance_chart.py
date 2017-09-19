@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
@@ -45,6 +46,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -71,6 +76,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_items(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -90,6 +99,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_all_dimensions(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -115,17 +128,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_no_account(self):
         user = self.create_test_user()
-        # add a connection not to show demo data
-        connection = AWConnection.objects.create(
-            email=user.email,
-            refresh_token="",
-        )
-        AWConnectionToUserRelation.objects.create(
-            connection=connection,
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=user,
         )
 
-        account_creation = AccountCreation.objects.create(name="", owner=user)
+        account_creation = AccountCreation.objects.create(name="", owner=user, sync_at=timezone.now())
 
         account = Account.objects.create(id=1, name="")
         self.create_stats(account)  # create stats that won't be visible

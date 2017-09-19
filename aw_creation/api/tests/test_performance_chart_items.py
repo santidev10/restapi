@@ -5,7 +5,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad
+    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad,\
+    AWConnectionToUserRelation, AWConnection
 from aw_creation.models import AccountCreation
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
@@ -44,6 +45,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
+
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -95,6 +101,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_video(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -231,6 +241,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_items(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -260,8 +274,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['items']), 0)
 
-    def test_demo_all_dimensions(self):
+    def test_get_all_dimensions(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         self.create_stats(account)
@@ -280,6 +298,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
         campaign = Campaign.objects.create(id=1, name="", account=account)

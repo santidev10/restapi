@@ -20,19 +20,20 @@ from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.csv_export import list_export
+from utils.permissions import OnlyAdminUserOrSubscriber
 from .serializers import *
 
 logger = logging.getLogger(__name__)
 
 
 class InterestsApiView(ListAPIView):
-    permission_classes = tuple()
+    permission_classes = (OnlyAdminUserOrSubscriber,)
     serializer_class = InterestsSerializer
     queryset = Interest.objects.all().order_by('name')
 
 
 class PredefinedQueriesApiView(APIView):
-    permission_classes = tuple()
+    permission_classes = (OnlyAdminUserOrSubscriber,)
 
     @staticmethod
     def get(*_):
@@ -45,6 +46,7 @@ class KWPaginator(CustomPageNumberPaginator):
 
 class OptimizeQueryApiView(ListAPIView):
     # TODO Check additional auth logic
+    permission_classes = (OnlyAdminUserOrSubscriber,)
     page_size = 12
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
@@ -252,6 +254,7 @@ class OptimizeQueryApiView(ListAPIView):
 class KeywordGetApiView(APIView):
     queryset = KeyWord.objects.all()
     serializer_class = KeywordSerializer
+    permission_classes = (OnlyAdminUserOrSubscriber,)
 
     def get(self, *args, **kwargs):
         pk = self.kwargs.get('pk')
@@ -269,6 +272,7 @@ class KeywordGetApiView(APIView):
 
 
 class KeywordsListApiView(OptimizeQueryApiView):
+
     def get_queryset(self):
         queryset = KeyWord.objects.all()
         queryset = self.filter(queryset)
@@ -287,6 +291,8 @@ class ViralKeywordsApiView(OptimizeQueryApiView):
 
 class ListParentApiView(APIView):
     pagination_class = KWPaginator
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
 
     @property
     def paginator(self):
@@ -544,6 +550,8 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
 
 
 class ListsDuplicateApiView(GenericAPIView):
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     def get_queryset(self):
         if self.request.user.is_staff:
             queryset = KeywordsList.objects.all()
@@ -578,6 +586,8 @@ class ListsDuplicateApiView(GenericAPIView):
 
 
 class ViralListBuildView(APIView):
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     def post(self, *args, **kwargs):
         uc = dict(self.request.data).get('update_complete')
         if uc:

@@ -123,7 +123,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules', 'ad_group_creations',
                 "video_ad_format", "delivery_method", "video_networks",
-                'content_exclusions', 'genders', 'age_ranges', 'parents',
+                'content_exclusions',
             }
         )
         self.assertEqual(

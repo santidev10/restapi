@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from datetime import datetime
 import json
-DEMO_READ_ONLY = dict(errors="You are not allowed to change this entity")
+DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
 
 class AccountCreationListApiView:
@@ -352,10 +352,8 @@ class AdCreationListSetupApiView:
 
 
 def show_demo_data(request, pk):
-    if not request.user.aw_connections.count():
-        obj = get_object_or_404(AccountCreation, pk=pk)
-        return obj.status == AccountCreation.STATUS_PENDING
-    return False
+    return not request.user.aw_connections.count() or \
+        get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
 
 
 class PerformanceAccountCampaignsListApiView:
@@ -405,7 +403,7 @@ class PerformanceAccountDetailsApiView:
 
                 if pk != DEMO_ACCOUNT_ID:
                     original_data = original_method(view, request, pk=pk, **kwargs).data
-                    for k in ('name', 'status', 'thumbnail', 'is_changed'):
+                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             else:
@@ -647,7 +645,7 @@ class PerformanceTargetingSettingsAPIView:
     @staticmethod
     def put(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
             else:

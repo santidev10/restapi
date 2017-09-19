@@ -27,7 +27,7 @@ AgeRanges = ("Undetermined", "18-24", "25-34", "35-44", "45-54", "55-64",
 Genders = ("Undetermined", "Female", "Male")
 
 DATE_FORMAT = "%Y-%m-%d"
-
+ACTION_STATUSES = ("paused", "removed")
 DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 
@@ -343,7 +343,10 @@ class AdGroup(BaseStatisticModel):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True)
+    type = models.CharField(max_length=25, default="")
     campaign = models.ForeignKey(Campaign)
+    engagements = models.IntegerField(default=0)
+    active_view_impressions = models.IntegerField(default=0)
     cpv_bid = models.PositiveIntegerField(null=True)
     cpm_bid = models.PositiveIntegerField(null=True)
     cpc_bid = models.PositiveIntegerField(null=True)

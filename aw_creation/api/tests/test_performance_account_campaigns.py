@@ -2,7 +2,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, DEMO_AD_GROUPS
-from aw_reporting.models import Account, Campaign, AdGroup
+from aw_reporting.models import Account, Campaign, AdGroup, AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
 
 
@@ -10,6 +10,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+            user=user,
+        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
