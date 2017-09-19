@@ -172,3 +172,33 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_validate_bumper_video_duration(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=campaign_creation,
+        )
+        ad_creation = AdCreation.objects.create(
+            name="", ad_group_creation=ad_group_creation,
+        )
+
+        response = self.client.patch(
+            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD, video_duration=7)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        response = self.client.patch(
+            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD, video_duration=6)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)

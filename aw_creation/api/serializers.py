@@ -615,35 +615,32 @@ class AdCreationUpdateSerializer(ModelSerializer):
         model = AdCreation
         exclude = ('ad_group_creation',)
 
-    def validate(self, data):
-        if 'custom_params' in data:
-            custom_params = data['custom_params']
-            if isinstance(custom_params, list) and len(custom_params) == 1 \
-               and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
-                custom_params = json.loads(custom_params[0])
-            data['custom_params'] = custom_params
+    @staticmethod
+    def validate_custom_params(custom_params):
+        if isinstance(custom_params, list) and len(custom_params) == 1 \
+                and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
+            custom_params = json.loads(custom_params[0])
 
-            if len(custom_params) > 3:
+        if len(custom_params) > 3:
+            raise ValidationError(
+                'You cannot use more than 3 custom parameters'
+            )
+        keys = {"name", "value"}
+        for i in custom_params:
+            if type(i) is not dict or set(i.keys()) != keys:
+                # all(ord(c) < 128 for c in test)  test.isalpha()
                 raise ValidationError(
-                    'You cannot use more than 3 custom parameters'
+                    'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
                 )
-            keys = {"name", "value"}
-            for i in custom_params:
-                if type(i) is not dict or set(i.keys()) != keys:
-                    # all(ord(c) < 128 for c in test)  test.isalpha()
-                    raise ValidationError(
-                        'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
-                    )
-                if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
-                    raise ValidationError(
-                        'Invalid character in custom parameter key'
-                    )
-                if " " in i['value']:
-                    raise ValidationError(
-                        'Invalid character in custom parameter value'
-                    )
-
-        return super(AdCreationUpdateSerializer, self).validate(data)
+            if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
+                raise ValidationError(
+                    'Invalid character in custom parameter key'
+                )
+            if " " in i['value']:
+                raise ValidationError(
+                    'Invalid character in custom parameter value'
+                )
+        return custom_params
 
 
 class AppendAdCreationSetupSerializer(ModelSerializer):

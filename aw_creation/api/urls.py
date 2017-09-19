@@ -12,6 +12,9 @@ urlpatterns = [
     url(r'^youtube_video_search/(?P<query>.+)/$',
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
+    url(r'^youtube_video_from_url/(?P<url>.+)/$',
+        views.YoutubeVideoFromUrlApiView.as_view(),
+        name="youtube_video_from_url"),
 
     # <<< Setup
     url(r'^creation_options/$',
@@ -48,10 +51,7 @@ urlpatterns = [
     url(r'^ad_creation_available_ad_formats/(?P<pk>\w+)/$',
         views.AdCreationAvailableAdFormatsApiView.as_view(),
         name="ad_creation_available_ad_formats"),
-    # for ad management
-    url(r'^youtube_video_from_url/(?P<url>.+)/$',
-        views.YoutubeVideoFromUrlApiView.as_view(),
-        name="youtube_video_from_url"),
+
     # for targeting management
     url(r'^items_from_segment_ids/(?P<segment_type>\w+)/$',
         views.ItemsFromSegmentIdsApiView.as_view(),
