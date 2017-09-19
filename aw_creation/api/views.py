@@ -4,13 +4,11 @@ from apiclient.discovery import build
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Value, Count, Case, When, \
+from django.db.models import Avg, Value, Count, Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
     CharField as AggrCharField
 from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse, Http404
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveAPIView
@@ -24,8 +22,7 @@ from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule,\
-    TargetingItem, default_languages, CampaignOptimizationSetting, AccountOptimizationSetting
+    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, TargetingItem, default_languages
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
@@ -37,12 +34,10 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
 from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
-from django.db.models import FloatField, ExpressionWrapper, IntegerField, F
 from datetime import timedelta, datetime
 from io import StringIO
 from collections import OrderedDict
 from decimal import Decimal
-from suds import WebFault
 import itertools
 import calendar
 import csv
@@ -650,7 +645,7 @@ class AccountCreationListApiView(ListAPIView):
                                     account__campaigns__video_views__gt=0,
                                     then="account__campaigns__impressions",
                                 ),
-                                output_field=IntegerField()
+                                output_field=AggrIntegerField()
                             )
                         )
                         annotates['sum_video_views'] = Sum("account__campaigns__video_views")
@@ -660,7 +655,7 @@ class AccountCreationListApiView(ListAPIView):
                                 video_impressions__gt=0,
                                 then=F("sum_video_views") * 100. / F("video_impressions"),
                             ),
-                            output_field=FloatField()
+                            output_field=AggrFloatField()
                         )
                         having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
                     elif metric == "ctr_v":
@@ -670,7 +665,7 @@ class AccountCreationListApiView(ListAPIView):
                                     account__campaigns__video_views__gt=0,
                                     then="account__campaigns__clicks",
                                 ),
-                                output_field=IntegerField()
+                                output_field=AggrIntegerField()
                             )
                         )
                         annotates['sum_video_views'] = Sum("account__campaigns__video_views")
@@ -680,7 +675,7 @@ class AccountCreationListApiView(ListAPIView):
                                 sum_video_views__gt=0,
                                 then=F("video_clicks") * 100. / F("sum_video_views"),
                             ),
-                            output_field=FloatField()
+                            output_field=AggrFloatField()
                         )
                         having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
         if annotates:
@@ -1547,7 +1542,7 @@ class PerformanceAccountDetailsApiView(APIView):
                         date__lte=ed,
                         then=s,
                     ),
-                    output_field=IntegerField()
+                    output_field=AggrIntegerField()
                 )
             )
             for k, sd, ed in (("this", week_start, week_end),
@@ -1566,9 +1561,9 @@ class PerformanceAccountDetailsApiView(APIView):
                         video_views__sum__gt=0,
                         then=F("cost__sum") / F("video_views__sum"),
                     ),
-                    output_field=FloatField()
+                    output_field=AggrFloatField()
                 ),
-                output_field=FloatField()
+                output_field=AggrFloatField()
             ),
             ctr=ExpressionWrapper(
                 Case(
@@ -1577,9 +1572,9 @@ class PerformanceAccountDetailsApiView(APIView):
                         impressions__sum__gt=0,
                         then=F("clicks__sum") * Value(100.0) / F("impressions__sum"),
                     ),
-                    output_field=FloatField()
+                    output_field=AggrFloatField()
                 ),
-                output_field=FloatField()
+                output_field=AggrFloatField()
             ),
             ctr_v=ExpressionWrapper(
                 Case(
@@ -1588,9 +1583,9 @@ class PerformanceAccountDetailsApiView(APIView):
                         video_views__sum__gt=0,
                         then=F("clicks__sum") * Value(100.0) / F("video_views__sum"),
                     ),
-                    output_field=FloatField()
+                    output_field=AggrFloatField()
                 ),
-                output_field=FloatField()
+                output_field=AggrFloatField()
             ),
             video_view_rate=ExpressionWrapper(
                 Case(
@@ -1599,9 +1594,9 @@ class PerformanceAccountDetailsApiView(APIView):
                         impressions__sum__gt=0,
                         then=F("video_views__sum") * Value(100.0) / F("impressions__sum"),
                     ),
-                    output_field=FloatField()
+                    output_field=AggrFloatField()
                 ),
-                output_field=FloatField()
+                output_field=AggrFloatField()
             ),
         )
         fields = tuple(annotate.keys())
@@ -1625,7 +1620,7 @@ class PerformanceAccountDetailsApiView(APIView):
                         average_position__gt=0,
                         then=F('average_position'),
                     ),
-                    output_field=FloatField(),
+                    output_field=AggrFloatField(),
                 )
             ),
             impressions=Sum("impressions"),
@@ -2122,7 +2117,7 @@ class PerformanceTargetingReportAPIView(APIView):
                     ad_group__video_views__gt=0,
                     then="impressions",
                 ),
-                output_field=IntegerField()
+                output_field=AggrIntegerField()
             )
         ),
         sum_video_views=Sum("video_views"),
