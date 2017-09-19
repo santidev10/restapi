@@ -12,16 +12,16 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
-from keyword_tool.tasks import update_kw_list_stats
-from keyword_tool.models import Query, KeywordsList, ViralKeywords
+from aw_reporting.adwords_api import optimize_keyword
+from keyword_tool.api.utils import get_keywords_aw_stats, \
+    get_keywords_aw_top_bottom_stats
+from keyword_tool.models import Query, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserOrSubscriber
 from .serializers import *
-from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
-from utils.csv_export import CSVExport
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +45,18 @@ class KWPaginator(CustomPageNumberPaginator):
 
 
 class OptimizeQueryApiView(ListAPIView):
+    # TODO Check additional auth logic
     permission_classes = (OnlyAdminUserOrSubscriber,)
     page_size = 12
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
+    fields_to_export = [
+        "keyword_text",
+        "average_cpc",
+        "competition",
+        "search_volume"
+    ]
+    export_file_title = "keyword"
 
     def sort(self, queryset):
         if self.request.method == "POST":
@@ -192,11 +200,23 @@ class OptimizeQueryApiView(ListAPIView):
         queryset = self.sort(queryset)
         return queryset
 
+    @list_export
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
-        if response.status_code == 200:
+        is_export = self.request.query_params.get("export")
+        if response.status_code == 200 and is_export != "1":
             self.add_ad_words_data(self.request, response.data['items'])
         return response
+
+    def paginate_queryset(self, queryset):
+        """
+        Processing flat query param
+        """
+        # TODO flat may freeze db
+        flat = self.request.query_params.get("flat")
+        if flat == "1":
+            return None
+        return super(OptimizeQueryApiView, self).paginate_queryset(queryset)
 
     @staticmethod
     def add_ad_words_data(request, items):
@@ -258,22 +278,6 @@ class KeywordsListApiView(OptimizeQueryApiView):
         queryset = self.filter(queryset)
         queryset = self.sort(queryset)
         return queryset
-
-    def post(self, *args, **kwargs):
-        """
-        Keywords export procedure
-        """
-        data = self.serializer_class(self.get_queryset(), many=True).data
-        file_fields = [
-            "keyword_text",
-            "average_cpc",
-            "competition",
-            "search_volume"
-        ]
-        csv_generator = CSVExport(
-            fields=file_fields, data=data, file_title="keyword")
-        response = csv_generator.prepare_csv_file_response()
-        return response
 
 
 class ViralKeywordsApiView(OptimizeQueryApiView):

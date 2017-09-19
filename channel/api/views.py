@@ -13,7 +13,7 @@ from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from utils.csv_export import CSVExport
+from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
 
@@ -25,7 +25,23 @@ class ChannelListApiView(APIView):
     """
     Proxy view for channel list
     """
+    # TODO Check additional auth logic
     permission_classes = (OnlyAdminUserOrSubscriber,)
+    fields_to_export = [
+        "title",
+        "url",
+        "country",
+        "category",
+        "emails",
+        "description",
+        "subscribers",
+        "thirty_days_subscribers",
+        "thirty_days_views",
+        "views_per_video",
+        "sentiment",
+        "engage_rate"
+    ]
+    export_file_title = "channel"
 
     def obtain_segment(self, segment_id):
         """
@@ -42,6 +58,7 @@ class ChannelListApiView(APIView):
             return None
         return segment
 
+    @list_export
     def get(self, request):
         """
         Get procedure
@@ -77,42 +94,6 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
-
-    def post(self, request):
-        """
-        Export channels procedure
-        """
-        # make call
-        connector = Connector()
-        query_params = request.data
-        # WARN: flat param may freeze SBD
-        query_params["flat"] = 1
-        fields = [
-            "title",
-            "url",
-            "country",
-            "category",
-            "emails",
-            "description",
-            "subscribers",
-            "thirty_days_subscribers",
-            "thirty_days_views",
-            "views_per_video",
-            "sentiment",
-            "engage_rate"
-        ]
-        query_params["fields"] = ",".join(fields)
-        try:
-            response_data = connector.get_channel_list(
-                query_params=query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        csv_generator = CSVExport(
-            fields=fields, data=response_data, file_title="channel")
-        response = csv_generator.prepare_csv_file_response()
-        return response
 
 
 class ChannelListFiltersApiView(SingledbApiView):
