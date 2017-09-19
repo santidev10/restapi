@@ -14,7 +14,7 @@ import json
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     data_keys = {
-        "label", "items", "passes",
+        "label", "items", "passes", "id",
 
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",

@@ -2054,10 +2054,10 @@ class PerformanceTargetingReportAPIView(APIView):
             for i in items:
                 uid = (i["campaign"]["name"], i["campaign"]["id"])
                 items_by_campaign[uid].append(i)
-            items_by_campaign = [dict(label=k[0], items=v) for k, v in items_by_campaign.items()]
+            items_by_campaign = [dict(label=k[0], id=k[1], items=v) for k, v in items_by_campaign.items()]
             reports.extend(sorted(items_by_campaign, key=lambda el: el["label"]))
         else:
-            reports.append(dict(label="All campaigns", items=items))
+            reports.append(dict(label="All campaigns", items=items, id=None))
 
         options = self.get_settings()
 
