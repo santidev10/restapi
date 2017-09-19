@@ -1,7 +1,13 @@
+import logging
 import sys
 from django.core.management.base import BaseCommand
 
-from segment.models import Segment, ChannelRelation
+from segment.models import get_segment_model_by_type
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level='INFO')
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -16,27 +22,42 @@ class Command(BaseCommand):
                             type=str,
                             default='youtube')
 
+        parser.add_argument('--category-limit',
+                            type=int,
+                            default=None)
 
     def handle(self, *args, **options):
         segment_type = options.get('type')
-        category = options.get('category')
+        self.category = options.get('category')
+        self.category_limit = options.get('category_limit')
+        self.model = get_segment_model_by_type(segment_type)
 
-        i = 0
+        if self.category not in dict(self.model.CATEGORIES):
+            raise Exception("Invalid category")
+
+        title_prev = None
+        related_ids = []
         while True:
-            i += 1
             line = sys.stdin.readline().strip()
             if not line:
                 break
-            channel_id, title = tuple(line.split(',', 1))
+            related_id, title = tuple(line.split(',', 1))
 
-            segment_data = dict(title=title, segment_type=segment_type, category=category)
-            try:
-                segment = Segment.objects.get(**segment_data)
-            except Segment.DoesNotExist:
-                segment = Segment(**segment_data)
-                segment.save()
+            if title_prev and title_prev != title:
+                self.save_data(title_prev, related_ids)
+                related_ids = []
 
-            obj, created = ChannelRelation.objects.get_or_create(pk=channel_id)
-            segment.channels.add(obj)
-            segment.save()
-            print(i, title, segment.channels.all().count())
+            title_prev = title
+
+            if not self.category_limit or len(related_ids) < self.category_limit:
+                related_ids.append(related_id)
+
+        if related_ids and title_prev:
+            self.save_data(title_prev, related_ids)
+
+    def save_data(self, title, ids):
+        logger.info('Saving {} ids for segment: {}'.format(len(ids), title))
+        segment_data = dict(title=title, category=self.category)
+        segment, created = self.model.objects.get_or_create(title=title, category=self.category)
+        segment.add_related_ids(ids)
+        segment.update_statistics(segment)

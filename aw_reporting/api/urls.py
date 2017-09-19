@@ -4,9 +4,9 @@ from aw_reporting.api import views
 
 urlpatterns = [
     # analyze
-    url(r'^analyze_accounts/$',
+    url(r'^analyze_accounts_list/$',
         views.AnalyzeAccountsListApiView.as_view(),
-        name="analyze_accounts"),
+        name="analyze_accounts_list"),
     url(r'^analyze_account_campaigns/(?P<pk>\w+)/$',
         views.AnalyzeAccountCampaignsListApiView.as_view(),
         name="analyze_account_campaigns"),
@@ -36,4 +36,31 @@ urlpatterns = [
     url(r'^track_accounts_data/$',
         views.TrackAccountsDataApiView.as_view(),
         name="track_accounts_data"),
+
+    # connect aw account
+    url(r'^connect_aw_account_list/$',
+        views.ConnectAWAccountListApiView.as_view(),
+        name="connect_aw_account_list"),
+    url(r'^connect_aw_account/$',
+        views.ConnectAWAccountApiView.as_view(),
+        name="connect_aw_account"),
+    url(r'^connect_aw_account/(?P<email>[^/]+)/$',
+        views.ConnectAWAccountApiView.as_view(),
+        name="aw_account_connection"),
+
+    # channel and video historical data
+    url(r'^aw_historical_data/(?P<item_type>\w+)/(?P<pk>[\w-]+)/$',
+        views.AwHistoricalDataApiView.as_view(),
+        name="aw_historical_data"),
+
+    # benchmark
+    url(r'^benchmarks/base_charts/$',
+        views.BenchmarkBaseChartsApiView.as_view(),
+        name="benchmarks_base_charts"),
+    url(r'^benchmarks/product_charts/$',
+        views.BenchmarkProductChartsApiView.as_view(),
+        name="benchmarks_product_charts$"),
+    url(r'^benchmarks/filters/$',
+        views.BenchmarkFiltersListApiView.as_view(),
+        name="benchmarks_filters$"),
 ]

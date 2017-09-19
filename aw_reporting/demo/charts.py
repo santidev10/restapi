@@ -48,33 +48,30 @@ class DemoChart:
     def _get_items(self, item, dimension):
         dimensions = deepcopy(getattr(item, dimension))
         all_stats = (
-            'average_cpm', 'average_cpv', 'clicks', 'cost', 'ctr',
-            'ctr_v', 'impressions', 'video_view_rate', 'video_views',
+            'clicks', 'cost',  'impressions', 'video_impressions', 'video_views',
             'video25rate', 'video50rate', 'video75rate', 'video100rate',
             'view_through', 'conversions', 'all_conversions',
         )
         summary = {}
         items = {i['label']: i for i in dimensions}
         dim_len = len(dimensions)
-        sum_stats = SUM_STATS + CONVERSIONS
         for stat in all_stats:
             value = getattr(item, stat)
             summary[stat] = value
 
-            if stat in sum_stats:
+            if stat in VIEW_RATE_STATS:
+                for item_stat in items.values():
+                    item_stat[stat] = value
+            else:
                 values = self.explode_value(value, stat, dim_len)
                 for item_stat, v in zip(items.values(), values):
                     item_stat[stat] = v
 
-            elif stat in VIEW_RATE_STATS:
-                for item_stat in items.values():
-                    item_stat[stat] = value
-
         res_items = []
         for name, stats in items.items():
             stats['name'] = name
-            del stats['label']
-            dict_add_calculated_stats(stats)
+            dict_calculate_stats(stats)
+            del stats['label'], stats['video_impressions']
             res_items.append(stats)
 
         return dict(
@@ -257,7 +254,7 @@ class DemoChart:
             return [None for i in range(length)]
 
         value = initial_value // 2
-        if indicator in (SUM_STATS + CONVERSIONS):
+        if indicator in SUM_STATS:
             if indicator != 'cost':
                 daily = value // length if length else 0
             else:
@@ -282,6 +279,7 @@ class DemoChart:
     @staticmethod
     def explode_value_random(value, indicator, n):
 
+        # pylint: disable=E0102
         def get_val(val):
             return val
 
@@ -292,6 +290,7 @@ class DemoChart:
                     return int(val)
         else:
             daily = value
+        # pylint: enable=E0102
 
         # chart values
         values = [daily for i in range(n)]

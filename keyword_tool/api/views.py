@@ -12,12 +12,15 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword
+from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
 from keyword_tool.tasks import update_kw_list_stats
 from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
+from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
+from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
+from utils.csv_export import CSVExport
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,10 @@ class OptimizeQueryApiView(ListAPIView):
     pagination_class = KWPaginator
 
     def sort(self, queryset):
-        query_params = self.request.query_params
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
         if 'sort_by' in query_params and query_params['sort_by'] in (
                 'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate',
@@ -118,9 +124,12 @@ class OptimizeQueryApiView(ListAPIView):
         return queryset
 
     def filter(self, queryset):
-        query_params = self.request.query_params
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
-        for field in ('volume', 'competition'):
+        for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
                 f = "{pref}_{field}".format(field=field, pref=pref)
                 if f in query_params:
@@ -183,29 +192,60 @@ class OptimizeQueryApiView(ListAPIView):
 
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
-        # if response.status_code == 200:
-        #     self.add_ad_words_data(response.data['items'])
+        if response.status_code == 200:
+            self.add_ad_words_data(self.request, response.data['items'])
         return response
 
-        # TODO uncomment when adwords stats will be created is saas
-        # @staticmethod
-        # def add_ad_words_data(items):
-        #     from aw_reporting.models import KeywordStatistic
-        #     stats = KeywordStatistic.objects.filter(
-        #         keyword_id__in=set(i['keyword_text'] for i in items)
-        #     ).values('keyword_id').order_by('keyword_id').annotate(
-        #         campaigns_count=Count('ad_group__campaign_id', distinct=True),
-        #         **{n: Sum(n) for n in SUM_STATS + QUARTILE_STATS}
-        #     )
-        #     stats = {s['keyword_id']: s for s in stats}
-        #
-        #     for item in items:
-        #         item_stats = stats.get(item['keyword_text'], {})
-        #         item['campaigns_count'] = item_stats.get('campaigns_count', 0)
-        #         for s in SUM_STATS + QUARTILE_STATS:
-        #             item[s] = item_stats.get(s)
-        #         dict_quartiles_to_rates(item)
-        #         dict_add_calculated_stats(item)
+    @staticmethod
+    def add_ad_words_data(request, items):
+        from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
+            dict_norm_base_stats, dict_calculate_stats
+
+        accounts = Account.user_objects(request.user)
+        cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
+        keywords = set(i['keyword_text'] for i in items)
+        stats = get_keywords_aw_stats(accounts, keywords)
+        top_bottom_stats = get_keywords_aw_top_bottom_stats(accounts, keywords)
+
+        kw_without_stats = keywords - set(stats.keys())
+        if kw_without_stats:  # show CF account stats
+            cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats)
+            stats.update(cf_stats)
+            cf_top_bottom_stats = get_keywords_aw_top_bottom_stats(cf_accounts, kw_without_stats)
+            top_bottom_stats.update(cf_top_bottom_stats)
+
+        aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
+        for item in items:
+            item_stats = stats.get(item['keyword_text'])
+            if item_stats:
+                dict_norm_base_stats(item_stats)
+                dict_calculate_stats(item_stats)
+                del item_stats['keyword']
+                item.update(item_stats)
+
+                item_top_bottom_stats = top_bottom_stats.get(item['keyword_text'])
+                item.update(item_top_bottom_stats)
+            else:
+                item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
+
+
+class KeywordGetApiView(APIView):
+    queryset = KeyWord.objects.all()
+    serializer_class = KeywordSerializer
+
+    def get(self, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        try:
+            obj = self.queryset.get(text=pk)
+        except KeywordsList.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(obj)
+        result = serializer.data
+
+        # add ad words data for received keyword
+        OptimizeQueryApiView.add_ad_words_data(request=self.request,
+                                               items=[result, ])
+        return Response(result)
 
 
 class KeywordsListApiView(OptimizeQueryApiView):
@@ -214,6 +254,22 @@ class KeywordsListApiView(OptimizeQueryApiView):
         queryset = self.filter(queryset)
         queryset = self.sort(queryset)
         return queryset
+
+    def post(self, *args, **kwargs):
+        """
+        Keywords export procedure
+        """
+        data = self.serializer_class(self.get_queryset(), many=True).data
+        file_fields = [
+            "keyword_text",
+            "average_cpc",
+            "competition",
+            "search_volume"
+        ]
+        csv_generator = CSVExport(
+            fields=file_fields, data=data, file_title="keyword")
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ViralKeywordsApiView(OptimizeQueryApiView):
@@ -322,44 +378,45 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
             kwargs["fields"] = set(fields.split(","))
 
         if page is not None:
-            serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
+            serializer = SavedListNameSerializer(page, many=True, request=request, **kwargs)
             return self.get_paginated_response(serializer.data)
 
         serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        name = self.request.data.get('name')
         keywords = self.request.data.get('keywords')
-        category = self.request.data.get('category')
+        if not keywords:
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data="'keywords' is a required param")
 
-        if name and keywords and category:
-            # create list
-            new_list = KeywordsList.objects.create(
-                user_email=self.request.user.email,
-                name=name,
-                category=category
-            )
-            # create relations
-            keywords_relation = KeywordsList.keywords.through
-            kw_relations = [keywords_relation(keyword_id=kw_id,
-                                              keywordslist_id=new_list.id)
-                            for kw_id in keywords]
-            keywords_relation.objects.bulk_create(kw_relations)
+        request.data['user_email'] = self.request.user.email
+        serializer = SavedListCreateSerializer(data=request.data, request=request)
+        serializer.is_valid(raise_exception=True)
+        new_list = serializer.save()
 
-            update_kw_list_stats.delay(new_list, KeyWord)
-            serializer = SavedListNameSerializer(instance=new_list,
-                                                 data=self.request.data,
-                                                 request=request)
-            serializer.is_valid(raise_exception=True)
-            return Response(status=HTTP_202_ACCEPTED,
-                            data=serializer.data)
+        # pylint: disable=no-member
+        keywords_relation = KeywordsList.keywords.through
+        # pylint: enable=no-member
+        kw_relations = [keywords_relation(keyword_id=kw_id,
+                                          keywordslist_id=new_list.id)
+                        for kw_id in keywords]
+        keywords_relation.objects.bulk_create(kw_relations)
 
-        return Response(status=HTTP_400_BAD_REQUEST,
-                        data="'name' and 'keywords' and 'category are required params")
+        update_kw_list_stats.delay(new_list, KeyWord)
+        serializer = SavedListNameSerializer(new_list, request=request)
+        return Response(status=HTTP_202_ACCEPTED, data=serializer.data)
 
 
 class SavedListApiView(ListParentApiView):
+    def get(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        try:
+            obj = KeywordsList.objects.get(pk=pk)
+        except KeywordsList.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        return Response(data=SavedListNameSerializer(obj, request=request).data)
+
     def put(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
         email = self.request.user.email
@@ -438,7 +495,9 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
         ids_to_save = set(queryset.values_list('text', flat=True))
 
         if ids_to_save:
+            # pylint: disable=no-member
             keywords_relation = KeywordsList.keywords.through
+            # pylint: enable=no-member
             kw_relations = [keywords_relation(keyword_id=kw_id,
                                               keywordslist_id=obj.id)
                             for kw_id in ids_to_save]
@@ -469,7 +528,9 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
         ids_to_save = set(queryset.values_list('text', flat=True))
         count = 0
         if ids_to_save:
+            # pylint: disable=no-member
             keywords_relation = KeywordsList.keywords.through
+            # pylint: enable=no-member
             count, details = keywords_relation.objects.filter(
                 keywordslist_id=obj.id,
                 keyword_id__in=ids_to_save,
@@ -490,6 +551,7 @@ class ListsDuplicateApiView(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         kw_list = self.get_object()
+        # pylint: disable=no-member
         keywords = kw_list.keywords.through.objects.filter(
             keywordslist_id=kw_list.id).values_list('keyword_id', flat=True)
         new_list = KeywordsList.objects.create(
@@ -498,6 +560,7 @@ class ListsDuplicateApiView(GenericAPIView):
             category="private"
         )
         keywords_relation = KeywordsList.keywords.through
+        # pylint: enable=no-member
         kw_relations = [keywords_relation(keyword_id=kw_id,
                                           keywordslist_id=new_list.id)
                         for kw_id in keywords]

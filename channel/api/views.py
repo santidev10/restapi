@@ -8,11 +8,16 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from segment.models import Segment
+from segment.models import SegmentChannel
+# pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from utils.csv_export import CSVExport
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+
+# pylint: enable=import-error
 
 
 class ChannelListApiView(APIView):
@@ -25,12 +30,12 @@ class ChannelListApiView(APIView):
         """
         try:
             if self.request.user.is_staff:
-                segment = Segment.objects.get(id=segment_id)
+                segment = SegmentChannel.objects.get(id=segment_id)
             else:
-                segment = Segment.objects.filter(
+                segment = SegmentChannel.objects.filter(
                     Q(owner=self.request.user) |
                     ~Q(category="private")).get(id=segment_id)
-        except Segment.DoesNotExist:
+        except SegmentChannel.DoesNotExist:
             return None
         return segment
 
@@ -49,8 +54,15 @@ class ChannelListApiView(APIView):
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
             # obtain channels ids
-            channels_ids = segment.channels.values_list(
-                "channel_id", flat=True)
+            channels_ids = segment.get_related_ids()
+            if not channels_ids:
+                empty_response = {
+                    "max_page": 1,
+                    "items_count": 0,
+                    "items": [],
+                    "current_page": 1,
+                }
+                return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
         # make call
@@ -62,6 +74,42 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+    def post(self, request):
+        """
+        Export channels procedure
+        """
+        # make call
+        connector = Connector()
+        query_params = request.data
+        # WARN: flat param may freeze SBD
+        query_params["flat"] = 1
+        fields = [
+            "title",
+            "url",
+            "country",
+            "category",
+            "emails",
+            "description",
+            "subscribers",
+            "thirty_days_subscribers",
+            "thirty_days_views",
+            "views_per_video",
+            "sentiment",
+            "engage_rate"
+        ]
+        query_params["fields"] = ",".join(fields)
+        try:
+            response_data = connector.get_channel_list(
+                query_params=query_params)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        csv_generator = CSVExport(
+            fields=fields, data=response_data, file_title="channel")
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ChannelListFiltersApiView(SingledbApiView):
@@ -83,3 +131,17 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 class ChannelSetApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_channels
+
+
+class ChannelsVideosByKeywords(SingledbApiView):
+    def get(self, request, *args, **kwargs):
+        keyword = kwargs.get('keyword')
+        query_params = request.query_params
+        connector = Connector()
+        try:
+            response_data = connector.get_channel_videos_by_keywords(query_params, keyword)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(
+                data={"error": " ".join(e.args)},
+                status=HTTP_408_REQUEST_TIMEOUT)
+        return Response(response_data)

@@ -72,8 +72,10 @@ class Query(models.Model):
     @classmethod
     def create_from_aw_response(cls, query, response):
         # models
+        # pylint: disable=no-member
         interest_relation = KeyWord.interests.through
         query_relation = KeyWord.queries.through
+        # pylint: enable=no-member
 
         # get ids
         interest_ids = set(
@@ -141,11 +143,11 @@ class Query(models.Model):
 
 class KeyWord(BaseModel):
     text = models.CharField(max_length=250, primary_key=True)
-
     interests = models.ManyToManyField(Interest)
     queries = models.ManyToManyField(Query, related_name="keywords")
     average_cpc = models.FloatField(null=True)
     competition = models.FloatField(null=True)
+    updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
 
@@ -162,11 +164,22 @@ class KeyWord(BaseModel):
     def __str__(self):
         return self.text
 
+    @property
+    def interests_top_kw(self):
+        top_kw_interests = {}
+        interests_ids = self.interests.all().values_list('id', flat=True)
+        for interests_id in interests_ids:
+            keywords = Interest.objects.get(id=interests_id).keyword_set.all().exclude(text=self.text).order_by(
+                '-search_volume').values_list('text', flat=True)[:5]
+            top_kw_interests[interests_id] = keywords
+        return top_kw_interests
+
 
 class KeywordsList(BaseModel):
     name = models.TextField()
     user_email = models.EmailField(db_index=True)
     keywords = models.ManyToManyField(KeyWord, related_name='lists')
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=255, null=True, blank=True)
 

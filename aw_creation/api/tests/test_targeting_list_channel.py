@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from django.utils import timezone
+from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
@@ -20,9 +21,12 @@ class TargetingListTestCase(ExtendedAPITestCase):
             account_creation=account, name="",
         )
         ad_group_creation = AdGroupCreation.objects.create(
-            id="1", name="",
+            id="1", name="", max_rate=0.01,
             campaign_creation=campaign_creation,
         )
+        AccountCreation.objects.filter(pk=account.id).update(sync_at=timezone.now())
+        account.refresh_from_db()
+        self.assertEqual(account.is_changed, False)
         return ad_group_creation
 
     def test_success_get(self):
@@ -162,8 +166,8 @@ class TargetingListTestCase(ExtendedAPITestCase):
                 is_negative=i % 2,
             )
         url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting_export",
-            args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
+            "aw_creation_urls:ad_group_creation_targeting_export",
+            args=(ad_group.id, TargetingItem.CHANNEL_TYPE, "positive"),
         )
         url = "{}?{}".format(
             str(url),
@@ -174,26 +178,4 @@ class TargetingListTestCase(ExtendedAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
-        self.assertEqual(len(lines), 11)
-
-    def test_import_list(self):
-        ad_group = self.create_ad_group()
-
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting_import",
-            args=(ad_group.id, TargetingItem.CHANNEL_TYPE),
-        )
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            with open('aw_creation/fixtures/import_channels_list.csv',
-                      'rb') as fp:
-                response = self.client.post(url, {'file': fp},
-                                            format='multipart')
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        ad_group.campaign_creation.account_creation.refresh_from_db()
-        self.assertIs(
-            ad_group.campaign_creation.account_creation.is_changed,
-            True,
-        )
-
+        self.assertEqual(len(lines), 6)

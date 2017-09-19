@@ -1,50 +1,37 @@
 from django.db import models
 
-from .creation import CampaignCreation, AdGroupCreation
 
+class OptimizationSetting(models.Model):
+    default_settings = dict(
+        average_cpv=None,
+        average_cpm=None,
+        video_view_rate=30,
+        ctr=None,
+        ctr_v=None,
+    )
 
-class OptimizationTuning(models.Model):
-
-    IMPRESSIONS_KPI = "impressions"
-    VIEWS_KPI = "video_views"
-    CLICKS_KPI = "clicks"
-    COST_KPI = "cost"
     CTR_KPI = "ctr"
+    CTR_V_KPI = "ctr_v"
     CPV_KPI = "average_cpv"
     CPM_KPI = "average_cpm"
     VIEW_RATE_KPI = "video_view_rate"
-    CONVERSIONS_KPI = "conversions"
-    VIEW_THROUGH_KPI = "view_through"
     KPI_TYPES = (
-        (IMPRESSIONS_KPI, IMPRESSIONS_KPI),
-        (VIEWS_KPI, VIEWS_KPI),
-        (CLICKS_KPI, CLICKS_KPI),
-        (COST_KPI, COST_KPI),
-        (CTR_KPI, CTR_KPI),
-        (CPV_KPI, CPV_KPI),
-        (VIEW_RATE_KPI, VIEW_RATE_KPI),
-        (CONVERSIONS_KPI, CONVERSIONS_KPI),
-        (VIEW_THROUGH_KPI, VIEW_THROUGH_KPI),
+        CTR_V_KPI, CTR_KPI, CPV_KPI, VIEW_RATE_KPI, CPM_KPI,
     )
-    kpi = models.CharField(max_length=20, choices=KPI_TYPES)
 
-    value = models.DecimalField(  # 9,999,999,999.999
-        null=True, blank=True, max_digits=13, decimal_places=3,
-    )
+    average_cpv = models.DecimalField(null=True, blank=True, max_digits=6, decimal_places=3)
+    average_cpm = models.DecimalField(null=True, blank=True, max_digits=6, decimal_places=3)
+    video_view_rate = models.DecimalField(null=True, blank=True, max_digits=6, decimal_places=3)
+    ctr = models.DecimalField(null=True, blank=True, max_digits=6, decimal_places=3)
+    ctr_v = models.DecimalField(null=True, blank=True, max_digits=6, decimal_places=3)
 
     class Meta:
         abstract = True
-        unique_together = (('item', 'kpi',),)
-        ordering = ['item']
 
 
-class CampaignOptimizationTuning(OptimizationTuning):
-    item = models.ForeignKey(
-        CampaignCreation, related_name="optimization_tuning"
-    )
+class AccountOptimizationSetting(OptimizationSetting):
+    item = models.OneToOneField('aw_creation.accountcreation', related_name="optimization_setting")
 
 
-class AdGroupOptimizationTuning(OptimizationTuning):
-    item = models.ForeignKey(
-        AdGroupCreation, related_name="optimization_tuning"
-    )
+class CampaignOptimizationSetting(OptimizationSetting):
+    item = models.OneToOneField('aw_creation.campaigncreation', related_name="optimization_setting")

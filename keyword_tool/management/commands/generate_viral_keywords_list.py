@@ -1,12 +1,16 @@
 import logging
 import time
 
+import suds
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from aw_reporting.adwords_api import optimize_keyword, get_client
 from keyword_tool.models import Query, KeyWord, ViralKeywords
+# pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector as Connector
+
+# pylint: enable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -25,27 +29,35 @@ class Command(BaseCommand):
                 try:
                     Query.objects.get(pk=query)
                 except Query.DoesNotExist:
-                    try:
-                        Query.create_from_aw_response(
-                            query,
-                            optimize_keyword([q.strip() for q in query.split(',')
-                                              if q.strip()], client=client),
-                        )
-                    except Exception as e:
-                        # timeout if too many requests
-                        try:
-                            inner_error = e.fault.detail.ApiExceptionFault.errors
-                            if inner_error.reason == 'RATE_EXCEEDED':
-                                logger.info('{}, timeout 30 sec'.format(inner_error.reason))
-                                time.sleep(int(inner_error.retryAfterSeconds))
-                        except AttributeError:
-                            logger.info(e)
-
+                    Query.create_from_aw_response(
+                        query,
+                        self.get_awd_response(query=[q.strip() for q in query.split(',') if q.strip()],
+                                              client=client)
+                    )
             # get all viral keywords
-            keywords = {i for i in KeyWord.objects.filter(search_volume__gte=10000) if
-                        i.monthly_searches[-1]['value'] > i.monthly_searches[-2]['value'] +
-                        i.monthly_searches[-2]['value'] * 0.5}
+            keywords = self.get_viral(KeyWord.objects.filter(search_volume__gte=10000))
 
             # create relations
             kv_to_save = [ViralKeywords(keyword=keyword) for keyword in keywords]
             ViralKeywords.objects.bulk_create(kv_to_save)
+
+    def get_viral(self, queryset):
+        result = []
+        for elem in queryset:
+            top_month = max(elem.monthly_searches, key=lambda x: x['value'])
+            is_viral = elem.monthly_searches[-1]['value'] > elem.monthly_searches[-2]['value'] + \
+                                                            elem.monthly_searches[-2]['value'] * 0.5
+            is_valid = top_month['value'] / elem.monthly_searches[-1]['value'] < 10
+            if is_viral and is_valid:
+                result.append(elem)
+        return set(result)
+
+    def get_awd_response(self, query, client):
+        while True:
+            try:
+                return optimize_keyword(query=query,
+                                        client=client)
+            except suds.WebFault:
+                logger.info("Sleeping RateExceededError")
+                time.sleep(31)
+                continue

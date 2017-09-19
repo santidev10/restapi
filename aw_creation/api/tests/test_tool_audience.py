@@ -28,7 +28,7 @@ class AudienceToolTestCase(ExtendedAPITestCase):
 
         # creation_topic_tool
         url = reverse(
-            "aw_creation_urls:optimization_audience_tool")
+            "aw_creation_urls:setup_audience_tool")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -50,7 +50,7 @@ class AudienceToolTestCase(ExtendedAPITestCase):
         self.create_audience(aud_type=Audience.CUSTOM_AFFINITY_TYPE)
 
         url = reverse(
-            "aw_creation_urls:optimization_audience_tool_export",
+            "aw_creation_urls:setup_audience_tool_export",
         )
         url = "{}?{}".format(
             str(url),
@@ -67,7 +67,7 @@ class AudienceToolTestCase(ExtendedAPITestCase):
         children = parent_1.children.first()
 
         url = reverse(
-            "aw_creation_urls:optimization_audience_tool_export",
+            "aw_creation_urls:setup_audience_tool_export",
         )
         url = "{}?{}".format(
             str(url),

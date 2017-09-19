@@ -2,25 +2,25 @@
 Administration api views module
 """
 import operator
-
-from django.contrib.auth import get_user_model
 from functools import reduce
 
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db.models import Q
-from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
     HTTP_201_CREATED
-from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer
 from administration.models import UserAction
-from userprofile.models import UserProfile
 from userprofile.api.serializers import UserSerializer
+from userprofile.models import UserProfile
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -97,17 +97,19 @@ class UserActionListCreateApiView(ListCreateAPIView):
     pagination_class = UserActionPaginator
     serializer_class = UserActionRetrieveSerializer
     create_serializer_class = UserActionCreateSerializer
+    permission_classes = tuple()
 
     def post(self, request, *args, **kwargs):
         """
         Add current user to post data
         """
         # add user id to data
-        request.data["user"] = request.user.id
+        data = request.data.copy()
+        data["user"] = request.user.id
         # serialization procedure
         serializer_class = self.create_serializer_class
         kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(data=request.data, *args, **kwargs)
+        serializer = serializer_class(data=data, *args, **kwargs)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         headers = self.get_success_headers(serializer.data)
@@ -153,8 +155,19 @@ class UserActionListCreateApiView(ListCreateAPIView):
         slug = self.request.query_params.get("slug")
         if slug:
             filters["slug__icontains"] = slug
+        # start date
+        start_date = self.request.query_params.get("start_date")
+        if start_date:
+            filters["created_at__gte"] = start_date
+        # end date
+        end_date = self.request.query_params.get("end_date")
+        if end_date:
+            filters["created_at__lte"] = end_date
         if filters:
-            queryset = queryset.filter(**filters)
+            try:
+                queryset = queryset.filter(**filters)
+            except ValidationError:
+                queryset = UserAction.objects.none()
         return queryset
 
     def do_sorts(self, queryset):
@@ -176,6 +189,15 @@ class UserActionListCreateApiView(ListCreateAPIView):
         elif order_by in available_reverse_sorts:
             return queryset.order_by("-{}".format(order_by))
         return queryset
+
+    def paginate_queryset(self, queryset):
+        """
+        Processing flat query param
+        """
+        flat = self.request.query_params.get("flat")
+        if flat == "1":
+            return None
+        return super().paginate_queryset(queryset)
 
     def get_queryset(self):
         """
