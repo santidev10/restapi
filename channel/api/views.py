@@ -14,7 +14,8 @@ from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from utils.csv_export import CSVExport
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
+    OnlyAdminUserOrSubscriber
 
 
 # pylint: enable=import-error
@@ -24,6 +25,8 @@ class ChannelListApiView(APIView):
     """
     Proxy view for channel list
     """
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     def obtain_segment(self, segment_id):
         """
         Try to get segment from db
@@ -113,11 +116,13 @@ class ChannelListApiView(APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     connector_get = Connector().get_channel_filters_list
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 
@@ -129,11 +134,13 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 
 
 class ChannelSetApiView(SingledbApiView):
-    permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_delete = Connector().delete_channels
 
 
 class ChannelsVideosByKeywords(SingledbApiView):
+    permission_classes = (OnlyAdminUserOrSubscriber,)
+
     def get(self, request, *args, **kwargs):
         keyword = kwargs.get('keyword')
         query_params = request.query_params

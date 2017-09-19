@@ -47,6 +47,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
+    is_subscribed = models.BooleanField(default=False)
 
     objects = UserManager()
 
@@ -85,3 +86,25 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         Sends an email to this User.
         """
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    @property
+    def has_subscription(self):
+        """
+        Check user has saas subscription
+        :return:
+        """
+        from payments.models import Customer
+        from payments.stripe_api.subscriptions import is_valid
+        try:
+            customer = self.customer
+        except Customer.DoesNotExist:
+            return self.is_subscribed
+        return self.is_subscribed or any(
+            {is_valid(i) for i in customer.subscription_set.all()})
+
+    @property
+    def token(self):
+        """
+        User auth token
+        """
+        return self.auth_token.key
