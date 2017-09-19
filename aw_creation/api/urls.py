@@ -20,6 +20,9 @@ urlpatterns = [
     url(r'^account_creation_list/$',
         views.AccountCreationListApiView.as_view(),
         name="account_creation_list"),
+    url(r'^account_creation/(?P<pk>\w+)/$',  # returns list data for a single item
+        views.AccountCreationApiView.as_view(),
+        name="account_creation"),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
@@ -108,15 +111,9 @@ urlpatterns = [
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
         views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),
-    url(r'^performance_targeting_report/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+    url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
-    url(r'^performance_targeting_report_details/(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.PerformanceTargetingReportDetailsAPIView.as_view(),
-        name="performance_targeting_report_details"),
-    url(r'^performance_targeting_settings/(?P<pk>\w+)/$',
-        views.PerformanceTargetingSettingsAPIView.as_view(),
-        name="performance_targeting_settings"),
     # >>> Performance
 
     # tools

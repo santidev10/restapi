@@ -1,4 +1,4 @@
-from django.db.models import Min, Max, Sum, Q
+from django.db.models import Min, Max, Sum, Count
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField, DictField, CharField
 from aw_creation.models import TargetingItem, AdGroupCreation, \
@@ -321,6 +321,11 @@ class StatField(SerializerMethodField):
         return self.parent.stats.get(value.id, {}).get(self.field_name)
 
 
+class StruckField(SerializerMethodField):
+    def to_representation(self, value):
+        return self.parent.struck.get(value.id, {}).get(self.field_name)
+
+
 class AccountCreationListSerializer(ModelSerializer):
     is_changed = BooleanField()
     name = SerializerMethodField()
@@ -329,12 +334,22 @@ class AccountCreationListSerializer(ModelSerializer):
     status = CharField()
     start = SerializerMethodField()
     end = SerializerMethodField()
+
+    # analytic data
     impressions = StatField()
     video_views = StatField()
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
     ctr_v = StatField()
+
+    # structural data
+    ad_count = StruckField()
+    channel_count = StruckField()
+    video_count = StruckField()
+    interest_count = StruckField()
+    topic_count = StruckField()
+    keyword_count = StruckField()
 
     @staticmethod
     def get_name(obj):
@@ -374,6 +389,7 @@ class AccountCreationListSerializer(ModelSerializer):
     def __init__(self, *args, **kwargs):
         self.settings = {}
         self.stats = {}
+        self.struck = {}
         self.daily_chart = defaultdict(list)
         if args:
             if isinstance(args[0], AccountCreation):
@@ -403,10 +419,21 @@ class AccountCreationListSerializer(ModelSerializer):
                 dict_calculate_stats(i)
                 self.stats[i['account__account_creations__id']] = i
 
+            #
+            struck_data = AccountCreation.objects.filter(id__in=ids).values("id").order_by("id").annotate(
+                ad_count=Count("account__campaigns__ad_groups__ads"),
+                channel_count=Count("account__campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
+                video_count=Count("account__campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
+                interest_count=Count("account__campaigns__ad_groups__audiences__audience_id", distinct=True),
+                topic_count=Count("account__campaigns__ad_groups__topics__topic_id", distinct=True),
+                keyword_count=Count("account__campaigns__ad_groups__keywords__keyword", distinct=True),
+            )
+            for d in struck_data:
+                self.struck[d['id']] = d
+
             # data for weekly charts
             account_id_key = "ad_group__campaign__account__account_creations__id"
             group_by = (account_id_key, "date")
-
             daily_stats = AdGroupStatistic.objects.filter(
                 ad_group__campaign__account__account_creations__id__in=ids
             ).values(*group_by).order_by(*group_by).annotate(
@@ -439,6 +466,7 @@ class AccountCreationListSerializer(ModelSerializer):
             "is_changed", "weekly_chart",
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
+            "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
         )
 
 

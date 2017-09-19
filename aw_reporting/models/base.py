@@ -343,7 +343,7 @@ class AdGroup(BaseStatisticModel):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True)
-    campaign = models.ForeignKey(Campaign)
+    campaign = models.ForeignKey(Campaign, related_name='ad_groups')
     cpv_bid = models.PositiveIntegerField(null=True)
     cpm_bid = models.PositiveIntegerField(null=True)
     cpc_bid = models.PositiveIntegerField(null=True)
