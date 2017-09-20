@@ -48,7 +48,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'start', 'end', 'budget', 'languages', 'devices',
                 'frequency_capping', 'ad_schedule_rules',
                 'location_rules', 'ad_group_creations',
-                'video_networks', 'video_ad_format', 'delivery_method',
+                'video_networks', 'type', 'delivery_method',
             }
         )
         self.assertEqual(len(campaign_creation['languages']), 1)
@@ -58,7 +58,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(ad_group_creation.keys()),
             {
                 'id', 'name', 'updated_at', 'ad_creations', 'max_rate',
-                'genders', 'parents', 'age_ranges', 'targeting',
+                'genders', 'parents', 'age_ranges', 'targeting', 'video_ad_format',
             }
         )
 
@@ -71,8 +71,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             set(ad_group_creation['ad_creations'][0].keys()),
             {
                 'id', 'name', 'updated_at', 'tracking_template', 'final_url',
-                'video_url', 'thumbnail', 'custom_params', 'display_url',
-                'companion_banner',
+                'video_url', 'video_ad_format', 'custom_params', 'display_url', 'companion_banner',
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )

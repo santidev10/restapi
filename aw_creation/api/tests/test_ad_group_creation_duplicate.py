@@ -1,5 +1,6 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from django.contrib.auth import get_user_model
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DemoAccount
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -49,7 +50,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name',  'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate',
+                'targeting', 'max_rate', 'video_ad_format',
             }
         )
         self.assertEqual(data['max_rate'], ac.max_rate)
@@ -67,7 +68,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad.keys()),
             {
                 'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail', 'companion_banner',
+                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
                 'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
             }
         )
@@ -93,3 +94,54 @@ class AccountAPITestCase(AwReportingAPITestCase):
                       args=(ad_group.id,))
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_success_duplicate_to_another_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        campaign_creation_1 = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        campaign_creation_2 = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="Test name", campaign_creation=campaign_creation_1,
+            max_rate="666.666",
+        )
+
+        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
+                      args=(ad_group_creation.id,))
+        response = self.client.post("{}?to={}".format(url, campaign_creation_2.id))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(campaign_creation_1.ad_group_creations.count(), 1)
+        self.assertEqual(campaign_creation_2.ad_group_creations.count(), 1)
+        self.assertEqual(data['name'], ad_group_creation.name)
+
+    def test_fail_duplicate_to_another_not_found_campaign(self):
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        account_creation_1 = AccountCreation.objects.create(
+            name="", owner=get_user_model().objects.create(email="me@text.com"),
+        )
+        campaign_creation_1 = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        campaign_creation_2 = CampaignCreation.objects.create(
+            name="", account_creation=account_creation_1,
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="Test name", campaign_creation=campaign_creation_1,
+            max_rate="666.666",
+        )
+
+        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
+                      args=(ad_group_creation.id,))
+        response = self.client.post("{}?to={}".format(url, campaign_creation_2.id))
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+

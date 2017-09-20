@@ -20,6 +20,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             budget="333.333",
             # start="2017-05-10",
             # end="2018-03-04",
+            is_deleted=True,
             content_exclusions_raw=json.dumps(
                 [i[0] for i in CampaignCreation.CONTENT_LABELS]
             ),
@@ -79,7 +80,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         self.assertIsNone(
             re.search(r"createOrUpdateVideoAd\(.*?\"id\": 2", code, re.MULTILINE)
         )
-        # with open("code.js", "w") as f:
-        #     f.write(code)
+        with open("code.js", "w") as f:
+            f.write(code)
 
 

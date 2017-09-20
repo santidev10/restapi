@@ -1,13 +1,14 @@
 # pylint: disable=import-error
 from apiclient.discovery import build
 # pylint: enable=import-error
+from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
     CharField as AggrCharField
 from django.db.models.functions import Coalesce
-from django.http import StreamingHttpResponse, HttpResponse
+from django.http import StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from openpyxl import load_workbook
@@ -47,6 +48,7 @@ import calendar
 import csv
 import pytz
 import logging
+import isodate
 
 logger = logging.getLogger(__name__)
 
@@ -166,27 +168,48 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 class YoutubeVideoSearchApiView(GenericAPIView):
 
     def get(self, request, query, **_):
+        video_ad_format = request.GET.get("video_ad_format")
+
         youtube = build(
             "youtube", "v3",
             developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
         )
+        next_page = self.request.GET.get("next_page")
+
+        items, next_token, total_result = self.search_yt_videos(youtube, query, next_page)
+
+        if video_ad_format == "BUMPER":
+            while len(items) < 10 and next_token:
+                add_items, next_token, total_result = self.search_yt_videos(youtube, query, next_token)
+                items.extend(add_items)
+
+        response = dict(next_page=next_token, items_count=total_result, items=items)
+        return Response(data=response)
+
+    def search_yt_videos(self, youtube, query, next_page):
+
+        video_ad_format = self.request.GET.get("video_ad_format")
         options = {
             'q': query,
-            'part': 'snippet',
+            'part': 'id',
             'type': "video",
+            'videoDuration': "short" if video_ad_format == "BUMPER" else "any",
             'maxResults': 50,
             'safeSearch': 'none',
+            'eventType': 'completed',
         }
-        next_page = request.GET.get("next_page")
         if next_page:
             options["pageToken"] = next_page
-        results = youtube.search().list(**options).execute()
-        response = dict(
-            next_page=results.get("nextPageToken"),
-            items_count=results.get("pageInfo", {}).get("totalResults"),
-            items=[self.format_item(i) for i in results.get("items", [])]
-        )
-        return Response(data=response)
+        search_results = youtube.search().list(**options).execute()
+        ids = [i.get("id", {}).get("videoId") for i in search_results.get("items", [])]
+
+        results = youtube.videos().list(part="snippet,contentDetails", id=",".join(ids)).execute()
+        items = [self.format_item(i) for i in results.get("items", [])]
+
+        if video_ad_format == "BUMPER":
+            items = list(filter(lambda i: i["duration"] and i["duration"] <= 6, items))
+
+        return items, search_results.get("nextPageToken"), search_results.get("pageInfo", {}).get("totalResults")
 
     @staticmethod
     def format_item(data):
@@ -207,6 +230,7 @@ class YoutubeVideoSearchApiView(GenericAPIView):
                 id=snippet.get("channelId"),
                 title=snippet.get("channelTitle"),
             ),
+            duration=isodate.parse_duration(data["contentDetails"]["duration"]).total_seconds(),
         )
         return item
 
@@ -221,13 +245,15 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         else:
             return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
 
+        video_ad_format = request.GET.get("video_ad_format")
+
         youtube = build(
             "youtube", "v3",
             developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
         )
         options = {
             'id': yt_id,
-            'part': 'snippet',
+            'part': 'snippet,contentDetails',
             'maxResults': 1,
         }
         results = youtube.videos().list(**options).execute()
@@ -235,7 +261,12 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         if not items:
             return Response(status=HTTP_404_NOT_FOUND, data=dict(error="There is no such a video"))
 
-        return Response(data=self.format_item(items[0]))
+        item = self.format_item(items[0])
+        if video_ad_format == "BUMPER" and item["duration"] and item["duration"] > 6:
+            return Response(status=HTTP_404_NOT_FOUND,
+                            data=dict(error="There is no such a Bumper ads video (<= 6 seconds)"))
+
+        return Response(data=item)
 
 
 class ItemsFromSegmentIdsApiView(APIView):
@@ -389,9 +420,13 @@ class CreationOptionsApiView(APIView):
             # create
             name="string;max_length=250;required;validation=^[^#']*$",
             # create and update
-            video_ad_format=opts_to_response(
-                CampaignCreation.VIDEO_AD_FORMATS[:1],
-            ),
+            video_ad_format=[
+                dict(
+                    id=i, name=n,
+                    thumbnail=request.build_absolute_uri(static("img/{}.png".format(i)))
+                )
+                for i, n in AdGroupCreation.VIDEO_AD_FORMATS
+            ],
             # update
             goal_type=opts_to_response(
                 CampaignCreation.GOAL_TYPES[:1],
@@ -829,7 +864,8 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = CampaignCreation.objects.filter(
             account_creation__owner=self.request.user,
-            account_creation_id=pk
+            account_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -874,21 +910,20 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
-            account_creation__owner=self.request.user
+            account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
 
-        campaigns_count = CampaignCreation.objects.filter(account_creation=instance.account_creation).count()
+        campaigns_count = self.get_queryset().filter(account_creation=instance.account_creation).count()
         if campaigns_count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete the only campaign"))
-        instance.delete()
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
@@ -998,7 +1033,8 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = AdGroupCreation.objects.filter(
             campaign_creation__account_creation__owner=self.request.user,
-            campaign_creation_id=pk
+            campaign_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -1033,7 +1069,8 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation__owner=self.request.user
+            campaign_creation__account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
@@ -1048,15 +1085,12 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.campaign_creation.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
-
-        count = AdGroupCreation.objects.filter(campaign_creation=instance.campaign_creation).count()
+        count = self.get_queryset().filter(campaign_creation=instance.campaign_creation).count()
         if count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete the only item"))
-        instance.delete()
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -1068,7 +1102,8 @@ class AdCreationListSetupApiView(ListCreateAPIView):
         pk = self.kwargs.get("pk")
         queryset = AdCreation.objects.filter(
             ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
-            ad_group_creation_id=pk
+            ad_group_creation_id=pk,
+            is_deleted=False,
         )
         return queryset
 
@@ -1099,13 +1134,66 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
-            ad_group_creation__campaign_creation__account_creation__owner=self.request.user
+            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
+            is_deleted=False,
         )
         return queryset
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        data = request.data
+
+        # validate video ad format and video duration
+        video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
+        if video_ad_format == AdGroupCreation.BUMPER_AD:
+            video_duration = data.get("video_duration") or instance.video_duration
+            if video_duration > 6:
+                return Response(dict(error="Bumper ads video must be 6 seconds or less"),
+                                status=HTTP_400_BAD_REQUEST)
+
+        if "video_ad_format" in data:
+            set_ad_format = data["video_ad_format"]
+            ad_group_creation = instance.ad_group_creation
+            campaign_creation = ad_group_creation.campaign_creation
+            video_ad_format = ad_group_creation.video_ad_format
+            if set_ad_format != video_ad_format:
+                # ad group restrictions
+                if ad_group_creation.is_pulled_to_aw:
+                    return Response(
+                        dict(error="{} is the only available ad type for this ad group".format(video_ad_format)),
+                        status=HTTP_400_BAD_REQUEST,
+                    )
+
+                if ad_group_creation.ad_creations.count() > 1:
+                    return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
+                                    status=HTTP_400_BAD_REQUEST)
+
+                # campaign restrictions
+                set_bid_strategy = None
+                if set_ad_format == AdGroupCreation.BUMPER_AD and \
+                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
+                    set_bid_strategy = CampaignCreation.CPM_STRATEGY
+                elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.DISCOVERY_TYPE) and \
+                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
+                    set_bid_strategy = CampaignCreation.CPV_STRATEGY
+
+                if set_bid_strategy:
+                    if campaign_creation.is_pulled_to_aw:
+                        return Response(
+                            dict(error="You cannot use an ad of {} type in this campaign".format(set_bid_strategy)),
+                            status=HTTP_400_BAD_REQUEST,
+                        )
+
+                    if AdCreation.objects.filter(ad_group_creation__campaign_creation=campaign_creation).count() > 1:
+                        return Response(dict(error="Ad bid type cannot be changed for only one ad within a campaign"),
+                                        status=HTTP_400_BAD_REQUEST)
+
+                    CampaignCreation.objects.filter(id=campaign_creation.id).update(bid_strategy_type=set_bid_strategy)
+
+                AdGroupCreation.objects.filter(id=ad_group_creation.id).update(video_ad_format=set_ad_format)
+                ad_group_creation.video_ad_format = set_ad_format
+
         serializer = AdCreationUpdateSerializer(
             instance, data=request.data, partial=partial,
         )
@@ -1115,16 +1203,25 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        if instance.ad_group_creation.campaign_creation.account_creation.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
 
-        count = AdCreation.objects.filter(ad_group_creation=instance.ad_group_creation).count()
+        count = self.get_queryset().filter(ad_group_creation=instance.ad_group_creation).count()
         if count < 2:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete the only item"))
-        instance.delete()
+            return Response(dict(error="You cannot delete the only item"), status=HTTP_400_BAD_REQUEST)
+        instance.is_deleted = True
+        instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
+
+
+@demo_view_decorator
+class AdCreationAvailableAdFormatsApiView(APIView):
+
+    def get(self, request, pk, **_):
+        try:
+            ad_creation = AdCreation.objects.get(pk=pk)
+        except AdCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+
+        return Response(ad_creation.ad_group_creation.get_available_ad_formats())
 
 
 @demo_view_decorator
@@ -1133,9 +1230,8 @@ class AccountCreationDuplicateApiView(APIView):
 
     account_fields = ("is_paused", "is_ended")
     campaign_fields = (
-        "name", "start", "end", "budget",
-        "devices_raw", "delivery_method", "video_ad_format", "video_networks_raw",
-        'content_exclusions_raw',
+        "name", "start", "end", "budget", "devices_raw", "delivery_method", "type", "bid_strategy_type",
+        "video_networks_raw", "content_exclusions_raw",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",
@@ -1145,7 +1241,7 @@ class AccountCreationDuplicateApiView(APIView):
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw",
+        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw", "video_ad_format",
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
@@ -1160,20 +1256,20 @@ class AccountCreationDuplicateApiView(APIView):
         )
         return queryset
 
-    def post(self, *args, pk, **kwargs):
+    def post(self, request, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
         bulk_items = defaultdict(list)
-        duplicate = self.duplicate_item(instance, bulk_items)
+        duplicate = self.duplicate_item(instance, bulk_items, request.GET.get("to"))
         self.insert_bulk_items(bulk_items)
 
         response = self.serializer_class(duplicate).data
         return Response(data=response)
 
-    def duplicate_item(self, item, bulk_items):
+    def duplicate_item(self, item, bulk_items, to_parent):
         if isinstance(item, AccountCreation):
             return self.duplicate_account(item, bulk_items,
                                           all_names=self.get_queryset().values_list("name", flat=True))
@@ -1182,13 +1278,32 @@ class AccountCreationDuplicateApiView(APIView):
             return self.duplicate_campaign(parent, item, bulk_items,
                                            all_names=parent.campaign_creations.values_list("name", flat=True))
         elif isinstance(item, AdGroupCreation):
-            parent = item.campaign_creation
-            return self.duplicate_ad_group(parent, item, bulk_items,
-                                           all_names=parent.ad_group_creations.values_list("name", flat=True))
+            if to_parent:
+                try:
+                    parent = CampaignCreation.objects.filter(account_creation__owner=self.request.user).get(pk=to_parent)
+                except CampaignCreation.DoesNotExist:
+                    raise Http404
+            else:
+                parent = item.campaign_creation
+
+            return self.duplicate_ad_group(
+                parent, item, bulk_items,
+                all_names=None if to_parent else parent.ad_group_creations.values_list("name", flat=True),
+            )
         elif isinstance(item, AdCreation):
-            parent = item.ad_group_creation
-            return self.duplicate_ad(parent, item, bulk_items,
-                                     all_names=parent.ad_creations.values_list("name", flat=True))
+            if to_parent:
+                try:
+                    parent = AdGroupCreation.objects.filter(
+                        campaign_creation__account_creation__owner=self.request.user
+                    ).get(pk=to_parent)
+                except AdGroupCreation.DoesNotExist:
+                    raise Http404
+            else:
+                parent = item.ad_group_creation
+            return self.duplicate_ad(
+                parent, item, bulk_items,
+                all_names=None if to_parent else parent.ad_creations.values_list("name", flat=True),
+            )
         else:
             raise NotImplementedError("Unknown item type: {}".format(type(item)))
 

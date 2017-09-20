@@ -93,35 +93,43 @@ def add_targeting_list_items_info(data, list_type):
 
 
 class AdCreationSetupSerializer(ModelSerializer):
-    thumbnail = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
 
     @staticmethod
-    def get_thumbnail(obj):
-        if obj.video_url:
-            match = re.match(YT_VIDEO_REGEX,  obj.video_url)
-            if match:
-                uid = match.group(1)
-                return "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(uid)
+    def get_video_ad_format(obj):
+        item_id = obj.ad_group_creation.video_ad_format
+        options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
 
     class Meta:
         model = AdCreation
         fields = (
             'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
-            'tracking_template', 'custom_params',
-            'thumbnail',
+            'tracking_template', 'custom_params', 'video_ad_format',
             'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
         )
 
 
 class AdGroupCreationSetupSerializer(ModelSerializer):
-
-    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
-
     targeting = SerializerMethodField()
     age_ranges = SerializerMethodField()
     genders = SerializerMethodField()
     parents = SerializerMethodField()
+    video_ad_format = SerializerMethodField()
+    ad_creations = SerializerMethodField()
+
+    @staticmethod
+    def get_ad_creations(obj):
+        queryset = obj.ad_creations.filter(is_deleted=False)
+        ad_creations = AdCreationSetupSerializer(queryset, many=True).data
+        return ad_creations
+
+    @staticmethod
+    def get_video_ad_format(obj):
+        item_id = obj.video_ad_format
+        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+        return dict(id=item_id, name=options[item_id])
 
     @staticmethod
     def get_age_ranges(obj):
@@ -170,7 +178,7 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
         fields = (
             'id', 'name', 'updated_at', 'max_rate',
             'age_ranges', 'genders', 'parents', 'targeting',
-            'ad_creations',
+            'ad_creations', 'video_ad_format',
         )
 
 
@@ -241,18 +249,24 @@ class FrequencyCapSerializer(ModelSerializer):
 
 
 class CampaignCreationSetupSerializer(ModelSerializer):
-    ad_group_creations = AdGroupCreationSetupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
     frequency_capping = FrequencyCapSerializer(many=True, read_only=True)
 
     languages = SerializerMethodField()
     devices = SerializerMethodField()
-    video_ad_format = SerializerMethodField()
+    type = SerializerMethodField()
     delivery_method = SerializerMethodField()
     video_networks = SerializerMethodField()
 
     content_exclusions = SerializerMethodField()
+    ad_group_creations = SerializerMethodField()
+
+    @staticmethod
+    def get_ad_group_creations(obj):
+        queryset = obj.ad_group_creations.filter(is_deleted=False)
+        ad_group_creations = AdGroupCreationSetupSerializer(queryset, many=True).data
+        return ad_group_creations
 
     @staticmethod
     def get_content_exclusions(obj):
@@ -264,9 +278,9 @@ class CampaignCreationSetupSerializer(ModelSerializer):
         return content_exclusions
 
     @staticmethod
-    def get_video_ad_format(obj):
-        item_id = obj.video_ad_format
-        options = dict(obj.__class__.VIDEO_AD_FORMATS)
+    def get_type(obj):
+        item_id = obj.type
+        options = dict(obj.__class__.CAMPAIGN_TYPES)
         return dict(id=item_id, name=options[item_id])
 
     @staticmethod
@@ -306,8 +320,9 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             'id', 'name', 'updated_at',
             'start', 'end', 'budget', 'languages',
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
-            'video_networks', 'delivery_method', 'video_ad_format',
-            'content_exclusions', 'ad_group_creations',
+            'video_networks', 'delivery_method', 'type',
+            'content_exclusions',
+            'ad_group_creations',
         )
 
 
@@ -438,9 +453,13 @@ class AccountCreationListSerializer(ModelSerializer):
 
 
 class AccountCreationSetupSerializer(ModelSerializer):
+    campaign_creations = SerializerMethodField()
 
-    campaign_creations = CampaignCreationSetupSerializer(many=True,
-                                                         read_only=True)
+    @staticmethod
+    def get_campaign_creations(obj):
+        queryset = obj.campaign_creations.filter(is_deleted=False)
+        campaign_creations = CampaignCreationSetupSerializer(queryset, many=True).data
+        return campaign_creations
 
     class Meta:
         model = AccountCreation
@@ -470,7 +489,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         fields = (
             'name', 'start', 'end', 'budget',
             'languages', 'devices',
-            'video_ad_format', 'delivery_method', 'video_networks', 'content_exclusions',
+            'delivery_method', 'video_networks', 'content_exclusions',
         )
 
     def validate_start(self, value):
@@ -610,35 +629,32 @@ class AdCreationUpdateSerializer(ModelSerializer):
         model = AdCreation
         exclude = ('ad_group_creation',)
 
-    def validate(self, data):
-        if 'custom_params' in data:
-            custom_params = data['custom_params']
-            if isinstance(custom_params, list) and len(custom_params) == 1 \
-               and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
-                custom_params = json.loads(custom_params[0])
-            data['custom_params'] = custom_params
+    @staticmethod
+    def validate_custom_params(custom_params):
+        if isinstance(custom_params, list) and len(custom_params) == 1 \
+                and isinstance(custom_params[0], str) and custom_params[0].startswith("["):
+            custom_params = json.loads(custom_params[0])
 
-            if len(custom_params) > 3:
+        if len(custom_params) > 3:
+            raise ValidationError(
+                'You cannot use more than 3 custom parameters'
+            )
+        keys = {"name", "value"}
+        for i in custom_params:
+            if type(i) is not dict or set(i.keys()) != keys:
+                # all(ord(c) < 128 for c in test)  test.isalpha()
                 raise ValidationError(
-                    'You cannot use more than 3 custom parameters'
+                    'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
                 )
-            keys = {"name", "value"}
-            for i in custom_params:
-                if type(i) is not dict or set(i.keys()) != keys:
-                    # all(ord(c) < 128 for c in test)  test.isalpha()
-                    raise ValidationError(
-                        'Custom parameters format is [{"name": "ad", "value": "demo"}, ..]'
-                    )
-                if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
-                    raise ValidationError(
-                        'Invalid character in custom parameter key'
-                    )
-                if " " in i['value']:
-                    raise ValidationError(
-                        'Invalid character in custom parameter value'
-                    )
-
-        return super(AdCreationUpdateSerializer, self).validate(data)
+            if not (i["name"].isalnum() and all(ord(c) < 128 for c in i["name"])):
+                raise ValidationError(
+                    'Invalid character in custom parameter key'
+                )
+            if " " in i['value']:
+                raise ValidationError(
+                    'Invalid character in custom parameter value'
+                )
+        return custom_params
 
 
 class AppendAdCreationSetupSerializer(ModelSerializer):
