@@ -112,14 +112,18 @@ class AdCreationSetupSerializer(ModelSerializer):
 
 
 class AdGroupCreationSetupSerializer(ModelSerializer):
-
-    ad_creations = AdCreationSetupSerializer(many=True, read_only=True)
-
     targeting = SerializerMethodField()
     age_ranges = SerializerMethodField()
     genders = SerializerMethodField()
     parents = SerializerMethodField()
     video_ad_format = SerializerMethodField()
+    ad_creations = SerializerMethodField()
+
+    @staticmethod
+    def get_ad_creations(obj):
+        queryset = obj.ad_creations.filter(is_deleted=False)
+        ad_creations = AdCreationSetupSerializer(queryset, many=True).data
+        return ad_creations
 
     @staticmethod
     def get_video_ad_format(obj):
@@ -245,7 +249,6 @@ class FrequencyCapSerializer(ModelSerializer):
 
 
 class CampaignCreationSetupSerializer(ModelSerializer):
-    ad_group_creations = AdGroupCreationSetupSerializer(many=True, read_only=True)
     location_rules = LocationRuleSerializer(many=True, read_only=True)
     ad_schedule_rules = AdScheduleSerializer(many=True, read_only=True)
     frequency_capping = FrequencyCapSerializer(many=True, read_only=True)
@@ -255,8 +258,14 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     type = SerializerMethodField()
     delivery_method = SerializerMethodField()
     video_networks = SerializerMethodField()
-
     content_exclusions = SerializerMethodField()
+    ad_group_creations = SerializerMethodField()
+
+    @staticmethod
+    def get_ad_group_creations(obj):
+        queryset = obj.ad_group_creations.filter(is_deleted=False)
+        ad_group_creations = AdGroupCreationSetupSerializer(queryset, many=True).data
+        return ad_group_creations
 
     @staticmethod
     def get_content_exclusions(obj):
@@ -471,9 +480,13 @@ class AccountCreationListSerializer(ModelSerializer):
 
 
 class AccountCreationSetupSerializer(ModelSerializer):
+    campaign_creations = SerializerMethodField()
 
-    campaign_creations = CampaignCreationSetupSerializer(many=True,
-                                                         read_only=True)
+    @staticmethod
+    def get_campaign_creations(obj):
+        queryset = obj.campaign_creations.filter(is_deleted=False)
+        campaign_creations = CampaignCreationSetupSerializer(queryset, many=True).data
+        return campaign_creations
 
     class Meta:
         model = AccountCreation
