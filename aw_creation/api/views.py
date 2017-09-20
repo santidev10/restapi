@@ -1232,8 +1232,9 @@ class AccountCreationDuplicateApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         bulk_items = defaultdict(list)
-        duplicate = self.duplicate_item(instance, bulk_items, request.GET.get("to"))
-        self.insert_bulk_items(bulk_items)
+        with transaction.atomic():
+            duplicate = self.duplicate_item(instance, bulk_items, request.GET.get("to"))
+            self.insert_bulk_items(bulk_items)
 
         response = self.serializer_class(duplicate).data
         return Response(data=response)
