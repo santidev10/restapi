@@ -607,7 +607,7 @@ class PerformanceTargetingReportAPIView:
     def get_items(original_method):
 
         def method(view, targeting, account):
-            if account.id == DEMO_ACCOUNT_ID:
+            if account is not None and account.id == DEMO_ACCOUNT_ID:
                 exclude_keys = VIEW_RATE_STATS + CONVERSIONS
                 result = []
                 for campaign in account.children:
