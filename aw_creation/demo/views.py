@@ -31,7 +31,7 @@ class AccountCreationListApiView:
         return method
 
 
-class AccountCreationApiView:
+class PerformanceTargetingDetailsAPIView:
     @staticmethod
     def get(original_method):
 

@@ -30,7 +30,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         ac = AccountCreation.objects.create(
             name="", owner=user,
         )
-        url = reverse("aw_creation_urls:account_creation", args=(ac.id,))
+        url = reverse("aw_creation_urls:performance_targeting_details", args=(ac.id,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -67,7 +67,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             name="", account_creation=ac_creation, campaign=None,
         )
         # --
-        url = reverse("aw_creation_urls:account_creation", args=(ac_creation.id,))
+        url = reverse("aw_creation_urls:performance_targeting_details", args=(ac_creation.id,))
         with patch(
             "aw_creation.api.serializers.SingleDatabaseApiConnector",
             new=SingleDatabaseApiConnectorPatcher
@@ -80,7 +80,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:account_creation", args=(DEMO_ACCOUNT_ID,))
+        url = reverse("aw_creation_urls:performance_targeting_details", args=(DEMO_ACCOUNT_ID,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)

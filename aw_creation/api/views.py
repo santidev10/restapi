@@ -16,7 +16,7 @@ from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST,  HTTP_200_OK, HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_405_METHOD_NOT_ALLOWED
 from rest_framework.views import APIView
 from utils.permissions import IsAuthQueryTokenPermission
 from rest_framework.authtoken.models import Token
@@ -743,18 +743,6 @@ class AccountCreationListApiView(ListAPIView):
 
         data = AccountCreationSetupSerializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)
-
-
-@demo_view_decorator
-class AccountCreationApiView(RetrieveAPIView):
-    serializer_class = AccountCreationListSerializer
-
-    def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            is_deleted=False,
-            owner=self.request.user,
-        )
-        return queryset
 
 
 @demo_view_decorator
@@ -1982,6 +1970,31 @@ class PerformanceExportWeeklyReport(APIView):
             datetime.now().date().strftime("%m.%d.%y")
         )
         return response
+
+
+class PerformanceTargetingListAPIView(AccountCreationListApiView):
+
+    def get_queryset(self, **filters):
+        queryset = super(PerformanceTargetingListAPIView, self).get_queryset(**filters)
+        queryset = queryset.annotate(
+            sum_cost=Sum("account__campaigns__cost"),
+        ).filter(sum_cost__gt=0)
+        return queryset
+
+    def post(self, *a, **_):
+        return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
+
+
+@demo_view_decorator
+class PerformanceTargetingDetailsAPIView(RetrieveAPIView):
+    serializer_class = AccountCreationListSerializer
+
+    def get_queryset(self):
+        queryset = AccountCreation.objects.filter(
+            is_deleted=False,
+            owner=self.request.user,
+        )
+        return queryset
 
 
 @demo_view_decorator

@@ -23,9 +23,6 @@ urlpatterns = [
     url(r'^account_creation_list/$',
         views.AccountCreationListApiView.as_view(),
         name="account_creation_list"),
-    url(r'^account_creation/(?P<pk>\w+)/$',  # returns list data for a single item
-        views.AccountCreationApiView.as_view(),
-        name="account_creation"),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
@@ -108,6 +105,12 @@ urlpatterns = [
         views.PerformanceExportWeeklyReport.as_view(),
         name="performance_export_weekly_report"),
 
+    url(r'^performance_targeting_list/$',
+        views.PerformanceTargetingListAPIView.as_view(),
+        name="performance_targeting_list"),
+    url(r'^performance_targeting_details/(?P<pk>\w+)/$',
+        views.PerformanceTargetingDetailsAPIView.as_view(),
+        name="performance_targeting_details"),
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
         views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),
