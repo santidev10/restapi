@@ -43,6 +43,7 @@ import calendar
 import csv
 import pytz
 import logging
+import isodate
 
 logger = logging.getLogger(__name__)
 
@@ -162,27 +163,48 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 class YoutubeVideoSearchApiView(GenericAPIView):
 
     def get(self, request, query, **_):
+        video_ad_format = request.GET.get("video_ad_format")
+
         youtube = build(
             "youtube", "v3",
             developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
         )
+        next_page = self.request.GET.get("next_page")
+
+        items, next_token, total_result = self.search_yt_videos(youtube, query, next_page)
+
+        if video_ad_format == "BUMPER":
+            while len(items) < 10 and next_token:
+                add_items, next_token, total_result = self.search_yt_videos(youtube, query, next_token)
+                items.extend(add_items)
+
+        response = dict(next_page=next_token, items_count=total_result, items=items)
+        return Response(data=response)
+
+    def search_yt_videos(self, youtube, query, next_page):
+
+        video_ad_format = self.request.GET.get("video_ad_format")
         options = {
             'q': query,
-            'part': 'snippet',
+            'part': 'id',
             'type': "video",
+            'videoDuration': "short" if video_ad_format == "BUMPER" else "any",
             'maxResults': 50,
             'safeSearch': 'none',
+            'eventType': 'completed',
         }
-        next_page = request.GET.get("next_page")
         if next_page:
             options["pageToken"] = next_page
-        results = youtube.search().list(**options).execute()
-        response = dict(
-            next_page=results.get("nextPageToken"),
-            items_count=results.get("pageInfo", {}).get("totalResults"),
-            items=[self.format_item(i) for i in results.get("items", [])]
-        )
-        return Response(data=response)
+        search_results = youtube.search().list(**options).execute()
+        ids = [i.get("id", {}).get("videoId") for i in search_results.get("items", [])]
+
+        results = youtube.videos().list(part="snippet,contentDetails", id=",".join(ids)).execute()
+        items = [self.format_item(i) for i in results.get("items", [])]
+
+        if video_ad_format == "BUMPER":
+            items = list(filter(lambda i: i["duration"] and i["duration"] <= 6, items))
+
+        return items, search_results.get("nextPageToken"), search_results.get("pageInfo", {}).get("totalResults")
 
     @staticmethod
     def format_item(data):
@@ -203,6 +225,7 @@ class YoutubeVideoSearchApiView(GenericAPIView):
                 id=snippet.get("channelId"),
                 title=snippet.get("channelTitle"),
             ),
+            duration=isodate.parse_duration(data["contentDetails"]["duration"]).total_seconds(),
         )
         return item
 
@@ -217,13 +240,15 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         else:
             return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
 
+        video_ad_format = request.GET.get("video_ad_format")
+
         youtube = build(
             "youtube", "v3",
             developerKey=settings.YOUTUBE_API_DEVELOPER_KEY
         )
         options = {
             'id': yt_id,
-            'part': 'snippet',
+            'part': 'snippet,contentDetails',
             'maxResults': 1,
         }
         results = youtube.videos().list(**options).execute()
@@ -231,7 +256,12 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         if not items:
             return Response(status=HTTP_404_NOT_FOUND, data=dict(error="There is no such a video"))
 
-        return Response(data=self.format_item(items[0]))
+        item = self.format_item(items[0])
+        if video_ad_format == "BUMPER" and item["duration"] and item["duration"] > 6:
+            return Response(status=HTTP_404_NOT_FOUND,
+                            data=dict(error="There is no such a Bumper ads video (<= 6 seconds)"))
+
+        return Response(data=item)
 
 
 class ItemsFromSegmentIdsApiView(APIView):
@@ -1120,6 +1150,14 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data
+
+        # validate video ad format and video duration
+        video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
+        if video_ad_format == AdGroupCreation.BUMPER_AD:
+            video_duration = data.get("video_duration") or instance.video_duration
+            if video_duration > 6:
+                return Response(dict(error="Bumper ads video must be 6 seconds or less"),
+                                status=HTTP_400_BAD_REQUEST)
 
         if "video_ad_format" in data:
             set_ad_format = data["video_ad_format"]

@@ -649,6 +649,7 @@ class AdCreation(UniqueCreationItem):
     video_title = models.CharField(max_length=250, default="")
     video_description = models.TextField(default="")
     video_thumbnail = models.URLField(default="")
+    video_duration = models.FloatField(default=0)
     video_channel_title = models.CharField(max_length=250, default="")
 
     def get_custom_params(self):
