@@ -79,3 +79,25 @@ def sync_customer(customer, cu=None):
     customer.save()
     for subscription in cu["subscriptions"]["data"]:
         subscriptions.sync_subscription_from_stripe_data(customer, subscription)
+
+
+def link_customer(event):
+    """
+    Links a customer referenced in a webhook event message to the event object
+    """
+    cus_id = None
+    customer_crud_events = [
+        "customer.created",
+        "customer.updated",
+        "customer.deleted"
+    ]
+    if event.kind in customer_crud_events:
+        cus_id = event.message["data"]["object"]["id"]
+    else:
+        cus_id = event.message["data"]["object"].get("customer", None)
+
+    if cus_id is not None:
+        customer = next(iter(Customer.objects.filter(stripe_id=cus_id)), None)
+        if customer is not None:
+            event.customer = customer
+            event.save()
