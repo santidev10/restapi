@@ -80,3 +80,23 @@ class Subscription(StripeObject):
         self.status = None
         self.quantity = 0
         self.amount = 0
+
+
+class Event(StripeObject):
+    kind = models.CharField(max_length=250)
+    livemode = models.BooleanField(default=False)
+    customer = models.ForeignKey("Customer", null=True, on_delete=models.CASCADE)
+    webhook_message = JSONField()
+    validated_message = JSONField(null=True)
+    valid = models.NullBooleanField(null=True)
+    processed = models.BooleanField(default=False)
+    request = models.CharField(max_length=100, blank=True)
+    pending_webhooks = models.PositiveIntegerField(default=0)
+    api_version = models.CharField(max_length=100, blank=True)
+
+    @property
+    def message(self):
+        return self.validated_message
+
+    def __str__(self):
+        return "{} - {}".format(self.kind, self.stripe_id)
