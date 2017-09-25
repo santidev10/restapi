@@ -14,6 +14,9 @@ from oauth2client import client
 from suds import WebFault
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
+from aw_reporting.benchmark import ChartsHandler
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Audience
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
     AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
@@ -24,6 +27,7 @@ from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_
 from aw_reporting.adwords_api import load_web_app_settings, get_customers
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.models import Topic
 from aw_reporting.utils import get_google_access_token_info
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.charts import DeliveryChart
@@ -227,7 +231,7 @@ class AnalyzeDetailsApiView(APIView):
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
             for s in BASE_STATS
-        }
+            }
         weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(**annotate)
         data.update(weeks_stats)
 
@@ -367,7 +371,7 @@ class AnalyzeDetailsApiView(APIView):
                         trend=[
                             dict(label=i['date'], value=i['views'])
                             for i in stats
-                        ]
+                            ]
                     )
                 )
 
@@ -378,7 +382,7 @@ class AnalyzeDetailsApiView(APIView):
                         trend=[
                             dict(label=i['date'], value=i['impressions'])
                             for i in stats
-                        ]
+                            ]
                     )
                 )
         data['delivery_trend'] = charts
@@ -490,7 +494,7 @@ class AnalyzeExportApiView(APIView):
     file_name = "{title}-analyze-{timestamp}.csv"
 
     column_names = (
-        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "", "Name", "Impressions", "Views", "Cost", "Average cpm",
         "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
         "25%", "50%", "75%", "100%",
     )
@@ -606,7 +610,7 @@ class AnalyzeExportWeeklyReport(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
-            'Report {}.xlsx"'.format(
+                                          'Report {}.xlsx"'.format(
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
@@ -670,15 +674,15 @@ class TrackFiltersListApiView(TrackApiBase):
             indicator=[
                 dict(id=uid, name=name)
                 for uid, name in self.indicators
-            ],
+                ],
             breakdown=[
                 dict(id=uid, name=name)
                 for uid, name in self.breakdowns
-            ],
+                ],
             dimension=[
                 dict(id=uid, name=name)
                 for uid, name in self.dimensions
-            ],
+                ],
         )
         return static_filters
 
@@ -704,10 +708,10 @@ class TrackFiltersListApiView(TrackApiBase):
                             end_date=c.end_date,
                         )
                         for c in account.campaigns.all()
-                    ]
+                        ]
                 )
                 for account in accounts
-            ],
+                ],
             **self.get_static_filters()
         )
         return Response(data=filters)
@@ -749,7 +753,6 @@ class TrackAccountsDataApiView(TrackApiBase):
 
 
 class ConnectAWAccountListApiView(ListAPIView):
-
     serializer_class = AWAccountConnectionRelationsSerializer
 
     def get_queryset(self):
@@ -849,7 +852,7 @@ class ConnectAWAccountApiView(APIView):
             else:
                 # update token
                 if refresh_token and \
-                   connection.refresh_token != refresh_token:
+                                connection.refresh_token != refresh_token:
                     connection.revoked_access = False
                     connection.refresh_token = refresh_token
                     connection.save()
@@ -951,7 +954,6 @@ class ConnectAWAccountApiView(APIView):
 
 
 class AwHistoricalDataApiView(APIView):
-
     @staticmethod
     def get(request, item_type, pk, **_):
         accounts = Account.user_objects(request.user)
@@ -991,7 +993,7 @@ class AwHistoricalDataApiView(APIView):
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
             for s in base_stats
-        }
+            }
         base_aggregate = {"sum_{}".format(s): Sum(s) for s in BASE_STATS}
         base_aggregate.update(
             video_impressions=Sum(
@@ -1064,10 +1066,60 @@ class AwHistoricalDataApiView(APIView):
                 "{}_{}".format(s, n): a(s)
                 for s in annotate.keys()
                 for n, a in (("top", Max), ("bottom", Min))
-            }
+                }
         )
         data.update(top_bottom_data)
 
         return Response(data=data)
 
 
+class BenchmarkBaseChartsApiView(TrackApiBase):
+    """
+    Return data for chart building
+    """
+
+    def get(self, request):
+        ch = ChartsHandler(request=request)
+        return Response(ch.base_charts())
+
+
+class BenchmarkProductChartsApiView(TrackApiBase):
+    """
+    Return data for chart building
+    """
+
+    def get(self, request):
+        ch = ChartsHandler(request=request)
+        return Response(ch.product_charts())
+
+
+class BenchmarkFiltersListApiView(ListAPIView):
+    """
+    Lists of the filter names and values
+    """
+
+    def get(self, request, *args, **kwargs):
+        result = {}
+        filters = request.query_params.get('filters', [])
+        if 'topics' in filters:
+            result['topics'] = Topic.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        if 'interests' in filters:
+            result['interests'] = Audience.objects.filter(parent__isnull=True).order_by('name').values('id', 'name')
+        if 'product_types' in filters:
+            result['product_types'] = AdGroup.objects.all().values('type').distinct()
+        if 'age_range' in filters:
+            age_range_query = AgeRangeStatistic.objects.order_by().values('age_range_id').distinct()
+            for age_range in age_range_query:
+                age_range['name'] = AgeRanges[age_range['age_range_id']]
+            result['age_range'] = age_range_query
+        if 'gender' in filters:
+            gender_query = GenderStatistic.objects.order_by().values('gender_id').distinct()
+            for gender in gender_query:
+                gender['name'] = Genders[gender['gender_id']]
+            result['gender'] = gender_query
+        if 'device' in filters:
+            device_query = AdGroupStatistic.objects.order_by().values('device_id').distinct()
+            for device in device_query:
+                device['name'] = Devices[device['device_id']]
+            result['device'] = device_query
+        return Response(data=result)
