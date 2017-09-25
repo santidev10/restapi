@@ -158,7 +158,7 @@ class AdGroupListSerializer(ModelSerializer):
 
 class CampaignListSerializer(ModelSerializer):
 
-    ad_groups = AdGroupListSerializer(source="adgroup_set", many=True)
+    ad_groups = AdGroupListSerializer(many=True)
 
     class Meta:
         model = Campaign

@@ -16,6 +16,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
+        "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
     }
 
     def setUp(self):

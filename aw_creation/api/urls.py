@@ -105,18 +105,18 @@ urlpatterns = [
         views.PerformanceExportWeeklyReport.as_view(),
         name="performance_export_weekly_report"),
 
+    url(r'^performance_targeting_list/$',
+        views.PerformanceTargetingListAPIView.as_view(),
+        name="performance_targeting_list"),
+    url(r'^performance_targeting_details/(?P<pk>\w+)/$',
+        views.PerformanceTargetingDetailsAPIView.as_view(),
+        name="performance_targeting_details"),
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
         views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),
-    url(r'^performance_targeting_report/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+    url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
-    url(r'^performance_targeting_report_details/(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.PerformanceTargetingReportDetailsAPIView.as_view(),
-        name="performance_targeting_report_details"),
-    url(r'^performance_targeting_settings/(?P<pk>\w+)/$',
-        views.PerformanceTargetingSettingsAPIView.as_view(),
-        name="performance_targeting_settings"),
     # >>> Performance
 
     # tools

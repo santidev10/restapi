@@ -711,6 +711,10 @@ class DemoAccount(BaseDemo):
                 a.week_proportion = week_proportion
 
     @property
+    def account(self):
+        return self
+
+    @property
     def details(self):
         from aw_reporting.demo.charts import DemoChart
 
@@ -825,6 +829,12 @@ class DemoAccount(BaseDemo):
             cost=self.cost,
             clicks=self.clicks,
             ctr_v=self.ctr_v,
+            ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
+            channel_count=12,
+            video_count=12,
+            interest_count=10,
+            topic_count=8,
+            keyword_count=8,
         )
         return data
 
