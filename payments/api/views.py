@@ -41,11 +41,11 @@ class SubscriptionView(APIView, CustomerMixin):
     serializer_class = SubscriptionSerializer
 
     def get(self, request):
-        current_subscription = self.get_current_subscription()
-        if current_subscription:
+        if self.customer:
+            current_subscription = self.get_current_subscription()
             serializer = self.serializer_class(current_subscription, many=True)
             return Response(serializer.data, status=HTTP_200_OK)
-        return Response(status=HTTP_404_NOT_FOUND)
+        return Response(data=[], status=HTTP_404_NOT_FOUND)
 
 
 class SubscriptionCreateView(APIView, CustomerMixin):
