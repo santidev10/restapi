@@ -12,6 +12,9 @@ urlpatterns = [
     url(r'^youtube_video_search/(?P<query>.+)/$',
         views.YoutubeVideoSearchApiView.as_view(),
         name="youtube_video_search"),
+    url(r'^youtube_video_from_url/(?P<url>.+)/$',
+        views.YoutubeVideoFromUrlApiView.as_view(),
+        name="youtube_video_from_url"),
 
     # <<< Setup
     url(r'^creation_options/$',
@@ -45,10 +48,10 @@ urlpatterns = [
     url(r'^ad_creation_setup/(?P<pk>\w+)/$',
         views.AdCreationSetupApiView.as_view(),
         name="ad_creation_setup"),
-    # for ad management
-    url(r'^youtube_video_from_url/(?P<url>.+)/$',
-        views.YoutubeVideoFromUrlApiView.as_view(),
-        name="youtube_video_from_url"),
+    url(r'^ad_creation_available_ad_formats/(?P<pk>\w+)/$',
+        views.AdCreationAvailableAdFormatsApiView.as_view(),
+        name="ad_creation_available_ad_formats"),
+
     # for targeting management
     url(r'^items_from_segment_ids/(?P<segment_type>\w+)/$',
         views.ItemsFromSegmentIdsApiView.as_view(),
@@ -102,18 +105,18 @@ urlpatterns = [
         views.PerformanceExportWeeklyReport.as_view(),
         name="performance_export_weekly_report"),
 
+    url(r'^performance_targeting_list/$',
+        views.PerformanceTargetingListAPIView.as_view(),
+        name="performance_targeting_list"),
+    url(r'^performance_targeting_details/(?P<pk>\w+)/$',
+        views.PerformanceTargetingDetailsAPIView.as_view(),
+        name="performance_targeting_details"),
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
         views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),
-    url(r'^performance_targeting_report/(?P<pk>\w+)/(?P<list_type>\w+)/$',
+    url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
-    url(r'^performance_targeting_report_details/(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.PerformanceTargetingReportDetailsAPIView.as_view(),
-        name="performance_targeting_report_details"),
-    url(r'^performance_targeting_settings/(?P<pk>\w+)/$',
-        views.PerformanceTargetingSettingsAPIView.as_view(),
-        name="performance_targeting_settings"),
     # >>> Performance
 
     # tools

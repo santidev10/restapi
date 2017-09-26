@@ -31,6 +31,20 @@ class AccountCreationListApiView:
         return method
 
 
+class PerformanceTargetingDetailsAPIView:
+    @staticmethod
+    def get(original_method):
+
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                demo = DemoAccount()
+                return Response(data=demo.header_data)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
 class AccountCreationSetupApiView:
     @staticmethod
     def get(original_method):
@@ -127,8 +141,10 @@ class AccountCreationDuplicateApiView:
                         if f.endswith("_raw"):
                             camp_data[f] = json.dumps(
                                 [i['id'] for i in c[f[:-4]]])
-                        elif f in ("video_ad_format", "delivery_method"):
+                        elif f in ("type", "delivery_method"):
                             camp_data[f] = c[f]["id"]
+                        elif f == "bid_strategy_type":
+                            camp_data[f] = CampaignCreation.CPV_STRATEGY
                         else:
                             camp_data[f] = c[f]
                     c_duplicate = CampaignCreation.objects.create(
@@ -164,6 +180,8 @@ class AccountCreationDuplicateApiView:
                                 ag_data[f] = json.dumps(
                                     [i["id"] for i in a[f[:-4]]]
                                 )
+                            elif f == "video_ad_format":
+                                ag_data[f] = a[f]['id']
                             else:
                                 ag_data[f] = a[f]
                         a_duplicate = AdGroupCreation.objects.create(
@@ -319,6 +337,17 @@ class AdCreationSetupApiView:
             if DEMO_ACCOUNT_ID in pk:
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+        return method
+
+
+class AdCreationAvailableAdFormatsApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, pk, **kwargs):
+            if DEMO_ACCOUNT_ID in pk:
+                return Response(data=[AdGroupCreation.IN_STREAM_TYPE])
             else:
                 return original_method(view, request, pk=pk, **kwargs)
         return method
@@ -555,101 +584,65 @@ class PerformanceTargetingFiltersAPIView:
 
 
 class PerformanceTargetingReportAPIView:
+
     @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                filters = view.get_filters()
+    def get_object(original_method):
+        def method(view):
+            pk = view.kwargs["pk"]
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
-                account.set_period_proportion(filters['start_date'],
-                                              filters['end_date'])
+                data = view.request.data
+                account.set_period_proportion(data.get("start_date"),
+                                              data.get("end_date"))
                 account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
+                    data.get("campaigns"), data.get("ad_groups"),
                 )
-                common_fields = (
-                    'average_cpv', 'cost', 'video_impressions', 'ctr_v', 'clicks',
-                    'video_views', 'ctr', 'impressions', 'video_view_rate', 'average_cpm',
-                )
-                c_fields = ("id", "name", "status", 'start_date', 'end_date') + common_fields
-                a_fields = ("id", "name") + common_fields
-
-                data = []
-                for c in account.children:
-                    c_data = {f: getattr(c, f) for f in c_fields}
-                    c_data['ad_groups'] = [{f: getattr(a, f) for f in a_fields}
-                                           for a in c.children]
-                    data.append(c_data)
-
-                view.set_passes_fields(data, {c.id: AccountOptimizationSetting.default_settings
-                                              for c in account.children})
-                return Response(status=HTTP_200_OK, data=data)
+                return account
             else:
-                return original_method(view, request, pk=pk, **kwargs)
+                return original_method(view)
 
         return method
 
-
-class PerformanceTargetingReportDetailsAPIView:
     @staticmethod
-    def post(original_method):
-        def method(view, request, pk, list_type, **kwargs):
-            if DEMO_ACCOUNT_ID in pk:
-                filters = view.get_filters()
-                account = DemoAccount()
-                account.set_period_proportion(filters['start_date'], filters['end_date'])
-                account.filter_out_items([], [pk])
-                filters['dimension'] = list_type
-                charts_obj = DemoChart(account, filters)
-                items = charts_obj.chart_items['items']
+    def get_items(original_method):
+
+        def method(view, targeting, account):
+            if account is not None and account.id == DEMO_ACCOUNT_ID:
                 exclude_keys = VIEW_RATE_STATS + CONVERSIONS
-                for i in items:
-                    if 'id' not in i:
-                        i['id'] = i['name']
-                    for k in exclude_keys:
-                        del i[k]
+                result = []
+                for campaign in account.children:
+                    for ad_group in campaign.children:
+                        data_account = DemoAccount()
+                        data = view.request.data
+                        data_account.set_period_proportion(data.get("start_date"), data.get("end_date"))
+                        data_account.filter_out_items([campaign.id], [ad_group.id])
 
-                view.set_passes_fields(items, AccountOptimizationSetting.default_settings)
-                return Response(status=HTTP_200_OK, data=items)
+                        for dimension in targeting:
+                            charts_obj = DemoChart(account, dict(dimension="channel"))
+                            items = charts_obj.chart_items['items']
+
+                            for i in items:
+                                i["video_impressions"] = i["impressions"]
+                                for k in exclude_keys:
+                                    del i[k]
+                                if 'id' not in i:
+                                    i['id'] = i['name']
+                                i["item"] = dict(id=i['id'], name=i["name"])
+
+                                del i['name'], i['id']
+                                if "thumbnail" in i:
+                                    i["item"]["thumbnail"] = i["thumbnail"]
+                                    del i['thumbnail']
+
+                                i["targeting"] = "{}s".format(dimension.capitalize())
+                                i["campaign"] = dict(id=campaign.id, name=campaign.name, status=campaign.status)
+                                i["ad_group"] = dict(id=ad_group.id, name=ad_group.name)
+                            result.extend(items)
+
+                return result
             else:
-                return original_method(view, request, pk=pk, list_type=list_type, **kwargs)
+                return original_method(view, targeting, account)
 
-        return method
-
-
-class PerformanceTargetingSettingsAPIView:
-    @staticmethod
-    def get(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                account = DemoAccount()
-                data = dict(
-                    id=account.id,
-                    name=account.name,
-                    campaign_creations=[],
-                    **AccountOptimizationSetting.default_settings
-                )
-                for c in account.children:
-                    data['campaign_creations'].append(
-                        dict(
-                            id=c.id,
-                            name=c.name,
-                            **AccountOptimizationSetting.default_settings
-                        )
-                    )
-                return Response(status=HTTP_200_OK, data=data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
-        return method
-
-    @staticmethod
-    def put(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                return Response(data=DEMO_READ_ONLY,
-                                status=HTTP_403_FORBIDDEN)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
         return method
 
 

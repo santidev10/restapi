@@ -46,3 +46,6 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             }
         )
 
+        self.assertEqual(len(response.data['video_ad_format']), 3)
+        self.assertEqual(set(response.data['video_ad_format'][0].keys()), {"id", "name", "thumbnail"})
+

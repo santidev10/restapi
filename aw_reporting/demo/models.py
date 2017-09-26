@@ -374,12 +374,16 @@ class DemoAd(BaseDemo):
 
     @property
     def creation_details(self):
+        from aw_creation.models import AdGroupCreation
         data = dict(
             id=self.id,
             name=self.name,
             updated_at=self.now,
             display_url="www.channelfactory.com",
-            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            video_ad_format=dict(
+                id=AdGroupCreation.VIDEO_AD_FORMATS[0][0],
+                name=AdGroupCreation.VIDEO_AD_FORMATS[0][1],
+            ),
             final_url="https://www.channelfactory.com",
             video_url="https://www.youtube.com/watch?v=XEngrJr79Jg",
             tracking_template="https://www.custom_tracking_service.us/?ad=XEngrr79Jg",
@@ -565,6 +569,10 @@ class DemoAdGroup(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in AdGroupCreation.PARENTS
             ],
+            video_ad_format=dict(
+                id=AdGroupCreation.VIDEO_AD_FORMATS[0][0],
+                name=AdGroupCreation.VIDEO_AD_FORMATS[0][1],
+            ),
         )
         return data
 
@@ -638,9 +646,9 @@ class DemoCampaign(BaseDemo):
             start=self.start_date,
             end=self.end_date,
 
-            video_ad_format=dict(
-                id=CampaignCreation.VIDEO_AD_FORMATS[0][0],
-                name=CampaignCreation.VIDEO_AD_FORMATS[0][1],
+            type=dict(
+                id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                name=CampaignCreation.CAMPAIGN_TYPES[0][1],
             ),
             delivery_method=dict(
                 id=CampaignCreation.DELIVERY_METHODS[0][0],
@@ -701,6 +709,10 @@ class DemoAccount(BaseDemo):
             for a in c.children:
                 a.period_proportion = period_proportion
                 a.week_proportion = week_proportion
+
+    @property
+    def account(self):
+        return self
 
     @property
     def details(self):
@@ -817,6 +829,12 @@ class DemoAccount(BaseDemo):
             cost=self.cost,
             clicks=self.clicks,
             ctr_v=self.ctr_v,
+            ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
+            channel_count=12,
+            video_count=12,
+            interest_count=10,
+            topic_count=8,
+            keyword_count=8,
         )
         return data
 

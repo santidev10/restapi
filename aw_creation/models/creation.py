@@ -58,7 +58,7 @@ class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
     name = models.CharField(max_length=250, validators=[NameValidator])
-
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     sync_at = models.DateTimeField(null=True)
@@ -79,6 +79,10 @@ class UniqueCreationItem(models.Model):
             return False
         return True
 
+    @property
+    def is_pulled_to_aw(self):
+        return self.sync_at and self.sync_at >= self.created_at
+
 
 class AccountCreation(UniqueCreationItem):
     id = models.CharField(primary_key=True, max_length=12,
@@ -90,7 +94,6 @@ class AccountCreation(UniqueCreationItem):
         "aw_reporting.Account", related_name='account_creations',
         null=True, blank=True,
     )
-    is_deleted = models.BooleanField(default=False)
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
@@ -227,18 +230,16 @@ class CampaignCreation(UniqueCreationItem):
         default=STANDARD_DELIVERY,
     )
 
-    IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
-    DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
-    BUMPER_AD = 'BUMPER'
-    VIDEO_AD_FORMATS = (
-        (IN_STREAM_TYPE, "In-stream"),
-        (DISCOVERY_TYPE, "Discovery"),
-        (BUMPER_AD, "Bumper"),
+    CPV_STRATEGY = 'CPV'
+    CPM_STRATEGY = 'CPM'
+    BID_STRATEGY_TYPES = (
+        (CPV_STRATEGY, CPV_STRATEGY),
+        (CPM_STRATEGY, CPM_STRATEGY),
     )
-    video_ad_format = models.CharField(
-        max_length=20,
-        choices=VIDEO_AD_FORMATS,
-        default=IN_STREAM_TYPE,
+    bid_strategy_type = models.CharField(
+        max_length=3,
+        choices=BID_STRATEGY_TYPES,
+        default=CPV_STRATEGY,
     )
 
     MANUAL_CPV_BIDDING = 'MANUAL_CPV'
@@ -372,10 +373,11 @@ class CampaignCreation(UniqueCreationItem):
             "var campaign = createOrUpdateCampaign({});".format(
                 json.dumps(dict(
                     id=self.id,
+                    is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
-                    budget_type="cpm" if self.video_ad_format == CampaignCreation.BUMPER_AD else "cpv",
+                    budget_type=self.bid_strategy_type.lower(),
                     is_paused='true' if self.campaign_is_paused else 'false',
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
@@ -445,6 +447,37 @@ class AdGroupCreation(UniqueCreationItem):
         "aw_reporting.AdGroup", related_name='ad_group_creation',
         null=True, blank=True,
     )
+
+    IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
+    DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
+    BUMPER_AD = 'BUMPER'
+    VIDEO_AD_FORMATS = (
+        (IN_STREAM_TYPE, "In-stream"),
+        (DISCOVERY_TYPE, "Discovery"),
+        (BUMPER_AD, "Bumper"),
+    )
+    video_ad_format = models.CharField(
+        max_length=20,
+        choices=VIDEO_AD_FORMATS,
+        default=IN_STREAM_TYPE,
+    )
+
+    def get_available_ad_formats(self):
+
+        if self.sync_at is not None or self.ad_creations.count() > 1:
+            types = [self.video_ad_format]
+
+        elif self.campaign_creation.sync_at is not None or \
+                AdCreation.objects.filter(ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+
+            if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
+                types = [AdGroupCreation.BUMPER_AD]
+            else:
+                types = [AdGroupCreation.IN_STREAM_TYPE]
+        else:
+            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD]
+
+        return types
 
     GENDER_FEMALE = "GENDER_FEMALE"
     GENDER_MALE = "GENDER_MALE"
@@ -550,9 +583,10 @@ class AdGroupCreation(UniqueCreationItem):
         campaign = self.campaign_creation
         params = dict(
             id=self.id,
+            is_deleted=self.is_deleted,
             name=self.unique_name,
-            ad_format="VIDEO_{}".format(campaign.video_ad_format),
-            cpv=str(self.max_rate),
+            ad_format="VIDEO_{}".format(self.video_ad_format),
+            max_rate=str(self.max_rate),
             genders=self.genders or campaign.genders,
             parents=self.parents or campaign.parents,
             ages=self.age_ranges or campaign.age_ranges,
@@ -615,6 +649,7 @@ class AdCreation(UniqueCreationItem):
     video_title = models.CharField(max_length=250, default="")
     video_description = models.TextField(default="")
     video_thumbnail = models.URLField(default="")
+    video_duration = models.FloatField(default=0)
     video_channel_title = models.CharField(max_length=250, default="")
 
     def get_custom_params(self):
@@ -652,7 +687,9 @@ class AdCreation(UniqueCreationItem):
             json.dumps(
                 dict(
                     id=self.id,
+                    is_deleted=self.is_deleted,
                     name=self.unique_name,
+                    ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
                     video_url=self.video_url,
                     video_thumbnail=request.build_absolute_uri(self.companion_banner.url)
                     if self.companion_banner else None,
