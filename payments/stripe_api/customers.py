@@ -61,7 +61,7 @@ def set_default_source(customer, source):
     Sets the default payment source for a customer
     """
     stripe_customer = customer.stripe_customer
-    stripe_customer.default_source = source
+    stripe_customer.default_source = source.id
     cu = stripe_customer.save()
     sync_customer(customer, cu=cu)
 

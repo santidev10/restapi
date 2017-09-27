@@ -13,6 +13,7 @@ from payments.api.serializers import SubscriptionSerializer, PlanSerializer
 from payments.models import Subscription, Plan
 from payments.stripe_api import customers, subscriptions
 from payments.stripe_api import events
+from payments.stripe_api.customers import set_default_source
 
 
 class CustomerMixin:
@@ -103,6 +104,19 @@ class SubscriptionUpdateView(GenericAPIView, CustomerMixin):
                 return Response(status=HTTP_200_OK)
             except stripe.StripeError as e:
                 return Response(data=smart_str(e))
+
+
+class PaymentSourceSetView(GenericAPIView, CustomerMixin):
+    def post(self, request, *args, **kwargs):
+        token = request.data.get('token')
+        if self.customer:
+            try:
+                source = self.customer.stripe_customer.sources.create(source=token)
+                set_default_source(self.customer, source)
+                return Response(status=HTTP_200_OK)
+            except stripe.StripeError as e:
+                return Response(data=smart_str(e))
+        return Response(data='User have no Stripe data', status=HTTP_404_NOT_FOUND)
 
 
 class Webhook(APIView):
