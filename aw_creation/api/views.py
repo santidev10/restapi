@@ -1160,7 +1160,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         status=HTTP_400_BAD_REQUEST,
                     )
 
-                if ad_group_creation.ad_creations.count() > 1:
+                if ad_group_creation.ad_creations.filter(is_deleted=False).count() > 1:
                     return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
                                     status=HTTP_400_BAD_REQUEST)
 
