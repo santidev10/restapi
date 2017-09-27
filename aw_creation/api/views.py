@@ -1142,7 +1142,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         # validate video ad format and video duration
         video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
         if video_ad_format == AdGroupCreation.BUMPER_AD:
-            video_duration = data.get("video_duration") or instance.video_duration
+            # data is get from multipart form data, all values are strings
+            video_duration = float(data.get("video_duration")) or instance.video_duration
             if video_duration > 6:
                 return Response(dict(error="Bumper ads video must be 6 seconds or less"),
                                 status=HTTP_400_BAD_REQUEST)
@@ -1160,7 +1161,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         status=HTTP_400_BAD_REQUEST,
                     )
 
-                if ad_group_creation.ad_creations.count() > 1:
+                if ad_group_creation.ad_creations.filter(is_deleted=False).count() > 1:
                     return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
                                     status=HTTP_400_BAD_REQUEST)
 
