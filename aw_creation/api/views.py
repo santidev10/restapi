@@ -1143,7 +1143,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
         if video_ad_format == AdGroupCreation.BUMPER_AD:
             # data is get from multipart form data, all values are strings
-            video_duration = float(data.get("video_duration")) or instance.video_duration
+            video_duration = data.get("video_duration")
+            video_duration = instance.video_duration if video_duration is None else float(video_duration)
             if video_duration > 6:
                 return Response(dict(error="Bumper ads video must be 6 seconds or less"),
                                 status=HTTP_400_BAD_REQUEST)
@@ -1186,6 +1187,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                                         status=HTTP_400_BAD_REQUEST)
 
                     CampaignCreation.objects.filter(id=campaign_creation.id).update(bid_strategy_type=set_bid_strategy)
+                    campaign_creation.bid_strategy_type = set_bid_strategy
 
                 AdGroupCreation.objects.filter(id=ad_group_creation.id).update(video_ad_format=set_ad_format)
                 ad_group_creation.video_ad_format = set_ad_format
@@ -1241,7 +1243,7 @@ class AccountCreationDuplicateApiView(APIView):
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
     )
     targeting_fields = ("criteria", "type", "is_negative")
 

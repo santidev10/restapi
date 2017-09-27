@@ -175,7 +175,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'custom_params', 'name', 'updated_at', 'tracking_template',
                 'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail',
+                'video_channel_title', 'video_duration',
             }
         )
 

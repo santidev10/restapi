@@ -73,7 +73,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name', 'updated_at', 'tracking_template', 'final_url',
                 'video_url', 'video_ad_format', 'custom_params', 'display_url', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail',
+                'video_channel_title', 'video_duration',
             }
         )
 
