@@ -107,7 +107,7 @@ class AdCreationSetupSerializer(ModelSerializer):
             'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params', 'video_ad_format',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
         )
 
 
