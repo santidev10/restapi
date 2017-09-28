@@ -134,17 +134,6 @@ urlpatterns = [
         views.AudienceToolListExportApiView.as_view(),
         name="setup_audience_tool_export"),
 
-    # ad group targeting lists
-    url(r'^optimization_ad_group_targeting/'
-        r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.AdGroupTargetingListApiView.as_view(),
-        name="optimization_ad_group_targeting"),
-
-    url(r'^optimization_ad_group_targeting_import_lists/'
-        r'(?P<pk>\w+)/(?P<list_type>\w+)/$',
-        views.AdGroupTargetingListImportListsApiView.as_view(),
-        name="optimization_ad_group_targeting_import_lists"),
-
     # aws script endpoints
     url(r'^aw_creation_changed_accounts_list/(?P<manager_id>\d+)/$',
         views.AwCreationChangedAccountsListAPIView.as_view(),

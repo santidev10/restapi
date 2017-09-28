@@ -194,6 +194,55 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_fail_put_too_many_targeting_items(self):
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {"keyword": {"positive": [], "negative": []},
+                          "topic": {"positive": [], "negative": []},
+                          "interest": {"positive": [], "negative": []},
+                          "channel": {"positive": [], "negative": []},
+                          "video": {"positive": [], "negative": []}},
+            "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
+                           AdGroupCreation.AGE_RANGE_25_34],
+            "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
+            "genders": [AdGroupCreation.GENDER_FEMALE],
+        }
+        # 20K is the limit
+        channel = data["targeting"]["channel"]
+        video = data["targeting"]["video"]
+        for i in range(5000):
+            channel["positive"].append("cp{}".format(i))
+            channel["negative"].append("cn{}".format(i))
+            video["positive"].append("vp{}".format(i))
+            video["negative"].append("vn{}".format(i))
+
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.put(
+                url, json.dumps(data), content_type='application/json',
+            )
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        # add one extra targeting item
+        data["targeting"]["keyword"]["positive"].append("Rick&Morty")
+
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.put(
+                url, json.dumps(data), content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_fail_delete_the_only(self):
         ad_group = self.create_ad_group(owner=self.user)
         url = reverse("aw_creation_urls:ad_group_creation_setup",
