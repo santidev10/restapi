@@ -2,7 +2,6 @@
 Video api views module
 """
 from django.db.models import Q
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
@@ -16,6 +15,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
+from video.api.settings import DEFAULT_VIDEO_LIST_FIELDS
 
 
 class VideoListApiView(APIView):
@@ -74,6 +74,10 @@ class VideoListApiView(APIView):
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
+        # fields
+        if "fields" not in request.query_params:
+            request.query_params["fields"] = ",".join(
+                DEFAULT_VIDEO_LIST_FIELDS)
         # make call
         connector = Connector()
         try:
