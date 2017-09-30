@@ -1,0 +1,31 @@
+"""
+Video api settings module
+"""
+DEFAULT_VIDEO_LIST_FIELDS = (
+    "video_id",
+    "title",
+    "description",
+    "views",
+    "likes",
+    "dislikes",
+    "comments",
+    "views_history",
+    "history_date",
+    "sentiment",
+    "engage_rate",
+    "thumbnail_image_url",
+    "country",
+    "category",
+    "ptk_value",
+    "language",
+    "chart_data",
+    "video_safety",
+    "video_safety_status",
+    "is_content_safe",
+    "is_monetizable",
+    "description",
+    "youtube_published_at",
+    "duration",
+    "verified",
+    "transcript",
+)
