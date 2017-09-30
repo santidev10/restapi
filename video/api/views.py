@@ -15,7 +15,8 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
-from video.api.settings import DEFAULT_VIDEO_LIST_FIELDS
+from video.api.settings import DEFAULT_VIDEO_LIST_FIELDS, \
+    DEFAULT_VIDEO_DETAILS_FIELDS
 
 
 class VideoListApiView(APIView):
@@ -99,6 +100,17 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
+
+    def get(self, request, *args, **kwargs):
+        """
+        Extend get method
+        """
+        if "fields" not in request.query_params:
+            request.query_params._mutable = True
+            request.query_params["fields"] = ",".join(
+                DEFAULT_VIDEO_DETAILS_FIELDS)
+        return super(VideoRetrieveUpdateApiView, self).get(
+            request, *args, **kwargs)
 
 
 class VideoSetApiView(SingledbApiView):
