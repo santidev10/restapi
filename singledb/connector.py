@@ -8,7 +8,8 @@ import requests
 from django.conf import settings
 
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
-    DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS
+    DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
+    DEFAULT_CHANNEL_DETAILS_FIELDS
 
 
 class SingleDatabaseApiConnectorException(Exception):
@@ -80,6 +81,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk
+        self.set_fields_query_param(
+            query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
