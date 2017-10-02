@@ -874,7 +874,10 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        count = self.get_queryset().count()
+        count = CampaignCreation.objects.filter(
+            account_creation__owner=self.request.user,
+            account_creation_id=kwargs.get("pk"),
+        ).count()
         data = dict(
             name="Campaign {}".format(count + 1),
             account_creation=account_creation.id,
