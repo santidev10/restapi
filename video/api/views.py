@@ -91,7 +91,7 @@ class VideoListApiView(APIView, FieldsQueryParamMixin):
         # adapt the data format
         for item in response_data:
             item['id'] = item.get('video_id', "")
-            del item['id']
+            del item['video_id']
 
             item['history_date'] = item.get('history_date', '')[:10]
 
