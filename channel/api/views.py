@@ -92,6 +92,21 @@ class ChannelListApiView(APIView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
+
+        # adapt the data format
+        items = response_data.get('items', [])
+        for item in items:
+            item['id'] = item.get('channel_id', "")
+            del item['channel_id']
+
+            item['history_date'] = item.get('history_date', '')[:10]
+
+            item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+                                                  '\g<0>Z',
+                                                  item.get('youtube_published_at', ''))
+
+            item['url'] = 'https://www.youtube.com/channel/{}'.format(item['id'])
+
         return Response(response_data)
 
 
