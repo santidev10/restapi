@@ -1,6 +1,8 @@
 """
 Channel api views module
 """
+import re
+
 from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
