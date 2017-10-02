@@ -1,6 +1,7 @@
 """
 Video api views module
 """
+import re
 from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
@@ -86,6 +87,22 @@ class VideoListApiView(APIView, FieldsQueryParamMixin):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
+
+        # adapt the data format
+        items = response_data.get('items', [])
+        for item in items:
+            item['id'] = item.get('video_id', "")
+            del item['id']
+
+            item['history_date'] = item.get('history_date', '')[:10]
+
+            if not item.get('country', None):
+                item['country'] = ""
+
+            item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+                                                  '\g<0>Z',
+                                                  item.get('youtube_published_at', ''))
+
         return Response(response_data)
 
 
