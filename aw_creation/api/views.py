@@ -874,7 +874,10 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        count = self.get_queryset().count()
+        count = CampaignCreation.objects.filter(
+            account_creation__owner=self.request.user,
+            account_creation_id=kwargs.get("pk"),
+        ).count()
         data = dict(
             name="Campaign {}".format(count + 1),
             account_creation=account_creation.id,
@@ -1142,7 +1145,9 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         # validate video ad format and video duration
         video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
         if video_ad_format == AdGroupCreation.BUMPER_AD:
-            video_duration = data.get("video_duration") or instance.video_duration
+            # data is get from multipart form data, all values are strings
+            video_duration = data.get("video_duration")
+            video_duration = instance.video_duration if video_duration is None else float(video_duration)
             if video_duration > 6:
                 return Response(dict(error="Bumper ads video must be 6 seconds or less"),
                                 status=HTTP_400_BAD_REQUEST)
@@ -1160,7 +1165,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         status=HTTP_400_BAD_REQUEST,
                     )
 
-                if ad_group_creation.ad_creations.count() > 1:
+                if ad_group_creation.ad_creations.filter(is_deleted=False).count() > 1:
                     return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
                                     status=HTTP_400_BAD_REQUEST)
 
@@ -1185,6 +1190,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                                         status=HTTP_400_BAD_REQUEST)
 
                     CampaignCreation.objects.filter(id=campaign_creation.id).update(bid_strategy_type=set_bid_strategy)
+                    campaign_creation.bid_strategy_type = set_bid_strategy
 
                 AdGroupCreation.objects.filter(id=ad_group_creation.id).update(video_ad_format=set_ad_format)
                 ad_group_creation.video_ad_format = set_ad_format
@@ -1240,7 +1246,7 @@ class AccountCreationDuplicateApiView(APIView):
     )
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
@@ -2429,98 +2435,6 @@ class TargetingListBaseAPIClass(GenericAPIView):
 
 
 @demo_view_decorator
-class AdGroupTargetingListApiView(TargetingListBaseAPIClass):
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        data = self.get_serializer(queryset, many=True).data
-        self.add_items_info(data)
-        return Response(data=data)
-
-    def post(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
-        try:
-            ad_group_creation = AdGroupCreation.objects.get(pk=pk)
-        except AdGroupCreation.DoesNotExsist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        data = self.data_to_dicts(request.data)
-        data = self.drop_not_valid(data, list_type)
-
-        criteria_sent = set(i['criteria'] for i in data)
-
-        queryset = self.get_queryset()
-        criteria_exists = set(
-            queryset.filter(
-                criteria__in=criteria_sent
-            ).values_list('criteria', flat=True)
-        )
-        post_data = []
-        for item in data:
-            if item['criteria'] not in criteria_exists:
-                item['type'] = list_type
-                item['ad_group_creation'] = pk
-                post_data.append(item)
-
-        serializer = AdGroupTargetingListUpdateSerializer(
-            data=post_data, many=True)
-        serializer.is_valid(raise_exception=True)
-        res = serializer.save()
-        if res:
-            ad_group_creation.save()
-        response = self.get(request, *args, **kwargs)
-        return response
-
-    def delete(self, request, *args, **kwargs):
-        criteria_list = self.data_to_list(request.data)
-        count, details = self.get_queryset().filter(
-            criteria__in=criteria_list
-        ).delete()
-        if count:
-            pk = self.kwargs.get('pk')
-            try:
-                ad_group_creation = AdGroupCreation.objects.get(pk=pk)
-            except AdGroupCreation.DoesNotExsist:
-                pass
-            else:
-                ad_group_creation.save()
-
-        response = self.get(request, *args, **kwargs)
-        return response
-
-    def drop_not_valid(self, objects_list, list_type):
-        method = "drop_not_valid_{}".format(list_type)
-        if hasattr(self, method):
-            return getattr(self, method)(objects_list)
-        else:
-            return objects_list
-
-    @staticmethod
-    def drop_not_valid_topic(objects_list):
-        existed_ids = set(
-            Topic.objects.filter(
-                id__in=[i['criteria'] for i in objects_list]
-            ).values_list('id', flat=True)
-        )
-        valid_list = [i for i in objects_list
-                      if int(i['criteria']) in existed_ids]
-        return valid_list
-
-    @staticmethod
-    def drop_not_valid_interest(objects_list):
-        existed_ids = set(
-            Audience.objects.filter(
-                type__in=(Audience.IN_MARKET_TYPE, Audience.AFFINITY_TYPE),
-                id__in=[i['criteria'] for i in objects_list]
-            ).values_list('id', flat=True)
-        )
-        valid_list = [i for i in objects_list
-                      if int(i['criteria']) in existed_ids]
-        return valid_list
-
-
-@demo_view_decorator
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
     permission_classes = (IsAuthQueryTokenPermission,)
@@ -2708,48 +2622,6 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                         dict(criteria=criteria)
                     )
         return objects
-
-
-@demo_view_decorator
-class AdGroupTargetingListImportListsApiView(AdGroupTargetingListApiView,
-                                             UserListsImportMixin):
-
-    def post(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        list_type = self.kwargs.get('list_type')
-        is_negative = request.query_params.get('is_negative', False)
-        try:
-            ad_group_creation = AdGroupCreation.objects.get(pk=pk)
-        except AdGroupCreation.DoesNotExsist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        ids = request.data
-        assert type(ids) is list
-
-        if ids:
-            criteria_list = self.get_lists_items_ids(ids, list_type)
-            existed_ids = set(
-                TargetingItem.objects.filter(
-                    ad_group_creation=ad_group_creation,
-                    criteria__in=criteria_list,
-                    type=list_type,
-                ).values_list("criteria", flat=True)
-            )
-            items = [
-                TargetingItem(
-                    ad_group_creation=ad_group_creation,
-                    criteria=cid,
-                    type=list_type,
-                    is_negative=is_negative,
-                )
-                for cid in criteria_list if cid not in existed_ids
-            ]
-            if items:
-                TargetingItem.objects.bulk_create(items)
-        return self.get(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        raise NotImplementedError
 
 
 class AwCreationChangedAccountsListAPIView(GenericAPIView):

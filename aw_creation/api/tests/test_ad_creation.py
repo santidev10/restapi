@@ -57,8 +57,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 'id', 'name',  'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'video_ad_format', 'custom_params',
-                'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'companion_banner', 'video_id', 'video_title', 'video_description',
+                'video_thumbnail', 'video_channel_title', 'video_duration',
             }
         )
         if len(data["custom_params"]) > 0:
@@ -134,6 +134,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         ad.ad_group_creation.refresh_from_db()
         self.assertEqual(ad.ad_group_creation.video_ad_format, data["video_ad_format"])
+
+        campaign_creation = ad.ad_group_creation.campaign_creation
+        campaign_creation.refresh_from_db()
+        self.assertEqual(campaign_creation.bid_strategy_type, CampaignCreation.CPM_STRATEGY)
 
     def test_success_update_json(self):
         today = datetime.now().date()

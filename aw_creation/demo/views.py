@@ -646,45 +646,6 @@ class PerformanceTargetingReportAPIView:
         return method
 
 
-class AdGroupTargetingListApiView:
-    @staticmethod
-    def get(original_method):
-        def method(view, request, pk, list_type, **kwargs):
-            if DEMO_ACCOUNT_ID in pk:
-                demo = DemoAccount()
-                for c in demo.children:
-                    for a in c.children:
-                        if a.id == pk:
-                            data = a.get_targeting_list(list_type)
-                            return Response(data=data)
-                return Response(status=HTTP_404_NOT_FOUND)
-            else:
-                return original_method(view, request, pk=pk,
-                                       list_type=list_type, **kwargs)
-
-        return method
-
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if DEMO_ACCOUNT_ID in pk:
-                return Response(data=DEMO_READ_ONLY,
-                                status=HTTP_403_FORBIDDEN)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-        return method
-
-    @staticmethod
-    def delete(original_method):
-        def method(view, request, pk, **kwargs):
-            if DEMO_ACCOUNT_ID in pk:
-                return Response(data=DEMO_READ_ONLY,
-                                status=HTTP_403_FORBIDDEN)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-        return method
-
-
 class AdGroupCreationTargetingExportApiView:
     @staticmethod
     def get_data(original_method):
@@ -717,14 +678,3 @@ class AdGroupTargetingListImportApiView:
                 return original_method(view, request, pk=pk, **kwargs)
         return method
 
-
-class AdGroupTargetingListImportListsApiView:
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if DEMO_ACCOUNT_ID in pk:
-                return Response(data=DEMO_READ_ONLY,
-                                status=HTTP_403_FORBIDDEN)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-        return method

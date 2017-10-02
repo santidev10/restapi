@@ -395,6 +395,7 @@ class DemoAd(BaseDemo):
             video_description="Channel Factory is a pioneer in the native advertising ecosystem, building a leading Global Next-Generation Media Company. In this new world of fragmented marketing opportunities, we use data and technology to provide a unified solution.",
             companion_banner=None,
             video_thumbnail="http://img.youtube.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            video_duration=151,
         )
         return data
 

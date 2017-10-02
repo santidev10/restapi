@@ -107,7 +107,7 @@ class AdCreationSetupSerializer(ModelSerializer):
             'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params', 'video_ad_format',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
         )
 
 
@@ -626,6 +626,14 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
             for lists in v.values():
                 if not isinstance(lists, list):
                     raise ValidationError(error_text)
+
+        count = sum(len(item_ids) for item_lists in value.values()
+                    for item_ids in item_lists.values())
+
+        limit = 20000
+        if count > limit:
+            raise ValidationError("Too many targeting items in this ad group: {:,}. You are allowed to use up to {:,}"
+                                  " targeting items per ad group".format(count, limit))
         return value
 
     def validate(self, data):

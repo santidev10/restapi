@@ -464,7 +464,7 @@ class AdGroupCreation(UniqueCreationItem):
 
     def get_available_ad_formats(self):
 
-        if self.sync_at is not None or self.ad_creations.count() > 1:
+        if self.sync_at is not None or self.ad_creations.filter(is_deleted=False).count() > 1:
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
