@@ -89,8 +89,7 @@ class VideoListApiView(APIView, FieldsQueryParamMixin):
                 status=HTTP_408_REQUEST_TIMEOUT)
 
         # adapt the data format
-        items = response_data.get('items', [])
-        for item in items:
+        for item in response_data:
             item['id'] = item.get('video_id', "")
             del item['id']
 
