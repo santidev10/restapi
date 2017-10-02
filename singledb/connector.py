@@ -7,6 +7,9 @@ from urllib.parse import urlencode
 import requests
 from django.conf import settings
 
+from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
+    DEFAULT_VIDEO_LIST_FIELDS
+
 
 class SingleDatabaseApiConnectorException(Exception):
     """
@@ -147,6 +150,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "videos/" + pk
+        self.set_fields_query_param(
+            query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -171,6 +176,8 @@ class SingleDatabaseApiConnector(object):
                 ids = ids.split(",")
             query_params.pop('ids')
             query_params['ids_hash'] = self.store_ids(ids)
+        self.set_fields_query_param(
+            query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -211,3 +218,13 @@ class SingleDatabaseApiConnector(object):
         endpoint = "cached_object/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
+
+    @staticmethod
+    def set_fields_query_param(query_params, default_fields):
+        """
+        Add fields query param to query params if absent
+        """
+        if "fields" not in query_params:
+            query_params._mutable = True
+            query_params["fields"] = ",".join(default_fields)
+        return query_params

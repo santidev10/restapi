@@ -35,22 +35,3 @@ class SingledbApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
-
-
-class FieldsQueryParamMixin(object):
-    """
-    Mixin to check/add fields query param to request object
-    """
-    default_request_fields = None
-
-    def process_fields_query_param(self):
-        """
-        Check or add fields query param
-        """
-        if "fields" not in self.request.query_params:
-            assert self.default_request_fields is not None,\
-                "'{}' should include a `default_request_fields`" \
-                " attribute".format(self.__class__.__name__)
-            self.request.query_params._mutable = True
-            self.request.query_params["fields"] = ",".join(
-                self.default_request_fields)
