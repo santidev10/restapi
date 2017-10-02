@@ -88,7 +88,8 @@ class VideoListApiView(APIView):
                 status=HTTP_408_REQUEST_TIMEOUT)
 
         # adapt the data format
-        for item in response_data:
+        items = response_data.get('items', [])
+        for item in items:
             item['id'] = item.get('video_id', "")
             del item['video_id']
 
@@ -100,6 +101,8 @@ class VideoListApiView(APIView):
             item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
                                                   '\g<0>Z',
                                                   item.get('youtube_published_at', ''))
+
+            item['url'] = "https://www.youtube.com/watch?v={}".format(item['id'])
 
         return Response(response_data)
 
