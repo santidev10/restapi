@@ -1,5 +1,5 @@
 """
-Video api settings module
+SDB connector settings module
 """
 DEFAULT_VIDEO_LIST_FIELDS = (
     "video_id",
