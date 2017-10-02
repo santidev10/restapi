@@ -2,6 +2,7 @@
 Video api views module
 """
 import re
+
 from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
@@ -9,18 +10,18 @@ from rest_framework.views import APIView
 
 from segment.models import SegmentVideo
 # pylint: disable=import-error
-from singledb.api.views.base import SingledbApiView, FieldsQueryParamMixin
+from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
+    DEFAULT_VIDEO_DETAILS_FIELDS
 # pylint: enable=import-error
 from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
-from video.api.settings import DEFAULT_VIDEO_LIST_FIELDS, \
-    DEFAULT_VIDEO_DETAILS_FIELDS
 
 
-class VideoListApiView(APIView, FieldsQueryParamMixin):
+class VideoListApiView(APIView):
     """
     Proxy view for video list
     """
@@ -77,8 +78,6 @@ class VideoListApiView(APIView, FieldsQueryParamMixin):
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
-        # fields
-        self.process_fields_query_param()
         # make call
         connector = Connector()
         try:
@@ -111,19 +110,11 @@ class VideoListFiltersApiView(SingledbApiView):
     connector_get = Connector().get_video_filters_list
 
 
-class VideoRetrieveUpdateApiView(SingledbApiView, FieldsQueryParamMixin):
+class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
-
-    def get(self, request, *args, **kwargs):
-        """
-        Extend get method
-        """
-        self.process_fields_query_param()
-        return super(VideoRetrieveUpdateApiView, self).get(
-            request, *args, **kwargs)
 
 
 class VideoSetApiView(SingledbApiView):
