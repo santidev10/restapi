@@ -129,12 +129,11 @@ class ChannelListApiView(APIView):
                         '\g<0>Z',
                         item['youtube_published_at']
                     )
-                item['url'] = 'https://www.youtube.com/channel/{}'.format(
-                    item['id'])
             return response_data
         for item in items:
-            item['id'] = item.get('channel_id', "")
-            del item['channel_id']
+            if "channel_id" in item:
+                item['id'] = item.get('channel_id', "")
+                del item['channel_id']
         return response_data
 
 
