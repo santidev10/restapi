@@ -95,7 +95,8 @@ class ChannelListApiView(APIView):
             query_params.update(sort='engage_rate:desc')
         else:
             query_params.update(sort='subscribers:desc')
-
+        # check fields in query params for future adapt
+        adapt_fields = "fields" not in request.query_params
         # make call
         connector = Connector()
         try:
@@ -106,22 +107,35 @@ class ChannelListApiView(APIView):
                 status=HTTP_408_REQUEST_TIMEOUT)
 
         # adapt the data format
+        self.adapt_response_data(
+            response_data, adapt_extra_fields=adapt_fields)
+        return Response(response_data)
+
+    @staticmethod
+    def adapt_response_data(response_data, adapt_extra_fields=False):
+        """
+        Adapt SDB data format
+        """
         items = response_data.get('items', [])
+        if adapt_extra_fields:
+            for item in items:
+                item['id'] = item.get('channel_id', "")
+                del item['channel_id']
+                if 'history_date' in item:
+                    item['history_date'] = item['history_date'][:10]
+                if 'youtube_published_at' in item:
+                    item['youtube_published_at'] = re.sub(
+                        '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+                        '\g<0>Z',
+                        item['youtube_published_at']
+                    )
+                item['url'] = 'https://www.youtube.com/channel/{}'.format(
+                    item['id'])
+            return response_data
         for item in items:
             item['id'] = item.get('channel_id', "")
             del item['channel_id']
-
-            if 'history_date' in item:
-                item['history_date'] = item['history_date'][:10]
-
-            if 'youtube_published_at' in item:
-                item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
-                                                      '\g<0>Z',
-                                                      item['youtube_published_at'])
-
-            item['url'] = 'https://www.youtube.com/channel/{}'.format(item['id'])
-
-        return Response(response_data)
+        return response_data
 
 
 class ChannelListFiltersApiView(SingledbApiView):
