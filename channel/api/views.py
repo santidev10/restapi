@@ -86,16 +86,14 @@ class ChannelListApiView(APIView):
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
-
         # sorting
         sorting = query_params.pop("sort_by", ["subscribers"])[0]
         if sorting in ["subscribers", "sentiment", "views_per_video", "thirty_days_views", "thirty_days_subscribers", "score_total"]:
-            query_params.update(sort='{}:desc'.format(sorting))
-        elif sorting == 'engagement':
-            query_params.update(sort='engage_rate:desc')
+            query_params.update(sort="{}:desc".format(sorting))
+        elif sorting == "engagement":
+            query_params.update(sort="engage_rate:desc")
         else:
-            query_params.update(sort='subscribers:desc')
-
+            query_params.update(sort="subscribers:desc")
         # make call
         connector = Connector()
         try:
@@ -104,24 +102,29 @@ class ChannelListApiView(APIView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-
         # adapt the data format
-        items = response_data.get('items', [])
-        for item in items:
-            item['id'] = item.get('channel_id', "")
-            del item['channel_id']
-
-            if 'history_date' in item:
-                item['history_date'] = item['history_date'][:10]
-
-            if 'youtube_published_at' in item:
-                item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
-                                                      '\g<0>Z',
-                                                      item['youtube_published_at'])
-
-            item['url'] = 'https://www.youtube.com/channel/{}'.format(item['id'])
-
+        self.adapt_response_data(response_data)
         return Response(response_data)
+
+    @staticmethod
+    def adapt_response_data(response_data):
+        """
+        Adapt SDB data format
+        """
+        items = response_data.get("items", [])
+        for item in items:
+            if "channel_id" in item: 
+                item["id"] = item.get("channel_id", "")
+                del item["channel_id"]
+            if "history_date" in item:
+                item["history_date"] = item["history_date"][:10]
+            if "youtube_published_at" in item:
+                item["youtube_published_at"] = re.sub(
+                    "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",
+                    "\g<0>Z",
+                    item["youtube_published_at"]
+                )
+        return response_data
 
 
 class ChannelListFiltersApiView(SingledbApiView):
@@ -136,8 +139,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
     connector_put = Connector().put_channel
 
     def put(self, *args, **kwargs):
-        if 'channel_group' in self.request.data \
-            and self.request.data['channel_group'] not in ['influencers','new','media','brands']:
+        if "channel_group" in self.request.data \
+            and self.request.data["channel_group"] not in ["influencers","new","media","brands"]:
                 return Response(status=HTTP_400_BAD_REQUEST)
         return super().put(*args, **kwargs)
 
@@ -151,7 +154,7 @@ class ChannelsVideosByKeywords(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber,)
 
     def get(self, request, *args, **kwargs):
-        keyword = kwargs.get('keyword')
+        keyword = kwargs.get("keyword")
         query_params = request.query_params
         connector = Connector()
         try:
