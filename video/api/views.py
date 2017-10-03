@@ -81,7 +81,7 @@ class VideoListApiView(APIView):
             query_params.update(ids=",".join(videos_ids))
 
         # sorting
-        sorting = query_params.pop("sort_by", "views")
+        sorting = query_params.pop("sort_by", ["views"])[0]
         if sorting in ["views", "likes", "dislikes", "comments", "sentiment"]:
             query_params.update(sort='{}:desc'.format(sorting))
         elif sorting == 'engagement':
@@ -104,14 +104,16 @@ class VideoListApiView(APIView):
             item['id'] = item.get('video_id', "")
             del item['video_id']
 
-            item['history_date'] = item.get('history_date', '')[:10]
+            if 'history_date' in item:
+                item['history_date'] = item['history_date'][:10]
 
-            if not item.get('country', None):
+            if 'country' in item and item['country'] is None:
                 item['country'] = ""
 
-            item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
-                                                  '\g<0>Z',
-                                                  item.get('youtube_published_at', ''))
+            if 'youtube_published_at':
+                item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+                                                      '\g<0>Z',
+                                                      item['youtube_published_at'])
 
             item['url'] = "https://www.youtube.com/watch?v={}".format(item['id'])
 

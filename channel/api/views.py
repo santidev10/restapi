@@ -88,7 +88,7 @@ class ChannelListApiView(APIView):
             query_params.update(ids=",".join(channels_ids))
 
         # sorting
-        sorting = query_params.pop("sort_by", "subscribers")
+        sorting = query_params.pop("sort_by", ["subscribers"])[0]
         if sorting in ["subscribers", "sentiment", "views_per_video", "thirty_days_views", "thirty_days_subscribers", "score_total"]:
             query_params.update(sort='{}:desc'.format(sorting))
         elif sorting == 'engagement':
@@ -111,11 +111,13 @@ class ChannelListApiView(APIView):
             item['id'] = item.get('channel_id', "")
             del item['channel_id']
 
-            item['history_date'] = item.get('history_date', '')[:10]
+            if 'history_date' in item:
+                item['history_date'] = item['history_date'][:10]
 
-            item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
-                                                  '\g<0>Z',
-                                                  item.get('youtube_published_at', ''))
+            if 'youtube_published_at':
+                item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
+                                                      '\g<0>Z',
+                                                      item['youtube_published_at'])
 
             item['url'] = 'https://www.youtube.com/channel/{}'.format(item['id'])
 
