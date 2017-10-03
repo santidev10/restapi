@@ -83,9 +83,11 @@ class VideoListApiView(APIView):
         # sorting
         sorting = query_params.pop("sort_by", "views")
         if sorting in ["views", "likes", "dislikes", "comments", "sentiment"]:
-            query_params.update(sort='{}:desc')
+            query_params.update(sort='{}:desc'.format(sorting))
         elif sorting == 'engagement':
             query_params.update(sort='engage_rate:desc')
+        else:
+            query_params.update(sort='views:desc')
 
         # make call
         connector = Connector()
