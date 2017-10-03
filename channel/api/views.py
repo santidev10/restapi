@@ -89,7 +89,7 @@ class ChannelListApiView(APIView):
 
             # sorting
             sorting = query_params.pop("sort_by", "subscribers")
-            if sorting in ["subscribers", "sentiment", "views_per_video", "thirty_days_views", "thirty_days_subscribers", "score_total"]
+            if sorting in ["subscribers", "sentiment", "views_per_video", "thirty_days_views", "thirty_days_subscribers", "score_total"]:
                 query_params.update(sort='{}:desc')
             elif sorting == 'engagement':
                 query_params.update(sort='engage_rate:desc')
