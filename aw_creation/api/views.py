@@ -1318,7 +1318,7 @@ class AccountCreationDuplicateApiView(APIView):
             account_data[f] = getattr(account, f)
         acc_duplicate = AccountCreation.objects.create(**account_data)
 
-        for c in account.campaign_creations.all():
+        for c in account.campaign_creations.filter(is_deleted=False):
             self.duplicate_campaign(acc_duplicate, c, bulk_items)
 
         return acc_duplicate
@@ -1362,7 +1362,7 @@ class AccountCreationDuplicateApiView(APIView):
                 )
             )
 
-        for a in campaign.ad_group_creations.all():
+        for a in campaign.ad_group_creations.filter(is_deleted=False):
             self.duplicate_ad_group(c_duplicate, a, bulk_items)
 
         return c_duplicate
@@ -1384,7 +1384,7 @@ class AccountCreationDuplicateApiView(APIView):
                 )
             )
 
-        for ad in ad_group.ad_creations.all():
+        for ad in ad_group.ad_creations.filter(is_deleted=False):
             self.duplicate_ad(a_duplicate, ad, bulk_items)
 
         return a_duplicate
