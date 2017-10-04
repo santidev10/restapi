@@ -88,6 +88,7 @@ class ChannelListApiView(APIView):
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
 
+        # adapt the request params
         self.adapt_query_params(query_params)
 
         # make call
@@ -99,8 +100,9 @@ class ChannelListApiView(APIView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
 
-        # adapt the data format
+        # adapt the response data
         self.adapt_response_data(response_data)
+
         return Response(response_data)
 
     @staticmethod
