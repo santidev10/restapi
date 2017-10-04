@@ -347,7 +347,7 @@ class CampaignCreation(UniqueCreationItem):
     @property
     def campaign_is_paused(self):
         ac = self.account_creation
-        return ac.is_paused or ac.is_ended or ac.is_deleted
+        return ac.is_paused or ac.is_ended
 
     def get_creation_dates(self):
         start, end = self.start, self.end
@@ -373,7 +373,7 @@ class CampaignCreation(UniqueCreationItem):
             "var campaign = createOrUpdateCampaign({});".format(
                 json.dumps(dict(
                     id=self.id,
-                    is_deleted=self.is_deleted or self.account_creation.is_deleted,
+                    is_deleted='true' if self.is_deleted or self.account_creation.is_deleted else 'false',
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
@@ -583,7 +583,7 @@ class AdGroupCreation(UniqueCreationItem):
         campaign = self.campaign_creation
         params = dict(
             id=self.id,
-            is_deleted=self.is_deleted,
+            is_deleted="true" if self.is_deleted else "false",
             name=self.unique_name,
             ad_format="VIDEO_{}".format(self.video_ad_format),
             max_rate=str(self.max_rate),
@@ -687,7 +687,7 @@ class AdCreation(UniqueCreationItem):
             json.dumps(
                 dict(
                     id=self.id,
-                    is_deleted=self.is_deleted,
+                    is_deleted="true" if self.is_deleted else "false",
                     name=self.unique_name,
                     ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
                     video_url=self.video_url,
