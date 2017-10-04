@@ -430,7 +430,7 @@ class AccountCreationListSerializer(ModelSerializer):
 
             #
             struck_data = AccountCreation.objects.filter(id__in=ids).values("id").order_by("id").annotate(
-                ad_count=Count("account__campaigns__ad_groups__ads"),
+                ad_count=Count("account__campaigns__ad_groups__ads", distinct=True),
                 channel_count=Count("account__campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
                 video_count=Count("account__campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
                 interest_count=Count("account__campaigns__ad_groups__audiences__audience_id", distinct=True),
