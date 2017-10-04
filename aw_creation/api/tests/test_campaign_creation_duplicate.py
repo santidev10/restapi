@@ -46,6 +46,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
             name="",
             campaign_creation=campaign_creation,
         )
+        AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=campaign_creation,
+            is_deleted=True,
+        )
         TargetingItem.objects.create(
             ad_group_creation=ad_group_creation,
             criteria="js",
@@ -55,6 +60,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
         AdCreation.objects.create(
             name="FF",
             ad_group_creation=ad_group_creation,
+        )
+        AdCreation.objects.create(
+            name="",
+            ad_group_creation=ad_group_creation,
+            is_deleted=True,
         )
         return campaign_creation
 
@@ -150,6 +160,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'day',
             }
         )
+        self.assertEqual(len(campaign_data['ad_group_creations']), 1)
         ad_group_data = campaign_data['ad_group_creations'][0]
         self.assertEqual(
             set(ad_group_data.keys()),
@@ -168,7 +179,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad_group_data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
-
+        self.assertEqual(len(ad_group_data['ad_creations']), 1)
         ad = ad_group_data['ad_creations'][0]
         self.assertEqual(
             set(ad.keys()),
@@ -181,9 +192,12 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
 
     def test_success_post_increment_name(self):
-        c = self.create_campaign_creation(self.user)
-        c.name = "FF 1 (665)"
-        c.save()
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        c = CampaignCreation.objects.create(
+            name="FF 1 (665)", account_creation=account_creation,
+        )
         url = reverse("aw_creation_urls:campaign_creation_duplicate",
                       args=(c.id,))
         response = self.client.post(url)
