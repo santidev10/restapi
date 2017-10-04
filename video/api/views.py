@@ -185,6 +185,11 @@ class VideoListApiView(APIView):
                 start = now - timedelta(hours=now.hour, minutes=now.minute, seconds=now.second, microseconds=now.microsecond)
                 end = start + timedelta(hours=23, minutes=59, seconds=59, microseconds=999999)
                 query_params.update(youtube_published_at__range="{},{}".format(start.isoformat(), end.isoformat()))
+
+        # source
+        source = query_params.pop('source', [None])[0]
+        if source is not None and source != 'all':
+            query_params.update(trends_list__term=source)
         # <--- filters
 
     @staticmethod
