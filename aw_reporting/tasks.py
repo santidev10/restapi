@@ -64,7 +64,7 @@ GET_DF = '%Y-%m-%d'
 
 
 def load_hourly_stats(client, account, *_):
-    from aw_reporting.models import CampaignHourlyStatistic, Campaign
+    from aw_reporting.models import CampaignHourlyStatistic, Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report, \
         main_statistics
 
@@ -90,7 +90,8 @@ def load_hourly_stats(client, account, *_):
             client,
             dates=(date, today),
             fields=[
-               'CampaignId', 'CampaignName',
+               'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
+               'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
                'Date', 'HourOfDay',
             ] + main_statistics[:4],
             include_zero_impressions=False,
@@ -105,12 +106,21 @@ def load_hourly_stats(client, account, *_):
                 campaign_id = row.CampaignId
                 if campaign_id not in campaign_ids:
                     campaign_ids.append(campaign_id)
+                    try:
+                        end_date = datetime.strptime(row.EndDate, GET_DF)
+                    except ValueError:
+                        end_date = None
                     create_campaign.append(
                         Campaign(
                             id=campaign_id,
                             name=row.CampaignName,
                             account=account,
-                            start_date=date,
+                            type=row.AdvertisingChannelType,
+                            start_date=datetime.strptime(row.StartDate, GET_DF),
+                            end_date=end_date,
+                            budget=float(row.Amount) / 1000000,
+                            status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
+                            impressions=1,  # to show this item on the accounts lists Track/Filters
                         )
                     )
 
