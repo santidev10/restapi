@@ -373,12 +373,12 @@ class CampaignCreation(UniqueCreationItem):
             "var campaign = createOrUpdateCampaign({});".format(
                 json.dumps(dict(
                     id=self.id,
-                    is_deleted='true' if self.is_deleted or self.account_creation.is_deleted else 'false',
+                    is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
                     budget_type=self.bid_strategy_type.lower(),
-                    is_paused='true' if self.campaign_is_paused else 'false',
+                    is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
                     video_networks=self.video_networks,
@@ -583,7 +583,7 @@ class AdGroupCreation(UniqueCreationItem):
         campaign = self.campaign_creation
         params = dict(
             id=self.id,
-            is_deleted="true" if self.is_deleted else "false",
+            is_deleted=self.is_deleted,
             name=self.unique_name,
             ad_format="VIDEO_{}".format(self.video_ad_format),
             max_rate=str(self.max_rate),
@@ -687,7 +687,7 @@ class AdCreation(UniqueCreationItem):
             json.dumps(
                 dict(
                     id=self.id,
-                    is_deleted="true" if self.is_deleted else "false",
+                    is_deleted=self.is_deleted,
                     name=self.unique_name,
                     ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
                     video_url=self.video_url,
