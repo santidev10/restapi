@@ -351,17 +351,16 @@ class CampaignCreation(UniqueCreationItem):
 
     def get_creation_dates(self):
         start, end = self.start, self.end
-
         timezone = self.account_creation.timezone
         today = datetime.now(tz=pytz.timezone(timezone)).date()
 
-        if start and start < today and (not end or end >= today):
-            start = today
-
-        if start:
+        if start and start > today or (end and end < today):
             start_for_creation = start
         else:
             start_for_creation = today
+
+        if start and start < today:
+            start = None
 
         return start_for_creation, start, end
 
