@@ -69,6 +69,33 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(item["id"], ac_creation.id)
 
+    def test_success_filter_campaign_count(self):
+        account = Account.objects.create(id="123", name="")
+        Campaign.objects.create(id=1, name="", account=account, cost=100)
+        Campaign.objects.create(id=2, name="", account=account, cost=200)
+        ac_creation = AccountCreation.objects.create(
+            name="", owner=self.user, account=account,
+        )
+        CampaignCreation.objects.create(name="", account_creation=ac_creation)
+        CampaignCreation.objects.create(name="", account_creation=ac_creation)
+
+        # --
+        url = reverse("aw_creation_urls:performance_targeting_list")
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get("{}?max_campaigns_count=2".format(url))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 2)
+        item = response.data['items'][1]
+        self.assertEqual(item["id"], ac_creation.id)
+
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
