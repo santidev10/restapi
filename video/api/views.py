@@ -150,6 +150,9 @@ class VideoListApiView(APIView):
         # min_engage_rate, max_engage_rate
         make_range('engage_rate')
 
+        # min_subscribers, max_subscribers
+        make_range('channel__subscribers', 'min_subscribers', 'max_subscribers')
+
         # country
         make('terms', 'country')
 
