@@ -2128,13 +2128,24 @@ class PerformanceTargetingReportAPIView(APIView):
     @staticmethod
     def get_kpi_limits(reports):
         kpi = dict(
-            average_cpv=dict(min=0, max=10),
-            average_cpm=dict(min=0, max=100),
-            ctr=dict(min=0, max=10),
-            ctr_v=dict(min=0, max=20),
-            video_view_rate=dict(min=0, max=100),
+            average_cpv=[],
+            average_cpm=[],
+            ctr=[],
+            ctr_v=[],
+            video_view_rate=[],
         )
-        return kpi
+        for r in reports:
+            for item in r["items"]:
+                for key, values in kpi.items():
+                    value = item[key]
+                    if value is not None:
+                        values.append(value)
+
+        kpi_limits = dict()
+        for key, values in kpi.items():
+            kpi_limits[key] = dict(min=min(values) if values else None,
+                                   max=max(values) if values else None)
+        return kpi_limits
 
     def filter_queryset(self, qs):
         data = self.request.data
