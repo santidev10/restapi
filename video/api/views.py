@@ -247,6 +247,11 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
     connector_put = Connector().put_video
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
 
+    def get(self, *args, **kwargs):
+        response = super().get(*args, **kwargs)
+        VideoListApiView.adapt_response_data({'items': [response.data]})
+        return response
+
 
 class VideoSetApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)

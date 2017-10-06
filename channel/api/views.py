@@ -223,6 +223,11 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
                 return Response(status=HTTP_400_BAD_REQUEST)
         return super().put(*args, **kwargs)
 
+    def get(self, *args, **kwargs):
+        response = super().get(*args, **kwargs)
+        ChannelListApiView.adapt_response_data({'items': [response.data]})
+        return response
+
 
 class ChannelSetApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
