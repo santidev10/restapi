@@ -219,8 +219,12 @@ class VideoListApiView(APIView):
         items = response_data.get('items', [])
         for item in items:
             if 'video_id' in item:
-                item['id'] = item.get('video_id', "")
+                item['id'] = item.get('video_id', '')
                 del item['video_id']
+
+            if 'ptk' in item:
+                item['ptk_value'] = item.get('ptk', '')
+                del item['ptk']
 
             if 'history_date' in item:
                 item['history_date'] = item['history_date'][:10]

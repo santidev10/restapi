@@ -29,6 +29,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "verified",
     "transcript",
     "url",
+    "ptk",
 )
 
 DEFAULT_VIDEO_DETAILS_FIELDS = (
