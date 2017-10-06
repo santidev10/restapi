@@ -28,6 +28,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "duration",
     "verified",
     "transcript",
+    "url",
 )
 
 DEFAULT_VIDEO_DETAILS_FIELDS = (
@@ -57,7 +58,23 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "duration",
     "verified",
     "video_safety_status",
+    "channel__category",
+    "channel__channel_group",
+    "channel__country",
+    "channel__engage_rate",
+    "channel__channel_id",
+    "channel__language",
+    "channel__sentiment",
+    "channel__subscribers",
+    "channel__thirty_days_subscribers",
+    "channel__thirty_days_views",
+    "channel__thumbnail_image_url",
+    "channel__title",
+    "channel__top_language",
+    "channel__verified",
+    "channel__views_per_video",
 )
+
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
     "brand",
