@@ -195,6 +195,8 @@ class ChannelListApiView(APIView):
             if "channel_id" in item: 
                 item["id"] = item.get("channel_id", "")
                 del item["channel_id"]
+            if 'country' in item and item['country'] is None:
+                item['country'] = ""
             if "history_date" in item:
                 item["history_date"] = item["history_date"][:10]
             if "youtube_published_at" in item:
