@@ -646,6 +646,20 @@ class PerformanceTargetingReportAPIView:
         return method
 
 
+class PerformanceTargetingItemAPIView:
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, **kwargs):
+            ad_group_id = kwargs["ad_group_id"]
+            if DEMO_ACCOUNT_ID in ad_group_id:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, **kwargs)
+        return method
+
+
 class AdGroupCreationTargetingExportApiView:
     @staticmethod
     def get_data(original_method):
