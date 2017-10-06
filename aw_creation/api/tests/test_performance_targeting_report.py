@@ -1,6 +1,6 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation
+from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, Audience, Topic, \
     AWConnectionToUserRelation, AWConnection, YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
@@ -20,7 +20,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
     }
 
     item_keys = {
-        "item", "campaign", "ad_group", "targeting",
+        "item", "campaign", "ad_group", "targeting", "is_negative",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
     }
@@ -58,7 +58,6 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     campaigns=[campaign.id],
                     ad_groups=[ad_group.id],
                     targeting=["topic", "interest", "keyword", "channel", "video"],
-                    video_view_rate=30,
                 )),
                 content_type='application/json',
             )
@@ -75,6 +74,51 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         for n, item in enumerate(report_data['items']):
             self.assertEqual(set(item.keys()), self.item_keys)
+
+    def test_targeting_status(self):
+        user = self.create_test_user()
+        account = Account.objects.create(id=1, name="")
+        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
+        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
+                                           account=account, start_date=start, end_date=end)
+        ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign, video_views=1)
+
+        YTChannelStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group, video_views=5, impressions=10)
+        vs = YTVideoStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group, video_views=2, impressions=10)
+        ks = KeywordStatistic.objects.create(date=start, keyword="AAA", ad_group=ad_group,
+                                             video_views=2, impressions=10)
+
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation, campaign=campaign)
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation, ad_group=ad_group)
+        TargetingItem.objects.create(ad_group_creation=ad_group_creation, type=TargetingItem.KEYWORD_TYPE,
+                                     criteria=ks.keyword, is_negative=True)
+        TargetingItem.objects.create(ad_group_creation=ad_group_creation, type=TargetingItem.VIDEO_TYPE,
+                                     criteria=vs.yt_id, is_negative=False)
+
+        url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
+
+        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(dict(
+                    targeting=["keyword", "channel", "video"],
+                )),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        report_data = response.data["reports"][0]
+        self.assertEqual(len(report_data["items"]), 3)
+
+        for item in report_data['items']:
+            if item["targeting"] == "Channels":
+                self.assertEqual(item["is_negative"], False)
+            elif item["targeting"] == "Videos":
+                self.assertEqual(item["is_negative"], False)
+            elif item["targeting"] == "Keywords":
+                self.assertEqual(item["is_negative"], True)
 
     def test_success_group_by_campaign(self):
         user = self.create_test_user()

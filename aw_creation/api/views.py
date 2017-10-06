@@ -7,11 +7,12 @@ from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
     CharField as AggrCharField
+from django.shortcuts import get_object_or_404
 from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse, Http404
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveAPIView
+    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
 from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
@@ -2088,10 +2089,35 @@ class PerformanceTargetingReportAPIView(APIView):
                 items.extend(getattr(self, method)(account))
         return items
 
+    def get_negative_targeting_items(self, targeting, account_creation):
+        queryset = TargetingItem.objects.filter(
+            ad_group_creation__campaign_creation__account_creation=account_creation,
+            ad_group_creation__ad_group__isnull=False,
+            type__in=targeting,
+            is_negative=True,
+        )
+        data = self.request.data
+        if data.get("ad_groups"):
+            queryset = queryset.filter(ad_group_creation__ad_group_id__in=data["ad_groups"])
+        if data.get("campaigns"):
+            queryset = queryset.filter(ad_group_creation__ad_group__campaign_id__in=data["campaigns"])
+
+        items = defaultdict(lambda: defaultdict(set))
+        for e in queryset.values("type", "criteria", "ad_group_creation__ad_group_id"):
+            items[
+                e["type"]
+            ][
+                e["ad_group_creation__ad_group_id"]
+            ].add(
+                e["criteria"]
+            )
+        return items
+
     def post(self, request, **_):
         item = self.get_object()
         group_by, targeting = request.data.get("group_by", ""), request.data.get("targeting", [])
         items = self.get_items(targeting, item.account)
+        negative_items = self.get_negative_targeting_items(targeting, item)
 
         reports = []
         if group_by == "campaign":
@@ -2115,6 +2141,12 @@ class PerformanceTargetingReportAPIView(APIView):
                         summary[k] += v
                 dict_calculate_stats(i)
                 del i['video_impressions']
+
+                # add status field
+                targeting_type = i["targeting"].lower()[:-1]
+                ad_group_id = i["ad_group"]["id"]
+                i["is_negative"] = i["item"]["id"] in negative_items[targeting_type][ad_group_id]
+
             dict_calculate_stats(summary)
             del summary['video_impressions']
             report.update(summary)
@@ -2284,6 +2316,26 @@ class PerformanceTargetingReportAPIView(APIView):
             self._set_group_and_campaign_fields(i)
             i["targeting"] = "Topics"
         return items
+
+
+@demo_view_decorator
+class PerformanceTargetingItemAPIView(UpdateAPIView):
+    serializer_class = UpdateTargetingDirectionSerializer
+
+    def get_object(self):
+        targeting_type = self.kwargs["targeting"].lower()
+        if targeting_type.endswith("s"):
+            targeting_type = targeting_type[:-1]
+
+        ad_group_creation = get_object_or_404(
+            AdGroupCreation,
+            campaign_creation__account_creation__owner=self.request.user,
+            ad_group_id=self.kwargs["ad_group_id"],
+        )
+        obj = get_object_or_404(
+            TargetingItem, criteria=self.kwargs["criteria"], ad_group_creation=ad_group_creation, type=targeting_type,
+        )
+        return obj
 
 
 class UserListsImportMixin:
