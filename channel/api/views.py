@@ -202,7 +202,7 @@ class ChannelListApiView(APIView):
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item:
                     item[field] = re.sub(
-                        "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",
+                        "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+|)$",
                         "\g<0>Z",
                         item[field]
                     )
