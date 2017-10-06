@@ -2041,18 +2041,13 @@ class PerformanceTargetingFiltersAPIView(APIView):
     @staticmethod
     def get_static_filters():
         filters = dict(
-            average_cpv=dict(min=0, max=10),
-            average_cpm=dict(min=0, max=100),
-            ctr=dict(min=0, max=10),
-            ctr_v=dict(min=0, max=20),
-            video_view_rate=dict(min=0, max=100),
             targeting=[
                 dict(id=t, name="{}s".format(t.capitalize()))
                 for t in ("channel", "video", "keyword", "topic", "interest")
             ],
             group_by=[
-                dict(id="account", name="All campaigns"),
-                dict(id="campaign", name="Individual by campaign"),
+                dict(id="account", name="All Campaigns"),
+                dict(id="campaign", name="Individual Campaigns"),
             ],
         )
         return filters
@@ -2075,25 +2070,6 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
 @demo_view_decorator
 class PerformanceTargetingReportAPIView(APIView):
-
-    def get_settings(self):
-        """
-        There might be two ways to set kpi options
-        {"video_view_rate": 30}
-        or {"video_view_rate": {"some_campaign_id": 30, "another_campaign_id": 20}}
-        depend on "group_by" option
-        so we handle both cases
-        :return:
-        """
-        data = self.request.data
-        s = {}
-        for n in ("average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate"):
-            if data.get(n) is not None:
-                if isinstance(data[n], dict):
-                    s[n] = {k: float(v) for k, v in data[n].items()}
-                else:
-                    s[n] = float(data[n])
-        return s
 
     def get_object(self):
         pk = self.kwargs["pk"]
@@ -2128,27 +2104,6 @@ class PerformanceTargetingReportAPIView(APIView):
         else:
             reports.append(dict(label="All campaigns", items=items, id=None))
 
-        options = self.get_settings()
-
-        # set passed fields
-        def set_item_passes(e):
-            fail_c = 0
-            for n, option_value in options.items():
-                if isinstance(option_value, dict):  # see docstring of the get_settings method
-                    campaign_id = e.get("id") or e.get("campaign", {}).get("id")
-                    option_value = option_value.get(campaign_id)
-
-                value = e[n]
-                if value is not None and option_value is not None:
-                    passes = value >= option_value
-                    e[n] = dict(passes=passes, value=value)
-                    if not passes:
-                        fail_c += 1
-            e["passes"] = not fail_c
-
-        def sort_value(el):
-            return (el["passes"],) + tuple(el[o]["value"] for o in options)
-
         for report in reports:
             # get calculated fields
             stat_fields = BASE_STATS + ("video_impressions",)
@@ -2159,17 +2114,38 @@ class PerformanceTargetingReportAPIView(APIView):
                     if k in stat_fields and v:
                         summary[k] += v
                 dict_calculate_stats(i)
-                set_item_passes(i)
                 del i['video_impressions']
             dict_calculate_stats(summary)
             del summary['video_impressions']
             report.update(summary)
 
-            set_item_passes(report)
+        data = dict(
+            kpi=self.get_kpi_limits(reports),
+            reports=reports,
+        )
+        return Response(data=data)
 
-            report["items"] = list(sorted(report["items"], key=sort_value, reverse=True))
+    @staticmethod
+    def get_kpi_limits(reports):
+        kpi = dict(
+            average_cpv=[],
+            average_cpm=[],
+            ctr=[],
+            ctr_v=[],
+            video_view_rate=[],
+        )
+        for r in reports:
+            for item in r["items"]:
+                for key, values in kpi.items():
+                    value = item[key]
+                    if value is not None:
+                        values.append(value)
 
-        return Response(data=reports)
+        kpi_limits = dict()
+        for key, values in kpi.items():
+            kpi_limits[key] = dict(min=min(values) if values else None,
+                                   max=max(values) if values else None)
+        return kpi_limits
 
     def filter_queryset(self, qs):
         data = self.request.data

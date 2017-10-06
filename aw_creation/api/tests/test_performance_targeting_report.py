@@ -14,25 +14,19 @@ import json
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     data_keys = {
-        "label", "items", "passes", "id",
-
+        "label", "items", "id",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
     }
 
     item_keys = {
-        "item", "campaign", "ad_group", "passes", "targeting",
-
+        "item", "campaign", "ad_group", "targeting",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
     }
 
     def test_success_post(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
-            user=user,
-        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
@@ -70,8 +64,9 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(len(data), 1)
-        report_data = data[0]
+        self.assertEqual(set(data.keys()), {"reports", "kpi"})
+        self.assertEqual(len(data["reports"]), 1)
+        report_data = data["reports"][0]
         self.assertEqual(
             set(report_data.keys()), self.data_keys
         )
@@ -81,23 +76,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         for n, item in enumerate(report_data['items']):
             self.assertEqual(set(item.keys()), self.item_keys)
 
-            if item["targeting"] == "Channels":
-                self.assertEqual(n, 0, "First item in the list")
-                self.assertEqual(item['passes'], True)
-                self.assertEqual(item['video_view_rate']['value'], 50)
-                self.assertEqual(item['video_view_rate']['passes'], True)
-
-            else:
-                self.assertEqual(item['passes'], False)
-                self.assertEqual(item['video_view_rate']['value'], 20)
-                self.assertEqual(item['video_view_rate']['passes'], False)
-
     def test_success_group_by_campaign(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
-            user=user,
-        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
@@ -131,12 +111,11 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     end_date=str(start),
                     group_by="campaign",
                     targeting=["topic", "interest", "keyword", "channel", "video"],
-                    video_view_rate=30,
                 )),
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
+        data = response.data["reports"]
         self.assertEqual(len(data), 2)
 
         self.assertEqual(set(data[0].keys()), self.data_keys)
@@ -151,26 +130,41 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         for item in data[0]['items']:
             self.assertEqual(set(item.keys()), self.item_keys)
 
-    def test_success_campaign_kpi_settings(self):
+    def test_success_min_max_kpi(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
-            user=user,
-        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
-        campaign1 = Campaign.objects.create(id="1", name="A campaign", status="eligible",
-                                            account=account, start_date=start, end_date=end)
-        ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1, video_views=1)
-        campaign2 = Campaign.objects.create(id="2", name="B campaign", status="eligible",
-                                            account=account, start_date=start, end_date=end)
-        ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2, video_views=1)
+        campaign = Campaign.objects.create(id="1", name="A campaign", status="eligible",
+                                           account=account, start_date=start, end_date=end)
+        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign, video_views=1)
 
-        YTChannelStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group1, video_views=5, impressions=10)
-        YTVideoStatistic.objects.create(date=start, yt_id="AAA", ad_group=ad_group2, video_views=2, impressions=10)
+        YTChannelStatistic.objects.create(
+            date=start, yt_id="AAA", ad_group=ad_group,
+            video_views=2, impressions=8, clicks=1, cost=2,
+        )
+        YTVideoStatistic.objects.create(
+            date=start, yt_id="AAA", ad_group=ad_group,
+            video_views=2, impressions=8, clicks=1, cost=2,
+        )
+        audience, _ = Audience.objects.get_or_create(id=1, name="Auto", type=Audience.CUSTOM_AFFINITY_TYPE)
+        AudienceStatistic.objects.create(
+            date=start, audience=audience, ad_group=ad_group,
+            video_views=2, impressions=8, clicks=1, cost=2,
+        )
+        # top ctr 25%
+        topic, _ = Topic.objects.get_or_create(id=1, name="Demo")
+        TopicStatistic.objects.create(
+            date=start, topic=topic, ad_group=ad_group,
+            video_views=2, impressions=8, clicks=2, cost=2,
+        )
+        # top video_view_rate 75%
+        KeywordStatistic.objects.create(
+            date=start, keyword="AAA", ad_group=ad_group,
+            video_views=6, impressions=8, clicks=1, cost=2,
+        )
 
         url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
 
@@ -181,28 +175,27 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     start_date=str(start),
                     end_date=str(start),
                     group_by="campaign",
-                    targeting=["channel", "video"],
-                    video_view_rate={campaign1.id: 30, campaign2.id: 10},
+                    targeting=["topic", "interest", "keyword", "channel", "video"],
                 )),
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(len(data), 2)
+        kpi = response.data["kpi"]
 
-        self.assertEqual(set(data[0].keys()), self.data_keys)
-        self.assertEqual(data[0]['label'], "A campaign")
-        self.assertEqual(len(data[0]["items"]), 1)
-        item = data[0]['items'][0]
-        self.assertEqual(item["video_view_rate"]["passes"], True)
-        self.assertEqual(item["video_view_rate"]["value"], 50)
+        self.assertEqual(kpi["video_view_rate"]["min"], 25)
+        self.assertEqual(kpi["video_view_rate"]["max"], 75)
 
-        self.assertEqual(set(data[0].keys()), self.data_keys)
-        self.assertEqual(data[1]['label'], "B campaign")
-        self.assertEqual(len(data[1]["items"]), 1)
-        item = data[1]['items'][0]
-        self.assertEqual(item["video_view_rate"]["passes"], True)
-        self.assertEqual(item["video_view_rate"]["value"], 20)
+        self.assertEqual(kpi["ctr"]["min"], 12.5)
+        self.assertEqual(kpi["ctr"]["max"], 25)
+
+        self.assertAlmostEqual(kpi["ctr_v"]["min"], 1/6 * 100, places=10)
+        self.assertEqual(kpi["ctr_v"]["max"], 100)
+
+        self.assertAlmostEqual(kpi["average_cpv"]["min"], 1/3, places=10)
+        self.assertEqual(kpi["average_cpv"]["max"], 1)
+
+        self.assertEqual(kpi["average_cpm"]["min"], 250)
+        self.assertEqual(kpi["average_cpm"]["max"], 250)
 
     def test_success_post_demo(self):
         self.create_test_user()
@@ -220,15 +213,15 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     ad_groups=[ad_group.id],
                     group_by="campaign",
                     targeting=["channel"],
-                    video_view_rate=30,
                 )),
                 content_type='application/json',
             )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(len(data), 1)
-        campaign_data = data[0]
+        self.assertEqual(set(data.keys()), {"reports", "kpi"})
+        self.assertEqual(len(data["reports"]), 1)
+        campaign_data = data["reports"][0]
 
         self.assertEqual(
             set(campaign_data.keys()),
