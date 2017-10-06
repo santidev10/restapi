@@ -59,6 +59,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "duration",
     "verified",
     "video_safety_status",
+    "ptk",
     "channel__category",
     "channel__channel_group",
     "channel__country",
