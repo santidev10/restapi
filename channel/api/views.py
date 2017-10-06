@@ -85,7 +85,7 @@ class ChannelListApiView(APIView):
             query_params.update(ids=",".join(channels_ids))
 
         # adapt the request params
-        self.adapt_query_params(query_params)
+        # self.adapt_query_params(query_params)
 
         # make call
         connector = Connector()
@@ -97,7 +97,7 @@ class ChannelListApiView(APIView):
                 status=HTTP_408_REQUEST_TIMEOUT)
 
         # adapt the response data
-        self.adapt_response_data(response_data)
+        # self.adapt_response_data(response_data)
 
         return Response(response_data)
 
