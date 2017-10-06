@@ -1479,8 +1479,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 # <<< Performance
 @demo_view_decorator
-class PerformanceAccountCampaignsListApiView(ListAPIView):
-    serializer_class = CampaignListSerializer
+class PerformanceAccountCampaignsListApiView(APIView):
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1489,6 +1488,22 @@ class PerformanceAccountCampaignsListApiView(ListAPIView):
             account__account_creations__owner=self.request.user,
         ).order_by("name", "id").distinct()
         return queryset
+
+    def get(self, request, pk, **kwargs):
+        try:
+            account_creation = AccountCreation.objects.get(pk=pk, is_deleted=False, owner=self.request.user)
+        except AccountCreation.DoesNotExist:
+            campaign_creation_ids = set()
+        else:
+            campaign_creation_ids = set(
+                account_creation.campaign_creations.filter(
+                    is_deleted=False
+                ).values_list("id", flat=True)
+            )
+
+        queryset = self.get_queryset()
+        serializer = CampaignListSerializer(queryset, many=True, campaign_creation_ids=campaign_creation_ids)
+        return Response(serializer.data)
 
 
 @demo_view_decorator
