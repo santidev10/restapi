@@ -215,6 +215,7 @@ class VideoListApiView(APIView):
         """
         Adapt SDB response format
         """
+        from channel.api.views import ChannelListApiView
         items = response_data.get('items', [])
         for item in items:
             if 'video_id' in item:
@@ -231,8 +232,18 @@ class VideoListApiView(APIView):
                 item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
                                                       '\g<0>Z',
                                                       item['youtube_published_at'])
-        return response_data
 
+            # channel properties
+            channel_item = {}
+            for key in list(item.keys()):
+                print(key)
+                if key.startswith('channel__'):
+                    channel_item[key[9:]] = item[key]
+                    del item[key]
+            if channel_item:
+                item['channel'] = ChannelListApiView.adapt_response_data({'items': [channel_item]})['items']
+
+        return response_data
 
 
 class VideoListFiltersApiView(SingledbApiView):
