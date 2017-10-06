@@ -177,8 +177,8 @@ class ChannelListApiView(APIView):
         """
         Adapt SDB response format
         """
-        items = response_data.get("items", [])
-        for item in items:
+        # items = response_data.get("items", [])
+        for item in response_data:
             if "channel_id" in item:
                 item["id"] = item.get("channel_id", "")
                 del item["channel_id"]

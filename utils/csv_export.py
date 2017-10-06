@@ -72,7 +72,7 @@ def list_export(method):
         is_export = request.query_params.get("export")
         if is_export == "1":
             # check required export options
-            assert self.fields_to_export and self.export_file_title
+            # assert self.fields_to_export and self.export_file_title
             # prepare api call
             request.query_params._mutable = True
             request.query_params["flat"] = "1"
