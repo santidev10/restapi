@@ -241,7 +241,7 @@ class VideoListApiView(APIView):
                     channel_item[key[9:]] = item[key]
                     del item[key]
             if channel_item:
-                item['channel'] = ChannelListApiView.adapt_response_data({'items': [channel_item]})['items']
+                item['channel'] = ChannelListApiView.adapt_response_data({'items': [channel_item]})['items'][0]
 
         return response_data
 
