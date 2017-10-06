@@ -168,11 +168,26 @@ class VideoListApiView(APIView):
         # channel
         make('terms', 'channel_id', 'channel')
 
+        # creator
+        make('term', 'channel__title', 'creator')
+
         # brand_safety
         brand_safety = query_params.pop('brand_safety', [None])[0]
         if brand_safety is not None:
             val = "true" if brand_safety == "1" else "false"
             query_params.update(has_transcript__term=val)
+
+        # is_monetizable
+        is_monetizable = query_params.pop('is_monetizable', [None])[0]
+        if is_monetizable is not None:
+            val = "false" if is_monetizable == "0" else "true"
+            query_params.update(is_monetizable__term=val)
+
+        # preferred_channel
+        preferred_channel = query_params.pop('preferred_channel', [None])[0]
+        if preferred_channel is not None:
+            val = "false" if preferred_channel == "0" else "true"
+            query_params.update(channel__preferred__term=val)
 
         # upload_at
         upload_at = query_params.pop('upload_at', [None])[0]

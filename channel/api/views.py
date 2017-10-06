@@ -166,6 +166,15 @@ class ChannelListApiView(APIView):
         # min_views_per_video, max_views_per_video
         make_range('views_per_video')
 
+        # min_subscribers_fb, max_subscribers_fb
+        make_range('facebook_likes', 'min_subscribers_fb', 'max_subscribers_fb')
+
+        # min_subscribers_tw, max_subscribers_tw
+        make_range('twitter_followers', 'min_subscribers_tw', 'max_subscribers_tw')
+
+        # min_subscribers_in, max_subscribers_in
+        make_range('instagram_followers', 'min_subscribers_in', 'max_subscribers_in')
+
         # category
         category = query_params.pop('category', [None])[0]
         if category is not None:
