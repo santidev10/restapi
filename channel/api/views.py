@@ -199,12 +199,13 @@ class ChannelListApiView(APIView):
                 item['country'] = ""
             if "history_date" in item:
                 item["history_date"] = item["history_date"][:10]
-            if "youtube_published_at" in item:
-                item["youtube_published_at"] = re.sub(
-                    "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",
-                    "\g<0>Z",
-                    item["youtube_published_at"]
-                )
+            for field in ["youtube_published_at", "updated_at"]:
+                if field in item:
+                    item[field] = re.sub(
+                        "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",
+                        "\g<0>Z",
+                        item[field]
+                    )
         return response_data
 
 
