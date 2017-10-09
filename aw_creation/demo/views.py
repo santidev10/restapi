@@ -402,7 +402,7 @@ class PerformanceAccountCampaignsListApiView:
                             dict(id=a.id, name=a.name, status=a.status)
                             for a in c.children
                         ],
-                        is_managed=True,
+                        campaign_creation_id=c.id,
                     )
                     for c in account.children
                 ]

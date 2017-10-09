@@ -15,7 +15,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         'end_date',
         'status',
         'ad_groups',
-        'is_managed',
+        'campaign_creation_id',
     }
 
     ad_group_keys = {
@@ -52,7 +52,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(campaign.keys()),
             self.campaign_keys,
         )
-        self.assertIs(campaign['is_managed'], False)
+        self.assertIs(campaign['campaign_creation_id'], None)
         self.assertEqual(len(campaign['ad_groups']), ad_groups_count)
         ad_group = campaign['ad_groups'][0]
         self.assertEqual(
@@ -92,7 +92,10 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         for campaign in response.data:
-            self.assertIs(campaign['is_managed'], campaign['id'] == managed_campaign.id)
+            campaign_creation_id = None
+            if campaign["id"] == managed_campaign.id:
+                campaign_creation_id = campaign_creation.id
+            self.assertIs(campaign['campaign_creation_id'], campaign_creation_id)
 
     def test_success_get_demo(self):
         self.create_test_user()

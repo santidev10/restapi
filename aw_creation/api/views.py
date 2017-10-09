@@ -2026,12 +2026,26 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
     @staticmethod
     def get_campaigns(item):
+        campaign_creation_ids = set(
+            item.campaign_creations.filter(
+                is_deleted=False
+            ).values_list("id", flat=True)
+        )
+
         rows = Campaign.objects.filter(account__account_creations=item).values(
             "name", "id", "ad_groups__name", "ad_groups__id",
             "status", "ad_groups__status", "start_date", "end_date",
         ).order_by("name", "id", "ad_groups__name", "ad_groups__id")
         campaigns = []
         for row in rows:
+
+            campaign_creation_id = None
+            cid_search = re.match(r"^.*#(\d+)$", row['name'])
+            if cid_search:
+                cid = int(cid_search.group(1))
+                if cid in campaign_creation_ids:
+                    campaign_creation_id = cid
+
             if not campaigns or row['id'] != campaigns[-1]['id']:
                 campaigns.append(
                     dict(
@@ -2041,6 +2055,7 @@ class PerformanceTargetingFiltersAPIView(APIView):
                         end_date=row['end_date'],
                         status=row['status'],
                         ad_groups=[],
+                        campaign_creation_id=campaign_creation_id,
                     )
                 )
             if row['ad_groups__id'] is not None:
