@@ -33,6 +33,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                 'end_date',
                 'status',
                 'ad_groups',
+                'campaign_creation_id',
             }
         )
         self.assertEqual(len(campaign['ad_groups']), ad_groups_count)
