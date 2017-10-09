@@ -94,6 +94,8 @@ class AugmentationChannelListApiView(APIView):
                 for elem in row:
                     if elem[1] is not None:
                         elem[1] = ",".join(elem[1])
+                    else:
+                        continue
                     csvwriter.writerow(elem)
             data = read_and_flush()
             yield data
