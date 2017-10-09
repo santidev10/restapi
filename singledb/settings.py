@@ -18,7 +18,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "category",
     "ptk_value",
     "language",
-    "chart_data",
+    "views_chart_data",
     "video_safety",
     "video_safety_status",
     "is_content_safe",
