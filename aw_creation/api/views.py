@@ -2149,14 +2149,15 @@ class PerformanceTargetingReportAPIView(APIView):
             del summary['video_impressions']
             report.update(summary)
 
+            report["kpi"] = self.get_kpi_limits(report['items'])
+
         data = dict(
-            kpi=self.get_kpi_limits(reports),
             reports=reports,
         )
         return Response(data=data)
 
     @staticmethod
-    def get_kpi_limits(reports):
+    def get_kpi_limits(items):
         kpi = dict(
             average_cpv=[],
             average_cpm=[],
@@ -2164,12 +2165,11 @@ class PerformanceTargetingReportAPIView(APIView):
             ctr_v=[],
             video_view_rate=[],
         )
-        for r in reports:
-            for item in r["items"]:
-                for key, values in kpi.items():
-                    value = item[key]
-                    if value is not None:
-                        values.append(value)
+        for item in items:
+            for key, values in kpi.items():
+                value = item[key]
+                if value is not None:
+                    values.append(value)
 
         kpi_limits = dict()
         for key, values in kpi.items():

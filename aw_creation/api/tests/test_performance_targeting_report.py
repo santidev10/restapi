@@ -17,6 +17,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         "label", "items", "id",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
+        "kpi",
     }
 
     item_keys = {
@@ -64,7 +65,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(set(data.keys()), {"reports", "kpi"})
+        self.assertEqual(set(data.keys()), {"reports"})
         self.assertEqual(len(data["reports"]), 1)
         report_data = data["reports"][0]
         self.assertEqual(
@@ -180,7 +181,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        kpi = response.data["kpi"]
+        kpi = response.data["reports"][0]["kpi"]
 
         self.assertEqual(kpi["video_view_rate"]["min"], 25)
         self.assertEqual(kpi["video_view_rate"]["max"], 75)
@@ -219,7 +220,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(set(data.keys()), {"reports", "kpi"})
+        self.assertEqual(set(data.keys()), {"reports"})
         self.assertEqual(len(data["reports"]), 1)
         campaign_data = data["reports"][0]
 
