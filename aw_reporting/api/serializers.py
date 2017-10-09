@@ -160,19 +160,19 @@ class AdGroupListSerializer(ModelSerializer):
 class CampaignListSerializer(ModelSerializer):
 
     ad_groups = AdGroupListSerializer(many=True)
-    is_managed = SerializerMethodField()
+    campaign_creation_id = SerializerMethodField()
 
-    def get_is_managed(self, obj):
+    def get_campaign_creation_id(self, obj):
         cid_search = re.match(r"^.*#(\d+)$", obj.name)
         if cid_search:
             campaign_creation_id = int(cid_search.group(1))
-            return campaign_creation_id in self.campaign_creation_ids
-        return False
+            if campaign_creation_id in self.campaign_creation_ids:
+                return campaign_creation_id
 
     class Meta:
         model = Campaign
         fields = (
-            'id', 'name', 'ad_groups', 'status', 'start_date', 'end_date', 'is_managed',
+            'id', 'name', 'ad_groups', 'status', 'start_date', 'end_date', 'campaign_creation_id',
         )
 
     def __init__(self, *args, campaign_creation_ids=None, **kwargs):
