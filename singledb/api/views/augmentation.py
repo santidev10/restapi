@@ -45,7 +45,8 @@ class AugmentationChannelListApiView(APIView):
             item['name'] = '/' + item['name']
             item_id = list(self.values_to_keys.get(item['name']))[0]
             item_size = item['size']
-            result.append(f'{item_id}-{item_size}')
+            result.append('{item_id}-{item_size}'.format(item_id=item_id,
+                                                         item_size=item_size))
         return result
 
     def gen_channel_from(self, query_params):
@@ -99,7 +100,7 @@ class AugmentationChannelListApiView(APIView):
 
         response = StreamingHttpResponse(data(),
                                          content_type="text/csv")
-        response['Content-Disposition'] = f'attachment; filename="{file_name}.csv"'
+        response['Content-Disposition'] = 'attachment; filename="{file_name}.csv"'.format(file_name=file_name)
         return response
 
 
@@ -130,5 +131,5 @@ class AugmentationChannelSegmentListApiView(APIView):
 
         response = StreamingHttpResponse(data(),
                                          content_type="text/csv")
-        response['Content-Disposition'] = f'attachment; filename="{file_name}.csv"'
+        response['Content-Disposition'] = 'attachment; filename="{file_name}.csv"'.format(file_name=file_name)
         return response
