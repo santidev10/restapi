@@ -23,6 +23,8 @@ class AdGroupStatistic(DeviceDailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup, related_name='statistics')
     ad_network = models.CharField(max_length=20, db_index=True)
     average_position = models.DecimalField(max_digits=6, decimal_places=2)
+    engagements = models.IntegerField(default=0)
+    active_view_impressions = models.IntegerField(default=0)
 
     class Meta:
         unique_together = (

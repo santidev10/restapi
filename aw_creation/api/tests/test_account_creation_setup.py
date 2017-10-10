@@ -104,7 +104,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             set(campaign_data.keys()),
             {
                 'id', 'name', 'updated_at', 'start', 'end',
-                'budget', 'delivery_method',  'video_ad_format', 'video_networks', 'languages',
+                'budget', 'delivery_method',  'type', 'video_networks', 'languages',
                 'frequency_capping', 'ad_schedule_rules', 'location_rules',
                 'devices', 'content_exclusions', 'ad_group_creations',
             }
@@ -173,9 +173,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             }
         )
         self.assertEqual(
-            campaign_data['video_ad_format'],
-            dict(id=CampaignCreation.IN_STREAM_TYPE,
-                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+            campaign_data['type'],
+            dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                 name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
             campaign_data['delivery_method'],
@@ -193,7 +193,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
-                'targeting', 'max_rate',
+                'targeting', 'max_rate', 'video_ad_format',
             }
         )
         for f in ('age_ranges', 'genders', 'parents'):

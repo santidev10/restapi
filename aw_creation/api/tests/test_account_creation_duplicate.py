@@ -122,14 +122,14 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules', 'ad_group_creations',
-                "video_ad_format", "delivery_method", "video_networks",
+                "type", "delivery_method", "video_networks",
                 'content_exclusions',
             }
         )
         self.assertEqual(
-            campaign_data['video_ad_format'],
-            dict(id=CampaignCreation.IN_STREAM_TYPE,
-                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+            campaign_data['type'],
+            dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                 name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
             campaign_data['delivery_method'],
@@ -200,7 +200,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad_group_data.keys()),
             {
                 'id', 'updated_at', 'name', 'ad_creations',
-                'genders', 'parents', 'age_ranges', 'max_rate',
+                'genders', 'parents', 'age_ranges', 'max_rate', 'video_ad_format',
                 # targeting
                 'targeting',
             }
@@ -219,8 +219,9 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad.keys()),
             {
                 'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail',
+                'video_url', 'display_url', 'final_url', 'video_ad_format',
                 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail',
+                'video_channel_title', 'video_duration',
             }
         )

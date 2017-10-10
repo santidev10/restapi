@@ -44,9 +44,23 @@ urlpatterns = [
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
         name="connect_aw_account"),
+    url(r'^connect_aw_account/(?P<email>[^/]+)/$',
+        views.ConnectAWAccountApiView.as_view(),
+        name="aw_account_connection"),
 
     # channel and video historical data
     url(r'^aw_historical_data/(?P<item_type>\w+)/(?P<pk>[\w-]+)/$',
         views.AwHistoricalDataApiView.as_view(),
         name="aw_historical_data"),
+
+    # benchmark
+    url(r'^benchmarks/base_charts/$',
+        views.BenchmarkBaseChartsApiView.as_view(),
+        name="benchmarks_base_charts"),
+    url(r'^benchmarks/product_charts/$',
+        views.BenchmarkProductChartsApiView.as_view(),
+        name="benchmarks_product_charts$"),
+    url(r'^benchmarks/filters/$',
+        views.BenchmarkFiltersListApiView.as_view(),
+        name="benchmarks_filters$"),
 ]

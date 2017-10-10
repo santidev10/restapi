@@ -13,60 +13,6 @@ class DemoTargetingListTestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def test_success_get(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
-
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting",
-            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
-        )
-
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 8)
-        self.assertEqual(
-            set(response.data[0].keys()),
-            {
-                'criteria',
-                'type',
-                'is_negative',
-                'name',
-            }
-        )
-
-    def test_fail_post(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
-
-        data = ["KW#{}".format(i) for i in range(10)]
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting",
-            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
-        )
-        response = self.client.post(
-            url, json.dumps(data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_fail_delete(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
-
-        url = reverse(
-            "aw_creation_urls:optimization_ad_group_targeting",
-            args=(ad_group.id, TargetingItem.KEYWORD_TYPE),
-        )
-
-        data = ["KW#{}".format(i) for i in range(5)]
-        response = self.client.delete(
-            url, json.dumps(data), content_type='application/json',
-        )
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
     def test_export_list(self):
         ac = DemoAccount()
         campaign = ac.children[0]

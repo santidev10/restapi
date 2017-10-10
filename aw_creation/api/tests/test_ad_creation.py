@@ -56,9 +56,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             {
                 'id', 'name',  'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
-                'thumbnail', 'custom_params',
-                'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'video_ad_format', 'custom_params',
+                'companion_banner', 'video_id', 'video_title', 'video_description',
+                'video_thumbnail', 'video_channel_title', 'video_duration',
             }
         )
         if len(data["custom_params"]) > 0:
@@ -116,6 +116,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 tracking_template="https://track.com?why",
                 custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
                 companion_banner=fp,
+                video_ad_format=AdGroupCreation.BUMPER_AD,
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -130,6 +131,13 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)
+
+        ad.ad_group_creation.refresh_from_db()
+        self.assertEqual(ad.ad_group_creation.video_ad_format, data["video_ad_format"])
+
+        campaign_creation = ad.ad_group_creation.campaign_creation
+        campaign_creation.refresh_from_db()
+        self.assertEqual(campaign_creation.bid_strategy_type, CampaignCreation.CPM_STRATEGY)
 
     def test_success_update_json(self):
         today = datetime.now().date()
@@ -173,18 +181,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
-
-    def test_fail_delete_running(self):
-        account = Account.objects.create(id=1, name="")
-        ad = self.create_ad(owner=self.user, account=account)
-        AdCreation.objects.create(
-            name="",
-            ad_group_creation=ad.ad_group_creation,
-        )
-        url = reverse("aw_creation_urls:ad_creation_setup",
-                      args=(ad.id,))
-
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        ad.refresh_from_db()
+        self.assertIs(ad.is_deleted, True)
 
 

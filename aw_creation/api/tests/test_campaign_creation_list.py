@@ -18,7 +18,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         'budget', 'languages',
         'devices', 'frequency_capping', 'ad_schedule_rules',
         'location_rules',
-        'video_networks', 'video_ad_format', 'delivery_method',
+        'video_networks', 'type', 'delivery_method',
         'content_exclusions', 'ad_group_creations',
     }
 
@@ -37,6 +37,11 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         CampaignCreation.objects.create(
             name="2", account_creation=account_creation,
             start=today, end=today + timedelta(days=20),
+        )
+        CampaignCreation.objects.create(
+            name="3", account_creation=account_creation,
+            start=today, end=today + timedelta(days=20),
+            is_deleted=True,
         )
 
         url = reverse("aw_creation_urls:campaign_creation_list_setup",

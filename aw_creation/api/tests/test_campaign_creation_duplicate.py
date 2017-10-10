@@ -46,6 +46,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
             name="",
             campaign_creation=campaign_creation,
         )
+        AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=campaign_creation,
+            is_deleted=True,
+        )
         TargetingItem.objects.create(
             ad_group_creation=ad_group_creation,
             criteria="js",
@@ -55,6 +60,11 @@ class AccountAPITestCase(AwReportingAPITestCase):
         AdCreation.objects.create(
             name="FF",
             ad_group_creation=ad_group_creation,
+        )
+        AdCreation.objects.create(
+            name="",
+            ad_group_creation=ad_group_creation,
+            is_deleted=True,
         )
         return campaign_creation
 
@@ -76,15 +86,15 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'budget', 'languages',
                 'devices', 'frequency_capping', 'ad_schedule_rules',
                 'location_rules', 'ad_group_creations',
-                "video_ad_format", "delivery_method", "video_networks",
+                "type", "delivery_method", "video_networks",
                 'content_exclusions',
             }
         )
         self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))
         self.assertEqual(
-            campaign_data['video_ad_format'],
-            dict(id=CampaignCreation.IN_STREAM_TYPE,
-                 name=CampaignCreation.VIDEO_AD_FORMATS[0][1]),
+            campaign_data['type'],
+            dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
+                 name=CampaignCreation.CAMPAIGN_TYPES[0][1]),
         )
         self.assertEqual(
             campaign_data['delivery_method'],
@@ -150,12 +160,13 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'day',
             }
         )
+        self.assertEqual(len(campaign_data['ad_group_creations']), 1)
         ad_group_data = campaign_data['ad_group_creations'][0]
         self.assertEqual(
             set(ad_group_data.keys()),
             {
                 'id', 'name', 'updated_at', 'ad_creations', 'max_rate',
-                'genders', 'parents', 'age_ranges',
+                'genders', 'parents', 'age_ranges', 'video_ad_format',
                 # targeting
                 'targeting',
             }
@@ -168,21 +179,25 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad_group_data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
-
+        self.assertEqual(len(ad_group_data['ad_creations']), 1)
         ad = ad_group_data['ad_creations'][0]
         self.assertEqual(
             set(ad.keys()),
             {
                 'id', 'custom_params', 'name', 'updated_at', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'thumbnail', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title',
+                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
+                'video_id', 'video_title', 'video_description', 'video_thumbnail',
+                'video_channel_title', 'video_duration',
             }
         )
 
     def test_success_post_increment_name(self):
-        c = self.create_campaign_creation(self.user)
-        c.name = "FF 1 (665)"
-        c.save()
+        account_creation = AccountCreation.objects.create(
+            name="", owner=self.user,
+        )
+        c = CampaignCreation.objects.create(
+            name="FF 1 (665)", account_creation=account_creation,
+        )
         url = reverse("aw_creation_urls:campaign_creation_duplicate",
                       args=(c.id,))
         response = self.client.post(url)

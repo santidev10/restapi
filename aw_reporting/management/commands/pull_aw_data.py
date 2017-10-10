@@ -28,7 +28,7 @@ class Command(BaseCommand):
         today = now.date()
         timezones = [
             t for t in timezones
-            if now.astimezone(timezone(t)).hour > 1
+            if now.astimezone(timezone(t)).hour > 5
         ]
         logger.info("Timezones: {}".format(timezones))
 

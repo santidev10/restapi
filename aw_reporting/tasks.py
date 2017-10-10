@@ -64,7 +64,7 @@ GET_DF = '%Y-%m-%d'
 
 
 def load_hourly_stats(client, account, *_):
-    from aw_reporting.models import CampaignHourlyStatistic, Campaign
+    from aw_reporting.models import CampaignHourlyStatistic, Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report, \
         main_statistics
 
@@ -90,7 +90,8 @@ def load_hourly_stats(client, account, *_):
             client,
             dates=(date, today),
             fields=[
-               'CampaignId', 'CampaignName',
+               'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
+               'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
                'Date', 'HourOfDay',
             ] + main_statistics[:4],
             include_zero_impressions=False,
@@ -105,12 +106,21 @@ def load_hourly_stats(client, account, *_):
                 campaign_id = row.CampaignId
                 if campaign_id not in campaign_ids:
                     campaign_ids.append(campaign_id)
+                    try:
+                        end_date = datetime.strptime(row.EndDate, GET_DF)
+                    except ValueError:
+                        end_date = None
                     create_campaign.append(
                         Campaign(
                             id=campaign_id,
                             name=row.CampaignName,
                             account=account,
-                            start_date=date,
+                            type=row.AdvertisingChannelType,
+                            start_date=datetime.strptime(row.StartDate, GET_DF),
+                            end_date=end_date,
+                            budget=float(row.Amount) / 1000000,
+                            status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
+                            impressions=1,  # to show this item on the accounts lists Track/Filters
                         )
                     )
 
@@ -145,7 +155,8 @@ def upload_initial_aw_data(connection_pk):
     )
 
     mcc_to_update = Account.objects.filter(
-        mcc_permissions__aw_connection=connection
+        mcc_permissions__aw_connection=connection,
+        update_time__isnull=True,  # they were not updated before
     ).distinct()
     for mcc in mcc_to_update:
         client.SetClientCustomerId(mcc.id)
@@ -154,6 +165,7 @@ def upload_initial_aw_data(connection_pk):
     accounts_to_update = Account.objects.filter(
         managers__mcc_permissions__aw_connection=connection,
         can_manage_clients=False,
+        update_time__isnull=True,  # they were not updated before
     )
     for account in accounts_to_update:
         client.SetClientCustomerId(account.id)
@@ -259,6 +271,7 @@ def get_ad_groups_and_stats(client, account, today):
                     stats = {
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
+                        'type': row_obj.AdGroupType,
                         'campaign_id': row_obj.CampaignId,
                     }
                     if ad_group_id in ad_group_ids:
@@ -276,6 +289,8 @@ def get_ad_groups_and_stats(client, account, today):
                     'device_id': Devices.index(row_obj.Device),
                     'ad_group_id': ad_group_id,
                     'average_position': row_obj.AveragePosition,
+                    'engagements': row_obj.Engagements,
+                    'active_view_impressions': row_obj.ActiveViewImpressions,
                     'video_views_25_quartile': quart_views(row_obj, 25),
                     'video_views_50_quartile': quart_views(row_obj, 50),
                     'video_views_75_quartile': quart_views(row_obj, 75),
@@ -290,6 +305,7 @@ def get_ad_groups_and_stats(client, account, today):
             if create_stats:
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
+        SUM_STATS += ('engagements', 'active_view_impressions')
         stats = stats_queryset.values("ad_group_id").order_by("ad_group_id").annotate(
             **{s: Sum(s) for s in SUM_STATS}
         )

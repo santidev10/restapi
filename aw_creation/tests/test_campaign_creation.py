@@ -23,12 +23,13 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
         today = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date()
         campaign = CampaignCreation.objects.create(
             name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
-            start=today - timedelta(days=1)
+            start=today - timedelta(days=1),
+            end=today + timedelta(days=1),
         )
         creation_start, start, end = campaign.get_creation_dates()
         self.assertEqual(creation_start, today)
-        self.assertEqual(start, today)
-        self.assertIsNone(end)
+        self.assertIsNone(start)  # so it is not trying to update campaign's start
+        self.assertEqual(end, campaign.end)
 
     def test_creation_dates_both_in_past(self):
         user = self.create_test_user()
@@ -40,8 +41,8 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
             start=start, end=end,
         )
         creation_start, start, end = campaign.get_creation_dates()
-        self.assertEqual(creation_start, start)
-        self.assertEqual(start, start)
+        self.assertEqual(creation_start, campaign.start)
+        self.assertIsNone(start, start)
         self.assertEqual(end, end)
 
     def test_update_times(self):

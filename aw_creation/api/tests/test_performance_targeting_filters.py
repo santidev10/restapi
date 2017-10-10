@@ -43,9 +43,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'start_date', 'end_date',
-                'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
+                'start_date', 'end_date', 'campaigns',
+                'targeting', 'group_by',
             }
         )
         self.assertEqual(response.data['start_date'], start)
@@ -57,7 +56,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_data['end_date'], campaign.end_date)
         self.assertEqual(campaign_data['status'], campaign.status)
 
-    def test_success_no_ad_group_creations(self):
+    def test_success_no_ad_groups(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
@@ -65,7 +64,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
-        CampaignCreation.objects.create(id=1, name="", account_creation=account_creation)
+        Campaign.objects.create(id=1, name="", account=account)
 
         url = reverse("aw_creation_urls:performance_targeting_filters",
                       args=(account_creation.id,))
@@ -83,9 +82,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'start_date', 'end_date',
-                'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
+                'start_date', 'end_date', 'campaigns',
+                'targeting', 'group_by',
             }
         )
         self.assertEqual(len(response.data['campaigns']), 2)
@@ -103,9 +101,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'start_date', 'end_date',
-                'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm'
+                'start_date', 'end_date', 'campaigns',
+                'targeting', 'group_by',
             }
         )
         self.assertEqual(len(response.data['campaigns']), 2)

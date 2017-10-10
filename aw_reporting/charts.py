@@ -79,7 +79,7 @@ class DeliveryChart:
         items = defaultdict(lambda: {'campaigns': []})
         if self.params['ad_groups']:
             qs = Campaign.objects.filter(
-                adgroup__id__in=self.params['ad_groups'],
+                ad_groups__id__in=self.params['ad_groups'],
             ).distinct()
         elif self.params['campaigns']:
             qs = Campaign.objects.filter(
