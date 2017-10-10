@@ -110,16 +110,6 @@ class ChannelListApiView(APIView):
         """
         Adapt SDB request format
         """
-        # sorting --->
-        sorting = query_params.pop("sort_by", ["subscribers"])[0]
-        if sorting in ["subscribers", "sentiment", "views_per_video", "thirty_days_views", "thirty_days_subscribers", "score_total"]:
-            query_params.update(sort="{}:desc".format(sorting))
-        elif sorting == "engagement":
-            query_params.update(sort="engage_rate:desc")
-        else:
-            query_params.update(sort="subscribers:desc")
-        # <--- sorting
-
         # filters --->
         def make_range(name, name_min=None, name_max=None):
             if name_min is None:
