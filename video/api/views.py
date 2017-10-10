@@ -106,16 +106,6 @@ class VideoListApiView(APIView):
         """
         Adapt SDB request format
         """
-        # sorting --->
-        sorting = query_params.pop("sort_by", ["views"])[0]
-        if sorting in ["views", "likes", "dislikes", "comments", "sentiment"]:
-            query_params.update(sort='{}:desc'.format(sorting))
-        elif sorting == 'engagement':
-            query_params.update(sort='engage_rate:desc')
-        else:
-            query_params.update(sort='views:desc')
-       # <--- sorting
-
         # filters --->
         def make_range(name, name_min=None, name_max=None):
             if name_min is None:
