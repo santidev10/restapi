@@ -13,7 +13,6 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDa
 
 
 class AugmentationChannelListApiView(APIView):
-    permission_classes = tuple()
     connector = Connector()
     values_to_keys = defaultdict(set)
 
