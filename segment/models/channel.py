@@ -2,6 +2,7 @@
 SegmentChannel models module
 """
 from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 # pylint: disable=import-error
@@ -43,6 +44,7 @@ class SegmentChannel(BaseSegment):
     engage_rate = models.FloatField(default=0.0, db_index=True)
     sentiment = models.FloatField(default=0.0, db_index=True)
     top_three_channels = JSONField(default=dict())
+    top_recommend_channels = ArrayField(base_field=models.CharField(max_length=60), default=list, size=None)
 
     singledb_method = Connector().get_channels_statistics
 
@@ -67,6 +69,7 @@ class SegmentChannel(BaseSegment):
     def statistics(self):
         statistics = {
             "top_three_channels": self.top_three_channels,
+            "top_recommend_channels": self.top_recommend_channels,
             "channels_count": self.channels,
             "subscribers_count": self.subscribers,
             "videos_count": self.videos,
