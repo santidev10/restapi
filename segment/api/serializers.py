@@ -91,4 +91,5 @@ class SegmentSerializer(ModelSerializer):
             segment.add_related_ids(self.ids_to_add)
             segment.delete_related_ids(self.ids_to_delete)
             segment.update_statistics(segment)
+            segment.sync_recommend_channels(self.ids_to_add)
         return segment
