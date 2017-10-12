@@ -120,6 +120,42 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             elif item["targeting"] == "Keywords":
                 self.assertEqual(item["is_negative"], True)
 
+    def test_targeting_interest(self):
+        user = self.create_test_user()
+        account = Account.objects.create(id=1, name="")
+        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
+        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
+                                           account=account, start_date=start, end_date=end)
+        ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign, video_views=1)
+
+        audience = Audience.objects.create(id=1, name="Test", type=Audience.AFFINITY_TYPE)
+        AudienceStatistic.objects.create(date=start, audience=audience, ad_group=ad_group, video_views=5, impressions=10)
+
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation, campaign=campaign)
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="", campaign_creation=campaign_creation, ad_group=ad_group)
+        TargetingItem.objects.create(ad_group_creation=ad_group_creation, type=TargetingItem.INTEREST_TYPE,
+                                     criteria=audience.id, is_negative=True)
+
+        url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
+
+        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(dict(
+                    targeting=["interest"],
+                )),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        report_data = response.data["reports"][0]
+        self.assertEqual(len(report_data["items"]), 1)
+
+        for item in report_data['items']:
+            self.assertEqual(item["is_negative"], True)
+
     def test_success_group_by_campaign(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")

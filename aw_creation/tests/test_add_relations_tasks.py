@@ -18,7 +18,7 @@ class AddRelationsTestCase(ExtendedAPITestCase):
     """
 
     def test_link_items(self):
-        sync_at = timezone.now() - timedelta(seconds=60)
+        sync_at = timezone.now() + timedelta(seconds=60)
         owner = get_user_model().objects.create(email="1@dom.ua")
         account_creation = AccountCreation.objects.create(name="", owner=owner)
         campaign_creation_1 = CampaignCreation.objects.create(
