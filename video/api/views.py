@@ -226,6 +226,8 @@ class VideoListApiView(APIView):
                 item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
                                                       '\g<0>Z',
                                                       item['youtube_published_at'])
+            if "views_chart_data" in item:
+                item["chart_data"] = item.pop("views_chart_data")
 
             # channel properties
             channel_item = {}
