@@ -77,7 +77,6 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__views_per_video",
 )
 
-
 DEFAULT_CHANNEL_LIST_FIELDS = (
     "brand",
     "brand_safety",
@@ -94,7 +93,6 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "url",
     "is_content_safe",
     "language",
-    "top_language",
     "likes",
     "preferred",
     "sentiment",
@@ -131,7 +129,6 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "country",
     "category",
     "language",
-    "top_language",
     "description",
     "tags",
     "social_stats",
