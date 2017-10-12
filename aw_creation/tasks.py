@@ -20,7 +20,7 @@ def add_relation_between_report_and_creation_campaigns():
     campaign_creations = CampaignCreation.objects.filter(
         account_creation__account__isnull=False,
         campaign__isnull=True,
-        sync_at__lt=F("created_at"),
+        sync_at__gt=F("created_at"),
     ).values("id", acc_id_key).order_by(acc_id_key)
 
     account_id = ""
@@ -49,7 +49,7 @@ def add_relation_between_report_and_creation_ad_groups():
     ad_group_creations = AdGroupCreation.objects.filter(
         campaign_creation__campaign__isnull=False,
         ad_group__isnull=True,
-        sync_at__lt=F("created_at"),
+        sync_at__gt=F("created_at"),
     ).values("id", campaign_id_key).order_by(campaign_id_key)
 
     campaign_id = ""

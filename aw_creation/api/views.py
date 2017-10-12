@@ -2175,7 +2175,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 # add status field
                 targeting_type = i["targeting"].lower()[:-1]
                 ad_group_id = i["ad_group"]["id"]
-                i["is_negative"] = i["item"]["id"] in negative_items[targeting_type][ad_group_id]
+                i["is_negative"] = str(i["item"]["id"]) in negative_items[targeting_type][ad_group_id]
 
             dict_calculate_stats(summary)
             del summary['video_impressions']
