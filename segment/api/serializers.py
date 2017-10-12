@@ -77,7 +77,7 @@ class SegmentSerializer(ModelSerializer):
             if not segment_category:
                 raise ValidationError("category: value is required")
 
-        if not user.is_staff and segment_category != "private":
+        if not user.is_staff and segment_category and segment_category != "private":
             raise ValidationError("Not valid category. Options are: private")
 
         if segment_category and segment_category not in available_categories:
