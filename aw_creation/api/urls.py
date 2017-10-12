@@ -117,6 +117,9 @@ urlpatterns = [
     url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
+    url(r'^performance_targeting_item/(?P<targeting>\w+)/(?P<ad_group_id>\w+)/(?P<criteria>[^/]+)/$',
+        views.PerformanceTargetingItemAPIView.as_view(),
+        name="performance_targeting_item"),
     # >>> Performance
 
     # tools
