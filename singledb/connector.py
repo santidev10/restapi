@@ -219,7 +219,7 @@ class SingleDatabaseApiConnector(object):
         return response_data
 
     def store_ids(self, ids):
-        endpoint = "cached_object/"
+        endpoint = "cached_objects/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
 
