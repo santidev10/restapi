@@ -26,7 +26,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "description",
     "youtube_published_at",
     "duration",
-    "verified",
+    "has_audience",
     "transcript",
     "url",
     "ptk",
@@ -57,7 +57,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "duration",
-    "verified",
+    "has_audience",
     "video_safety_status",
     "ptk",
     "channel__category",
@@ -73,7 +73,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__thumbnail_image_url",
     "channel__title",
     "channel__top_language",
-    "channel__verified",
+    "channel__has_audience",
     "channel__views_per_video",
 )
 
@@ -111,7 +111,7 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "score",
     "score_total",
     "channel_group",
-    "verified",
+    "has_audience",
 )
 
 DEFAULT_CHANNEL_DETAILS_FIELDS = (
@@ -150,5 +150,5 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "channel_group",
     "audience",
     "traffic_sources",
-    "verified",
+    "has_audience",
 )
