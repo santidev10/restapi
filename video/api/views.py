@@ -216,8 +216,11 @@ class VideoListApiView(APIView):
                 item['ptk_value'] = item.get('ptk', '')
                 del item['ptk']
 
-            if 'history_date' in item:
+            if 'history_date' in item and item['history_date']:
                 item['history_date'] = item['history_date'][:10]
+
+            if 'has_audience' in item:
+                item['verified'] = item['has_audience']
 
             if 'country' in item and item['country'] is None:
                 item['country'] = ""

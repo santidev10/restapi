@@ -187,8 +187,10 @@ class ChannelListApiView(APIView):
                 del item["channel_id"]
             if 'country' in item and item['country'] is None:
                 item['country'] = ""
-            if "history_date" in item:
-                item["history_date"] = item["history_date"][:10]
+            if 'history_date' in item and item['history_date']:
+                item['history_date'] = item['history_date'][:10]
+            if 'has_audience' in item:
+                item['verified'] = item['has_audience']
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item:
                     item[field] = re.sub(
