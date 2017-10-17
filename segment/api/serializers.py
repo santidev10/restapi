@@ -12,6 +12,7 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
+    statistics = SerializerMethodField()
 
     class Meta:
         model = None
@@ -93,3 +94,9 @@ class SegmentSerializer(ModelSerializer):
             segment.update_statistics(segment)
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
+
+    def get_statistics(self, instance):
+        """
+        Prepare segment statistics
+        """
+        return instance.get_statistics(**self.context)

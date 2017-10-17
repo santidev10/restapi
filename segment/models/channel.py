@@ -1,17 +1,21 @@
 """
 SegmentChannel models module
 """
-from django.contrib.postgres.fields import JSONField
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import JSONField
 from django.db import models
-
 # pylint: disable=import-error
-from singledb.connector import SingleDatabaseApiConnector as Connector
-# pylint: enable=import-error
+from django.db.models import Sum
 
+from aw_reporting.models import Account, YTChannelStatistic, \
+    dict_add_calculated_stats
+from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
+
+
+# pylint: enable=import-error
 
 
 class SegmentChannel(BaseSegment):
@@ -65,19 +69,44 @@ class SegmentChannel(BaseSegment):
         self.top_three_channels = data['top_list']
         self.mini_dash_data = data['minidash']
 
-    @property
-    def statistics(self):
+    def get_statistics(self, **kwargs):
+        """
+        Count segment statistics
+        """
         statistics = {
             "top_three_channels": self.top_three_channels,
             "top_recommend_channels": self.top_recommend_channels,
             "channels_count": self.channels,
-            "subscribers_count": self.subscribers,
             "videos_count": self.videos,
-            "views_per_channel": self.views_per_channel,
-            "subscribers_per_channel": self.subscribers_per_channel,
-            "sentiment": self.sentiment,
-            "engage_rate": self.engage_rate,
+            # <--- disabled SAAS-1178
+            # "subscribers_count": self.subscribers,
+            # "views_per_channel": self.views_per_channel,
+            # "subscribers_per_channel": self.subscribers_per_channel,
+            # "sentiment": self.sentiment,
+            # "engage_rate": self.engage_rate,
+            # ---> disabled SAAS-1178
         }
+        # obtain user from kwargs -> serializer context -> request
+        user = kwargs.get("request").user
+        # obtain related to segment channels ids
+        channels_ids = SegmentRelatedChannel.objects.filter(
+            segment_id=self.id).values_list("related_id", flat=True)
+        # obtain aw account
+        accounts = Account.user_objects(user)
+        # prepare aggregated statistics
+        aggregated_data = YTChannelStatistic.objects.filter(
+            ad_group__campaign__account__in=accounts,
+            yt_id__in=channels_ids).aggregate(
+            cost=Sum("cost"), video_views=Sum("video_views"),
+            clicks=Sum("clicks"), impressions=Sum("impressions"),
+            video_impressions=Sum("impressions"))
+        # count statistics fields
+        extra_statistics_data = dict_add_calculated_stats(aggregated_data)
+        # finalize statistics data
+        statistics["view_rate"] = extra_statistics_data.get("video_view_rate")
+        statistics["ctr_v"] = extra_statistics_data.get("ctr_v")
+        statistics["ctr_i"] = extra_statistics_data.get("ctr")
+        statistics["average_cpv"] = extra_statistics_data.get("average_cpv")
         return statistics
 
 

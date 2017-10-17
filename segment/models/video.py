@@ -88,8 +88,7 @@ class SegmentVideo(BaseSegment):
         self.top_three_videos = data['top_list']
         self.mini_dash_data = data['minidash']
 
-    @property
-    def statistics(self):
+    def get_statistics(self, **kwargs):
         statistics = {
             "top_three_videos": self.top_three_videos,
             "videos_count": self.videos,
