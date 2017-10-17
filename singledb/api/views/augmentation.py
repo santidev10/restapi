@@ -15,6 +15,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDa
 class AugmentationChannelListApiView(APIView):
     connector = Connector()
     values_to_keys = defaultdict(set)
+    permission_classes = tuple()
 
     def fill_interests(self):
         interests_obj = dict(Interest.objects.values_list('id', 'name'))
@@ -158,6 +159,7 @@ class DisassembleTree(object):
         self.size = size
         self.children = {}
         self.parent = parent
+        self.completed = None
 
     @classmethod
     def init_from_flat_dict(cls, data):
@@ -196,11 +198,15 @@ class DisassembleTree(object):
 
     def update_parents(self):
         for child in self.children.values():
-            size_map = [child.size for child in self.children.values()]
-            if None in size_map:
+            if child.children:
                 child.update_parents()
             else:
-                self.size = sum(size_map)
+                sizes = [child.size for child in self.children.values()]
+                if None not in sizes:
+                    self.size = sum(sizes)
+
+        if self.size is None:
+            self.size = sum([child.size for child in self.children.values()])
 
     def recalc_stats(self):
         for child in self.children.values():
@@ -216,4 +222,7 @@ class DisassembleTree(object):
                     if len(parents) < 2:
                         break
                     first = parents.pop(0)
+                    if first.completed:
+                        break
                     first.size = first.size / parents[0].size
+                    first.completed = True
