@@ -5,6 +5,7 @@ from copy import deepcopy
 import re
 
 from django.db.models import Q
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -21,10 +22,12 @@ from utils.csv_export import list_export
 # pylint: enable=import-error
 
 
-class ChannelListApiView(APIView):
+class ChannelListApiView(PermissionRequiredMixin, APIView):
     """
     Proxy view for channel list
     """
+    permission_required = ('channel_list',)
+
     fields_to_export = [
         "title",
         "url",
@@ -97,11 +100,13 @@ class ChannelListApiView(APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
+    permission_required = ('channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_required = ('channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 

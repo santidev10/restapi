@@ -8,6 +8,7 @@ from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer
 
 from administration.notifications import send_new_registration_email
+from userprofile.models import Plan
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -136,4 +137,16 @@ class UserSetPasswordSerializer(Serializer):
     new_password = CharField(required=True)
     email = CharField(required=True)
     token = CharField(required=True)
+
+
+class PlanSerializer(ModelSerializer):
+    """
+    Permission plan serializer
+    """
+    class Meta:
+        model = Plan
+        fields = {
+            'name',
+            'permissions',
+        }
 

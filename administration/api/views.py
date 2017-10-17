@@ -19,8 +19,8 @@ from rest_framework.views import APIView
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer
 from administration.models import UserAction
-from userprofile.api.serializers import UserSerializer
-from userprofile.models import UserProfile
+from userprofile.api.serializers import UserSerializer, PlanSerializer
+from userprofile.models import UserProfile, Plan
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -213,3 +213,17 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
     """
     permission_classes = (IsAdminUser, )
     queryset = UserAction.objects.all()
+
+
+class PlanListApiView(ListAPIView):
+    permission_classes = (IsAdminUser, )
+    serializer_class = PlanSerializer
+    queryset = Plan.objects.all()
+
+
+class PlanChangeDeleteApiView(APIView):
+    permission_classes = (IsAdminUser, )
+    serializer_class = PlanSerializer
+
+
+
