@@ -20,7 +20,7 @@ class SegmentSerializer(ModelSerializer):
                   'segment_type',
                   'category',
                   'statistics',
-                  'mini_dash_data',
+                  # 'mini_dash_data',   #Disabled by issuse SAAS-1172
                   'owner',
                   'created_at',
                   'is_editable',
