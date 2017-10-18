@@ -21,6 +21,7 @@ from userprofile.models import UserChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from singledb.connector import IQApiConnector as IQConnector
 from utils.csv_export import list_export
 # pylint: enable=import-error
 
@@ -155,5 +156,16 @@ class ChannelsVideosByKeywords(SingledbApiView):
 
 class ChannelAuthenticationApiView(APIView):
     def post(self, request, *args, **kwagrs):
-        data = Connector().auth_channel(request.data)
-        return Response(data=data)
+        connector = IQConnector()
+        data = connector.auth_channel(request.data)
+
+        if data is not None:
+            channel_id = data.get('channel_id')
+            user = self.request.user
+            if not user or not user.is_authenticated():
+                return Response(status=HTTP_412_PRECONDITION_FAILED)
+            user_channels = user.channels.values_list('channel_id', flat=True)
+            if channel_id not in user_channels:
+                UserChannel.objects.create(channel_id=channel_id, user=user)
+
+        return Response(status=connector.response.status_code)
