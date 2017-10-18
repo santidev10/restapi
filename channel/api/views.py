@@ -2,27 +2,23 @@
 Channel api views module
 """
 from copy import deepcopy
-import re
 
-from django.db.models import Q
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_412_PRECONDITION_FAILED
-
 from rest_framework.views import APIView
 
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
-from userprofile.models import UserChannel
-
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from utils.csv_export import list_export
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 # pylint: enable=import-error
 
 
@@ -122,7 +118,7 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
-    permission_required = tuple() # ('userprofile.channel_filter',)
+    permission_required = ('userprofile.channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 
