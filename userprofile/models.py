@@ -9,6 +9,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from utils.models import Timestampable
+
 
 class UserProfile(AbstractBaseUser, PermissionsMixin):
     """
@@ -85,3 +87,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         Sends an email to this User.
         """
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+
+class UserChannel(Timestampable):
+    channel_id = models.CharField(max_length=30)
+    user = models.ForeignKey(UserProfile, related_name="channels")
+
+    class Meta:
+        unique_together = ("channel_id", "user")

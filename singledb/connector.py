@@ -207,3 +207,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "cached_object/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
+
+    def auth_channel(self, params):
+        endpoint = "channels/authentication/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data
