@@ -13,13 +13,14 @@ from rest_framework.generics import ListAPIView, DestroyAPIView, \
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
-    HTTP_201_CREATED
+    HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
-    UserActionCreateSerializer
+    UserActionCreateSerializer, UserUpdateSerializer
+from administration.api.serializers import UserSerializer
 from administration.models import UserAction
-from userprofile.api.serializers import UserSerializer, PlanSerializer
+from userprofile.api.serializers import PlanSerializer
 from userprofile.models import UserProfile, Plan
 from utils.api_paginator import CustomPageNumberPaginator
 
@@ -53,17 +54,30 @@ class UserListAdminApiView(ListAPIView):
         return get_user_model().objects.exclude(id=self.request.user.id)
 
 
-class UserDeleteAdminApiView(DestroyAPIView):
+class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
     """
     Admin user delete endpoint
     """
     permission_classes = (IsAdminUser, )
+    serializer_class = UserSerializer
+    update_serializer_class = UserUpdateSerializer
 
     def get_queryset(self):
         """
         Exclude requested user from queryset
         """
         return get_user_model().objects.exclude(id=self.request.user.id)
+
+    def put(self, request, *args, **kwargs):
+        """
+        Update user
+        """
+        serializer = self.update_serializer_class(
+            instance=self.get_object(), data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return self.get(request)
+        return Response(serializer.errors, HTTP_400_BAD_REQUEST)
 
 
 class AuthAsAUserAdminApiView(APIView):

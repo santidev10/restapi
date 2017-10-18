@@ -39,7 +39,6 @@ class UserCreateSerializer(ModelSerializer):
             "company",
             "phone_number",
             "email",
-            "plan",
             "password",
             "verify_password"
         )
