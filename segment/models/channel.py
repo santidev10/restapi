@@ -65,7 +65,7 @@ class SegmentChannel(BaseSegment):
         self.mini_dash_data = data['minidash']
 
     @property
-    def get_statistics(self):
+    def statistics(self):
         """
         Count segment statistics
         """
