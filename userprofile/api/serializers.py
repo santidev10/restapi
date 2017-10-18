@@ -39,8 +39,8 @@ class UserCreateSerializer(ModelSerializer):
             "company",
             "phone_number",
             "email",
+            "plan",
             "password",
-            "plan_name",
             "verify_password"
         )
         read_only_fields = (

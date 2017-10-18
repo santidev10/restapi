@@ -229,10 +229,10 @@ class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         plan = self.get_object()
-        if plan.name == 'default' or plan.name == 'full':
+        if plan.name == 'free' or plan.name == 'full':
             return Response(status=HTTP_403_FORBIDDEN)
         default_plan, created = Plan.objects.get_or_create(
-            name='default', defaults=dict(permissions=Plan.plan_preset['default']))
+            name='free', defaults=dict(permissions=Plan.plan_preset['free']))
         UserProfile.objects.filter(plan=plan).update(plan=default_plan)
         return super().delete(request, *args, **kwargs)
 
