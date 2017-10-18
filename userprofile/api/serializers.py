@@ -108,6 +108,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "has_aw_accounts",
+            "plan",
         )
         read_only_fields = (
             "is_staff",

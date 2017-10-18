@@ -140,7 +140,6 @@ class UserPasswordResetApiView(APIView):
         return Response({'email': email}, HTTP_200_OK)
 
 
-
 class UserPasswordSetApiView(APIView):
     """
     Endpoint for setting new password for user

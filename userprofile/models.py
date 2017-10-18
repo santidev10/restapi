@@ -3,6 +3,7 @@ Userprofile models module
 """
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
@@ -93,6 +94,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         Convert plan to django permissions
         """
+        self.content_type = ContentType.objects.get_for_model(Plan)
         for key, value in node.items():
             if len(path) > 0:
                 new_path = path + '_' + key
@@ -102,7 +104,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             if type(value) == dict:
                 self.set_permissions_from_plan(value, new_path)
             else:
-                permission, created = Permission.objects.get_or_create(codename=new_path)
+                permission, created = Permission.objects.get_or_create(
+                    codename=new_path, defaults=dict(content_type=self.content_type))
                 if value:
                     self.user_permissions.add(permission)
                 else:
