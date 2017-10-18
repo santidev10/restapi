@@ -17,7 +17,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
-class VideoListApiView(PermissionRequiredMixin, APIView):
+class VideoListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for video list
     """

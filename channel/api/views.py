@@ -26,7 +26,7 @@ from utils.csv_export import list_export
 # pylint: enable=import-error
 
 
-class ChannelListApiView(PermissionRequiredMixin, APIView):
+class ChannelListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for channel list
     """
