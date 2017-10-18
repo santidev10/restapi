@@ -152,3 +152,9 @@ class ChannelsVideosByKeywords(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+
+class ChannelAuthenticationApiView(APIView):
+    def post(self, request, *args, **kwagrs):
+        data = Connector().auth_channel(request.data)
+        return Response(data=data)
