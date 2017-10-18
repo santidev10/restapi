@@ -2,17 +2,15 @@
 SegmentVideo models module
 """
 import logging
+
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
-# pylint: disable=import-error
+from aw_reporting.models import YTVideoStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
-# pylint: enable=import-error
-
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +73,7 @@ class SegmentVideo(BaseSegment):
     segment_type = 'video'
 
     objects = SegmentVideoManager()
+    related_aw_statistics_model = YTVideoStatistic
 
     def populate_statistics_fields(self, data):
         self.videos = data['count']
@@ -88,15 +87,21 @@ class SegmentVideo(BaseSegment):
         self.top_three_videos = data['top_list']
         self.mini_dash_data = data['minidash']
 
-    def get_statistics(self, **kwargs):
+    @property
+    def get_statistics(self):
+        """
+        Count segment statistics
+        """
         statistics = {
             "top_three_videos": self.top_three_videos,
             "videos_count": self.videos,
-            "views_count": self.views,
-            "views_per_video": self.views_per_video,
-            "thirty_days_views_count": self.thirty_days_views,
-            "sentiment": self.sentiment,
-            "engage_rate": self.engage_rate,
+            # <--- disabled SAAS-1180
+            # "views_count": self.views,
+            # "views_per_video": self.views_per_video,
+            # "thirty_days_views_count": self.thirty_days_views,
+            # "sentiment": self.sentiment,
+            # "engage_rate": self.engage_rate,
+            # ---> disabled SAAS-1180
         }
         return statistics
 
