@@ -61,6 +61,8 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
+        user.plan = Plan.objects.get(name='free')
+        user.set_permissions_from_plan(user.plan.name)
         user.save()
         # set token
         Token.objects.get_or_create(user=user)
