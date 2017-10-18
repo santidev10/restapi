@@ -105,6 +105,5 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "token",
             "plan",
         )
