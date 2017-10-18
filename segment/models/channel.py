@@ -99,13 +99,20 @@ class SegmentChannel(BaseSegment):
                         ad_group__video_views__gt=0,
                         then="impressions",
                     ), output_field=IntegerField())))
-        # count statistics fields
-        extra_statistics_data = dict_add_calculated_stats(aggregated_data)
+        # count and add statistics fields
+        dict_add_calculated_stats(aggregated_data)
+        # clean up
+        fields_to_clean_up = [
+            "cost",
+            "video_views",
+            "clicks",
+            "impressions",
+            "video_impressions",
+            "average_cpm"
+        ]
+        [aggregated_data.pop(key, None) for key in fields_to_clean_up]
         # finalize statistics data
-        statistics["view_rate"] = extra_statistics_data.get("video_view_rate")
-        statistics["ctr_v"] = extra_statistics_data.get("ctr_v")
-        statistics["ctr_i"] = extra_statistics_data.get("ctr")
-        statistics["average_cpv"] = extra_statistics_data.get("average_cpv")
+        statistics.update(aggregated_data)
         return statistics
 
 
