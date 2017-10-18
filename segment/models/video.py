@@ -11,10 +11,6 @@ from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
 
-# pylint: disable=import-error
-# pylint: enable=import-error
-
-
 logger = logging.getLogger(__name__)
 
 
