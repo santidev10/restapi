@@ -37,9 +37,9 @@ def count_segment_adwords_statistics(segment, **kwargs):
         queryset = queryset.model.objects.filter(**filters)
     # prepare aggregated statistics
     aggregated_data = queryset.aggregate(
-        cost_sum=Sum("cost"), video_views_sum=Sum("video_views"),
-        clicks_sum=Sum("clicks"), impressions_sum=Sum("impressions"),
-        video_impressions_sum=Sum(Case(When(
+        sum_cost=Sum("cost"), sum_video_views=Sum("video_views"),
+        sum_clicks=Sum("clicks"), sum_impressions=Sum("impressions"),
+        sum_video_impressions=Sum(Case(When(
             ad_group__video_views__gt=0,
             then="impressions",
         ), output_field=IntegerField())))
