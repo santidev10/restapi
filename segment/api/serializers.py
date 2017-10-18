@@ -1,10 +1,12 @@
+"""
+Segment api serializers module
+"""
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
-from segment.models import SegmentChannel
-from segment.models import get_segment_model_by_type
+from segment.models.utils import count_segment_adwords_statistics
 
 
 class SegmentSerializer(ModelSerializer):
@@ -12,6 +14,7 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
+    statistics = SerializerMethodField()
 
     class Meta:
         model = None
@@ -20,7 +23,7 @@ class SegmentSerializer(ModelSerializer):
                   'segment_type',
                   'category',
                   'statistics',
-                  'mini_dash_data',
+                  # 'mini_dash_data',   #Disabled by issuse SAAS-1172
                   'owner',
                   'created_at',
                   'is_editable',
@@ -93,3 +96,16 @@ class SegmentSerializer(ModelSerializer):
             segment.update_statistics(segment)
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
+
+    def get_statistics(self, instance):
+        """
+        Prepare segment statistics
+        """
+        # prepare base statistics
+        base_statistics = instance.statistics
+        # prepare adwords statistics
+        adwords_statistics = count_segment_adwords_statistics(
+            instance, **self.context)
+        # finalize response
+        base_statistics.update(adwords_statistics)
+        return base_statistics

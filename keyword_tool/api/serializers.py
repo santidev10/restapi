@@ -144,8 +144,10 @@ class SavedListNameSerializer(SavedListCreateSerializer):
             "id", "name", "category", "is_owner", "top_keywords_data", "num_keywords",
             "average_volume", "average_cpc", "competition",
             "average_cpv", "video_view_rate", "ctr_v",
-            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable",
-            "owner", "created_at"
+            # minidash has been disabled: SAAS-1172 --->
+            # "cum_average_volume_data", "cum_average_volume_per_kw_data",
+            # <---
+            "is_editable", "owner", "created_at"
         )
 
 

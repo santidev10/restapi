@@ -25,7 +25,7 @@ class AugmentationChannelListApiView(APIView):
         if genre is None:
             return None
 
-        result = []
+        data = []
 
         def walker(item, parent_cat=None):
             if isinstance(item, dict):
@@ -39,15 +39,23 @@ class AugmentationChannelListApiView(APIView):
                         i['name'] = parent_cat + '/' + i['name']
                     yield from walker(i, parent_cat=parent_cat)
 
+        result = {}
         for item in walker(genre):
+            item['name'] = '/' + item['name']
+            result[item['name']] = item['size']
+
+        dt = DisassembleTree.init_from_flat_dict(result)
+        full_genre = list(dt.as_dict()['children'])
+
+        for item in walker(full_genre):
             if item.get('name').endswith('other'):
                 continue
-            item['name'] = '/' + item['name']
-            item_id = list(self.values_to_keys.get(item['name']))[0]
+            name = '/' + item['name']
+            item_id = list(self.values_to_keys.get(name))[0]
             item_size = item['size']
-            result.append('{item_id}-{item_size}'.format(item_id=item_id,
-                                                         item_size=item_size))
-        return result
+            data.append('{item_id}-{item_size}'.format(item_id=item_id,
+                                                       item_size=item_size))
+        return data
 
     def gen_channel_from(self, query_params):
         while True:
@@ -139,3 +147,83 @@ class AugmentationChannelSegmentListApiView(APIView):
                                          content_type="text/csv")
         response['Content-Disposition'] = 'attachment; filename="{file_name}.csv"'.format(file_name=file_name)
         return response
+
+
+class DisassembleTree(object):
+    name = None
+    size = None
+    children = None
+    parent = None
+
+    def __init__(self, name, size=None, parent=None):
+        self.name = name
+        self.size = size
+        self.children = {}
+        self.parent = parent
+        self.completed = None
+
+    @classmethod
+    def init_from_flat_dict(cls, data):
+        root = cls('', None)
+        for name, size in data.items():
+            root.update(name, size)
+        root.update_parents()
+        root.recalc_stats()
+        return root
+
+    def update(self, key, size):
+        names = key.split('/')
+        assert names[0] == self.name, 'Invalid root node'
+        obj = self
+        for name in names[1:]:
+            parent = obj
+            obj = parent.children.get(name, None)
+            if obj is None:
+                obj = self.__class__(name, parent=parent)
+                parent.children[name] = obj
+        obj.size = size
+
+    def as_dict(self):
+        result = {'name': self.name}
+        result['size'] = self.size
+        if self.children:
+            result['children'] = [obj.as_dict() for obj in self.children.values()]
+        return result
+
+    @property
+    def parents(self):
+        obj = self.parent
+        while obj is not None:
+            yield obj
+            obj = obj.parent
+
+    def update_parents(self):
+        for child in self.children.values():
+            if child.children:
+                child.update_parents()
+            else:
+                sizes = [child.size for child in self.children.values()]
+                if None not in sizes:
+                    self.size = sum(sizes)
+
+        if self.size is None:
+            self.size = sum([child.size for child in self.children.values()])
+
+    def recalc_stats(self):
+        for child in self.children.values():
+            if child.children:
+                child.recalc_stats()
+            else:
+                parents = list(filter(lambda x: bool(x.name), [p for p in child.parents]))
+                if child.name == 'other':
+                    continue
+                if len(parents):
+                    child.size = child.size / parents[0].size
+                while parents:
+                    if len(parents) < 2:
+                        break
+                    first = parents.pop(0)
+                    if first.completed:
+                        break
+                    first.size = first.size / parents[0].size
+                    first.completed = True
