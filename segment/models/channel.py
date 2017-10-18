@@ -51,13 +51,6 @@ class SegmentChannel(BaseSegment):
 
     objects = SegmentManager()
 
-    def __init__(self, *args, **kwargs):
-        """
-        Extend init procedure
-        """
-        super(SegmentChannel, self).__init__(*args, **kwargs)
-        self.related_objects_model = SegmentRelatedChannel
-
     def populate_statistics_fields(self, data):
         self.channels = data['count']
         fields = ['subscribers', 'videos', 'views', 'video_views', 'likes', 'dislikes', 'comments']

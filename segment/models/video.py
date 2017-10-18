@@ -75,13 +75,6 @@ class SegmentVideo(BaseSegment):
     objects = SegmentVideoManager()
     related_aw_statistics_model = YTVideoStatistic
 
-    def __init__(self, *args, **kwargs):
-        """
-        Extend init procedure
-        """
-        super(SegmentVideo, self).__init__(*args, **kwargs)
-        self.related_objects_model = SegmentRelatedVideo
-
     def populate_statistics_fields(self, data):
         self.videos = data['count']
         fields = ['views', 'likes', 'dislikes', 'comments', 'thirty_days_views']
