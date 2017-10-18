@@ -122,7 +122,7 @@ class ChannelListApiView(PermissionRequiredMixin, APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
-    permission_required = ('userprofile.channel_filter',)
+    permission_required = tuple() # ('userprofile.channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 

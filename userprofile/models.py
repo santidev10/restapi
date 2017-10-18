@@ -103,7 +103,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         else:
             self.set_permissions_from_node(plan.permissions)
 
-    def set_permissions_from_node(self, node, path='')
+    def set_permissions_from_node(self, node, path=''):
         self.temp_content_type = ContentType.objects.get_for_model(Plan)
         for key, value in node.items():
             if len(path) > 0:
