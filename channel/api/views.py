@@ -10,10 +10,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_412_PRECONDITION_FAILED
+
 from rest_framework.views import APIView
 
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
+from userprofile.models import UserChannel
+
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
@@ -85,6 +89,24 @@ class ChannelListApiView(PermissionRequiredMixin, APIView):
                 }
                 return Response(empty_response)
             query_params.pop("segment")
+            query_params.update(ids=",".join(channels_ids))
+
+        # own_channels
+        own_channels = query_params.get("own_channels", "0")
+        if own_channels == "1":
+            user = self.request.user
+            if not user or not user.is_authenticated():
+                return Response(status=HTTP_412_PRECONDITION_FAILED)
+            channels_ids = user.channels.values_list('channel_id', flat=True)
+            if not channels_ids:
+                empty_response = {
+                    "max_page": 1,
+                    "items_count": 0,
+                    "items": [],
+                    "current_page": 1,
+                }
+                return Response(empty_response)
+            query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
 
         # make call

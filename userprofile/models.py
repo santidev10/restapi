@@ -11,6 +11,8 @@ from django.contrib.postgres.fields import JSONField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from utils.models import Timestampable
+
 
 class UserProfile(AbstractBaseUser, PermissionsMixin):
     """
@@ -90,11 +92,19 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
-    def set_permissions_from_plan(self, node, path=''):
+    def set_permissions_from_plan(self, plan_name):
         """
         Convert plan to django permissions
         """
-        self.content_type = ContentType.objects.get_for_model(Plan)
+        try:
+            plan = Plan.objects.get(name=plan_name)
+        except Plan.DoesNotExist:
+            return
+        else:
+            self.set_permissions_from_node(plan.permissions)
+
+    def set_permissions_from_node(self, node, path='')
+        self.temp_content_type = ContentType.objects.get_for_model(Plan)
         for key, value in node.items():
             if len(path) > 0:
                 new_path = path + '_' + key
@@ -220,7 +230,7 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan.permissions)
+            user.set_permissions_from_plan(plan)
             user.save()
 
         # set default plan for non-admin users
@@ -228,6 +238,13 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan.permissions)
+            user.set_permissions_from_plan(plan)
             user.save()
 
+
+class UserChannel(Timestampable):
+    channel_id = models.CharField(max_length=30)
+    user = models.ForeignKey(UserProfile, related_name="channels")
+
+    class Meta:
+        unique_together = ("channel_id", "user")
