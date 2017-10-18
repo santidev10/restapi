@@ -47,7 +47,6 @@ class UserActionRetrieveSerializer(ModelSerializer):
             "email",
             "url",
             "created_at",
-            "plan",
         )
 
     def get_email(self, obj):
