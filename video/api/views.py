@@ -2,6 +2,7 @@
 Video api views module
 """
 from django.db.models import Q
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
@@ -16,10 +17,12 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
-class VideoListApiView(APIView):
+class VideoListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for video list
     """
+    permission_required = ('userprofile.video_list',)
+
     def obtain_segment(self, segment_id):
         """
         Try to get segment from db
@@ -70,11 +73,13 @@ class VideoListApiView(APIView):
 
 
 class VideoListFiltersApiView(SingledbApiView):
+    permission_required = ('userprofile.video_filter', )
     connector_get = Connector().get_video_filters_list
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_required = ('userprofile.video_details',)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
 
