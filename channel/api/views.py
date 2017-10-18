@@ -161,11 +161,12 @@ class ChannelAuthenticationApiView(APIView):
 
         if data is not None:
             channel_id = data.get('channel_id')
-            user = self.request.user
-            if not user or not user.is_authenticated():
-                return Response(status=HTTP_412_PRECONDITION_FAILED)
-            user_channels = user.channels.values_list('channel_id', flat=True)
-            if channel_id not in user_channels:
-                UserChannel.objects.create(channel_id=channel_id, user=user)
+            if channel_id:
+                user = self.request.user
+                if not user or not user.is_authenticated():
+                    return Response(status=HTTP_412_PRECONDITION_FAILED)
+                user_channels = user.channels.values_list('channel_id', flat=True)
+                if channel_id not in user_channels:
+                    UserChannel.objects.create(channel_id=channel_id, user=user)
 
         return Response(status=connector.response.status_code)
