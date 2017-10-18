@@ -99,9 +99,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         try:
             plan = Plan.objects.get(name=plan_name)
         except Plan.DoesNotExist:
-            return
-        else:
-            self.set_permissions_from_node(plan.permissions)
+            plan, created = Plan.objects.get_or_create(
+                name='free', defaults=dict(permissions=Plan.plan_preset['free']))
+
+        self.set_permissions_from_node(plan.permissions)
 
     def set_permissions_from_node(self, node, path=''):
         self.temp_content_type = ContentType.objects.get_for_model(Plan)
@@ -112,7 +113,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 new_path = key
 
             if type(value) == dict:
-                self.set_permissions_from_plan(value, new_path)
+                self.set_permissions_from_node(value, new_path)
             else:
                 permission, created = Permission.objects.get_or_create(
                     codename=new_path, defaults=dict(content_type=self.content_type))
