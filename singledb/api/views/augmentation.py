@@ -15,7 +15,6 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDa
 class AugmentationChannelListApiView(APIView):
     connector = Connector()
     values_to_keys = defaultdict(set)
-    permission_classes = tuple()
 
     def fill_interests(self):
         interests_obj = dict(Interest.objects.values_list('id', 'name'))
