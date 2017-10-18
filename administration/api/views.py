@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
-    ListCreateAPIView
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
@@ -215,15 +215,27 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
     queryset = UserAction.objects.all()
 
 
-class PlanListApiView(ListAPIView):
+class PlanListCreateApiView(ListCreateAPIView):
+    permission_classes = (IsAdminUser, )
+    serializer_class = PlanSerializer
+    create_serializer_class = PlanSerializer
+    queryset = Plan.objects.all()
+
+
+class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAdminUser, )
     serializer_class = PlanSerializer
     queryset = Plan.objects.all()
 
+    def delete(self, request, *args, **kwargs):
+        plan = self.get_object()
+        if plan.name == 'default' or plan.name == 'full':
+            return Response(status=HTTP_403_FORBIDDEN)
+        default_plan, created = Plan.objects.get_or_create(
+            name='default', defaults=dict(permissions=Plan.plan_preset['default']))
+        UserProfile.objects.filter(plan=plan).update(plan=default_plan)
+        return super().delete(request, *args, **kwargs)
 
-class PlanChangeDeleteApiView(APIView):
-    permission_classes = (IsAdminUser, )
-    serializer_class = PlanSerializer
 
 
 

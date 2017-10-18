@@ -6,7 +6,7 @@ from django.conf.urls import url
 from administration.api.views import UserListAdminApiView, \
     UserDeleteAdminApiView, AuthAsAUserAdminApiView, \
     UserActionListCreateApiView, UserActionDeleteAdminApiView, \
-    PlanListApiView
+    PlanListCreateApiView, PlanChangeDeleteApiView
 
 urlpatterns = [
     url(r'^users/$', UserListAdminApiView.as_view(), name="user_list"),
@@ -19,5 +19,5 @@ urlpatterns = [
     url(r'^user_actions/(?P<pk>\d+)/$', UserActionDeleteAdminApiView.as_view(),
         name="user_action_details"),
     url(r'^plan/(?P<pk>)/$', PlanChangeDeleteApiView.as_view(), name="plan"),
-    url(r'^plan/$', PlanListApiView.as_view(), name="plan"),
+    url(r'^plan/$', PlanListCreateApiView.as_view(), name="plan"),
 ]

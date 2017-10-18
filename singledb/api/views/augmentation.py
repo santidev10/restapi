@@ -8,7 +8,7 @@ from django.http import StreamingHttpResponse
 from rest_framework.views import APIView
 
 from keyword_tool.models import Interest
-from segment.models import SegmentRelatedChannel
+from segment.models.channel import SegmentRelatedChannel
 from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDatabaseApiConnectorException
 
 
@@ -109,7 +109,9 @@ class AugmentationChannelListApiView(APIView):
 
 
 class AugmentationChannelSegmentListApiView(APIView):
-    segments = list(SegmentRelatedChannel.objects.values('segment_id', 'related_id'))
+
+    def __init__(self):
+        self.segments = list(SegmentRelatedChannel.objects.values('segment_id', 'related_id'))
 
     def get_segment_from(self):
         for k, v in groupby(self.segments, key=itemgetter('segment_id')):

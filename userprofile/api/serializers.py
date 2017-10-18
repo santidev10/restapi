@@ -40,6 +40,7 @@ class UserCreateSerializer(ModelSerializer):
             "phone_number",
             "email",
             "password",
+            "plan_name",
             "verify_password"
         )
         read_only_fields = (
