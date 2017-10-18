@@ -21,7 +21,7 @@ class VideoListApiView(PermissionRequiredMixin, APIView):
     """
     Proxy view for video list
     """
-    permission_required = ('video_list',)
+    permission_required = ('userprofile.video_list',)
 
     def obtain_segment(self, segment_id):
         """
@@ -73,13 +73,13 @@ class VideoListApiView(PermissionRequiredMixin, APIView):
 
 
 class VideoListFiltersApiView(SingledbApiView):
-    permission_required = ('video_filter', )
+    permission_required = ('userprofile.video_filter', )
     connector_get = Connector().get_video_filters_list
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
-    permission_required = ('video_details',)
+    permission_required = ('userprofile.video_details',)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
 

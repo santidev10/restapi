@@ -26,7 +26,7 @@ class ChannelListApiView(PermissionRequiredMixin, APIView):
     """
     Proxy view for channel list
     """
-    permission_required = ('channel_list',)
+    permission_required = ('userprofile.channel_list',)
 
     fields_to_export = [
         "title",
@@ -100,13 +100,13 @@ class ChannelListApiView(PermissionRequiredMixin, APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
-    permission_required = ('channel_filter',)
+    permission_required = ('userprofile.channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
-    permission_required = ('channel_details',)
+    permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 
