@@ -169,4 +169,4 @@ class ChannelAuthenticationApiView(APIView):
                 if channel_id not in user_channels:
                     UserChannel.objects.create(channel_id=channel_id, user=user)
 
-        return Response(status=connector.response.status_code)
+        return Response()
