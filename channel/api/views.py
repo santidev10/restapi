@@ -13,6 +13,7 @@ from rest_framework.status import HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
 from segment.models import SegmentChannel
+from userprofile.models import UserChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
