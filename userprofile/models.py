@@ -172,10 +172,10 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
-        'highlights': {
-            'channel' : {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'keyword':  {'list': False, 'details': False,},
+        'media_buyer': {
+            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True, },
+            'video': {'list': True, 'filter': True, 'audience': False, 'details': True, },
+            'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
                 'video': {'all': False, 'private': True},
@@ -186,28 +186,6 @@ class Plan(models.Model):
                 'performance': False,
                 'trends': False,
                 'benchmarks': False,
-                'highlights': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-                'billing': True,
-            },
-        },
-        'media_buyer': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True, },
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True, },
-            'keyword': {'list': True, 'details': True, },
-            'segment': {
-                'channel': {'all': True, 'private': True},
-                'video': {'all': True, 'private': True},
-                'keyword': {'all': True, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': True,
-                'performance': True,
-                'trends': True,
-                'benchmarks': True,
                 'highlights': True,
             },
             'settings': {
@@ -223,6 +201,8 @@ class Plan(models.Model):
 
     @staticmethod
     def load_defaults():
+        Plan.objects.all().delete()
+        
         for key, value in Plan.plan_preset.items():
             Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
 
