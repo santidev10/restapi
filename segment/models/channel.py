@@ -4,10 +4,7 @@ SegmentChannel models module
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db.models import Sum, Case, When, IntegerField
 
-from aw_reporting.models import Account, YTChannelStatistic, \
-    dict_add_calculated_stats
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
@@ -65,7 +62,8 @@ class SegmentChannel(BaseSegment):
         self.top_three_channels = data['top_list']
         self.mini_dash_data = data['minidash']
 
-    def get_statistics(self, **kwargs):
+    @property
+    def get_statistics(self):
         """
         Count segment statistics
         """
@@ -82,37 +80,6 @@ class SegmentChannel(BaseSegment):
             # "engage_rate": self.engage_rate,
             # ---> disabled SAAS-1178
         }
-        # obtain user from kwargs -> serializer context -> request
-        user = kwargs.get("request").user
-        # obtain related to segment channels ids
-        channels_ids = SegmentRelatedChannel.objects.filter(
-            segment_id=self.id).values_list("related_id", flat=True)
-        # obtain aw account
-        accounts = Account.user_objects(user)
-        # prepare aggregated statistics
-        aggregated_data = YTChannelStatistic.objects.filter(
-            ad_group__campaign__account__in=accounts,
-            yt_id__in=channels_ids).aggregate(
-            cost=Sum("cost"), video_views=Sum("video_views"),
-            clicks=Sum("clicks"), impressions=Sum("impressions"),
-            video_impressions=Sum(Case(When(
-                        ad_group__video_views__gt=0,
-                        then="impressions",
-                    ), output_field=IntegerField())))
-        # count and add statistics fields
-        dict_add_calculated_stats(aggregated_data)
-        # clean up
-        fields_to_clean_up = [
-            "cost",
-            "video_views",
-            "clicks",
-            "impressions",
-            "video_impressions",
-            "average_cpm"
-        ]
-        [aggregated_data.pop(key, None) for key in fields_to_clean_up]
-        # finalize statistics data
-        statistics.update(aggregated_data)
         return statistics
 
 

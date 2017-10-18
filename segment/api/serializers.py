@@ -1,10 +1,12 @@
+"""
+Segment api serializers module
+"""
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
-from segment.models import SegmentChannel
-from segment.models import get_segment_model_by_type
+from segment.models.utils import count_segment_adwords_statistics
 
 
 class SegmentSerializer(ModelSerializer):
@@ -99,4 +101,11 @@ class SegmentSerializer(ModelSerializer):
         """
         Prepare segment statistics
         """
-        return instance.get_statistics(**self.context)
+        # prepare base statistics
+        base_statistics = instance.statistics
+        # prepare adwords statistics
+        adwords_statistics = count_segment_adwords_statistics(
+            instance, **self.context)
+        # finalize response
+        base_statistics.update(adwords_statistics)
+        return base_statistics
