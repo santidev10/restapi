@@ -52,7 +52,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
 
-    plan = models.ForeignKey('userprofile.Plan', null=True)
+    plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
 
     objects = UserManager()
 
