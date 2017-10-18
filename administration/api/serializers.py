@@ -82,8 +82,7 @@ class UserUpdateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "is_subscribed",
-            "plan"
+            "plan",
         )
 
 
@@ -106,7 +105,6 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "is_subscribed",
             "token",
             "plan",
         )
