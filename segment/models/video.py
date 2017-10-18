@@ -6,6 +6,7 @@ import logging
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
+from aw_reporting.models import YTVideoStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
@@ -72,6 +73,14 @@ class SegmentVideo(BaseSegment):
     segment_type = 'video'
 
     objects = SegmentVideoManager()
+    related_aw_statistics_model = YTVideoStatistic
+
+    def __init__(self, *args, **kwargs):
+        """
+        Extend init procedure
+        """
+        super(SegmentVideo, self).__init__(*args, **kwargs)
+        self.related_objects_model = SegmentRelatedVideo
 
     def populate_statistics_fields(self, data):
         self.videos = data['count']

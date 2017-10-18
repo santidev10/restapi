@@ -5,6 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
+from aw_reporting.models import YTChannelStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
@@ -46,8 +47,16 @@ class SegmentChannel(BaseSegment):
     singledb_method = Connector().get_channels_statistics
 
     segment_type = 'channel'
+    related_aw_statistics_model = YTChannelStatistic
 
     objects = SegmentManager()
+
+    def __init__(self, *args, **kwargs):
+        """
+        Extend init procedure
+        """
+        super(SegmentChannel, self).__init__(*args, **kwargs)
+        self.related_objects_model = SegmentRelatedChannel
 
     def populate_statistics_fields(self, data):
         self.channels = data['count']

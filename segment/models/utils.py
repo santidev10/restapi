@@ -3,10 +3,7 @@ Segment models utils module
 """
 from django.db.models import Sum, Case, When, IntegerField
 
-from aw_reporting.models import YTVideoStatistic, YTChannelStatistic,\
-    Account, dict_add_calculated_stats
-from segment.models import SegmentRelatedVideo, \
-    SegmentRelatedChannel
+from aw_reporting.models import Account, dict_add_calculated_stats
 
 
 def count_segment_adwords_statistics(segment, **kwargs):
@@ -19,20 +16,13 @@ def count_segment_adwords_statistics(segment, **kwargs):
     except AttributeError:
         raise AttributeError(
             "Serializer context with request is required in kwargs")
-    # define appropriate models
-    if segment.segment_type == "video":
-        related_objects_model = SegmentRelatedVideo
-        adwords_statistics_model = YTVideoStatistic
-    else:
-        related_objects_model = SegmentRelatedChannel
-        adwords_statistics_model = YTChannelStatistic
     # obtain related to segment videos ids
-    videos_ids = related_objects_model.objects.filter(
+    videos_ids = segment.related_objects_model.objects.filter(
         segment_id=segment.id).values_list("related_id", flat=True)
     # obtain aw account
     accounts = Account.user_objects(user)
     # prepare aggregated statistics
-    aggregated_data = adwords_statistics_model.objects.filter(
+    aggregated_data = segment.related_aw_statistics_model.objects.filter(
         ad_group__campaign__account__in=accounts,
         yt_id__in=videos_ids).aggregate(
         cost=Sum("cost"), video_views=Sum("video_views"),
