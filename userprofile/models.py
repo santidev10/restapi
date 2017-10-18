@@ -173,7 +173,7 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.permissions)
             user.save()
 
         # set default plan for non-admin users
@@ -181,6 +181,6 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.permissions)
             user.save()
 
