@@ -4,8 +4,7 @@ SegmentChannel models module
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-# pylint: disable=import-error
-from django.db.models import Sum
+from django.db.models import Sum, Case, When, IntegerField
 
 from aw_reporting.models import Account, YTChannelStatistic, \
     dict_add_calculated_stats
@@ -14,6 +13,8 @@ from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
 
+
+# pylint: disable=import-error
 
 # pylint: enable=import-error
 
@@ -99,7 +100,10 @@ class SegmentChannel(BaseSegment):
             yt_id__in=channels_ids).aggregate(
             cost=Sum("cost"), video_views=Sum("video_views"),
             clicks=Sum("clicks"), impressions=Sum("impressions"),
-            video_impressions=Sum("impressions"))
+            video_impressions=Sum(Case(When(
+                        ad_group__video_views__gt=0,
+                        then="impressions",
+                    ), output_field=IntegerField())))
         # count statistics fields
         extra_statistics_data = dict_add_calculated_stats(aggregated_data)
         # finalize statistics data
