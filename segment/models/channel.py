@@ -14,11 +14,6 @@ from .base import BaseSegmentRelated
 from .base import SegmentManager
 
 
-# pylint: disable=import-error
-
-# pylint: enable=import-error
-
-
 class SegmentChannel(BaseSegment):
     PRIVATE = "private"
     YOUTUBE = "youtube"
