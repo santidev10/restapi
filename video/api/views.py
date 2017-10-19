@@ -61,6 +61,10 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
+
+        if not request.user.has_perm('userprofile.video_audience'):
+            query_params.update(verified='0')
+
         # make call
         connector = Connector()
         try:
