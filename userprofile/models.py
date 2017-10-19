@@ -150,7 +150,7 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
-        'full': {
+        'enterprise': {
             'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
@@ -172,7 +172,7 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
-        'media_buyer': {
+        'professional': {
             'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
             'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
             'keyword': {'list': True, 'details': True, },
@@ -200,14 +200,12 @@ class Plan(models.Model):
     permissions = JSONField(default=plan_preset['free'])
 
     @staticmethod
-    def load_defaults():
-        Plan.objects.all().delete()
-
+    def update_defaults():
         for key, value in Plan.plan_preset.items():
             Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
 
         # set admin plans
-        plan = Plan.objects.get(name='full')
+        plan = Plan.objects.get(name='enterprise')
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
