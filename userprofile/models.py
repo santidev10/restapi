@@ -129,13 +129,13 @@ class Plan(models.Model):
     """
     plan_preset = {
         'free': {
-            'channel' : {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'keyword':  {'list': False, 'details': False,},
+            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'keyword':  {'list': False, 'details': False, },
             'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
+                'channel': {'all': False, 'private': False},
+                'video': {'all': False, 'private': False},
+                'keyword': {'all': False, 'private': False},
             },
             'view': {
                 'create_and_manage_campaigns': False,
@@ -151,8 +151,8 @@ class Plan(models.Model):
             },
         },
         'full': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True, },
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True, },
+            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': True, 'private': True},
@@ -173,8 +173,8 @@ class Plan(models.Model):
             },
         },
         'media_buyer': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True, },
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True, },
+            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
