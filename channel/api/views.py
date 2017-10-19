@@ -66,6 +66,11 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
         """
         Get procedure
         """
+        # prepare query params
+        query_params = deepcopy(request.query_params)
+        query_params._mutable = True
+
+        # flat
         flat = query_params.get("flat", "0")
         if flat == "0":
             empty_response = {
@@ -77,10 +82,7 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
         else:
             empty_response = []
 
-        # prepare query params
-        query_params = deepcopy(request.query_params)
-        query_params._mutable = True
-        # segment
+       # segment
         segment = query_params.get("segment")
         if segment is not None:
             # obtain segment
