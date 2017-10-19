@@ -85,6 +85,13 @@ class UserUpdateSerializer(ModelSerializer):
             "plan",
         )
 
+    def save(self, **kwargs):
+        """
+        Make 'post-save' actions
+        """
+        user = super(UserUpdateSerializer, self).save(**kwargs)
+        user.set_permissions_from_plan(user.plan.name)
+
 
 class UserSerializer(ModelSerializer):
     """
