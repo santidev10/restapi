@@ -120,6 +120,13 @@ class BaseSegment(Timestampable):
         related_manager.bulk_create(related_list)
         return duplicated_segment
 
+    def sync_recommend_channels(self, channel_ids):
+        if hasattr(self, 'top_recommend_channels'):
+            for ch_id in channel_ids:
+                if ch_id in self.top_recommend_channels:
+                    self.top_recommend_channels.remove(ch_id)
+            self.save()
+
 
 class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:

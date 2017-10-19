@@ -726,6 +726,12 @@ class AudienceHierarchySerializer(ModelSerializer):
         return r
 
 
+class UpdateTargetingDirectionSerializer(ModelSerializer):
+    class Meta:
+        model = TargetingItem
+        fields = ('is_negative',)
+
+
 class AdGroupTargetingListSerializer(ModelSerializer):
 
     class Meta:

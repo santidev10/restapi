@@ -207,3 +207,43 @@ class SingleDatabaseApiConnector(object):
         endpoint = "cached_object/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
+
+
+class IQApiConnector(object):
+    single_database_api_url = settings.IQ_API_URL
+
+    def execute_post_call(self, *args, **kwargs):
+        return self.execute_call(requests.post, *args, **kwargs)
+
+    def execute_call(self, method, endpoint, query_params, data=None):
+        """
+        Make GET call to api
+        """
+        # prepare header
+        headers = {"Content-Type": "application/json"}
+        # prepare query params
+        params = "?{}".format(urlencode(query_params, doseq=True))
+        # build url
+        url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
+        self.response = None
+        # execute call
+        try:
+            if data is None:
+                self.response = method(url, headers=headers, verify=False)
+            else:
+                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
+        except Exception as e:
+            raise SingleDatabaseApiConnectorException(
+                "Unable to reach API. Original exception: {}".format(e))
+
+        try:
+            response_data = self.response.json()
+        except Exception as e:
+            return None
+
+        return response_data
+
+    def auth_channel(self, params):
+        endpoint = "channels/remoteauthentication/"
+        response_data = self.execute_post_call(endpoint, {}, data=params)
+        return response_data

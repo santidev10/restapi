@@ -3,6 +3,8 @@ from django.db.models import Q
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.tasks import detect_success_aw_read_permissions
 from aw_reporting.utils import command_single_process_lock
+from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
+from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from suds import WebFault
 from datetime import datetime
 from pytz import timezone, utc
@@ -14,12 +16,17 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
 
-    @command_single_process_lock("aw_main_update")
-    def handle(self, *args, **options):
+    def pre_process(self):
         detect_success_aw_read_permissions()
-
         self.create_cf_account_connection()
 
+    @staticmethod
+    def post_process():
+        add_relation_between_report_and_creation_campaigns()
+        add_relation_between_report_and_creation_ad_groups()
+
+    @command_single_process_lock("aw_main_update")
+    def handle(self, *args, **options):
         from aw_reporting.models import Account
         timezones = Account.objects.filter(timezone__isnull=False).values_list(
             "timezone", flat=True).order_by("timezone").distinct()

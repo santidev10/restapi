@@ -1,14 +1,16 @@
 from django.db.models import Q
-from django.db.models.expressions import RawSQL
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from segment.api.serializers import SegmentSerializer
 from segment.models import get_segment_model_by_type
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -157,3 +159,23 @@ class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
         ).data
 
         return Response(response_data, status=HTTP_201_CREATED)
+
+
+class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
+    serializer_class = SegmentSerializer
+    connector = Connector()
+
+    def get(self, request, *args, **kwargs):
+        segment = self.get_object()
+        query_params = self.request.query_params
+        query_params._mutable = True
+        response_data = []
+
+        if segment.top_recommend_channels:
+            try:
+                query_params['ids'] = ','.join(segment.top_recommend_channels)
+                response_data = self.connector.get_channel_list(query_params)
+            except SingleDatabaseApiConnectorException:
+                return Response(status=HTTP_408_REQUEST_TIMEOUT)
+
+        return Response(response_data)

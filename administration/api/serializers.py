@@ -1,6 +1,7 @@
 """
 Administration api serializers module
 """
+from django.contrib.auth import get_user_model
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
@@ -46,8 +47,8 @@ class UserActionRetrieveSerializer(ModelSerializer):
             "last_name",
             "email",
             "url",
-            "created_at"
-        )
+            "created_at",
+            )
 
     def get_email(self, obj):
         """
@@ -69,3 +70,48 @@ class UserActionRetrieveSerializer(ModelSerializer):
         """
         if obj.user is not None:
             return obj.user.last_name
+
+
+class UserUpdateSerializer(ModelSerializer):
+    """
+    Update user serializer
+    """
+    class Meta:
+        """
+        Meta params
+        """
+        model = get_user_model()
+        fields = (
+            "plan",
+        )
+
+    def save(self, **kwargs):
+        """
+        Make 'post-save' actions
+        """
+        user = super(UserUpdateSerializer, self).save(**kwargs)
+        user.set_permissions_from_plan(user.plan.name)
+
+
+class UserSerializer(ModelSerializer):
+    """
+    Retrieve user serializer
+    """
+    class Meta:
+        """
+        Meta params
+        """
+        model = get_user_model()
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "company",
+            "phone_number",
+            "email",
+            "is_staff",
+            "last_login",
+            "date_joined",
+            "token",
+            "plan",
+        )
