@@ -5,32 +5,33 @@ from copy import deepcopy
 import re
 from time import time
 
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_412_PRECONDITION_FAILED
-
 from rest_framework.views import APIView
 
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from segment.models import SegmentChannel
 from userprofile.models import UserChannel
-
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from singledb.connector import IQApiConnector as IQConnector
 from utils.csv_export import list_export
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 # pylint: enable=import-error
 
 
-class ChannelListApiView(APIView):
+class ChannelListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for channel list
     """
+    permission_required = ('userprofile.channel_list', 'userprofile.settings_my_yt_channels')
+
     fields_to_export = [
         "title",
         "url",
@@ -98,7 +99,12 @@ class ChannelListApiView(APIView):
             query_params.update(ids=",".join(channels_ids))
 
         # own_channels
-        own_channels = query_params.get("own_channels", "0")
+        if not request.user.has_perm('userprofile.channel_list') and \
+           request.user.has_perm('userprofile.settings_my_yt_channels'):
+            own_channels = "1"
+        else:
+            own_channels = query_params.get("own_channels", "0")
+
         if own_channels == "1":
             user = self.request.user
             if not user or not user.is_authenticated():
@@ -109,6 +115,9 @@ class ChannelListApiView(APIView):
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
             query_params.update(timestamp=str(time.time()))
+
+        if not request.user.has_perm('userprofile.channel_audience'):
+            query_params.update(verified='0')
 
         # make call
         connector = Connector()
@@ -123,11 +132,13 @@ class ChannelListApiView(APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
+    permission_required = ('userprofile.channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (IsAuthenticated, OnlyAdminUserCanCreateUpdateDelete)
+    permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 

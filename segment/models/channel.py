@@ -1,14 +1,12 @@
 """
 SegmentChannel models module
 """
-from django.contrib.postgres.fields import JSONField
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 
-# pylint: disable=import-error
+from aw_reporting.models import YTChannelStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
-# pylint: enable=import-error
-
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
@@ -49,6 +47,7 @@ class SegmentChannel(BaseSegment):
     singledb_method = Connector().get_channels_statistics
 
     segment_type = 'channel'
+    related_aw_statistics_model = YTChannelStatistic
 
     objects = SegmentManager()
 
@@ -63,20 +62,25 @@ class SegmentChannel(BaseSegment):
         self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
         self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.video_views, 1)) * 100
         self.top_three_channels = data['top_list']
-        self.mini_dash_data = data['minidash']
+        self.mini_dash_data = data.get("minidash", {})
 
     @property
     def statistics(self):
+        """
+        Count segment statistics
+        """
         statistics = {
             "top_three_channels": self.top_three_channels,
             "top_recommend_channels": self.top_recommend_channels,
             "channels_count": self.channels,
-            "subscribers_count": self.subscribers,
             "videos_count": self.videos,
-            "views_per_channel": self.views_per_channel,
-            "subscribers_per_channel": self.subscribers_per_channel,
-            "sentiment": self.sentiment,
-            "engage_rate": self.engage_rate,
+            # <--- disabled SAAS-1178
+            # "subscribers_count": self.subscribers,
+            # "views_per_channel": self.views_per_channel,
+            # "subscribers_per_channel": self.subscribers_per_channel,
+            # "sentiment": self.sentiment,
+            # "engage_rate": self.engage_rate,
+            # ---> disabled SAAS-1178
         }
         return statistics
 
