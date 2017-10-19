@@ -129,13 +129,13 @@ class Plan(models.Model):
     """
     plan_preset = {
         'free': {
-            'channel' : {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False,},
-            'keyword':  {'list': False, 'details': False,},
+            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'keyword':  {'list': False, 'details': False, },
             'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
+                'channel': {'all': False, 'private': False},
+                'video': {'all': False, 'private': False},
+                'keyword': {'all': False, 'private': False},
             },
             'view': {
                 'create_and_manage_campaigns': False,
@@ -150,9 +150,9 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
-        'full': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True, },
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True, },
+        'enterprise': {
+            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': True, 'private': True},
@@ -172,9 +172,9 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
-        'media_buyer': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True, },
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True, },
+        'professional': {
+            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
@@ -200,14 +200,12 @@ class Plan(models.Model):
     permissions = JSONField(default=plan_preset['free'])
 
     @staticmethod
-    def load_defaults():
-        Plan.objects.all().delete()
-
+    def update_defaults():
         for key, value in Plan.plan_preset.items():
             Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
 
         # set admin plans
-        plan = Plan.objects.get(name='full')
+        plan = Plan.objects.get(name='enterprise')
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
