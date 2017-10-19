@@ -92,6 +92,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
+    @property
+    def token(self):
+        """
+        User auth token
+        """
+        return self.auth_token.key
+
     def set_permissions_from_plan(self, plan_name):
         """
         Convert plan to django permissions
