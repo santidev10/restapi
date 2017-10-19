@@ -3,6 +3,7 @@ Channel api views module
 """
 from copy import deepcopy
 import re
+from time import time
 
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
@@ -107,6 +108,7 @@ class ChannelListApiView(APIView):
                 return Response(empty_response)
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
+            query_params.update(timestamp=str(time.time()))
 
         # make call
         connector = Connector()
