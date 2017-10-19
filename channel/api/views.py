@@ -66,6 +66,17 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
         """
         Get procedure
         """
+        flat = query_params.get("flat", "0")
+        if flat == "0":
+            empty_response = {
+                "max_page": 1,
+                "items_count": 0,
+                "items": [],
+                "current_page": 1,
+            }
+        else:
+            empty_response = []
+
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
@@ -79,12 +90,6 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             # obtain channels ids
             channels_ids = segment.get_related_ids()
             if not channels_ids:
-                empty_response = {
-                    "max_page": 1,
-                    "items_count": 0,
-                    "items": [],
-                    "current_page": 1,
-                }
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
@@ -102,12 +107,6 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
             channels_ids = user.channels.values_list('channel_id', flat=True)
             if not channels_ids:
-                empty_response = {
-                    "max_page": 1,
-                    "items_count": 0,
-                    "items": [],
-                    "current_page": 1,
-                }
                 return Response(empty_response)
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
