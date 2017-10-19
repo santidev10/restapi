@@ -3,7 +3,7 @@ Channel api views module
 """
 from copy import deepcopy
 import re
-from time import time
+import time
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
