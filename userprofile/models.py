@@ -105,7 +105,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         self.set_permissions_from_node(plan.permissions)
 
     def set_permissions_from_node(self, node, path=''):
-        self.temp_content_type = ContentType.objects.get_for_model(Plan)
+        self.content_type = ContentType.objects.get_for_model(Plan)
         for key, value in node.items():
             if len(path) > 0:
                 new_path = path + '_' + key
@@ -202,7 +202,7 @@ class Plan(models.Model):
     @staticmethod
     def load_defaults():
         Plan.objects.all().delete()
-        
+
         for key, value in Plan.plan_preset.items():
             Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
 
