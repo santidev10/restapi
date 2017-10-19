@@ -2,6 +2,8 @@
 Channel api views module
 """
 from copy import deepcopy
+import re
+from time import time
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
@@ -112,6 +114,7 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
                 return Response(empty_response)
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
+            query_params.update(timestamp=str(time.time()))
 
         if not request.user.has_perm('userprofile.channel_audience'):
             query_params.update(verified='0')
