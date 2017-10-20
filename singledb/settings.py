@@ -72,7 +72,6 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__thirty_days_views",
     "channel__thumbnail_image_url",
     "channel__title",
-    "channel__top_language",
     "channel__has_audience",
     "channel__views_per_video",
 )
