@@ -115,8 +115,7 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
             query_params.update(timestamp=str(time.time()))
-
-        if not request.user.has_perm('userprofile.channel_audience'):
+        elif not request.user.has_perm('userprofile.channel_audience'):
             query_params.update(verified='0')
 
         # make call
