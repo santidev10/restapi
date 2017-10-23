@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
+from oauth2client.client import HttpAccessTokenRefreshError
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
 from aw_reporting.benchmark import ChartsHandler
@@ -870,7 +871,6 @@ class ConnectAWAccountApiView(APIView):
 
             # -- end of get refresh token
             # save mcc accounts
-            from oauth2client.client import HttpAccessTokenRefreshError
             try:
                 customers = get_customers(
                     connection.refresh_token,
