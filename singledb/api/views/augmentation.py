@@ -13,6 +13,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDa
 
 
 class AugmentationChannelListApiView(APIView):
+    permission_classes = tuple()
     connector = Connector()
     values_to_keys = defaultdict(set)
 
@@ -56,6 +57,7 @@ class AugmentationChannelListApiView(APIView):
         query_params._mutable = True
         query_params['page'] = 1
         query_params['limit'] = 5000
+        query_params['min_subscribers_yt'] = 10000
         query_params['fields'] = 'id,raw_genre'
         yield from self.gen_channel_from(query_params)
 
