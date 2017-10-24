@@ -41,6 +41,9 @@ class DynamicModelViewMixin(object):
 
 
 class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
+    """
+    Segment list/create endpoint
+    """
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
 
@@ -66,26 +69,29 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         """
         Sort queryset
         """
-        available_sorts = {
+        allowed_sorts = {
             "title",
-        }
-        available_reverse_sorts = {
             "videos",
             "engage_rate",
             "sentiment",
             "created_at",
         }
+
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
         if self.model.segment_type == 'channel':
-            available_reverse_sorts.add('channels')
-
+            allowed_sorts.add('channels')
         sort = self.request.query_params.get("sort_by")
-
-        if sort in available_sorts:
-            queryset = queryset.order_by(sort)
-
-        elif sort in available_reverse_sorts:
-            queryset = queryset.order_by("-{}".format(sort))
-
+        if sort in allowed_sorts:
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sort))
         return queryset
 
     def get_queryset(self):
