@@ -146,6 +146,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "last_video_published_at",
     "updated_at",
     "score",
+    "score_total",
     "channel_group",
     "audience",
     "traffic_sources",

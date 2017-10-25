@@ -171,6 +171,11 @@ class ChannelListApiView(APIView):
             regexp = '|'.join(['.*' + c + '.*' for c in category.split(',')])
             query_params.update(category__regexp=regexp)
 
+        # verified
+        verified = query_params.pop('verified', [None])[0]
+        if verified is not None:
+            query_params.update(has_audience__term="false" if verified == "0" else "true")
+
         # search
         make('term', 'text_search', 'search')
         # <--- filters
@@ -213,8 +218,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
     connector_put = Connector().put_channel
 
     def put(self, *args, **kwargs):
-        if "channel_group" in self.request.data \
-            and self.request.data["channel_group"] not in ["influencers","new","media","brands"]:
+        groups = ["influencers", "new", "media", "brands"]
+        if "channel_group" in self.request.data and self.request.data["channel_group"] not in groups:
                 return Response(status=HTTP_400_BAD_REQUEST)
         return super().put(*args, **kwargs)
 
