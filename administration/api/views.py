@@ -51,7 +51,26 @@ class UserListAdminApiView(ListAPIView):
         """
         Exclude requested user from queryset
         """
-        return get_user_model().objects.exclude(id=self.request.user.id)
+        queryset = get_user_model().objects.exclude(id=self.request.user.id)
+        queryset = self.do_filters(queryset)
+        queryset = self.do_sorts(queryset)
+        return queryset
+
+    def do_filters(self, queryset):
+        search = self.request.query_params.get("search")
+        if search:
+            search = search.strip()
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(company__icontains=search) |
+                Q(phone_number__icontains=search)
+            ).distinct()
+        return queryset
+
+    def do_sorts(self, queryset):
+        return queryset
 
 
 class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
