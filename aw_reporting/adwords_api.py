@@ -98,7 +98,7 @@ def optimize_keyword(query, client=None, request_type='IDEAS'):
             {
                 'xsi_type': 'SearchVolumeSearchParameter',
                 'operation': {
-                    'minimum': 100000
+                    'minimum': 1000  # SAAS-1256
                 }
 
             }
