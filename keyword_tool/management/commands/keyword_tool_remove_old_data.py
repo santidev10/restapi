@@ -17,7 +17,7 @@ class Command(BaseCommand):
         self.delete_by_volume()
 
     def delete_by_volume(self):
-        KeyWord.objects.filter(search_volume__lte=100000).delete()
+        KeyWord.objects.filter(search_volume__lte=1000).delete()
 
     def delete_by_stats(self, expired_date):
         KeyWord.objects.filter(
