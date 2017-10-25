@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer, UserUpdateSerializer
 from administration.api.serializers import UserSerializer
+from userprofile.api.serializers import UserSerializer as RegularUserSerializer
 from administration.models import UserAction
 from userprofile.api.serializers import PlanSerializer
 from userprofile.models import UserProfile, Plan
@@ -82,25 +83,20 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
 
 class AuthAsAUserAdminApiView(APIView):
     """
-    Login as a user
+    Login as a user endpoint
     """
     permission_classes = (IsAdminUser, )
 
-    def get(self, request, pk, **_):
+    def get(self, request, pk):
         """
         Get the selected user and return its data
-        :param request:
-        :param pk: uid of the user
-        :param args:
-        :param kwargs:
-        :return: user's data(including the token key)
         """
         try:
             user = UserProfile.objects.get(pk=pk)
         except UserProfile.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         Token.objects.get_or_create(user=user)
-        response_data = UserSerializer(user).data
+        response_data = RegularUserSerializer(user).data
         return Response(response_data)
 
 
