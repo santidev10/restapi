@@ -17,5 +17,5 @@ urlpatterns = [
     url(r'^channels/filters/$', ChannelListFiltersApiView.as_view(), name='channel_filters'),
     url(r'^channels/(?P<pk>[\w-]+)/$', ChannelRetrieveUpdateApiView.as_view(), name='channel'),
     url(r'^channel_set/$', ChannelSetApiView.as_view(), name="channel_set"),
-    url(r'^channels/video_by_keyword/(?P<keyword>[\w|\W]+)', ChannelsVideosByKeywords.as_view(), name='channel_keyword_videos'),
+    url(r'^channels/video_by_keyword/(?P<keyword>[\w|\W]+)/', ChannelsVideosByKeywords.as_view(), name='channel_keyword_videos'),
 ]
