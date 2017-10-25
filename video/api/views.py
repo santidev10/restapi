@@ -100,7 +100,6 @@ class VideoListApiView(APIView):
         self.adapt_response_data(response_data)
         return Response(response_data)
 
-
     @staticmethod
     def adapt_query_params(query_params):
         """
@@ -185,12 +184,15 @@ class VideoListApiView(APIView):
             if upload_at != "0":
                 try:
                     date = parse(upload_at).date()
+                    query_params.update(youtube_published_at__range="{},".format(date.isoformat()))
                 except (TypeError, ValueError):
                     pass
-                query_params.update(youtube_published_at__range="{},".format(date.isoformat()))
             elif upload_at == "0":
                 now = timezone.now()
-                start = now - timedelta(hours=now.hour, minutes=now.minute, seconds=now.second, microseconds=now.microsecond)
+                start = now - timedelta(hours=now.hour,
+                                        minutes=now.minute,
+                                        seconds=now.second,
+                                        microseconds=now.microsecond)
                 end = start + timedelta(hours=23, minutes=59, seconds=59, microseconds=999999)
                 query_params.update(youtube_published_at__range="{},{}".format(start.isoformat(), end.isoformat()))
 
@@ -198,6 +200,11 @@ class VideoListApiView(APIView):
         trending = query_params.pop('trending', [None])[0]
         if trending is not None and trending != 'all':
             query_params.update(trends_list__term=trending)
+
+        # verified
+        verified = query_params.pop('verified', [None])[0]
+        if verified is not None:
+            query_params.update(has_audience__term="false" if verified == "0" else "true")
         # <--- filters
 
     @staticmethod
@@ -235,7 +242,6 @@ class VideoListApiView(APIView):
             # channel properties
             channel_item = {}
             for key in list(item.keys()):
-                print(key)
                 if key.startswith('channel__'):
                     channel_item[key[9:]] = item[key]
                     del item[key]
