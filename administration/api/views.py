@@ -6,7 +6,8 @@ from functools import reduce
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Concat
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView, RetrieveUpdateDestroyAPIView
@@ -61,9 +62,9 @@ class UserListAdminApiView(ListAPIView):
         search = self.request.query_params.get("search")
         if search:
             search = search.strip()
+            queryset.annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
             queryset = queryset.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
+                Q(full_name__icontains=search) |
                 Q(email__icontains=search) |
                 Q(company__icontains=search) |
                 Q(phone_number__icontains=search)
