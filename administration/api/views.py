@@ -6,7 +6,8 @@ from functools import reduce
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Concat
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView, RetrieveUpdateDestroyAPIView
@@ -19,6 +20,7 @@ from rest_framework.views import APIView
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer, UserUpdateSerializer
 from administration.api.serializers import UserSerializer
+from userprofile.api.serializers import UserSerializer as RegularUserSerializer
 from administration.models import UserAction
 from userprofile.api.serializers import PlanSerializer
 from userprofile.models import UserProfile, Plan
@@ -51,7 +53,26 @@ class UserListAdminApiView(ListAPIView):
         """
         Exclude requested user from queryset
         """
-        return get_user_model().objects.exclude(id=self.request.user.id)
+        queryset = get_user_model().objects.exclude(id=self.request.user.id)
+        queryset = self.do_filters(queryset)
+        queryset = self.do_sorts(queryset)
+        return queryset
+
+    def do_filters(self, queryset):
+        search = self.request.query_params.get("search")
+        if search:
+            search = search.strip()
+            queryset = queryset.annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
+            queryset = queryset.filter(
+                Q(full_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(company__icontains=search) |
+                Q(phone_number__icontains=search)
+            ).distinct()
+        return queryset
+
+    def do_sorts(self, queryset):
+        return queryset
 
 
 class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
@@ -82,25 +103,20 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
 
 class AuthAsAUserAdminApiView(APIView):
     """
-    Login as a user
+    Login as a user endpoint
     """
     permission_classes = (IsAdminUser, )
 
-    def get(self, request, pk, **_):
+    def get(self, request, pk):
         """
         Get the selected user and return its data
-        :param request:
-        :param pk: uid of the user
-        :param args:
-        :param kwargs:
-        :return: user's data(including the token key)
         """
         try:
             user = UserProfile.objects.get(pk=pk)
         except UserProfile.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         Token.objects.get_or_create(user=user)
-        response_data = UserSerializer(user).data
+        response_data = RegularUserSerializer(user).data
         return Response(response_data)
 
 

@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
+from oauth2client.client import HttpAccessTokenRefreshError
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
     CampaignListSerializer
 from aw_reporting.benchmark import ChartsHandler
@@ -881,41 +882,46 @@ class ConnectAWAccountApiView(APIView):
                     fault_string = "AdWords account does not exist"
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data=dict(error=fault_string))
-
-            mcc_accounts = list(filter(
-                lambda i: i['canManageClients'] and not i['testAccount'],
-                customers,
-            ))
-            if not mcc_accounts:
-                return Response(
-                    status=HTTP_400_BAD_REQUEST,
-                    data=dict(error=self.no_mcc_error)
-                )
-            with transaction.atomic():
-                relation = AWConnectionToUserRelation.objects.create(
-                    user=self.request.user,
-                    connection=connection,
-                )
-
-                for ac_data in mcc_accounts:
-                    data = dict(
-                        id=ac_data['customerId'],
-                        name=ac_data['descriptiveName'],
-                        currency_code=ac_data['currencyCode'],
-                        timezone=ac_data['dateTimeZone'],
-                        can_manage_clients=ac_data['canManageClients'],
-                        is_test_account=ac_data['testAccount'],
+            except HttpAccessTokenRefreshError as e:
+                ex_token_error = "Token has been expired or revoked"
+                if ex_token_error in str(e):
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data=dict(error=ex_token_error))
+            else:
+                mcc_accounts = list(filter(
+                    lambda i: i['canManageClients'] and not i['testAccount'],
+                    customers,
+                ))
+                if not mcc_accounts:
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST,
+                        data=dict(error=self.no_mcc_error)
                     )
-                    obj, _ = Account.objects.get_or_create(
-                        id=data['id'], defaults=data,
+                with transaction.atomic():
+                    relation = AWConnectionToUserRelation.objects.create(
+                        user=self.request.user,
+                        connection=connection,
                     )
-                    AWAccountPermission.objects.get_or_create(
-                        aw_connection=connection, account=obj,
-                    )
-            upload_initial_aw_data.delay(connection.email)
 
-            response = AWAccountConnectionRelationsSerializer(relation).data
-            return Response(data=response)
+                    for ac_data in mcc_accounts:
+                        data = dict(
+                            id=ac_data['customerId'],
+                            name=ac_data['descriptiveName'],
+                            currency_code=ac_data['currencyCode'],
+                            timezone=ac_data['dateTimeZone'],
+                            can_manage_clients=ac_data['canManageClients'],
+                            is_test_account=ac_data['testAccount'],
+                        )
+                        obj, _ = Account.objects.get_or_create(
+                            id=data['id'], defaults=data,
+                        )
+                        AWAccountPermission.objects.get_or_create(
+                            aw_connection=connection, account=obj,
+                        )
+                upload_initial_aw_data.delay(connection.email)
+
+                response = AWAccountConnectionRelationsSerializer(relation).data
+                return Response(data=response)
 
     def get_flow(self, redirect_url):
         aw_settings = load_web_app_settings()

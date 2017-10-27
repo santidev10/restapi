@@ -1,10 +1,10 @@
 """
 Channel api views module
 """
-from copy import deepcopy
-import re
 import time
+from copy import deepcopy
 
+import requests
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
@@ -15,14 +15,16 @@ from rest_framework.status import HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
 from segment.models import SegmentChannel
-from userprofile.models import UserChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
+from singledb.connector import IQApiConnector as IQConnector
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from singledb.connector import IQApiConnector as IQConnector
+from userprofile.models import UserChannel
 from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+
 # pylint: enable=import-error
 
 
@@ -181,5 +183,40 @@ class ChannelAuthenticationApiView(APIView):
                 user_channels = user.channels.values_list('channel_id', flat=True)
                 if channel_id not in user_channels:
                     UserChannel.objects.create(channel_id=channel_id, user=user)
-
+                # set user avatar
+                self.set_user_avatar(data.get("access_token"))
         return Response()
+
+    def set_user_avatar(self, access_token):
+        """
+        Obtain user avatar from google+
+        """
+        token_info_url = "https://www.googleapis.com/oauth2/v3/tokeninfo" \
+                         "?access_token={}".format(access_token)
+        # --> obtain token info
+        try:
+            response = requests.get(token_info_url)
+        except Exception:
+            return
+        if response.status_code != 200:
+            return
+        # <-- obtain token info
+        # --> obtain user from google +
+        response = response.json()
+        user_google_id = response.get("sub")
+        google_plus_api_url = "https://www.googleapis.com/plus/v1/people/{}/" \
+                      "?access_token={}".format(user_google_id, access_token)
+        try:
+            response = requests.get(google_plus_api_url)
+        except Exception:
+            return
+        extra_details = response.json()
+        # <-- obtain user from google +
+        # --> set user avatar
+        if not extra_details.get("image", {}).get("isDefault", True):
+            profile_image_url = extra_details.get(
+                "image", {}).get("url", "").replace("sz=50", "sz=250")
+            self.request.user.profile_image_url = profile_image_url
+            self.request.user.save()
+        # <-- set user avatar
+        return

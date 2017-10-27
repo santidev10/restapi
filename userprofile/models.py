@@ -4,10 +4,10 @@ Userprofile models module
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
-from django.contrib.postgres.fields import JSONField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -51,6 +51,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
+    profile_image_url = models.URLField(null=True, blank=True)
 
     plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
 

@@ -48,14 +48,32 @@ class OptimizeQueryApiView(ListAPIView):
     pagination_class = KWPaginator
 
     def sort(self, queryset):
-        query_params = self.request.query_params
+        """
+        Apply sorts
+        """
+        allowed_sorts = [
+            "search_volume",
+            "ctr",
+            "ctr_v",
+            "cpv",
+            "view_rate",
+            "competition",
+            "average_cpc"
+        ]
 
-        if 'sort_by' in query_params and query_params['sort_by'] in (
-                'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate',
-                'competition', 'average_cpc'):
-            sort_by = query_params['sort_by']
-        else:
-            sort_by = 'search_volume'
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
+
+        sorting = self.request.query_params.get("sort_by")
+        if sorting not in allowed_sorts:
+            return queryset
 
         # TODO uncomment when adwords stats will be created is saas
         # extra_selects = dict(
@@ -96,26 +114,27 @@ class OptimizeQueryApiView(ListAPIView):
         #         }
         #     )
 
-        if sort_by == 'search_volume':
+        if sorting == 'search_volume':
             queryset = queryset.annotate(
                 search_volume_not_null=Coalesce('search_volume', 0)
             )
-            sort_by = 'search_volume_not_null'
+            sorting = 'search_volume_not_null'
 
-        if sort_by == 'average_cpc':
+        if sorting == 'average_cpc':
             queryset = queryset.annotate(
                 average_cpc_not_null=Coalesce('average_cpc', 0)
             )
-            sort_by = 'average_cpc_not_null'
+            sorting = 'average_cpc_not_null'
 
-        if sort_by == 'competition':
+        if sorting == 'competition':
             queryset = queryset.annotate(
                 competition_not_null=Coalesce('competition', 0)
             )
-            sort_by = 'competition_not_null'
+            sorting = 'competition_not_null'
 
-        if sort_by:
-            queryset = queryset.order_by("-{}".format(sort_by))
+        if sorting:
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sorting))
 
         return queryset
 
@@ -310,25 +329,45 @@ class ListParentApiView(APIView):
         return queryset
 
     def sort_list(self, queryset):
-        sort_by = self.request.query_params.get('sort_by') or 'average_volume'
+        """
+        Sorting procedure
+        """
+        allowed_sorts = [
+            "competition",
+            "average_cpc",
+            "average_volume"
+        ]
 
-        if sort_by == 'competition':
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
+        sort_by = self.request.query_params.get("sort_by")
+        if sort_by not in allowed_sorts:
+            return queryset
+        if sort_by == "competition":
             queryset = queryset.annotate(
-                competition_not_null=Coalesce('competition', 0)
+                competition_not_null=Coalesce("competition", 0)
             )
-            sort_by = 'competition_not_null'
-        elif sort_by == 'average_cpc':
+            sort_by = "competition_not_null"
+        elif sort_by == "average_cpc":
             queryset = queryset.annotate(
-                average_cpc_not_null=Coalesce('average_cpc', 0)
+                average_cpc_not_null=Coalesce("average_cpc", 0)
             )
-            sort_by = 'average_cpc_not_null'
-        elif sort_by == 'average_volume':
+            sort_by = "average_cpc_not_null"
+        elif sort_by == "average_volume":
             queryset = queryset.annotate(
-                average_volume_not_null=Coalesce('average_volume', 0)
+                average_volume_not_null=Coalesce("average_volume", 0)
             )
-            sort_by = 'average_volume_not_null'
+            sort_by = "average_volume_not_null"
         if sort_by:
-            queryset = queryset.order_by("-{}".format(sort_by))
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sort_by))
         return queryset
 
     def filter_list(self, queryset):
