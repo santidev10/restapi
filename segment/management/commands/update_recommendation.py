@@ -42,6 +42,8 @@ class Command(BaseCommand):
                     remote_path = os.path.join(self.remote_dir, item.filename)
                     local_path = os.path.join(tmpdirname, item.filename)
                     sftp.get(remote_path, local_path)
+                    sftp.remove(remote_path)
+
             sftp.close()
             c.close()
             file_list = os.listdir(tmpdirname)
