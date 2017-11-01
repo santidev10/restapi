@@ -171,6 +171,11 @@ class ChannelListApiView(APIView):
             regexp = '|'.join(['.*' + c + '.*' for c in category.split(',')])
             query_params.update(category__regexp=regexp)
 
+        # verified
+        verified = query_params.pop('verified', [None])[0]
+        if verified is not None:
+            query_params.update(has_audience__term="false" if verified == "0" else "true")
+
         # search
         make('term', 'text_search', 'search')
 
