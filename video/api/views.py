@@ -151,8 +151,12 @@ class VideoListApiView(APIView):
         # language
         make('terms', 'lang_code', 'language')
 
-        # search
-        make('term', 'text_search', 'search')
+        # text_search
+        text_search = query_params.pop("text_search", [None])[0]
+        if text_search:
+            words = [s.lower() for s in re.split(r'\s+', text_search)]
+            if words:
+                query_params.update(text_search__term=words)
 
         # channel
         make('terms', 'channel_id', 'channel')
