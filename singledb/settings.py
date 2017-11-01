@@ -77,7 +77,6 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
 )
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
-    "brand",
     "brand_safety",
     "category",
     "comments",
@@ -137,7 +136,6 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "safety_chart_data",
     "top_keywords",
     "emails",
-    "brand",
     "brand_safety",
     "performance",
     "preferred",
