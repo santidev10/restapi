@@ -173,6 +173,9 @@ class ChannelListApiView(APIView):
 
         # search
         make('term', 'text_search', 'search')
+
+        # channel_group
+        make('term', 'channel_group')
         # <--- filters
 
     @staticmethod
@@ -213,9 +216,10 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
     connector_put = Connector().put_channel
 
     def put(self, *args, **kwargs):
-        if "channel_group" in self.request.data \
-            and self.request.data["channel_group"] not in ["influencers","new","media","brands"]:
-                return Response(status=HTTP_400_BAD_REQUEST)
+        data = self.request.data
+        permitted_groups = ["influencers", "new", "media", "brands"]
+        if "channel_group" in data and data["channel_group"] not in permitted_groups:
+            return Response(status=HTTP_400_BAD_REQUEST)
         return super().put(*args, **kwargs)
 
     def get(self, *args, **kwargs):
