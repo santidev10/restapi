@@ -176,8 +176,12 @@ class ChannelListApiView(APIView):
         if verified is not None:
             query_params.update(has_audience__term="false" if verified == "0" else "true")
 
-        # search
-        make('term', 'text_search', 'search')
+        # text_search
+        text_search = query_params.pop("text_search", [None])[0]
+        if text_search:
+            words = [s.lower() for s in re.split(r'\s+', text_search)]
+            if words:
+                query_params.update(text_search__term=words)
 
         # channel_group
         make('term', 'channel_group')
