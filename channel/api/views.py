@@ -229,7 +229,9 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
         permitted_groups = ["influencers", "new", "media", "brands"]
         if "channel_group" in data and data["channel_group"] not in permitted_groups:
             return Response(status=HTTP_400_BAD_REQUEST)
-        return super().put(*args, **kwargs)
+        response = super().put(*args, **kwargs)
+        ChannelListApiView.adapt_response_data({'items': [response.data]})
+        return response
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)
