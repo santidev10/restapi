@@ -50,6 +50,8 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
                 'last_name',
                 'is_staff',
                 'has_aw_accounts',
+                'profile_image_url',
+                'plan',
             }
         )
 

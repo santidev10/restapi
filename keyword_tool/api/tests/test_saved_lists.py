@@ -62,6 +62,8 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'average_cpv',
                 'video_view_rate',
                 'ctr_v',
+                'cum_average_volume_per_kw_data',
+                'cum_average_volume_data',
             }
         )
         self.assertEqual(returned_list['id'], my_list.id)
@@ -143,6 +145,8 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'average_cpv',
                 'video_view_rate',
                 'ctr_v',
+                'cum_average_volume_per_kw_data',
+                'cum_average_volume_data',
             }
         )
 
