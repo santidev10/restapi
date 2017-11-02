@@ -24,7 +24,7 @@ WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
-                 r"(?:/watch\?v=|/video/|/)([^\s&\?]+)$"
+                 r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
     r"(https?://\S+)|(\{lpurl\}\S*)",
