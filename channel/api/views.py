@@ -2,9 +2,12 @@
 Channel api views module
 """
 from copy import deepcopy
+from datetime import datetime
+from dateutil import parser
 import re
 
 from django.db.models import Q
+from django.http import QueryDict
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
@@ -235,6 +238,32 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)
+        pk = kwargs.get('pk')
+        if pk:
+            query = QueryDict("channel_id__term={}"
+                              "&sort=youtube_published_at:desc"
+                              "&size=50"
+                              "&fields=video_id"
+                                     ",title"
+                                     ",thumbnail_image_url"
+                                     ",views"
+                                     ",youtube_published_at"
+                                     ",likes"
+                                     ",comments".format(pk))
+            videos = Connector().get_video_list(query)['items']
+            now = datetime.now()
+            average_views = 0
+            if len(videos):
+                average_views = round(sum([v.get("views", 0) for v in videos]) / len(videos))
+            for v in videos:
+                v["id"] = v.pop("video_id")
+                youtube_published_at = v.pop("youtube_published_at")
+                if youtube_published_at:
+                    v['days'] = (now - parser.parse(youtube_published_at)).days
+            response.data["performance"] = {
+                'average_views': average_views,
+                'videos': videos,
+            }
         ChannelListApiView.adapt_response_data({'items': [response.data]})
         return response
 
