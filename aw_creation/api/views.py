@@ -2394,7 +2394,12 @@ class UserListsImportMixin:
 
 class TopicToolListApiView(ListAPIView):
     serializer_class = TopicHierarchySerializer
-    queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+
+    def get_queryset(self):
+        queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        return queryset
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
