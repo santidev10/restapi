@@ -130,7 +130,6 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "tags",
     "social_stats",
     "social_links",
-    "youtube_keywords",
     "chart_data",
     "safety_chart_data",
     "top_keywords",
