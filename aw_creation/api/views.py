@@ -232,7 +232,7 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
-    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/)([^\s&/\?]+)(?:.*)$"
+    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
     def get(self, request, url, **_):
         match = re.match(self.url_regex, url)
