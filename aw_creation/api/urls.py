@@ -129,6 +129,9 @@ urlpatterns = [
     url(r'^setup_topic_tool_export/$',
         views.TopicToolListExportApiView.as_view(),
         name="setup_topic_tool_export"),
+    url(r'^topic_list/$',
+        views.TopicToolFlatListApiView.as_view(),
+        name="topic_list"),
 
     url(r'^setup_audience_tool/$',
         views.AudienceToolListApiView.as_view(),
@@ -136,6 +139,9 @@ urlpatterns = [
     url(r'^setup_audience_tool_export/$',
         views.AudienceToolListExportApiView.as_view(),
         name="setup_audience_tool_export"),
+    url(r'^audience_list/$',
+        views.AudienceFlatListApiView.as_view(),
+        name="flat_audience_list"),
 
     # aws script endpoints
     url(r'^aw_creation_changed_accounts_list/(?P<manager_id>\d+)/$',

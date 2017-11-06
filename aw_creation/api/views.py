@@ -2403,6 +2403,18 @@ class TopicToolListApiView(ListAPIView):
         return queryset
 
 
+class TopicToolFlatListApiView(ListAPIView):
+    serializer_class = TopicHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Topic.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
+
+
 class TopicToolListExportApiView(TopicToolListApiView):
     permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id')
@@ -2453,6 +2465,18 @@ class AudienceToolListApiView(ListAPIView):
         parent__isnull=True,
         type__in=[Audience.AFFINITY_TYPE, Audience.IN_MARKET_TYPE],
     ).order_by('type', 'name')
+
+
+class AudienceFlatListApiView(ListAPIView):
+    serializer_class = AudienceHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Audience.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):
