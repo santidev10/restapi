@@ -2414,6 +2414,7 @@ class TopicToolFlatListApiView(ListAPIView):
             queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
         return queryset
 
+
 class TopicToolListExportApiView(TopicToolListApiView):
     permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id')
@@ -2476,6 +2477,7 @@ class AudienceFlatListApiView(ListAPIView):
         if 'titles' in self.request.query_params:
             queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
         return queryset
+
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):
     permission_classes = (IsAuthQueryTokenPermission,)
