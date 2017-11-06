@@ -2398,6 +2398,7 @@ class TopicToolListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
         if 'ids' in self.request.query_params:
+            queryset = Topic.objects.all()
             queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
         return queryset
 
