@@ -128,8 +128,11 @@ class SavedListNameSerializer(SavedListCreateSerializer):
 
     @staticmethod
     def get_owner(obj):
-        user = UserProfile.objects.get(email=obj.user_email)
-        return "{} {}".format(user.first_name, user.last_name)
+        try:
+            user = UserProfile.objects.get(email=obj.user_email)
+            return "{} {}".format(user.first_name, user.last_name)
+        except UserProfile.DoesNotExist:
+            return "Owner not found or deleted"
 
     def get_is_owner(self, obj):
         return obj.user_email == self.request.user.email

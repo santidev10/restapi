@@ -232,7 +232,7 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
-    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/)([^\s&]+)$"
+    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
     def get(self, request, url, **_):
         match = re.match(self.url_regex, url)
@@ -2394,7 +2394,25 @@ class UserListsImportMixin:
 
 class TopicToolListApiView(ListAPIView):
     serializer_class = TopicHierarchySerializer
-    queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+
+    def get_queryset(self):
+        queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+        if 'ids' in self.request.query_params:
+            queryset = Topic.objects.all()
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        return queryset
+
+
+class TopicToolFlatListApiView(ListAPIView):
+    serializer_class = TopicHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Topic.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
@@ -2447,6 +2465,18 @@ class AudienceToolListApiView(ListAPIView):
         parent__isnull=True,
         type__in=[Audience.AFFINITY_TYPE, Audience.IN_MARKET_TYPE],
     ).order_by('type', 'name')
+
+
+class AudienceFlatListApiView(ListAPIView):
+    serializer_class = AudienceHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Audience.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):

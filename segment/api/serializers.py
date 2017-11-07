@@ -60,7 +60,7 @@ class SegmentSerializer(ModelSerializer):
         """
         if obj.owner:
             return obj.owner.get_full_name()
-        return
+        return "Owner not found or deleted"
 
     def validate(self, data):
         """

@@ -213,6 +213,11 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
+    def get_highlights_videos(self, query_params):
+        endpoint = "highlights/videos/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL
 
