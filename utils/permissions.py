@@ -17,8 +17,7 @@ class OnlyAdminUserOrSubscriber(permissions.BasePermission):
         """
         Check permission
         """
-        return request.user.is_authenticated() and (
-            request.user.is_staff or request.user.has_subscription)
+        return request.user.is_authenticated() and request.user.is_staff
 
 
 class IsAuthQueryTokenPermission(permissions.BasePermission):
