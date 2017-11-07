@@ -9,6 +9,18 @@ class OnlyAdminUserCanCreateUpdateDelete(permissions.BasePermission):
         return True
 
 
+class OnlyAdminUserOrSubscriber(permissions.BasePermission):
+    """
+    Allow to perform action only for admin or subscribed user
+    """
+    def has_permission(self, request, view):
+        """
+        Check permission
+        """
+        return request.user.is_authenticated() and (
+            request.user.is_staff or request.user.has_subscription)
+
+
 class IsAuthQueryTokenPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
