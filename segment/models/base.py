@@ -94,6 +94,8 @@ class BaseSegment(Timestampable):
 
     @task
     def update_statistics(self):
+        return "Disabled"
+        # FIXME: need to adaopt to cassandra and enable this method
         data = self.obtain_singledb_data()
         # just return on any fail
         if data is None:
