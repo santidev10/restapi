@@ -1,10 +1,12 @@
+"""
+Segment api serializers module
+"""
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
-from segment.models import SegmentChannel
-from segment.models import get_segment_model_by_type
+from segment.models.utils import count_segment_adwords_statistics
 
 
 class SegmentSerializer(ModelSerializer):
@@ -12,6 +14,7 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
+    statistics = SerializerMethodField()
 
     class Meta:
         model = None
@@ -20,7 +23,7 @@ class SegmentSerializer(ModelSerializer):
                   'segment_type',
                   'category',
                   'statistics',
-                  'mini_dash_data',
+                  # 'mini_dash_data',   #Disabled by issuse SAAS-1172
                   'owner',
                   'created_at',
                   'is_editable',
@@ -57,7 +60,7 @@ class SegmentSerializer(ModelSerializer):
         """
         if obj.owner:
             return obj.owner.get_full_name()
-        return
+        return "Owner not found or deleted"
 
     def validate(self, data):
         """
@@ -77,10 +80,10 @@ class SegmentSerializer(ModelSerializer):
             if not segment_category:
                 raise ValidationError("category: value is required")
 
-        if not user.is_staff and segment_category != "private":
+        if not user.is_staff and segment_category and segment_category != "private":
             raise ValidationError("Not valid category. Options are: private")
 
-        if segment_category not in available_categories:
+        if segment_category and segment_category not in available_categories:
             raise ValidationError("Not valid category. Options are: {}".format(", ".join(available_categories)))
 
         return data
@@ -91,4 +94,18 @@ class SegmentSerializer(ModelSerializer):
             segment.add_related_ids(self.ids_to_add)
             segment.delete_related_ids(self.ids_to_delete)
             segment.update_statistics(segment)
+            segment.sync_recommend_channels(self.ids_to_add)
         return segment
+
+    def get_statistics(self, instance):
+        """
+        Prepare segment statistics
+        """
+        # prepare base statistics
+        base_statistics = instance.statistics
+        # prepare adwords statistics
+        adwords_statistics = count_segment_adwords_statistics(
+            instance, **self.context)
+        # finalize response
+        base_statistics.update(adwords_statistics)
+        return base_statistics

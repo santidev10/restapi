@@ -402,6 +402,7 @@ class PerformanceAccountCampaignsListApiView:
                             dict(id=a.id, name=a.name, status=a.status)
                             for a in c.children
                         ],
+                        campaign_creation_id=c.id,
                     )
                     for c in account.children
                 ]
@@ -643,6 +644,20 @@ class PerformanceTargetingReportAPIView:
             else:
                 return original_method(view, targeting, account)
 
+        return method
+
+
+class PerformanceTargetingItemAPIView:
+
+    @staticmethod
+    def update(original_method):
+        def method(view, request, **kwargs):
+            ad_group_id = kwargs["ad_group_id"]
+            if DEMO_ACCOUNT_ID in ad_group_id:
+                return Response(data=DEMO_READ_ONLY,
+                                status=HTTP_403_FORBIDDEN)
+            else:
+                return original_method(view, request, **kwargs)
         return method
 
 

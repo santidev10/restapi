@@ -12,28 +12,30 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword
-from keyword_tool.api.utils import get_keywords_aw_stats, \
-    get_keywords_aw_top_bottom_stats
-from keyword_tool.models import Query, ViralKeywords
+from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
+from keyword_tool.tasks import update_kw_list_stats
+from keyword_tool.models import Query, KeywordsList, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.csv_export import list_export
-from utils.permissions import OnlyAdminUserOrSubscriber
 from .serializers import *
+from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
 
 logger = logging.getLogger(__name__)
 
 
 class InterestsApiView(ListAPIView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_classes = tuple()
     serializer_class = InterestsSerializer
-    queryset = Interest.objects.all().order_by('name')
 
+    def get_queryset(self):
+        queryset = Interest.objects.all().order_by('name')
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        return queryset
 
 class PredefinedQueriesApiView(APIView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_classes = tuple()
 
     @staticmethod
     def get(*_):
@@ -45,31 +47,37 @@ class KWPaginator(CustomPageNumberPaginator):
 
 
 class OptimizeQueryApiView(ListAPIView):
-    # TODO Check additional auth logic
-    permission_classes = (OnlyAdminUserOrSubscriber,)
     page_size = 12
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
-    fields_to_export = [
-        "keyword_text",
-        "average_cpc",
-        "competition",
-        "search_volume"
-    ]
-    export_file_title = "keyword"
 
     def sort(self, queryset):
-        if self.request.method == "POST":
-            query_params = self.request.data
-        else:
-            query_params = self.request.query_params
+        """
+        Apply sorts
+        """
+        allowed_sorts = [
+            "search_volume",
+            "ctr",
+            "ctr_v",
+            "cpv",
+            "view_rate",
+            "competition",
+            "average_cpc"
+        ]
 
-        if 'sort_by' in query_params and query_params['sort_by'] in (
-                'search_volume', 'ctr', 'ctr_v', 'cpv', 'view_rate',
-                'competition', 'average_cpc'):
-            sort_by = query_params['sort_by']
-        else:
-            sort_by = 'search_volume'
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
+
+        sorting = self.request.query_params.get("sort_by")
+        if sorting not in allowed_sorts:
+            return queryset
 
         # TODO uncomment when adwords stats will be created is saas
         # extra_selects = dict(
@@ -110,34 +118,32 @@ class OptimizeQueryApiView(ListAPIView):
         #         }
         #     )
 
-        if sort_by == 'search_volume':
+        if sorting == 'search_volume':
             queryset = queryset.annotate(
                 search_volume_not_null=Coalesce('search_volume', 0)
             )
-            sort_by = 'search_volume_not_null'
+            sorting = 'search_volume_not_null'
 
-        if sort_by == 'average_cpc':
+        if sorting == 'average_cpc':
             queryset = queryset.annotate(
                 average_cpc_not_null=Coalesce('average_cpc', 0)
             )
-            sort_by = 'average_cpc_not_null'
+            sorting = 'average_cpc_not_null'
 
-        if sort_by == 'competition':
+        if sorting == 'competition':
             queryset = queryset.annotate(
                 competition_not_null=Coalesce('competition', 0)
             )
-            sort_by = 'competition_not_null'
+            sorting = 'competition_not_null'
 
-        if sort_by:
-            queryset = queryset.order_by("-{}".format(sort_by))
+        if sorting:
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sorting))
 
         return queryset
 
     def filter(self, queryset):
-        if self.request.method == "POST":
-            query_params = self.request.data
-        else:
-            query_params = self.request.query_params
+        query_params = self.request.query_params
 
         for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
@@ -200,23 +206,11 @@ class OptimizeQueryApiView(ListAPIView):
         queryset = self.sort(queryset)
         return queryset
 
-    @list_export
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
-        is_export = self.request.query_params.get("export")
-        if response.status_code == 200 and is_export != "1":
+        if response.status_code == 200:
             self.add_ad_words_data(self.request, response.data['items'])
         return response
-
-    def paginate_queryset(self, queryset):
-        """
-        Processing flat query param
-        """
-        # TODO flat may freeze db
-        flat = self.request.query_params.get("flat")
-        if flat == "1":
-            return None
-        return super(OptimizeQueryApiView, self).paginate_queryset(queryset)
 
     @staticmethod
     def add_ad_words_data(request, items):
@@ -254,7 +248,6 @@ class OptimizeQueryApiView(ListAPIView):
 class KeywordGetApiView(APIView):
     queryset = KeyWord.objects.all()
     serializer_class = KeywordSerializer
-    permission_classes = (OnlyAdminUserOrSubscriber,)
 
     def get(self, *args, **kwargs):
         pk = self.kwargs.get('pk')
@@ -272,7 +265,6 @@ class KeywordGetApiView(APIView):
 
 
 class KeywordsListApiView(OptimizeQueryApiView):
-
     def get_queryset(self):
         queryset = KeyWord.objects.all()
         queryset = self.filter(queryset)
@@ -291,8 +283,6 @@ class ViralKeywordsApiView(OptimizeQueryApiView):
 
 class ListParentApiView(APIView):
     pagination_class = KWPaginator
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
 
     @property
     def paginator(self):
@@ -343,25 +333,45 @@ class ListParentApiView(APIView):
         return queryset
 
     def sort_list(self, queryset):
-        sort_by = self.request.query_params.get('sort_by') or 'average_volume'
+        """
+        Sorting procedure
+        """
+        allowed_sorts = [
+            "competition",
+            "average_cpc",
+            "average_volume"
+        ]
 
-        if sort_by == 'competition':
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
+        sort_by = self.request.query_params.get("sort_by")
+        if sort_by not in allowed_sorts:
+            return queryset
+        if sort_by == "competition":
             queryset = queryset.annotate(
-                competition_not_null=Coalesce('competition', 0)
+                competition_not_null=Coalesce("competition", 0)
             )
-            sort_by = 'competition_not_null'
-        elif sort_by == 'average_cpc':
+            sort_by = "competition_not_null"
+        elif sort_by == "average_cpc":
             queryset = queryset.annotate(
-                average_cpc_not_null=Coalesce('average_cpc', 0)
+                average_cpc_not_null=Coalesce("average_cpc", 0)
             )
-            sort_by = 'average_cpc_not_null'
-        elif sort_by == 'average_volume':
+            sort_by = "average_cpc_not_null"
+        elif sort_by == "average_volume":
             queryset = queryset.annotate(
-                average_volume_not_null=Coalesce('average_volume', 0)
+                average_volume_not_null=Coalesce("average_volume", 0)
             )
-            sort_by = 'average_volume_not_null'
+            sort_by = "average_volume_not_null"
         if sort_by:
-            queryset = queryset.order_by("-{}".format(sort_by))
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sort_by))
         return queryset
 
     def filter_list(self, queryset):
@@ -550,8 +560,6 @@ class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
 
 
 class ListsDuplicateApiView(GenericAPIView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
     def get_queryset(self):
         if self.request.user.is_staff:
             queryset = KeywordsList.objects.all()
@@ -586,8 +594,6 @@ class ListsDuplicateApiView(GenericAPIView):
 
 
 class ViralListBuildView(APIView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
     def post(self, *args, **kwargs):
         uc = dict(self.request.data).get('update_complete')
         if uc:

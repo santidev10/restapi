@@ -7,11 +7,12 @@ from django.db import transaction
 from django.db.models import Avg, Value, Count, Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
     CharField as AggrCharField
+from django.shortcuts import get_object_or_404
 from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse, Http404
 from openpyxl import load_workbook
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveAPIView
+    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
 from utils.api_paginator import CustomPageNumberPaginator
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
@@ -231,7 +232,7 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 
 
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
-    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/)([^\s&]+)$"
+    url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
     def get(self, request, url, **_):
         match = re.match(self.url_regex, url)
@@ -603,12 +604,12 @@ class AccountCreationListApiView(ListAPIView):
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
         if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations"))
+            queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations", distinct=True))
 
             queryset = queryset.annotate(campaigns_count=Case(
                     When(
                         campaign_creations_count=0,
-                        then=Count("account__campaigns"),
+                        then=Count("account__campaigns", distinct=True),
                     ),
                     default="campaign_creations_count",
                     output_field=AggrIntegerField(),
@@ -1318,7 +1319,7 @@ class AccountCreationDuplicateApiView(APIView):
             account_data[f] = getattr(account, f)
         acc_duplicate = AccountCreation.objects.create(**account_data)
 
-        for c in account.campaign_creations.all():
+        for c in account.campaign_creations.filter(is_deleted=False):
             self.duplicate_campaign(acc_duplicate, c, bulk_items)
 
         return acc_duplicate
@@ -1362,7 +1363,7 @@ class AccountCreationDuplicateApiView(APIView):
                 )
             )
 
-        for a in campaign.ad_group_creations.all():
+        for a in campaign.ad_group_creations.filter(is_deleted=False):
             self.duplicate_ad_group(c_duplicate, a, bulk_items)
 
         return c_duplicate
@@ -1384,7 +1385,7 @@ class AccountCreationDuplicateApiView(APIView):
                 )
             )
 
-        for ad in ad_group.ad_creations.all():
+        for ad in ad_group.ad_creations.filter(is_deleted=False):
             self.duplicate_ad(a_duplicate, ad, bulk_items)
 
         return a_duplicate
@@ -1479,8 +1480,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 # <<< Performance
 @demo_view_decorator
-class PerformanceAccountCampaignsListApiView(ListAPIView):
-    serializer_class = CampaignListSerializer
+class PerformanceAccountCampaignsListApiView(APIView):
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1489,6 +1489,22 @@ class PerformanceAccountCampaignsListApiView(ListAPIView):
             account__account_creations__owner=self.request.user,
         ).order_by("name", "id").distinct()
         return queryset
+
+    def get(self, request, pk, **kwargs):
+        try:
+            account_creation = AccountCreation.objects.get(pk=pk, is_deleted=False, owner=self.request.user)
+        except AccountCreation.DoesNotExist:
+            campaign_creation_ids = set()
+        else:
+            campaign_creation_ids = set(
+                account_creation.campaign_creations.filter(
+                    is_deleted=False
+                ).values_list("id", flat=True)
+            )
+
+        queryset = self.get_queryset()
+        serializer = CampaignListSerializer(queryset, many=True, campaign_creation_ids=campaign_creation_ids)
+        return Response(serializer.data)
 
 
 @demo_view_decorator
@@ -2011,12 +2027,26 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
     @staticmethod
     def get_campaigns(item):
+        campaign_creation_ids = set(
+            item.campaign_creations.filter(
+                is_deleted=False
+            ).values_list("id", flat=True)
+        )
+
         rows = Campaign.objects.filter(account__account_creations=item).values(
             "name", "id", "ad_groups__name", "ad_groups__id",
             "status", "ad_groups__status", "start_date", "end_date",
         ).order_by("name", "id", "ad_groups__name", "ad_groups__id")
         campaigns = []
         for row in rows:
+
+            campaign_creation_id = None
+            cid_search = re.match(r"^.*#(\d+)$", row['name'])
+            if cid_search:
+                cid = int(cid_search.group(1))
+                if cid in campaign_creation_ids:
+                    campaign_creation_id = cid
+
             if not campaigns or row['id'] != campaigns[-1]['id']:
                 campaigns.append(
                     dict(
@@ -2026,6 +2056,7 @@ class PerformanceTargetingFiltersAPIView(APIView):
                         end_date=row['end_date'],
                         status=row['status'],
                         ad_groups=[],
+                        campaign_creation_id=campaign_creation_id,
                     )
                 )
             if row['ad_groups__id'] is not None:
@@ -2041,18 +2072,13 @@ class PerformanceTargetingFiltersAPIView(APIView):
     @staticmethod
     def get_static_filters():
         filters = dict(
-            average_cpv=dict(min=0, max=10),
-            average_cpm=dict(min=0, max=100),
-            ctr=dict(min=0, max=10),
-            ctr_v=dict(min=0, max=20),
-            video_view_rate=dict(min=0, max=100),
             targeting=[
                 dict(id=t, name="{}s".format(t.capitalize()))
                 for t in ("channel", "video", "keyword", "topic", "interest")
             ],
             group_by=[
-                dict(id="account", name="All campaigns"),
-                dict(id="campaign", name="Individual by campaign"),
+                dict(id="account", name="All Campaigns"),
+                dict(id="campaign", name="Individual Campaigns"),
             ],
         )
         return filters
@@ -2076,25 +2102,6 @@ class PerformanceTargetingFiltersAPIView(APIView):
 @demo_view_decorator
 class PerformanceTargetingReportAPIView(APIView):
 
-    def get_settings(self):
-        """
-        There might be two ways to set kpi options
-        {"video_view_rate": 30}
-        or {"video_view_rate": {"some_campaign_id": 30, "another_campaign_id": 20}}
-        depend on "group_by" option
-        so we handle both cases
-        :return:
-        """
-        data = self.request.data
-        s = {}
-        for n in ("average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate"):
-            if data.get(n) is not None:
-                if isinstance(data[n], dict):
-                    s[n] = {k: float(v) for k, v in data[n].items()}
-                else:
-                    s[n] = float(data[n])
-        return s
-
     def get_object(self):
         pk = self.kwargs["pk"]
         try:
@@ -2112,10 +2119,35 @@ class PerformanceTargetingReportAPIView(APIView):
                 items.extend(getattr(self, method)(account))
         return items
 
+    def get_negative_targeting_items(self, targeting, account_creation):
+        queryset = TargetingItem.objects.filter(
+            ad_group_creation__campaign_creation__account_creation=account_creation,
+            ad_group_creation__ad_group__isnull=False,
+            type__in=targeting,
+            is_negative=True,
+        )
+        data = self.request.data
+        if data.get("ad_groups"):
+            queryset = queryset.filter(ad_group_creation__ad_group_id__in=data["ad_groups"])
+        if data.get("campaigns"):
+            queryset = queryset.filter(ad_group_creation__ad_group__campaign_id__in=data["campaigns"])
+
+        items = defaultdict(lambda: defaultdict(set))
+        for e in queryset.values("type", "criteria", "ad_group_creation__ad_group_id"):
+            items[
+                e["type"]
+            ][
+                e["ad_group_creation__ad_group_id"]
+            ].add(
+                e["criteria"]
+            )
+        return items
+
     def post(self, request, **_):
         item = self.get_object()
         group_by, targeting = request.data.get("group_by", ""), request.data.get("targeting", [])
         items = self.get_items(targeting, item.account)
+        negative_items = self.get_negative_targeting_items(targeting, item)
 
         reports = []
         if group_by == "campaign":
@@ -2128,27 +2160,6 @@ class PerformanceTargetingReportAPIView(APIView):
         else:
             reports.append(dict(label="All campaigns", items=items, id=None))
 
-        options = self.get_settings()
-
-        # set passed fields
-        def set_item_passes(e):
-            fail_c = 0
-            for n, option_value in options.items():
-                if isinstance(option_value, dict):  # see docstring of the get_settings method
-                    campaign_id = e.get("id") or e.get("campaign", {}).get("id")
-                    option_value = option_value.get(campaign_id)
-
-                value = e[n]
-                if value is not None and option_value is not None:
-                    passes = value >= option_value
-                    e[n] = dict(passes=passes, value=value)
-                    if not passes:
-                        fail_c += 1
-            e["passes"] = not fail_c
-
-        def sort_value(el):
-            return (el["passes"],) + tuple(el[o]["value"] for o in options)
-
         for report in reports:
             # get calculated fields
             stat_fields = BASE_STATS + ("video_impressions",)
@@ -2159,17 +2170,44 @@ class PerformanceTargetingReportAPIView(APIView):
                     if k in stat_fields and v:
                         summary[k] += v
                 dict_calculate_stats(i)
-                set_item_passes(i)
                 del i['video_impressions']
+
+                # add status field
+                targeting_type = i["targeting"].lower()[:-1]
+                ad_group_id = i["ad_group"]["id"]
+                i["is_negative"] = str(i["item"]["id"]) in negative_items[targeting_type][ad_group_id]
+
             dict_calculate_stats(summary)
             del summary['video_impressions']
             report.update(summary)
 
-            set_item_passes(report)
+            report["kpi"] = self.get_kpi_limits(report['items'])
 
-            report["items"] = list(sorted(report["items"], key=sort_value, reverse=True))
+        data = dict(
+            reports=reports,
+        )
+        return Response(data=data)
 
-        return Response(data=reports)
+    @staticmethod
+    def get_kpi_limits(items):
+        kpi = dict(
+            average_cpv=[],
+            average_cpm=[],
+            ctr=[],
+            ctr_v=[],
+            video_view_rate=[],
+        )
+        for item in items:
+            for key, values in kpi.items():
+                value = item[key]
+                if value is not None:
+                    values.append(value)
+
+        kpi_limits = dict()
+        for key, values in kpi.items():
+            kpi_limits[key] = dict(min=min(values) if values else None,
+                                   max=max(values) if values else None)
+        return kpi_limits
 
     def filter_queryset(self, qs):
         data = self.request.data
@@ -2310,6 +2348,26 @@ class PerformanceTargetingReportAPIView(APIView):
         return items
 
 
+@demo_view_decorator
+class PerformanceTargetingItemAPIView(UpdateAPIView):
+    serializer_class = UpdateTargetingDirectionSerializer
+
+    def get_object(self):
+        targeting_type = self.kwargs["targeting"].lower()
+        if targeting_type.endswith("s"):
+            targeting_type = targeting_type[:-1]
+
+        ad_group_creation = get_object_or_404(
+            AdGroupCreation,
+            campaign_creation__account_creation__owner=self.request.user,
+            ad_group_id=self.kwargs["ad_group_id"],
+        )
+        obj = get_object_or_404(
+            TargetingItem, criteria=self.kwargs["criteria"], ad_group_creation=ad_group_creation, type=targeting_type,
+        )
+        return obj
+
+
 class UserListsImportMixin:
 
     @staticmethod
@@ -2336,7 +2394,25 @@ class UserListsImportMixin:
 
 class TopicToolListApiView(ListAPIView):
     serializer_class = TopicHierarchySerializer
-    queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+
+    def get_queryset(self):
+        queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
+        if 'ids' in self.request.query_params:
+            queryset = Topic.objects.all()
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        return queryset
+
+
+class TopicToolFlatListApiView(ListAPIView):
+    serializer_class = TopicHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Topic.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
 
 
 class TopicToolListExportApiView(TopicToolListApiView):
@@ -2389,6 +2465,18 @@ class AudienceToolListApiView(ListAPIView):
         parent__isnull=True,
         type__in=[Audience.AFFINITY_TYPE, Audience.IN_MARKET_TYPE],
     ).order_by('type', 'name')
+
+
+class AudienceFlatListApiView(ListAPIView):
+    serializer_class = AudienceHierarchySerializer
+
+    def get_queryset(self):
+        queryset = Audience.objects.all()
+        if 'ids' in self.request.query_params:
+            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+        if 'titles' in self.request.query_params:
+            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+        return queryset
 
 
 class AudienceToolListExportApiView(TopicToolListExportApiView):

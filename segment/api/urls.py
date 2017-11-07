@@ -6,6 +6,7 @@ from django.conf.urls import url
 from segment.api.views import SegmentDuplicateApiView
 from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
+from segment.api.views import SegmentSuggestedChannelApiView
 from segment.models import SEGMENT_TYPES
 
 
@@ -20,5 +21,8 @@ urlpatterns = [
         name="segment_details"),
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(segment_types),
         SegmentDuplicateApiView.as_view(),
+        name="segment_duplicate"),
+    url(r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
+        SegmentSuggestedChannelApiView.as_view(),
         name="segment_duplicate"),
 ]

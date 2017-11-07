@@ -97,4 +97,4 @@ ENV/
 .idea
 media
 dump.rdb
-iq_errors*
+iq_errors.*

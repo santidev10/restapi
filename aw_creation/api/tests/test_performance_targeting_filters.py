@@ -44,7 +44,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 'start_date', 'end_date', 'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm',
                 'targeting', 'group_by',
             }
         )
@@ -84,7 +83,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 'start_date', 'end_date', 'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm',
                 'targeting', 'group_by',
             }
         )
@@ -104,7 +102,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(response.data.keys()),
             {
                 'start_date', 'end_date', 'campaigns',
-                'average_cpv', 'ctr', 'video_view_rate', 'ctr_v', 'average_cpm',
                 'targeting', 'group_by',
             }
         )

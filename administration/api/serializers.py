@@ -47,8 +47,8 @@ class UserActionRetrieveSerializer(ModelSerializer):
             "last_name",
             "email",
             "url",
-            "created_at"
-        )
+            "created_at",
+            )
 
     def get_email(self, obj):
         """
@@ -82,8 +82,15 @@ class UserUpdateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "is_subscribed",
+            "plan",
         )
+
+    def save(self, **kwargs):
+        """
+        Make 'post-save' actions
+        """
+        user = super(UserUpdateSerializer, self).save(**kwargs)
+        user.set_permissions_from_plan(user.plan.name)
 
 
 class UserSerializer(ModelSerializer):
@@ -105,6 +112,6 @@ class UserSerializer(ModelSerializer):
             "is_staff",
             "last_login",
             "date_joined",
-            "is_subscribed",
-            "token"
+            "token",
+            "plan",
         )

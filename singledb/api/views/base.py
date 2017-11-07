@@ -3,10 +3,12 @@ from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
+from django.contrib.auth.mixins import PermissionRequiredMixin
+
 from singledb.connector import SingleDatabaseApiConnectorException
 
 
-class SingledbApiView(APIView):
+class SingledbApiView(APIView, PermissionRequiredMixin):
     def delete(self, request, *args, **kwargs):
         if not hasattr(self, 'connector_delete'):
             return Response(status=HTTP_405_METHOD_NOT_ALLOWED)

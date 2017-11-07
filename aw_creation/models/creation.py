@@ -24,7 +24,7 @@ WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
-                 r"(?:/watch\?v=|/video/|/)([^\s&\?]+)$"
+                 r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
     r"(https?://\S+)|(\{lpurl\}\S*)",
@@ -347,21 +347,20 @@ class CampaignCreation(UniqueCreationItem):
     @property
     def campaign_is_paused(self):
         ac = self.account_creation
-        return ac.is_paused or ac.is_ended or ac.is_deleted
+        return ac.is_paused or ac.is_ended
 
     def get_creation_dates(self):
         start, end = self.start, self.end
-
         timezone = self.account_creation.timezone
         today = datetime.now(tz=pytz.timezone(timezone)).date()
 
-        if start and start < today and (not end or end >= today):
-            start = today
-
-        if start:
+        if start and start > today or (end and end < today):
             start_for_creation = start
         else:
             start_for_creation = today
+
+        if start and start < today:
+            start = None
 
         return start_for_creation, start, end
 
@@ -376,9 +375,9 @@ class CampaignCreation(UniqueCreationItem):
                     is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
-                    start_for_creation=start_for_creation.strftime("%Y-%m-%d"),
+                    start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
                     budget_type=self.bid_strategy_type.lower(),
-                    is_paused='true' if self.campaign_is_paused else 'false',
+                    is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
                     video_networks=self.video_networks,

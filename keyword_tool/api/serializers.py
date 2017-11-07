@@ -128,8 +128,11 @@ class SavedListNameSerializer(SavedListCreateSerializer):
 
     @staticmethod
     def get_owner(obj):
-        user = UserProfile.objects.get(email=obj.user_email)
-        return "{} {}".format(user.first_name, user.last_name)
+        try:
+            user = UserProfile.objects.get(email=obj.user_email)
+            return "{} {}".format(user.first_name, user.last_name)
+        except UserProfile.DoesNotExist:
+            return "Owner not found or deleted"
 
     def get_is_owner(self, obj):
         return obj.user_email == self.request.user.email
@@ -144,8 +147,10 @@ class SavedListNameSerializer(SavedListCreateSerializer):
             "id", "name", "category", "is_owner", "top_keywords_data", "num_keywords",
             "average_volume", "average_cpc", "competition",
             "average_cpv", "video_view_rate", "ctr_v",
-            "cum_average_volume_data", "cum_average_volume_per_kw_data", "is_editable",
-            "owner", "created_at"
+            # minidash has been disabled: SAAS-1172 --->
+            # "cum_average_volume_data", "cum_average_volume_per_kw_data",
+            # <---
+            "is_editable", "owner", "created_at"
         )
 
 

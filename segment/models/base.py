@@ -1,22 +1,22 @@
 """
 BaseSegment models module
 """
-from celery import task
-from datetime import timedelta
 import logging
+
+from celery import task
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db.models import CharField
 from django.db.models import ForeignKey
 from django.db.models import Manager
 from django.db.models import Model
-from django.utils import timezone
+from django.db.models import SET_NULL
 
-# pylint: disable=import-error
-from singledb.connector import SingleDatabaseApiConnectorException
-# pylint: enable=import-error
 
 from utils.models import Timestampable
+
+# pylint: disable=import-error
+# pylint: enable=import-error
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class BaseSegment(Timestampable):
     """
     title = CharField(max_length=255, null=True, blank=True)
     mini_dash_data = JSONField(default=dict())
-    owner = ForeignKey('userprofile.userprofile', null=True, blank=True)
+    owner = ForeignKey('userprofile.userprofile', null=True, blank=True, on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -119,6 +119,13 @@ class BaseSegment(Timestampable):
             related.segment = duplicated_segment
         related_manager.bulk_create(related_list)
         return duplicated_segment
+
+    def sync_recommend_channels(self, channel_ids):
+        if hasattr(self, 'top_recommend_channels'):
+            for ch_id in channel_ids:
+                if ch_id in self.top_recommend_channels:
+                    self.top_recommend_channels.remove(ch_id)
+            self.save()
 
 
 class BaseSegmentRelated(Model):

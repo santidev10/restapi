@@ -1,16 +1,17 @@
 from django.db.models import Q
-from django.db.models.expressions import RawSQL
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from segment.api.serializers import SegmentSerializer
 from segment.models import get_segment_model_by_type
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.permissions import OnlyAdminUserOrSubscriber
 
 
 class SegmentPaginator(CustomPageNumberPaginator):
@@ -40,9 +41,11 @@ class DynamicModelViewMixin(object):
 
 
 class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
+    """
+    Segment list/create endpoint
+    """
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
-    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def do_filters(self, queryset):
         """
@@ -66,26 +69,29 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         """
         Sort queryset
         """
-        available_sorts = {
+        allowed_sorts = {
             "title",
-        }
-        available_reverse_sorts = {
             "videos",
             "engage_rate",
             "sentiment",
             "created_at",
         }
+
+        def get_sort_prefix():
+            """
+            Define ascending or descending sort
+            """
+            reverse = "-"
+            ascending = self.request.query_params.get("ascending")
+            if ascending == "1":
+                reverse = ""
+            return reverse
         if self.model.segment_type == 'channel':
-            available_reverse_sorts.add('channels')
-
+            allowed_sorts.add('channels')
         sort = self.request.query_params.get("sort_by")
-
-        if sort in available_sorts:
-            queryset = queryset.order_by(sort)
-
-        elif sort in available_reverse_sorts:
-            queryset = queryset.order_by("-{}".format(sort))
-
+        if sort in allowed_sorts:
+            queryset = queryset.order_by("{}{}".format(
+                get_sort_prefix(), sort))
         return queryset
 
     def get_queryset(self):
@@ -109,7 +115,6 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
 
 class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = SegmentSerializer
-    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
@@ -146,7 +151,6 @@ class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDe
 
 class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
     serializer_class = SegmentSerializer
-    permission_classes = (OnlyAdminUserOrSubscriber, )
 
     def post(self, request, pk):
         """
@@ -161,3 +165,23 @@ class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
         ).data
 
         return Response(response_data, status=HTTP_201_CREATED)
+
+
+class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
+    serializer_class = SegmentSerializer
+    connector = Connector()
+
+    def get(self, request, *args, **kwargs):
+        segment = self.get_object()
+        query_params = self.request.query_params
+        query_params._mutable = True
+        response_data = []
+
+        if segment.top_recommend_channels:
+            try:
+                query_params['ids'] = ','.join(segment.top_recommend_channels)
+                response_data = self.connector.get_channel_list(query_params)
+            except SingleDatabaseApiConnectorException:
+                return Response(status=HTTP_408_REQUEST_TIMEOUT)
+
+        return Response(response_data)
