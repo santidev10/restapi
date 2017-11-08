@@ -2,12 +2,12 @@
 Video api views module
 """
 from copy import deepcopy
-from datetime import timedelta
+from datetime import timedelta, timezone
 from dateutil.parser import parse
 import re
 
 from django.db.models import Q
-from django.utils import timezone
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
@@ -25,12 +25,14 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
 
 
-class VideoListApiView(APIView):
+class VideoListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for video list
     """
     # TODO Check additional auth logic
     permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_required = ('userprofile.video_list',)
+
     fields_to_export = [
         "title",
         "url",
@@ -83,6 +85,9 @@ class VideoListApiView(APIView):
 
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
+
+        if not request.user.has_perm('userprofile.video_audience'):
+            query_params.update(verified='0')
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -256,13 +261,14 @@ class VideoListApiView(APIView):
 
 
 class VideoListFiltersApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_required = ('userprofile.video_filter', )
 
     connector_get = Connector().get_video_filters_list
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_required = ('userprofile.video_details',)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS

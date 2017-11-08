@@ -1,37 +1,41 @@
 """
 Channel api views module
 """
+import time
 from copy import deepcopy
 from datetime import datetime
 from dateutil import parser
 import re
+import requests
 
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from django.http import QueryDict
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
+from singledb.connector import IQApiConnector as IQConnector
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import UserChannel
 from utils.csv_export import list_export
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
-
-
 # pylint: enable=import-error
 
 
-class ChannelListApiView(APIView):
+class ChannelListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for channel list
     """
-    # TODO Check additional auth logic
-    permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_required = ('userprofile.channel_list', 'userprofile.settings_my_yt_channels')
+
     fields_to_export = [
         "title",
         "url",
@@ -68,9 +72,17 @@ class ChannelListApiView(APIView):
         """
         Get procedure
         """
+        empty_response = {
+            "max_page": 1,
+            "items_count": 0,
+            "items": [],
+            "current_page": 1,
+        }
+
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
+
         # segment
         segment = query_params.get("segment")
         if segment is not None:
@@ -81,15 +93,29 @@ class ChannelListApiView(APIView):
             # obtain channels ids
             channels_ids = segment.get_related_ids()
             if not channels_ids:
-                empty_response = {
-                    "max_page": 1,
-                    "items_count": 0,
-                    "items": [],
-                    "current_page": 1,
-                }
                 return Response(empty_response)
             query_params.pop("segment")
             query_params.update(ids=",".join(channels_ids))
+
+        # own_channels
+        if not request.user.has_perm('userprofile.channel_list') and \
+           request.user.has_perm('userprofile.settings_my_yt_channels'):
+            own_channels = "1"
+        else:
+            own_channels = query_params.get("own_channels", "0")
+
+        if own_channels == "1":
+            user = self.request.user
+            if not user or not user.is_authenticated():
+                return Response(status=HTTP_412_PRECONDITION_FAILED)
+            channels_ids = user.channels.values_list('channel_id', flat=True)
+            if not channels_ids:
+                return Response(empty_response)
+            query_params.pop("own_channels")
+            query_params.update(ids=",".join(channels_ids))
+            query_params.update(timestamp=str(time.time()))
+        elif not request.user.has_perm('userprofile.channel_audience'):
+            query_params.update(verified='0')
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -217,13 +243,13 @@ class ChannelListApiView(APIView):
 
 
 class ChannelListFiltersApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
+    permission_required = ('userprofile.channel_filter',)
     connector_get = Connector().get_channel_filters_list
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
 
@@ -287,3 +313,56 @@ class ChannelsVideosByKeywords(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         return Response(response_data)
+
+
+class ChannelAuthenticationApiView(APIView):
+    def post(self, request, *args, **kwagrs):
+        connector = IQConnector()
+        data = connector.auth_channel(request.data)
+
+        if data is not None:
+            channel_id = data.get('channel_id')
+            if channel_id:
+                user = self.request.user
+                if not user or not user.is_authenticated():
+                    return Response(status=HTTP_412_PRECONDITION_FAILED)
+                user_channels = user.channels.values_list('channel_id', flat=True)
+                if channel_id not in user_channels:
+                    UserChannel.objects.create(channel_id=channel_id, user=user)
+                # set user avatar
+                self.set_user_avatar(data.get("access_token"))
+        return Response()
+
+    def set_user_avatar(self, access_token):
+        """
+        Obtain user avatar from google+
+        """
+        token_info_url = "https://www.googleapis.com/oauth2/v3/tokeninfo" \
+                         "?access_token={}".format(access_token)
+        # --> obtain token info
+        try:
+            response = requests.get(token_info_url)
+        except Exception:
+            return
+        if response.status_code != 200:
+            return
+        # <-- obtain token info
+        # --> obtain user from google +
+        response = response.json()
+        user_google_id = response.get("sub")
+        google_plus_api_url = "https://www.googleapis.com/plus/v1/people/{}/" \
+                      "?access_token={}".format(user_google_id, access_token)
+        try:
+            response = requests.get(google_plus_api_url)
+        except Exception:
+            return
+        extra_details = response.json()
+        # <-- obtain user from google +
+        # --> set user avatar
+        if not extra_details.get("image", {}).get("isDefault", True):
+            profile_image_url = extra_details.get(
+                "image", {}).get("url", "").replace("sz=50", "sz=250")
+            self.request.user.profile_image_url = profile_image_url
+            self.request.user.save()
+        # <-- set user avatar
+        return
