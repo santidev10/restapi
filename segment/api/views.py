@@ -179,7 +179,7 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
 
         if segment.top_recommend_channels:
             try:
-                query_params['ids'] = ','.join(segment.top_recommend_channels)
+                query_params['ids'] = ','.join(segment.top_recommend_channels[:100])
                 response_data = self.connector.get_channel_list(query_params)
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)
