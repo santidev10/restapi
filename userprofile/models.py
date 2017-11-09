@@ -238,7 +238,7 @@ class Plan(models.Model):
             plan.save()
             users = UserProfile.objects.filter(plan=plan)
             for user in users:
-                user.set_permissions_from_plan()
+                user.set_permissions_from_plan(key)
                 user.save()
 
 
