@@ -86,7 +86,7 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
         else:
             empty_response = []
 
-       # segment
+        # segment
         segment = query_params.get("segment")
         if segment is not None:
             # obtain segment
