@@ -24,5 +24,5 @@ urlpatterns = [
         name="segment_duplicate"),
     url(r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
         SegmentSuggestedChannelApiView.as_view(),
-        name="segment_duplicate"),
+        name="suggested_channels"),
 ]
