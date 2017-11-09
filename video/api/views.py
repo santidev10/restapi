@@ -31,7 +31,7 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
     """
     # TODO Check additional auth logic
     permission_classes = (OnlyAdminUserOrSubscriber,)
-    permission_required = ('userprofile.video_list',)
+    permission_required = ('userprofile.video_list', 'userprofile.settings_my_yt_channels')
 
     fields_to_export = [
         "title",
@@ -65,6 +65,13 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
+        empty_response = {
+            "max_page": 1,
+            "items_count": 0,
+            "items": [],
+            "current_page": 1,
+        }
+
         # segment
         segment = query_params.get("segment")
         if segment is not None:
@@ -75,18 +82,17 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
             # obtain channels ids
             videos_ids = segment.get_related_ids()
             if not videos_ids:
-                empty_response = {
-                    "max_page": 1,
-                    "items_count": 0,
-                    "items": [],
-                    "current_page": 1,
-                }
                 return Response(empty_response)
 
             query_params.pop("segment")
             query_params.update(ids=",".join(videos_ids))
 
-        if not request.user.has_perm('userprofile.video_audience'):
+        channel = query_params.get("channel")
+        if channel is not None and not request.user.has_perm('userprofile.video_list'):
+            # user should be able to see own videos
+            if request.user.channels.filter(channel_id=channel).count() < 1:
+                return Response(empty_response)
+        elif not request.user.has_perm('userprofile.video_audience'):
             query_params.update(verified='0')
 
         # adapt the request params
