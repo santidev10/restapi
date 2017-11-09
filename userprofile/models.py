@@ -181,8 +181,8 @@ class Plan(models.Model):
             },
         },
         'professional': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
