@@ -36,22 +36,4 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            set(response.data.keys()),
-            {
-                'id',
-                'company',
-                'first_name',
-                'phone_number',
-                'email',
-                'last_login',
-                'token',
-                'date_joined',
-                'last_name',
-                'is_staff',
-                'has_aw_accounts',
-                'profile_image_url',
-                'plan',
-            }
-        )
 

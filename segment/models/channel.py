@@ -4,7 +4,7 @@ SegmentChannel models module
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-
+from django.conf import settings
 from aw_reporting.models import YTChannelStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
@@ -42,7 +42,8 @@ class SegmentChannel(BaseSegment):
     engage_rate = models.FloatField(default=0.0, db_index=True)
     sentiment = models.FloatField(default=0.0, db_index=True)
     top_three_channels = JSONField(default=dict())
-    top_recommend_channels = ArrayField(base_field=models.CharField(max_length=60), default=list, size=None)
+    if "postgres" in settings.DATABASES["default"]["ENGINE"]:
+        top_recommend_channels = ArrayField(base_field=models.CharField(max_length=60), default=list, size=None)
 
     singledb_method = Connector().get_channels_statistics
 

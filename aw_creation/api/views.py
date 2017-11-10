@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST,  HTTP_200_OK, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_405_METHOD_NOT_ALLOWED
 from rest_framework.views import APIView
-from utils.permissions import IsAuthQueryTokenPermission
+from utils.permissions import IsAuthQueryTokenPermission, MediaBuyingAddOnPermission
 from rest_framework.authtoken.models import Token
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation, CampaignCreation, \
@@ -266,6 +266,7 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
 
 
 class ItemsFromSegmentIdsApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, segment_type, **_):
 
@@ -303,6 +304,7 @@ class ItemsFromSegmentIdsApiView(APIView):
 
 
 class TargetingItemsSearchApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, list_type, query, **_):
 
@@ -764,6 +766,7 @@ class AccountCreationDetailsApiView(RetrieveAPIView):
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 
     serializer_class = AccountCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)
@@ -855,6 +858,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -906,6 +910,7 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -1027,6 +1032,7 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class AdGroupCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1065,6 +1071,7 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -1096,6 +1103,7 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class AdCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1130,6 +1138,7 @@ class AdCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
@@ -1216,6 +1225,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
 @demo_view_decorator
 class AdCreationAvailableAdFormatsApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, pk, **_):
         try:
@@ -1229,6 +1239,7 @@ class AdCreationAvailableAdFormatsApiView(APIView):
 @demo_view_decorator
 class AccountCreationDuplicateApiView(APIView):
     serializer_class = AccountCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     account_fields = ("is_paused", "is_ended")
     campaign_fields = (
@@ -1448,6 +1459,7 @@ class AccountCreationDuplicateApiView(APIView):
 @demo_view_decorator
 class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -1459,6 +1471,7 @@ class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
 @demo_view_decorator
 class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -1470,6 +1483,7 @@ class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
 @demo_view_decorator
 class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
@@ -2483,7 +2497,9 @@ class AudienceToolListExportApiView(TopicToolListExportApiView):
     permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id', 'type')
     file_name = "audience_list"
-    queryset = AudienceToolListApiView.queryset
+
+    def get_queryset(self):
+        return AudienceToolListApiView.queryset.all()
 
 
 # targeting lists
@@ -2566,6 +2582,7 @@ class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
 class TargetingItemsImportApiView(DocumentImportBaseAPIView):
     parser_classes = (FileUploadParser,)
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, list_type, **_):
 

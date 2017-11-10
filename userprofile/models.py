@@ -54,6 +54,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     profile_image_url = models.URLField(null=True, blank=True)
 
     plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
+    can_access_media_buying = models.BooleanField(default=False)
 
     objects = UserManager()
 
