@@ -182,8 +182,8 @@ class Plan(models.Model):
             },
         },
         'professional': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
@@ -228,6 +228,19 @@ class Plan(models.Model):
             user.plan = plan
             user.set_permissions_from_plan(plan)
             user.save()
+
+    @staticmethod
+    def update_user_plans():
+        for key, value in Plan.plan_preset.items():
+            plan, created = Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
+            if created:
+                continue
+            plan.permissions = value
+            plan.save()
+            users = UserProfile.objects.filter(plan=plan)
+            for user in users:
+                user.set_permissions_from_plan(key)
+                user.save()
 
 
 class UserChannel(Timestampable):
