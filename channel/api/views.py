@@ -48,7 +48,8 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
         "thirty_days_views",
         "views_per_video",
         "sentiment",
-        "engage_rate"
+        "engage_rate",
+        "last_video_published_at"
     ]
     export_file_title = "channel"
 
