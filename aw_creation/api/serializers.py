@@ -438,7 +438,7 @@ class AccountCreationListSerializer(ModelSerializer):
                 keyword_count=Count("account__campaigns__ad_groups__keywords__keyword", distinct=True),
             )
             self.struck = defaultdict(dict)
-            for annotate, aggr in annotates:
+            for annotate, aggr in annotates.items():
                 struck_data = AccountCreation.objects.filter(id__in=ids).values("id").order_by("id").annotate(
                     **{annotate: aggr}
                 )
