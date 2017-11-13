@@ -429,7 +429,7 @@ class AccountCreationListSerializer(ModelSerializer):
                 self.stats[i['account__account_creations__id']] = i
 
             #
-            struck_data = AccountCreation.objects.filter(id__in=ids).values("id").order_by("id").annotate(
+            annotates = dict(
                 ad_count=Count("account__campaigns__ad_groups__ads", distinct=True),
                 channel_count=Count("account__campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
                 video_count=Count("account__campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
@@ -437,8 +437,13 @@ class AccountCreationListSerializer(ModelSerializer):
                 topic_count=Count("account__campaigns__ad_groups__topics__topic_id", distinct=True),
                 keyword_count=Count("account__campaigns__ad_groups__keywords__keyword", distinct=True),
             )
-            for d in struck_data:
-                self.struck[d['id']] = d
+            self.struck = defaultdict(dict)
+            for annotate, aggr in annotates.items():
+                struck_data = AccountCreation.objects.filter(id__in=ids).values("id").order_by("id").annotate(
+                    **{annotate: aggr}
+                )
+                for d in struck_data:
+                    self.struck[d['id']][annotate] = d
 
             # data for weekly charts
             account_id_key = "ad_group__campaign__account__account_creations__id"
