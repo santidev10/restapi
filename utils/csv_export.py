@@ -51,12 +51,12 @@ class CSVExport(object):
                 yield output.getvalue()
 
         response = StreamingHttpResponse(
-            stream_generator(), content_type='text/csv')
+            stream_generator(), content_type="text/csv")
         filename = "{title}_export_report {date}.csv".format(
             title=self.file_title,
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
-        response['Content-Disposition'] = 'attachment; filename="{}"'.format(
+        response["Content-Disposition"] = "attachment; filename='{}'".format(
             filename)
         return response
 
@@ -72,10 +72,13 @@ def list_export(method):
         is_export = request.query_params.get("export")
         if is_export == "1":
             # check required export options
-            # assert self.fields_to_export and self.export_file_title
+            assert self.fields_to_export and self.export_file_title
+            # max export size limit
+            max_export_size = 10
             # prepare api call
             request.query_params._mutable = True
-            request.query_params["flat"] = "1"
+            request.query_params["size"] = max_export_size
+            request.query_params["fields"] = ",".join(self.fields_to_export)
             response = method(
                 self=self, request=request, *args, **kwargs)
             if response.status_code > 300:
@@ -83,7 +86,8 @@ def list_export(method):
             # generate csv file
             csv_generator = CSVExport(
                 fields=self.fields_to_export,
-                data=response.data, file_title=self.export_file_title)
+                data=response.data.get("items"),
+                file_title=self.export_file_title)
             response = csv_generator.prepare_csv_file_response()
             return response
         response = method(
