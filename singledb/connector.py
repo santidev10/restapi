@@ -235,13 +235,21 @@ class SingleDatabaseApiConnector(object):
         return query_params
 
     def get_highlights_channels(self, query_params):
-        endpoint = "highlights/channels/"
+        endpoint = "channels/"
+        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
 
     def get_highlights_videos(self, query_params):
-        endpoint = "highlights/videos/"
+        endpoint = "videos/"
+        self.set_fields_query_param(query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
 
 class IQApiConnector(object):
