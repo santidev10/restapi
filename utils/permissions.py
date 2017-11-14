@@ -5,7 +5,7 @@ from rest_framework.authtoken.models import Token
 class MediaBuyingAddOnPermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
         is_authenticated = super(MediaBuyingAddOnPermission, self).has_permission(request, view)
-        return is_authenticated and request.user.can_access_media_buying
+        return is_authenticated and (request.user.is_staff or request.user.can_access_media_buying)
 
 
 class OnlyAdminUserCanCreateUpdateDelete(permissions.BasePermission):
