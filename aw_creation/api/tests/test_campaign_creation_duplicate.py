@@ -10,6 +10,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
 
     @staticmethod
     def create_campaign_creation(owner):
@@ -67,6 +69,16 @@ class AccountAPITestCase(AwReportingAPITestCase):
             is_deleted=True,
         )
         return campaign_creation
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
+        c = self.create_campaign_creation(self.user)
+        url = reverse("aw_creation_urls:campaign_creation_duplicate",
+                      args=(c.id,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
         c = self.create_campaign_creation(self.user)

@@ -74,7 +74,7 @@ def list_export(method):
             # check required export options
             assert self.fields_to_export and self.export_file_title
             # max export size limit
-            max_export_size = 10
+            max_export_size = 10000
             # prepare api call
             request.query_params._mutable = True
             request.query_params["size"] = max_export_size

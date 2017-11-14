@@ -17,6 +17,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
 
     @staticmethod
     def create_account_creation(owner, start=None, end=None, is_managed=True):
@@ -66,6 +68,23 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_negative=True,
         )
         return account_creation
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ac = self.create_account_creation(**defaults)
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(ac.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
         today = datetime.now().date()

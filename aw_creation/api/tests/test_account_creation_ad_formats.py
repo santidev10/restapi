@@ -1,7 +1,7 @@
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from datetime import timedelta
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
@@ -9,10 +9,37 @@ from aw_reporting.demo.models import DemoAccount
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
-    def test_success_all_available(self):
-        user = self.create_test_user()
+    def setUp(self):
+        self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=campaign_creation,
+        )
+        ad_creation = AdCreation.objects.create(
+            name="", ad_group_creation=ad_group_creation,
+        )
+        url = reverse("aw_creation_urls:ad_creation_available_ad_formats",
+                      args=(ad_creation.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_success_all_available(self):
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
@@ -39,7 +66,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_get_demo(self):
-        self.create_test_user()
         ac = DemoAccount()
         campaign = ac.children[0]
         ad_group = campaign.children[0]
@@ -51,9 +77,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE])
 
     def test_success_get_pushed_ad_group(self):
-        user = self.create_test_user()
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
@@ -81,9 +106,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_get_pushed_campaign(self):
-        user = self.create_test_user()
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
@@ -110,9 +134,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_get_two_ads(self):
-        user = self.create_test_user()
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
@@ -141,9 +164,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_get_two_ad_groups(self):
-        user = self.create_test_user()
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
@@ -174,9 +196,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_validate_bumper_video_duration(self):
-        user = self.create_test_user()
         account_creation = AccountCreation.objects.create(
-            name="Pep", owner=user,
+            name="Pep", owner=self.user,
         )
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,

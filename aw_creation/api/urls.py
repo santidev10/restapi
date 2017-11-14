@@ -27,6 +27,7 @@ urlpatterns = [
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
 
+    # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
         views.AccountCreationSetupApiView.as_view(),
         name="account_creation_setup"),
@@ -82,6 +83,7 @@ urlpatterns = [
     url(r'^ad_creation_duplicate/(?P<pk>\w+)/$',
         views.AdCreationDuplicateApiView.as_view(),
         name="ad_creation_duplicate"),
+    # >>> these endpoints are closed for users who don't have Media Buying add-on
     # >>> Setup
 
     # <<< Performance

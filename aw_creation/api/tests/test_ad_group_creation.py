@@ -14,6 +14,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
 
     def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
@@ -30,6 +32,23 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             campaign_creation=campaign_creation,
         )
         return ad_group_creation
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ag = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ag.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
         today = datetime.now().date()

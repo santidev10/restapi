@@ -32,6 +32,36 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
+        today = datetime.now().date()
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today, end=today + timedelta(days=20),
+        )
+
+        ad_group = AdGroupCreation.objects.create(
+            name="Wow", campaign_creation=campaign_creation,
+        )
+        AdCreation.objects.create(
+            name="Mmm", ad_group_creation=ad_group,
+        )
+        AdCreation.objects.create(
+            name="Deleted", ad_group_creation=ad_group, is_deleted=True,
+        )
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
+                      args=(ad_group.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
         today = datetime.now().date()

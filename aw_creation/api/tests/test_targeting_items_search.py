@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 from saas.utils_tests import ExtendedAPITestCase, SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 
@@ -8,6 +8,17 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.can_access_media_buying = True
+        self.user.save()
+
+    def test_success_fail_has_no_permission(self):
+        self.user.can_access_media_buying = False
+        self.user.save()
+
+        url = reverse("aw_creation_urls:targeting_items_search",
+                      args=("video", "gangnam"))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_video(self):
         url = reverse("aw_creation_urls:targeting_items_search",
