@@ -245,6 +245,8 @@ REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software"
 ]
 
+MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
+
 try:
     from .local_settings import *
 except ImportError:
