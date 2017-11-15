@@ -46,20 +46,22 @@ class SingleDatabaseApiConnectorPatcher:
     def get_channel_list(*args, **kwargs):
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             data = json.load(data_file)
+        for i in data["items"]:
+            i["channel_id"] = i["id"]
         return data
 
     @staticmethod
     def get_video_list(*args, **kwargs):
         with open('saas/fixtures/singledb_video_list.json') as data_file:
             data = json.load(data_file)
+        for i in data["items"]:
+            i["video_id"] = i["id"]
         return data
 
-    def get_custom_query_result(self, *args, **kwargs):
-        model_name = kwargs.get('model_name')
-        if model_name == "video":
-            items = self.get_video_list(*args, **kwargs).get("items")
-        elif model_name == "channel":
-            items = self.get_channel_list(*args, **kwargs).get("items")
-        else:
-            items = []
-        return items
+    def get_channels_base_info(self, *args, **kwargs):
+        data = self.get_channel_list()
+        return data["items"]
+
+    def get_videos_base_info(self, *args, **kwargs):
+        data = self.get_video_list()
+        return data["items"]

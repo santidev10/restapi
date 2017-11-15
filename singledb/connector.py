@@ -10,6 +10,7 @@ from django.conf import settings
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS
+import re
 
 
 class SingleDatabaseApiConnectorException(Exception):
@@ -204,11 +205,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
-    def get_custom_query_result(self, model_name, **params):
-        endpoint = "custom_query/{}/".format(model_name)
-        response_data = self.execute_post_call(endpoint, {}, data=params)
-        return response_data
-
     def get_channels_statistics(self, **params):
         endpoint = "channels/statistics/"
         response_data = self.execute_post_call(endpoint, {}, data=params)
@@ -251,6 +247,27 @@ class SingleDatabaseApiConnector(object):
         if max_page:
             response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
+
+    def get_channels_base_info(self, ids):
+        fields = ("channel_id", "title", "thumbnail_image_url")
+        query_params = dict(fields=",".join(fields), ids=ids)
+        response_data = self.get_channel_list(query_params)
+        items = response_data["items"]
+        for i in items:
+            i["id"] = i["channel_id"]
+            del i["channel_id"]
+        return items
+
+    def get_videos_base_info(self, ids):
+        fields = ("video_id", "title", "thumbnail_image_url", "duration")
+        query_params = dict(fields=",".join(fields), ids=ids)
+        response_data = self.get_video_list(query_params)
+        items = response_data["items"]
+        for i in items:
+            i["id"] = i["video_id"]
+            del i["video_id"]
+        return items
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL
