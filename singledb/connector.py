@@ -10,7 +10,6 @@ from django.conf import settings
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS
-import re
 
 
 class SingleDatabaseApiConnectorException(Exception):
