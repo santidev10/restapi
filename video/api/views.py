@@ -1,13 +1,13 @@
 """
 Video api views module
 """
+import re
 from copy import deepcopy
 from datetime import timedelta, timezone
-from dateutil.parser import parse
-import re
 
-from django.db.models import Q
+from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
@@ -20,18 +20,23 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
     DEFAULT_VIDEO_DETAILS_FIELDS
 # pylint: enable=import-error
-from utils.csv_export import list_export
+# from utils.csv_export import list_export
+from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     OnlyAdminUserOrSubscriber
 
 
-class VideoListApiView(APIView, PermissionRequiredMixin):
+class VideoListApiView(
+        APIView, PermissionRequiredMixin, CassandraExportMixin):
     """
     Proxy view for video list
     """
     # TODO Check additional auth logic
     permission_classes = (OnlyAdminUserOrSubscriber,)
-    permission_required = ('userprofile.video_list', 'userprofile.settings_my_yt_channels')
+    permission_required = (
+        "userprofile.video_list",
+        "userprofile.settings_my_yt_channels"
+    )
 
     fields_to_export = [
         "title",
@@ -60,7 +65,6 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
             return None
         return segment
 
-    @list_export
     def get(self, request):
         # prepare query params
         query_params = deepcopy(request.query_params)
@@ -88,12 +92,13 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
             query_params.update(ids=",".join(videos_ids))
 
         channel = query_params.get("channel")
-        if channel is not None and not request.user.has_perm('userprofile.video_list'):
+        if channel is not None and not request.user.has_perm(
+                "userprofile.video_list"):
             # user should be able to see own videos
             if request.user.channels.filter(channel_id=channel).count() < 1:
                 return Response(empty_response)
-        elif not request.user.has_perm('userprofile.video_audience'):
-            query_params.update(verified='0')
+        elif not request.user.has_perm("userprofile.video_audience"):
+            query_params.update(verified="0")
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -126,9 +131,9 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
                 query_params.pop(name_min, [None])[0],
                 query_params.pop(name_max, [None])[0],
             ]
-            _range = [str(v) if v is not None else '' for v in _range]
-            _range = ','.join(_range)
-            if _range != ',':
+            _range = [str(v) if v is not None else "" for v in _range]
+            _range = ",".join(_range)
+            if _range != ",":
                 query_params.update(**{"{}__range".format(name): _range})
 
         def make(_type, name, name_in=None):
@@ -139,87 +144,96 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
                 query_params.update(**{"{}__{}".format(name, _type): value})
 
         # min_views, max_views
-        make_range('views')
+        make_range("views")
 
         # min_daily_views, max_daily_views
-        make_range('daily_views')
+        make_range("daily_views")
 
         # min_sentiment, max_sentiment
-        make_range('sentiment')
+        make_range("sentiment")
 
         # min_engage_rate, max_engage_rate
-        make_range('engage_rate')
+        make_range("engage_rate")
 
         # min_subscribers, max_subscribers
-        make_range('channel__subscribers', 'min_subscribers', 'max_subscribers')
+        make_range(
+            "channel__subscribers", "min_subscribers", "max_subscribers")
 
         # country
-        make('terms', 'country')
+        make("terms", "country")
 
         # category
-        make('terms', 'category')
+        make("terms", "category")
 
         # language
-        make('terms', 'lang_code', 'language')
+        make("terms", "lang_code", "language")
 
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            words = [s.lower() for s in re.split(r'\s+', text_search)]
+            words = [s.lower() for s in re.split(r"\s+", text_search)]
             if words:
                 query_params.update(text_search__term=words)
 
         # channel
-        make('terms', 'channel_id', 'channel')
+        make("terms", "channel_id", "channel")
 
         # creator
-        make('term', 'channel__title', 'creator')
+        make("term", "channel__title", "creator")
 
         # brand_safety
-        brand_safety = query_params.pop('brand_safety', [None])[0]
+        brand_safety = query_params.pop("brand_safety", [None])[0]
         if brand_safety is not None:
             val = "true" if brand_safety == "1" else "false"
             query_params.update(has_transcript__term=val)
 
         # is_monetizable
-        is_monetizable = query_params.pop('is_monetizable', [None])[0]
+        is_monetizable = query_params.pop("is_monetizable", [None])[0]
         if is_monetizable is not None:
             val = "false" if is_monetizable == "0" else "true"
             query_params.update(is_monetizable__term=val)
 
         # preferred_channel
-        preferred_channel = query_params.pop('preferred_channel', [None])[0]
+        preferred_channel = query_params.pop("preferred_channel", [None])[0]
         if preferred_channel is not None:
             val = "false" if preferred_channel == "0" else "true"
             query_params.update(channel__preferred__term=val)
 
         # upload_at
-        upload_at = query_params.pop('upload_at', [None])[0]
+        upload_at = query_params.pop("upload_at", [None])[0]
         if upload_at is not None:
             if upload_at != "0":
                 try:
                     date = parse(upload_at).date()
-                    query_params.update(youtube_published_at__range="{},".format(date.isoformat()))
+                    query_params.update(
+                        youtube_published_at__range="{},".format(
+                            date.isoformat()))
                 except (TypeError, ValueError):
                     pass
             elif upload_at == "0":
                 now = timezone.now()
-                start = now - timedelta(hours=now.hour,
-                                        minutes=now.minute,
-                                        seconds=now.second,
-                                        microseconds=now.microsecond)
-                end = start + timedelta(hours=23, minutes=59, seconds=59, microseconds=999999)
-                query_params.update(youtube_published_at__range="{},{}".format(start.isoformat(), end.isoformat()))
+                start = now - timedelta(
+                    hours=now.hour,
+                    minutes=now.minute,
+                    seconds=now.second,
+                    microseconds=now.microsecond
+                )
+                end = start + timedelta(
+                    hours=23, minutes=59, seconds=59, microseconds=999999)
+                query_params.update(
+                    youtube_published_at__range="{},{}".format(
+                        start.isoformat(), end.isoformat()))
 
         # trending
-        trending = query_params.pop('trending', [None])[0]
-        if trending is not None and trending != 'all':
+        trending = query_params.pop("trending", [None])[0]
+        if trending is not None and trending != "all":
             query_params.update(trends_list__term=trending)
 
         # verified
-        verified = query_params.pop('verified', [None])[0]
+        verified = query_params.pop("verified", [None])[0]
         if verified is not None:
-            query_params.update(has_audience__term="false" if verified == "0" else "true")
+            query_params.update(
+                has_audience__term="false" if verified == "0" else "true")
         # <--- filters
 
     @staticmethod
@@ -228,40 +242,42 @@ class VideoListApiView(APIView, PermissionRequiredMixin):
         Adapt SDB response format
         """
         from channel.api.views import ChannelListApiView
-        items = response_data.get('items', [])
+        items = response_data.get("items", [])
         for item in items:
-            if 'video_id' in item:
-                item['id'] = item.get('video_id', '')
-                del item['video_id']
+            if "video_id" in item:
+                item["id"] = item.get("video_id", "")
+                del item["video_id"]
 
-            if 'ptk' in item:
-                item['ptk_value'] = item.get('ptk', '')
-                del item['ptk']
+            if "ptk" in item:
+                item["ptk_value"] = item.get("ptk", "")
+                del item["ptk"]
 
-            if 'history_date' in item and item['history_date']:
-                item['history_date'] = item['history_date'][:10]
+            if "history_date" in item and item["history_date"]:
+                item["history_date"] = item["history_date"][:10]
 
-            if 'has_audience' in item:
-                item['verified'] = item['has_audience']
+            if "has_audience" in item:
+                item["verified"] = item["has_audience"]
 
-            if 'country' in item and item['country'] is None:
-                item['country'] = ""
+            if "country" in item and item["country"] is None:
+                item["country"] = ""
 
-            if 'youtube_published_at' in item:
-                item['youtube_published_at'] = re.sub('^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',
-                                                      '\g<0>Z',
-                                                      item['youtube_published_at'])
+            if "youtube_published_at" in item:
+                item["youtube_published_at"] = re.sub(
+                    "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",
+                    "\g<0>Z",
+                    item["youtube_published_at"])
             if "views_chart_data" in item:
                 item["chart_data"] = item.pop("views_chart_data")
 
             # channel properties
             channel_item = {}
             for key in list(item.keys()):
-                if key.startswith('channel__'):
+                if key.startswith("channel__"):
                     channel_item[key[9:]] = item[key]
                     del item[key]
             if channel_item:
-                item['channel'] = ChannelListApiView.adapt_response_data({'items': [channel_item]})['items'][0]
+                item["channel"] = ChannelListApiView.adapt_response_data(
+                    {"items": [channel_item]})["items"][0]
 
         return response_data
 

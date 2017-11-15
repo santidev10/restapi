@@ -102,12 +102,6 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/"
-        if 'ids' in query_params:
-            ids = query_params.get('ids')
-            if isinstance(ids, str):
-                ids = ids.split(",")
-            query_params.pop('ids')
-            query_params['ids_hash'] = self.store_ids(ids)
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
@@ -175,12 +169,6 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "videos/"
-        if 'ids' in query_params:
-            ids = query_params.get('ids')
-            if isinstance(ids, str):
-                ids = ids.split(",")
-            query_params.pop('ids')
-            query_params['ids_hash'] = self.store_ids(ids)
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
@@ -215,6 +203,9 @@ class SingleDatabaseApiConnector(object):
         return response_data
 
     def store_ids(self, ids):
+        """
+        Wrap requested ids into hash
+        """
         endpoint = "cached_objects/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
