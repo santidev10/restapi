@@ -637,6 +637,9 @@ class AdCreation(UniqueCreationItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
+    ad = models.ForeignKey(
+        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True,
+    )
     video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, default="")

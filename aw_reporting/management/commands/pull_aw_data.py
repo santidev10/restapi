@@ -5,6 +5,7 @@ from aw_reporting.tasks import detect_success_aw_read_permissions
 from aw_reporting.utils import command_single_process_lock
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
+from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from suds import WebFault
 from datetime import datetime
 from pytz import timezone, utc
@@ -24,6 +25,7 @@ class Command(BaseCommand):
     def post_process():
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()
+        add_relation_between_report_and_creation_ads()
 
     @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
