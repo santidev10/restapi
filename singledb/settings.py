@@ -44,7 +44,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
 DEFAULT_VIDEO_DETAILS_FIELDS = (
     "video_id",
     "title",
-    "Views",
+    "views",
     "likes",
     "dislikes",
     "comments",
