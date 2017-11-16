@@ -42,7 +42,8 @@ PROJECT_APPS = (
     "segment",
     "keyword_tool",
     "landing",
-    "administration"
+    "administration",
+    "payments"
 )
 
 THIRD_PARTY_APPS = (
@@ -199,6 +200,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
+
+# stripe user keys
+STRIPE_PUBLIC_KEY = None
+STRIPE_SECRET_KEY = None
 
 SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
 IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
