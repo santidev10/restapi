@@ -15,7 +15,6 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
@@ -26,7 +25,6 @@ SECRET_KEY = '%ics*w%224v(ymhbgk4rpsqhs0ss7r(pxel%n(1fko6*5$-1=8'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -44,7 +42,8 @@ PROJECT_APPS = (
     "segment",
     "keyword_tool",
     "landing",
-    "administration"
+    "administration",
+    "payments"
 )
 
 THIRD_PARTY_APPS = (
@@ -68,7 +67,6 @@ ROOT_URLCONF = 'saas.urls'
 
 WSGI_APPLICATION = 'saas.wsgi.application'
 
-
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
@@ -87,7 +85,7 @@ DATABASES = {
         'USER': 'admin_saas',
         'PASSWORD': 'kA1tWRRUyTLnNe2Hi8PL',
         'HOST': 'localhost',
-        'PORT': '',                      # Set to empty string for default.
+        'PORT': '',  # Set to empty string for default.
     }
 }
 
@@ -109,7 +107,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 
@@ -122,7 +119,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -197,7 +193,6 @@ LOGGING = {
     }
 }
 
-
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
@@ -205,6 +200,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
+
+# stripe user keys
+STRIPE_PUBLIC_KEY = None
+STRIPE_SECRET_KEY = None
 
 SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
 IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
@@ -240,6 +239,13 @@ LANDING_CONTACTS = {
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "yuriy.matso@channelfactory.com",
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
+
+PAYMENT_ACTION_EMAIL_ADDRESSES = [
+    "alexander.dobrzhansky@sigma.software",
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software"
