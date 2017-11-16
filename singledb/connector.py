@@ -124,16 +124,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def get_channel_videos_by_keywords(self, query_params, keyword):
-        """
-        Get top videos by channel keyword
-        :param query_params: dict
-        :param keyword: str
-        """
-        endpoint = "channels/video_by_keyword/{}".format(keyword)
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
     def delete_channels(self, query_params, data):
         """
         Delete channels
