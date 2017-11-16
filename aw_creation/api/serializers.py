@@ -433,7 +433,7 @@ class AccountCreationListSerializer(ModelSerializer):
                     **{annotate: aggr}
                 )
                 for d in struck_data:
-                    self.struck[d['id']][annotate] = d
+                    self.struck[d['id']][annotate] = d[annotate]
 
             # data for weekly charts
             account_id_key = "ad_group__campaign__account__account_creations__id"
