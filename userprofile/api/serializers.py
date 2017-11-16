@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField, RegexValidator, Serializer
+    ValidationError, SerializerMethodField, RegexValidator, Serializer, \
+    EmailField
 
 from administration.notifications import send_new_registration_email
 from userprofile.models import Plan
@@ -157,3 +158,16 @@ class PlanSerializer(ModelSerializer):
             'permissions',
         }
 
+
+class ContactFormSerializer(Serializer):
+    """
+    Serializer for contact form fields
+    """
+    first_name = CharField(required=True, max_length=255)
+    last_name = CharField(required=True, max_length=255)
+    email = EmailField(required=True, max_length=255)
+    country = CharField(required=True, max_length=255)
+    message = CharField(
+        required=False, max_length=255, allow_null=True, allow_blank=True)
+    company = CharField(
+        required=False, max_length=255, allow_null=True, allow_blank=True)

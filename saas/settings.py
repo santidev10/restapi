@@ -251,6 +251,13 @@ PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software"
 ]
 
+CONTACT_FORM_EMAIL_ADDRESSES = [
+    # "yuriy.matso@channelfactory.com",
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
+
 try:
     from .local_settings import *
 except ImportError:
