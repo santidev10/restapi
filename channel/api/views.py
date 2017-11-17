@@ -257,7 +257,7 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
