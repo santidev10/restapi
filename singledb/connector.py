@@ -230,7 +230,7 @@ class SingleDatabaseApiConnector(object):
 
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), ids=ids)
+        query_params = dict(fields=",".join(fields), ids=",".join(ids))
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -240,7 +240,7 @@ class SingleDatabaseApiConnector(object):
 
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
-        query_params = dict(fields=",".join(fields), ids=ids)
+        query_params = dict(fields=",".join(fields), ids=",".join(ids))
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
