@@ -194,6 +194,10 @@ class OptimizeQueryApiView(ListAPIView):
             queryset = queryset.filter(
                 text__icontains=query_params['search'].strip()
             )
+        if "ids" in query_params:
+            queryset = queryset.filter(
+                text__in=query_params.get("ids").split(",")
+            )
         return queryset
 
     def get_queryset(self):

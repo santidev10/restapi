@@ -544,7 +544,17 @@ class AccountCreationListApiView(ListAPIView):
                 output_field=AggrFloatField()
             ),
             output_field=AggrFloatField()
-        ))
+        )),
+        name=(
+            None,
+            Case(
+                When(
+                    is_managed=True,
+                    then=F("name")
+                ),
+                default=F("account__name"),
+            )
+        ),
     )
 
     def get(self, request, *args, **kwargs):
@@ -581,10 +591,14 @@ class AccountCreationListApiView(ListAPIView):
             if dependencies:
                 queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
 
-            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
-            sort_by = "-sort_by"
+            if sort_by == "name":
+                sort_by = "sort_by"
+            else:
+                annotate = Coalesce(annotate, 0)
+                sort_by = "-sort_by"
 
-        elif sort_by != "name":
+            queryset = queryset.annotate(sort_by=annotate)
+        else:
             sort_by = "-created_at"
 
         return queryset.order_by('is_ended', sort_by)
