@@ -48,7 +48,6 @@ class SingleDatabaseApiConnector(object):
         # build url
         url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
         # execute call
-        print(url)
         try:
             if data is None:
                 self.response = method(url, headers=headers, verify=False)
