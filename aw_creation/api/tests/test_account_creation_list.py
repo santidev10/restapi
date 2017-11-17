@@ -197,6 +197,37 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             expected_top_account = items[1]
             self.assertEqual(top_account.name, expected_top_account['name'])
 
+    def test_success_sort_by_name(self):
+        account1 = Account.objects.create(id="123", name="")
+        creation_1 = AccountCreation.objects.create(
+            name="First account", owner=self.user, account=account1,
+        )
+
+        account2 = Account.objects.create(id="456", name="Second account")
+        creation_2 = AccountCreation.objects.create(name="", owner=self.user, account=account2, is_managed=False)
+
+        creation_3 = AccountCreation.objects.create(name="Third account", owner=self.user, account=account2)
+
+        # --
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch(
+            "aw_creation.api.serializers.SingleDatabaseApiConnector",
+            new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get("{}?sort_by=name".format(url))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+
+        self.assertEqual(
+            ("Demo", creation_1.name, creation_2.account.name, creation_3.name),
+            tuple(a["name"] for a in items)
+        )
+
     def test_success_metrics_filter(self):
         AccountCreation.objects.create(name="Empty", owner=self.user,
                                        is_ended=False, is_paused=False, is_approved=True)

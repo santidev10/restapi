@@ -73,22 +73,25 @@ class BaseDemo:
         lang_code='en',
         country="United States",
     )
-    channel_criteria = dict(
-        country="United States",
-        is_content_safe=True,
+
+    common_media_filters = dict(
+        language__terms="English",
+        country__terms="United States",
+        is_content_safe__terms=True,
     )
 
     def get_channels(self):
         if self._channels is None:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="channel",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    limit=12,
-                    order_by="-details__subscribers",
-                    **self.channel_criteria
-                )
+                fields = ("channel_id", "title", "thumbnail_image_url")
+                query_params = dict(fields=",".join(fields), sort="subscribers:desc", **self.common_media_filters)
+                response_data = connector.get_channel_list(query_params)
+                items = response_data["items"][:12]
+                for i in items:
+                    i["id"] = i["channel_id"]
+                    del i["channel_id"]
+
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
                 items = []
@@ -99,13 +102,14 @@ class BaseDemo:
         if self._videos is None:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url", "duration"],
-                    limit=12,
-                    order_by="-views",
-                    **self.video_criteria
-                )
+                fields = ("video_id", "title", "thumbnail_image_url", "duration")
+                query_params = dict(fields=",".join(fields), sort="views:desc", **self.common_media_filters)
+                response_data = connector.get_video_list(query_params)
+                items = response_data["items"][:12]
+                for i in items:
+                    i["id"] = i["video_id"]
+                    del i["video_id"]
+
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
                 items = []

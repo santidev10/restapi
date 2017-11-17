@@ -203,6 +203,28 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
+        'highlights': {
+            'channel': {'list': True, 'filter': False, 'audience': False, 'details': True},
+            'video': {'list': True, 'filter': False, 'audience': False, 'details': True},
+            'keyword': {'list': False, 'details': False, },
+            'segment': {
+                'channel': {'all': False, 'private': True},
+                'video': {'all': False, 'private': True},
+                'keyword': {'all': False, 'private': True},
+            },
+            'view': {
+                'create_and_manage_campaigns': False,
+                'performance': False,
+                'trends': False,
+                'benchmarks': False,
+                'highlights': True,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': False,
+                'billing': True,
+            },
+        },
     }
 
     name = models.CharField(max_length=255, primary_key=True)

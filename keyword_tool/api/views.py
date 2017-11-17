@@ -12,14 +12,15 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
     HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import optimize_keyword, load_web_app_settings
-from keyword_tool.tasks import update_kw_list_stats
-from keyword_tool.models import Query, KeywordsList, ViralKeywords
+from aw_reporting.adwords_api import optimize_keyword
+from keyword_tool.api.utils import get_keywords_aw_stats, \
+    get_keywords_aw_top_bottom_stats
+from keyword_tool.models import Query, ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.csv_export import CSVExport
 from .serializers import *
-from keyword_tool.api.utils import get_keywords_aw_stats, get_keywords_aw_top_bottom_stats
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class KeywordCategoriesApiView(APIView):
                         .distinct('category')
                         .values_list('category', flat=True))
 
+
 class KWPaginator(CustomPageNumberPaginator):
     page_size = 12
 
@@ -66,6 +68,7 @@ class OptimizeQueryApiView(ListAPIView):
         Apply sorts
         """
         allowed_sorts = [
+            "search_volume",
             "daily_views",
             "weekly_views",
             "daily_views",
@@ -77,18 +80,22 @@ class OptimizeQueryApiView(ListAPIView):
             "competition",
             "average_cpc"
         ]
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
         def get_sort_prefix():
             """
             Define ascending or descending sort
             """
             reverse = "-"
-            ascending = self.request.query_params.get("ascending")
+            ascending = query_params.get("ascending")
             if ascending == "1":
                 reverse = ""
             return reverse
 
-        sorting = self.request.query_params.get("sort_by")
+        sorting = query_params.get("sort_by")
         if sorting not in allowed_sorts:
             return queryset
 
@@ -117,7 +124,10 @@ class OptimizeQueryApiView(ListAPIView):
         return queryset
 
     def filter(self, queryset):
-        query_params = self.request.query_params
+        if self.request.method == "POST":
+            query_params = self.request.data
+        else:
+            query_params = self.request.query_params
 
         for field in ('volume', 'competition', 'average_cpc'):
             for pref in ('min', 'max'):
@@ -160,10 +170,14 @@ class OptimizeQueryApiView(ListAPIView):
             queryset = queryset.filter(
                 text__icontains=query_params['search'].strip()
             )
-        if 'category' in query_params:
+        if "ids" in query_params:
             queryset = queryset.filter(
-                category=query_params['category']
+                text__in=query_params.get("ids").split(",")
             )
+        if 'category' in query_params:
+                queryset = queryset.filter(
+                    category=query_params['category']
+                )
         return queryset
 
     def get_queryset(self):
@@ -248,6 +262,22 @@ class KeywordsListApiView(OptimizeQueryApiView):
         queryset = self.filter(queryset)
         queryset = self.sort(queryset)
         return queryset
+
+    def post(self, *args, **kwargs):
+        """
+        Keywords export procedure
+        """
+        data = self.serializer_class(self.get_queryset(), many=True).data
+        file_fields = [
+            "keyword_text",
+            "average_cpc",
+            "competition",
+            "search_volume"
+        ]
+        csv_generator = CSVExport(
+            fields=file_fields, data=data, file_title="keyword")
+        response = csv_generator.prepare_csv_file_response()
+        return response
 
 
 class ViralKeywordsApiView(OptimizeQueryApiView):

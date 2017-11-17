@@ -9,7 +9,7 @@ from channel.api.views import ChannelListApiView
 from channel.api.views import ChannelListFiltersApiView
 from channel.api.views import ChannelRetrieveUpdateApiView
 from channel.api.views import ChannelSetApiView
-from channel.api.views import ChannelsVideosByKeywords
+
 
 
 urlpatterns = [
@@ -19,5 +19,4 @@ urlpatterns = [
     url(r'^channels/filters/$', ChannelListFiltersApiView.as_view(), name='channel_filters'),
     url(r'^channels/(?P<pk>[\w-]+)/$', ChannelRetrieveUpdateApiView.as_view(), name='channel'),
     url(r'^channel_set/$', ChannelSetApiView.as_view(), name="channel_set"),
-    url(r'^channels/video_by_keyword/', ChannelsVideosByKeywords.as_view(), name='channel_keyword_videos'),
 ]

@@ -35,12 +35,7 @@ def add_targeting_list_items_info(data, list_type):
         if list_type == TargetingItem.CHANNEL_TYPE:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="channel",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=ids,
-                    limit=len(ids),
-                )
+                items = connector.get_channels_base_info(ids)
                 info = {i['id']: i for i in items}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
@@ -55,12 +50,7 @@ def add_targeting_list_items_info(data, list_type):
         elif list_type == TargetingItem.VIDEO_TYPE:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=ids,
-                    limit=len(ids),
-                )
+                items = connector.get_videos_base_info(ids)
                 info = {i['id']: i for i in items}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
@@ -443,7 +433,7 @@ class AccountCreationListSerializer(ModelSerializer):
                     **{annotate: aggr}
                 )
                 for d in struck_data:
-                    self.struck[d['id']][annotate] = d
+                    self.struck[d['id']][annotate] = d[annotate]
 
             # data for weekly charts
             account_id_key = "ad_group__campaign__account__account_creations__id"
