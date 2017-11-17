@@ -37,6 +37,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "duration",
     "has_audience",
     "transcript",
+    "bad_words",
     "url",
     "ptk",
 )
