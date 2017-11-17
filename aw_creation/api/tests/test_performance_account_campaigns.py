@@ -95,7 +95,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             campaign_creation_id = None
             if campaign["id"] == managed_campaign.id:
                 campaign_creation_id = campaign_creation.id
-            self.assertIs(campaign['campaign_creation_id'], campaign_creation_id)
+            self.assertEqual(campaign['campaign_creation_id'], campaign_creation_id)
 
     def test_success_get_demo(self):
         self.create_test_user()
