@@ -150,6 +150,11 @@ class KeyWord(BaseModel):
     updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
+    category = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    daily_views = models.BigIntegerField(default=0, db_index=True)
+    weekly_views = models.BigIntegerField(default=0, db_index=True)
+    thirty_days_views = models.BigIntegerField(default=0, db_index=True)
+    views = models.BigIntegerField(default=0, db_index=True)
 
     def get_monthly_searches(self):
         raw = self._monthly_searches
