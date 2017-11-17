@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    all_keywords = KeyWord.objects.all()[:100]
+    all_keywords = KeyWord.objects.all()
     update_params = ('category', 'thirty_days_views', 'weekly_views', 'daily_views', 'views')
     connector = SingleDatabaseApiConnector()
 
@@ -43,6 +43,7 @@ class Command(BaseCommand):
     def gen_related_video_data(self, keyword):
         query_params = {}
         query_params["keywords__term"] = keyword.text
+        query_params["sort"] = 'views:desc'
         query_params["fields"] = ','.join(self.update_params)
         query_params["size"] = 500
         query_params["page"] = 1
