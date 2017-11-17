@@ -10,6 +10,7 @@ from rest_framework.serializers import ModelSerializer, CharField, \
 
 from administration.notifications import send_new_registration_email
 from userprofile.models import Plan
+from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -148,15 +149,24 @@ class UserSetPasswordSerializer(Serializer):
 
 
 class PlanSerializer(ModelSerializer):
+
+    payments_plan = SerializerMethodField()
+
     """
     Permission plan serializer
     """
     class Meta:
         model = Plan
-        fields = {
+        fields = (
             'name',
             'permissions',
-        }
+            'payments_plan',
+        )
+
+    def get_payments_plan(self, obj):
+        if obj.payments_plan_id is None:
+            return {}
+        return PaymentPlanSerializer(obj.payments_plan).data
 
 
 class ContactFormSerializer(Serializer):
