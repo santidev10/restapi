@@ -24,8 +24,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserChannel
 from utils.csv_export import CassandraExportMixin
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    OnlyAdminUserOrSubscriber
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 # pylint: enable=import-error
@@ -257,7 +256,7 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
@@ -304,7 +303,7 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 
 
 class ChannelSetApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     connector_delete = Connector().delete_channels
 
 
