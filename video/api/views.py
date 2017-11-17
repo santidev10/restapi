@@ -30,7 +30,7 @@ class VideoListApiView(
     Proxy view for video list
     """
     # TODO Check additional auth logic
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
+    permission_classes = tuple()
     permission_required = (
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
