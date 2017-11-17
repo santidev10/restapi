@@ -43,6 +43,17 @@ class PredefinedQueriesApiView(APIView):
         return Response(data=PREDEFINED_QUERIES)
 
 
+class KeywordCategoriesApiView(APIView):
+    permission_classes = tuple()
+
+    @staticmethod
+    def get(*_):
+        return Response(data=KeyWord.objects
+                        .filter(category__isnull=False)
+                        .distinct('category')
+                        .values_list('category', flat=True))
+
+
 class KWPaginator(CustomPageNumberPaginator):
     page_size = 12
 
@@ -58,6 +69,10 @@ class OptimizeQueryApiView(ListAPIView):
         """
         allowed_sorts = [
             "search_volume",
+            "daily_views",
+            "weekly_views",
+            "daily_views",
+            "thirty_days_views",
             "ctr",
             "ctr_v",
             "cpv",
@@ -83,45 +98,6 @@ class OptimizeQueryApiView(ListAPIView):
         sorting = query_params.get("sort_by")
         if sorting not in allowed_sorts:
             return queryset
-
-        # TODO uncomment when adwords stats will be created is saas
-        # extra_selects = dict(
-        #     cpv="SELECT "
-        #         "CASE WHEN Sum(video_views) > 0 "
-        #         "THEN COALESCE(1.0 * Sum(cost) / Sum(video_views), 0) "
-        #         "ELSE 0 END "
-        #         "FROM aw_campaign_keywordstatistic "
-        #         "WHERE aw_campaign_keywordstatistic.keyword_id "
-        #         "= keyword_tool_keyword.text",
-        #     ctr="SELECT "
-        #         "CASE WHEN Sum(impressions) > 0 "
-        #         "THEN COALESCE(1.0 * Sum(clicks) / Sum(impressions), 0) "
-        #         "ELSE 0 END "
-        #         "FROM aw_campaign_keywordstatistic "
-        #         "WHERE aw_campaign_keywordstatistic.keyword_id "
-        #         "= keyword_tool_keyword.text",
-        #     ctr_v="SELECT "
-        #           "CASE WHEN Sum(video_views) > 0 "
-        #           "THEN COALESCE(1.0 * Sum(clicks) / Sum(video_views), 0) "
-        #           "ELSE 0 END "
-        #           "FROM aw_campaign_keywordstatistic "
-        #           "WHERE aw_campaign_keywordstatistic.keyword_id "
-        #           "= keyword_tool_keyword.text",
-        #     view_rate="SELECT "
-        #               "CASE WHEN Sum(impressions) > 0 "
-        #               "THEN COALESCE("
-        #               "1.0 * Sum(video_views) / Sum(impressions), 0) "
-        #               "ELSE 0 END "
-        #               "FROM aw_campaign_keywordstatistic "
-        #               "WHERE aw_campaign_keywordstatistic.keyword_id "
-        #               "= keyword_tool_keyword.text",
-        # )
-        # if sort_by in extra_selects:
-        #     queryset = queryset.extra(
-        #         select={
-        #             sort_by: extra_selects[sort_by]
-        #         }
-        #     )
 
         if sorting == 'search_volume':
             queryset = queryset.annotate(
@@ -198,6 +174,10 @@ class OptimizeQueryApiView(ListAPIView):
             queryset = queryset.filter(
                 text__in=query_params.get("ids").split(",")
             )
+        if 'category' in query_params:
+                queryset = queryset.filter(
+                    category=query_params['category']
+                )
         return queryset
 
     def get_queryset(self):
