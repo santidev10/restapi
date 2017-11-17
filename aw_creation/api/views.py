@@ -115,7 +115,15 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
                 data={"errors": ["The MIME type isn't supported: "
                                  "{}".format(file_obj.content_type)]})
         if content_type == "postal_codes":
-            response_data = self.get_location_rules(data)
+            try:
+                response_data = self.get_location_rules(data)
+            except UnicodeDecodeError:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data={
+                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
+                    },
+                )
         else:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
@@ -2616,8 +2624,15 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                     status=HTTP_400_BAD_REQUEST,
                     data={"errors": ["The MIME type isn't supported: "
                                      "{}".format(file_obj.content_type)]})
-
-            criteria_list.extend(getattr(self, method)(data))
+            try:
+                criteria_list.extend(getattr(self, method)(data))
+            except UnicodeDecodeError:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data={
+                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
+                    },
+                )
 
         add_targeting_list_items_info(criteria_list, list_type)
 
