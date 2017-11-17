@@ -124,16 +124,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def get_channel_videos_by_keywords(self, query_params, keyword):
-        """
-        Get top videos by channel keyword
-        :param query_params: dict
-        :param keyword: str
-        """
-        endpoint = "channels/video_by_keyword/{}".format(keyword)
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
     def delete_channels(self, query_params, data):
         """
         Delete channels
@@ -240,7 +230,7 @@ class SingleDatabaseApiConnector(object):
 
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), ids=ids)
+        query_params = dict(fields=",".join(fields), ids=",".join(ids))
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -250,7 +240,7 @@ class SingleDatabaseApiConnector(object):
 
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
-        query_params = dict(fields=",".join(fields), ids=ids)
+        query_params = dict(fields=",".join(fields), ids=",".join(ids))
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
