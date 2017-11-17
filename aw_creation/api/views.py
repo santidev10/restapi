@@ -591,9 +591,13 @@ class AccountCreationListApiView(ListAPIView):
             if dependencies:
                 queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
 
-            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
+            if sort_by == "name":
+                sort_by = "sort_by"
+            else:
+                annotate = Coalesce(annotate, 0)
+                sort_by = "-sort_by"
 
-            sort_by = "sort_by" if sort_by == "name" else "-sort_by"
+            queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
 
