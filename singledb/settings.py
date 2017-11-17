@@ -64,6 +64,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "is_content_safe",
     "is_monetizable",
     "audience",
+    "traffic_sources",
     "duration",
     "video_safety_status",
     "ptk",
@@ -161,5 +162,6 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "score_total",
     "channel_group",
     "audience",
+    "traffic_sources",
     "has_audience",
 )
