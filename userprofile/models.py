@@ -55,7 +55,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
     can_access_media_buying = models.BooleanField(default=False)
-    pre_backed_segments = models.BooleanField(default=False)
+    pre_baked_segments = models.BooleanField(default=False)
 
     objects = UserManager()
 
