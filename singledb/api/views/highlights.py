@@ -52,6 +52,10 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self):
+        page = self.request_query_params.get('page')
+        if page and int(page) <= 5:
+            self.result_query_params['page'] = page
+
         size = self.request_query_params.get('size')
         if size:
             self.result_query_params['size'] = 20 if int(size) > 20 else size
