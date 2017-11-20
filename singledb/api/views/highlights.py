@@ -44,6 +44,7 @@ class HighlightsQuery:
                      'weekly_subscribers', 'weekly_views', 'weekly_comments', 'weekly_likes',
                      'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes',)
     allowed_sorts_type = ('desc',)
+    allowed_aggregations = ('category',)
 
     def __init__(self, query_params):
         self.result_query_params = CustomQueryParamsDict()
@@ -61,6 +62,9 @@ class HighlightsQuery:
         for allowed_filter in self.allowed_filters:
             if self.request_query_params.get(allowed_filter):
                 self.result_query_params[allowed_filter] = self.request_query_params.get(allowed_filter)
+
+        if self.request_query_params.get('aggregations') in self.allowed_aggregations:
+            self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
 
         return self.result_query_params
 
