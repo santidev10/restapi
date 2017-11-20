@@ -374,6 +374,7 @@ class BaseDemo:
         return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
 
+
 class DemoAd(BaseDemo):
 
     @property
@@ -400,6 +401,34 @@ class DemoAd(BaseDemo):
             companion_banner=None,
             video_thumbnail="http://img.youtube.com/vi/XEngrJr79Jg/hqdefault.jpg",
             video_duration=151,
+
+            beacon_impression_1="",
+            beacon_impression_2="",
+            beacon_impression_3="",
+            beacon_view_1="",
+            beacon_view_2="",
+            beacon_view_3="",
+            beacon_skip_1="",
+            beacon_skip_2="",
+            beacon_skip_3="",
+            beacon_first_quartile_1="",
+            beacon_first_quartile_2="",
+            beacon_first_quartile_3="",
+            beacon_midpoint_1="",
+            beacon_midpoint_2="",
+            beacon_midpoint_3="",
+            beacon_third_quartile_1="",
+            beacon_third_quartile_2="",
+            beacon_third_quartile_3="",
+            beacon_completed_1="",
+            beacon_completed_2="",
+            beacon_completed_3="",
+            beacon_vast_1="",
+            beacon_vast_2="",
+            beacon_vast_3="",
+            beacon_dcm_1="",
+            beacon_dcm_2="",
+            beacon_dcm_3="",
         )
         return data
 

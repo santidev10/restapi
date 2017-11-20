@@ -78,6 +78,16 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 'video_ad_format', 'custom_params',
                 'companion_banner', 'video_id', 'video_title', 'video_description',
                 'video_thumbnail', 'video_channel_title', 'video_duration',
+
+                "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+                "beacon_view_1", "beacon_view_2", "beacon_view_3",
+                "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+                "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+                "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+                "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+                "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+                "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+                "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
             }
         )
         if len(data["custom_params"]) > 0:
@@ -136,6 +146,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
                 companion_banner=fp,
                 video_ad_format=AdGroupCreation.BUMPER_AD,
+                beacon_first_quartile_3="http://tracking.com.kz?let_me_go=1"
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -147,6 +158,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.name, data['name'])
         self.assertEqual(ad.final_url, data['final_url'])
         self.assertEqual(ad.tracking_template, data['tracking_template'])
+        self.assertEqual(ad.beacon_first_quartile_3, data['beacon_first_quartile_3'])
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)

@@ -35,6 +35,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_r
 from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.charts import DeliveryChart
+from aw_creation.email_messages import send_tracking_tags_request
 from datetime import timedelta, datetime
 from io import StringIO
 from collections import OrderedDict
@@ -835,6 +836,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                         return Response(status=HTTP_400_BAD_REQUEST,
                                         data=dict(error="You have no connected MCC account"))
 
+                send_tracking_tags_request(request.user, instance)
+
             elif instance.account:
                 return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="You cannot disapprove a running account"))
 
@@ -1274,6 +1277,15 @@ class AccountCreationDuplicateApiView(APIView):
     ad_fields = (
         "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
         'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
+        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+        "beacon_view_1", "beacon_view_2", "beacon_view_3",
+        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+        "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+        "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
     )
     targeting_fields = ("criteria", "type", "is_negative")
 

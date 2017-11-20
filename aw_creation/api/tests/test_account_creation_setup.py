@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
+from django.core import mail
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
@@ -295,9 +296,87 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            ac.refresh_from_db()
-            self.assertEqual(ac.account.id, "uid_from_aw")
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ac.refresh_from_db()
+        self.assertEqual(ac.account.id, "uid_from_aw")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_success_approve_and_send_tags(self):
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+        # creating of a MCC account
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(id="1", name="Hi", account=account, owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol", account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal", campaign_creation=campaign_creation)
+        ad_creation = AdCreation.objects.create(
+            id="1", name="Fal", ad_group_creation=ad_group_creation,
+            beacon_third_quartile_2="http://hadler.ua",
+            beacon_vast_3="http://google.com.ua",
+        )
+        ad_group_creation_2 = AdGroupCreation.objects.create(id="2", name="Sol", campaign_creation=campaign_creation)
+        ad_creation_2 = AdCreation.objects.create(
+            id="2", name="Hel", ad_group_creation=ad_group_creation_2,
+            beacon_first_quartile_1="https://gates.ua?unseal=dark_power",
+            beacon_dcm_1="http://google.com.ua",
+        )
+        ad_creation_3 = AdCreation.objects.create(
+            id="3", name="Tal", ad_group_creation=ad_group_creation_2,
+        )
+
+        # account creation to approve it
+        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        response = self.client.patch(
+            url, json.dumps(dict(is_approved=True)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        email_body = email.body
+        self.assertIn(ad_creation.unique_name, email_body)
+        self.assertIn(ad_creation_2.unique_name, email_body)
+        self.assertNotIn(ad_creation_3.unique_name, email_body)
+
+    def test_success_approve_not_sending_tags(self):
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWConnectionToUserRelation.objects.create(
+            connection=connection,
+            user=self.user,
+        )
+        AWAccountPermission.objects.create(
+            aw_connection=connection,
+            account=manager,
+        )
+        # creating of a MCC account
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(id="1", name="Hi", account=account, owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol", account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal", campaign_creation=campaign_creation)
+        AdCreation.objects.create(id="1", name="Fal", ad_group_creation=ad_group_creation)
+
+        # account creation to approve it
+        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        response = self.client.patch(
+            url, json.dumps(dict(is_approved=True)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_fail_approve_out_of_date(self):
         # creating of a MCC account
