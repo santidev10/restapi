@@ -52,12 +52,17 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self):
-        self.result_query_params['size'] = 20
+        size = self.request_query_params.get('size')
+        if size:
+            self.result_query_params['size'] = 20 if int(size) > 20 else size
+        else:
+            self.result_query_params['size'] = 20
 
-        sort, sort_type = self.request_query_params.get('sort').split(':', 1)
-        if sort in self.allowed_sorts \
-                and sort_type in self.allowed_sorts_type:
-            self.result_query_params['sort'] = self.request_query_params.get('sort')
+        if self.request_query_params.get('sort'):
+            sort, sort_type = self.request_query_params.get('sort').split(':', 1)
+            if sort in self.allowed_sorts \
+                    and sort_type in self.allowed_sorts_type:
+                self.result_query_params['sort'] = self.request_query_params.get('sort')
 
         for allowed_filter in self.allowed_filters:
             if self.request_query_params.get(allowed_filter):
