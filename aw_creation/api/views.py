@@ -93,6 +93,10 @@ class DocumentImportBaseAPIView(GenericAPIView):
                     yield cell.strip()
 
 
+DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
+                           "Also please use the UTF-8 encoding."
+
+
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
     """
     Send a post request with multipart-ford-data encoded file data
@@ -110,19 +114,14 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
         elif fct in ("text/csv", "application/vnd.ms-excel"):
             data = self.get_csv_contents(file_obj)
         else:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data={"errors": ["The MIME type isn't supported: "
-                                 "{}".format(file_obj.content_type)]})
+            return Response(status=HTTP_400_BAD_REQUEST, data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
         if content_type == "postal_codes":
             try:
                 response_data = self.get_location_rules(data)
             except UnicodeDecodeError:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
-                    data={
-                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
-                    },
+                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]},
                 )
         else:
             return Response(
@@ -326,43 +325,37 @@ class TargetingItemsSearchApiView(APIView):
 
     @staticmethod
     def search_video_items(query):
+        words = [s.lower() for s in re.split(r'\s+', query)]
+        fields = ("video_id", "title", "thumbnail_image_url")
+        query_params = dict(fields=",".join(fields), text_search__term=words, sort="views:desc")
         connector = SingleDatabaseApiConnector()
         try:
-            response = connector.get_custom_query_result(
-                model_name="video",
-                fields=["id", "title", "thumbnail_image_url"],
-                title__icontains=query,
-                limit=50,
-            )
+            response_data = connector.get_video_list(query_params)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             items = []
         else:
             items = [
-                dict(id=i['id'], criteria=i['id'],
-                     name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response
+                dict(id=i['video_id'], criteria=i['video_id'], name=i['title'], thumbnail=i['thumbnail_image_url'])
+                for i in response_data["items"]
             ]
         return items
 
     @staticmethod
     def search_channel_items(query):
+        words = [s.lower() for s in re.split(r'\s+', query)]
+        fields = ("channel_id", "title", "thumbnail_image_url")
+        query_params = dict(fields=",".join(fields), text_search__term=words, sort="subscribers:desc")
         connector = SingleDatabaseApiConnector()
         try:
-            response = connector.get_custom_query_result(
-                model_name="channel",
-                fields=["id", "title", "thumbnail_image_url"],
-                title__icontains=query,
-                limit=50,
-            )
+            response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             items = []
         else:
             items = [
-                dict(id=i['id'], criteria=i['id'],
-                     name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response
+                dict(id=i['channel_id'], criteria=i['channel_id'], name=i['title'], thumbnail=i['thumbnail_image_url'])
+                for i in response_data["items"]
             ]
         return items
 
@@ -559,7 +552,17 @@ class AccountCreationListApiView(ListAPIView):
                 output_field=AggrFloatField()
             ),
             output_field=AggrFloatField()
-        ))
+        )),
+        name=(
+            None,
+            Case(
+                When(
+                    is_managed=True,
+                    then=F("name")
+                ),
+                default=F("account__name"),
+            )
+        ),
     )
 
     def get(self, request, *args, **kwargs):
@@ -596,10 +599,14 @@ class AccountCreationListApiView(ListAPIView):
             if dependencies:
                 queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
 
-            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
-            sort_by = "-sort_by"
+            if sort_by == "name":
+                sort_by = "sort_by"
+            else:
+                annotate = Coalesce(annotate, 0)
+                sort_by = "-sort_by"
 
-        elif sort_by != "name":
+            queryset = queryset.annotate(sort_by=annotate)
+        else:
             sort_by = "-created_at"
 
         return queryset.order_by('is_ended', sort_by)
@@ -1719,12 +1726,7 @@ class PerformanceAccountDetailsApiView(APIView):
             ids = [i['creative_id'] for i in creative]
             creative = []
             try:
-                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                channel_info = SingleDatabaseApiConnector().get_videos_base_info(ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.critical(e)
             else:
@@ -2293,12 +2295,7 @@ class PerformanceTargetingReportAPIView(APIView):
         if ids:
             connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_custom_query_result(
-                    model_name="channel",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                resp = connector.get_channels_base_info(ids)
                 info = {r['id']: r for r in resp}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
@@ -2323,12 +2320,7 @@ class PerformanceTargetingReportAPIView(APIView):
         if ids:
             connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                resp = connector.get_videos_base_info(ids)
                 info = {r['id']: r for r in resp}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
@@ -2620,17 +2612,14 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
             elif fct in ("text/csv", "application/vnd.ms-excel"):
                 data = self.get_csv_contents(file_obj, return_lines=True)
             else:
-                return Response(
-                    status=HTTP_400_BAD_REQUEST,
-                    data={"errors": ["The MIME type isn't supported: "
-                                     "{}".format(file_obj.content_type)]})
+                return Response(status=HTTP_400_BAD_REQUEST, data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
             try:
                 criteria_list.extend(getattr(self, method)(data))
             except UnicodeDecodeError:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={
-                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
                     },
                 )
 

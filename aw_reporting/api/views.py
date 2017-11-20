@@ -321,12 +321,7 @@ class AnalyzeDetailsApiView(APIView):
             ids = [i['creative_id'] for i in creative]
             creative = []
             try:
-                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                channel_info = SingleDatabaseApiConnector().get_videos_base_info(ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.critical(e)
             else:

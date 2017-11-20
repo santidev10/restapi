@@ -309,7 +309,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             self.data_keys
         )
         self.assertEqual(campaign_data['label'], campaign.name)
-        self.assertEqual(len(campaign_data['items']), 20)
+        self.assertEqual(len(campaign_data['items']), 12)
 
         item = campaign_data['items'][0]
         self.assertEqual(set(item.keys()), self.item_keys)

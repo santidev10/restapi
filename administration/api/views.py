@@ -72,7 +72,7 @@ class UserListAdminApiView(ListAPIView):
         return queryset
 
     def do_sorts(self, queryset):
-        return queryset
+        return queryset.order_by('last_name', 'first_name')
 
 
 class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):

@@ -451,12 +451,7 @@ class DeliveryChart:
             connector = SingleDatabaseApiConnector()
             try:
                 ids = [s['creative_id'] for s in raw_stats]
-                items = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url", "duration"],
-                    limit=len(ids),
-                    id__in=ids,
-                )
+                items = connector.get_videos_base_info(ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
                 videos_info = {}
@@ -550,12 +545,7 @@ class DeliveryChart:
         connector = SingleDatabaseApiConnector()
         try:
             ids = [s['yt_id'] for s in raw_stats]
-            items = connector.get_custom_query_result(
-                model_name="video",
-                fields=["id", "title", "thumbnail_image_url", "duration"],
-                limit=len(ids),
-                id__in=ids,
-            )
+            items = connector.get_videos_base_info(ids)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             videos_info = {}
@@ -584,12 +574,7 @@ class DeliveryChart:
         connector = SingleDatabaseApiConnector()
         try:
             ids = list(set(s['yt_id'] for s in raw_stats))
-            items = connector.get_custom_query_result(
-                model_name="channel",
-                fields=["id", "title", "thumbnail_image_url"],
-                limit=len(ids),
-                id__in=ids,
-            )
+            items = connector.get_channels_base_info(ids)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             channels_info = {}
