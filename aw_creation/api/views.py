@@ -92,6 +92,10 @@ class DocumentImportBaseAPIView(GenericAPIView):
                     yield cell.strip()
 
 
+DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
+                           "Also please use the UTF-8 encoding."
+
+
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
     """
     Send a post request with multipart-ford-data encoded file data
@@ -109,19 +113,14 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
         elif fct in ("text/csv", "application/vnd.ms-excel"):
             data = self.get_csv_contents(file_obj)
         else:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data={"errors": ["The MIME type isn't supported: "
-                                 "{}".format(file_obj.content_type)]})
+            return Response(status=HTTP_400_BAD_REQUEST, data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
         if content_type == "postal_codes":
             try:
                 response_data = self.get_location_rules(data)
             except UnicodeDecodeError:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
-                    data={
-                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
-                    },
+                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]},
                 )
         else:
             return Response(
@@ -2601,17 +2600,14 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
             elif fct in ("text/csv", "application/vnd.ms-excel"):
                 data = self.get_csv_contents(file_obj, return_lines=True)
             else:
-                return Response(
-                    status=HTTP_400_BAD_REQUEST,
-                    data={"errors": ["The MIME type isn't supported: "
-                                     "{}".format(file_obj.content_type)]})
+                return Response(status=HTTP_400_BAD_REQUEST, data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
             try:
                 criteria_list.extend(getattr(self, method)(data))
             except UnicodeDecodeError:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={
-                        "errors": ["The document has an incorrect character encoding. Please use the UTF-8 encoding."]
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
                     },
                 )
 
