@@ -227,15 +227,58 @@ class Plan(models.Model):
             },
         },
     }
+    plan_features = {
+        'free': [],
+        'highlights': [
+            'Youtube Channel Verification',
+            'Top 100 Channels',
+            'Top 100 Videos',
+            'Top 100 Keywords',
+        ],
+        'professional': [
+            'Youtube Channel Verification',
+            'Top 100 Channels',
+            'Top 100 Videos',
+            'Top 100 Keywords',
+            'Research and Insights',
+            'Segment Creator',
+            'AdWords Integration',
+        ],
+        'enterprise': [
+            'Youtube Channel Verification',
+            'Top 100 Channels',
+            'Top 100 Videos',
+            'Top 100 Keywords',
+            'Research and Insights',
+            'Segment Creator',
+            'AdWords Integration',
+            'Access to Verified Channels',
+            'Customizable Brand Safety',
+            'Customizable Channel Score',
+            'Pre-baked Segments',
+            'Media Buying (add-on)',
+            'Customized Channels Lists (add-on)',
+        ],
+    }
 
     name = models.CharField(max_length=255, primary_key=True)
     permissions = JSONField(default=plan_preset['free'])
+    features = JSONField(default=list())
     payments_plan = models.ForeignKey('payments.Plan', null=True, on_delete=models.SET_NULL)
 
     @staticmethod
     def update_defaults():
         for key, value in Plan.plan_preset.items():
-            Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
+            plan, created = Plan.objects.get_or_create(name=key,
+                                                       defaults=dict(
+                                                           permissions=value,
+                                                           features=Plan.plan_features[key],
+                                                       ))
+            # update permissions and features
+            if not created:
+                plan.permissions = value
+                plan.features = Plan.plan_features[key]
+                plan.save()
 
         # set admin plans
         plan = Plan.objects.get(name='enterprise')
@@ -262,15 +305,18 @@ class Plan(models.Model):
         plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
         plan.save()
 
-
-    @staticmethod
-    def update_user_plans():
         for key, value in Plan.plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
+            plan, created = Plan.objects.get_or_create(name=key,
+                                                       defaults=dict(
+                                                           permissions=value,
+                                                           features=Plan.plan_features[key],
+                                                       ))
             if created:
                 continue
             plan.permissions = value
+            plan.features = Plan.plan_features[key]
             plan.save()
+
             users = UserProfile.objects.filter(plan=plan)
             for user in users:
                 user.set_permissions_from_plan(key)
