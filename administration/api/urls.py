@@ -7,7 +7,7 @@ from administration.api.views import UserListAdminApiView, \
     UserRetrieveUpdateDeleteAdminApiView, AuthAsAUserAdminApiView, \
     UserActionListCreateApiView, UserActionDeleteAdminApiView, \
     PlanListCreateApiView, PlanChangeDeleteApiView, SubscriptionView, \
-    SubscriptionCreateView
+    SubscriptionCreateView, SubscriptionDeleteView, SubscriptionUpdateView
 
 urlpatterns = [
     url(r'^users/$', UserListAdminApiView.as_view(), name="user_list"),
@@ -24,6 +24,6 @@ urlpatterns = [
 
     url(r"^subscriptions/$", SubscriptionView.as_view(), name="subscription_list"),
     url(r"^subscriptions/create/$", SubscriptionCreateView.as_view(), name="subscription_create"),
-    # url(r"^subscriptions/(?P<pk>\d+)/delete/$", SubscriptionDeleteView.as_view(), name="subscription_delete"),
-    # url(r"^subscriptions/(?P<pk>\d+)/update/$", SubscriptionUpdateView.as_view(), name="subscription_update"),
+    url(r"^subscriptions/(?P<pk>\d+)/delete/$", SubscriptionDeleteView.as_view(), name="subscription_delete"),
+    url(r"^subscriptions/(?P<pk>\d+)/update/$", SubscriptionUpdateView.as_view(), name="subscription_update"),
 ]

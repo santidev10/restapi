@@ -30,6 +30,7 @@ from userprofile.models import UserProfile, Plan, Subscription
 from utils.api_paginator import CustomPageNumberPaginator
 
 from payments.stripe_api import customers, subscriptions
+from payments.models import Subscription as PaymentsSubscription
 
 
 class UserPaginator(CustomPageNumberPaginator):
@@ -308,10 +309,6 @@ class SubscriptionView(APIView):
 class SubscriptionCreateView(APIView):
     serializer_class = SubscriptionSerializer
 
-    def set_customer(self, request):
-        if self.customer is None:
-            self._customer = customers.create(request.user)
-
     def subscribe(self, customer, plan, token):
         return subscriptions.create(customer, plan, token=token)
 
@@ -338,3 +335,36 @@ class SubscriptionCreateView(APIView):
             request.user.update_permissions_from_subscription(current_subscription)
             serializer = self.serializer_class(current_subscription)
             return Response(serializer.data, status=HTTP_200_OK)
+
+
+class SubscriptionDeleteView(APIView):
+    def post(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        # in case that we want to immediately cancel sub we could send at_period_at param
+        obj = PaymentsSubscription.objects.get(pk=pk)
+        try:
+            subscriptions.cancel(obj)
+        except stripe.StripeError as e:
+            return Response(data=smart_str(e))
+        return Response(status=HTTP_200_OK)
+
+
+class SubscriptionUpdateView(APIView):
+    def post(self, request, *args, **kwargs):
+        plan_name = request.data.get('plan')
+        pk = kwargs.get('pk')
+        if plan_name:
+            iq_plan = Plan.objects.get(name=plan_name)
+            if iq_plan.payments_plan:
+                try:
+                    obj = PaymentsSubscription.objects.get(pk=pk)
+                    subscriptions.update(obj, iq_plan.payments_plan.id)
+                except stripe.StripeError as e:
+                    return Response(data=smart_str(e))
+            subscription = Subscription.objects.get(user=request.user)
+            subscription.plan = iq_plan
+            subscription.save()
+            request.user.update_permissions_from_subscription(subscription)
+        return Response(status=HTTP_200_OK)
+
+
