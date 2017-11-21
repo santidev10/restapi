@@ -168,6 +168,12 @@ class ContactFormSerializer(Serializer):
     email = EmailField(required=True, max_length=255)
     country = CharField(required=True, max_length=255)
     message = CharField(
-        required=False, max_length=255, allow_null=True, allow_blank=True)
+        required=False,
+        max_length=255,
+        default=""
+    )
     company = CharField(
-        required=False, max_length=255, allow_null=True, allow_blank=True)
+        required=False,
+        max_length=255,
+        default=""
+    )
