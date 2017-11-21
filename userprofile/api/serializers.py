@@ -160,6 +160,7 @@ class PlanSerializer(ModelSerializer):
         fields = (
             'name',
             'permissions',
+            'features',
             'payments_plan',
         )
 

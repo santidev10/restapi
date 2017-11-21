@@ -52,16 +52,26 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self):
-        self.result_query_params['size'] = 20
+        page = self.request_query_params.get('page')
+        if page and int(page) <= 5:
+            self.result_query_params['page'] = page
 
-        sort, sort_type = self.request_query_params.get('sort').split(':', 1)
-        if sort in self.allowed_sorts \
-                and sort_type in self.allowed_sorts_type:
-            self.result_query_params['sort'] = self.request_query_params.get('sort')
+        size = self.request_query_params.get('size')
+        if size:
+            self.result_query_params['size'] = 20 if int(size) > 20 else size
+        else:
+            self.result_query_params['size'] = 20
+
+        if self.request_query_params.get('sort'):
+            sort, sort_type = self.request_query_params.get('sort').split(':', 1)
+            if sort in self.allowed_sorts \
+                    and sort_type in self.allowed_sorts_type:
+                self.result_query_params['sort'] = self.request_query_params.get('sort')
 
         for allowed_filter in self.allowed_filters:
             if self.request_query_params.get(allowed_filter):
-                self.result_query_params[allowed_filter] = self.request_query_params.get(allowed_filter)
+                filter_cat = self.request_query_params.get(allowed_filter)
+                self.result_query_params[allowed_filter] = filter_cat.split(',')[0]
 
         if self.request_query_params.get('aggregations') in self.allowed_aggregations:
             self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
