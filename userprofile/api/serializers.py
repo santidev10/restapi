@@ -142,25 +142,6 @@ class UserSerializer(ModelSerializer):
 
     def get_plan(self, obj):
         return PlanSerializer(obj.plan).data
-    
-
-class SubscriptionsSerialiser(Serializer):
-    plan = SerializerMethodField()
-    payments_subscription = SerializerMethodField()
-
-    class Meta:
-        model = Subscription
-
-        fields = (
-            "plan",
-            "payments_subscription",
-        )
-
-    def get_plan(self, obj):
-        return PlanSerializer(obj.plan).data
-
-    def get_payments(self, obj):
-        return PlanSerializer(obj.plan).data
 
 
 class UserSetPasswordSerializer(Serializer):
