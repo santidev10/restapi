@@ -18,24 +18,21 @@ def tag_field_to_readable_name(field_name):
 def send_tracking_tags_request(user, account_creation):
     from aw_creation.models import AdCreation
 
-    tag_fields = (
-        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
-        "beacon_view_1", "beacon_view_2", "beacon_view_3",
-        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
-        "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
-        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
-        "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
-        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
-        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
-        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
-    )
+    tag_field_names = AdCreation.tag_field_names
+    is_changed_fields = tuple("{}_changed".format(f) for f in tag_field_names)
+    all_tags_fields = is_changed_fields + tag_field_names
+    delete_sign = "[deleted]"
+
     ads_data = AdCreation.objects.filter(
         ad_group_creation__campaign_creation__account_creation=account_creation,
-    ).exclude(**{f: "" for f in tag_fields}).values(
-        "id", "name",
-        "ad_group_creation__id",  "ad_group_creation__name",
+        is_deleted=False,
+        ad_group_creation__is_deleted=False,
+        ad_group_creation__campaign_creation__is_deleted=False,
+        ad_group_creation__campaign_creation__account_creation__is_deleted=False,
+    ).exclude(**{f: False for f in is_changed_fields}).values(
+        "id", "name", "ad_group_creation__id",  "ad_group_creation__name",
         "ad_group_creation__campaign_creation__id", "ad_group_creation__campaign_creation__name",
-        *tag_fields
+        *all_tags_fields
     )
     if ads_data:
         campaigns = defaultdict(lambda: defaultdict(dict))
@@ -46,7 +43,9 @@ def send_tracking_tags_request(user, account_creation):
             ad_group_hash = "{} #{}".format(ad["ad_group_creation__name"], ad["ad_group_creation__id"])
             ad_hash = "{} #{}".format(ad["name"], ad["id"])
 
-            tags = ((t, ad[t]) for t in tag_fields if ad[t])
+            tags = ((t, ad[t] if ad[t] else delete_sign)
+                    for t in tag_field_names
+                    if ad[t] or ad["{}_changed".format(t)])
             campaigns[campaign_hash][ad_group_hash][ad_hash] = [dict(name=tag_field_to_readable_name(name), url=url)
                                                                 for name, url in tags]
 

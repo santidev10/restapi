@@ -323,13 +323,19 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         ad_creation = AdCreation.objects.create(
             id="1", name="Fal", ad_group_creation=ad_group_creation,
             beacon_third_quartile_2="http://hadler.ua",
+            beacon_third_quartile_2_changed=True,
             beacon_vast_3="http://google.com.ua",
+            beacon_vast_3_changed=True,
+            beacon_vast_1_changed=True,
         )
         ad_group_creation_2 = AdGroupCreation.objects.create(id="2", name="Sol", campaign_creation=campaign_creation)
         ad_creation_2 = AdCreation.objects.create(
             id="2", name="Hel", ad_group_creation=ad_group_creation_2,
             beacon_first_quartile_1="https://gates.ua?unseal=dark_power",
+            beacon_first_quartile_1_changed=True,
             beacon_dcm_1="http://google.com.ua",
+            beacon_dcm_1_changed=True,
+            beacon_dcm_2_changed=True,
         )
         ad_creation_3 = AdCreation.objects.create(
             id="3", name="Tal", ad_group_creation=ad_group_creation_2,
@@ -345,6 +351,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         email_body = email.body
+        print(email_body)
         self.assertIn(ad_creation.unique_name, email_body)
         self.assertIn(ad_creation_2.unique_name, email_body)
         self.assertNotIn(ad_creation_3.unique_name, email_body)
