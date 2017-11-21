@@ -17,7 +17,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.user.can_access_media_buying = True
         self.user.save()
 
-    def create_ad(self, owner, start=None, end=None, account=None):
+    def create_ad(self, owner, start=None, end=None, account=None, beacon_view_1=""):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=owner, account=account,
         )
@@ -33,7 +33,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         )
         ad_creation = AdCreation.objects.create(
             name="Test Ad", ad_group_creation=ad_group_creation,
-            custom_params_raw='[{"name": "test", "value": "ad"}]'
+            custom_params_raw='[{"name": "test", "value": "ad"}]',
+            beacon_view_1=beacon_view_1,
         )
         return ad_creation
 
@@ -130,6 +131,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             owner=self.user,
             start=today,
             end=today + timedelta(days=10),
+            beacon_view_1="http://www.test.ua",
         )
         ad = self.create_ad(**defaults)
         account_creation = ad.ad_group_creation.campaign_creation.account_creation
@@ -146,7 +148,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 custom_params=json.dumps([{"name": "name1", "value": "value2"}, {"name": "name2", "value": "value2"}]),
                 companion_banner=fp,
                 video_ad_format=AdGroupCreation.BUMPER_AD,
-                beacon_first_quartile_3="http://tracking.com.kz?let_me_go=1"
+                beacon_first_quartile_3="http://tracking.com.kz?let_me_go=1",
+                beacon_view_1="",
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -159,6 +162,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.final_url, data['final_url'])
         self.assertEqual(ad.tracking_template, data['tracking_template'])
         self.assertEqual(ad.beacon_first_quartile_3, data['beacon_first_quartile_3'])
+        self.assertEqual(ad.beacon_view_1, data['beacon_view_1'])
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)
