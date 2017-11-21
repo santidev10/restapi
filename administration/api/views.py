@@ -276,8 +276,7 @@ class SubscriptionView(APIView):
             current_subscription = Subscription.objects.get(user=self.request.user)
         except Subscription.DoesNotExist:
             current_subscription = Subscription.objects.create(
-                user=self.request.user, plan_id='free', payments_subscription=None)
-            # self.request.user.update_permissions_from_subscription(current_subscription)
+                user=self.request.user, plan=self.request.user.plan, payments_subscription=None)
 
         serializer = self.serializer_class(current_subscription)
         return Response(serializer.data, status=HTTP_200_OK)
