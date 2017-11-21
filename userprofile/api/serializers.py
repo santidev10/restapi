@@ -94,7 +94,7 @@ class UserSerializer(ModelSerializer):
         max_length=15, required=True, validators=[PHONE_REGEX])
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
-    subscriptions = SerializerMethodField()
+    plan = SerializerMethodField()
 
     class Meta:
         """
@@ -113,7 +113,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "has_aw_accounts",
-            "subscriptions",
+            "plan",
             "profile_image_url",
             "can_access_media_buying",
         )
@@ -140,9 +140,9 @@ class UserSerializer(ModelSerializer):
         except Token.DoesNotExist:
             return
 
-    def get_subscriptions(self, obj):
-        subscriptions = obj.subscriptions_set.all()
-
+    def get_plan(self, obj):
+        return PlanSerializer(obj.plan).data
+    
 
 class SubscriptionsSerialiser(Serializer):
     plan = SerializerMethodField()
