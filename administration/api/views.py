@@ -2,12 +2,15 @@
 Administration api views module
 """
 import operator
+import stripe
 from functools import reduce
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
+from django.utils.encoding import smart_str
+
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView, RetrieveUpdateDestroyAPIView
@@ -27,7 +30,6 @@ from userprofile.models import UserProfile, Plan, Subscription
 from utils.api_paginator import CustomPageNumberPaginator
 
 from payments.stripe_api import customers, subscriptions
-
 
 
 class UserPaginator(CustomPageNumberPaginator):
@@ -301,3 +303,38 @@ class SubscriptionView(APIView):
             return subscriptions[0]
 
         return None
+
+
+class SubscriptionCreateView(APIView):
+    serializer_class = SubscriptionSerializer
+
+    def set_customer(self, request):
+        if self.customer is None:
+            self._customer = customers.create(request.user)
+
+    def subscribe(self, customer, plan, token):
+        return subscriptions.create(customer, plan, token=token)
+
+    def post(self, request):
+        plan_name = request.data.get('plan')
+        if plan_name:
+            iq_plan = Plan.objects.get(name=plan_name)
+            plan = iq_plan.payments_plan
+            payments_subscription = None
+            token = request.data.get('token')
+            if plan and token:
+                try:
+                    customer = customers.create(request.user)
+                    payments_subscription = self.subscribe(customer, plan=plan, token=token)
+                except stripe.StripeError as e:
+                    return Response(data=smart_str(e))
+
+            Subscription.objects.filter(user=request.user).delete()
+            current_subscription = Subscription.objects.create(
+                user=request.user,
+                plan=iq_plan,
+                payments_subscription=payments_subscription
+            )
+            request.user.update_permissions_from_subscription(current_subscription)
+            serializer = self.serializer_class(current_subscription)
+            return Response(serializer.data, status=HTTP_200_OK)

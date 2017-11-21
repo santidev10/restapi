@@ -6,7 +6,8 @@ from django.conf.urls import url
 from administration.api.views import UserListAdminApiView, \
     UserRetrieveUpdateDeleteAdminApiView, AuthAsAUserAdminApiView, \
     UserActionListCreateApiView, UserActionDeleteAdminApiView, \
-    PlanListCreateApiView, PlanChangeDeleteApiView, SubscriptionView
+    PlanListCreateApiView, PlanChangeDeleteApiView, SubscriptionView, \
+    SubscriptionCreateView
 
 urlpatterns = [
     url(r'^users/$', UserListAdminApiView.as_view(), name="user_list"),
@@ -22,7 +23,7 @@ urlpatterns = [
     url(r'^plan/$', PlanListCreateApiView.as_view(), name="plan"),
 
     url(r"^subscriptions/$", SubscriptionView.as_view(), name="subscription_list"),
-    # url(r"^subscriptions/create/$", SubscriptionCreateView.as_view(), name="subscription_create"),
+    url(r"^subscriptions/create/$", SubscriptionCreateView.as_view(), name="subscription_create"),
     # url(r"^subscriptions/(?P<pk>\d+)/delete/$", SubscriptionDeleteView.as_view(), name="subscription_delete"),
     # url(r"^subscriptions/(?P<pk>\d+)/update/$", SubscriptionUpdateView.as_view(), name="subscription_update"),
 ]
