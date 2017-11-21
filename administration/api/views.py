@@ -26,6 +26,9 @@ from userprofile.api.serializers import PlanSerializer, SubscriptionSerializer
 from userprofile.models import UserProfile, Plan, Subscription
 from utils.api_paginator import CustomPageNumberPaginator
 
+from payments.stripe_api import customers, subscriptions
+
+
 
 class UserPaginator(CustomPageNumberPaginator):
     """
@@ -276,8 +279,25 @@ class SubscriptionView(APIView):
             current_subscription = Subscription.objects.get(user=self.request.user)
         except Subscription.DoesNotExist:
             current_subscription = Subscription.objects.create(
-                user=self.request.user, plan=self.request.user.plan, payments_subscription=None)
+                user=self.request.user,
+                plan=self.request.user.plan,
+                payments_subscription=self.get_current_subscription()
+            )
 
         serializer = self.serializer_class(current_subscription)
         return Response(serializer.data, status=HTTP_200_OK)
 
+    def get_current_subscription(self):
+        customer = customers.get_customer_for_user(self.request.user)
+        if customer is None:
+            return None
+
+        try:
+            subscriptions = customer.subscription_set.all()
+        except Subscription.DoesNotExist:
+            return None
+
+        if len(subscriptions) > 0:
+            return subscriptions[0]
+
+        return None
