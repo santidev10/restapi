@@ -70,7 +70,8 @@ class HighlightsQuery:
 
         for allowed_filter in self.allowed_filters:
             if self.request_query_params.get(allowed_filter):
-                self.result_query_params[allowed_filter] = self.request_query_params.get(allowed_filter)
+                filter_cat = self.request_query_params.get(allowed_filter)
+                self.result_query_params[allowed_filter] = filter_cat.split(',')[0]
 
         if self.request_query_params.get('aggregations') in self.allowed_aggregations:
             self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
