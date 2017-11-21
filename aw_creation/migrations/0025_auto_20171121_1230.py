@@ -9,16 +9,10 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0016_auto_20171120_1210'),
         ('aw_creation', '0025_adcreation_ad'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='adcreation',
-            name='ad',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='ad_creation', to='aw_reporting.Ad'),
-        ),
         migrations.AlterField(
             model_name='adcreation',
             name='beacon_completed_1',
