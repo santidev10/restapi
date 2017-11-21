@@ -169,7 +169,7 @@ class VideoListApiView(
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            words = [s.lower() for s in re.split(r"\s+", text_search)]
+            words = [s.lower() for s in re.split(r"\s+", text_search) if s and not re.match('^\W+$', s)]
             if words:
                 query_params.update(text_search__term=words)
 
