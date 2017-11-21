@@ -298,10 +298,10 @@ class Plan(models.Model):
 
         # tie with the payments
         from payments.models import Plan as PaymentPlan
-        plan = Plan.objects.get('highlights')
+        plan = Plan.objects.get(name='highlights')
         plan.payments_plan = PaymentPlan.objects.get(stripe_id="Highlights")
         plan.save()
-        plan = Plan.objects.get('professional')
+        plan = Plan.objects.get(name='professional')
         plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
         plan.save()
 
