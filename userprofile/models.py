@@ -55,6 +55,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
     can_access_media_buying = models.BooleanField(default=False)
+    pre_baked_segments = models.BooleanField(default=False)
 
     objects = UserManager()
 
@@ -203,10 +204,33 @@ class Plan(models.Model):
                 'billing': True,
             },
         },
+        'highlights': {
+            'channel': {'list': True, 'filter': False, 'audience': False, 'details': True},
+            'video': {'list': True, 'filter': False, 'audience': False, 'details': True},
+            'keyword': {'list': False, 'details': False, },
+            'segment': {
+                'channel': {'all': False, 'private': True},
+                'video': {'all': False, 'private': True},
+                'keyword': {'all': False, 'private': True},
+            },
+            'view': {
+                'create_and_manage_campaigns': False,
+                'performance': False,
+                'trends': False,
+                'benchmarks': False,
+                'highlights': True,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': False,
+                'billing': True,
+            },
+        },
     }
 
     name = models.CharField(max_length=255, primary_key=True)
     permissions = JSONField(default=plan_preset['free'])
+    payments_plan = models.ForeignKey('payments.Plan', null=True, on_delete=models.SET_NULL)
 
     @staticmethod
     def update_defaults():
@@ -228,6 +252,16 @@ class Plan(models.Model):
             user.plan = plan
             user.set_permissions_from_plan(plan)
             user.save()
+
+        # tie with the payments
+        from payments.models import Plan as PaymentPlan
+        plan = Plan.objects.get('highlights')
+        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Highlights")
+        plan.save()
+        plan = Plan.objects.get('professional')
+        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
+        plan.save()
+
 
     @staticmethod
     def update_user_plans():

@@ -1,20 +1,19 @@
 """
 Channel api views module
 """
+import re
 import time
 from copy import deepcopy
 from datetime import datetime
-from dateutil import parser
-import re
-import requests
 
+import requests
+from dateutil import parser
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from django.http import QueryDict
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
-from rest_framework.status import HTTP_412_PRECONDITION_FAILED
+from rest_framework.status import HTTP_400_BAD_REQUEST, \
+    HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
 from segment.models import SegmentChannel
@@ -24,17 +23,22 @@ from singledb.connector import IQApiConnector as IQConnector
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserChannel
-from utils.csv_export import list_export
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    OnlyAdminUserOrSubscriber
+from utils.csv_export import CassandraExportMixin
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+
 # pylint: enable=import-error
 
 
-class ChannelListApiView(APIView, PermissionRequiredMixin):
+class ChannelListApiView(
+        APIView, PermissionRequiredMixin, CassandraExportMixin):
     """
     Proxy view for channel list
     """
-    permission_required = ('userprofile.channel_list', 'userprofile.settings_my_yt_channels')
+    permission_required = (
+        "userprofile.channel_list",
+        "userprofile.settings_my_yt_channels"
+    )
 
     fields_to_export = [
         "title",
@@ -68,7 +72,6 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             return None
         return segment
 
-    @list_export
     def get(self, request):
         """
         Get procedure
@@ -99,8 +102,8 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             query_params.update(ids=",".join(channels_ids))
 
         # own_channels
-        if not request.user.has_perm('userprofile.channel_list') and \
-           request.user.has_perm('userprofile.settings_my_yt_channels'):
+        if not request.user.has_perm("userprofile.channel_list") and \
+           request.user.has_perm("userprofile.settings_my_yt_channels"):
             own_channels = "1"
         else:
             own_channels = query_params.get("own_channels", "0")
@@ -109,14 +112,14 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             user = self.request.user
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = user.channels.values_list('channel_id', flat=True)
+            channels_ids = user.channels.values_list("channel_id", flat=True)
             if not channels_ids:
                 return Response(empty_response)
             query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
             query_params.update(timestamp=str(time.time()))
-        elif not request.user.has_perm('userprofile.channel_audience'):
-            query_params.update(verified='0')
+        elif not request.user.has_perm("userprofile.channel_audience"):
+            query_params.update(verified="0")
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -150,9 +153,9 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
                 query_params.pop(name_min, [None])[0],
                 query_params.pop(name_max, [None])[0],
             ]
-            _range = [str(v) if v is not None else '' for v in _range]
-            _range = ','.join(_range)
-            if _range != ',':
+            _range = [str(v) if v is not None else "" for v in _range]
+            _range = ",".join(_range)
+            if _range != ",":
                 query_params.update(**{"{}__range".format(name): _range})
 
         def make(_type, name, name_in=None):
@@ -163,58 +166,62 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
                 query_params.update(**{"{}__{}".format(name, _type): value})
 
         # min_subscribers_yt, max_subscribers_yt
-        make_range('subscribers', 'min_subscribers_yt', 'max_subscribers_yt')
+        make_range("subscribers", "min_subscribers_yt", "max_subscribers_yt")
 
         # country
-        make('terms', 'country')
+        make("terms", "country")
 
         # language
-        make('terms', 'language')
+        make("terms", "language")
 
         # min_thirty_days_subscribers, max_thirty_days_subscribers
-        make_range('thirty_days_subscribers')
+        make_range("thirty_days_subscribers")
 
         # min_thirty_days_views, max_thirty_days_views
-        make_range('thirty_days_views')
+        make_range("thirty_days_views")
 
         # min_sentiment, max_sentiment
-        make_range('sentiment')
+        make_range("sentiment")
 
         # min_engage_rate, max_engage_rate
-        make_range('engage_rate')
+        make_range("engage_rate")
 
         # min_views_per_video, max_views_per_video
-        make_range('views_per_video')
+        make_range("views_per_video")
 
         # min_subscribers_fb, max_subscribers_fb
-        make_range('facebook_likes', 'min_subscribers_fb', 'max_subscribers_fb')
+        make_range(
+            "facebook_likes", "min_subscribers_fb", "max_subscribers_fb")
 
         # min_subscribers_tw, max_subscribers_tw
-        make_range('twitter_followers', 'min_subscribers_tw', 'max_subscribers_tw')
+        make_range(
+            "twitter_followers", "min_subscribers_tw", "max_subscribers_tw")
 
         # min_subscribers_in, max_subscribers_in
-        make_range('instagram_followers', 'min_subscribers_in', 'max_subscribers_in')
+        make_range(
+            "instagram_followers", "min_subscribers_in", "max_subscribers_in")
 
         # category
-        category = query_params.pop('category', [None])[0]
+        category = query_params.pop("category", [None])[0]
         if category is not None:
-            regexp = '|'.join(['.*' + c + '.*' for c in category.split(',')])
+            regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
             query_params.update(category__regexp=regexp)
 
         # verified
-        verified = query_params.pop('verified', [None])[0]
+        verified = query_params.pop("verified", [None])[0]
         if verified is not None:
-            query_params.update(has_audience__term="false" if verified == "0" else "true")
+            query_params.update(
+                has_audience__term="false" if verified == "0" else "true")
 
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            words = [s.lower() for s in re.split(r'\s+', text_search)]
+            words = [s.lower() for s in re.split(r"\s+", text_search)]
             if words:
                 query_params.update(text_search__term=words)
 
         # channel_group
-        make('term', 'channel_group')
+        make("term", "channel_group")
         # <--- filters
 
     @staticmethod
@@ -227,12 +234,12 @@ class ChannelListApiView(APIView, PermissionRequiredMixin):
             if "channel_id" in item: 
                 item["id"] = item.get("channel_id", "")
                 del item["channel_id"]
-            if 'country' in item and item['country'] is None:
-                item['country'] = ""
-            if 'history_date' in item and item['history_date']:
-                item['history_date'] = item['history_date'][:10]
-            if 'has_audience' in item:
-                item['verified'] = item['has_audience']
+            if "country" in item and item["country"] is None:
+                item["country"] = ""
+            if "history_date" in item and item["history_date"]:
+                item["history_date"] = item["history_date"][:10]
+            if "has_audience" in item:
+                item["verified"] = item["has_audience"]
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item and item[field]:
                     item[field] = re.sub(
@@ -249,7 +256,7 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
@@ -296,24 +303,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 
 
 class ChannelSetApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     connector_delete = Connector().delete_channels
-
-
-class ChannelsVideosByKeywords(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
-    def get(self, request, *args, **kwargs):
-        keyword = kwargs.get("keyword")
-        query_params = request.query_params
-        connector = Connector()
-        try:
-            response_data = connector.get_channel_videos_by_keywords(query_params, keyword)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        return Response(response_data)
 
 
 class ChannelAuthenticationApiView(APIView):

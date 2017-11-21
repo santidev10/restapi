@@ -37,6 +37,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "duration",
     "has_audience",
     "transcript",
+    "bad_words",
     "url",
     "ptk",
 )
@@ -44,7 +45,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
 DEFAULT_VIDEO_DETAILS_FIELDS = (
     "video_id",
     "title",
-    "Views",
+    "views",
     "likes",
     "dislikes",
     "comments",
@@ -65,9 +66,9 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "duration",
-    "has_audience",
     "video_safety_status",
     "ptk",
+    "has_audience",
     "channel__category",
     "channel__channel_group",
     "channel__country",
