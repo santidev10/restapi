@@ -9,7 +9,9 @@ from rest_framework.serializers import ModelSerializer, CharField, \
     EmailField
 
 from administration.notifications import send_new_registration_email
-from userprofile.models import Plan
+from userprofile.models import Subscription, Plan
+from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
+from payments.api.serializers import SubscriptionSerializer as PaymentSubscriptionSerializer
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -62,8 +64,8 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
-        user.plan = Plan.objects.get(name='free')
-        user.set_permissions_from_plan(user.plan.name)
+        # create default subscription
+
         user.save()
         # set token
         Token.objects.get_or_create(user=user)
@@ -92,6 +94,7 @@ class UserSerializer(ModelSerializer):
         max_length=15, required=True, validators=[PHONE_REGEX])
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
+    plan = SerializerMethodField()
 
     class Meta:
         """
@@ -137,6 +140,9 @@ class UserSerializer(ModelSerializer):
         except Token.DoesNotExist:
             return
 
+    def get_plan(self, obj):
+        return PlanSerializer(obj.plan).data
+
 
 class UserSetPasswordSerializer(Serializer):
     """
@@ -148,15 +154,25 @@ class UserSetPasswordSerializer(Serializer):
 
 
 class PlanSerializer(ModelSerializer):
+
+    payments_plan = SerializerMethodField()
+
     """
     Permission plan serializer
     """
     class Meta:
         model = Plan
-        fields = {
+        fields = (
             'name',
             'permissions',
-        }
+            'features',
+            'payments_plan',
+        )
+
+    def get_payments_plan(self, obj):
+        if obj.payments_plan_id is None:
+            return {}
+        return PaymentPlanSerializer(obj.payments_plan).data
 
 
 class ContactFormSerializer(Serializer):
@@ -177,3 +193,24 @@ class ContactFormSerializer(Serializer):
         max_length=255,
         default=""
     )
+
+
+class SubscriptionSerializer(Serializer):
+    plan = SerializerMethodField()
+    payments_subscription = SerializerMethodField()
+
+    class Meta:
+        model = Subscription
+        fields = (
+            "plan",
+            "payments_subscription",
+        )
+
+    def get_plan(self, obj):
+        return PlanSerializer(obj.plan).data
+
+    def get_payments_subscription(self, obj):
+        if obj.payments_subscription is None:
+            return dict()
+        return PaymentSubscriptionSerializer(obj.payments_subscription).data
+

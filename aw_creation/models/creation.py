@@ -1,18 +1,18 @@
-import calendar
-import json
-import logging
-import uuid
 from decimal import Decimal
 from PIL import Image
-from django.core.validators import MaxValueValidator, MinValueValidator, \
-    RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q, F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import datetime
+import calendar
+import json
+import logging
+import uuid
 import pytz
 import re
+
 
 logger = logging.getLogger(__name__)
 
@@ -637,6 +637,9 @@ class AdCreation(UniqueCreationItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
+    ad = models.ForeignKey(
+        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True,
+    )
     video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, default="")
@@ -650,6 +653,35 @@ class AdCreation(UniqueCreationItem):
     video_thumbnail = models.URLField(default="")
     video_duration = models.FloatField(default=0)
     video_channel_title = models.CharField(max_length=250, default="")
+
+    # Beacon urls
+    beacon_impression_1 = models.URLField(default="", blank=True)
+    beacon_impression_2 = models.URLField(default="", blank=True)
+    beacon_impression_3 = models.URLField(default="", blank=True)
+    beacon_view_1 = models.URLField(default="", blank=True)
+    beacon_view_2 = models.URLField(default="", blank=True)
+    beacon_view_3 = models.URLField(default="", blank=True)
+    beacon_skip_1 = models.URLField(default="", blank=True)
+    beacon_skip_2 = models.URLField(default="", blank=True)
+    beacon_skip_3 = models.URLField(default="", blank=True)
+    beacon_first_quartile_1 = models.URLField(default="", blank=True)
+    beacon_first_quartile_2 = models.URLField(default="", blank=True)
+    beacon_first_quartile_3 = models.URLField(default="", blank=True)
+    beacon_midpoint_1 = models.URLField(default="", blank=True)
+    beacon_midpoint_2 = models.URLField(default="", blank=True)
+    beacon_midpoint_3 = models.URLField(default="", blank=True)
+    beacon_third_quartile_1 = models.URLField(default="", blank=True)
+    beacon_third_quartile_2 = models.URLField(default="", blank=True)
+    beacon_third_quartile_3 = models.URLField(default="", blank=True)
+    beacon_completed_1 = models.URLField(default="", blank=True)
+    beacon_completed_2 = models.URLField(default="", blank=True)
+    beacon_completed_3 = models.URLField(default="", blank=True)
+    beacon_vast_1 = models.URLField(default="", blank=True)
+    beacon_vast_2 = models.URLField(default="", blank=True)
+    beacon_vast_3 = models.URLField(default="", blank=True)
+    beacon_dcm_1 = models.URLField(default="", blank=True)
+    beacon_dcm_2 = models.URLField(default="", blank=True)
+    beacon_dcm_3 = models.URLField(default="", blank=True)
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)

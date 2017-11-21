@@ -20,10 +20,8 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
     DEFAULT_VIDEO_DETAILS_FIELDS
 # pylint: enable=import-error
-# from utils.csv_export import list_export
 from utils.csv_export import CassandraExportMixin
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    OnlyAdminUserOrSubscriber
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(
@@ -32,7 +30,7 @@ class VideoListApiView(
     Proxy view for video list
     """
     # TODO Check additional auth logic
-    permission_classes = (OnlyAdminUserOrSubscriber,)
+    permission_classes = tuple()
     permission_required = (
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
@@ -171,7 +169,7 @@ class VideoListApiView(
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            words = [s.lower() for s in re.split(r"\s+", text_search)]
+            words = [s.lower() for s in re.split(r"\s+", text_search) if s and not re.match('^\W+$', s)]
             if words:
                 query_params.update(text_search__term=words)
 
@@ -289,7 +287,7 @@ class VideoListFiltersApiView(SingledbApiView):
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.video_details',)
     connector_get = Connector().get_video
     connector_put = Connector().put_video
@@ -302,5 +300,5 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
 
 
 class VideoSetApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     connector_delete = Connector().delete_videos

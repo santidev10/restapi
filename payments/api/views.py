@@ -46,7 +46,7 @@ class SubscriptionView(APIView, CustomerMixin):
             current_subscription = self.get_current_subscription()
             serializer = self.serializer_class(current_subscription, many=True)
             return Response(serializer.data, status=HTTP_200_OK)
-        return Response(data=[], status=HTTP_404_NOT_FOUND)
+        return Response(data=[], status=HTTP_200_OK)
 
 
 class SubscriptionCreateView(APIView, CustomerMixin):

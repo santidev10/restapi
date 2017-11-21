@@ -10,5 +10,7 @@ COUNTRIES = [
 
 
 class CountryListApiView(APIView):
+    permission_classes = tuple()
+
     def get(self, *args, **kwargs):
         return Response([{'common':c} for c in COUNTRIES])

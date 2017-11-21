@@ -30,7 +30,8 @@ class KeywordSerializer(ModelSerializer):
         model = KeyWord
         fields = (
             "average_cpc", "competition", "interests", "updated_at",
-            "keyword_text", "monthly_searches", "search_volume", "interests_top_kw"
+            "keyword_text", "monthly_searches", "search_volume", "interests_top_kw",
+            "category", "thirty_days_views", "weekly_views", "daily_views", "views",
         )
 
 

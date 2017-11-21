@@ -24,8 +24,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserChannel
 from utils.csv_export import CassandraExportMixin
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    OnlyAdminUserOrSubscriber
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 # pylint: enable=import-error
@@ -217,7 +216,7 @@ class ChannelListApiView(
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            words = [s.lower() for s in re.split(r"\s+", text_search)]
+            words = [s.lower() for s in re.split(r"\s+", text_search) if s and not re.match('^\W+$', s)]
             if words:
                 query_params.update(text_search__term=words)
 
@@ -257,7 +256,7 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
     connector_put = Connector().put_channel
@@ -304,24 +303,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
 
 
 class ChannelSetApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber, OnlyAdminUserCanCreateUpdateDelete)
+    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     connector_delete = Connector().delete_channels
-
-
-class ChannelsVideosByKeywords(SingledbApiView):
-    permission_classes = (OnlyAdminUserOrSubscriber,)
-
-    def get(self, request, *args, **kwargs):
-        keyword = kwargs.get("keyword")
-        query_params = request.query_params
-        connector = Connector()
-        try:
-            response_data = connector.get_channel_videos_by_keywords(query_params, keyword)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        return Response(response_data)
 
 
 class ChannelAuthenticationApiView(APIView):
