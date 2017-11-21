@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import GeoTarget
 from saas.utils_tests import ExtendedAPITestCase
@@ -10,7 +10,7 @@ class DocumentsTestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def test_success_upload(self):
+    def test_success_xlsx(self):
         GeoTarget.objects.get_or_create(
             id=9004056,
             defaults=dict(
@@ -86,6 +86,16 @@ class DocumentsTestCase(ExtendedAPITestCase):
                 '9016351',
             },
         )
+
+    def test_error_xls(self):
+        url = reverse(
+            "aw_creation_urls:document_to_changes",
+            args=("postal_codes",)
+        )
+        with open('aw_creation/fixtures/example_zip_codes.xls', 'rb') as fp:
+            response = self.client.post(url, {'file': fp}, format='multipart')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_csv_upload(self):
         GeoTarget.objects.get_or_create(
