@@ -19,7 +19,7 @@ def send_tracking_tags_request(user, account_creation):
     from aw_creation.models import AdCreation
 
     tag_field_names = AdCreation.tag_field_names
-    is_changed_fields = tuple("{}_changed".format(f) for f in tag_field_names)
+    is_changed_fields = AdCreation.tag_changes_field_names
     all_tags_fields = is_changed_fields + tag_field_names
     delete_sign = "[deleted]"
 
@@ -36,6 +36,7 @@ def send_tracking_tags_request(user, account_creation):
     )
     if ads_data:
         campaigns = defaultdict(lambda: defaultdict(dict))
+        ad_ids = set()
         for ad in ads_data:
             campaign_hash = "{} #{}".format(
                 ad["ad_group_creation__campaign_creation__name"], ad["ad_group_creation__campaign_creation__id"],
@@ -48,6 +49,7 @@ def send_tracking_tags_request(user, account_creation):
                     if ad[t] or ad["{}_changed".format(t)])
             campaigns[campaign_hash][ad_group_hash][ad_hash] = [dict(name=tag_field_to_readable_name(name), url=url)
                                                                 for name, url in tags]
+            ad_ids.add(ad["id"])
 
         campaigns = [
             dict(
@@ -76,3 +78,6 @@ def send_tracking_tags_request(user, account_creation):
         message = render_to_string("tracking_tags_message.txt", context)
         subject = TRACKING_TAGS_SUBJECT.format(**context)
         send_mail(subject, message, settings.EMAIL_HOST_USER, [settings.MS_CHANNELFACTORY_EMAIL], fail_silently=False)
+
+        # drop the changes flags
+        AdCreation.objects.filter(id__in=ad_ids).update(**{f: False for f in is_changed_fields})

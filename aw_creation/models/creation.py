@@ -722,6 +722,7 @@ class AdCreation(UniqueCreationItem):
         "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
         "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
     )
+    tag_changes_field_names = tuple("{}_changed".format(f) for f in tag_field_names)
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)

@@ -351,10 +351,18 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         email_body = email.body
-        print(email_body)
         self.assertIn(ad_creation.unique_name, email_body)
         self.assertIn(ad_creation_2.unique_name, email_body)
         self.assertNotIn(ad_creation_3.unique_name, email_body)
+
+        ad_creation.refresh_from_db()
+        self.assertIs(ad_creation.beacon_third_quartile_2_changed, False)
+        self.assertIs(ad_creation.beacon_vast_3_changed, False)
+        self.assertIs(ad_creation.beacon_vast_1_changed, False)
+        ad_creation_2.refresh_from_db()
+        self.assertIs(ad_creation_2.beacon_first_quartile_1_changed, False)
+        self.assertIs(ad_creation_2.beacon_dcm_1_changed, False)
+        self.assertIs(ad_creation_2.beacon_dcm_2_changed, False)
 
     def test_success_approve_not_sending_tags(self):
         manager = Account.objects.create(id="11", name="Management Account")
