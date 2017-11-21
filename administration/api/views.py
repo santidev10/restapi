@@ -14,7 +14,7 @@ from rest_framework.generics import ListAPIView, DestroyAPIView, \
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
-    HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+    HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_200_OK
 from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
@@ -22,8 +22,8 @@ from administration.api.serializers import UserActionRetrieveSerializer, \
 from administration.api.serializers import UserSerializer
 from userprofile.api.serializers import UserSerializer as RegularUserSerializer
 from administration.models import UserAction
-from userprofile.api.serializers import PlanSerializer
-from userprofile.models import UserProfile, Plan
+from userprofile.api.serializers import PlanSerializer, SubscriptionSerializer
+from userprofile.models import UserProfile, Plan, Subscription
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -268,5 +268,16 @@ class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
 
+class SubscriptionView(APIView):
+    serializer_class = SubscriptionSerializer
 
+    def get(self, request):
+        try:
+            current_subscription = Subscription.objects.get(user=self.request.user)
+        except Subscription.DoesNotExist:
+            current_subscription = Subscription.objects.create(
+                user=self.request.user, plan=self.request.user.plan, payments_subscription=None)
+
+        serializer = self.serializer_class(current_subscription)
+        return Response(serializer.data, status=HTTP_200_OK)
 

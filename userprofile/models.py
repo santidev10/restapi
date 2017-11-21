@@ -132,6 +132,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 else:
                     self.user_permissions.remove(permission)
 
+    def update_permissions_from_subscription(self, subscription):
+        self.plan = subscription.plan
+        self.set_permissions_from_plan(self.plan)
+        self.save()
+
 
 class Plan(models.Model):
     """
@@ -321,6 +326,13 @@ class Plan(models.Model):
             for user in users:
                 user.set_permissions_from_plan(key)
                 user.save()
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+    payments_subscription = models.ForeignKey(
+        'payments.Subscription', default=None, null=True, on_delete=models.CASCADE)
 
 
 class UserChannel(Timestampable):
