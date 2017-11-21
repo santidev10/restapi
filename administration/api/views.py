@@ -151,8 +151,9 @@ class UserActionListCreateApiView(ListCreateAPIView):
         """
         Check admin permission
         """
-        if not request.user.is_staff:
-            return Response(status=HTTP_403_FORBIDDEN)
+        # opened for all according UI request
+        # if not request.user.is_staff:
+        #     return Response(status=HTTP_403_FORBIDDEN)
         return super(UserActionListCreateApiView, self).get(
             request, *args, **kwargs)
 
@@ -246,7 +247,7 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
 
 
 class PlanListCreateApiView(ListCreateAPIView):
-    permission_classes = (IsAdminUser, )
+    permission_classes = tuple()
     serializer_class = PlanSerializer
     create_serializer_class = PlanSerializer
     queryset = Plan.objects.all()
