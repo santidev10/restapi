@@ -341,7 +341,7 @@ class SubscriptionDeleteView(APIView):
     def post(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
         # in case that we want to immediately cancel sub we could send at_period_at param
-        obj = PaymentsSubscription.objects.get(pk=pk)
+        obj = PaymentsSubscription.objects.get(stirpe_id=pk)
         try:
             subscriptions.cancel(obj)
         except stripe.StripeError as e:
@@ -357,7 +357,7 @@ class SubscriptionUpdateView(APIView):
             iq_plan = Plan.objects.get(name=plan_name)
             if iq_plan.payments_plan:
                 try:
-                    obj = PaymentsSubscription.objects.get(pk=pk)
+                    obj = PaymentsSubscription.objects.get(stirpe_id=pk)
                     subscriptions.update(obj, iq_plan.payments_plan.id)
                 except stripe.StripeError as e:
                     return Response(data=smart_str(e))
