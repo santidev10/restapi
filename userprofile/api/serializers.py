@@ -183,16 +183,8 @@ class ContactFormSerializer(Serializer):
     last_name = CharField(required=True, max_length=255)
     email = EmailField(required=True, max_length=255)
     country = CharField(required=True, max_length=255)
-    message = CharField(
-        required=False,
-        max_length=255,
-        default=""
-    )
-    company = CharField(
-        required=False,
-        max_length=255,
-        default=""
-    )
+    company = CharField(required=True, max_length=255)
+    message = CharField(required=False, max_length=255, default="")
 
 
 class SubscriptionSerializer(Serializer):
