@@ -141,7 +141,7 @@ class UserSerializer(ModelSerializer):
             return
 
     def get_plan(self, obj):
-        return PlanSerializer(obj.plan).data
+        return obj.plan.name
 
 
 class UserSetPasswordSerializer(Serializer):
