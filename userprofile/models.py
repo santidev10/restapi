@@ -233,7 +233,9 @@ class Plan(models.Model):
         },
     }
     plan_features = {
-        'free': [],
+        'free': [
+            'YouTube Channel Verification',
+        ],
         'highlights': [
             'Youtube Channel Verification',
             'Top 100 Channels',
