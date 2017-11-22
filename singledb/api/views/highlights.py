@@ -1,3 +1,6 @@
+from datetime import datetime
+from datetime import timedelta
+
 from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
@@ -52,6 +55,8 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self):
+        self.result_query_params['updated_at__range'] = (datetime.now().date() - timedelta(days=3)).strftime('%Y-%m-%d')
+
         page = self.request_query_params.get('page')
         if page and int(page) <= 5:
             self.result_query_params['page'] = page
