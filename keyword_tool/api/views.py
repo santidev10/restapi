@@ -55,11 +55,11 @@ class KeywordCategoriesApiView(APIView):
 
 
 class KWPaginator(CustomPageNumberPaginator):
-    page_size = 12
+    page_size = 20
 
 
 class OptimizeQueryApiView(ListAPIView):
-    page_size = 12
+    page_size = 20
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
 
