@@ -683,6 +683,47 @@ class AdCreation(UniqueCreationItem):
     beacon_dcm_2 = models.URLField(default="", blank=True)
     beacon_dcm_3 = models.URLField(default="", blank=True)
 
+    beacon_impression_1_changed = models.BooleanField(default=False)
+    beacon_impression_2_changed = models.BooleanField(default=False)
+    beacon_impression_3_changed = models.BooleanField(default=False)
+    beacon_view_1_changed = models.BooleanField(default=False)
+    beacon_view_2_changed = models.BooleanField(default=False)
+    beacon_view_3_changed = models.BooleanField(default=False)
+    beacon_skip_1_changed = models.BooleanField(default=False)
+    beacon_skip_2_changed = models.BooleanField(default=False)
+    beacon_skip_3_changed = models.BooleanField(default=False)
+    beacon_first_quartile_1_changed = models.BooleanField(default=False)
+    beacon_first_quartile_2_changed = models.BooleanField(default=False)
+    beacon_first_quartile_3_changed = models.BooleanField(default=False)
+    beacon_midpoint_1_changed = models.BooleanField(default=False)
+    beacon_midpoint_2_changed = models.BooleanField(default=False)
+    beacon_midpoint_3_changed = models.BooleanField(default=False)
+    beacon_third_quartile_1_changed = models.BooleanField(default=False)
+    beacon_third_quartile_2_changed = models.BooleanField(default=False)
+    beacon_third_quartile_3_changed = models.BooleanField(default=False)
+    beacon_completed_1_changed = models.BooleanField(default=False)
+    beacon_completed_2_changed = models.BooleanField(default=False)
+    beacon_completed_3_changed = models.BooleanField(default=False)
+    beacon_vast_1_changed = models.BooleanField(default=False)
+    beacon_vast_2_changed = models.BooleanField(default=False)
+    beacon_vast_3_changed = models.BooleanField(default=False)
+    beacon_dcm_1_changed = models.BooleanField(default=False)
+    beacon_dcm_2_changed = models.BooleanField(default=False)
+    beacon_dcm_3_changed = models.BooleanField(default=False)
+
+    tag_field_names = (
+        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+        "beacon_view_1", "beacon_view_2", "beacon_view_3",
+        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+        "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+        "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+    )
+    tag_changes_field_names = tuple("{}_changed".format(f) for f in tag_field_names)
+
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)
 

@@ -81,6 +81,10 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['beacon_impression_1'], ad.beacon_impression_1)
         self.assertEqual(data['beacon_vast_2'], ad.beacon_vast_2)
 
+        ad_duplicate = AdCreation.objects.get(pk=data["id"])
+        for f in AdCreation.tag_changes_field_names:
+            self.assertIs(getattr(ad_duplicate, f), f in ("beacon_impression_1_changed", "beacon_vast_2_changed"))
+
     def test_success_post_increment_name(self):
         ad = self.create_ad_creation(owner=self.user)
         AdCreation.objects.create(

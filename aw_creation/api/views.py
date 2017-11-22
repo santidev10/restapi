@@ -1429,10 +1429,13 @@ class AccountCreationDuplicateApiView(APIView):
         return a_duplicate
 
     def duplicate_ad(self, ad_group, ad, *_, all_names=None):
-        ad_duplicate = AdCreation.objects.create(
-            ad_group_creation=ad_group,
-            **{f: getattr(ad, f) for f in self.ad_fields}
-        )
+        tag_field_names = AdCreation.tag_field_names
+        data = {}
+        for f in self.ad_fields:
+            data[f] = getattr(ad, f)
+            if f in tag_field_names and getattr(ad, f):
+                data["{}_changed".format(f)] = True
+        ad_duplicate = AdCreation.objects.create(ad_group_creation=ad_group, **data)
         if all_names:
             ad_duplicate.name = self.increment_name(ad_duplicate.name, all_names)
             ad_duplicate.save()

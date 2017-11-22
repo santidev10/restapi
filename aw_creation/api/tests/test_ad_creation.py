@@ -162,7 +162,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(ad.final_url, data['final_url'])
         self.assertEqual(ad.tracking_template, data['tracking_template'])
         self.assertEqual(ad.beacon_first_quartile_3, data['beacon_first_quartile_3'])
+        self.assertIs(ad.beacon_first_quartile_3_changed, True)
         self.assertEqual(ad.beacon_view_1, data['beacon_view_1'])
+        self.assertIs(ad.beacon_view_1_changed, True)
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)
