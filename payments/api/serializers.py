@@ -11,6 +11,7 @@ class SubscriptionSerializer(ModelSerializer):
     class Meta:
         model = Subscription
         fields = (
+            "stripe_id",
             "customer",
             "application_fee_percent",
             "cancel_at_period_end",
