@@ -24,6 +24,6 @@ urlpatterns = [
 
     url(r"^subscriptions/$", SubscriptionView.as_view(), name="subscription_list"),
     url(r"^subscriptions/create/$", SubscriptionCreateView.as_view(), name="subscription_create"),
-    url(r"^subscriptions/(?P<pk>)/delete/$", SubscriptionDeleteView.as_view(), name="subscription_delete"),
-    url(r"^subscriptions/(?P<pk>)/update/$", SubscriptionUpdateView.as_view(), name="subscription_update"),
+    url(r"^subscriptions/delete/$", SubscriptionDeleteView.as_view(), name="subscription_delete"),
+    url(r"^subscriptions/update/$", SubscriptionUpdateView.as_view(), name="subscription_update"),
 ]
