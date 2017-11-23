@@ -150,6 +150,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 video_ad_format=AdGroupCreation.BUMPER_AD,
                 beacon_first_quartile_3="http://tracking.com.kz?let_me_go=1",
                 beacon_view_1="",
+                beacon_view_2="",  # This field is sent but hasn't been changed
             )
             response = self.client.patch(url, data, format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -165,6 +166,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.beacon_first_quartile_3_changed, True)
         self.assertEqual(ad.beacon_view_1, data['beacon_view_1'])
         self.assertIs(ad.beacon_view_1_changed, True)
+        self.assertEqual(ad.beacon_view_2, data['beacon_view_2'])
+        self.assertIs(ad.beacon_view_2_changed, False)
         self.assertEqual(ad.custom_params, [{"name": "name1", "value": "value2"},
                                             {"name": "name2", "value": "value2"}])
         self.assertIsNotNone(ad.companion_banner)
