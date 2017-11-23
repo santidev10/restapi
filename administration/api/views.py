@@ -342,10 +342,25 @@ class SubscriptionDeleteView(APIView):
         stripe_id = request.data.get('id')
         # in case that we want to immediately cancel sub we could send at_period_at param
         obj = PaymentsSubscription.objects.get(stripe_id=stripe_id)
+
+        try:
+            subscription = Subscription.objects.get(payments_subscription__stripe_id=stripe_id)
+        except Subscription.DoesNotExist:
+            subscription = None
+
         try:
             subscriptions.cancel(obj)
         except stripe.StripeError as e:
             return Response(data=smart_str(e))
+
+        if subscription:
+            user_id = subscription.user_id
+            subscription.delete()
+
+            plan = Plan.objects.get(name='free')
+            subscription = Subscription.objects.create(user_id=user_id, plan=plan)
+            get_user_model().get(id=user_id).update_permissions_from_subscription(subscription)
+
         return Response(status=HTTP_200_OK)
 
 
