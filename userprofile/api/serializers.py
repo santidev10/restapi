@@ -65,7 +65,9 @@ class UserCreateSerializer(ModelSerializer):
         # set password
         user.set_password(user.password)
         # create default subscription
-
+        plan = Plan.objects.get(name='free')
+        subscription = Subscription.objects.create(user=user, plan=plan)
+        user.update_permissions_from_subscription(subscription)
         user.save()
         # set token
         Token.objects.get_or_create(user=user)
