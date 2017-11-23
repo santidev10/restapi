@@ -63,7 +63,8 @@ class SingleDatabaseApiConnector(object):
         try:
             response_data = self.response.json()
         except Exception as e:
-            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}".format(e))
+            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}\n{}" \
+                                                      .format(e, self.response.text))
         return response_data
 
     def get_country_list(self, query_params):
