@@ -248,6 +248,15 @@ class SingleDatabaseApiConnector(object):
             del i["video_id"]
         return items
 
+    def auth_channel(self, data):
+        """
+        Authenticate channel
+        :param query_params: dict
+        """
+        endpoint = "channels/authentication/"
+        response_data = self.execute_post_call(endpoint, {}, data)
+        return response_data
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL

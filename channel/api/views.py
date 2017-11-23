@@ -309,8 +309,12 @@ class ChannelSetApiView(SingledbApiView):
 
 class ChannelAuthenticationApiView(APIView):
     def post(self, request, *args, **kwagrs):
-        connector = IQConnector()
-        data = connector.auth_channel(request.data)
+        connector = Connector()
+        try:
+            data = connector.auth_channel(request.data)
+        except SingleDatabaseApiConnectorException as e:
+            data = {"error": " ".join(e.args)}
+            return Response(data=data, status=HTTP_408_REQUEST_TIMEOUT)
 
         if data is not None:
             channel_id = data.get('channel_id')
@@ -323,6 +327,7 @@ class ChannelAuthenticationApiView(APIView):
                     UserChannel.objects.create(channel_id=channel_id, user=user)
                 # set user avatar
                 self.set_user_avatar(data.get("access_token"))
+
         return Response()
 
     def set_user_avatar(self, access_token):
