@@ -699,7 +699,10 @@ class AdCreationUpdateSerializer(ModelSerializer):
     def save(self, **kwargs):
         for f in AdCreation.tag_field_names:
             if f in self.validated_data:
-                self.validated_data["{}_changed".format(f)] = True
+                value = self.validated_data[f]
+                prev_value = getattr(self.instance, f)
+                if value != prev_value:
+                    self.validated_data["{}_changed".format(f)] = True
         result = super(AdCreationUpdateSerializer, self).save(**kwargs)
         return result
 
