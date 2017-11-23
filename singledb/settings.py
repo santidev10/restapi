@@ -83,18 +83,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__title",
     "channel__has_audience",
     "channel__views_per_video",
-    "video_view_rate",
-    "ctr",
-    "ctr_v",
-    "average_cpv",
-    "video_view_rate_top",
-    "video_view_rate_bottom",
-    "ctr_top",
-    "ctr_bottom",
-    "ctr_v_top",
-    "ctr_v_bottom",
-    "average_cpv_top",
-    "average_cpv_bottom"
+    "aw_data"
 )
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
@@ -176,16 +165,5 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "has_audience",
-    "video_view_rate",
-    "ctr",
-    "ctr_v",
-    "average_cpv",
-    "video_view_rate_top",
-    "video_view_rate_bottom",
-    "ctr_top",
-    "ctr_bottom",
-    "ctr_v_top",
-    "ctr_v_bottom",
-    "average_cpv_top",
-    "average_cpv_bottom"
+    "aw_data"
 )
