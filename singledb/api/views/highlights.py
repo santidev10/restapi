@@ -9,6 +9,10 @@ from video.api.views import VideoListApiView
 
 
 class HighlightChannelsListApiView(SingledbApiView):
+    permission_required = (
+        "userprofile.view_highlights",
+    )
+
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
         query_params = HighlightsQuery(request_query_params).prepare_query()
@@ -24,6 +28,10 @@ class HighlightChannelsListApiView(SingledbApiView):
 
 
 class HighlightVideosListApiView(SingledbApiView):
+    permission_required = (
+        "userprofile.view_highlights",
+    )
+
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
         query_params = HighlightsQuery(request_query_params).prepare_query()
