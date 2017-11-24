@@ -359,7 +359,7 @@ class SubscriptionDeleteView(APIView):
 
             plan = Plan.objects.get(name='free')
             subscription = Subscription.objects.create(user_id=user_id, plan=plan)
-            get_user_model().get(id=user_id).update_permissions_from_subscription(subscription)
+            get_user_model().objects.get(id=user_id).update_permissions_from_subscription(subscription)
 
         return Response(status=HTTP_200_OK)
 
