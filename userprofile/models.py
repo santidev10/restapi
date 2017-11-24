@@ -134,7 +134,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     def update_permissions_from_subscription(self, subscription):
         self.plan = subscription.plan
-        self.set_permissions_from_plan(self.plan)
+        self.set_permissions_from_plan(self.plan.name)
         self.save()
 
 
@@ -309,7 +309,7 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.name)
             user.save()
 
         # set default plan for non-admin users
@@ -317,7 +317,7 @@ class Plan(models.Model):
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.name)
             user.save()
 
         # tie with the payments
