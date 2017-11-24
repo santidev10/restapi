@@ -204,7 +204,7 @@ class SubscriptionSerializer(Serializer):
         )
 
     def get_plan(self, obj):
-        return PlanSerializer(obj.plan).data
+        return obj.plan.name
 
     def get_payments_subscription(self, obj):
         if obj.payments_subscription is None:
