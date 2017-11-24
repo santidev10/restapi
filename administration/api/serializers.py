@@ -6,6 +6,7 @@ from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
+from userprofile.models import Subscription, Plan
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -93,7 +94,10 @@ class UserUpdateSerializer(ModelSerializer):
         """
         user = super(UserUpdateSerializer, self).save(**kwargs)
         if "plan" in kwargs:
-            user.set_permissions_from_plan(user.plan.name)
+            Subscription.objects.filter(user=user).delete()
+            plan = Plan.objects.get(name=user.plan.name)
+            subscription = Subscription.objects.create(user=user, plan=plan)
+            user.update_permissions_from_subscription(subscription)
 
 
 class UserSerializer(ModelSerializer):
