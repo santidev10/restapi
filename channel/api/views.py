@@ -108,6 +108,9 @@ class ChannelListApiView(
         else:
             own_channels = query_params.get("own_channels", "0")
 
+        if query_params.get("own_channels") is not None:
+            query_params.pop("own_channels")
+
         if own_channels == "1":
             user = self.request.user
             if not user or not user.is_authenticated():
@@ -115,7 +118,6 @@ class ChannelListApiView(
             channels_ids = user.channels.values_list("channel_id", flat=True)
             if not channels_ids:
                 return Response(empty_response)
-            query_params.pop("own_channels")
             query_params.update(ids=",".join(channels_ids))
             query_params.update(timestamp=str(time.time()))
         elif not request.user.has_perm("userprofile.channel_audience"):
