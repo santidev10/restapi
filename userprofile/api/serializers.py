@@ -78,7 +78,9 @@ class UserCreateSerializer(ModelSerializer):
             "host": self.context.get("request").get_host(),
             "email": user.email,
             "company": user.company,
-            "phone": user.phone_number
+            "phone": user.phone_number,
+            "first_name": user.first_name,
+            "last_name": user.last_name
         }
         send_new_registration_email(email_data)
         # done
