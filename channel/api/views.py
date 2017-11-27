@@ -305,6 +305,16 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
                 'average_views': average_views,
                 'videos': videos,
             }
+            channels_ids = self.request.user.channels.values_list("channel_id", flat=True)
+            if not self.request.user.has_perm('userprofile.channel_audience') and \
+               pk not in channels_ids:
+                response.data['has_audience'] = False
+                response.data.pop('audience', None)
+                response.data.pop('aw_data', None)
+                response.data['brand_safety'] = None
+                response.data.pop('genre', None)
+                response.data['safety_chart_data'] = None
+                response.data.pop('traffic_sources', None)
         ChannelListApiView.adapt_response_data({'items': [response.data]})
         return response
 
