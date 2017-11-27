@@ -65,26 +65,36 @@ class SegmentChannel(BaseSegment):
             "ids_hash": ids_hash,
             "fields": "channel_id,title,thumbnail_image_url",
             "sort": "subscribers:desc",
-            "aggregation": "videos",
             "size": 3
         }
-        return self.singledb_method(query_params=params)
+        top_three_channels_data = self.singledb_method(query_params=params)
+
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "videos",
+            "size": 10000
+        }
+        base_data = self.singledb_method(query_params=params)
+        data = {
+            "top_three_channels_data": top_three_channels_data,
+            "base_data": base_data
+        }
+        return data
 
     def populate_statistics_fields(self, data):
         """
         Update segment statistics fields
         """
-        self.channels = data.get('items_count')
+        self.channels = data.get("base_data").get("items_count")
         self.top_three_channels = [
             {"id": obj.get("channel_id"),
              "title": obj.get("title"),
              "thumbnail_image_url": obj.get("thumbnail_image_url")}
-            for obj in data.get("items")
+            for obj in data.get("top_three_channels_data").get("items")
         ]
-        try:
-            self.videos = data.get("aggregations").get("videos:range")[-1]
-        except IndexError:
-            pass
+        self.videos = sum(
+            value.get("videos")
+            for value in data.get("base_data").get("items"))
         # <--- disabled SAAS-1178
         # self.views_per_channel = self.views /\
         #                          self.channels if self.channels else 0
