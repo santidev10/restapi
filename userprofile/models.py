@@ -218,8 +218,8 @@ class Plan(models.Model):
         },
         'professional': {
             'permissions': {
-                'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-                'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
+                'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
+                'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
                 'keyword': {'list': True, 'details': True, },
                 'segment': {
                     'channel': {'all': False, 'private': True},
@@ -254,9 +254,9 @@ class Plan(models.Model):
         },
         'highlights': {
             'permissions': {
-                'channel': {'list': True, 'filter': False, 'audience': False, 'details': True},
-                'video': {'list': True, 'filter': False, 'audience': False, 'details': True},
-                'keyword': {'list': False, 'details': False, },
+                'channel': {'list': False, 'filter': False, 'audience': False, 'details': True},
+                'video': {'list': False, 'filter': False, 'audience': False, 'details': True},
+                'keyword': {'list': False, 'details': True, },
                 'segment': {
                     'channel': {'all': False, 'private': True},
                     'video': {'all': False, 'private': True},
