@@ -120,8 +120,6 @@ class ChannelListApiView(
                 return Response(empty_response)
             query_params.update(ids=",".join(channels_ids))
             query_params.update(timestamp=str(time.time()))
-        elif not request.user.has_perm("userprofile.channel_audience"):
-            query_params.update(verified="0")
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -134,6 +132,13 @@ class ChannelListApiView(
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
+
+        # hide data according to user permissions
+        items = response_data.get("items", [])
+        for item in items:
+            if not self.request.user.has_perm('userprofile.channel_audience') and \
+               not (own_channels == '1' and item['id'] in channels_ids):
+                item["has_audience"] = False
 
         # adapt the response data
         self.adapt_response_data(response_data)
