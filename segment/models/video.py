@@ -59,6 +59,9 @@ class SegmentVideo(BaseSegment):
     category = models.CharField(max_length=255, choices=CATEGORIES)
 
     videos = models.BigIntegerField(default=0, db_index=True)
+    top_three_videos = JSONField(default=dict())
+
+    # <--- deprecated
     views_per_video = models.BigIntegerField(default=0, db_index=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
@@ -67,25 +70,46 @@ class SegmentVideo(BaseSegment):
     thirty_days_views = models.BigIntegerField(default=0, db_index=True)
     engage_rate = models.FloatField(default=0.0, db_index=True)
     sentiment = models.FloatField(default=0.0, db_index=True)
-    top_three_videos = JSONField(default=dict())
+    # ---> deprecated
 
-    singledb_method = Connector().get_videos_statistics
+    singledb_method = Connector().get_video_list
     segment_type = 'video'
 
     objects = SegmentVideoManager()
     related_aw_statistics_model = YTVideoStatistic
 
-    def populate_statistics_fields(self, data):
-        self.videos = data['count']
-        fields = ['views', 'likes', 'dislikes', 'comments', 'thirty_days_views']
-        for field in fields:
-            setattr(self, field, data[field])
+    def obtain_singledb_data(self, ids_hash):
+        """
+        Execute call to SDB
+        """
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "video_id,title,thumbnail_image_url",
+            "sort": "views:desc",
+            "size": 3
+        }
+        return self.singledb_method(query_params=params)
 
-        self.views_per_video = self.views / self.videos if self.videos else 0
-        self.sentiment = (self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
-        self.engage_rate = (sum((self.likes, self.dislikes, self.comments)) / max(self.views, 1)) * 100
-        self.top_three_videos = data['top_list']
-        self.mini_dash_data = data.get("minidash", {})
+    def populate_statistics_fields(self, data):
+        """
+        Update segment statistics fields
+        """
+        self.videos = data.get('items_count')
+        self.top_three_videos = [
+            {"id": obj.get("video_id"),
+             "title": obj.get("title"),
+             "thumbnail_image_url": obj.get("thumbnail_image_url")}
+            for obj in data.get("items")
+        ]
+        # <--- disabled SAAS-1180
+        # self.views_per_video = self.views / self.videos if self.videos else 0
+        # self.sentiment = (
+            # self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
+        # self.engage_rate = (
+            # sum((self.likes, self.dislikes, self.comments))
+            #  / max(self.views, 1)) * 100
+        # self.mini_dash_data = data.get("minidash", {})
+        # ---> disabled SAAS-1180
 
     @property
     def statistics(self):
@@ -93,8 +117,8 @@ class SegmentVideo(BaseSegment):
         Count segment statistics
         """
         statistics = {
-            "top_three_videos": self.top_three_videos,
             "videos_count": self.videos,
+            "top_three_videos": self.top_three_videos,
             # <--- disabled SAAS-1180
             # "views_count": self.views,
             # "views_per_video": self.views_per_video,

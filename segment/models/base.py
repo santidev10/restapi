@@ -12,7 +12,7 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
-
+from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 
 # pylint: disable=import-error
@@ -88,22 +88,19 @@ class BaseSegment(Timestampable):
         if ids:
             self.related.model.objects.filter(related_id__in=ids).delete()
 
-    def obtain_singledb_data(self):
-        ids = list(self.get_related_ids())
-        return self.singledb_method(ids=ids, top=3, minidash=1)
-
     @task
     def update_statistics(self):
-        return "Disabled"
-        # FIXME: need to adaopt to cassandra and enable this method
-        data = self.obtain_singledb_data()
+        """
+        Process segment statistics fields
+        """
+        ids = list(self.get_related_ids())
+        ids_hash = Connector().store_ids(ids)
+        data = self.obtain_singledb_data(ids_hash)
         # just return on any fail
         if data is None:
             return
-
         # populate statistics fields
         self.populate_statistics_fields(data)
-
         self.save()
         return "Done"
 
