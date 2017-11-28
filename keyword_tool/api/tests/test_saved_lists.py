@@ -48,9 +48,7 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'id', 'name',
                 'category',
                 'average_cpc',
-                'cum_average_volume_per_kw_data',
                 'is_editable',
-                'cum_average_volume_data',
                 'average_volume',
                 'num_keywords',
                 'top_keywords_data',
@@ -62,8 +60,6 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'average_cpv',
                 'video_view_rate',
                 'ctr_v',
-                'cum_average_volume_per_kw_data',
-                'cum_average_volume_data',
             }
         )
         self.assertEqual(returned_list['id'], my_list.id)
@@ -131,9 +127,7 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'id', 'name',
                 'category',
                 'average_cpc',
-                'cum_average_volume_per_kw_data',
                 'is_editable',
-                'cum_average_volume_data',
                 'average_volume',
                 'num_keywords',
                 'top_keywords_data',
@@ -145,8 +139,6 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                 'average_cpv',
                 'video_view_rate',
                 'ctr_v',
-                'cum_average_volume_per_kw_data',
-                'cum_average_volume_data',
             }
         )
 
@@ -247,6 +239,12 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                     'video_view_rate',
                     'video_views',
                     'interests_top_kw',
+
+                    'views',
+                    'category',
+                    'thirty_days_views',
+                    'weekly_views',
+                    'daily_views',
                 }
             )
 

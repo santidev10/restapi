@@ -51,57 +51,6 @@ class KWToolAPITestCase(APITestCase):
         self.assertEqual(data['max_page'], 1)
         self.assertEqual(data['items_count'], 2)
 
-        for n, item in enumerate(response.data['items']):
-            fixture_item = RESP[n]
-
-            self.assertEqual(
-                set(item.keys()),
-                {
-                    'search_volume',
-                    'average_cpc',
-                    'competition',
-                    'keyword_text',
-                    'monthly_searches',
-                    'interests',
-                    'updated_at',
-
-                    'campaigns_count',
-                    'average_cpm',
-                    'average_cpv',
-                    'clicks',
-                    'cost',
-                    'ctr',
-                    'ctr_v',
-                    'impressions',
-                    'video_view_rate',
-                    'video_views',
-                    'interests_top_kw',
-                }
-            )
-
-            json_keys = ('search_volume', 'average_cpc', 'competition', 'keyword_text',
-                         'monthly_searches', 'interests')
-            for key in json_keys:
-                value = item[key]
-                if key == 'interests':
-                    self.assertEqual(
-                        set(
-                            n for n in Interest.objects.filter(
-                                id__in=fixture_item[key]
-                            ).values_list(
-                                'id', flat=True
-                            )
-                        ),
-                        set(v['id'] for v in value),
-                    )
-                elif key == 'competition':
-                    self.assertAlmostEqual(value, fixture_item[key],
-                                           places=10)
-                elif key == 'campaigns_count':
-                    pass
-                else:
-                    self.assertEqual(value, fixture_item[key])
-
         # test again
         optimize_keyword.return_value = deepcopy(RESP)
         self.client.get(url)
