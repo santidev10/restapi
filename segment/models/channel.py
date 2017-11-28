@@ -89,7 +89,7 @@ class SegmentChannel(BaseSegment):
         self.top_three_channels = [
             {"id": obj.get("channel_id"),
              "title": obj.get("title"),
-             "thumbnail_image_url": obj.get("thumbnail_image_url")}
+             "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("top_three_channels_data").get("items")
         ]
         self.videos = sum(
