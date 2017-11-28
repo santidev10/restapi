@@ -9,6 +9,7 @@ from rest_framework.serializers import ModelSerializer, CharField, \
     EmailField
 
 from administration.notifications import send_new_registration_email
+from payments.stripe_api.subscriptions import retrieve, is_valid
 from userprofile.models import Subscription, Plan
 from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
 from payments.api.serializers import SubscriptionSerializer as PaymentSubscriptionSerializer
@@ -99,6 +100,7 @@ class UserSerializer(ModelSerializer):
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
     plan = SerializerMethodField()
+    has_active_subscription = SerializerMethodField()
 
     class Meta:
         """
@@ -120,6 +122,7 @@ class UserSerializer(ModelSerializer):
             "plan",
             "profile_image_url",
             "can_access_media_buying",
+            "has_active_subscription",
         )
         read_only_fields = (
             "is_staff",
@@ -147,6 +150,16 @@ class UserSerializer(ModelSerializer):
     def get_plan(self, obj):
         if obj.plan is not None:
             return obj.plan.name
+
+    def get_has_active_subscription(self, obj):
+        try:
+            current_subscription = Subscription.objects.get(user=obj)
+        except Subscription.DoesNotExist:
+            return False
+        if current_subscription.payments_subscription:
+            sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
+            return is_valid(sub)
+        return False
 
 
 class UserSetPasswordSerializer(Serializer):
