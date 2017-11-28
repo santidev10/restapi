@@ -133,9 +133,9 @@ class UserSerializer(ModelSerializer):
     def get_is_admin_provided_subscription(self, obj):
         try:
             current_subscription = Subscription.objects.get(user=obj)
-            return True if current_subscription.payments_subscription else False
+            return False if current_subscription.payments_subscription else True
         except Subscription.DoesNotExist:
-            return False
+            return True
 
     def get_current_period_end(self, obj):
         try:
