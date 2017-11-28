@@ -98,7 +98,7 @@ class SegmentVideo(BaseSegment):
         self.top_three_videos = [
             {"id": obj.get("video_id"),
              "title": obj.get("title"),
-             "thumbnail_image_url": obj.get("thumbnail_image_url")}
+             "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("items")
         ]
         # <--- disabled SAAS-1180
