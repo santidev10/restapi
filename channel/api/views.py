@@ -137,7 +137,7 @@ class ChannelListApiView(
         items = response_data.get("items", [])
         for item in items:
             if not self.request.user.has_perm('userprofile.channel_audience') and \
-               not (own_channels == '1' and item['id'] in channels_ids):
+               not (own_channels == '1' and item['channel_id'] in channels_ids):
                 item["has_audience"] = False
 
         # adapt the response data
