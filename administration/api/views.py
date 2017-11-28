@@ -324,7 +324,9 @@ class SubscriptionCreateView(APIView):
                     customer = customers.create(request.user)
                     payments_subscription = self.subscribe(customer, plan=plan, token=token)
                 except stripe.StripeError as e:
-                    return Response(data=smart_str(e))
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST,
+                        data=e.json_body)
 
             Subscription.objects.filter(user=request.user).delete()
             current_subscription = Subscription.objects.create(
@@ -351,7 +353,9 @@ class SubscriptionDeleteView(APIView):
         try:
             subscriptions.cancel(obj)
         except stripe.StripeError as e:
-            return Response(data=smart_str(e))
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=e.json_body)
 
         if subscription:
             user_id = subscription.user_id
@@ -375,7 +379,9 @@ class SubscriptionUpdateView(APIView):
                     obj = PaymentsSubscription.objects.get(stripe_id=stripe_id)
                     subscriptions.update(obj, iq_plan.payments_plan.id)
                 except stripe.StripeError as e:
-                    return Response(data=smart_str(e))
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST,
+                        data=e.json_body)
             subscription = Subscription.objects.get(user=request.user)
             subscription.plan = iq_plan
             subscription.save()
