@@ -592,5 +592,3 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-

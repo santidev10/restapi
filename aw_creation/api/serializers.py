@@ -84,12 +84,17 @@ def add_targeting_list_items_info(data, list_type):
 
 class AdCreationSetupSerializer(ModelSerializer):
     video_ad_format = SerializerMethodField()
+    is_disapproved = SerializerMethodField()
 
     @staticmethod
     def get_video_ad_format(obj):
         item_id = obj.ad_group_creation.video_ad_format
         options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
         return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_is_disapproved(obj):
+        return obj.ad.is_disapproved if obj.ad is not None else False
 
     class Meta:
         model = AdCreation
@@ -107,7 +112,7 @@ class AdCreationSetupSerializer(ModelSerializer):
             "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
             "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
             "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
-            "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+            "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved"
         )
 
 

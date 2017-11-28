@@ -1,8 +1,10 @@
-from django.db import models
-from django.db.models.aggregates import Aggregate
-from django.db.models import Min, Sum, Case, When, Value, F, IntegerField, FloatField
-from keyword_tool.models import BaseModel
 import re
+
+from django.db import models
+from django.db.models import Min, Sum, Case, When, IntegerField
+from django.db.models.aggregates import Aggregate
+
+from keyword_tool.models import BaseModel
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -141,6 +143,7 @@ def dict_quartiles_to_rates(data):
         if qf in data:
             del data[qf]
 
+
 base_stats_aggregate = dict(
     sum_impressions=Sum("impressions"),
     video_impressions=Sum(
@@ -276,6 +279,7 @@ class AWAccountPermission(models.Model):
     # we will check read permission every day and show data to those users
     # who has access to it on AdWords
     can_write = models.BooleanField(default=False)
+
     # we will be set True only after successful account creations
     # and set False on errors
 
@@ -363,6 +367,7 @@ class Ad(BaseStatisticModel):
     creative_name = models.CharField(max_length=150, null=True)
     display_url = models.CharField(max_length=150, null=True)
     status = models.CharField(max_length=10, null=True)
+    is_disapproved = models.BooleanField(default=False, null=False)
 
     def __str__(self):
         return "%s #%s" % (self.creative_name, self.id)
