@@ -155,9 +155,10 @@ class UserSerializer(ModelSerializer):
             current_subscription = Subscription.objects.get(user=obj)
         except Subscription.DoesNotExist:
             return False
-
-        sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
-        return is_valid(sub)
+        if current_subscription.payments_subscription:
+            sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
+            return is_valid(sub)
+        return False
 
 
 class UserSetPasswordSerializer(Serializer):
