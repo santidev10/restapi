@@ -145,7 +145,8 @@ class UserSerializer(ModelSerializer):
             return
 
     def get_plan(self, obj):
-        return obj.plan.name
+        if obj.plan is not None:
+            return obj.plan.name
 
 
 class UserSetPasswordSerializer(Serializer):

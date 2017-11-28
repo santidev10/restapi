@@ -76,6 +76,12 @@ class KWToolAPITestCase(APITestCase):
                     'video_view_rate',
                     'video_views',
                     'interests_top_kw',
+
+                    'thirty_days_views',
+                    'views',
+                    'daily_views',
+                    'weekly_views',
+                    'category',
                 }
             )
 
