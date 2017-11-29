@@ -660,9 +660,7 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get('status')
         if status:
-            if status == "From AdWords":
-                queryset = queryset.filter(is_managed=False)
-            elif status == "Ended":
+            if status == "Ended":
                 queryset = queryset.filter(is_ended=True, is_managed=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)

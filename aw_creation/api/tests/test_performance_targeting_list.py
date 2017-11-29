@@ -5,7 +5,6 @@ from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
 
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -16,7 +15,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-        "is_disapproved"
+        "is_disapproved", "from_aw"
     }
 
     def setUp(self):
@@ -120,29 +119,20 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(len(item['weekly_chart']), 7)
 
-    def test_marked_is_disapproved_account(self):
-        def create_account_creation_with_ad(obj_id, is_disapproved):
-            account = Account.objects.create(id=obj_id, name="")
-            account_creation = AccountCreation.objects.create(name="", owner=self.user, account=account, )
-
-            campaign = Campaign.objects.create(id=obj_id, name="", account=account, cost=100)
-            ad_group = AdGroup.objects.create(id=obj_id, campaign=campaign)
-            Ad.objects.create(id=obj_id, ad_group=ad_group, is_disapproved=is_disapproved)
-            return account_creation
-
-        account_creation_1 = create_account_creation_with_ad(1, True)
-        account_creation_2 = create_account_creation_with_ad(2, False)
+    def test_success_from_aw(self):
+        account_1 = Account.objects.create(id=1)
+        account_2 = Account.objects.create(id=2
+                                           )
+        Campaign.objects.create(id=1, account=account_1, cost=1)
+        aw_account = AccountCreation.objects.create(name="From AdWords", owner=self.user, is_managed=False,
+                                                    account=account_1)
+        Campaign.objects.create(id=2, account=account_2, cost=1)
+        internal_account = AccountCreation.objects.create(name="Internal", owner=self.user, is_managed=True,
+                                                          account=account_2)
 
         url = reverse("aw_creation_urls:performance_targeting_list")
         response = self.client.get(url)
-
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 3)
-        campaigns = response.data['items']
-        self.assertEqual(len(campaigns), 3)
-
-        campaign_map = dict((c['id'], c) for c in campaigns)
-        self.assertEqual(campaign_map.keys(), {account_creation_1.id, account_creation_2.id, DEMO_ACCOUNT_ID})
-        self.assertFalse(campaign_map[DEMO_ACCOUNT_ID].get('is_disapproved'))
-        self.assertTrue(campaign_map[account_creation_1.id].get('is_disapproved'))
-        self.assertFalse(campaign_map[account_creation_2.id].get('is_disapproved'))
+        accounts_map = dict((acc.get('id'), acc) for acc in response.data.get('items'))
+        self.assertTrue(accounts_map.get(aw_account.id).get('from_aw'))
+        self.assertFalse(accounts_map.get(internal_account.id).get('from_aw'))

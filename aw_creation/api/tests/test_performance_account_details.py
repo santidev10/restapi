@@ -1,15 +1,17 @@
-from unittest.mock import patch
+import json
 from datetime import datetime, timedelta
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
+
+from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
-import json
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
@@ -17,7 +19,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart', 'thumbnail', 'is_changed',
         'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v', 'is_managed',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-        "is_disapproved"
+        "is_disapproved", "from_aw"
     }
     overview_keys = {
         'age', 'gender', 'device', 'location',
@@ -52,7 +54,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             user=self.user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", is_managed=False, owner=self.user, account=account)
+        account_creation = AccountCreation.objects.create(name="", is_managed=False, owner=self.user, account=account,
+                                                          is_approved=True)
         stats = dict(
             impressions=4, video_views=2, clicks=1, cost=1,
             video_views_25_quartile=4, video_views_50_quartile=3,
@@ -215,7 +218,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        
+
         self.assertEqual(data['id'], account_creation.id)
         self.assertEqual(data['name'], account_creation.name)
         self.assertEqual(data['status'], account_creation.status)
@@ -223,4 +226,3 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         self.assertIsNotNone(data['impressions'])
         self.assertIsNotNone(data['overview']['impressions'])
-

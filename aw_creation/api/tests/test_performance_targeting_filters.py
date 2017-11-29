@@ -1,14 +1,15 @@
+from datetime import datetime
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from aw_creation.models import AccountCreation, CampaignCreation
+
+from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
-from datetime import datetime
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
-
     def test_success_get_is_managed_false(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
@@ -16,7 +17,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
+                                                          is_approved=True)
         start = datetime(2009, 3, 10).date()
         end = datetime(2017, 1, 1).date()
 
@@ -63,7 +65,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
+                                                          is_approved=True)
         Campaign.objects.create(id=1, name="", account=account)
 
         url = reverse("aw_creation_urls:performance_targeting_filters",

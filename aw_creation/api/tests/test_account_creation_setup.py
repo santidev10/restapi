@@ -1,20 +1,21 @@
-from datetime import datetime, timedelta
-from django.core.urlresolvers import reverse
+from datetime import timedelta
+from unittest.mock import patch, Mock
+
 from django.core import mail
+from django.core.urlresolvers import reverse
+from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from suds import WebFault
+
 from aw_creation.models import *
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch, Mock
-from aw_reporting.api.tests.base import AwReportingAPITestCase
-from suds import WebFault
-from oauth2client.client import HttpAccessTokenRefreshError
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
-
     def setUp(self):
         self.user = self.create_test_user()
         self.user.can_access_media_buying = True
@@ -124,7 +125,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             set(campaign_data.keys()),
             {
                 'id', 'name', 'updated_at', 'start', 'end',
-                'budget', 'delivery_method',  'type', 'video_networks', 'languages',
+                'budget', 'delivery_method', 'type', 'video_networks', 'languages',
                 'frequency_capping', 'ad_schedule_rules', 'location_rules',
                 'devices', 'content_exclusions', 'ad_group_creations',
             }
@@ -592,3 +593,33 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                       args=(DEMO_ACCOUNT_ID,))
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_marked_is_disapproved_account(self):
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=self.user, account=account, )
+
+        campaign = Campaign.objects.create(id=2, name="", account=account, cost=100)
+        campaign_creation = CampaignCreation.objects.create(id=2, campaign=campaign, account_creation=account_creation)
+
+        ad_group = AdGroup.objects.create(id=2, campaign=campaign)
+        ad_group_creation = AdGroupCreation.objects.create(ad_group=ad_group, campaign_creation=campaign_creation)
+
+        ad_1 = Ad.objects.create(id=2, ad_group=ad_group, is_disapproved=True)
+        ad_2 = Ad.objects.create(id=3, ad_group=ad_group, is_disapproved=False)
+        ad_creation_1 = AdCreation.objects.create(ad=ad_1, ad_group_creation=ad_group_creation)
+        ad_creation_2 = AdCreation.objects.create(ad=ad_2, ad_group_creation=ad_group_creation)
+
+        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data['campaign_creations']), 1)
+        self.assertEqual(len(response.data['campaign_creations'][0]['ad_group_creations']), 1)
+        ads = response.data['campaign_creations'][0]['ad_group_creations'][0]['ad_creations']
+        self.assertEqual(len(ads), 2)
+
+        campaign_map = dict((ad['id'], ad) for ad in ads)
+
+        self.assertEqual(campaign_map.keys(), {ad_creation_1.id, ad_creation_2.id})
+        self.assertTrue(campaign_map[ad_creation_1.id].get('is_disapproved'))
+        self.assertFalse(campaign_map[ad_creation_2.id].get('is_disapproved'))

@@ -322,7 +322,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'video_networks', 'delivery_method', 'type',
             'content_exclusions',
-            'ad_group_creations',
+            'ad_group_creations'
         )
 
 
@@ -345,6 +345,7 @@ class AccountCreationListSerializer(ModelSerializer):
     start = SerializerMethodField()
     end = SerializerMethodField()
     is_disapproved = SerializerMethodField()
+    from_aw = BooleanField()
 
     # analytic data
     impressions = StatField()
@@ -490,7 +491,7 @@ class AccountCreationListSerializer(ModelSerializer):
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
             "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-            "is_disapproved"
+            "is_disapproved", "from_aw"
         )
 
 

@@ -745,10 +745,6 @@ class DemoAccount(BaseDemo):
                 a.week_proportion = week_proportion
 
     @property
-    def is_disapproved(self):
-        return False
-
-    @property
     def account(self):
         return self
 
@@ -873,7 +869,8 @@ class DemoAccount(BaseDemo):
             interest_count=10,
             topic_count=8,
             keyword_count=8,
-            is_disapproved=self.is_disapproved
+            is_disapproved=False,
+            from_aw=False
         )
         return data
 
