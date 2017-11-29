@@ -104,7 +104,7 @@ class UserSerializer(ModelSerializer):
     """
     Retrieve user serializer
     """
-    is_admin_provided_subscription = SerializerMethodField()
+    is_user_paid_for_subscription = SerializerMethodField()
     current_period_end = SerializerMethodField()
 
     class Meta:
@@ -126,16 +126,16 @@ class UserSerializer(ModelSerializer):
             "plan",
             "can_access_media_buying",
             "pre_baked_segments",
-            "is_admin_provided_subscription",
+            "is_user_paid_for_subscription",
             "current_period_end",
         )
 
-    def get_is_admin_provided_subscription(self, obj):
+    def get_is_user_paid_for_subscription(self, obj):
         try:
             current_subscription = Subscription.objects.get(user=obj)
-            return False if current_subscription.payments_subscription else True
+            return True if current_subscription.payments_subscription else False
         except Subscription.DoesNotExist:
-            return True
+            return False
 
     def get_current_period_end(self, obj):
         try:
