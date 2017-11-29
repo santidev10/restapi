@@ -100,7 +100,7 @@ class UserSerializer(ModelSerializer):
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
     plan = SerializerMethodField()
-    has_active_subscription = SerializerMethodField()
+    has_paid_subscription_error = SerializerMethodField()
 
     class Meta:
         """
@@ -122,7 +122,7 @@ class UserSerializer(ModelSerializer):
             "plan",
             "profile_image_url",
             "can_access_media_buying",
-            "has_active_subscription",
+            "has_paid_subscription_error",
         )
         read_only_fields = (
             "is_staff",
@@ -151,14 +151,14 @@ class UserSerializer(ModelSerializer):
         if obj.plan is not None:
             return obj.plan.name
 
-    def get_has_active_subscription(self, obj):
+    def get_has_paid_subscription_error(self, obj):
         try:
             current_subscription = Subscription.objects.get(user=obj)
         except Subscription.DoesNotExist:
             return False
         if current_subscription.payments_subscription:
             sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
-            return is_valid(sub)
+            return not is_valid(sub)
         return False
 
 
