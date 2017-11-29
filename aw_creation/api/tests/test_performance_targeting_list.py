@@ -1,29 +1,28 @@
-from datetime import datetime, timedelta
-from django.contrib.auth import get_user_model
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
-from urllib.parse import urlencode
+from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
+
 from aw_creation.models import *
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
-
     details_keys = {
         'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+        "is_disapproved"
     }
 
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_fail_post(self):
-
         url = reverse("aw_creation_urls:performance_targeting_list")
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_405_METHOD_NOT_ALLOWED)
@@ -42,12 +41,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -82,12 +81,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get("{}?max_campaigns_count=2".format(url))
 
@@ -120,3 +119,30 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             self.details_keys,
         )
         self.assertEqual(len(item['weekly_chart']), 7)
+
+    def test_marked_is_disapproved_account(self):
+        def create_account_creation_with_ad(obj_id, is_disapproved):
+            account = Account.objects.create(id=obj_id, name="")
+            account_creation = AccountCreation.objects.create(name="", owner=self.user, account=account, )
+
+            campaign = Campaign.objects.create(id=obj_id, name="", account=account, cost=100)
+            ad_group = AdGroup.objects.create(id=obj_id, campaign=campaign)
+            Ad.objects.create(id=obj_id, ad_group=ad_group, is_disapproved=is_disapproved)
+            return account_creation
+
+        account_creation_1 = create_account_creation_with_ad(1, True)
+        account_creation_2 = create_account_creation_with_ad(2, False)
+
+        url = reverse("aw_creation_urls:performance_targeting_list")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 3)
+        campaigns = response.data['items']
+        self.assertEqual(len(campaigns), 3)
+
+        campaign_map = dict((c['id'], c) for c in campaigns)
+        self.assertEqual(campaign_map.keys(), {account_creation_1.id, account_creation_2.id, DEMO_ACCOUNT_ID})
+        self.assertFalse(campaign_map[DEMO_ACCOUNT_ID].get('is_disapproved'))
+        self.assertTrue(campaign_map[account_creation_1.id].get('is_disapproved'))
+        self.assertFalse(campaign_map[account_creation_2.id].get('is_disapproved'))
