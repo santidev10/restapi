@@ -1,19 +1,18 @@
-import json
-import logging
-from collections import defaultdict
-
 from django.db.models import Min, Max, Sum, Count
 from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, ListField, ValidationError, BooleanField, DictField, CharField
-
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdCreation
+    FrequencyCap, AdCreation, YT_VIDEO_REGEX
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
     Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
     ConcatAggregate, VideoCreativeStatistic, Ad
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from collections import defaultdict
+import json
+import re
+import logging
 
 logger = logging.getLogger(__name__)
 

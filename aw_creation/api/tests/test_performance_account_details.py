@@ -17,6 +17,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart', 'thumbnail', 'is_changed',
         'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v', 'is_managed',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+        "is_disapproved"
     }
     overview_keys = {
         'age', 'gender', 'device', 'location',
