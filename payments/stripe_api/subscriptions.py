@@ -51,7 +51,7 @@ def is_status_current(subscription):
     """
     Tests if the provided subscription object has a status that means current
     """
-    return subscription.status in ["active", ]
+    return subscription.status in ["active", "trialing", ]
 
 
 def is_valid(subscription):
