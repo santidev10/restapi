@@ -1021,4 +1021,8 @@ class DemoAccount(BaseDemo):
                     else:
                         if demo_value < filter_value:
                             return
+
+        if filters.get('from_aw', '') == '1':
+            return
+
         return True

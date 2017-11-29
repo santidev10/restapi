@@ -361,6 +361,23 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         for item in response.data['items']:
             self.assertIs(item['name'].endswith("+"), True)
 
+    def test_success_from_aw_filter(self):
+        AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+
+        ac = AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+        CampaignCreation.objects.create(name="", account_creation=ac)
+
+        account = Account.objects.create(id=1, name="")
+        Campaign.objects.create(id=1, name="", account=account)
+        managed_acc = AccountCreation.objects.create(name="", owner=self.user, account=account, is_managed=False)
+
+        base_url = reverse("aw_creation_urls:account_creation_list")
+
+        response = self.client.get("{}?from_aw=1".format(base_url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(response.data['items'][0]['id'], managed_acc.id)
+
     # ended account cases
     def test_success_get_account_no_end_date(self):
         ac_creation = AccountCreation.objects.create(
