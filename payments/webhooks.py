@@ -1,13 +1,16 @@
 import json
+import os
 
 import stripe
 from django.conf import settings
 from django.core.mail import send_mail
 from django.dispatch import Signal
+from django.template.loader import render_to_string
 from six import with_metaclass
 
 from payments.stripe_api import customers, plans, subscriptions
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class WebhookRegistry(object):
     def __init__(self):
@@ -108,13 +111,31 @@ class Webhook(with_metaclass(Registerable, object)):
             self.send_new_registration_email()
 
     def send_new_registration_email(self):
+
+        context = {
+            'user': 'Admin',
+            'event': self.event,
+            'message': self.message,
+            'first_name': self.event.customer.user.first_name,
+            'last_name': self.event.customer.user.last_name,
+            'email': self.event.customer.user.email,
+            'plan_name': self.event.customer.user.plan.payments_plan.name,
+            'amount': self.event.customer.user.plan.payments_plan.amount,
+            'plan_interval': self.event.customer.user.plan.payments_plan.interval,
+            'create_at': self.event.customer.user.plan.payments_plan.created_at,
+        }
+
         sender = settings.SENDER_EMAIL_ADDRESS
         to = settings.PAYMENT_ACTION_EMAIL_ADDRESSES
+
         subject = "Payment actions"
         text = "Dear Admin, \n\n" \
                "Event: {}\n\n" \
                "Message: {} \n\n".format(self.event, self.message)
-        send_mail(subject, text, sender, to, fail_silently=True)
+
+        msg_html = render_to_string(os.path.join(BASE_DIR, 'payments/templates/subscription_email.html'),
+                                    context=context)
+        send_mail(subject, text, sender, to, fail_silently=True, html_message=msg_html)
         return
 
 
