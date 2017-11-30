@@ -20,6 +20,15 @@ def create(user, card=None, plan=None):
     Creates a Stripe customer.
     If a customer already exists, the existing customer will be returned.
     """
+
+    if hasattr(user, 'customer'):
+        try:
+            stripe_customer = stripe.Customer.retrieve(user.customer.stripe_id)
+            sync_customer(user.customer, stripe_customer)
+            return user.customer
+        except stripe.error.InvalidRequestError:
+            pass
+
     stripe_customer = stripe.Customer.create(
         email=user.email,
         source=card,
@@ -31,10 +40,10 @@ def create(user, card=None, plan=None):
             "stripe_id": stripe_customer["id"]
         }
     )
+
     if created:
         sync_customer(cus, stripe_customer)
-    else:
-        stripe.Customer.retrieve(stripe_customer["id"]).delete()
+
     return cus
 
 
@@ -72,6 +81,11 @@ def sync_customer(customer, cu=None):
     """
     if cu is None:
         cu = customer.stripe_customer
+
+    if hasattr(cu, 'deleted'):
+        if cu.deleted:
+            return
+
     customer.account_balance = utils.convert_amount_for_db(cu["account_balance"], cu["currency"])
     customer.currency = cu["currency"] or ""
     customer.delinquent = cu["delinquent"]
