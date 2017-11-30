@@ -19,9 +19,9 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 logger = logging.getLogger(__name__)
 
 
-class QuotaExceededException(Exception):
+class YoutubeAPIConnectorException(Exception):
     """
-    Exception for quota exceed
+    Exception for youtube connector
     """
     pass
 
@@ -41,6 +41,8 @@ class YoutubeAPIConnector(object):
         self.developer_key = developer_key
         self.service_name = service_name
         self.api_version = api_version
+        self.max_connect_retries = 5
+        self.retry_sleep_coefficient = 4
         # self.access_token = access_token
         # self.refresh_token = refresh_token
         # self.token_expiry = token_expiry
@@ -80,7 +82,7 @@ class YoutubeAPIConnector(object):
         }
         if page_token:
             options["pageToken"] = page_token
-        return self.make_call(self.youtube.search().list(**options))
+        return self.__execute_call(self.youtube.search().list(**options))
 
     # def channels_search(self,
     #                     channels_ids,
@@ -262,39 +264,25 @@ class YoutubeAPIConnector(object):
     #         captions = response.read()
     #         return captions.decode('utf-8')
     #
-    def make_call(self, method):
-        result = None
-        data_received = False
-        retries = 0
-        while not data_received:
+    def __execute_call(self, method):
+        """
+        Call YT api
+        """
+        tries_count = 0
+        while tries_count <= self.max_connect_retries:
             try:
                 result = method.execute()
-            except (GoogleHttpError, Exception) as e:
-                if isinstance(e, AccessTokenCredentialsError):
-                    logger.warning('API call failed: Invalid access token')
-                    break
-                if isinstance(e, GoogleHttpError) and e.resp.status == HTTP_403_FORBIDDEN:
-                    if self.is_quota_exeeded(e):
-                        logger.error('API call failed: Quota Exceeded')
-                        raise QuotaExceededException
-                    logger.warning('API call failed: Insufficient Permission')
-                    break
-                if isinstance(e, HttpAccessTokenRefreshError):
-                    if 'Token has been expired or revoked' in str(e):
-                        self.token_revoked = True
-                    logger.warning('API call failed: Unable to refresh access_token: ' + str(e))
-                    break
-                logger.warning('API call failed: ' + str(e))
-                retries += 1
-                if retries > self.MAX_RETRIES:
-                    logger.warning('Retries limit ({}) exceeded. Aborting request'.format(retries))
-                    break
-                time.sleep(self.RETRY_DELAY)
+            except Exception:
+                tries_count += 1
+                if tries_count <= self.max_connect_retries:
+                    sleep_seconds_count = self.max_connect_retries \
+                                          ** self.retry_sleep_coefficient
+                    time.sleep(sleep_seconds_count)
             else:
-                data_received = True
-                retries = 0
-        return result
-    #
+                return result
+        raise YoutubeAPIConnectorException(
+            "Unable to obtain data from YouTube")
+
     # def is_quota_exeeded(self, exception):
     #     quota_exceeded = False
     #     if exception.resp.status == HTTP_403_FORBIDDEN:

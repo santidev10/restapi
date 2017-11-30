@@ -2,9 +2,10 @@
 Channel api mixins module
 """
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_400_BAD_REQUEST, \
+    HTTP_503_SERVICE_UNAVAILABLE
 
-from utils.youtube_api import YoutubeAPIConnector
+from utils.youtube_api import YoutubeAPIConnector, YoutubeAPIConnectorException
 
 
 class ChannelYoutubeSearchMixin(object):
@@ -17,34 +18,34 @@ class ChannelYoutubeSearchMixin(object):
         """
         self.youtube_connector = YoutubeAPIConnector()
 
-    def get_channels_ids(self, channels):
-        """
-        Collect channels ids
-        """
-        ids = []
-        for channel in channels:
-            if channel.get('id', {}).get('kind') == 'youtube#channel':
-                ids.append(channel.get("id", {}).get("channelId"))
-        return ids
-
-    def get_channels_details(self, channels_ids):
-        """
-        Collect channels statistic
-        """
-        ids_chunks = list(chunks(channels_ids, 50))
-        channels_info = []
-        for chunk in ids_chunks:
-            channels_ids_string = ",".join(chunk)
-            try:
-                channels_data = self.youtube_connector.channels_search(
-                    channels_ids_string,
-                    part="id,snippet,statistics").get("items")
-            except Exception as e:
-                logger.error(e)
-            else:
-                channels_info = channels_info + channels_data
-        return channels_info
-
+    # def get_channels_ids(self, channels):
+    #     """
+    #     Collect channels ids
+    #     """
+    #     ids = []
+    #     for channel in channels:
+    #         if channel.get('id', {}).get('kind') == 'youtube#channel':
+    #             ids.append(channel.get("id", {}).get("channelId"))
+    #     return ids
+    #
+    # def get_channels_details(self, channels_ids):
+    #     """
+    #     Collect channels statistic
+    #     """
+    #     ids_chunks = list(chunks(channels_ids, 50))
+    #     channels_info = []
+    #     for chunk in ids_chunks:
+    #         channels_ids_string = ",".join(chunk)
+    #         try:
+    #             channels_data = self.youtube_connector.channels_search(
+    #                 channels_ids_string,
+    #                 part="id,snippet,statistics").get("items")
+    #         except Exception as e:
+    #             logger.error(e)
+    #         else:
+    #             channels_info = channels_info + channels_data
+    #     return channels_info
+    #
     def get_response_data(self, channels, full_info=False,
                           next_page_token=None):
         """
@@ -55,6 +56,7 @@ class ChannelYoutubeSearchMixin(object):
             "items": None,
             "items_count": 0
         }
+        import ipdb; ipdb.set_trace()
         if not channels:
             return response_data
         channels_ids = self.get_channels_ids(channels)
@@ -107,19 +109,14 @@ class ChannelYoutubeSearchMixin(object):
         page_token = self.request.query_params.get("next_page")
         self.__initialize_youtube_connector()
         try:
-            channels_data = self.youtube_connector.keywords_list_search(
-                key_words=keywords, part='id', page_token=next_page_token)
-        except QuotaExceededException:
-            logger.error('Youtube API Quota Exceeded')
-            return Response(status=HTTP_503_SERVICE_UNAVAILABLE, data={"error": ["Youtube Data API Quota Exceeded"]})
-        except Exception as e:
-            logger.error(e)
-            return Response(status=HTTP_408_REQUEST_TIMEOUT)
+            channels_data = self.youtube_connector.keyword_search(
+                keyword=keyword, part="id", page_token=page_token)
+        except YoutubeAPIConnectorException:
+            return Response(
+                status=HTTP_503_SERVICE_UNAVAILABLE,
+                data={"error": "Youtube API unreachable"})
         channels = channels_data.get("items")
         next_page_token = channels_data.get("nextPageToken")
-        if full_info:
-            return Response(data=self.get_response_data(
-                channels, full_info=True, next_page_token=next_page_token))
         return Response(data=self.get_response_data(
             channels, next_page_token=next_page_token))
 
