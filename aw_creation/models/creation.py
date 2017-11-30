@@ -1,18 +1,18 @@
+import calendar
+import json
+import logging
+import re
+import uuid
+from datetime import datetime
 from decimal import Decimal
+
+import pytz
 from PIL import Image
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q, F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from datetime import datetime
-import calendar
-import json
-import logging
-import uuid
-import pytz
-import re
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ BULK_CREATE_AD_GROUPS_COUNT = 5
 WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
-YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
+YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)" \
                  r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
@@ -47,14 +47,12 @@ def get_yt_id_from_url(url):
 
 
 class CreationItemQueryset(models.QuerySet):
-
     def changed(self):
         qs = self.filter(Q(sync_at__isnull=True) | Q(updated_at__gt=F("sync_at")))
         return qs
 
 
 class UniqueCreationItem(models.Model):
-
     objects = CreationItemQueryset.as_manager()
 
     name = models.CharField(max_length=250, validators=[NameValidator])
@@ -120,7 +118,6 @@ class AccountCreation(UniqueCreationItem):
             )
             return "\n".join(lines)
 
-    STATUS_FROM_AW = "From AdWords"
     STATUS_ENDED = "Ended"
     STATUS_PAUSED = "Paused"
     STATUS_RUNNING = "Running"
@@ -129,9 +126,7 @@ class AccountCreation(UniqueCreationItem):
 
     @property
     def status(self):
-        if not self.is_managed:
-            return self.STATUS_FROM_AW
-        elif self.is_ended:
+        if self.is_ended:
             return self.STATUS_ENDED
         elif self.is_paused:
             return self.STATUS_PAUSED
@@ -141,6 +136,10 @@ class AccountCreation(UniqueCreationItem):
             return self.STATUS_APPROVED
         else:
             return self.STATUS_PENDING
+
+    @property
+    def from_aw(self):
+        return not self.is_managed
 
 
 @receiver(post_save, sender=AccountCreation, dispatch_uid="save_account_receiver")
@@ -160,14 +159,12 @@ class Language(models.Model):
 
 
 class CampaignCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.filter(budget__isnull=False)
         return qs
 
 
 class CampaignCreation(UniqueCreationItem):
-
     objects = CampaignCreationQueryset.as_manager()
 
     account_creation = models.ForeignKey(
@@ -272,6 +269,7 @@ class CampaignCreation(UniqueCreationItem):
 
     def set_video_networks(self, value):
         self.video_networks_raw = json.dumps(value)
+
     video_networks = property(get_video_networks, set_video_networks)
 
     DESKTOP_DEVICE = 'DESKTOP_DEVICE'
@@ -294,6 +292,7 @@ class CampaignCreation(UniqueCreationItem):
 
     def set_devices(self, value):
         self.devices_raw = json.dumps(value)
+
     devices = property(get_devices, set_devices)
 
     # content exclusions
@@ -392,7 +391,7 @@ class CampaignCreation(UniqueCreationItem):
                     freq_caps={
                         f["event_type"]: f
                         for f in self.frequency_capping.all(
-                        ).values("event_type", "level", "time_unit", "limit")
+                    ).values("event_type", "level", "time_unit", "limit")
                     },
                     locations=list(
                         self.location_rules.filter(
@@ -429,7 +428,6 @@ def save_campaign_receiver(sender, instance, created, **_):
 
 
 class AdGroupCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.filter(max_rate__isnull=False)
         return qs
@@ -467,7 +465,8 @@ class AdGroupCreation(UniqueCreationItem):
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
-                AdCreation.objects.filter(ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+                        AdCreation.objects.filter(
+                            ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
@@ -602,7 +601,7 @@ class AdGroupCreation(UniqueCreationItem):
         )
         lines = [
             "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
-               json.dumps(params)
+                json.dumps(params)
             ),
         ]
 
@@ -622,7 +621,6 @@ def save_group_receiver(sender, instance, created, **_):
 
 
 class AdCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.exclude(
             models.Q(video_url="") | models.Q(display_url="") | models.Q(display_url__isnull=True) |

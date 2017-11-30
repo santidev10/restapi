@@ -6,7 +6,7 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
     FrequencyCap, AdCreation, YT_VIDEO_REGEX
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
     Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
-    ConcatAggregate, VideoCreativeStatistic
+    ConcatAggregate, VideoCreativeStatistic, Ad
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from collections import defaultdict
@@ -84,12 +84,17 @@ def add_targeting_list_items_info(data, list_type):
 
 class AdCreationSetupSerializer(ModelSerializer):
     video_ad_format = SerializerMethodField()
+    is_disapproved = SerializerMethodField()
 
     @staticmethod
     def get_video_ad_format(obj):
         item_id = obj.ad_group_creation.video_ad_format
         options = dict(obj.ad_group_creation.__class__.VIDEO_AD_FORMATS)
         return dict(id=item_id, name=options[item_id])
+
+    @staticmethod
+    def get_is_disapproved(obj):
+        return obj.ad.is_disapproved if obj.ad is not None else False
 
     class Meta:
         model = AdCreation
@@ -107,7 +112,7 @@ class AdCreationSetupSerializer(ModelSerializer):
             "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
             "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
             "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
-            "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+            "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved"
         )
 
 
@@ -183,7 +188,6 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
 
 
 class LocationRuleSerializer(ModelSerializer):
-
     geo_target = SimpleGeoTargetSerializer(read_only=True)
     radius_units = SerializerMethodField()
 
@@ -201,20 +205,17 @@ class LocationRuleSerializer(ModelSerializer):
 
 
 class AdScheduleSerializer(ModelSerializer):
-
     class Meta:
         model = AdScheduleRule
         exclude = ("id",)
 
 
 class FrequencyCapUpdateSerializer(ModelSerializer):
-
     class Meta:
         model = FrequencyCap
 
 
 class FrequencyCapSerializer(ModelSerializer):
-
     event_type = SerializerMethodField()
     level = SerializerMethodField()
     time_unit = SerializerMethodField()
@@ -321,7 +322,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
             'video_networks', 'delivery_method', 'type',
             'content_exclusions',
-            'ad_group_creations',
+            'ad_group_creations'
         )
 
 
@@ -343,6 +344,8 @@ class AccountCreationListSerializer(ModelSerializer):
     status = CharField()
     start = SerializerMethodField()
     end = SerializerMethodField()
+    is_disapproved = SerializerMethodField()
+    from_aw = BooleanField()
 
     # analytic data
     impressions = StatField()
@@ -365,6 +368,13 @@ class AccountCreationListSerializer(ModelSerializer):
         if not obj.is_managed:
             return obj.account.name
         return obj.name
+
+    @staticmethod
+    def get_is_disapproved(obj):
+        return Ad.objects \
+            .filter(is_disapproved=True,
+                    ad_group__campaign__account=obj.account) \
+            .exists()
 
     def get_weekly_chart(self, obj):
         return self.daily_chart[obj.id][-7:]
@@ -481,6 +491,7 @@ class AccountCreationListSerializer(ModelSerializer):
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
             "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+            "is_disapproved", "from_aw"
         )
 
 
@@ -500,7 +511,6 @@ class AccountCreationSetupSerializer(ModelSerializer):
 
 
 class AccountCreationUpdateSerializer(ModelSerializer):
-
     class Meta:
         model = AccountCreation
         fields = (
@@ -542,8 +552,8 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
         if 'video_networks' in data:
             video_networks = data['video_networks']
-            if CampaignCreation.VIDEO_PARTNER_DISPLAY_NETWORK in video_networks and\
-               CampaignCreation.YOUTUBE_VIDEO not in video_networks:
+            if CampaignCreation.VIDEO_PARTNER_DISPLAY_NETWORK in video_networks and \
+                            CampaignCreation.YOUTUBE_VIDEO not in video_networks:
                 raise ValidationError(
                     "Cannot target display network without first "
                     "targeting YouTube video network")
@@ -566,7 +576,6 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
 
 class AppendCampaignCreationSerializer(ModelSerializer):
-
     class Meta:
         model = CampaignCreation
         fields = (
@@ -654,7 +663,6 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
 
 class AppendAdGroupCreationSetupSerializer(ModelSerializer):
-
     class Meta:
         model = AdGroupCreation
         fields = (
@@ -708,7 +716,6 @@ class AdCreationUpdateSerializer(ModelSerializer):
 
 
 class AppendAdCreationSetupSerializer(ModelSerializer):
-
     class Meta:
         model = AdCreation
         fields = ('name', 'ad_group_creation')
@@ -748,15 +755,12 @@ class UpdateTargetingDirectionSerializer(ModelSerializer):
 
 
 class AdGroupTargetingListSerializer(ModelSerializer):
-
     class Meta:
         model = TargetingItem
         exclude = ('type', 'id', 'ad_group_creation')
 
 
 class AdGroupTargetingListUpdateSerializer(ModelSerializer):
-
     class Meta:
         model = TargetingItem
         exclude = ('id',)
-

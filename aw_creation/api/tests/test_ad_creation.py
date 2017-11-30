@@ -1,17 +1,17 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
-from aw_reporting.demo.models import DemoAccount
+
 from aw_creation.models import *
-from aw_reporting.models import *
+from aw_reporting.demo.models import DemoAccount
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
-
     def setUp(self):
         self.user = self.create_test_user()
         self.user.can_access_media_buying = True
@@ -74,7 +74,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',  'updated_at',
+                'id', 'name', 'updated_at',
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'video_ad_format', 'custom_params',
                 'companion_banner', 'video_id', 'video_title', 'video_description',
@@ -89,6 +89,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
                 "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
                 "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+                "is_disapproved",
             }
         )
         if len(data["custom_params"]) > 0:
@@ -223,5 +224,3 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         ad.refresh_from_db()
         self.assertIs(ad.is_deleted, True)
-
-

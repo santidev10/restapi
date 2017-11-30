@@ -10,9 +10,10 @@ from rest_framework.serializers import ModelSerializer, CharField, \
 
 from administration.notifications import send_new_registration_email
 from payments.stripe_api.subscriptions import retrieve, is_valid
-from userprofile.models import Subscription, Plan
+from aw_reporting.models import Ad
 from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
 from payments.api.serializers import SubscriptionSerializer as PaymentSubscriptionSerializer
+from userprofile.models import Subscription, Plan
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -101,6 +102,7 @@ class UserSerializer(ModelSerializer):
     has_aw_accounts = SerializerMethodField()
     plan = SerializerMethodField()
     has_paid_subscription_error = SerializerMethodField()
+    has_disapproved_ad = SerializerMethodField()
 
     class Meta:
         """
@@ -123,6 +125,7 @@ class UserSerializer(ModelSerializer):
             "profile_image_url",
             "can_access_media_buying",
             "has_paid_subscription_error",
+            "has_disapproved_ad"
         )
         read_only_fields = (
             "is_staff",
@@ -137,6 +140,13 @@ class UserSerializer(ModelSerializer):
     @staticmethod
     def get_has_aw_accounts(obj):
         return obj.aw_connections.count() > 0
+
+    @staticmethod
+    def get_has_disapproved_ad(obj):
+        return Ad.objects \
+            .filter(is_disapproved=True,
+                    ad_group__campaign__account__mcc_permissions__aw_connection__user_relations__user=obj) \
+            .exists()
 
     def get_token(self, obj):
         """
@@ -172,12 +182,12 @@ class UserSetPasswordSerializer(Serializer):
 
 
 class PlanSerializer(ModelSerializer):
-
     payments_plan = SerializerMethodField()
 
     """
     Permission plan serializer
     """
+
     class Meta:
         model = Plan
         fields = (
@@ -229,4 +239,3 @@ class SubscriptionSerializer(Serializer):
         if obj.payments_subscription is None:
             return dict()
         return PaymentSubscriptionSerializer(obj.payments_subscription).data
-

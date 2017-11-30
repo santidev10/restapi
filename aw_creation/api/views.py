@@ -1,51 +1,51 @@
 # pylint: disable=import-error
-from apiclient.discovery import build
-# pylint: enable=import-error
-from django.contrib.staticfiles.templatetags.staticfiles import static
-from django.conf import settings
-from django.db import transaction
-from django.db.models import Avg, Value, Count, Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
-    CharField as AggrCharField
-from django.shortcuts import get_object_or_404
-from django.db.models.functions import Coalesce
-from django.http import StreamingHttpResponse, HttpResponse, Http404
-from openpyxl import load_workbook
-from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
-from utils.api_paginator import CustomPageNumberPaginator
-from rest_framework.parsers import FileUploadParser
-from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST,  HTTP_200_OK, HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_405_METHOD_NOT_ALLOWED
-from rest_framework.views import APIView
-from utils.permissions import IsAuthQueryTokenPermission, MediaBuyingAddOnPermission
-from rest_framework.authtoken.models import Token
-from aw_creation.api.serializers import *
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, TargetingItem, default_languages
-from aw_reporting.demo import demo_view_decorator
-from aw_reporting.api.views import DATE_FORMAT
-from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
-from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
-    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
-    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
-    Topic, Audience, Account, AWConnection, AdGroup, \
-    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
-from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
-from aw_reporting.excel_reports import AnalyzeWeeklyReport
-from aw_reporting.charts import DeliveryChart
-from aw_creation.email_messages import send_tracking_tags_request
-from datetime import timedelta, datetime
-from io import StringIO
-from collections import OrderedDict
-from decimal import Decimal
-import itertools
 import calendar
 import csv
-import pytz
+import itertools
 import logging
+from collections import OrderedDict
+from datetime import timedelta, datetime
+from decimal import Decimal
+from io import StringIO
+
 import isodate
+import pytz
+from apiclient.discovery import build
+from django.conf import settings
+# pylint: enable=import-error
+from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.db import transaction
+from django.db.models import Avg, Value, Case, When, Q, ExpressionWrapper, F, \
+    IntegerField as AggrIntegerField, FloatField as AggrFloatField
+from django.db.models.functions import Coalesce
+from django.http import StreamingHttpResponse, HttpResponse, Http404
+from django.shortcuts import get_object_or_404
+from openpyxl import load_workbook
+from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
+    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, HTTP_202_ACCEPTED, \
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.views import APIView
+
+from aw_creation.api.serializers import *
+from aw_creation.email_messages import send_tracking_tags_request
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, TargetingItem, default_languages
+from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
+from aw_reporting.api.serializers import CampaignListSerializer
+from aw_reporting.api.views import DATE_FORMAT
+from aw_reporting.charts import DeliveryChart
+from aw_reporting.demo import demo_view_decorator
+from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
+    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
+    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, Topic, Audience, Account, AWConnection, AdGroup, \
+    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
+from utils.api_paginator import CustomPageNumberPaginator
+from utils.permissions import IsAuthQueryTokenPermission, MediaBuyingAddOnPermission
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class GeoTargetListApiView(APIView):
         search = request.GET.get("search", "").strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
-        data = self.serializer_class(queryset[:100],  many=True).data
+        data = self.serializer_class(queryset[:100], many=True).data
         return Response(data=data)
 
 
@@ -170,7 +170,6 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 
 
 class YoutubeVideoSearchApiView(GenericAPIView):
-
     def get(self, request, query, **_):
         video_ad_format = request.GET.get("video_ad_format")
 
@@ -277,7 +276,6 @@ class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, segment_type, **_):
-
         method = "get_{}_item_ids".format(segment_type)
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
@@ -401,7 +399,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 
 class CreationOptionsApiView(APIView):
-
     @staticmethod
     def get(request, **k):
         def opts_to_response(opts):
@@ -516,7 +513,6 @@ class CreationOptionsApiView(APIView):
 
 @demo_view_decorator
 class AccountCreationListApiView(ListAPIView):
-
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
     annotate_sorts = dict(
@@ -625,13 +621,13 @@ class AccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations", distinct=True))
 
             queryset = queryset.annotate(campaigns_count=Case(
-                    When(
-                        campaign_creations_count=0,
-                        then=Count("account__campaigns", distinct=True),
-                    ),
-                    default="campaign_creations_count",
-                    output_field=AggrIntegerField(),
+                When(
+                    campaign_creations_count=0,
+                    then=Count("account__campaigns", distinct=True),
                 ),
+                default="campaign_creations_count",
+                output_field=AggrIntegerField(),
+            ),
             )
 
             if min_campaigns_count:
@@ -660,9 +656,7 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get('status')
         if status:
-            if status == "From AdWords":
-                queryset = queryset.filter(is_managed=False)
-            elif status == "Ended":
+            if status == "Ended":
                 queryset = queryset.filter(is_ended=True, is_managed=True)
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)
@@ -675,6 +669,10 @@ class AccountCreationListApiView(ListAPIView):
             elif status == "Pending":
                 queryset = queryset.filter(is_approved=False, is_managed=True, sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
+
+        if 'from_aw' in filters:
+            from_aw = filters.get('from_aw') == '1'
+            queryset = queryset.filter(is_managed=not from_aw)
 
         annotates = {}
         second_annotates = {}
@@ -766,7 +764,6 @@ class AccountCreationListApiView(ListAPIView):
 
 @demo_view_decorator
 class AccountCreationDetailsApiView(RetrieveAPIView):
-
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
         queryset = AccountCreation.objects.filter(owner=self.request.user)
@@ -780,7 +777,6 @@ class AccountCreationDetailsApiView(RetrieveAPIView):
 
 @demo_view_decorator
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
-
     serializer_class = AccountCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1200,10 +1196,10 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
+                                campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
                     set_bid_strategy = CampaignCreation.CPM_STRATEGY
                 elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.DISCOVERY_TYPE) and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
+                                campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
                     set_bid_strategy = CampaignCreation.CPV_STRATEGY
 
                 if set_bid_strategy:
@@ -1321,7 +1317,8 @@ class AccountCreationDuplicateApiView(APIView):
         elif isinstance(item, AdGroupCreation):
             if to_parent:
                 try:
-                    parent = CampaignCreation.objects.filter(account_creation__owner=self.request.user).get(pk=to_parent)
+                    parent = CampaignCreation.objects.filter(account_creation__owner=self.request.user).get(
+                        pk=to_parent)
                 except CampaignCreation.DoesNotExist:
                     raise Http404
             else:
@@ -1525,7 +1522,6 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
-
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = Campaign.objects.filter(
@@ -1553,7 +1549,6 @@ class PerformanceAccountCampaignsListApiView(APIView):
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
-
     def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
@@ -1904,7 +1899,7 @@ class PerformanceExportApiView(APIView):
     file_name = "{title}-analyze-{timestamp}.csv"
 
     column_names = (
-        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "", "Name", "Impressions", "Views", "Cost", "Average cpm",
         "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
         "25%", "50%", "75%", "100%",
     )
@@ -2026,7 +2021,7 @@ class PerformanceExportWeeklyReport(APIView):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
-            'Report {}.xlsx"'.format(
+                                          'Report {}.xlsx"'.format(
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
@@ -2034,7 +2029,6 @@ class PerformanceExportWeeklyReport(APIView):
 
 
 class PerformanceTargetingListAPIView(AccountCreationListApiView):
-
     def get_queryset(self, **filters):
         queryset = super(PerformanceTargetingListAPIView, self).get_queryset(**filters)
         queryset = queryset.annotate(
@@ -2060,7 +2054,6 @@ class PerformanceTargetingDetailsAPIView(RetrieveAPIView):
 
 @demo_view_decorator
 class PerformanceTargetingFiltersAPIView(APIView):
-
     def get_queryset(self):
         return AccountCreation.objects.filter(owner=self.request.user)
 
@@ -2140,7 +2133,6 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
 @demo_view_decorator
 class PerformanceTargetingReportAPIView(APIView):
-
     def get_object(self):
         pk = self.kwargs["pk"]
         try:
@@ -2398,7 +2390,6 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
 
 
 class UserListsImportMixin:
-
     @staticmethod
     def get_lists_items_ids(ids, list_type):
         from segment.models import get_segment_model_by_type
@@ -2412,11 +2403,12 @@ class UserListsImportMixin:
             ).order_by("keywords__text").distinct()
         else:
             manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False)\
-                              .values_list('related__related_id', flat=True)\
-                              .order_by('related__related_id')\
-                              .distinct()
+            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False) \
+                .values_list('related__related_id', flat=True) \
+                .order_by('related__related_id') \
+                .distinct()
         return item_ids
+
 
 # tools
 
@@ -2555,7 +2547,6 @@ class TargetingListBaseAPIClass(GenericAPIView):
 
 @demo_view_decorator
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
-
     permission_classes = (IsAuthQueryTokenPermission,)
 
     def get_user(self):
