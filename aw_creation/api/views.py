@@ -2483,7 +2483,10 @@ class AudienceToolListExportApiView(TopicToolListExportApiView):
     permission_classes = (IsAuthQueryTokenPermission,)
     export_fields = ('id', 'name', 'parent_id', 'type')
     file_name = "audience_list"
-    queryset = AudienceToolListApiView.queryset
+
+    def get_queryset(self):
+        queryset = AudienceToolListApiView.queryset.all()
+        return queryset
 
 
 # targeting lists
