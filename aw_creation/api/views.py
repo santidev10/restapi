@@ -661,8 +661,9 @@ class AccountCreationListApiView(ListAPIView):
             elif status == "Paused":
                 queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)
             elif status == "Running":
-                queryset = queryset.filter(sync_at__isnull=False, is_managed=True,
-                                           is_paused=False, is_ended=False)
+                running_filter = Q(sync_at__isnull=False, is_managed=True, is_paused=False, is_ended=False) | \
+                                 Q(is_managed=False)
+                queryset = queryset.filter(running_filter)
             elif status == "Approved":
                 queryset = queryset.filter(is_approved=True, is_managed=True, sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
