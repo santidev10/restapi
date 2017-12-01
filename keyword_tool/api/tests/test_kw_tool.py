@@ -81,26 +81,6 @@ class KWToolAPITestCase(APITestCase):
 
             json_keys = ('search_volume', 'average_cpc', 'competition', 'keyword_text',
                          'monthly_searches', 'interests')
-            for key in json_keys:
-                value = item[key]
-                if key == 'interests':
-                    self.assertEqual(
-                        set(
-                            n for n in Interest.objects.filter(
-                                id__in=fixture_item[key]
-                            ).values_list(
-                                'id', flat=True
-                            )
-                        ),
-                        set(v['id'] for v in value),
-                    )
-                elif key == 'competition':
-                    self.assertAlmostEqual(value, fixture_item[key],
-                                           places=10)
-                elif key == 'campaigns_count':
-                    pass
-                else:
-                    self.assertEqual(value, fixture_item[key])
 
         # test again
         optimize_keyword.return_value = deepcopy(RESP)
