@@ -82,7 +82,7 @@ class ChannelListApiView(
             "items": [],
             "current_page": 1,
         }
-
+        connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
@@ -118,14 +118,21 @@ class ChannelListApiView(
             channels_ids = user.channels.values_list("channel_id", flat=True)
             if not channels_ids:
                 return Response(empty_response)
-            query_params.update(ids=",".join(channels_ids))
+
+            try:
+                ids_hash = connector.store_ids(channels_ids)["ids_hash"]
+            except SingleDatabaseApiConnectorException as e:
+                return Response(
+                    data={"error": " ".join(e.args)},
+                    status=HTTP_408_REQUEST_TIMEOUT)
+
+            query_params.update(ids_hash=ids_hash)
             query_params.update(timestamp=str(time.time()))
 
         # adapt the request params
         self.adapt_query_params(query_params)
 
         # make call
-        connector = Connector()
         try:
             response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:
