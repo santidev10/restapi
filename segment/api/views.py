@@ -34,10 +34,12 @@ class DynamicModelViewMixin(object):
         """
         if self.request.user.is_staff:
             queryset = self.model.objects.all()
-        else:
+        elif self.request.pre_baked_segments:
             queryset = self.model.objects.filter(
                 Q(owner=self.request.user) |
-                ~Q(category="private"))
+                ~Q(catergory='private'))
+        else:
+            queryset = self.model.objects.filter(owner=self.request.user)
         return queryset
 
 
