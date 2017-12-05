@@ -84,19 +84,20 @@ class YoutubeAPIConnector(object):
             options["pageToken"] = page_token
         return self.__execute_call(self.youtube.search().list(**options))
 
-    # def channels_search(self,
-    #                     channels_ids,
-    #                     part="id,snippet,statistics,contentDetails,brandingSettings",
-    #                     max_results=50):
-    #     """
-    #     Make channels search by channels ids
-    #     """
-    #     options = {
-    #         'part': part,
-    #         'maxResults': max_results,
-    #         'id': channels_ids
-    #     }
-    #     return self.make_call(self.youtube.channels().list(**options))
+    def obtain_channels(self,
+                        channels_ids,
+                        part="id,snippet,statistics,"
+                             "contentDetails,brandingSettings",
+                        max_results=50):
+        """
+        Obtain channels by ids
+        """
+        options = {
+            'part': part,
+            'maxResults': max_results,
+            'id': channels_ids
+        }
+        return self.__execute_call(self.youtube.channels().list(**options))
     #
     # def playlist_search(self,
     #                     playlist_ids,
