@@ -99,7 +99,6 @@ class ChannelListApiView(
             if not channels_ids:
                 return Response(empty_response)
             query_params.pop("segment")
-
             try:
                 ids_hash = connector.store_ids(channels_ids)
             except SingleDatabaseApiConnectorException as e:
