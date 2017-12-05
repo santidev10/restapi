@@ -64,6 +64,7 @@ class VideoListApiView(
         return segment
 
     def get(self, request):
+        connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
@@ -85,9 +86,12 @@ class VideoListApiView(
             videos_ids = segment.get_related_ids()
             if not videos_ids:
                 return Response(empty_response)
-
             query_params.pop("segment")
-            query_params.update(ids=",".join(videos_ids))
+            try:
+                ids_hash = connector.store_ids(videos_ids)
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
 
         channel = query_params.get("channel")
         if channel is not None and not request.user.has_perm(
@@ -102,7 +106,6 @@ class VideoListApiView(
         self.adapt_query_params(query_params)
 
         # make call
-        connector = Connector()
         try:
             response_data = connector.get_video_list(query_params)
         except SingleDatabaseApiConnectorException as e:
