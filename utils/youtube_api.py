@@ -141,15 +141,16 @@ class YoutubeAPIConnector(object):
     #     }
     #     return self.make_call(self.youtube.channels().list(**options))
     #
-    # def user_channel(self, username, part='id'):
-    #     """
-    #     Get channels for authorized user
-    #     """
-    #     options = {
-    #         'part': part,
-    #         'forUsername': username
-    #     }
-    #     return self.make_call(self.youtube.channels().list(**options))
+
+    def obtain_user_channels(self, username, part="id"):
+        """
+        Get channels for authorized user
+        """
+        options = {
+            "part": part,
+            "forUsername": username
+        }
+        return self.__execute_call(self.youtube.channels().list(**options))
     #
     # def channel_videos_search(self,
     #                           channel_id,
@@ -177,22 +178,23 @@ class YoutubeAPIConnector(object):
     #         options["publishedAfter"] = '{:%Y-%m-%dT00:00:00Z}'.format(published_after)
     #     return self.make_call(self.youtube.search().list(**options))
     #
-    # def videos_search(self,
-    #                   videos_ids,
-    #                   part="id,statistics",
-    #                   max_results=50,
-    #                   page_token=None):
-    #     """
-    #     Make videos search by videos ids
-    #     """
-    #     options = {
-    #         'part': part,
-    #         'maxResults': max_results,
-    #         'id': videos_ids
-    #     }
-    #     if page_token:
-    #         options["pageToken"] = page_token
-    #     return self.make_call(self.youtube.videos().list(**options))
+
+    def obtain_videos(self,
+                      videos_ids,
+                      part="id,statistics",
+                      max_results=50,
+                      page_token=None):
+        """
+        Obtain video by ids
+        """
+        options = {
+            "part": part,
+            "maxResults": max_results,
+            "id": videos_ids
+        }
+        if page_token:
+            options["pageToken"] = page_token
+        return self.__execute_call(self.youtube.videos().list(**options))
     #
     # def reports(self, *args, **kwargs):
     #     return self.make_call(self.youtube.reports().query(*args, **kwargs))
@@ -265,6 +267,7 @@ class YoutubeAPIConnector(object):
     #         captions = response.read()
     #         return captions.decode('utf-8')
     #
+
     def __execute_call(self, method):
         """
         Call YT api
