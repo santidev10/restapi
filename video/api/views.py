@@ -88,7 +88,7 @@ class VideoListApiView(
                 return Response(empty_response)
             query_params.pop("segment")
             try:
-                ids_hash = connector.store_ids(videos_ids)
+                ids_hash = connector.store_ids(list(videos_ids))
             except SingleDatabaseApiConnectorException as e:
                 return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
