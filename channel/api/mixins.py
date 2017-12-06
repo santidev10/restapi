@@ -295,7 +295,7 @@ class ChannelYoutubeStatisticsMixin(object):
             return Response(
                 status=HTTP_503_SERVICE_UNAVAILABLE,
                 data={"error": "Youtube API unreachable"})
-        import ipdb; ipdb.set_trace()
+
         snippet = channel_info.get("snippet", {})
         content_details = channel_info.get("contentDetails", {})
         branding_settings = channel_info.get("brandingSettings", {})
@@ -306,7 +306,7 @@ class ChannelYoutubeStatisticsMixin(object):
         youtube_published_at = snippet.get("publishedAt")
         thumbnail_image_url = snippet.get("thumbnails", {}).get(
             "default", {}).get("url")
-        youtube_link = "https://www.youtube.com/channel/{}".format(youtube_id)
+        youtube_link = "https://www.youtube.com/channel/{}".format(channel_id)
         description = snippet.get("description", "No description available")
         content_owner = content_details.get("googlePlusUserId")
         youtube_keywords = branding_settings.get("channel", {}).get(
@@ -320,7 +320,7 @@ class ChannelYoutubeStatisticsMixin(object):
             "youtube_published_at": youtube_published_at,
             "thumbnail_image_url": thumbnail_image_url,
             "youtube_link": youtube_link,
-            "youtube_id": youtube_id,
+            "youtube_id": channel_id,
             "country": country,
             "category": category,
             "content_owner": content_owner,
@@ -348,18 +348,18 @@ class ChannelYoutubeStatisticsMixin(object):
         if not videos_count:
             return Response(response_data)
         try:
-            videos = youtube.channel_videos_search(channel_id=youtube_id)
+            videos = self.youtube_connector.channel_videos_search(channel_id=channel_id)
         except Exception as e:
-            logger.error(e)
+            # logger.error(e)
             return Response(response_data)
         videos_ids = [video.get("id", {}).get(
             "videoId") for video in videos.get("items")]
         try:
-            videos_details = youtube.videos_search(
+            videos_details = self.youtube_connector.videos_search(
                 videos_ids=",".join(videos_ids),
                 part="id,statistics,snippet").get("items")
         except Exception as e:
-            logger.error(e)
+            # logger.error(e)
             return Response(response_data)
         parsed_videos_data = self.parse_videos_info(videos_details)
         category = parsed_videos_data.get("category")
