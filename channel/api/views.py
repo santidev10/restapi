@@ -87,11 +87,12 @@ class ChannelListApiView(
             "items": [],
             "current_page": 1,
         }
-
         if any((
                 request.query_params.get("youtube_link"),
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
+
+        connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
@@ -104,11 +105,15 @@ class ChannelListApiView(
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
             # obtain channels ids
-            channels_ids = segment.get_related_ids()
+            channels_ids = list(segment.get_related_ids())
             if not channels_ids:
                 return Response(empty_response)
             query_params.pop("segment")
-            query_params.update(ids=",".join(channels_ids))
+            try:
+                ids_hash = connector.store_ids(channels_ids)
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
 
         # own_channels
         if not request.user.has_perm("userprofile.channel_list") and \
@@ -134,7 +139,6 @@ class ChannelListApiView(
         self.adapt_query_params(query_params)
 
         # make call
-        connector = Connector()
         try:
             response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:

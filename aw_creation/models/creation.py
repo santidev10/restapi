@@ -130,7 +130,7 @@ class AccountCreation(UniqueCreationItem):
             return self.STATUS_ENDED
         elif self.is_paused:
             return self.STATUS_PAUSED
-        elif self.sync_at:
+        elif self.sync_at or not self.is_managed:
             return self.STATUS_RUNNING
         elif self.is_approved:
             return self.STATUS_APPROVED

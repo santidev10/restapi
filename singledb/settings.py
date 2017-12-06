@@ -67,6 +67,8 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "traffic_sources",
     "duration",
     "video_safety_status",
+    "transcript",
+    "bad_words",
     "ptk",
     "has_audience",
     "channel__category",

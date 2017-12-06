@@ -18,7 +18,7 @@ class HighlightChannelsListApiView(SingledbApiView):
 
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
-        query_params = HighlightsQuery(request_query_params).prepare_query()
+        query_params = HighlightsQuery(request_query_params).prepare_query(mode='channel')
         connector = Connector()
         try:
             response_data = connector.get_highlights_channels(query_params)
@@ -37,7 +37,7 @@ class HighlightVideosListApiView(SingledbApiView):
 
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
-        query_params = HighlightsQuery(request_query_params).prepare_query()
+        query_params = HighlightsQuery(request_query_params).prepare_query(mode='video')
         connector = Connector()
         try:
             response_data = connector.get_highlights_videos(query_params)
@@ -62,7 +62,7 @@ class HighlightsQuery:
         self.result_query_params._mutable = True
         self.request_query_params = query_params
 
-    def prepare_query(self):
+    def prepare_query(self, mode=None):
         self.result_query_params['updated_at__range'] = (datetime.now().date() - timedelta(days=3)).strftime('%Y-%m-%d') + ','
 
         page = self.request_query_params.get('page')
@@ -88,6 +88,10 @@ class HighlightsQuery:
 
         if self.request_query_params.get('aggregations') in self.allowed_aggregations:
             self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
+
+        if mode is not None:
+            if mode == 'video':
+                self.result_query_params['language__terms'] = 'English'
 
         return self.result_query_params
 
