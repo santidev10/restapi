@@ -16,6 +16,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
+from channel.api.mixins import ChannelYoutubeSearchMixin, \
+    ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
@@ -31,7 +33,10 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class ChannelListApiView(
-        APIView, PermissionRequiredMixin, CassandraExportMixin):
+        APIView,
+        PermissionRequiredMixin,
+        CassandraExportMixin,
+        ChannelYoutubeSearchMixin):
     """
     Proxy view for channel list
     """
@@ -82,6 +87,11 @@ class ChannelListApiView(
             "items": [],
             "current_page": 1,
         }
+        if any((
+                request.query_params.get("youtube_link"),
+                request.query_params.get("youtube_keyword"))):
+            return self.search_channels()
+
         connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
@@ -265,7 +275,8 @@ class ChannelListFiltersApiView(SingledbApiView):
     connector_get = Connector().get_channel_filters_list
 
 
-class ChannelRetrieveUpdateApiView(SingledbApiView):
+class ChannelRetrieveUpdateApiView(
+        SingledbApiView, ChannelYoutubeStatisticsMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
@@ -281,6 +292,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
         return response
 
     def get(self, *args, **kwargs):
+        if self.request.query_params.get("from_youtube") == "1":
+            return self.obtain_youtube_statistics()
         response = super().get(*args, **kwargs)
         pk = kwargs.get('pk')
         if pk:
