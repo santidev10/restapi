@@ -151,33 +151,33 @@ class YoutubeAPIConnector(object):
             "forUsername": username
         }
         return self.__execute_call(self.youtube.channels().list(**options))
-    #
-    # def channel_videos_search(self,
-    #                           channel_id,
-    #                           part="id",
-    #                           search_type="video",
-    #                           max_results=50,
-    #                           safe_search='none',
-    #                           order="date",
-    #                           page_token=None,
-    #                           published_after=None):
-    #     """
-    #     Make video search by channel id
-    #     """
-    #     options = {
-    #         'part': part,
-    #         'maxResults': max_results,
-    #         'channelId': channel_id,
-    #         'type': search_type,
-    #         'safeSearch': safe_search,
-    #         'order': order
-    #     }
-    #     if page_token:
-    #         options["pageToken"] = page_token
-    #     if published_after:
-    #         options["publishedAfter"] = '{:%Y-%m-%dT00:00:00Z}'.format(published_after)
-    #     return self.make_call(self.youtube.search().list(**options))
-    #
+
+    def obtain_channel_videos(self,
+                              channel_id,
+                              part="id",
+                              search_type="video",
+                              max_results=50,
+                              safe_search='none',
+                              order="date",
+                              page_token=None,
+                              published_after=None):
+        """
+        Obtain videos from channel
+        """
+        options = {
+            'part': part,
+            'maxResults': max_results,
+            'channelId': channel_id,
+            'type': search_type,
+            'safeSearch': safe_search,
+            'order': order
+        }
+        if page_token:
+            options["pageToken"] = page_token
+        if published_after:
+            options["publishedAfter"] = '{:%Y-%m-%dT00:00:00Z}'.format(
+                published_after)
+        return self.__execute_call(self.youtube.search().list(**options))
 
     def obtain_videos(self,
                       videos_ids,
