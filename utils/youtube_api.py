@@ -1,20 +1,11 @@
 """
 Youtube api connector module
 """
-import json
 import logging
 import time
-from urllib.request import urlopen, URLError
-from xml.etree import ElementTree
 
-import httplib2
-from apiclient.discovery import build
+from apiclient import discovery
 from django.conf import settings
-from googleapiclient.http import HttpError as GoogleHttpError
-from oauth2client.client import AccessTokenCredentialsError
-from oauth2client.client import GoogleCredentials
-from oauth2client.client import HttpAccessTokenRefreshError
-from rest_framework.status import HTTP_403_FORBIDDEN
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +55,7 @@ class YoutubeAPIConnector(object):
         #                          self.api_version,
         #                          http=http)
         # else:
-        self.youtube = build(self.service_name,
+        self.youtube = discovery.build(self.service_name,
                              self.api_version,
                              developerKey=self.developer_key)
 
