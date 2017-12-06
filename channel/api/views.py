@@ -16,7 +16,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
 
-from channel.api.mixins import ChannelYoutubeSearchMixin
+from channel.api.mixins import ChannelYoutubeSearchMixin, \
+    ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
@@ -270,7 +271,8 @@ class ChannelListFiltersApiView(SingledbApiView):
     connector_get = Connector().get_channel_filters_list
 
 
-class ChannelRetrieveUpdateApiView(SingledbApiView):
+class ChannelRetrieveUpdateApiView(
+        SingledbApiView, ChannelYoutubeStatisticsMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
@@ -286,8 +288,8 @@ class ChannelRetrieveUpdateApiView(SingledbApiView):
         return response
 
     def get(self, *args, **kwargs):
-        # if self.request.query_params.get("from_youtube") == "1":
-        #     return self.obtain_youtube_statistics()
+        if self.request.query_params.get("from_youtube") == "1":
+            return self.obtain_youtube_statistics()
         response = super().get(*args, **kwargs)
         pk = kwargs.get('pk')
         if pk:
