@@ -90,7 +90,7 @@ class HighlightsQuery:
             self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
 
         if mode is not None:
-            if mode == 'video':
+            if mode == 'video' or mode == 'channel':
                 self.result_query_params['language__terms'] = 'English'
 
         return self.result_query_params
