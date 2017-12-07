@@ -298,9 +298,6 @@ class ChannelYoutubeStatisticsMixin(object):
             "videos_count": videos_count,
             "videos": None,
             "subscribers": subscribers,
-            "engagement": None,
-            "sentiment": None,
-            "engagements_per_video": None,
             "likes_per_video": None,
             "dislikes_per_video": None,
             "comments_per_video": None,
@@ -335,26 +332,12 @@ class ChannelYoutubeStatisticsMixin(object):
         videos_likes = parsed_videos_data.get("likes")
         videos_dislikes = parsed_videos_data.get("dislikes")
         videos_comments = parsed_videos_data.get("comments")
-        total_social_engagements = videos_likes + videos_dislikes\
-                                                + videos_comments
-        engagements_per_video = total_social_engagements / max(videos, 1)
-        response_data["engagements_per_video"] = engagements_per_video
         likes_per_video = videos_likes / max(videos, 1)
         response_data["likes_per_video"] = likes_per_video
         dislikes_per_video = videos_dislikes / max(videos, 1)
         response_data["dislikes_per_video"] = dislikes_per_video
         comments_per_video = videos_comments / max(videos, 1)
         response_data["comments_per_video"] = comments_per_video
-        sentiment = (videos_likes / max(
-            ((videos_likes + videos_dislikes), 1))) * 100
-        response_data["sentiment"] = sentiment
-        engage_rate = ((videos_likes + videos_dislikes + videos_comments)
-                       / max((videos_views, 1))) * 100
-        if engage_rate >= 1000:
-            engage_rate = 0.0
-        elif 100 < engage_rate < 1000:
-            engage_rate = 100.00
-        response_data["engagement"] = engage_rate
         response_data["videos"] = self.parse_videos(videos_details)
         last_video_published_at = None
         if videos_details:
