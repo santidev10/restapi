@@ -35,7 +35,7 @@ class ChannelYoutubeSearchMixin(object):
             return channels_ids[0].get("id")
         try:
             channel_id = re.findall(
-                r"\w+?:?/?/?\w+?.?\w+.\w+/\w+/([0-9a-zA-Z_-]+)/?", link)
+                r"\w+?:?/?/?\w+?.?\w+.\w+/\w+/([0-9a-zA-Z_/-]+)/?", link)
         except TypeError:
             channel_id = None
         if channel_id:
@@ -43,7 +43,7 @@ class ChannelYoutubeSearchMixin(object):
             return channel_id[0]
         try:
             video_id = re.findall(
-                r"\w+?:?/?/?\w+?.?\w+.\w+\w+/\w+\?v=([0-9a-zA-Z_-]+)/?", link)
+                r"\w+?:?/?/?\w+?.?\w+.\w+\w+/\w+\?v=([0-9a-zA-Z_/-]+)/?", link)
         except TypeError:
             video_id = None
         if not video_id:
