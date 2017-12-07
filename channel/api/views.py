@@ -3,25 +3,32 @@ Channel api views module
 """
 import re
 import time
+import requests
+import hashlib
+
 from copy import deepcopy
 from datetime import datetime
-
-import requests
 from dateutil import parser
+
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from django.http import QueryDict
+from django.utils import timezone
+
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
-    HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED
+    HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED, \
+    HTTP_202_ACCEPTED
 from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+
 
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import IQApiConnector as IQConnector
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserChannel
@@ -342,6 +349,8 @@ class ChannelSetApiView(SingledbApiView):
 
 
 class ChannelAuthenticationApiView(APIView):
+    permission_classes = tuple()
+
     def post(self, request, *args, **kwagrs):
         connector = Connector()
         try:
@@ -353,16 +362,95 @@ class ChannelAuthenticationApiView(APIView):
         if data is not None:
             channel_id = data.get('channel_id')
             if channel_id:
-                user = self.request.user
-                if not user or not user.is_authenticated():
+                user, created = self.get_or_create_user(data.get("access_token"))
+                if not user:
                     return Response(status=HTTP_412_PRECONDITION_FAILED)
+
                 user_channels = user.channels.values_list('channel_id', flat=True)
                 if channel_id not in user_channels:
                     UserChannel.objects.create(channel_id=channel_id, user=user)
+
+                if created:
+                    return Response(status=HTTP_202_ACCEPTED, data={"auth_token": user.auth_token.key})
+
                 # set user avatar
-                self.set_user_avatar(data.get("access_token"))
+                if not created:
+                    self.set_user_avatar(data.get("access_token"))
 
         return Response()
+
+    def get_or_create_user(self, access_token):
+        """
+        After successful channel authentication we create appropriate
+         influencer user profile
+        In case we've failed to create user - we send None
+        :return: user instance or None
+        """
+
+        created = False
+        # If user is logged in we simply return it
+        user = self.request.user
+        if user and user.is_authenticated():
+            return user, created
+
+        # Starting user create procedure
+        token_info_url = "https://www.googleapis.com/oauth2/v3/tokeninfo" \
+          "?access_token={}".format(access_token)
+        try:
+            response = requests.get(token_info_url)
+        except Exception:
+            return None, created
+        if response.status_code != 200:
+            return None, created
+        # Have successfully got basic user data
+        response = response.json()
+        email = response.get("email")
+        try:
+            user = get_user_model().objects.get(email=email)
+        except get_user_model().DoesNotExist:
+            google_id = response.get("sub")
+            # Obtaining user extra data
+            user_data = ChannelAuthenticationApiView.obtain_extra_user_data(
+                access_token, google_id)
+            # Create new user
+            user_data["email"] = email
+            user_data["password"] = hashlib.sha1(str(
+                timezone.now().timestamp()).encode()).hexdigest()
+            user = get_user_model().objects.create(**user_data)
+            user.set_password(user.password)
+            user.set_permissions_from_plan('free')
+            user.save()
+            # Get or create auth token instance for user
+            Token.objects.get_or_create(user=user)
+            created = True
+        return user, created
+
+    @staticmethod
+    def obtain_extra_user_data(token, user_id):
+        """
+        Get user profile extra fields from userinfo
+        :param token: oauth2 access token
+        :param user_id: google user id
+        :return: image link, name
+        """
+        url = 'https://www.googleapis.com/plus/v1/people/{}/' \
+              '?access_token={}'.format(user_id, token)
+        try:
+            response = requests.get(url)
+        except Exception:
+            extra_details = {}
+        else:
+            extra_details = response.json()
+        user_data = {
+            "first_name": extra_details.get("name", {}).get("givenName", ""),
+            "last_name": extra_details.get("name", {}).get("familyName", ""),
+            "profile_image_url": None,
+            "last_login": timezone.now()
+        }
+        if not extra_details.get("image", {}).get("isDefault", True):
+            user_data["profile_image_url"] = extra_details.get(
+                "image", {}).get("url", "").replace("sz=50", "sz=250")
+        return user_data
 
     def set_user_avatar(self, access_token):
         """
