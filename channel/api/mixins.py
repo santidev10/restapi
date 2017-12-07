@@ -224,13 +224,12 @@ class ChannelYoutubeStatisticsMixin(object):
                 "thumbnail_image_url": detail.get("snippet", {}).get(
                     "thumbnails", {}).get("default", {}).get("url"),
                 "description": detail.get("snippet", {}).get("description"),
-                "youtube_id": detail.get("id"),
+                "id": detail.get("id"),
                 "youtube_published_at": detail.get(
                     "snippet", {}).get("publishedAt"),
                 "tags": detail.get("snippet", {}).get("tags"),
                 "youtube_link": "https://www.youtube.com/watch?v={}".format(
                     detail.get("id")),
-                "category": detail.get("snippet", {}).get("categoryId"),
                 "views": detail.get("statistics", {}).get(
                     "viewCount", 0),
                 "likes": detail.get("statistics", {}).get(
@@ -275,9 +274,7 @@ class ChannelYoutubeStatisticsMixin(object):
                 data={"error": "Youtube API unreachable"})
         snippet = channel_info.get("snippet", {})
         content_details = channel_info.get("contentDetails", {})
-        branding_settings = channel_info.get("brandingSettings", {})
         statistics = channel_info.get("statistics")
-        email = None
         title = snippet.get("title", "No title available")
         youtube_published_at = snippet.get("publishedAt")
         thumbnail_image_url = snippet.get("thumbnails", {}).get(
@@ -285,10 +282,7 @@ class ChannelYoutubeStatisticsMixin(object):
         youtube_link = "https://www.youtube.com/channel/{}".format(channel_id)
         description = snippet.get("description", "No description available")
         content_owner = content_details.get("googlePlusUserId")
-        youtube_keywords = branding_settings.get("channel", {}).get(
-            "keywords", "").split(" ")
         subscribers = int(statistics.get("subscriberCount", 0))
-        views = int(statistics.get("viewCount", 0))
         videos_count = int(statistics.get("videoCount", 0))
         country = snippet.get("country")
         response_data = {
@@ -301,12 +295,9 @@ class ChannelYoutubeStatisticsMixin(object):
             "content_owner": content_owner,
             "description": description,
             "tags": None,
-            "keywords": youtube_keywords,
-            "email": email,
             "videos_count": videos_count,
             "videos": None,
             "subscribers": subscribers,
-            "views": views,
             "engagement": None,
             "sentiment": None,
             "engagements_per_video": None,

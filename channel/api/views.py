@@ -87,8 +87,7 @@ class ChannelListApiView(
             "items": [],
             "current_page": 1,
         }
-        # TODO only admin
-        if any((
+        if request.user.is_staff and any((
                 request.query_params.get("youtube_link"),
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
@@ -293,8 +292,8 @@ class ChannelRetrieveUpdateApiView(
         return response
 
     def get(self, *args, **kwargs):
-        # TODO only admin
-        if self.request.query_params.get("from_youtube") == "1":
+        if self.request.user.is_staff and\
+                self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
         response = super().get(*args, **kwargs)
         pk = kwargs.get('pk')
