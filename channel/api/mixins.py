@@ -35,7 +35,7 @@ class ChannelYoutubeSearchMixin(object):
             return channels_ids[0].get("id")
         try:
             channel_id = re.findall(
-                r"\w+?:?/?/?\w+?.?\w+.\w+/\w+/([0-9a-zA-Z_-]+)/?", link)
+                r"\w+?:?/?/?\w+?.?\w+.\w+/\w+/([0-9a-zA-Z_\-]+)/?", link)
         except TypeError:
             channel_id = None
         if channel_id:
@@ -43,7 +43,7 @@ class ChannelYoutubeSearchMixin(object):
             return channel_id[0]
         try:
             video_id = re.findall(
-                r"\w+?:?/?/?\w+?.?\w+.\w+\w+/\w+\?v=([0-9a-zA-Z_-]+)/?", link)
+                r"\w+?:?/?/?\w+?.?\w+.\w+\w+/\w+\?v=([0-9a-zA-Z_\-]+)/?", link)
         except TypeError:
             video_id = None
         if not video_id:
@@ -182,88 +182,65 @@ class ChannelYoutubeStatisticsMixin(object):
     """
     Obtain channel stats from youtube
     """
-#     def parse_videos_info(self, videos_details):
-#         """
-#         Get parsed videos details
-#         """
-#         tags = []
-#         views = 0
-#         likes = 0
-#         dislikes = 0
-#         comments = 0
-#
-#         categories = {}
-#         selected_category = None
-#
-#         for details in videos_details:
-#             video_tags = details.get("snippet", {}).get("tags", [])
-#             tags = tags + video_tags
-#             video_views = details.get("statistics", {}).get("viewCount", 0)
-#             views += int(video_views)
-#             video_likes = details.get("statistics", {}).get("likeCount", 0)
-#             likes += int(video_likes)
-#             video_dislikes = details.get(
-#                 "statistics", {}).get("dislikeCount", 0)
-#             dislikes += int(video_dislikes)
-#             video_comments = details.get(
-#                 "statistics", {}).get("commentCount", 0)
-#             comments += int(video_comments)
-#             category_id = details.get("snippet", {}).get("categoryId")
-#             if category_id:
-#                 try:
-#                     string_category = VideoCategory.objects.get(
-#                         id=category_id).title
-#                 except VideoCategory.DoesNotExist:
-#                     # categories.add(category_id)
-#                     pass
-#                 else:
-#                     if categories.get(string_category):
-#                         categories[string_category] += 1
-#                     else:
-#                         categories[string_category] = 1
-#                     if selected_category is None or categories[selected_category] < categories[string_category]:
-#                         selected_category = string_category
-#         return {
-#             "tags": tags,
-#             "views": views,
-#             "likes": likes,
-#             "dislikes": dislikes,
-#             "comments": comments,
-#             "videos": len(videos_details),
-#             "category": selected_category
-#         }
-#
-#     def parse_videos(self, videos_details):
-#         """
-#         Get parsed videos
-#         """
-#         videos = []
-#         for detail in videos_details:
-#             videos.append({
-#                 "title": detail.get("snippet", {}).get("title"),
-#                 "thumbnail_image_url": detail.get("snippet", {}).get(
-#                     "thumbnails", {}).get("default", {}).get("url"),
-#                 "description": detail.get("snippet", {}).get("description"),
-#                 "youtube_id": detail.get("id"),
-#                 "youtube_published_at": detail.get(
-#                     "snippet", {}).get("publishedAt"),
-#                 "tags": detail.get("snippet", {}).get("tags"),
-#                 "youtube_link": "https://www.youtube.com/watch?v={}".format(
-#                     detail.get("id")),
-#                 "category": detail.get("snippet", {}).get("categoryId"),
-#                 "details": {
-#                     "views": detail.get("statistics", {}).get(
-#                         "viewCount", 0),
-#                     "likes": detail.get("statistics", {}).get(
-#                         "likeCount", 0),
-#                     "dislikes": detail.get("statistics", {}).get(
-#                         "dislikeCount", 0),
-#                     "comments": detail.get("statistics", {}).get(
-#                         "commentCount", 0)
-#                 }
-#             })
-#         return videos
-#
+    def parse_videos_info(self, videos_details):
+        """
+        Get parsed videos details
+        """
+        tags = []
+        views = 0
+        likes = 0
+        dislikes = 0
+        comments = 0
+        for details in videos_details:
+            video_tags = details.get("snippet", {}).get("tags", [])
+            tags = tags + video_tags
+            video_views = details.get("statistics", {}).get("viewCount", 0)
+            views += int(video_views)
+            video_likes = details.get("statistics", {}).get("likeCount", 0)
+            likes += int(video_likes)
+            video_dislikes = details.get(
+                "statistics", {}).get("dislikeCount", 0)
+            dislikes += int(video_dislikes)
+            video_comments = details.get(
+                "statistics", {}).get("commentCount", 0)
+            comments += int(video_comments)
+        return {
+            "tags": tags,
+            "views": views,
+            "likes": likes,
+            "dislikes": dislikes,
+            "comments": comments,
+            "videos": len(videos_details),
+        }
+
+    def parse_videos(self, videos_details):
+        """
+        Get parsed videos
+        """
+        videos = []
+        for detail in videos_details:
+            videos.append({
+                "title": detail.get("snippet", {}).get("title"),
+                "thumbnail_image_url": detail.get("snippet", {}).get(
+                    "thumbnails", {}).get("default", {}).get("url"),
+                "description": detail.get("snippet", {}).get("description"),
+                "id": detail.get("id"),
+                "youtube_published_at": detail.get(
+                    "snippet", {}).get("publishedAt"),
+                "tags": detail.get("snippet", {}).get("tags"),
+                "youtube_link": "https://www.youtube.com/watch?v={}".format(
+                    detail.get("id")),
+                "views": detail.get("statistics", {}).get(
+                    "viewCount", 0),
+                "likes": detail.get("statistics", {}).get(
+                    "likeCount", 0),
+                "dislikes": detail.get("statistics", {}).get(
+                    "dislikeCount", 0),
+                "comments": detail.get("statistics", {}).get(
+                    "commentCount", 0)
+            })
+        return videos
+
     def obtain_youtube_statistics(self):
         """
         Return extended channel statistics
@@ -295,13 +272,9 @@ class ChannelYoutubeStatisticsMixin(object):
             return Response(
                 status=HTTP_503_SERVICE_UNAVAILABLE,
                 data={"error": "Youtube API unreachable"})
-
         snippet = channel_info.get("snippet", {})
         content_details = channel_info.get("contentDetails", {})
-        branding_settings = channel_info.get("brandingSettings", {})
         statistics = channel_info.get("statistics")
-        category = None
-        email = None
         title = snippet.get("title", "No title available")
         youtube_published_at = snippet.get("publishedAt")
         thumbnail_image_url = snippet.get("thumbnails", {}).get(
@@ -309,10 +282,7 @@ class ChannelYoutubeStatisticsMixin(object):
         youtube_link = "https://www.youtube.com/channel/{}".format(channel_id)
         description = snippet.get("description", "No description available")
         content_owner = content_details.get("googlePlusUserId")
-        youtube_keywords = branding_settings.get("channel", {}).get(
-            "keywords", "").split(" ")
         subscribers = int(statistics.get("subscriberCount", 0))
-        views = int(statistics.get("viewCount", 0))
         videos_count = int(statistics.get("videoCount", 0))
         country = snippet.get("country")
         response_data = {
@@ -320,83 +290,54 @@ class ChannelYoutubeStatisticsMixin(object):
             "youtube_published_at": youtube_published_at,
             "thumbnail_image_url": thumbnail_image_url,
             "youtube_link": youtube_link,
-            "youtube_id": channel_id,
+            "id": channel_id,
             "country": country,
-            "category": category,
             "content_owner": content_owner,
             "description": description,
             "tags": None,
-            "keywords": youtube_keywords,
-            "email": email,
             "videos_count": videos_count,
             "videos": None,
-            "details": {
-                "subscribers": subscribers,
-                "videos_count": videos_count,
-                "views": views,
-                "engagement": None,
-                "sentiment": None,
-                "youtube": {
-                    "engagements_per_video": None,
-                    "likes_per_video": None,
-                    "dislikes_per_video": None,
-                    "comments_per_video": None,
-                    "views_per_video": None,
-                }
-            }
+            "subscribers": subscribers,
+            "likes_per_video": None,
+            "dislikes_per_video": None,
+            "comments_per_video": None,
+            "views_per_video": None,
         }
         if not videos_count:
             return Response(response_data)
         try:
-            videos = self.youtube_connector.channel_videos_search(channel_id=channel_id)
-        except Exception as e:
-            # logger.error(e)
-            return Response(response_data)
+            videos = self.youtube_connector.obtain_channel_videos(
+                channel_id=channel_id)
+        except YoutubeAPIConnectorException:
+            return Response(
+                status=HTTP_503_SERVICE_UNAVAILABLE,
+                data={"error": "Youtube API unreachable"})
         videos_ids = [video.get("id", {}).get(
             "videoId") for video in videos.get("items")]
         try:
-            videos_details = self.youtube_connector.videos_search(
+            videos_details = self.youtube_connector.obtain_videos(
                 videos_ids=",".join(videos_ids),
                 part="id,statistics,snippet").get("items")
-        except Exception as e:
-            # logger.error(e)
-            return Response(response_data)
+        except YoutubeAPIConnectorException:
+            return Response(
+                status=HTTP_503_SERVICE_UNAVAILABLE,
+                data={"error": "Youtube API unreachable"})
         parsed_videos_data = self.parse_videos_info(videos_details)
-        category = parsed_videos_data.get("category")
-        response_data["category"] = category
         videos = parsed_videos_data.get("videos")
         videos_views = parsed_videos_data.get("views")
         views_per_video = videos_views / max(videos, 1)
-        response_data["details"]["youtube"]["views_per_video"] = views_per_video
+        response_data["views_per_video"] = views_per_video
         tags = parsed_videos_data.get("tags")
         response_data["tags"] = tags
         videos_likes = parsed_videos_data.get("likes")
         videos_dislikes = parsed_videos_data.get("dislikes")
         videos_comments = parsed_videos_data.get("comments")
-        total_social_engagements = videos_likes + videos_dislikes\
-                                                + videos_comments
-        engagements_per_video = total_social_engagements / max(videos, 1)
-        response_data["details"]["youtube"]["engagements_per_video"] = \
-            engagements_per_video
         likes_per_video = videos_likes / max(videos, 1)
-        response_data["details"]["youtube"]["likes_per_video"] = likes_per_video
+        response_data["likes_per_video"] = likes_per_video
         dislikes_per_video = videos_dislikes / max(videos, 1)
-        response_data["details"]["youtube"]["dislikes_per_video"] = dislikes_per_video
+        response_data["dislikes_per_video"] = dislikes_per_video
         comments_per_video = videos_comments / max(videos, 1)
-        response_data["details"]["youtube"]["comments_per_video"] = comments_per_video
-        sentiment = (videos_likes / max(
-            ((videos_likes + videos_dislikes), 1))) * 100
-        response_data["details"]["sentiment"] = sentiment
-        engage_rate = ((videos_likes + videos_dislikes + videos_comments)
-                       / max((videos_views, 1))) * 100
-
-        # SAAS-1042
-        if engage_rate >= 1000:
-            engage_rate = 0.0
-        elif 100 < engage_rate < 1000:
-            engage_rate = 100.00
-
-        response_data["details"]["engagement"] = engage_rate
+        response_data["comments_per_video"] = comments_per_video
         response_data["videos"] = self.parse_videos(videos_details)
         last_video_published_at = None
         if videos_details:
