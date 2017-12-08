@@ -20,8 +20,6 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "daily_comments",
     "views_history",
     "history_date",
-    "sentiment",
-    "engage_rate",
     "thumbnail_image_url",
     "country",
     "category",
@@ -40,6 +38,10 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "bad_words",
     "url",
     "ptk",
+    # --> disabled SAAS-1584
+    # "sentiment",
+    # "engage_rate",
+    # <-- disabled SAAS-1584
 )
 
 DEFAULT_VIDEO_DETAILS_FIELDS = (
@@ -50,8 +52,6 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "dislikes",
     "comments",
     "ptk_value",
-    "sentiment",
-    "engage_rate",
     "youtube_published_at",
     "thumbnail_image_url",
     "description",
@@ -86,6 +86,10 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__has_audience",
     "channel__views_per_video",
     "aw_data"
+    # --> disabled SAAS-1584
+    # "sentiment",
+    # "engage_rate",
+    # <-- disabled SAAS-1584
 )
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
