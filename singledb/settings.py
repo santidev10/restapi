@@ -99,7 +99,6 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "country",
     "description",
     "dislikes",
-    "engage_rate",
     "genre",
     "history_date",
     "channel_id",
@@ -108,7 +107,6 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "language",
     "likes",
     "preferred",
-    "sentiment",
     "subscribers",
     "social_links",
     "thirty_days_subscribers",
@@ -125,10 +123,14 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "views",
     "views_per_video",
     "views_per_video_history",
-    "score",
-    "score_total",
     "channel_group",
     "has_audience",
+    # --> disabled SAAS-1584
+    # "sentiment",
+    # "score",
+    # "score_total",
+    # "engage_rate",
+    # <-- disabled SAAS-1584
 )
 
 DEFAULT_CHANNEL_DETAILS_FIELDS = (
@@ -140,9 +142,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "thirty_days_subscribers",
     "thirty_days_views",
     "views_per_video",
-    "engage_rate",
     "genre",
-    "sentiment",
     "country",
     "category",
     "language",
@@ -161,11 +161,15 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "youtube_published_at",
     "last_video_published_at",
     "updated_at",
-    "score",
-    "score_total",
     "channel_group",
     "audience",
     "traffic_sources",
     "has_audience",
     "aw_data"
+    # --> disabled SAAS-1584
+    # "sentiment",
+    # "score",
+    # "score_total",
+    # "engage_rate",
+    # <-- disabled SAAS-1584
 )
