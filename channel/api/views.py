@@ -21,7 +21,6 @@ from channel.api.mixins import ChannelYoutubeSearchMixin, \
 from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import IQApiConnector as IQConnector
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserChannel

@@ -260,6 +260,16 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_post_call(endpoint, {}, data)
         return response_data
 
+    def post_channels(self, channels_ids):
+        """
+        Create channels
+        :param channels_ids: list of ids
+        """
+        endpoint = "channels/"
+        response_data = self.execute_post_call(
+            endpoint, {}, {"channels_ids": channels_ids})
+        return response_data
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL
