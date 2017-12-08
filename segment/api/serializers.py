@@ -15,7 +15,7 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
-    youtube_ids_to_add = ListField(required=False)
+    ids_to_create = ListField(required=False)
     statistics = SerializerMethodField()
 
     class Meta:
@@ -72,7 +72,7 @@ class SegmentSerializer(ModelSerializer):
         # set up related_ids
         self.ids_to_add = data.pop("ids_to_add", [])
         self.ids_to_delete = data.pop("ids_to_delete", [])
-        self.youtube_ids_to_add = data.pop("youtube_ids_to_add", [])
+        self.ids_to_create = data.pop("ids_to_create", [])
         segment_category = data.get("category")
         user = self.context.get("request").user
         available_categories = dict(self.Meta.model.CATEGORIES).keys()
@@ -97,11 +97,11 @@ class SegmentSerializer(ModelSerializer):
         if self.ids_to_delete or self.ids_to_add:
             segment.add_related_ids(self.ids_to_add)
             segment.delete_related_ids(self.ids_to_delete)
-        if self.youtube_ids_to_add:
+        if self.ids_to_create:
             sdb_connector = SingleDatabaseApiConnector()
-            sdb_connector.post_channels(self.youtube_ids_to_add)
-            segment.add_related_ids(self.youtube_ids_to_add)
-        if any((self.ids_to_add, self.ids_to_delete, self.youtube_ids_to_add)):
+            sdb_connector.post_channels(self.ids_to_create)
+            segment.add_related_ids(self.ids_to_create)
+        if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create)):
             segment.update_statistics(segment)
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
