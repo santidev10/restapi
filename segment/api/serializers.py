@@ -31,7 +31,7 @@ class SegmentSerializer(ModelSerializer):
                   'is_editable',
                   'ids_to_add',
                   'ids_to_delete',
-                  "youtube_ids_to_add")
+                  "ids_to_create")
 
     def __init__(self, *args, **kwargs):
         """
