@@ -86,7 +86,7 @@ class UserAuthApiView(APIView):
         Token.objects.get(user=request.user).delete()
         return Response()
 
-    def register_google_plus_user(self, token):
+    def get_google_plus_user(self, token):
         """
         Check token is valid and grab google user
         """
