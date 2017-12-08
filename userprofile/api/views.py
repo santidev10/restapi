@@ -1,6 +1,8 @@
 """
 Userprofile api views module
 """
+import requests
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
@@ -50,8 +52,11 @@ class UserAuthApiView(APIView):
         """
         Login user
         """
+        token = request.data.get("token")
         auth_token = request.data.get("auth_token")
-        if auth_token:
+        if token:
+            user = self.get_google_plus_user(token)
+        elif auth_token:
             try:
                 user = Token.objects.get(key=auth_token).user
             except Token.DoesNotExist:
@@ -60,11 +65,13 @@ class UserAuthApiView(APIView):
             serializer = AuthTokenSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.validated_data['user']
+
         if not user:
             return Response(
                 data={"error": ["Unable to authenticate user"
                                 " with provided credentials"]},
                 status=HTTP_400_BAD_REQUEST)
+
         Token.objects.get_or_create(user=user)
         update_last_login(None, user)
         response_data = self.serializer_class(user).data
@@ -78,6 +85,30 @@ class UserAuthApiView(APIView):
             return Response(status=HTTP_401_UNAUTHORIZED)
         Token.objects.get(user=request.user).delete()
         return Response()
+
+    def register_google_plus_user(self, token):
+        """
+        Check token is valid and grab google user
+        """
+        url = "https://www.googleapis.com/oauth2/v3/tokeninfo" \
+              "?access_token={}".format(token)
+        try:
+            response = requests.get(url)
+        except Exception as e:
+            return None
+        if response.status_code != 200:
+            return None
+        response = response.json()
+        aud = response.get("aud")
+        if aud != settings.GOOGLE_APP_AUD:
+            return None
+
+        email = response.get("email")
+        try:
+            user = get_user_model().objects.get(email__iexact=email)
+        except get_user_model().DoesNotExist:
+            return None
+        return user
 
 
 class UserProfileApiView(APIView):
