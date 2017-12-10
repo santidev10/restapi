@@ -38,6 +38,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "bad_words",
     "url",
     "ptk",
+    "youtube_licence"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -85,7 +86,8 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__title",
     "channel__has_audience",
     "channel__views_per_video",
-    "aw_data"
+    "aw_data",
+    "youtube_licence"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
