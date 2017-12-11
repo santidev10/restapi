@@ -261,6 +261,112 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
+ACCESS_PLANS = {
+    'free': {
+        'hidden': False,
+        'permissions': {
+            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'video': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'keyword': {'list': False, 'details': False, },
+            'segment': {
+                'channel': {'all': False, 'private': False},
+                'video': {'all': False, 'private': False},
+                'keyword': {'all': False, 'private': False},
+            },
+            'view': {
+                'create_and_manage_campaigns': False,
+                'performance': False,
+                'trends': False,
+                'benchmarks': False,
+                'highlights': True,
+                'pre_baked_segments': False,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': False,
+                'billing': True,
+            },
+        },
+    },
+    'professional': {
+        'hidden': False,
+        'permissions': {
+            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'keyword': {'list': True, 'details': True, },
+            'segment': {
+                'channel': {'all': False, 'private': True},
+                'video': {'all': False, 'private': True},
+                'keyword': {'all': False, 'private': True},
+            },
+            'view': {
+                'create_and_manage_campaigns': False,
+                'performance': False,
+                'trends': False,
+                'benchmarks': False,
+                'highlights': True,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': True,
+                'billing': True,
+            },
+        },
+    },
+    'standard': {
+        'hidden': False,
+        'permissions': {
+            'channel': {'list': False, 'filter': False, 'audience': False, 'details': True},
+            'video': {'list': False, 'filter': False, 'audience': False, 'details': True},
+            'keyword': {'list': False, 'details': True, },
+            'segment': {
+                'channel': {'all': False, 'private': True},
+                'video': {'all': False, 'private': True},
+                'keyword': {'all': False, 'private': True},
+            },
+            'view': {
+                'create_and_manage_campaigns': False,
+                'performance': False,
+                'trends': False,
+                'benchmarks': False,
+                'highlights': True,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': False,
+                'billing': True,
+            },
+        },
+    },
+    'enterprise': {
+        'hidden': True,
+        'permissions': {
+            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'keyword': {'list': True, 'details': True},
+            'segment': {
+                'channel': {'all': True, 'private': True},
+                'video': {'all': True, 'private': True},
+                'keyword': {'all': True, 'private': True},
+            },
+            'view': {
+                'create_and_manage_campaigns': True,
+                'performance': True,
+                'trends': True,
+                'benchmarks': True,
+                'highlights': True,
+            },
+            'settings': {
+                'my_yt_channels': True,
+                'my_aw_accounts': True,
+                'billing': True,
+            },
+        },
+    },
+}
+
+DEFAULT_ACCESS_PLAN_NAME = 'free'
+
 try:
     from .local_settings import *
 except ImportError:

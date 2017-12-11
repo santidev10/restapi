@@ -5,11 +5,11 @@ import operator
 import stripe
 from functools import reduce
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
-from django.utils.encoding import smart_str
 
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
@@ -266,10 +266,11 @@ class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         plan = self.get_object()
-        if plan.name == 'free' or plan.name == 'full':
+        if plan.name == settings.DEFAULT_ACCESS_PLAN or plan.hidden:
             return Response(status=HTTP_403_FORBIDDEN)
         default_plan, created = Plan.objects.get_or_create(
-            name='free', defaults=Plan.plan_preset['free'])
+            name=settings.DEFAULT_ACCESS_PLAN,
+            defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN])
         UserProfile.objects.filter(plan=plan).update(plan=default_plan)
         return super().delete(request, *args, **kwargs)
 
@@ -361,7 +362,7 @@ class SubscriptionDeleteView(APIView):
             user_id = subscription.user_id
             subscription.delete()
 
-            plan = Plan.objects.get(name='free')
+            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN)
             subscription = Subscription.objects.create(user_id=user_id, plan=plan)
             get_user_model().objects.get(id=user_id).update_permissions_from_subscription(subscription)
 

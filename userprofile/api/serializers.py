@@ -1,6 +1,7 @@
 """
 Userprofile api serializers module
 """
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
@@ -67,7 +68,7 @@ class UserCreateSerializer(ModelSerializer):
         # set password
         user.set_password(user.password)
         # create default subscription
-        plan = Plan.objects.get(name='free')
+        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN)
         subscription = Subscription.objects.create(user=user, plan=plan)
         user.update_permissions_from_subscription(subscription)
         user.save()
