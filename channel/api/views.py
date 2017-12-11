@@ -10,6 +10,7 @@ from copy import deepcopy
 from datetime import datetime
 from dateutil import parser
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
@@ -418,7 +419,7 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            user.set_permissions_from_plan('free')
+            user.set_permissions_from_plan(settings.DEFAULT_ACCESS_PLAN)
             user.save()
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)

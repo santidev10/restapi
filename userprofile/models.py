@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
+from django.conf import settings
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
@@ -55,7 +56,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
     can_access_media_buying = models.BooleanField(default=False)
-    pre_baked_segments = models.BooleanField(default=False)
 
     objects = UserManager()
 
@@ -110,7 +110,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             plan = Plan.objects.get(name=plan_name)
         except Plan.DoesNotExist:
             plan, created = Plan.objects.get_or_create(
-                name='free', defaults=Plan.plan_preset['free'])
+                name=settings.DEFAULT_ACCESS_PLAN,
+                defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN])
 
         self.set_permissions_from_node(plan.permissions)
 
@@ -142,166 +143,22 @@ class Plan(models.Model):
     """
     Default plan
     """
-    plan_preset = {
-        'free': {
-            'permissions': {
-                'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
-                'video': {'list': False, 'filter': False, 'audience': False, 'details': False},
-                'keyword': {'list': False, 'details': False, },
-                'segment': {
-                    'channel': {'all': False, 'private': False},
-                    'video': {'all': False, 'private': False},
-                    'keyword': {'all': False, 'private': False},
-                },
-                'view': {
-                    'create_and_manage_campaigns': False,
-                    'performance': False,
-                    'trends': False,
-                    'benchmarks': False,
-                    'highlights': False,
-                },
-                'settings': {
-                    'my_yt_channels': True,
-                    'my_aw_accounts': False,
-                    'billing': True,
-                },
-            },
-            'features': [
-                'YouTube Channel Verification',
-            ],
-            'description': "By registering in ViewIQ you get verified by "
-                           "Channel Factory for brand safety, receive early "
-                           "access to unique tools, in depth analytics on "
-                           "your channel, and consideration for brand deals.",
-        },
-        'enterprise': {
-            'permissions': {
-                'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-                'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
-                'keyword': {'list': True, 'details': True, },
-                'segment': {
-                    'channel': {'all': True, 'private': True},
-                    'video': {'all': True, 'private': True},
-                    'keyword': {'all': True, 'private': True},
-                },
-                'view': {
-                    'create_and_manage_campaigns': True,
-                    'performance': True,
-                    'trends': True,
-                    'benchmarks': True,
-                    'highlights': True,
-                },
-                'settings': {
-                    'my_yt_channels': True,
-                    'my_aw_accounts': True,
-                    'billing': True,
-                },
-            },
-            'features': [
-                'Youtube Channel Verification',
-                'Top 100 Channels',
-                'Top 100 Videos',
-                'Top 100 Keywords',
-                'Research and Insights',
-                'Segment Creator',
-                'AdWords Integration',
-                'Access to Verified Channels',
-                'Customizable Brand Safety',
-                'Customizable Channel Score',
-                'Pre-baked Segments',
-                'Media Buying (add-on)',
-                'Customized Channels Lists (add-on)',
-            ],
-            'description': "Mid- to Large- scale Advertisers enjoy "
-                           "unparallelled access to deep insights into "
-                           "YouTube channels, videos and keywords.",
-        },
-        'professional': {
-            'permissions': {
-                'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
-                'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
-                'keyword': {'list': True, 'details': True, },
-                'segment': {
-                    'channel': {'all': False, 'private': True},
-                    'video': {'all': False, 'private': True},
-                    'keyword': {'all': False, 'private': True},
-                },
-                'view': {
-                    'create_and_manage_campaigns': False,
-                    'performance': False,
-                    'trends': False,
-                    'benchmarks': False,
-                    'highlights': True,
-                },
-                'settings': {
-                    'my_yt_channels': True,
-                    'my_aw_accounts': True,
-                    'billing': True,
-                },
-            },
-            'features': [
-                'Youtube Channel Verification',
-                'Top 100 Channels',
-                'Top 100 Videos',
-                'Top 100 Keywords',
-                'Research and Insights',
-                'Segment Creator',
-                'AdWords Integration',
-            ],
-            'description': "Our Standard package has advanced research "
-                           "and planning capabilities. Usually great for "
-                           "small to mid-sized Advertisers.",
-        },
-        'highlights': {
-            'permissions': {
-                'channel': {'list': False, 'filter': False, 'audience': False, 'details': True},
-                'video': {'list': False, 'filter': False, 'audience': False, 'details': True},
-                'keyword': {'list': False, 'details': True, },
-                'segment': {
-                    'channel': {'all': False, 'private': True},
-                    'video': {'all': False, 'private': True},
-                    'keyword': {'all': False, 'private': True},
-                },
-                'view': {
-                    'create_and_manage_campaigns': False,
-                    'performance': False,
-                    'trends': False,
-                    'benchmarks': False,
-                    'highlights': True,
-                },
-                'settings': {
-                    'my_yt_channels': True,
-                    'my_aw_accounts': False,
-                    'billing': True,
-                },
-            },
-            'features': [
-                'Youtube Channel Verification',
-                'Top 100 Channels',
-                'Top 100 Videos',
-                'Top 100 Keywords',
-            ],
-            'description': "Get insights into the top 100 channels, videos and "
-                           "keywords for the last month, week and day across all "
-                           "of the YouTube categories.",
-        },
-    }
 
     name = models.CharField(max_length=255, primary_key=True)
     description = models.TextField(blank=True)
-    permissions = JSONField(default=plan_preset['free']['permissions'])
+    permissions = JSONField(default=dict())
     features = JSONField(default=list())
     payments_plan = models.ForeignKey('payments.Plan', null=True, on_delete=models.SET_NULL)
+    hidden = models.BooleanField(default=False)
 
     @staticmethod
     def update_defaults():
-        for key, value in Plan.plan_preset.items():
+        plan_preset = settings.ACCESS_PLANS
+        for key, value in plan_preset.items():
             plan, created = Plan.objects.get_or_create(name=key, defaults=value)
             # update permissions and features
             if not created:
                 plan.permissions = value['permissions']
-                plan.features = value['features']
-                plan.description = value['description']
                 plan.save()
 
         # set admin plans
@@ -313,7 +170,7 @@ class Plan(models.Model):
             user.save()
 
         # set default plan for non-admin users
-        plan = Plan.objects.get(name='free')
+        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
@@ -322,20 +179,18 @@ class Plan(models.Model):
 
         # tie with the payments
         from payments.models import Plan as PaymentPlan
-        plan = Plan.objects.get(name='highlights')
-        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Highlights")
-        plan.save()
-        plan = Plan.objects.get(name='professional')
+        plan = Plan.objects.get(name='standard')
         plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
         plan.save()
+        plan = Plan.objects.get(name='professional')
+        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
+        plan.save()
 
-        for key, value in Plan.plan_preset.items():
+        for key, value in plan_preset.items():
             plan, created = Plan.objects.get_or_create(name=key, defaults=value)
             if created:
                 continue
             plan.permissions = value['permissions']
-            plan.features = value['features']
-            plan.description = value['description']
             plan.save()
 
             users = UserProfile.objects.filter(plan=plan)
