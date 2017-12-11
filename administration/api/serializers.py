@@ -85,7 +85,6 @@ class UserUpdateSerializer(ModelSerializer):
         fields = (
             "plan",
             "can_access_media_buying",
-            "pre_baked_segments",
         )
 
     def save(self, **kwargs):
@@ -125,7 +124,6 @@ class UserSerializer(ModelSerializer):
             "token",
             "plan",
             "can_access_media_buying",
-            "pre_baked_segments",
             "is_user_paid_for_subscription",
             "current_period_end",
         )

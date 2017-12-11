@@ -305,6 +305,7 @@ ACCESS_PLANS = {
                 'trends': False,
                 'benchmarks': False,
                 'highlights': True,
+                'pre_baked_segments': False,
             },
             'settings': {
                 'my_yt_channels': True,
@@ -330,6 +331,7 @@ ACCESS_PLANS = {
                 'trends': False,
                 'benchmarks': False,
                 'highlights': True,
+                'pre_baked_segments': False,
             },
             'settings': {
                 'my_yt_channels': True,
@@ -355,6 +357,7 @@ ACCESS_PLANS = {
                 'trends': True,
                 'benchmarks': True,
                 'highlights': True,
+                'pre_baked_segments': True,
             },
             'settings': {
                 'my_yt_channels': True,
