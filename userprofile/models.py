@@ -159,6 +159,7 @@ class Plan(models.Model):
             # update permissions and features
             if not created:
                 plan.permissions = value['permissions']
+                plan.hidden = value['hidden']
                 plan.save()
 
         # set admin plans
@@ -191,6 +192,7 @@ class Plan(models.Model):
             if created:
                 continue
             plan.permissions = value['permissions']
+            plan.hidden = value['hidden']
             plan.save()
 
             users = UserProfile.objects.filter(plan=plan)
