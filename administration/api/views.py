@@ -256,7 +256,7 @@ class PlanListCreateApiView(ListCreateAPIView):
     permission_classes = tuple()
     serializer_class = PlanSerializer
     create_serializer_class = PlanSerializer
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.exclude(hidden=True).all()
 
 
 class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
