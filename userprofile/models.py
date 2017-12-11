@@ -181,10 +181,17 @@ class Plan(models.Model):
         # tie with the payments
         from payments.models import Plan as PaymentPlan
         plan = Plan.objects.get(name='standard')
-        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
+        try:
+            plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
+        except PaymentPlan.DoesNotExist:
+            pass
         plan.save()
+
         plan = Plan.objects.get(name='professional')
-        plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
+        try:
+            plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
+        except PaymentPlan.DoesNotExist:
+            pass
         plan.save()
 
         for key, value in plan_preset.items():
