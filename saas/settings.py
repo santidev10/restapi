@@ -367,6 +367,8 @@ ACCESS_PLANS = {
 
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 
+VENDOR = 'viewiq'
+
 try:
     from .local_settings import *
 except ImportError:
