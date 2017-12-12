@@ -104,6 +104,7 @@ class UserSerializer(ModelSerializer):
     plan = SerializerMethodField()
     has_paid_subscription_error = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
+    vendor = SerializerMethodField()
 
     class Meta:
         """
@@ -126,7 +127,8 @@ class UserSerializer(ModelSerializer):
             "profile_image_url",
             "can_access_media_buying",
             "has_paid_subscription_error",
-            "has_disapproved_ad"
+            "has_disapproved_ad",
+            "vendor",
         )
         read_only_fields = (
             "is_staff",
@@ -136,6 +138,7 @@ class UserSerializer(ModelSerializer):
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",
+            "vendor",
         )
 
     @staticmethod
@@ -160,7 +163,7 @@ class UserSerializer(ModelSerializer):
 
     def get_plan(self, obj):
         if obj.plan is not None:
-            return obj.plan.name
+            return PlanSerializer(obj.plan).data
 
     def get_has_paid_subscription_error(self, obj):
         try:
@@ -171,6 +174,9 @@ class UserSerializer(ModelSerializer):
             sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
             return not is_valid(sub)
         return False
+
+    def get_vendor(self, obj):
+        return settings.VENDOR
 
 
 class UserSetPasswordSerializer(Serializer):
