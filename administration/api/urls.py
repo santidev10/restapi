@@ -19,8 +19,8 @@ urlpatterns = [
         name="user_action_list"),
     url(r'^user_actions/(?P<pk>\d+)/$', UserActionDeleteAdminApiView.as_view(),
         name="user_action_details"),
-    url(r'^plan/(?P<pk>)/$', PlanChangeDeleteApiView.as_view(), name="plan_details"),
     url(r'^plan/$', PlanListCreateApiView.as_view(), name="plan_list"),
+    url(r'^plan/(?P<pk>)/$', PlanChangeDeleteApiView.as_view(), name="plan_details"),
 
     url(r"^subscriptions/$", SubscriptionView.as_view(), name="subscription_list"),
     url(r"^subscriptions/create/$", SubscriptionCreateView.as_view(), name="subscription_create"),
