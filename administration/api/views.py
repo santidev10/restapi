@@ -262,7 +262,7 @@ class PlanListCreateApiView(ListCreateAPIView):
 class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAdminUser, )
     serializer_class = PlanSerializer
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.exclude(hidden=True).all()
 
     def delete(self, request, *args, **kwargs):
         plan = self.get_object()
