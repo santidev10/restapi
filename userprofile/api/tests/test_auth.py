@@ -21,7 +21,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'profile_image_url', 'company', 'phone_number', 'is_staff', 'last_name', 'has_aw_accounts',
                 'date_joined', 'last_login', 'plan', 'email', 'first_name', 'token', 'can_access_media_buying',
-                'has_paid_subscription_error', 'has_disapproved_ad'
+                'has_paid_subscription_error', 'has_disapproved_ad', 'vendor'
             }
         )
 
