@@ -284,7 +284,6 @@ ACCESS_PLANS = {
             'settings': {
                 'my_yt_channels': True,
                 'my_aw_accounts': False,
-                'billing': True,
             },
         },
     },
@@ -309,13 +308,12 @@ ACCESS_PLANS = {
             },
             'settings': {
                 'my_yt_channels': True,
-                'my_aw_accounts': True,
-                'billing': True,
+                'my_aw_accounts': False,
             },
         },
     },
     'standard': {
-        'hidden': False,
+        'hidden': True,
         'permissions': {
             'channel': {'list': False, 'filter': False, 'audience': False, 'details': True},
             'video': {'list': False, 'filter': False, 'audience': False, 'details': True},
@@ -336,7 +334,6 @@ ACCESS_PLANS = {
             'settings': {
                 'my_yt_channels': True,
                 'my_aw_accounts': False,
-                'billing': True,
             },
         },
     },
