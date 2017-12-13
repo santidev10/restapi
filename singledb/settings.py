@@ -150,6 +150,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "thirty_days_subscribers",
     "thirty_days_views",
     "views_per_video",
+    "views",
     "genre",
     "country",
     "category",
