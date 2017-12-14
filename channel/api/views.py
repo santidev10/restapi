@@ -376,7 +376,7 @@ class ChannelAuthenticationApiView(APIView):
 
                 # set user avatar
                 if not created:
-                    self.set_user_avatar(data.get("access_token"))
+                    self.set_user_avatar(user, data.get("access_token"))
 
         return Response()
 
@@ -453,7 +453,7 @@ class ChannelAuthenticationApiView(APIView):
                 "image", {}).get("url", "").replace("sz=50", "sz=250")
         return user_data
 
-    def set_user_avatar(self, access_token):
+    def set_user_avatar(self, user, access_token):
         """
         Obtain user avatar from google+
         """
@@ -482,7 +482,7 @@ class ChannelAuthenticationApiView(APIView):
         if not extra_details.get("image", {}).get("isDefault", True):
             profile_image_url = extra_details.get(
                 "image", {}).get("url", "").replace("sz=50", "sz=250")
-            self.request.user.profile_image_url = profile_image_url
-            self.request.user.save()
+            user.profile_image_url = profile_image_url
+            user.save()
         # <-- set user avatar
         return
