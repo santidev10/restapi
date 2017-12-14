@@ -231,3 +231,16 @@ class ContactFormApiView(APIView):
                "User message: {message} \n\n".format(**serializer.data)
         send_mail(subject, text, sender, to, fail_silently=True)
         return Response(status=HTTP_201_CREATED)
+
+
+class VendorDetailsApiView(APIView):
+    """
+    Endpoint to recognize server vendor
+    """
+    permission_classes = tuple()
+
+    def get(self, request):
+        """
+        Get procedure
+        """
+        return Response(data={"vendor": settings.VENDOR})
