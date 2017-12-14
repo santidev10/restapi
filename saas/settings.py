@@ -312,31 +312,6 @@ ACCESS_PLANS = {
             },
         },
     },
-    'standard': {
-        'hidden': True,
-        'permissions': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'details': True},
-            'video': {'list': False, 'filter': False, 'audience': False, 'details': True},
-            'keyword': {'list': False, 'details': True, },
-            'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-                'pre_baked_segments': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-            },
-        },
-    },
     'enterprise': {
         'hidden': True,
         'permissions': {
