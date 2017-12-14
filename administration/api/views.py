@@ -266,11 +266,11 @@ class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         plan = self.get_object()
-        if plan.name == settings.DEFAULT_ACCESS_PLAN or plan.hidden:
+        if plan.name == settings.DEFAULT_ACCESS_PLAN_NAME or plan.hidden:
             return Response(status=HTTP_403_FORBIDDEN)
         default_plan, created = Plan.objects.get_or_create(
-            name=settings.DEFAULT_ACCESS_PLAN,
-            defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN])
+            name=settings.DEFAULT_ACCESS_PLAN_NAME,
+            defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN_NAME])
         UserProfile.objects.filter(plan=plan).update(plan=default_plan)
         return super().delete(request, *args, **kwargs)
 
@@ -362,7 +362,7 @@ class SubscriptionDeleteView(APIView):
             user_id = subscription.user_id
             subscription.delete()
 
-            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN)
+            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
             subscription = Subscription.objects.create(user_id=user_id, plan=plan)
             get_user_model().objects.get(id=user_id).update_permissions_from_subscription(subscription)
 

@@ -419,7 +419,7 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            user.set_permissions_from_plan(settings.DEFAULT_ACCESS_PLAN)
+            user.set_permissions_from_plan(settings.DEFAULT_ACCESS_PLAN_NAME)
             user.save()
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
