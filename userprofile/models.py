@@ -180,13 +180,6 @@ class Plan(models.Model):
 
         # tie with the payments
         from payments.models import Plan as PaymentPlan
-        plan = Plan.objects.get(name='standard')
-        try:
-            plan.payments_plan = PaymentPlan.objects.get(stripe_id="Standard")
-        except PaymentPlan.DoesNotExist:
-            pass
-        plan.save()
-
         plan = Plan.objects.get(name='professional')
         try:
             plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
