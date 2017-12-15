@@ -171,7 +171,7 @@ class Plan(models.Model):
             user.save()
 
         # set default plan for non-admin users
-        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN)
+        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
