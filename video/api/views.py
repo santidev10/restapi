@@ -242,16 +242,16 @@ class VideoListApiView(
         """
         Adapt SDB response format
         """
-        # TODO HERE
-        import ipdb; ipdb.set_trace()
-
+        user_channels = set(user.channels.values_list(
+            "channel_id", flat=True))
         from channel.api.views import ChannelListApiView
         items = response_data.get("items", [])
         for item in items:
             if "video_id" in item:
                 item["id"] = item.get("video_id", "")
                 del item["video_id"]
-
+            if "channel__channel_id" in item:
+                item["is_owner"] = item["channel__channel_id"] in user_channels
             if "ptk" in item:
                 item["ptk_value"] = item.get("ptk", "")
                 del item["ptk"]
