@@ -340,7 +340,7 @@ ACCESS_PLANS = {
     },
 }
 
-DEFAULT_ACCESS_PLAN_NAME = 'free'
+DEFAULT_ACCESS_PLAN = 'free'
 
 VENDOR = 'viewiq'
 
