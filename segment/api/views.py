@@ -187,5 +187,5 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)
         if response_data:
-            ChannelListApiView.adapt_response_data(response_data)
+            ChannelListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
