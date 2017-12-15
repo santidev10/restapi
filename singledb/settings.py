@@ -38,7 +38,8 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "bad_words",
     "url",
     "ptk",
-    "license"
+    "license",
+    "channel__channel_id"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",

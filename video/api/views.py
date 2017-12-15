@@ -114,7 +114,7 @@ class VideoListApiView(
                 status=HTTP_408_REQUEST_TIMEOUT)
 
         # adapt the response data
-        self.adapt_response_data(response_data)
+        self.adapt_response_data(response_data, request.user)
         return Response(response_data)
 
     @staticmethod
@@ -238,17 +238,20 @@ class VideoListApiView(
         # <--- filters
 
     @staticmethod
-    def adapt_response_data(response_data):
+    def adapt_response_data(response_data, user):
         """
         Adapt SDB response format
         """
+        user_channels = set(user.channels.values_list(
+            "channel_id", flat=True))
         from channel.api.views import ChannelListApiView
         items = response_data.get("items", [])
         for item in items:
             if "video_id" in item:
                 item["id"] = item.get("video_id", "")
                 del item["video_id"]
-
+            if "channel__channel_id" in item:
+                item["is_owner"] = item["channel__channel_id"] in user_channels
             if "ptk" in item:
                 item["ptk_value"] = item.get("ptk", "")
                 del item["ptk"]
@@ -278,7 +281,7 @@ class VideoListApiView(
                     del item[key]
             if channel_item:
                 item["channel"] = ChannelListApiView.adapt_response_data(
-                    {"items": [channel_item]})["items"][0]
+                    {"items": [channel_item]}, user)["items"][0]
 
         return response_data
 
@@ -298,7 +301,8 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)
-        VideoListApiView.adapt_response_data({'items': [response.data]})
+        VideoListApiView.adapt_response_data(
+            {'items': [response.data]}, self.request.user)
         return response
 
 
