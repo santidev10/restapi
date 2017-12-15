@@ -162,7 +162,7 @@ class ChannelListApiView(
                 item["has_audience"] = False
 
         # adapt the response data
-        self.adapt_response_data(response_data)
+        self.adapt_response_data(response_data, request.user)
 
         return Response(response_data)
 
@@ -251,14 +251,17 @@ class ChannelListApiView(
         # <--- filters
 
     @staticmethod
-    def adapt_response_data(response_data):
+    def adapt_response_data(response_data, user):
         """
         Adapt SDB response format
         """
+        user_channels = set(user.channels.values_list(
+            "channel_id", flat=True))
         items = response_data.get("items", [])
         for item in items:
             if "channel_id" in item: 
                 item["id"] = item.get("channel_id", "")
+                item["is_owner"] = item["channel_id"] in user_channels
                 del item["channel_id"]
             if "country" in item and item["country"] is None:
                 item["country"] = ""
@@ -294,7 +297,8 @@ class ChannelRetrieveUpdateApiView(
         if "channel_group" in data and data["channel_group"] not in permitted_groups:
             return Response(status=HTTP_400_BAD_REQUEST)
         response = super().put(*args, **kwargs)
-        ChannelListApiView.adapt_response_data({'items': [response.data]})
+        ChannelListApiView.adapt_response_data(
+            {'items': [response.data]}, self.request.user)
         return response
 
     def get(self, *args, **kwargs):
@@ -338,7 +342,8 @@ class ChannelRetrieveUpdateApiView(
                 response.data.pop('genre', None)
                 response.data['safety_chart_data'] = None
                 response.data.pop('traffic_sources', None)
-        ChannelListApiView.adapt_response_data({'items': [response.data]})
+        ChannelListApiView.adapt_response_data(
+            {'items': [response.data]}, self.request.user)
         return response
 
 
