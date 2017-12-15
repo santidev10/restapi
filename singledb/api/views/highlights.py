@@ -26,7 +26,7 @@ class HighlightChannelsListApiView(SingledbApiView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-        ChannelListApiView.adapt_response_data(response_data)
+        ChannelListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
 
 
@@ -45,7 +45,7 @@ class HighlightVideosListApiView(SingledbApiView):
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-        VideoListApiView.adapt_response_data(response_data)
+        VideoListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
 
 
