@@ -37,7 +37,7 @@ class DynamicModelViewMixin(object):
         elif self.request.user.has_perm('userprofile.view_pre_baked_segments'):
             queryset = self.model.objects.filter(
                 Q(owner=self.request.user) |
-                ~Q(catergory='private'))
+                ~Q(category='private'))
         else:
             queryset = self.model.objects.filter(owner=self.request.user)
         return queryset
