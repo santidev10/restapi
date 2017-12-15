@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_202_ACCEPTED
 
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
@@ -27,7 +27,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         Django doesn't provide a DB representation for AnonymousUser.
         """
 
-        user = self.create_test_user(False)
+        user = self.create_test_user(True)
         url = reverse("channel_api_urls:channel_authentication")
         requests_mock.get.return_value = MockResponse(
             dict(email=user.email, image=dict(isDefault=False)))
@@ -36,4 +36,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(url, dict())
 
-        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        data = response.data
+        self.assertIn('auth_token', data)

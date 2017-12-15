@@ -1,29 +1,26 @@
 """
 Channel api views module
 """
+import hashlib
 import re
 import time
-import requests
-import hashlib
-
 from copy import deepcopy
 from datetime import datetime
-from dateutil import parser
 
+import requests
+from dateutil import parser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from django.http import QueryDict
 from django.utils import timezone
-
+from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED, \
     HTTP_202_ACCEPTED
 from rest_framework.views import APIView
-from rest_framework.authtoken.models import Token
-
 
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
@@ -41,10 +38,10 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class ChannelListApiView(
-        APIView,
-        PermissionRequiredMixin,
-        CassandraExportMixin,
-        ChannelYoutubeSearchMixin):
+    APIView,
+    PermissionRequiredMixin,
+    CassandraExportMixin,
+    ChannelYoutubeSearchMixin):
     """
     Proxy view for channel list
     """
@@ -120,12 +117,13 @@ class ChannelListApiView(
             try:
                 ids_hash = connector.store_ids(channels_ids)
             except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
 
         # own_channels
         if not request.user.has_perm("userprofile.channel_list") and \
-           request.user.has_perm("userprofile.settings_my_yt_channels"):
+                request.user.has_perm("userprofile.settings_my_yt_channels"):
             own_channels = "1"
         else:
             own_channels = query_params.get("own_channels", "0")
@@ -157,8 +155,10 @@ class ChannelListApiView(
         # hide data according to user permissions
         items = response_data.get("items", [])
         for item in items:
-            if not self.request.user.has_perm('userprofile.channel_audience') and \
-               not (own_channels == '1' and item['channel_id'] in channels_ids):
+            if not self.request.user.has_perm(
+                    'userprofile.channel_audience') and \
+                    not (own_channels == '1' and item[
+                        'channel_id'] in channels_ids):
                 item["has_audience"] = False
 
         # adapt the response data
@@ -171,6 +171,7 @@ class ChannelListApiView(
         """
         Adapt SDB request format
         """
+
         # filters --->
         def make_range(name, name_min=None, name_max=None):
             if name_min is None:
@@ -259,7 +260,7 @@ class ChannelListApiView(
             "channel_id", flat=True))
         items = response_data.get("items", [])
         for item in items:
-            if "channel_id" in item: 
+            if "channel_id" in item:
                 item["id"] = item.get("channel_id", "")
                 item["is_owner"] = item["channel_id"] in user_channels
                 del item["channel_id"]
@@ -285,7 +286,7 @@ class ChannelListFiltersApiView(SingledbApiView):
 
 
 class ChannelRetrieveUpdateApiView(
-        SingledbApiView, ChannelYoutubeStatisticsMixin):
+    SingledbApiView, ChannelYoutubeStatisticsMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
@@ -294,7 +295,8 @@ class ChannelRetrieveUpdateApiView(
     def put(self, *args, **kwargs):
         data = self.request.data
         permitted_groups = ["influencers", "new", "media", "brands"]
-        if "channel_group" in data and data["channel_group"] not in permitted_groups:
+        if "channel_group" in data and data[
+            "channel_group"] not in permitted_groups:
             return Response(status=HTTP_400_BAD_REQUEST)
         response = super().put(*args, **kwargs)
         ChannelListApiView.adapt_response_data(
@@ -302,7 +304,7 @@ class ChannelRetrieveUpdateApiView(
         return response
 
     def get(self, *args, **kwargs):
-        if self.request.user.is_staff and\
+        if self.request.user.is_staff and \
                 self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
         response = super().get(*args, **kwargs)
@@ -312,17 +314,18 @@ class ChannelRetrieveUpdateApiView(
                               "&sort=youtube_published_at:desc"
                               "&size=50"
                               "&fields=video_id"
-                                     ",title"
-                                     ",thumbnail_image_url"
-                                     ",views"
-                                     ",youtube_published_at"
-                                     ",likes"
-                                     ",comments".format(pk))
+                              ",title"
+                              ",thumbnail_image_url"
+                              ",views"
+                              ",youtube_published_at"
+                              ",likes"
+                              ",comments".format(pk))
             videos = Connector().get_video_list(query)['items']
             now = datetime.now()
             average_views = 0
             if len(videos):
-                average_views = round(sum([v.get("views", 0) for v in videos]) / len(videos))
+                average_views = round(
+                    sum([v.get("views", 0) for v in videos]) / len(videos))
             for v in videos:
                 v["id"] = v.pop("video_id")
                 youtube_published_at = v.pop("youtube_published_at")
@@ -332,9 +335,11 @@ class ChannelRetrieveUpdateApiView(
                 'average_views': average_views,
                 'videos': videos,
             }
-            channels_ids = self.request.user.channels.values_list("channel_id", flat=True)
-            if not self.request.user.has_perm('userprofile.channel_audience') and \
-               pk not in channels_ids:
+            channels_ids = self.request.user.channels.values_list("channel_id",
+                                                                  flat=True)
+            if not self.request.user.has_perm(
+                    'userprofile.channel_audience') and \
+                    pk not in channels_ids:
                 response.data['has_audience'] = False
                 response.data.pop('audience', None)
                 response.data.pop('aw_data', None)
@@ -366,20 +371,23 @@ class ChannelAuthenticationApiView(APIView):
         if data is not None:
             channel_id = data.get('channel_id')
             if channel_id:
-                user, created = self.get_or_create_user(data.get("access_token"))
+                user, created = self.get_or_create_user(
+                    data.get("access_token"))
                 if not user:
                     return Response(status=HTTP_412_PRECONDITION_FAILED)
 
-                user_channels = user.channels.values_list('channel_id', flat=True)
+                user_channels = user.channels.values_list('channel_id',
+                                                          flat=True)
                 if channel_id not in user_channels:
-                    UserChannel.objects.create(channel_id=channel_id, user=user)
-
-                if created:
-                    return Response(status=HTTP_202_ACCEPTED, data={"auth_token": user.auth_token.key})
+                    UserChannel.objects.create(channel_id=channel_id,
+                                               user=user)
 
                 # set user avatar
                 if not created:
                     self.set_user_avatar(user, data.get("access_token"))
+
+                return Response(status=HTTP_202_ACCEPTED,
+                                data={"auth_token": user.auth_token.key})
 
         return Response()
 
@@ -399,7 +407,7 @@ class ChannelAuthenticationApiView(APIView):
 
         # Starting user create procedure
         token_info_url = "https://www.googleapis.com/oauth2/v3/tokeninfo" \
-          "?access_token={}".format(access_token)
+                         "?access_token={}".format(access_token)
         try:
             response = requests.get(token_info_url)
         except Exception:
@@ -474,7 +482,8 @@ class ChannelAuthenticationApiView(APIView):
         response = response.json()
         user_google_id = response.get("sub")
         google_plus_api_url = "https://www.googleapis.com/plus/v1/people/{}/" \
-                      "?access_token={}".format(user_google_id, access_token)
+                              "?access_token={}".format(user_google_id,
+                                                        access_token)
         try:
             response = requests.get(google_plus_api_url)
         except Exception:
