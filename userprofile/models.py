@@ -110,8 +110,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             plan = Plan.objects.get(name=plan_name)
         except Plan.DoesNotExist:
             plan, created = Plan.objects.get_or_create(
-                name=settings.DEFAULT_ACCESS_PLAN,
-                defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN])
+                name=settings.DEFAULT_ACCESS_PLAN_NAME,
+                defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN_NAME])
 
         self.set_permissions_from_node(plan.permissions)
 

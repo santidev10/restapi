@@ -6,7 +6,6 @@ from rest_framework.test import APITestCase
 
 
 class ExtendedAPITestCase(APITestCase):
-
     multi_db = True
 
     test_user_data = {
@@ -65,3 +64,6 @@ class SingleDatabaseApiConnectorPatcher:
     def get_videos_base_info(self, *args, **kwargs):
         data = self.get_video_list()
         return data["items"]
+
+    def auth_channel(self, *args):
+        return dict(channel_id="Chanel Id", access_token="Access Token")

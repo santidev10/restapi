@@ -87,7 +87,9 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__has_audience",
     "channel__views_per_video",
     "aw_data",
-    "license"
+    "license",
+    "weekly_views",
+    "daily_views"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -148,6 +150,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "thirty_days_subscribers",
     "thirty_days_views",
     "views_per_video",
+    "views",
     "genre",
     "country",
     "category",
@@ -171,7 +174,9 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "has_audience",
-    "aw_data"
+    "aw_data",
+    "weekly_views",
+    "daily_views"
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
