@@ -280,6 +280,7 @@ ACCESS_PLANS = {
                 'benchmarks': False,
                 'highlights': True,
                 'pre_baked_segments': False,
+                'media_buying': False,
             },
             'settings': {
                 'my_yt_channels': True,
@@ -305,6 +306,7 @@ ACCESS_PLANS = {
                 'benchmarks': False,
                 'highlights': True,
                 'pre_baked_segments': False,
+                'media_buying': False,
             },
             'settings': {
                 'my_yt_channels': True,
@@ -330,11 +332,11 @@ ACCESS_PLANS = {
                 'benchmarks': True,
                 'highlights': True,
                 'pre_baked_segments': True,
+                'media_buying': True,
             },
             'settings': {
                 'my_yt_channels': True,
                 'my_aw_accounts': True,
-                'billing': True,
             },
         },
     },
