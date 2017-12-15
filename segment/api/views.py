@@ -37,7 +37,7 @@ class DynamicModelViewMixin(object):
         elif self.request.user.has_perm('userprofile.view_pre_baked_segments'):
             queryset = self.model.objects.filter(
                 Q(owner=self.request.user) |
-                ~Q(catergory='private'))
+                ~Q(category='private'))
         else:
             queryset = self.model.objects.filter(owner=self.request.user)
         return queryset
@@ -187,5 +187,5 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)
         if response_data:
-            ChannelListApiView.adapt_response_data(response_data)
+            ChannelListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
