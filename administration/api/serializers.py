@@ -84,7 +84,6 @@ class UserUpdateSerializer(ModelSerializer):
         model = get_user_model()
         fields = (
             "plan",
-            "can_access_media_buying",
         )
 
     def save(self, **kwargs):
@@ -92,11 +91,12 @@ class UserUpdateSerializer(ModelSerializer):
         Make 'post-save' actions
         """
         user = super(UserUpdateSerializer, self).save(**kwargs)
-        if "plan" in kwargs:
-            Subscription.objects.filter(user=user).delete()
-            plan = Plan.objects.get(name=user.plan.name)
-            subscription = Subscription.objects.create(user=user, plan=plan)
-            user.update_permissions_from_subscription(subscription)
+        Subscription.objects.filter(user=user).delete()
+        plan = Plan.objects.get(name=user.plan.name)
+        subscription = Subscription.objects.create(user=user, plan=plan)
+        user.update_permissions_from_subscription(subscription)
+        user.save()
+        return user
 
 
 class UserSerializer(ModelSerializer):

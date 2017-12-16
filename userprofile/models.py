@@ -179,13 +179,13 @@ class Plan(models.Model):
             user.save()
 
         # tie with the payments
-        from payments.models import Plan as PaymentPlan
-        plan = Plan.objects.get(name='professional')
-        try:
-            plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
-        except PaymentPlan.DoesNotExist:
-            pass
-        plan.save()
+        # from payments.models import Plan as PaymentPlan
+        # plan = Plan.objects.get(name='professional')
+        # try:
+        #     plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
+        # except PaymentPlan.DoesNotExist:
+        #     pass
+        # plan.save()
 
         for key, value in plan_preset.items():
             plan, created = Plan.objects.get_or_create(name=key, defaults=value)
