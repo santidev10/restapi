@@ -202,8 +202,8 @@ class OptimizeQueryApiView(ListAPIView):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
         if response.status_code == 200:
             data = response.data
-            if "items" in data:
-                data = response.data.get("items")
+            if "items" in response.data.keys():
+                data = response.data.get("items", [])
             self.add_ad_words_data(self.request, data)
         return response
 
