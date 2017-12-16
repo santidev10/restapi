@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
@@ -13,7 +14,8 @@ class ExtendedAPITestCase(APITestCase):
         "first_name": "TestUser",
         "last_name": "TestUser",
         "email": "test@example.com",
-        "password": "test"
+        "password": "test",
+        "plan_id": settings.DEFAULT_ACCESS_PLAN_NAME,
     }
 
     def create_test_user(self, auth=True):
