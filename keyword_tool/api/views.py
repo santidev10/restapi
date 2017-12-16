@@ -200,7 +200,7 @@ class OptimizeQueryApiView(ListAPIView):
 
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
-        if response.status_code == 200:
+        if response.status_code == 200 and response.data is not None:
             if self.request.query_params.get("flat") == "1":
                 self.add_ad_words_data(self.request, response.data)
             else:
