@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
+from userprofile.models import Plan
 
 
 class ExtendedAPITestCase(APITestCase):
@@ -22,6 +23,7 @@ class ExtendedAPITestCase(APITestCase):
         """
         Make test user
         """
+        Plan.update_defaults()
         user, created = get_user_model().objects.get_or_create(
             email=self.test_user_data["email"],
             defaults=self.test_user_data,
