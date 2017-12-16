@@ -84,6 +84,7 @@ class UserUpdateSerializer(ModelSerializer):
         model = get_user_model()
         fields = (
             "plan",
+            "can_access_media_buying",
         )
 
     def save(self, **kwargs):
