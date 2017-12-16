@@ -201,10 +201,11 @@ class OptimizeQueryApiView(ListAPIView):
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
         if response.status_code == 200:
-            data = response.data
-            if "items" in response.data.keys():
-                data = response.data.get("items", [])
-            self.add_ad_words_data(self.request, data)
+            if self.request.query_params.get("flat") == "1":
+                self.add_ad_words_data(self.request, response.data)
+            else:
+                self.add_ad_words_data(
+                    self.request, response.data.get("items", []))
         return response
 
     def paginate_queryset(self, queryset):
