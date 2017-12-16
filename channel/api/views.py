@@ -32,6 +32,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from userprofile.models import UserChannel
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+from userprofile.models import Plan, Subscription
 
 
 # pylint: enable=import-error
@@ -430,7 +431,9 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            user.set_permissions_from_plan(settings.DEFAULT_ACCESS_PLAN_NAME)
+            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
+            subscription = Subscription.objects.create(user=user, plan=plan)
+            user.update_permissions_from_subscription(subscription)
             user.save()
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
