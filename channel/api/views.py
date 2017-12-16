@@ -153,15 +153,6 @@ class ChannelListApiView(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
 
-        # hide data according to user permissions
-        items = response_data.get("items", [])
-        for item in items:
-            if not self.request.user.has_perm(
-                    'userprofile.channel_audience') and \
-                    not (own_channels == '1' and item[
-                        'channel_id'] in channels_ids):
-                item["has_audience"] = False
-
         # adapt the response data
         self.adapt_response_data(response_data, request.user)
 
@@ -269,8 +260,19 @@ class ChannelListApiView(
                 item["country"] = ""
             if "history_date" in item and item["history_date"]:
                 item["history_date"] = item["history_date"][:10]
-            if "has_audience" in item:
-                item["verified"] = item["has_audience"]
+
+            if user.has_perm('userprofile.channel_audience') or item["is_owner"]:
+                if "has_audience" in item:
+                    item["verified"] = item["has_audience"]
+            else:
+                item['has_audience'] = False
+                item.pop('audience', None)
+                item.pop('aw_data', None)
+                item['brand_safety'] = None
+                item.pop('genre', None)
+                item['safety_chart_data'] = None
+                item.pop('traffic_sources', None)
+
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item and item[field]:
                     item[field] = re.sub(
@@ -336,18 +338,7 @@ class ChannelRetrieveUpdateApiView(
                 'average_views': average_views,
                 'videos': videos,
             }
-            channels_ids = self.request.user.channels.values_list("channel_id",
-                                                                  flat=True)
-            if not self.request.user.has_perm(
-                    'userprofile.channel_audience') and \
-                    pk not in channels_ids:
-                response.data['has_audience'] = False
-                response.data.pop('audience', None)
-                response.data.pop('aw_data', None)
-                response.data['brand_safety'] = None
-                response.data.pop('genre', None)
-                response.data['safety_chart_data'] = None
-                response.data.pop('traffic_sources', None)
+
         ChannelListApiView.adapt_response_data(
             {'items': [response.data]}, self.request.user)
         return response
