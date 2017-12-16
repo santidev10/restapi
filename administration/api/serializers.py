@@ -1,6 +1,7 @@
 """
 Administration api serializers module
 """
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
@@ -93,7 +94,9 @@ class UserUpdateSerializer(ModelSerializer):
         """
         user = super(UserUpdateSerializer, self).save(**kwargs)
         Subscription.objects.filter(user=user).delete()
-        plan = Plan.objects.get(name=user.plan.name)
+        if user.plan_id is None:
+            user.plan_id = settings.DEFAULT_ACCESS_PLAN
+        plan = Plan.objects.get(name=user.plan_id)
         subscription = Subscription.objects.create(user=user, plan=plan)
         user.update_permissions_from_subscription(subscription)
         user.save()
