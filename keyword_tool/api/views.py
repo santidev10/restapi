@@ -201,8 +201,20 @@ class OptimizeQueryApiView(ListAPIView):
     def get(self, *args, **kwargs):
         response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
         if response.status_code == 200:
-            self.add_ad_words_data(self.request, response.data['items'])
+            data = response.data
+            if "items" in data:
+                data = response.data.get("items")
+            self.add_ad_words_data(self.request, data)
         return response
+
+    def paginate_queryset(self, queryset):
+        """
+        Processing flat query param
+        """
+        flat = self.request.query_params.get("flat")
+        if flat == "1":
+            return None
+        return super().paginate_queryset(queryset)
 
     @staticmethod
     def add_ad_words_data(request, items):
