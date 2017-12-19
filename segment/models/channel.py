@@ -92,8 +92,9 @@ class SegmentChannel(BaseSegment):
              "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("top_three_channels_data").get("items")
         ]
+
         self.videos = sum(
-            value.get("videos")
+            value.get("videos") or 0
             for value in data.get("base_data").get("items"))
         # <--- disabled SAAS-1178
         # self.views_per_channel = self.views /\
