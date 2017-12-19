@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.http import QueryDict
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND, HTTP_412_PRECONDITION_FAILED, \
@@ -29,10 +30,11 @@ from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import Plan, Subscription
 from userprofile.models import UserChannel
 from utils.csv_export import CassandraExportMixin
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from userprofile.models import Plan, Subscription
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
+    or_permission_classes, OnlyAdminUserOrSubscriber
 
 
 # pylint: enable=import-error
@@ -288,12 +290,27 @@ class ChannelListFiltersApiView(SingledbApiView):
     connector_get = Connector().get_channel_filters_list
 
 
+class OwnChannelPermissions(BasePermission):
+    def has_permission(self, request, view):
+        return UserChannel.objects \
+            .filter(user=request.user, channel_id=view.kwargs.get("pk")) \
+            .exists()
+
+
 class ChannelRetrieveUpdateApiView(
     SingledbApiView, ChannelYoutubeStatisticsMixin):
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
+    permission_classes = (
+        or_permission_classes(OwnChannelPermissions,
+                              OnlyAdminUserOrSubscriber),)
     permission_required = ('userprofile.channel_details',)
     connector_get = Connector().get_channel
-    connector_put = Connector().put_channel
+    _connector_put = None
+
+    @property
+    def connector_put(self):
+        if self._connector_put is None:
+            self._connector_put = Connector().put_channel
+        return self._connector_put
 
     def put(self, *args, **kwargs):
         data = self.request.data

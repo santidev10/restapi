@@ -71,3 +71,11 @@ class SingleDatabaseApiConnectorPatcher:
 
     def auth_channel(self, *args):
         return dict(channel_id="Chanel Id", access_token="Access Token")
+
+    def put_channel(self, query_params, pk, data):
+        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+            channels = json.load(data_file)
+        channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
+        channel.update(data)
+        channel.update(dict(is_owner=True))
+        return channel

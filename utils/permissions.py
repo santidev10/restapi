@@ -4,8 +4,10 @@ from rest_framework.authtoken.models import Token
 
 class MediaBuyingAddOnPermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
-        is_authenticated = super(MediaBuyingAddOnPermission, self).has_permission(request, view)
-        return is_authenticated and (request.user.is_staff or request.user.can_access_media_buying)
+        is_authenticated = super(MediaBuyingAddOnPermission,
+                                 self).has_permission(request, view)
+        return is_authenticated and (
+                request.user.is_staff or request.user.can_access_media_buying)
 
 
 class OnlyAdminUserCanCreateUpdateDelete(permissions.BasePermission):
@@ -19,6 +21,7 @@ class OnlyAdminUserOrSubscriber(permissions.BasePermission):
     """
     Allow to perform action only for admin or subscribed user
     """
+
     def has_permission(self, request, view):
         """
         Check permission
@@ -37,3 +40,20 @@ class IsAuthQueryTokenPermission(permissions.BasePermission):
         except Token.DoesNotExist:
             return False
         return True
+
+
+class OrPermissionsBase(permissions.BasePermission):
+    """
+    Allow to perform action if any class from `classes` allows it
+    """
+    classes = []
+
+    def has_permission(self, request, view):
+        for cls in self.classes:
+            if cls().has_permission(request, view):
+                return True
+        return False
+
+
+def or_permission_classes(*classes):
+    return type('OrPermissions', (OrPermissionsBase,), dict(classes=classes))
