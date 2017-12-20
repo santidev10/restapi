@@ -5,6 +5,7 @@ from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
+from rest_framework.serializers import CharField
 
 from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector
@@ -17,6 +18,8 @@ class SegmentSerializer(ModelSerializer):
     ids_to_delete = ListField(required=False)
     ids_to_create = ListField(required=False)
     statistics = SerializerMethodField()
+    title = CharField(
+        max_length=255, required=True, allow_null=False, allow_blank=False)
 
     class Meta:
         model = None
