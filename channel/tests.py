@@ -60,6 +60,22 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_admin_user_can_update_any_channel(self):
+        user = self.create_test_user(True)
+        user.is_staff = True
+        user.save()
+        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+            data = json.load(data_file)
+        channel_id = data["items"][0]["id"]
+
+        url = reverse("channel_api_urls:channel",
+                      args=(channel_id,))
+        with patch("channel.api.views.Connector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.put(url, dict())
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_user_can_not_update_not_own_channel(self):
         self.create_test_user(True)
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
