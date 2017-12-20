@@ -56,4 +56,8 @@ class OrPermissionsBase(permissions.BasePermission):
 
 
 def or_permission_classes(*classes):
-    return type('OrPermissions', (OrPermissionsBase,), dict(classes=classes))
+    """
+    Create new class inherited from `OrPermissionsBase`
+    with particular classes list
+    """
+    return type("OrPermissions", (OrPermissionsBase,), dict(classes=classes))

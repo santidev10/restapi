@@ -308,6 +308,10 @@ class ChannelRetrieveUpdateApiView(
 
     @property
     def connector_put(self):
+        """
+        Lazy loaded property.
+        Purpose: allows patching it in tests
+        """
         if self._connector_put is None:
             self._connector_put = Connector().put_channel
         return self._connector_put
