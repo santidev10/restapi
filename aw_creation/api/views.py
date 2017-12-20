@@ -837,7 +837,7 @@ class AccountCreationDetailsApiView(RetrieveAPIView):
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AccountCreationSetupSerializer
     permission_classes = (or_permission_classes(
-        user_has_permission("userprofile.aw_account_edit"),
+        user_has_permission("userprofile.settings_my_aw_accounts"),
         MediaBuyingAddOnPermission),
     )
 
