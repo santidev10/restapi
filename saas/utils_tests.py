@@ -1,9 +1,10 @@
 import json
 
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
+
 from userprofile.models import Plan
 
 
@@ -73,9 +74,13 @@ class SingleDatabaseApiConnectorPatcher:
         return dict(channel_id="Chanel Id", access_token="Access Token")
 
     def put_channel(self, query_params, pk, data):
+        channel = self.get_channel(query_params, pk=pk)
+        channel.update(data)
+        return channel
+
+    def get_channel(self, query_params, pk):
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
-        channel.update(data)
         channel.update(dict(is_owner=True))
         return channel
