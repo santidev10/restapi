@@ -279,6 +279,9 @@ class KeywordsListApiView(OptimizeQueryApiView):
         queryset = KeyWord.objects.all()
         queryset = self.filter(queryset)
         queryset = self.sort(queryset)
+        limit = self.request.query_params.get("limit")
+        if limit and limit.isdigit():
+            queryset = queryset[:int(limit)]
         return queryset
 
     def post(self, *args, **kwargs):
