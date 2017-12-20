@@ -34,7 +34,7 @@ from userprofile.models import Plan, Subscription
 from userprofile.models import UserChannel
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    or_permission_classes, OnlyAdminUserOrSubscriber
+    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
 
 
 # pylint: enable=import-error
@@ -263,7 +263,8 @@ class ChannelListApiView(
             if "history_date" in item and item["history_date"]:
                 item["history_date"] = item["history_date"][:10]
 
-            if user.has_perm('userprofile.channel_audience') or item["is_owner"]:
+            if user.has_perm('userprofile.channel_audience') or item[
+                "is_owner"]:
                 if "has_audience" in item:
                     item["verified"] = item["has_audience"]
             else:
@@ -300,10 +301,11 @@ class OwnChannelPermissions(BasePermission):
 class ChannelRetrieveUpdateApiView(
     SingledbApiView, ChannelYoutubeStatisticsMixin):
     permission_classes = (
-        or_permission_classes(OwnChannelPermissions,
-                              OnlyAdminUserOrSubscriber),)
-    permission_required = ('userprofile.channel_details',)
-    connector_get = Connector().get_channel
+        or_permission_classes(
+            user_has_permission('userprofile.channel_details'),
+            OwnChannelPermissions,
+            OnlyAdminUserOrSubscriber),)
+    _connector_get = None
     _connector_put = None
 
     @property
@@ -315,6 +317,16 @@ class ChannelRetrieveUpdateApiView(
         if self._connector_put is None:
             self._connector_put = Connector().put_channel
         return self._connector_put
+
+    @property
+    def connector_get(self):
+        """
+        Lazy loaded property.
+        Purpose: allows patching it in tests
+        """
+        if self._connector_get is None:
+            self._connector_get = Connector().get_channel
+        return self._connector_get
 
     def put(self, *args, **kwargs):
         data = self.request.data
@@ -352,7 +364,7 @@ class ChannelRetrieveUpdateApiView(
                     sum([v.get("views", 0) for v in videos]) / len(videos))
             for v in videos:
                 v["id"] = v.pop("video_id")
-                youtube_published_at = v.pop("youtube_published_at")
+                youtube_published_at = v.pop("youtube_published_at", None)
                 if youtube_published_at:
                     v['days'] = (now - parser.parse(youtube_published_at)).days
             response.data["performance"] = {
