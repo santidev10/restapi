@@ -338,6 +338,7 @@ ACCESS_PLANS = {
                 'my_yt_channels': True,
                 'my_aw_accounts': True,
             },
+            'aw_account': {'edit': True}
         },
     },
 }

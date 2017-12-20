@@ -116,7 +116,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'account', 'updated_at', 'campaign_creations', 'updated_at',
+                'id', 'name', 'account', 'updated_at', 'campaign_creations',
+                'updated_at',
                 'is_ended', 'is_approved', 'is_paused',
             }
         )
@@ -125,7 +126,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             set(campaign_data.keys()),
             {
                 'id', 'name', 'updated_at', 'start', 'end',
-                'budget', 'delivery_method', 'type', 'video_networks', 'languages',
+                'budget', 'delivery_method', 'type', 'video_networks',
+                'languages',
                 'frequency_capping', 'ad_schedule_rules', 'location_rules',
                 'devices', 'content_exclusions', 'ad_group_creations',
             }
@@ -318,9 +320,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
         # creating of a MCC account
         account = Account.objects.create(id="1", name="")
-        account_creation = AccountCreation.objects.create(id="1", name="Hi", account=account, owner=self.user)
-        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol", account_creation=account_creation)
-        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal", campaign_creation=campaign_creation)
+        account_creation = AccountCreation.objects.create(id="1", name="Hi",
+                                                          account=account,
+                                                          owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol",
+                                                            account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal",
+                                                           campaign_creation=campaign_creation)
         ad_creation = AdCreation.objects.create(
             id="1", name="Fal", ad_group_creation=ad_group_creation,
             beacon_third_quartile_2="http://hadler.ua",
@@ -329,7 +335,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             beacon_vast_3_changed=True,
             beacon_vast_1_changed=True,
         )
-        ad_group_creation_2 = AdGroupCreation.objects.create(id="2", name="Sol", campaign_creation=campaign_creation)
+        ad_group_creation_2 = AdGroupCreation.objects.create(id="2",
+                                                             name="Sol",
+                                                             campaign_creation=campaign_creation)
         ad_creation_2 = AdCreation.objects.create(
             id="2", name="Hel", ad_group_creation=ad_group_creation_2,
             beacon_first_quartile_1="https://gates.ua?unseal=dark_power",
@@ -343,7 +351,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
 
         # account creation to approve it
-        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
             content_type='application/json',
@@ -380,13 +389,19 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
         # creating of a MCC account
         account = Account.objects.create(id="1", name="")
-        account_creation = AccountCreation.objects.create(id="1", name="Hi", account=account, owner=self.user)
-        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol", account_creation=account_creation)
-        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal", campaign_creation=campaign_creation)
-        AdCreation.objects.create(id="1", name="Fal", ad_group_creation=ad_group_creation)
+        account_creation = AccountCreation.objects.create(id="1", name="Hi",
+                                                          account=account,
+                                                          owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(id="1", name="Dol",
+                                                            account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(id="1", name="Mal",
+                                                           campaign_creation=campaign_creation)
+        AdCreation.objects.create(id="1", name="Fal",
+                                  ad_group_creation=ad_group_creation)
 
         # account creation to approve it
-        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
             content_type='application/json',
@@ -411,7 +426,9 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         # account creation to approve it
         today = datetime.now()
-        ac = self.create_account_creation(self.user, start=today - timedelta(days=2), end=today)
+        ac = self.create_account_creation(self.user,
+                                          start=today - timedelta(days=2),
+                                          end=today)
         url = reverse("aw_creation_urls:account_creation_setup",
                       args=(ac.id,))
 
@@ -450,7 +467,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         fault = Mock()
         fault.faultstring = "[ManagedCustomerServiceError.NOT_AUTHORIZED @ operations[0]]"
         write_operation = Mock(side_effect=WebFault(fault, None))
-        with patch("aw_creation.api.views.create_customer_account", new=write_operation):
+        with patch("aw_creation.api.views.create_customer_account",
+                   new=write_operation):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
@@ -480,9 +498,11 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_approved=True,
         )
         write_operation = Mock(
-            side_effect=HttpAccessTokenRefreshError("invalid_grant: Token has been expired or revoked.")
+            side_effect=HttpAccessTokenRefreshError(
+                "invalid_grant: Token has been expired or revoked.")
         )
-        with patch("aw_creation.api.views.create_customer_account", new=write_operation):
+        with patch("aw_creation.api.views.create_customer_account",
+                   new=write_operation):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
@@ -491,7 +511,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_success_update_name(self):
         # creating of a MCC account
-        manager = Account.objects.create(id="7155851537", name="Management Account")
+        manager = Account.objects.create(id="7155851537",
+                                         name="Management Account")
         connection = AWConnection.objects.create(
             email="anna.chumak1409@gmail.com",
             refresh_token="1/MJsHAtsAl1YYus3lMX0Tr_oCFGzHbZn7oupW-2SyAcs",
@@ -517,7 +538,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                       args=(account_creation.id,))
 
         request_data = dict(name="Account 15")
-        with patch("aw_creation.api.views.update_customer_account") as update_method:
+        with patch(
+                "aw_creation.api.views.update_customer_account") as update_method:
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
@@ -596,30 +618,59 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_marked_is_disapproved_account(self):
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=self.user, account=account, )
+        account_creation = AccountCreation.objects.create(name="",
+                                                          owner=self.user,
+                                                          account=account, )
 
-        campaign = Campaign.objects.create(id=2, name="", account=account, cost=100)
-        campaign_creation = CampaignCreation.objects.create(id=2, campaign=campaign, account_creation=account_creation)
+        campaign = Campaign.objects.create(id=2, name="", account=account,
+                                           cost=100)
+        campaign_creation = CampaignCreation.objects.create(id=2,
+                                                            campaign=campaign,
+                                                            account_creation=account_creation)
 
         ad_group = AdGroup.objects.create(id=2, campaign=campaign)
-        ad_group_creation = AdGroupCreation.objects.create(ad_group=ad_group, campaign_creation=campaign_creation)
+        ad_group_creation = AdGroupCreation.objects.create(ad_group=ad_group,
+                                                           campaign_creation=campaign_creation)
 
         ad_1 = Ad.objects.create(id=2, ad_group=ad_group, is_disapproved=True)
         ad_2 = Ad.objects.create(id=3, ad_group=ad_group, is_disapproved=False)
-        ad_creation_1 = AdCreation.objects.create(ad=ad_1, ad_group_creation=ad_group_creation)
-        ad_creation_2 = AdCreation.objects.create(ad=ad_2, ad_group_creation=ad_group_creation)
+        ad_creation_1 = AdCreation.objects.create(ad=ad_1,
+                                                  ad_group_creation=ad_group_creation)
+        ad_creation_2 = AdCreation.objects.create(ad=ad_2,
+                                                  ad_group_creation=ad_group_creation)
 
-        url = reverse("aw_creation_urls:account_creation_setup", args=(account_creation.id,))
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['campaign_creations']), 1)
-        self.assertEqual(len(response.data['campaign_creations'][0]['ad_group_creations']), 1)
-        ads = response.data['campaign_creations'][0]['ad_group_creations'][0]['ad_creations']
+        self.assertEqual(
+            len(response.data['campaign_creations'][0]['ad_group_creations']),
+            1)
+        ads = response.data['campaign_creations'][0]['ad_group_creations'][0][
+            'ad_creations']
         self.assertEqual(len(ads), 2)
 
         campaign_map = dict((ad['id'], ad) for ad in ads)
 
-        self.assertEqual(campaign_map.keys(), {ad_creation_1.id, ad_creation_2.id})
+        self.assertEqual(campaign_map.keys(),
+                         {ad_creation_1.id, ad_creation_2.id})
         self.assertTrue(campaign_map[ad_creation_1.id].get('is_disapproved'))
         self.assertFalse(campaign_map[ad_creation_2.id].get('is_disapproved'))
+
+    def test_enterprise_user_should_be_able_to_edit_account_creation(self):
+        user = self.user
+        user.can_access_media_buying = False
+        user.set_permissions_from_plan('enterprise')
+        user.save()
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects \
+            .create(name="", owner=user, account=account, )
+
+        url = reverse("aw_creation_urls:account_creation_setup",
+                      args=(account_creation.id,))
+
+        response = self.client.put(url, dict(name="test name"))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
