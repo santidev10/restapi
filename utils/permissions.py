@@ -61,3 +61,31 @@ def or_permission_classes(*classes):
     with particular classes list
     """
     return type("OrPermissions", (OrPermissionsBase,), dict(classes=classes))
+
+
+class UserHasPermissionBase(permissions.IsAuthenticated):
+    """
+    Allow to perform action if user has given django permission
+    """
+    permission = None
+
+    def has_permission(self, request, view):
+        return request.user.has_perm(self.permission)
+
+
+def user_has_permission(perm):
+    """
+    Create class inherited from UserHasPermissionBase
+    with particular permission
+    """
+    return type("UserHasPermission", (UserHasPermissionBase,),
+                dict(permission=perm))
+
+
+def user_has_any_permission(*perms):
+    """
+    Create permission class which allows action
+    if user has any of listed permission
+    """
+    classes = map(lambda p: user_has_permission(p), perms)
+    return or_permission_classes(*classes)
