@@ -99,8 +99,6 @@ class VideoListApiView(
             # user should be able to see own videos
             if request.user.channels.filter(channel_id=channel).count() < 1:
                 return Response(empty_response)
-        elif not request.user.has_perm("userprofile.video_audience"):
-            query_params.update(verified="0")
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -257,8 +255,17 @@ class VideoListApiView(
             if "history_date" in item and item["history_date"]:
                 item["history_date"] = item["history_date"][:10]
 
-            if "has_audience" in item:
-                item["verified"] = item["has_audience"]
+            if user.has_perm('userprofile.video_audience') or item["is_owner"]:
+                if "has_audience" in item:
+                    item["verified"] = item["has_audience"]
+            else:
+                item['has_audience'] = False
+                item.pop('audience', None)
+                item.pop('aw_data', None)
+                item['brand_safety'] = None
+                item.pop('genre', None)
+                item['safety_chart_data'] = None
+                item.pop('traffic_sources', None)
 
             if "country" in item and item["country"] is None:
                 item["country"] = ""
