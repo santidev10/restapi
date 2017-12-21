@@ -10,8 +10,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     @staticmethod
     def create_ad_group_creation(owner):
@@ -38,8 +37,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         return ad_group_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         ac = self.create_ad_group_creation(self.user)
         url = reverse("aw_creation_urls:ad_group_creation_duplicate",

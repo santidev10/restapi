@@ -14,8 +14,7 @@ from saas.utils_tests import ExtendedAPITestCase, \
 class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def create_ad(self, owner, start=None, end=None, account=None,
                   beacon_view_1=""):
@@ -40,8 +39,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -240,8 +238,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
         self.user.set_permissions_from_plan('enterprise')
         today = datetime.now().date()
         defaults = dict(

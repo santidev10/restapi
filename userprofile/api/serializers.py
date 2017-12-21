@@ -3,7 +3,7 @@ Userprofile api serializers module
 """
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import update_last_login
+from django.contrib.auth.models import update_last_login, PermissionsMixin
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
@@ -105,6 +105,7 @@ class UserSerializer(ModelSerializer):
     has_paid_subscription_error = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
     vendor = SerializerMethodField()
+    can_access_media_buying = SerializerMethodField()
 
     class Meta:
         """
@@ -177,6 +178,9 @@ class UserSerializer(ModelSerializer):
 
     def get_vendor(self, obj):
         return settings.VENDOR
+
+    def get_can_access_media_buying(self, obj: PermissionsMixin):
+        return obj.has_perm("userprofile.view_media_buying")
 
 
 class UserSetPasswordSerializer(Serializer):
