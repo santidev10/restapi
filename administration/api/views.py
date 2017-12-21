@@ -2,19 +2,22 @@
 Administration api views module
 """
 import operator
+import stripe
 from functools import reduce
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
+
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
     ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
-    HTTP_201_CREATED, HTTP_400_BAD_REQUEST
+    HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_200_OK
 from rest_framework.views import APIView
 
 from administration.api.serializers import UserActionRetrieveSerializer, \
@@ -22,9 +25,12 @@ from administration.api.serializers import UserActionRetrieveSerializer, \
 from administration.api.serializers import UserSerializer
 from userprofile.api.serializers import UserSerializer as RegularUserSerializer
 from administration.models import UserAction
-from userprofile.api.serializers import PlanSerializer
-from userprofile.models import UserProfile, Plan
+from userprofile.api.serializers import PlanSerializer, SubscriptionSerializer
+from userprofile.models import UserProfile, Plan, Subscription
 from utils.api_paginator import CustomPageNumberPaginator
+
+from payments.stripe_api import customers, subscriptions
+from payments.models import Subscription as PaymentsSubscription
 
 
 class UserPaginator(CustomPageNumberPaginator):
@@ -72,7 +78,7 @@ class UserListAdminApiView(ListAPIView):
         return queryset
 
     def do_sorts(self, queryset):
-        return queryset
+        return queryset.order_by('last_name', 'first_name')
 
 
 class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
@@ -151,8 +157,9 @@ class UserActionListCreateApiView(ListCreateAPIView):
         """
         Check admin permission
         """
-        if not request.user.is_staff:
-            return Response(status=HTTP_403_FORBIDDEN)
+        # opened for all according UI request
+        # if not request.user.is_staff:
+        #     return Response(status=HTTP_403_FORBIDDEN)
         return super(UserActionListCreateApiView, self).get(
             request, *args, **kwargs)
 
@@ -246,26 +253,140 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
 
 
 class PlanListCreateApiView(ListCreateAPIView):
-    permission_classes = (IsAdminUser, )
+    permission_classes = tuple()
     serializer_class = PlanSerializer
     create_serializer_class = PlanSerializer
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.exclude(hidden=True).all()
 
 
 class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAdminUser, )
     serializer_class = PlanSerializer
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.exclude(hidden=True).all()
 
     def delete(self, request, *args, **kwargs):
         plan = self.get_object()
-        if plan.name == 'free' or plan.name == 'full':
+        if plan.name == settings.DEFAULT_ACCESS_PLAN_NAME or plan.hidden:
             return Response(status=HTTP_403_FORBIDDEN)
         default_plan, created = Plan.objects.get_or_create(
-            name='free', defaults=dict(permissions=Plan.plan_preset['free']))
+            name=settings.DEFAULT_ACCESS_PLAN_NAME,
+            defaults=settings.ACCESS_PLANS[settings.DEFAULT_ACCESS_PLAN_NAME])
         UserProfile.objects.filter(plan=plan).update(plan=default_plan)
         return super().delete(request, *args, **kwargs)
 
 
+class SubscriptionView(APIView):
+    serializer_class = SubscriptionSerializer
+
+    def get(self, request):
+        try:
+            current_subscription = Subscription.objects.get(user=self.request.user)
+        except Subscription.DoesNotExist:
+            current_subscription = Subscription.objects.create(
+                user=self.request.user,
+                plan=self.request.user.plan,
+                payments_subscription=self.get_current_subscription()
+            )
+
+        serializer = self.serializer_class(current_subscription)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    def get_current_subscription(self):
+        customer = customers.get_customer_for_user(self.request.user)
+        if customer is None:
+            return None
+
+        try:
+            subscriptions = customer.subscription_set.all()
+        except Subscription.DoesNotExist:
+            return None
+
+        if len(subscriptions) > 0:
+            return subscriptions[0]
+
+        return None
+
+
+class SubscriptionCreateView(APIView):
+    serializer_class = SubscriptionSerializer
+
+    def subscribe(self, customer, plan, token):
+        return subscriptions.create(customer, plan, token=token)
+
+    def post(self, request):
+        plan_name = request.data.get('plan')
+        if plan_name:
+            iq_plan = Plan.objects.get(name=plan_name)
+            plan = iq_plan.payments_plan
+            payments_subscription = None
+            token = request.data.get('token')
+            if plan and token:
+                try:
+                    customer = customers.create(request.user)
+                    payments_subscription = self.subscribe(customer, plan=plan, token=token)
+                except stripe.StripeError as e:
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST,
+                        data=e.json_body)
+
+            Subscription.objects.filter(user=request.user).delete()
+            current_subscription = Subscription.objects.create(
+                user=request.user,
+                plan=iq_plan,
+                payments_subscription=payments_subscription
+            )
+            request.user.update_permissions_from_subscription(current_subscription)
+            serializer = self.serializer_class(current_subscription)
+            return Response(serializer.data, status=HTTP_200_OK)
+
+
+class SubscriptionDeleteView(APIView):
+    def post(self, request, *args, **kwargs):
+        stripe_id = request.data.get('id')
+        # in case that we want to immediately cancel sub we could send at_period_at param
+        obj = PaymentsSubscription.objects.get(stripe_id=stripe_id)
+
+        try:
+            subscription = Subscription.objects.get(payments_subscription__stripe_id=stripe_id)
+        except Subscription.DoesNotExist:
+            subscription = None
+
+        try:
+            subscriptions.cancel(obj)
+        except stripe.StripeError as e:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data=e.json_body)
+
+        if subscription:
+            user_id = subscription.user_id
+            subscription.delete()
+
+            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
+            subscription = Subscription.objects.create(user_id=user_id, plan=plan)
+            get_user_model().objects.get(id=user_id).update_permissions_from_subscription(subscription)
+
+        return Response(status=HTTP_200_OK)
+
+
+class SubscriptionUpdateView(APIView):
+    def post(self, request, *args, **kwargs):
+        stripe_id = request.data.get('id')
+        plan_name = request.data.get('plan')
+        if plan_name:
+            iq_plan = Plan.objects.get(name=plan_name)
+            if iq_plan.payments_plan:
+                try:
+                    obj = PaymentsSubscription.objects.get(stripe_id=stripe_id)
+                    subscriptions.update(obj, iq_plan.payments_plan.id)
+                except stripe.StripeError as e:
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST,
+                        data=e.json_body)
+            subscription = Subscription.objects.get(user=request.user)
+            subscription.plan = iq_plan
+            subscription.save()
+            request.user.update_permissions_from_subscription(subscription)
+        return Response(status=HTTP_200_OK)
 
 

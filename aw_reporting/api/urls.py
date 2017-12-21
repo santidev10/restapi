@@ -48,11 +48,6 @@ urlpatterns = [
         views.ConnectAWAccountApiView.as_view(),
         name="aw_account_connection"),
 
-    # channel and video historical data
-    url(r'^aw_historical_data/(?P<item_type>\w+)/(?P<pk>[\w-]+)/$',
-        views.AwHistoricalDataApiView.as_view(),
-        name="aw_historical_data"),
-
     # benchmark
     url(r'^benchmarks/base_charts/$',
         views.BenchmarkBaseChartsApiView.as_view(),

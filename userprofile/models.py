@@ -1,6 +1,7 @@
 """
 Userprofile models module
 """
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -29,8 +30,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             validators.RegexValidator(
                 r'^[\w.@+-]+$',
                 _('Enter a valid username. '
-                    'This value may contain only letters, numbers '
-                    'and @/./+/-/_ characters.'), 'invalid'),
+                  'This value may contain only letters, numbers '
+                  'and @/./+/-/_ characters.'), 'invalid'),
         ],
         error_messages={
             'unique': _("A user with that username already exists."),
@@ -53,7 +54,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
 
-    plan = models.ForeignKey('userprofile.Plan', null=True, on_delete=models.SET_NULL)
+    plan = models.ForeignKey('userprofile.Plan', null=True,
+                             on_delete=models.SET_NULL)
 
     objects = UserManager()
 
@@ -108,7 +110,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             plan = Plan.objects.get(name=plan_name)
         except Plan.DoesNotExist:
             plan, created = Plan.objects.get_or_create(
-                name='free', defaults=dict(permissions=Plan.plan_preset['free']))
+                name=settings.DEFAULT_ACCESS_PLAN_NAME,
+                defaults=settings.ACCESS_PLANS[
+                    settings.DEFAULT_ACCESS_PLAN_NAME])
 
         self.set_permissions_from_node(plan.permissions)
 
@@ -124,122 +128,106 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 self.set_permissions_from_node(value, new_path)
             else:
                 permission, created = Permission.objects.get_or_create(
-                    codename=new_path, defaults=dict(content_type=self.content_type))
+                    codename=new_path,
+                    defaults=dict(content_type=self.content_type))
                 if value:
                     self.user_permissions.add(permission)
                 else:
                     self.user_permissions.remove(permission)
+
+    def update_permissions_from_subscription(self, subscription):
+        self.plan = subscription.plan
+        self.set_permissions_from_plan(self.plan.name)
+        self.save()
+
+    def add_custom_user_permission(self, perm: str):
+        permission = get_custom_permission(perm)
+        self.user_permissions.add(permission)
+
+    def remove_custom_user_permission(self, perm: str):
+        permission = get_custom_permission(perm)
+        self.user_permissions.remove(permission)
+
+
+def get_custom_permission(codename: str):
+    content_type = ContentType.objects.get_for_model(Plan)
+    permission, _ = Permission.objects.get_or_create(
+        content_type=content_type,
+        codename=codename)
+    return permission
 
 
 class Plan(models.Model):
     """
     Default plan
     """
-    plan_preset = {
-        'free': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
-            'video':    {'list': False, 'filter': False, 'audience': False, 'details': False},
-            'keyword':  {'list': False, 'details': False, },
-            'segment': {
-                'channel': {'all': False, 'private': False},
-                'video': {'all': False, 'private': False},
-                'keyword': {'all': False, 'private': False},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-                'billing': True,
-            },
-        },
-        'enterprise': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'keyword': {'list': True, 'details': True, },
-            'segment': {
-                'channel': {'all': True, 'private': True},
-                'video': {'all': True, 'private': True},
-                'keyword': {'all': True, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': True,
-                'performance': True,
-                'trends': True,
-                'benchmarks': True,
-                'highlights': True,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': True,
-                'billing': True,
-            },
-        },
-        'professional': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'keyword': {'list': True, 'details': True, },
-            'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': True,
-                'billing': True,
-            },
-        },
-    }
 
     name = models.CharField(max_length=255, primary_key=True)
-    permissions = JSONField(default=plan_preset['free'])
+    description = models.TextField(blank=True)
+    permissions = JSONField(default=dict())
+    features = JSONField(default=list())
+    payments_plan = models.ForeignKey('payments.Plan', null=True,
+                                      on_delete=models.SET_NULL)
+    hidden = models.BooleanField(default=False)
 
     @staticmethod
     def update_defaults():
-        for key, value in Plan.plan_preset.items():
-            Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
+        plan_preset = settings.ACCESS_PLANS
+        for key, value in plan_preset.items():
+            plan, created = Plan.objects.get_or_create(name=key,
+                                                       defaults=value)
+            # update permissions and features
+            if not created:
+                plan.permissions = value['permissions']
+                plan.hidden = value['hidden']
+                plan.save()
 
         # set admin plans
         plan = Plan.objects.get(name='enterprise')
         users = UserProfile.objects.filter(is_staff=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.name)
             user.save()
 
         # set default plan for non-admin users
-        plan = Plan.objects.get(name='free')
+        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
         users = UserProfile.objects.filter(plan__isnull=True)
         for user in users:
             user.plan = plan
-            user.set_permissions_from_plan(plan)
+            user.set_permissions_from_plan(plan.name)
             user.save()
 
-    @staticmethod
-    def update_user_plans():
-        for key, value in Plan.plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key, defaults=dict(permissions=value))
+        # tie with the payments
+        # from payments.models import Plan as PaymentPlan
+        # plan = Plan.objects.get(name='professional')
+        # try:
+        #     plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
+        # except PaymentPlan.DoesNotExist:
+        #     pass
+        # plan.save()
+
+        for key, value in plan_preset.items():
+            plan, created = Plan.objects.get_or_create(name=key,
+                                                       defaults=value)
             if created:
                 continue
-            plan.permissions = value
+            plan.permissions = value['permissions']
+            plan.hidden = value['hidden']
             plan.save()
+
             users = UserProfile.objects.filter(plan=plan)
             for user in users:
                 user.set_permissions_from_plan(key)
                 user.save()
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+    payments_subscription = models.ForeignKey(
+        'payments.Subscription', default=None, null=True,
+        on_delete=models.CASCADE)
 
 
 class UserChannel(Timestampable):

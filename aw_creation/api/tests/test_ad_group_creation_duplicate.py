@@ -10,6 +10,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     @staticmethod
     def create_ad_group_creation(owner):
@@ -34,6 +35,16 @@ class AccountAPITestCase(AwReportingAPITestCase):
             ad_group_creation=ad_group_creation,
         )
         return ad_group_creation
+
+    def test_success_fail_has_no_permission(self):
+        self.remove_custom_user_permission(self.user, "view_media_buying")
+
+        ac = self.create_ad_group_creation(self.user)
+        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
+                      args=(ac.id,))
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
         ac = self.create_ad_group_creation(self.user)
@@ -61,17 +72,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
-        )
-
-        ad = data['ad_creations'][0]
-        self.assertEqual(
-            set(ad.keys()),
-            {
-                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail',
-                'video_channel_title', 'video_duration',
-            }
         )
         self.assertEqual(data['name'], "{} (1)".format(ac.name))
 

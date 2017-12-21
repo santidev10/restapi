@@ -1,21 +1,22 @@
 import json
+from datetime import datetime, timedelta
 from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
-from datetime import datetime, timedelta
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+
 from aw_creation.models import AccountCreation
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class PerformanceExportAPITestCase(ExtendedAPITestCase):
-
     @staticmethod
     def create_stats(account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -51,7 +52,8 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+                                                          is_approved=True)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_export",
@@ -106,4 +108,3 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(type(response), StreamingHttpResponse)
             self.assertGreater(len(list(response)), 10)
-

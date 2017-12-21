@@ -10,6 +10,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     @staticmethod
     def create_campaign_creation(owner):
@@ -67,6 +68,15 @@ class AccountAPITestCase(AwReportingAPITestCase):
             is_deleted=True,
         )
         return campaign_creation
+
+    def test_success_fail_has_no_permission(self):
+        self.remove_custom_user_permission(self.user, "view_media_buying")
+
+        c = self.create_campaign_creation(self.user)
+        url = reverse("aw_creation_urls:campaign_creation_duplicate",
+                      args=(c.id,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
         c = self.create_campaign_creation(self.user)
@@ -161,35 +171,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
             }
         )
         self.assertEqual(len(campaign_data['ad_group_creations']), 1)
-        ad_group_data = campaign_data['ad_group_creations'][0]
-        self.assertEqual(
-            set(ad_group_data.keys()),
-            {
-                'id', 'name', 'updated_at', 'ad_creations', 'max_rate',
-                'genders', 'parents', 'age_ranges', 'video_ad_format',
-                # targeting
-                'targeting',
-            }
-        )
-        self.assertEqual(
-            set(ad_group_data['targeting']),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
-        )
-        self.assertEqual(
-            set(ad_group_data['targeting']['keyword']['negative'][0]),
-            {'criteria', 'is_negative', 'type', 'name'}
-        )
-        self.assertEqual(len(ad_group_data['ad_creations']), 1)
-        ad = ad_group_data['ad_creations'][0]
-        self.assertEqual(
-            set(ad.keys()),
-            {
-                'id', 'custom_params', 'name', 'updated_at', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail',
-                'video_channel_title', 'video_duration',
-            }
-        )
 
     def test_success_post_increment_name(self):
         account_creation = AccountCreation.objects.create(

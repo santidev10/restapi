@@ -114,7 +114,7 @@ class CityStatistic(DailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup, related_name='cities_stats')
 
     class Meta:
-        unique_together = (("city",  "ad_group", "date"),)
+        unique_together = (("city", "ad_group", "date"),)
         ordering = ['-date']
 
 
@@ -143,8 +143,8 @@ class VideoCreativeStatistic(DailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup, related_name='videos_stats')
 
     class Meta:
-        unique_together = (("ad_group", "creative",  "date"),)
-        ordering = ["ad_group", "creative",  "date"]
+        unique_together = (("ad_group", "creative", "date"),)
+        ordering = ["ad_group", "creative", "date"]
 
 
 # Hourly stats

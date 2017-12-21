@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime, timedelta
+
 from aw_reporting.models import *
 # pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+
 # pylint: enable=import-error
 
 logger = logging.getLogger(__name__)
@@ -73,22 +75,25 @@ class BaseDemo:
         lang_code='en',
         country="United States",
     )
-    channel_criteria = dict(
-        country="United States",
-        is_content_safe=True,
+
+    common_media_filters = dict(
+        language__terms="English",
+        country__terms="United States",
+        is_content_safe__terms=True,
     )
 
     def get_channels(self):
         if self._channels is None:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="channel",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    limit=12,
-                    order_by="-details__subscribers",
-                    **self.channel_criteria
-                )
+                fields = ("channel_id", "title", "thumbnail_image_url")
+                query_params = dict(fields=",".join(fields), sort="subscribers:desc", **self.common_media_filters)
+                response_data = connector.get_channel_list(query_params)
+                items = response_data["items"][:12]
+                for i in items:
+                    i["id"] = i["channel_id"]
+                    del i["channel_id"]
+
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
                 items = []
@@ -99,13 +104,14 @@ class BaseDemo:
         if self._videos is None:
             connector = SingleDatabaseApiConnector()
             try:
-                items = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url", "duration"],
-                    limit=12,
-                    order_by="-views",
-                    **self.video_criteria
-                )
+                fields = ("video_id", "title", "thumbnail_image_url", "duration")
+                query_params = dict(fields=",".join(fields), sort="views:desc", **self.common_media_filters)
+                response_data = connector.get_video_list(query_params)
+                items = response_data["items"][:12]
+                for i in items:
+                    i["id"] = i["video_id"]
+                    del i["video_id"]
+
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
                 items = []
@@ -121,7 +127,7 @@ class BaseDemo:
                 thumbnail=i['thumbnail_image_url'],
             )
             for i in self.get_channels()
-            ]
+        ]
         return channel
 
     @property
@@ -134,7 +140,7 @@ class BaseDemo:
                 duration=i.get("duration"),
             )
             for i in self.get_videos()[:6]
-            ]
+        ]
         return video
 
     @property
@@ -147,7 +153,7 @@ class BaseDemo:
                 duration=i.get("duration"),
             )
             for i in self.get_videos()[6:12]
-            ]
+        ]
         return creative
 
     @property
@@ -370,8 +376,8 @@ class BaseDemo:
         return self.clicks / self.video_views * 100 * 0.8 \
             if self.video_views else None
 
-class DemoAd(BaseDemo):
 
+class DemoAd(BaseDemo):
     @property
     def creation_details(self):
         from aw_creation.models import AdGroupCreation
@@ -396,12 +402,40 @@ class DemoAd(BaseDemo):
             companion_banner=None,
             video_thumbnail="http://img.youtube.com/vi/XEngrJr79Jg/hqdefault.jpg",
             video_duration=151,
+
+            beacon_impression_1="",
+            beacon_impression_2="",
+            beacon_impression_3="",
+            beacon_view_1="",
+            beacon_view_2="",
+            beacon_view_3="",
+            beacon_skip_1="",
+            beacon_skip_2="",
+            beacon_skip_3="",
+            beacon_first_quartile_1="",
+            beacon_first_quartile_2="",
+            beacon_first_quartile_3="",
+            beacon_midpoint_1="",
+            beacon_midpoint_2="",
+            beacon_midpoint_3="",
+            beacon_third_quartile_1="",
+            beacon_third_quartile_2="",
+            beacon_third_quartile_3="",
+            beacon_completed_1="",
+            beacon_completed_2="",
+            beacon_completed_3="",
+            beacon_vast_1="",
+            beacon_vast_2="",
+            beacon_vast_3="",
+            beacon_dcm_1="",
+            beacon_dcm_2="",
+            beacon_dcm_3="",
+            is_disapproved=False
         )
         return data
 
 
 class DemoAdGroup(BaseDemo):
-
     def __init__(self, **kwargs):
         super(DemoAdGroup, self).__init__(**kwargs)
         self.children = [
@@ -550,7 +584,6 @@ class DemoAdGroup(BaseDemo):
                     positive.append(item)
             targeting[t] = {"positive": positive, "negative": negative}
 
-
         data = dict(
             id=self.id,
             name=self.name,
@@ -593,7 +626,7 @@ class DemoCampaign(BaseDemo):
                         name="{} #{}".format(name, self.id),
                         parent=self)
             for i, name in enumerate(DEMO_AD_GROUPS)
-            ]
+        ]
 
     @property
     def creation_details(self):
@@ -763,7 +796,7 @@ class DemoAccount(BaseDemo):
             device=[dict(name=e, value=i + 1)
                     for i, e in enumerate(reversed(Devices))],
             location=[dict(name=e['label'], value=i + 1)
-                    for i, e in enumerate(reversed(self.location))][:6],
+                      for i, e in enumerate(reversed(self.location))][:6],
             clicks=self.clicks,
             clicks_this_week=self.clicks_this_week,
             clicks_last_week=self.clicks_last_week,
@@ -809,7 +842,7 @@ class DemoAccount(BaseDemo):
         )
         new_demo = DemoAccount()
         new_demo.set_period_proportion(filters['start_date'],
-                                   filters['end_date'])
+                                       filters['end_date'])
         charts_obj = DemoChart(new_demo, filters)
         chart_lines = charts_obj.chart_lines(new_demo, filters)
 
@@ -836,6 +869,8 @@ class DemoAccount(BaseDemo):
             interest_count=10,
             topic_count=8,
             keyword_count=8,
+            is_disapproved=False,
+            from_aw=False
         )
         return data
 
@@ -872,7 +907,6 @@ class DemoAccount(BaseDemo):
 
     @property
     def creation_details(self):
-        from aw_creation.models import AccountCreation
         from aw_reporting.demo.charts import DemoChart
 
         creative = self.creative
@@ -911,7 +945,6 @@ class DemoAccount(BaseDemo):
             goal_charts=charts_obj.chart_lines(self, filters),
         )
         return data
-
 
     @property
     def creation_details_full(self):
@@ -981,11 +1014,15 @@ class DemoAccount(BaseDemo):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
                     filter_value = float(filter_value)
-                    demo_value =  getattr(self, metric)
+                    demo_value = getattr(self, metric)
                     if is_max:
                         if demo_value > filter_value:
                             return
                     else:
                         if demo_value < filter_value:
                             return
+
+        if filters.get('from_aw', '') == '1':
+            return
+
         return True
