@@ -1164,7 +1164,10 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
