@@ -7,13 +7,15 @@ from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
-    EmailField
+    EmailField, MaxLengthValidator, EmailValidator
+from rest_framework.validators import UniqueValidator
 
 from administration.notifications import send_new_registration_email
-from payments.stripe_api.subscriptions import retrieve, is_valid
 from aw_reporting.models import Ad
 from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
-from payments.api.serializers import SubscriptionSerializer as PaymentSubscriptionSerializer
+from payments.api.serializers import \
+    SubscriptionSerializer as PaymentSubscriptionSerializer
+from payments.stripe_api.subscriptions import retrieve, is_valid
 from userprofile.models import Subscription, Plan
 
 PHONE_REGEX = RegexValidator(
@@ -33,6 +35,16 @@ class UserCreateSerializer(ModelSerializer):
     phone_number = CharField(
         max_length=15, required=True, validators=[PHONE_REGEX])
     verify_password = CharField(max_length=255, required=True)
+    email = EmailField(
+        max_length=254,
+        validators=[
+            UniqueValidator(
+                queryset=get_user_model().objects.all(),
+                message="Looks like you already have an account"
+                        " with this email address. Please try to login"),
+            MaxLengthValidator,
+            EmailValidator]
+    )
 
     class Meta:
         """
