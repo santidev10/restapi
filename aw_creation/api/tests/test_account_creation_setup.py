@@ -18,8 +18,7 @@ from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     @staticmethod
     def create_account_creation(owner, start=None, end=None, is_managed=True):
@@ -71,8 +70,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         return account_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -661,7 +659,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_account_creation(self):
         user = self.user
-        user.can_access_media_buying = False
+        self.remove_custom_user_permission(user, "view_media_buying")
         user.set_permissions_from_plan('enterprise')
         user.save()
         account = Account.objects.create(id=1, name="")

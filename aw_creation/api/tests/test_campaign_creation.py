@@ -17,8 +17,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
@@ -59,8 +58,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         return campaign_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -393,9 +391,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
         user = self.user
-        user.can_access_media_buying = False
         user.set_permissions_from_plan('enterprise')
-        user.save()
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",

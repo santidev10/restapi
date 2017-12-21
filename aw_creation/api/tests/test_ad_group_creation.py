@@ -15,8 +15,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
@@ -35,8 +34,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -291,8 +289,6 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_can_edit_ad_group(self):
         user = self.user
-        self.user.can_access_media_buying = False
-        self.user.save()
         user.set_permissions_from_plan('enterprise')
 
         today = datetime.now().date()

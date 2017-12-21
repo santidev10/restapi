@@ -1,21 +1,21 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+
 from aw_creation.models import *
-from aw_reporting.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     @staticmethod
     def create_account_creation(owner, start, end):
@@ -70,8 +70,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         return account_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -108,12 +107,12 @@ class AccountAPITestCase(AwReportingAPITestCase):
         url = reverse("aw_creation_urls:account_creation_duplicate",
                       args=(DEMO_ACCOUNT_ID,))
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -219,7 +218,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(ad_group_data.keys()),
             {
                 'id', 'updated_at', 'name', 'ad_creations',
-                'genders', 'parents', 'age_ranges', 'max_rate', 'video_ad_format',
+                'genders', 'parents', 'age_ranges', 'max_rate',
+            'video_ad_format',
                 # targeting
                 'targeting',
             }
