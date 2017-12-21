@@ -5,8 +5,10 @@ from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
+from rest_framework.serializers import CharField
 
 from segment.models.utils import count_segment_adwords_statistics
+from singledb.connector import SingleDatabaseApiConnector
 
 
 class SegmentSerializer(ModelSerializer):
@@ -14,7 +16,10 @@ class SegmentSerializer(ModelSerializer):
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
+    ids_to_create = ListField(required=False)
     statistics = SerializerMethodField()
+    title = CharField(
+        max_length=255, required=True, allow_null=False, allow_blank=False)
 
     class Meta:
         model = None
@@ -28,7 +33,8 @@ class SegmentSerializer(ModelSerializer):
                   'created_at',
                   'is_editable',
                   'ids_to_add',
-                  'ids_to_delete')
+                  'ids_to_delete',
+                  "ids_to_create")
 
     def __init__(self, *args, **kwargs):
         """
@@ -69,6 +75,7 @@ class SegmentSerializer(ModelSerializer):
         # set up related_ids
         self.ids_to_add = data.pop("ids_to_add", [])
         self.ids_to_delete = data.pop("ids_to_delete", [])
+        self.ids_to_create = data.pop("ids_to_create", [])
         segment_category = data.get("category")
         user = self.context.get("request").user
         available_categories = dict(self.Meta.model.CATEGORIES).keys()
@@ -93,6 +100,11 @@ class SegmentSerializer(ModelSerializer):
         if self.ids_to_delete or self.ids_to_add:
             segment.add_related_ids(self.ids_to_add)
             segment.delete_related_ids(self.ids_to_delete)
+        if self.ids_to_create:
+            sdb_connector = SingleDatabaseApiConnector()
+            sdb_connector.post_channels(self.ids_to_create)
+            segment.add_related_ids(self.ids_to_create)
+        if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create)):
             segment.update_statistics(segment)
             segment.sync_recommend_channels(self.ids_to_add)
         return segment

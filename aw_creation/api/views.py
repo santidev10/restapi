@@ -1,50 +1,59 @@
 # pylint: disable=import-error
-from apiclient.discovery import build
-# pylint: enable=import-error
-from django.contrib.staticfiles.templatetags.staticfiles import static
-from django.conf import settings
-from django.db import transaction
-from django.db.models import Avg, Value, Count, Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, DecimalField as AggrDecimalField, FloatField as AggrFloatField, \
-    CharField as AggrCharField
-from django.shortcuts import get_object_or_404
-from django.db.models.functions import Coalesce
-from django.http import StreamingHttpResponse, HttpResponse, Http404
-from openpyxl import load_workbook
-from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
-from utils.api_paginator import CustomPageNumberPaginator
-from rest_framework.parsers import FileUploadParser
-from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST,  HTTP_200_OK, HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_405_METHOD_NOT_ALLOWED
-from rest_framework.views import APIView
-from utils.permissions import IsAuthQueryTokenPermission
-from rest_framework.authtoken.models import Token
-from aw_creation.api.serializers import *
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, TargetingItem, default_languages
-from aw_reporting.demo import demo_view_decorator
-from aw_reporting.api.views import DATE_FORMAT
-from aw_reporting.api.serializers import CampaignListSerializer, AccountsListSerializer
-from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, dict_quartiles_to_rates, all_stats_aggregate, \
-    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
-    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, SUM_STATS, dict_add_calculated_stats, \
-    Topic, Audience, Account, AWConnection, AdGroup, \
-    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic
-from aw_reporting.adwords_api import create_customer_account, update_customer_account, handle_aw_api_errors
-from aw_reporting.excel_reports import AnalyzeWeeklyReport
-from aw_reporting.charts import DeliveryChart
-from datetime import timedelta, datetime
-from io import StringIO
-from collections import OrderedDict
-from decimal import Decimal
-import itertools
 import calendar
 import csv
-import pytz
-import logging
+import itertools
+from collections import OrderedDict
+from datetime import timedelta, datetime
+from decimal import Decimal
+from io import StringIO
+
 import isodate
+import pytz
+from apiclient.discovery import build
+from django.conf import settings
+# pylint: enable=import-error
+from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.db import transaction
+from django.db.models import Avg, Value, Case, When, Q, ExpressionWrapper, F, \
+    IntegerField as AggrIntegerField, FloatField as AggrFloatField
+from django.db.models.functions import Coalesce
+from django.http import StreamingHttpResponse, HttpResponse, Http404
+from django.shortcuts import get_object_or_404
+from openpyxl import load_workbook
+from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
+    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
+    HTTP_202_ACCEPTED, \
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, \
+    HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.views import APIView
+
+from aw_creation.api.serializers import *
+from aw_creation.email_messages import send_tracking_tags_request
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, \
+    TargetingItem, default_languages
+from aw_reporting.adwords_api import create_customer_account, \
+    update_customer_account, handle_aw_api_errors
+from aw_reporting.api.serializers import CampaignListSerializer
+from aw_reporting.api.views import DATE_FORMAT
+from aw_reporting.charts import DeliveryChart
+from aw_reporting.demo import demo_view_decorator
+from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
+    dict_quartiles_to_rates, all_stats_aggregate, \
+    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
+    AgeRanges, Devices, \
+    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, Topic, Audience, \
+    Account, AWConnection, AdGroup, \
+    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
+    TopicStatistic
+from utils.api_paginator import CustomPageNumberPaginator
+from utils.permissions import IsAuthQueryTokenPermission, \
+    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +71,7 @@ class GeoTargetListApiView(APIView):
         search = request.GET.get("search", "").strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
-        data = self.serializer_class(queryset[:100],  many=True).data
+        data = self.serializer_class(queryset[:100], many=True).data
         return Response(data=data)
 
 
@@ -92,6 +101,10 @@ class DocumentImportBaseAPIView(GenericAPIView):
                     yield cell.strip()
 
 
+DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
+                           "Also please use the UTF-8 encoding."
+
+
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
     """
     Send a post request with multipart-ford-data encoded file data
@@ -109,12 +122,16 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
         elif fct in ("text/csv", "application/vnd.ms-excel"):
             data = self.get_csv_contents(file_obj)
         else:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data={"errors": ["The MIME type isn't supported: "
-                                 "{}".format(file_obj.content_type)]})
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
         if content_type == "postal_codes":
-            response_data = self.get_location_rules(data)
+            try:
+                response_data = self.get_location_rules(data)
+            except UnicodeDecodeError:
+                return Response(
+                    status=HTTP_400_BAD_REQUEST,
+                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]},
+                )
         else:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
@@ -162,7 +179,6 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 
 
 class YoutubeVideoSearchApiView(GenericAPIView):
-
     def get(self, request, query, **_):
         video_ad_format = request.GET.get("video_ad_format")
 
@@ -172,14 +188,17 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         )
         next_page = self.request.GET.get("next_page")
 
-        items, next_token, total_result = self.search_yt_videos(youtube, query, next_page)
+        items, next_token, total_result = self.search_yt_videos(youtube, query,
+                                                                next_page)
 
         if video_ad_format == "BUMPER":
             while len(items) < 10 and next_token:
-                add_items, next_token, total_result = self.search_yt_videos(youtube, query, next_token)
+                add_items, next_token, total_result = self.search_yt_videos(
+                    youtube, query, next_token)
                 items.extend(add_items)
 
-        response = dict(next_page=next_token, items_count=total_result, items=items)
+        response = dict(next_page=next_token, items_count=total_result,
+                        items=items)
         return Response(data=response)
 
     def search_yt_videos(self, youtube, query, next_page):
@@ -197,15 +216,19 @@ class YoutubeVideoSearchApiView(GenericAPIView):
         if next_page:
             options["pageToken"] = next_page
         search_results = youtube.search().list(**options).execute()
-        ids = [i.get("id", {}).get("videoId") for i in search_results.get("items", [])]
+        ids = [i.get("id", {}).get("videoId") for i in
+               search_results.get("items", [])]
 
-        results = youtube.videos().list(part="snippet,contentDetails", id=",".join(ids)).execute()
+        results = youtube.videos().list(part="snippet,contentDetails",
+                                        id=",".join(ids)).execute()
         items = [self.format_item(i) for i in results.get("items", [])]
 
         if video_ad_format == "BUMPER":
-            items = list(filter(lambda i: i["duration"] and i["duration"] <= 6, items))
+            items = list(
+                filter(lambda i: i["duration"] and i["duration"] <= 6, items))
 
-        return items, search_results.get("nextPageToken"), search_results.get("pageInfo", {}).get("totalResults")
+        return items, search_results.get("nextPageToken"), search_results.get(
+            "pageInfo", {}).get("totalResults")
 
     @staticmethod
     def format_item(data):
@@ -226,7 +249,8 @@ class YoutubeVideoSearchApiView(GenericAPIView):
                 id=snippet.get("channelId"),
                 title=snippet.get("channelTitle"),
             ),
-            duration=isodate.parse_duration(data["contentDetails"]["duration"]).total_seconds(),
+            duration=isodate.parse_duration(
+                data["contentDetails"]["duration"]).total_seconds(),
         )
         return item
 
@@ -239,7 +263,8 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         if match:
             yt_id = match.group(1)
         else:
-            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="Wrong url format"))
+            return Response(status=HTTP_400_BAD_REQUEST,
+                            data=dict(error="Wrong url format"))
 
         video_ad_format = request.GET.get("video_ad_format")
 
@@ -255,20 +280,23 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
         results = youtube.videos().list(**options).execute()
         items = results.get("items", [])
         if not items:
-            return Response(status=HTTP_404_NOT_FOUND, data=dict(error="There is no such a video"))
+            return Response(status=HTTP_404_NOT_FOUND,
+                            data=dict(error="There is no such a video"))
 
         item = self.format_item(items[0])
-        if video_ad_format == "BUMPER" and item["duration"] and item["duration"] > 6:
+        if video_ad_format == "BUMPER" and item["duration"] and item[
+            "duration"] > 6:
             return Response(status=HTTP_404_NOT_FOUND,
-                            data=dict(error="There is no such a Bumper ads video (<= 6 seconds)"))
+                            data=dict(
+                                error="There is no such a Bumper ads video (<= 6 seconds)"))
 
         return Response(data=item)
 
 
 class ItemsFromSegmentIdsApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, segment_type, **_):
-
         method = "get_{}_item_ids".format(segment_type)
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
@@ -281,7 +309,8 @@ class ItemsFromSegmentIdsApiView(APIView):
         from segment.models import SegmentRelatedVideo
         ids = SegmentRelatedVideo.objects.filter(
             segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by("related_id").distinct()
+        ).values_list("related_id", flat=True).order_by(
+            "related_id").distinct()
         return ids
 
     @staticmethod
@@ -289,7 +318,8 @@ class ItemsFromSegmentIdsApiView(APIView):
         from segment.models import SegmentRelatedChannel
         ids = SegmentRelatedChannel.objects.filter(
             segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by("related_id").distinct()
+        ).values_list("related_id", flat=True).order_by(
+            "related_id").distinct()
         return ids
 
     @staticmethod
@@ -303,6 +333,7 @@ class ItemsFromSegmentIdsApiView(APIView):
 
 
 class TargetingItemsSearchApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, list_type, query, **_):
 
@@ -315,43 +346,41 @@ class TargetingItemsSearchApiView(APIView):
 
     @staticmethod
     def search_video_items(query):
+        words = [s.lower() for s in re.split(r'\s+', query)]
+        fields = ("video_id", "title", "thumbnail_image_url")
+        query_params = dict(fields=",".join(fields), text_search__term=words,
+                            sort="views:desc")
         connector = SingleDatabaseApiConnector()
         try:
-            response = connector.get_custom_query_result(
-                model_name="video",
-                fields=["id", "title", "thumbnail_image_url"],
-                title__icontains=query,
-                limit=50,
-            )
+            response_data = connector.get_video_list(query_params)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             items = []
         else:
             items = [
-                dict(id=i['id'], criteria=i['id'],
-                     name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response
+                dict(id=i['video_id'], criteria=i['video_id'], name=i['title'],
+                     thumbnail=i['thumbnail_image_url'])
+                for i in response_data["items"]
             ]
         return items
 
     @staticmethod
     def search_channel_items(query):
+        words = [s.lower() for s in re.split(r'\s+', query)]
+        fields = ("channel_id", "title", "thumbnail_image_url")
+        query_params = dict(fields=",".join(fields), text_search__term=words,
+                            sort="subscribers:desc")
         connector = SingleDatabaseApiConnector()
         try:
-            response = connector.get_custom_query_result(
-                model_name="channel",
-                fields=["id", "title", "thumbnail_image_url"],
-                title__icontains=query,
-                limit=50,
-            )
+            response_data = connector.get_channel_list(query_params)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
             items = []
         else:
             items = [
-                dict(id=i['id'], criteria=i['id'],
+                dict(id=i['channel_id'], criteria=i['channel_id'],
                      name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response
+                for i in response_data["items"]
             ]
         return items
 
@@ -397,7 +426,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 
 class CreationOptionsApiView(APIView):
-
     @staticmethod
     def get(request, **k):
         def opts_to_response(opts):
@@ -419,7 +447,8 @@ class CreationOptionsApiView(APIView):
             video_ad_format=[
                 dict(
                     id=i, name=n,
-                    thumbnail=request.build_absolute_uri(static("img/{}.png".format(i)))
+                    thumbnail=request.build_absolute_uri(
+                        static("img/{}.png".format(i)))
                 )
                 for i, n in AdGroupCreation.VIDEO_AD_FORMATS
             ],
@@ -460,7 +489,8 @@ class CreationOptionsApiView(APIView):
                 ).order_by('priority', 'name')
             ],
             devices=opts_to_response(CampaignCreation.DEVICES),
-            content_exclusions=opts_to_response(CampaignCreation.CONTENT_LABELS),
+            content_exclusions=opts_to_response(
+                CampaignCreation.CONTENT_LABELS),
             frequency_capping=dict(
                 event_type=opts_to_response(FrequencyCap.EVENT_TYPES),
                 level=opts_to_response(FrequencyCap.LEVELS),
@@ -512,7 +542,6 @@ class CreationOptionsApiView(APIView):
 
 @demo_view_decorator
 class AccountCreationListApiView(ListAPIView):
-
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
     annotate_sorts = dict(
@@ -527,17 +556,18 @@ class AccountCreationListApiView(ListAPIView):
         ))),
         clicks=(None, Sum("account__campaigns__clicks")),
         cost=(None, Sum("account__campaigns__cost")),
-        video_view_rate=(('video_views', 'video_impressions'), ExpressionWrapper(
-            Case(
-                When(
-                    video_views__isnull=False,
-                    video_impressions__gt=0,
-                    then=F("video_views") * 1.0 / F("video_impressions"),
+        video_view_rate=(
+            ('video_views', 'video_impressions'), ExpressionWrapper(
+                Case(
+                    When(
+                        video_views__isnull=False,
+                        video_impressions__gt=0,
+                        then=F("video_views") * 1.0 / F("video_impressions"),
+                    ),
+                    output_field=AggrFloatField()
                 ),
                 output_field=AggrFloatField()
-            ),
-            output_field=AggrFloatField()
-        )),
+            )),
         ctr_v=(('clicks', 'video_views'), ExpressionWrapper(
             Case(
                 When(
@@ -548,7 +578,17 @@ class AccountCreationListApiView(ListAPIView):
                 output_field=AggrFloatField()
             ),
             output_field=AggrFloatField()
-        ))
+        )),
+        name=(
+            None,
+            Case(
+                When(
+                    is_managed=True,
+                    then=F("name")
+                ),
+                default=F("account__name"),
+            )
+        ),
     )
 
     def get(self, request, *args, **kwargs):
@@ -571,7 +611,8 @@ class AccountCreationListApiView(ListAPIView):
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
 
-        return super(AccountCreationListApiView, self).get(request, *args, **kwargs)
+        return super(AccountCreationListApiView, self).get(request, *args,
+                                                           **kwargs)
 
     def get_queryset(self, **filters):
         queryset = AccountCreation.objects.filter(
@@ -583,12 +624,17 @@ class AccountCreationListApiView(ListAPIView):
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]
             if dependencies:
-                queryset = queryset.annotate(**{d: self.annotate_sorts[d][1] for d in dependencies})
+                queryset = queryset.annotate(
+                    **{d: self.annotate_sorts[d][1] for d in dependencies})
 
-            queryset = queryset.annotate(sort_by=Coalesce(annotate, 0))
-            sort_by = "-sort_by"
+            if sort_by == "name":
+                sort_by = "sort_by"
+            else:
+                annotate = Coalesce(annotate, 0)
+                sort_by = "-sort_by"
 
-        elif sort_by != "name":
+            queryset = queryset.annotate(sort_by=annotate)
+        else:
             sort_by = "-created_at"
 
         return queryset.order_by('is_ended', sort_by)
@@ -599,33 +645,39 @@ class AccountCreationListApiView(ListAPIView):
         search = filters.get('search')
         if search:
             queryset = queryset.filter(Q(name__icontains=search) |
-                                       (Q(is_managed=False) & Q(account__name__icontains=search)))
+                                       (Q(is_managed=False) & Q(
+                                           account__name__icontains=search)))
 
         min_campaigns_count = filters.get('min_campaigns_count')
         max_campaigns_count = filters.get('max_campaigns_count')
         if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(campaign_creations_count=Count("campaign_creations", distinct=True))
+            queryset = queryset.annotate(
+                campaign_creations_count=Count("campaign_creations",
+                                               distinct=True))
 
             queryset = queryset.annotate(campaigns_count=Case(
-                    When(
-                        campaign_creations_count=0,
-                        then=Count("account__campaigns", distinct=True),
-                    ),
-                    default="campaign_creations_count",
-                    output_field=AggrIntegerField(),
+                When(
+                    campaign_creations_count=0,
+                    then=Count("account__campaigns", distinct=True),
                 ),
+                default="campaign_creations_count",
+                output_field=AggrIntegerField(),
+            ),
             )
 
             if min_campaigns_count:
-                queryset = queryset.filter(campaigns_count__gte=min_campaigns_count)
+                queryset = queryset.filter(
+                    campaigns_count__gte=min_campaigns_count)
             if max_campaigns_count:
-                queryset = queryset.filter(campaigns_count__lte=max_campaigns_count)
+                queryset = queryset.filter(
+                    campaigns_count__lte=max_campaigns_count)
 
         min_start = filters.get('min_start')
         max_start = filters.get('max_start')
         if min_start or max_start:
-            queryset = queryset.annotate(start=Coalesce(Min("campaign_creations__start"),
-                                                        Min("account__campaigns__start_date")))
+            queryset = queryset.annotate(
+                start=Coalesce(Min("campaign_creations__start"),
+                               Min("account__campaigns__start_date")))
             if min_start:
                 queryset = queryset.filter(start__gte=min_start)
             if max_start:
@@ -634,41 +686,54 @@ class AccountCreationListApiView(ListAPIView):
         min_end = filters.get('min_end')
         max_end = filters.get('max_end')
         if min_end or max_end:
-            queryset = queryset.annotate(end=Coalesce(Max("campaign_creations__end"),
-                                                      Max("account__campaigns__end_date")))
+            queryset = queryset.annotate(
+                end=Coalesce(Max("campaign_creations__end"),
+                             Max("account__campaigns__end_date")))
             if min_end:
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get('status')
         if status:
-            if status == "From AdWords":
-                queryset = queryset.filter(is_managed=False)
-            elif status == "Ended":
+            if status == "Ended":
                 queryset = queryset.filter(is_ended=True, is_managed=True)
             elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_managed=True, is_ended=False)
+                queryset = queryset.filter(is_paused=True, is_managed=True,
+                                           is_ended=False)
             elif status == "Running":
-                queryset = queryset.filter(sync_at__isnull=False, is_managed=True,
-                                           is_paused=False, is_ended=False)
+                running_filter = Q(sync_at__isnull=False, is_managed=True,
+                                   is_paused=False, is_ended=False) | \
+                                 Q(is_managed=False)
+                queryset = queryset.filter(running_filter)
             elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_managed=True, sync_at__isnull=True,
+                queryset = queryset.filter(is_approved=True, is_managed=True,
+                                           sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
             elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_managed=True, sync_at__isnull=True,
+                queryset = queryset.filter(is_approved=False, is_managed=True,
+                                           sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
+
+        if 'from_aw' in filters:
+            from_aw = filters.get('from_aw') == '1'
+            queryset = queryset.filter(is_managed=not from_aw)
 
         annotates = {}
         second_annotates = {}
         having = {}
-        for metric in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
+        for metric in (
+                "impressions", "video_views", "clicks", "cost",
+                "video_view_rate",
+                "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
                     if metric in BASE_STATS:
                         annotate_key = "sum_{}".format(metric)
-                        annotates[annotate_key] = Sum("account__campaigns__{}".format(metric))
-                        having["{}__{}".format(annotate_key, "lte" if is_max else "gte")] = filter_value
+                        annotates[annotate_key] = Sum(
+                            "account__campaigns__{}".format(metric))
+                        having["{}__{}".format(annotate_key,
+                                               "lte" if is_max else "gte")] = filter_value
                     elif metric == "video_view_rate":
                         annotates['video_impressions'] = Sum(
                             Case(
@@ -679,16 +744,19 @@ class AccountCreationListApiView(ListAPIView):
                                 output_field=AggrIntegerField()
                             )
                         )
-                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        annotates['sum_video_views'] = Sum(
+                            "account__campaigns__video_views")
                         second_annotates[metric] = Case(
                             When(
                                 sum_video_views__isnull=False,
                                 video_impressions__gt=0,
-                                then=F("sum_video_views") * 100. / F("video_impressions"),
+                                then=F("sum_video_views") * 100. / F(
+                                    "video_impressions"),
                             ),
                             output_field=AggrFloatField()
                         )
-                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+                        having["{}__{}".format(metric,
+                                               "lte" if is_max else "gte")] = filter_value
                     elif metric == "ctr_v":
                         annotates['video_clicks'] = Sum(
                             Case(
@@ -699,16 +767,19 @@ class AccountCreationListApiView(ListAPIView):
                                 output_field=AggrIntegerField()
                             )
                         )
-                        annotates['sum_video_views'] = Sum("account__campaigns__video_views")
+                        annotates['sum_video_views'] = Sum(
+                            "account__campaigns__video_views")
                         second_annotates[metric] = Case(
                             When(
                                 video_clicks__isnull=False,
                                 sum_video_views__gt=0,
-                                then=F("video_clicks") * 100. / F("sum_video_views"),
+                                then=F("video_clicks") * 100. / F(
+                                    "sum_video_views"),
                             ),
                             output_field=AggrFloatField()
                         )
-                        having["{}__{}".format(metric, "lte" if is_max else "gte")] = filter_value
+                        having["{}__{}".format(metric,
+                                               "lte" if is_max else "gte")] = filter_value
         if annotates:
             queryset = queryset.annotate(**annotates)
         if second_annotates:
@@ -719,11 +790,13 @@ class AccountCreationListApiView(ListAPIView):
         return queryset
 
     def post(self, *a, **_):
-        account_count = AccountCreation.objects.filter(owner=self.request.user).count()
+        account_count = AccountCreation.objects.filter(
+            owner=self.request.user).count()
 
         with transaction.atomic():
             account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1), owner=self.request.user,
+                name="Account {}".format(account_count + 1),
+                owner=self.request.user,
             )
             campaign_creation = CampaignCreation.objects.create(
                 name="Campaign 1",
@@ -737,7 +810,8 @@ class AccountCreationListApiView(ListAPIView):
                 name="Ad 1",
                 ad_group_creation=ad_group_creation,
             )
-            AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)  # do not show it in the list
+            AccountCreation.objects.filter(id=account_creation.id).update(
+                is_deleted=True)  # do not show it in the list
 
         for language in default_languages():
             campaign_creation.languages.add(language)
@@ -748,7 +822,6 @@ class AccountCreationListApiView(ListAPIView):
 
 @demo_view_decorator
 class AccountCreationDetailsApiView(RetrieveAPIView):
-
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
         queryset = AccountCreation.objects.filter(owner=self.request.user)
@@ -762,11 +835,15 @@ class AccountCreationDetailsApiView(RetrieveAPIView):
 
 @demo_view_decorator
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
-
     serializer_class = AccountCreationSetupSerializer
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)
+        queryset = AccountCreation.objects.filter(owner=self.request.user,
+                                                  is_managed=True)
         return queryset
 
     @staticmethod
@@ -774,7 +851,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 
         aw_id = create_customer_account(
             mcc_account.id, connection.refresh_token,
-            account_creation.name, mcc_account.currency_code, mcc_account.timezone,
+            account_creation.name, mcc_account.currency_code,
+            mcc_account.timezone,
         )
         # save to db
         customer = Account.objects.create(
@@ -802,25 +880,36 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                     for c in instance.campaign_creations.all():
                         if c.start and c.start < today or c.end and c.end < today:
                             return Response(status=HTTP_400_BAD_REQUEST,
-                                            data=dict(error="The dates cannot be in the past: {}".format(c.name)))
+                                            data=dict(
+                                                error="The dates cannot be in the past: {}".format(
+                                                    c.name)))
 
-                    mcc_account = Account.user_mcc_objects(request.user).first()
+                    mcc_account = Account.user_mcc_objects(
+                        request.user).first()
                     if mcc_account:
                         connection = AWConnection.objects.filter(
                             mcc_permissions__account=mcc_account,
                             user_relations__user=request.user,
                         ).first()
-                        _, error = handle_aw_api_errors(self.account_creation, instance, mcc_account, connection)
+                        _, error = handle_aw_api_errors(self.account_creation,
+                                                        instance, mcc_account,
+                                                        connection)
                         if error:
-                            return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
+                            return Response(status=HTTP_400_BAD_REQUEST,
+                                            data=dict(error=error))
                     else:
                         return Response(status=HTTP_400_BAD_REQUEST,
-                                        data=dict(error="You have no connected MCC account"))
+                                        data=dict(
+                                            error="You have no connected MCC account"))
+
+                send_tracking_tags_request(request.user, instance)
 
             elif instance.account:
-                return Response(status=HTTP_400_BAD_REQUEST, data=dict(error="You cannot disapprove a running account"))
+                return Response(status=HTTP_400_BAD_REQUEST, data=dict(
+                    error="You cannot disapprove a running account"))
 
-        if "name" in data and data['name'] != instance.name and instance.account:
+        if "name" in data and data[
+            'name'] != instance.name and instance.account:
             connections = AWConnection.objects.filter(
                 mcc_permissions__account=instance.account.managers.all(),
                 user_relations__user=request.user,
@@ -834,7 +923,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                     instance.account.id, data['name'],
                 )
                 if error:
-                    return Response(status=HTTP_400_BAD_REQUEST, data=dict(error=error))
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data=dict(error=error))
 
         serializer = AccountCreationUpdateSerializer(
             instance, data=request.data, partial=partial
@@ -847,7 +937,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         instance = self.get_object()
         if instance.account is not None:
             return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete approved setups"))
+                            data=dict(
+                                error="You cannot delete approved setups"))
         AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
         return Response(status=HTTP_204_NO_CONTENT)
 
@@ -855,6 +946,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -906,6 +998,10 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -917,10 +1013,12 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     def delete(self, *args, **_):
         instance = self.get_object()
 
-        campaigns_count = self.get_queryset().filter(account_creation=instance.account_creation).count()
+        campaigns_count = self.get_queryset().filter(
+            account_creation=instance.account_creation).count()
         if campaigns_count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(error="You cannot delete the only campaign"))
+                            data=dict(
+                                error="You cannot delete the only campaign"))
         instance.is_deleted = True
         instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -1027,6 +1125,7 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class AdGroupCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1065,6 +1164,10 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -1084,7 +1187,8 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def delete(self, *args, **_):
         instance = self.get_object()
-        count = self.get_queryset().filter(campaign_creation=instance.campaign_creation).count()
+        count = self.get_queryset().filter(
+            campaign_creation=instance.campaign_creation).count()
         if count < 2:
             return Response(status=HTTP_400_BAD_REQUEST,
                             data=dict(error="You cannot delete the only item"))
@@ -1096,6 +1200,7 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 @demo_view_decorator
 class AdCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1109,7 +1214,8 @@ class AdCreationListSetupApiView(ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         try:
             ad_group_creation = AdGroupCreation.objects.get(
-                pk=kwargs.get("pk"), campaign_creation__account_creation__owner=request.user
+                pk=kwargs.get("pk"),
+                campaign_creation__account_creation__owner=request.user
             )
         except AdGroupCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
@@ -1130,6 +1236,10 @@ class AdCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
@@ -1144,14 +1254,17 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         data = request.data
 
         # validate video ad format and video duration
-        video_ad_format = data.get("video_ad_format") or instance.ad_group_creation.video_ad_format
+        video_ad_format = data.get(
+            "video_ad_format") or instance.ad_group_creation.video_ad_format
         if video_ad_format == AdGroupCreation.BUMPER_AD:
             # data is get from multipart form data, all values are strings
             video_duration = data.get("video_duration")
-            video_duration = instance.video_duration if video_duration is None else float(video_duration)
+            video_duration = instance.video_duration if video_duration is None else float(
+                video_duration)
             if video_duration > 6:
-                return Response(dict(error="Bumper ads video must be 6 seconds or less"),
-                                status=HTTP_400_BAD_REQUEST)
+                return Response(
+                    dict(error="Bumper ads video must be 6 seconds or less"),
+                    status=HTTP_400_BAD_REQUEST)
 
         if "video_ad_format" in data:
             set_ad_format = data["video_ad_format"]
@@ -1162,38 +1275,50 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                 # ad group restrictions
                 if ad_group_creation.is_pulled_to_aw:
                     return Response(
-                        dict(error="{} is the only available ad type for this ad group".format(video_ad_format)),
+                        dict(
+                            error="{} is the only available ad type for this ad group".format(
+                                video_ad_format)),
                         status=HTTP_400_BAD_REQUEST,
                     )
 
-                if ad_group_creation.ad_creations.filter(is_deleted=False).count() > 1:
-                    return Response(dict(error="Ad type cannot be changed for only one ad within an ad group"),
-                                    status=HTTP_400_BAD_REQUEST)
+                if ad_group_creation.ad_creations.filter(
+                        is_deleted=False).count() > 1:
+                    return Response(dict(
+                        error="Ad type cannot be changed for only one ad within an ad group"),
+                        status=HTTP_400_BAD_REQUEST)
 
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
                         campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
                     set_bid_strategy = CampaignCreation.CPM_STRATEGY
-                elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.DISCOVERY_TYPE) and \
+                elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE,
+                                       AdGroupCreation.DISCOVERY_TYPE) and \
                         campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
                     set_bid_strategy = CampaignCreation.CPV_STRATEGY
 
                 if set_bid_strategy:
                     if campaign_creation.is_pulled_to_aw:
                         return Response(
-                            dict(error="You cannot use an ad of {} type in this campaign".format(set_bid_strategy)),
+                            dict(
+                                error="You cannot use an ad of {} type in this campaign".format(
+                                    set_bid_strategy)),
                             status=HTTP_400_BAD_REQUEST,
                         )
 
-                    if AdCreation.objects.filter(ad_group_creation__campaign_creation=campaign_creation).count() > 1:
-                        return Response(dict(error="Ad bid type cannot be changed for only one ad within a campaign"),
-                                        status=HTTP_400_BAD_REQUEST)
+                    if AdCreation.objects.filter(
+                            ad_group_creation__campaign_creation=campaign_creation).count() > 1:
+                        return Response(dict(
+                            error="Ad bid type cannot be changed for only one ad within a campaign"),
+                            status=HTTP_400_BAD_REQUEST)
 
-                    CampaignCreation.objects.filter(id=campaign_creation.id).update(bid_strategy_type=set_bid_strategy)
+                    CampaignCreation.objects.filter(
+                        id=campaign_creation.id).update(
+                        bid_strategy_type=set_bid_strategy)
                     campaign_creation.bid_strategy_type = set_bid_strategy
 
-                AdGroupCreation.objects.filter(id=ad_group_creation.id).update(video_ad_format=set_ad_format)
+                AdGroupCreation.objects.filter(id=ad_group_creation.id).update(
+                    video_ad_format=set_ad_format)
                 ad_group_creation.video_ad_format = set_ad_format
 
         serializer = AdCreationUpdateSerializer(
@@ -1206,9 +1331,11 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
     def delete(self, *args, **_):
         instance = self.get_object()
 
-        count = self.get_queryset().filter(ad_group_creation=instance.ad_group_creation).count()
+        count = self.get_queryset().filter(
+            ad_group_creation=instance.ad_group_creation).count()
         if count < 2:
-            return Response(dict(error="You cannot delete the only item"), status=HTTP_400_BAD_REQUEST)
+            return Response(dict(error="You cannot delete the only item"),
+                            status=HTTP_400_BAD_REQUEST)
         instance.is_deleted = True
         instance.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -1216,6 +1343,7 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 
 @demo_view_decorator
 class AdCreationAvailableAdFormatsApiView(APIView):
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, pk, **_):
         try:
@@ -1223,31 +1351,49 @@ class AdCreationAvailableAdFormatsApiView(APIView):
         except AdCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        return Response(ad_creation.ad_group_creation.get_available_ad_formats())
+        return Response(
+            ad_creation.ad_group_creation.get_available_ad_formats())
 
 
 @demo_view_decorator
 class AccountCreationDuplicateApiView(APIView):
     serializer_class = AccountCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     account_fields = ("is_paused", "is_ended")
     campaign_fields = (
-        "name", "start", "end", "budget", "devices_raw", "delivery_method", "type", "bid_strategy_type",
+        "name", "start", "end", "budget", "devices_raw", "delivery_method",
+        "type", "bid_strategy_type",
         "video_networks_raw", "content_exclusions_raw",
     )
     loc_rules_fields = (
-        "geo_target", "latitude", "longitude", "radius", "radius_units", "bid_modifier",
+        "geo_target", "latitude", "longitude", "radius", "radius_units",
+        "bid_modifier",
     )
     freq_cap_fields = ("event_type", "level", "limit", "time_unit")
     ad_schedule_fields = (
         "day", "from_hour", "from_minute", "to_hour", "to_minute",
     )
     ad_group_fields = (
-        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw", "video_ad_format",
+        "name", "max_rate", "genders_raw", "parents_raw", "age_ranges_raw",
+        "video_ad_format",
     )
     ad_fields = (
-        "name", "video_url", "display_url", "final_url", "tracking_template", "custom_params", 'companion_banner',
-        'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
+        "name", "video_url", "display_url", "final_url", "tracking_template",
+        "custom_params", 'companion_banner',
+        'video_id', 'video_title', 'video_description', 'video_thumbnail',
+        'video_channel_title', 'video_duration',
+        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+        "beacon_view_1", "beacon_view_2", "beacon_view_3",
+        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+        "beacon_first_quartile_1", "beacon_first_quartile_2",
+        "beacon_first_quartile_3",
+        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+        "beacon_third_quartile_1", "beacon_third_quartile_2",
+        "beacon_third_quartile_3",
+        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
@@ -1266,7 +1412,8 @@ class AccountCreationDuplicateApiView(APIView):
 
         bulk_items = defaultdict(list)
         with transaction.atomic():
-            duplicate = self.duplicate_item(instance, bulk_items, request.GET.get("to"))
+            duplicate = self.duplicate_item(instance, bulk_items,
+                                            request.GET.get("to"))
             self.insert_bulk_items(bulk_items)
 
         response = self.serializer_class(duplicate).data
@@ -1275,15 +1422,19 @@ class AccountCreationDuplicateApiView(APIView):
     def duplicate_item(self, item, bulk_items, to_parent):
         if isinstance(item, AccountCreation):
             return self.duplicate_account(item, bulk_items,
-                                          all_names=self.get_queryset().values_list("name", flat=True))
+                                          all_names=self.get_queryset().values_list(
+                                              "name", flat=True))
         elif isinstance(item, CampaignCreation):
             parent = item.account_creation
             return self.duplicate_campaign(parent, item, bulk_items,
-                                           all_names=parent.campaign_creations.values_list("name", flat=True))
+                                           all_names=parent.campaign_creations.values_list(
+                                               "name", flat=True))
         elif isinstance(item, AdGroupCreation):
             if to_parent:
                 try:
-                    parent = CampaignCreation.objects.filter(account_creation__owner=self.request.user).get(pk=to_parent)
+                    parent = CampaignCreation.objects.filter(
+                        account_creation__owner=self.request.user).get(
+                        pk=to_parent)
                 except CampaignCreation.DoesNotExist:
                     raise Http404
             else:
@@ -1291,7 +1442,8 @@ class AccountCreationDuplicateApiView(APIView):
 
             return self.duplicate_ad_group(
                 parent, item, bulk_items,
-                all_names=None if to_parent else parent.ad_group_creations.values_list("name", flat=True),
+                all_names=None if to_parent else parent.ad_group_creations.values_list(
+                    "name", flat=True),
             )
         elif isinstance(item, AdCreation):
             if to_parent:
@@ -1305,10 +1457,12 @@ class AccountCreationDuplicateApiView(APIView):
                 parent = item.ad_group_creation
             return self.duplicate_ad(
                 parent, item, bulk_items,
-                all_names=None if to_parent else parent.ad_creations.values_list("name", flat=True),
+                all_names=None if to_parent else parent.ad_creations.values_list(
+                    "name", flat=True),
             )
         else:
-            raise NotImplementedError("Unknown item type: {}".format(type(item)))
+            raise NotImplementedError(
+                "Unknown item type: {}".format(type(item)))
 
     def duplicate_account(self, account, bulk_items, all_names):
         account_data = dict(
@@ -1324,7 +1478,8 @@ class AccountCreationDuplicateApiView(APIView):
 
         return acc_duplicate
 
-    def duplicate_campaign(self, account, campaign, bulk_items, all_names=None):
+    def duplicate_campaign(self, account, campaign, bulk_items,
+                           all_names=None):
         camp_data = {f: getattr(campaign, f) for f in self.campaign_fields}
         c_duplicate = CampaignCreation.objects.create(
             account_creation=account, **camp_data
@@ -1336,7 +1491,8 @@ class AccountCreationDuplicateApiView(APIView):
         language_through = CampaignCreation.languages.through
         for lid in campaign.languages.values_list('id', flat=True):
             bulk_items['languages'].append(
-                language_through(campaigncreation_id=c_duplicate.id, language_id=lid)
+                language_through(campaigncreation_id=c_duplicate.id,
+                                 language_id=lid)
             )
 
         for r in campaign.location_rules.all():
@@ -1368,7 +1524,8 @@ class AccountCreationDuplicateApiView(APIView):
 
         return c_duplicate
 
-    def duplicate_ad_group(self, campaign, ad_group, bulk_items, all_names=None):
+    def duplicate_ad_group(self, campaign, ad_group, bulk_items,
+                           all_names=None):
         a_duplicate = AdGroupCreation.objects.create(
             campaign_creation=campaign,
             **{f: getattr(ad_group, f) for f in self.ad_group_fields}
@@ -1391,12 +1548,17 @@ class AccountCreationDuplicateApiView(APIView):
         return a_duplicate
 
     def duplicate_ad(self, ad_group, ad, *_, all_names=None):
-        ad_duplicate = AdCreation.objects.create(
-            ad_group_creation=ad_group,
-            **{f: getattr(ad, f) for f in self.ad_fields}
-        )
+        tag_field_names = AdCreation.tag_field_names
+        data = {}
+        for f in self.ad_fields:
+            data[f] = getattr(ad, f)
+            if f in tag_field_names and getattr(ad, f):
+                data["{}_changed".format(f)] = True
+        ad_duplicate = AdCreation.objects.create(ad_group_creation=ad_group,
+                                                 **data)
         if all_names:
-            ad_duplicate.name = self.increment_name(ad_duplicate.name, all_names)
+            ad_duplicate.name = self.increment_name(ad_duplicate.name,
+                                                    all_names)
             ad_duplicate.save()
         return ad_duplicate
 
@@ -1430,7 +1592,8 @@ class AccountCreationDuplicateApiView(APIView):
     @staticmethod
     def insert_bulk_items(bulk_items):
         if bulk_items['languages']:
-            CampaignCreation.languages.through.objects.bulk_create(bulk_items['languages'])
+            CampaignCreation.languages.through.objects.bulk_create(
+                bulk_items['languages'])
 
         if bulk_items['location_rules']:
             LocationRule.objects.bulk_create(bulk_items['location_rules'])
@@ -1448,6 +1611,7 @@ class AccountCreationDuplicateApiView(APIView):
 @demo_view_decorator
 class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = CampaignCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -1459,6 +1623,7 @@ class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
 @demo_view_decorator
 class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = AdGroupCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -1470,6 +1635,7 @@ class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
 @demo_view_decorator
 class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
@@ -1481,7 +1647,6 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
-
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = Campaign.objects.filter(
@@ -1492,7 +1657,9 @@ class PerformanceAccountCampaignsListApiView(APIView):
 
     def get(self, request, pk, **kwargs):
         try:
-            account_creation = AccountCreation.objects.get(pk=pk, is_deleted=False, owner=self.request.user)
+            account_creation = AccountCreation.objects.get(pk=pk,
+                                                           is_deleted=False,
+                                                           owner=self.request.user)
         except AccountCreation.DoesNotExist:
             campaign_creation_ids = set()
         else:
@@ -1503,13 +1670,13 @@ class PerformanceAccountCampaignsListApiView(APIView):
             )
 
         queryset = self.get_queryset()
-        serializer = CampaignListSerializer(queryset, many=True, campaign_creation_ids=campaign_creation_ids)
+        serializer = CampaignListSerializer(queryset, many=True,
+                                            campaign_creation_ids=campaign_creation_ids)
         return Response(serializer.data)
 
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
-
     def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
@@ -1532,7 +1699,8 @@ class PerformanceAccountDetailsApiView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data = AccountCreationListSerializer(account_creation).data  # header data
+        data = AccountCreationListSerializer(
+            account_creation).data  # header data
         data['details'] = self.get_details_data(account_creation)
         data['overview'] = self.get_overview_data(account_creation)
         return Response(data=data)
@@ -1561,15 +1729,18 @@ class PerformanceAccountDetailsApiView(APIView):
         annotate = dict(v=Sum('cost'))
         gender = GenderStatistic.objects.filter(**fs).values(
             'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+                  gender]
 
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+               age]
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+                  device]
 
         location = CityStatistic.objects.filter(**fs).values(
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
@@ -1578,7 +1749,8 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
 
         # this and last week base stats
-        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_end = datetime.now(
+            tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)
@@ -1598,7 +1770,8 @@ class PerformanceAccountDetailsApiView(APIView):
                               ("last", prev_week_start, prev_week_end))
             for s in BASE_STATS
         }
-        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(**annotate)
+        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            **annotate)
         data.update(weeks_stats)
 
         # top and bottom rates
@@ -1619,7 +1792,8 @@ class PerformanceAccountDetailsApiView(APIView):
                     When(
                         clicks__sum__isnull=False,
                         impressions__sum__gt=0,
-                        then=F("clicks__sum") * Value(100.0) / F("impressions__sum"),
+                        then=F("clicks__sum") * Value(100.0) / F(
+                            "impressions__sum"),
                     ),
                     output_field=AggrFloatField()
                 ),
@@ -1630,7 +1804,8 @@ class PerformanceAccountDetailsApiView(APIView):
                     When(
                         clicks__sum__isnull=False,
                         video_views__sum__gt=0,
-                        then=F("clicks__sum") * Value(100.0) / F("video_views__sum"),
+                        then=F("clicks__sum") * Value(100.0) / F(
+                            "video_views__sum"),
                     ),
                     output_field=AggrFloatField()
                 ),
@@ -1641,7 +1816,8 @@ class PerformanceAccountDetailsApiView(APIView):
                     When(
                         video_views__sum__isnull=False,
                         impressions__sum__gt=0,
-                        then=F("video_views__sum") * Value(100.0) / F("impressions__sum"),
+                        then=F("video_views__sum") * Value(100.0) / F(
+                            "impressions__sum"),
                     ),
                     output_field=AggrFloatField()
                 ),
@@ -1649,7 +1825,8 @@ class PerformanceAccountDetailsApiView(APIView):
             ),
         )
         fields = tuple(annotate.keys())
-        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values("date").order_by("date").annotate(
+        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values(
+            "date").order_by("date").annotate(
             *[Sum(s) for s in BASE_STATS]
         ).annotate(**annotate).aggregate(
             **{"{}_{}".format(s, n): a(s)
@@ -1685,12 +1862,8 @@ class PerformanceAccountDetailsApiView(APIView):
             ids = [i['creative_id'] for i in creative]
             creative = []
             try:
-                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                channel_info = SingleDatabaseApiConnector().get_videos_base_info(
+                    ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.critical(e)
             else:
@@ -1709,15 +1882,18 @@ class PerformanceAccountDetailsApiView(APIView):
         # second section
         gender = GenderStatistic.objects.filter(**fs).values(
             'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in gender]
+        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+                  gender]
 
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in age]
+        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+               age]
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in device]
+        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+                  device]
         data.update(gender=gender, age=age, device=device)
 
         # third section
@@ -1783,7 +1959,8 @@ class PerformanceChartApiView(APIView):
 
     def post(self, request, pk, **_):
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=request.user).get(
+                pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
@@ -1824,7 +2001,8 @@ class PerformanceChartItemsApiView(APIView):
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get('dimension')
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=request.user).get(
+                pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
@@ -1853,7 +2031,8 @@ class PerformanceExportApiView(APIView):
 
     def post(self, request, pk, **_):
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=request.user).get(
+                pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
@@ -1865,7 +2044,7 @@ class PerformanceExportApiView(APIView):
     file_name = "{title}-analyze-{timestamp}.csv"
 
     column_names = (
-        "", "Name",  "Impressions", "Views",  "Cost", "Average cpm",
+        "", "Name", "Impressions", "Views", "Cost", "Average cpm",
         "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
         "25%", "50%", "75%", "100%",
     )
@@ -1952,7 +2131,8 @@ class PerformanceExportApiView(APIView):
             )
             items = chart.get_items()
             for data in items['items']:
-                yield [dimension.capitalize()] + [data[n] for n in self.column_keys]
+                yield [dimension.capitalize()] + [data[n] for n in
+                                                  self.column_keys]
 
 
 @demo_view_decorator
@@ -1975,7 +2155,8 @@ class PerformanceExportWeeklyReport(APIView):
 
     def post(self, request, pk, **_):
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=request.user).get(
+                pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
@@ -1986,8 +2167,9 @@ class PerformanceExportWeeklyReport(APIView):
             report.get_content(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
-            'Report {}.xlsx"'.format(
+        response[
+            'Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
+                                     'Report {}.xlsx"'.format(
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
@@ -1995,9 +2177,9 @@ class PerformanceExportWeeklyReport(APIView):
 
 
 class PerformanceTargetingListAPIView(AccountCreationListApiView):
-
     def get_queryset(self, **filters):
-        queryset = super(PerformanceTargetingListAPIView, self).get_queryset(**filters)
+        queryset = super(PerformanceTargetingListAPIView, self).get_queryset(
+            **filters)
         queryset = queryset.annotate(
             sum_cost=Sum("account__campaigns__cost"),
         ).filter(sum_cost__gt=0)
@@ -2021,7 +2203,6 @@ class PerformanceTargetingDetailsAPIView(RetrieveAPIView):
 
 @demo_view_decorator
 class PerformanceTargetingFiltersAPIView(APIView):
-
     def get_queryset(self):
         return AccountCreation.objects.filter(owner=self.request.user)
 
@@ -2089,7 +2270,8 @@ class PerformanceTargetingFiltersAPIView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        dates = AdGroupStatistic.objects.filter(ad_group__campaign__account=item.account).aggregate(
+        dates = AdGroupStatistic.objects.filter(
+            ad_group__campaign__account=item.account).aggregate(
             min_date=Min("date"), max_date=Max("date"),
         )
         filters = self.get_static_filters()
@@ -2101,11 +2283,11 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
 @demo_view_decorator
 class PerformanceTargetingReportAPIView(APIView):
-
     def get_object(self):
         pk = self.kwargs["pk"]
         try:
-            item = AccountCreation.objects.filter(owner=self.request.user).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=self.request.user).get(
+                pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
         else:
@@ -2128,12 +2310,15 @@ class PerformanceTargetingReportAPIView(APIView):
         )
         data = self.request.data
         if data.get("ad_groups"):
-            queryset = queryset.filter(ad_group_creation__ad_group_id__in=data["ad_groups"])
+            queryset = queryset.filter(
+                ad_group_creation__ad_group_id__in=data["ad_groups"])
         if data.get("campaigns"):
-            queryset = queryset.filter(ad_group_creation__ad_group__campaign_id__in=data["campaigns"])
+            queryset = queryset.filter(
+                ad_group_creation__ad_group__campaign_id__in=data["campaigns"])
 
         items = defaultdict(lambda: defaultdict(set))
-        for e in queryset.values("type", "criteria", "ad_group_creation__ad_group_id"):
+        for e in queryset.values("type", "criteria",
+                                 "ad_group_creation__ad_group_id"):
             items[
                 e["type"]
             ][
@@ -2145,7 +2330,9 @@ class PerformanceTargetingReportAPIView(APIView):
 
     def post(self, request, **_):
         item = self.get_object()
-        group_by, targeting = request.data.get("group_by", ""), request.data.get("targeting", [])
+        group_by, targeting = request.data.get("group_by",
+                                               ""), request.data.get(
+            "targeting", [])
         items = self.get_items(targeting, item.account)
         negative_items = self.get_negative_targeting_items(targeting, item)
 
@@ -2155,8 +2342,10 @@ class PerformanceTargetingReportAPIView(APIView):
             for i in items:
                 uid = (i["campaign"]["name"], i["campaign"]["id"])
                 items_by_campaign[uid].append(i)
-            items_by_campaign = [dict(label=k[0], id=k[1], items=v) for k, v in items_by_campaign.items()]
-            reports.extend(sorted(items_by_campaign, key=lambda el: el["label"]))
+            items_by_campaign = [dict(label=k[0], id=k[1], items=v) for k, v in
+                                 items_by_campaign.items()]
+            reports.extend(
+                sorted(items_by_campaign, key=lambda el: el["label"]))
         else:
             reports.append(dict(label="All campaigns", items=items, id=None))
 
@@ -2175,7 +2364,8 @@ class PerformanceTargetingReportAPIView(APIView):
                 # add status field
                 targeting_type = i["targeting"].lower()[:-1]
                 ad_group_id = i["ad_group"]["id"]
-                i["is_negative"] = str(i["item"]["id"]) in negative_items[targeting_type][ad_group_id]
+                i["is_negative"] = str(i["item"]["id"]) in \
+                                   negative_items[targeting_type][ad_group_id]
 
             dict_calculate_stats(summary)
             del summary['video_impressions']
@@ -2236,15 +2426,18 @@ class PerformanceTargetingReportAPIView(APIView):
         sum_clicks=Sum("clicks"),
         sum_cost=Sum("cost"),
     )
-    _values = ("ad_group__id", "ad_group__name", "ad_group__campaign__id", "ad_group__campaign__name",
+    _values = ("ad_group__id", "ad_group__name", "ad_group__campaign__id",
+               "ad_group__campaign__name",
                "ad_group__campaign__status")
 
     @staticmethod
     def _set_group_and_campaign_fields(el):
         el["ad_group"] = dict(id=el['ad_group__id'], name=el['ad_group__name'])
-        el["campaign"] = dict(id=el['ad_group__campaign__id'], name=el['ad_group__campaign__name'],
+        el["campaign"] = dict(id=el['ad_group__campaign__id'],
+                              name=el['ad_group__campaign__name'],
                               status=el["ad_group__campaign__status"])
-        del el['ad_group__id'], el['ad_group__name'], el['ad_group__campaign__id']
+        del el['ad_group__id'], el['ad_group__name'], el[
+            'ad_group__campaign__id']
         del el['ad_group__campaign__name'], el['ad_group__campaign__status']
 
     def get_channel_items(self, account):
@@ -2252,26 +2445,24 @@ class PerformanceTargetingReportAPIView(APIView):
             ad_group__campaign__account=account
         )
         qs = self.filter_queryset(qs)
-        items = qs.values("yt_id", *self._values).order_by("yt_id", "ad_group_id").annotate(**self._annotate)
+        items = qs.values("yt_id", *self._values).order_by("yt_id",
+                                                           "ad_group_id").annotate(
+            **self._annotate)
 
         info = {}
         ids = {i['yt_id'] for i in items}
         if ids:
             connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_custom_query_result(
-                    model_name="channel",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                resp = connector.get_channels_base_info(ids)
                 info = {r['id']: r for r in resp}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
 
         for i in items:
             item_details = info.get(i['yt_id'], {})
-            i["item"] = dict(id=i['yt_id'], name=item_details.get("title", i['yt_id']),
+            i["item"] = dict(id=i['yt_id'],
+                             name=item_details.get("title", i['yt_id']),
                              thumbnail=item_details.get("thumbnail_image_url"))
             del i['yt_id']
 
@@ -2280,28 +2471,27 @@ class PerformanceTargetingReportAPIView(APIView):
         return items
 
     def get_video_items(self, account):
-        qs = YTVideoStatistic.objects.filter(ad_group__campaign__account=account)
+        qs = YTVideoStatistic.objects.filter(
+            ad_group__campaign__account=account)
         qs = self.filter_queryset(qs)
-        items = qs.values("yt_id", *self._values).order_by("yt_id", "ad_group_id").annotate(**self._annotate)
+        items = qs.values("yt_id", *self._values).order_by("yt_id",
+                                                           "ad_group_id").annotate(
+            **self._annotate)
 
         info = {}
         ids = {i['yt_id'] for i in items}
         if ids:
             connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                resp = connector.get_videos_base_info(ids)
                 info = {r['id']: r for r in resp}
             except SingleDatabaseApiConnectorException as e:
                 logger.error(e)
 
         for i in items:
             item_details = info.get(i['yt_id'], {})
-            i["item"] = dict(id=i['yt_id'], name=item_details.get("title", i['yt_id']),
+            i["item"] = dict(id=i['yt_id'],
+                             name=item_details.get("title", i['yt_id']),
                              thumbnail=item_details.get("thumbnail_image_url"))
             del i['yt_id']
 
@@ -2310,9 +2500,12 @@ class PerformanceTargetingReportAPIView(APIView):
         return items
 
     def get_keyword_items(self, account):
-        qs = KeywordStatistic.objects.filter(ad_group__campaign__account=account)
+        qs = KeywordStatistic.objects.filter(
+            ad_group__campaign__account=account)
         qs = self.filter_queryset(qs)
-        items = qs.values("keyword", *self._values).order_by("keyword", "ad_group_id").annotate(**self._annotate)
+        items = qs.values("keyword", *self._values).order_by("keyword",
+                                                             "ad_group_id").annotate(
+            **self._annotate)
 
         for i in items:
             i["item"] = dict(id=i['keyword'], name=i['keyword'])
@@ -2322,9 +2515,11 @@ class PerformanceTargetingReportAPIView(APIView):
         return items
 
     def get_interest_items(self, account):
-        qs = AudienceStatistic.objects.filter(ad_group__campaign__account=account)
+        qs = AudienceStatistic.objects.filter(
+            ad_group__campaign__account=account)
         qs = self.filter_queryset(qs)
-        items = qs.values("audience__id", "audience__name", *self._values).order_by(
+        items = qs.values("audience__id", "audience__name",
+                          *self._values).order_by(
             "audience__id", "ad_group_id").annotate(**self._annotate)
 
         for i in items:
@@ -2363,13 +2558,13 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
             ad_group_id=self.kwargs["ad_group_id"],
         )
         obj = get_object_or_404(
-            TargetingItem, criteria=self.kwargs["criteria"], ad_group_creation=ad_group_creation, type=targeting_type,
+            TargetingItem, criteria=self.kwargs["criteria"],
+            ad_group_creation=ad_group_creation, type=targeting_type,
         )
         return obj
 
 
 class UserListsImportMixin:
-
     @staticmethod
     def get_lists_items_ids(ids, list_type):
         from segment.models import get_segment_model_by_type
@@ -2383,11 +2578,13 @@ class UserListsImportMixin:
             ).order_by("keywords__text").distinct()
         else:
             manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids, related__related_id__isnull=False)\
-                              .values_list('related__related_id', flat=True)\
-                              .order_by('related__related_id')\
-                              .distinct()
+            item_ids = manager.filter(id__in=ids,
+                                      related__related_id__isnull=False) \
+                .values_list('related__related_id', flat=True) \
+                .order_by('related__related_id') \
+                .distinct()
         return item_ids
+
 
 # tools
 
@@ -2399,7 +2596,8 @@ class TopicToolListApiView(ListAPIView):
         queryset = Topic.objects.filter(parent__isnull=True).order_by('name')
         if 'ids' in self.request.query_params:
             queryset = Topic.objects.all()
-            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+            queryset = queryset.filter(
+                id__in=self.request.query_params['ids'].split(','))
         return queryset
 
 
@@ -2409,9 +2607,11 @@ class TopicToolFlatListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Topic.objects.all()
         if 'ids' in self.request.query_params:
-            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+            queryset = queryset.filter(
+                id__in=self.request.query_params['ids'].split(','))
         if 'titles' in self.request.query_params:
-            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+            queryset = queryset.filter(
+                name__in=self.request.query_params['titles'].split(','))
         return queryset
 
 
@@ -2473,9 +2673,11 @@ class AudienceFlatListApiView(ListAPIView):
     def get_queryset(self):
         queryset = Audience.objects.all()
         if 'ids' in self.request.query_params:
-            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
+            queryset = queryset.filter(
+                id__in=self.request.query_params['ids'].split(','))
         if 'titles' in self.request.query_params:
-            queryset = queryset.filter(name__in=self.request.query_params['titles'].split(','))
+            queryset = queryset.filter(
+                name__in=self.request.query_params['titles'].split(','))
         return queryset
 
 
@@ -2485,8 +2687,7 @@ class AudienceToolListExportApiView(TopicToolListExportApiView):
     file_name = "audience_list"
 
     def get_queryset(self):
-        queryset = AudienceToolListApiView.queryset.all()
-        return queryset
+        return AudienceToolListApiView.queryset.all()
 
 
 # targeting lists
@@ -2527,7 +2728,6 @@ class TargetingListBaseAPIClass(GenericAPIView):
 
 @demo_view_decorator
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
-
     permission_classes = (IsAuthQueryTokenPermission,)
 
     def get_user(self):
@@ -2569,6 +2769,7 @@ class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
 class TargetingItemsImportApiView(DocumentImportBaseAPIView):
     parser_classes = (FileUploadParser,)
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, list_type, **_):
 
@@ -2586,12 +2787,17 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
             elif fct in ("text/csv", "application/vnd.ms-excel"):
                 data = self.get_csv_contents(file_obj, return_lines=True)
             else:
+                return Response(status=HTTP_400_BAD_REQUEST,
+                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+            try:
+                criteria_list.extend(getattr(self, method)(data))
+            except UnicodeDecodeError:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
-                    data={"errors": ["The MIME type isn't supported: "
-                                     "{}".format(file_obj.content_type)]})
-
-            criteria_list.extend(getattr(self, method)(data))
+                    data={
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                    },
+                )
 
         add_targeting_list_items_info(criteria_list, list_type)
 
@@ -2777,8 +2983,11 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
 
         # save campaigns and ad_groups
         campaigns = request.data.get("campaigns", [])
-        existed_c_ids = set(Campaign.objects.filter(account_id=account_id).values_list("id", flat=True))
-        existed_a_ids = set(AdGroup.objects.filter(campaign__account_id=account_id).values_list("id", flat=True))
+        existed_c_ids = set(
+            Campaign.objects.filter(account_id=account_id).values_list("id",
+                                                                       flat=True))
+        existed_a_ids = set(AdGroup.objects.filter(
+            campaign__account_id=account_id).values_list("id", flat=True))
         c_bulk = [Campaign(id=c['id'], name=c['name'], account_id=account_id)
                   for c in campaigns if c['id'] not in existed_c_ids]
         if c_bulk:
@@ -2791,13 +3000,20 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
             AdGroup.objects.bulk_create(a_bulk)
 
         # adding relations between campaign creations and campaign objects
-        for account_creation in AccountCreation.objects.filter(account_id=account_id, is_managed=True):
-            campaign_creations = account_creation.campaign_creations.all().values("id", "campaign_id")
-            matched_campaign_ids = set(c['campaign_id'] for c in campaign_creations if c['campaign_id'])
-            for campaign_creation in filter(lambda c: not c["campaign_id"], campaign_creations):
+        for account_creation in AccountCreation.objects.filter(
+                account_id=account_id, is_managed=True):
+            campaign_creations = account_creation.campaign_creations.all().values(
+                "id", "campaign_id")
+            matched_campaign_ids = set(
+                c['campaign_id'] for c in campaign_creations if
+                c['campaign_id'])
+            for campaign_creation in filter(lambda c: not c["campaign_id"],
+                                            campaign_creations):
                 # match campaign creations
                 uid_key = "#{}".format(campaign_creation['id'])
-                for campaign in filter(lambda c: c['id'] not in matched_campaign_ids, campaigns):
+                for campaign in filter(
+                        lambda c: c['id'] not in matched_campaign_ids,
+                        campaigns):
                     if campaign['name'].endswith(uid_key):
                         CampaignCreation.objects.filter(
                             id=campaign_creation['id']
@@ -2807,12 +3023,19 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
             ad_group_creations = AdGroupCreation.objects.filter(
                 campaign_creation__account_creation=account_creation
             ).values("id", "ad_group_id", "campaign_creation__campaign_id")
-            matched_ad_group_ids = set(c['ad_group_id'] for c in ad_group_creations if c['ad_group_id'])
-            for ad_group_creation in filter(lambda a: not a['ad_group_id'], ad_group_creations):
+            matched_ad_group_ids = set(
+                c['ad_group_id'] for c in ad_group_creations if
+                c['ad_group_id'])
+            for ad_group_creation in filter(lambda a: not a['ad_group_id'],
+                                            ad_group_creations):
                 uid_key = "#{}".format(ad_group_creation['id'])
-                for campaign in filter(lambda c: ad_group_creation['campaign_creation__campaign_id'] == c['id'],
+                for campaign in filter(lambda c: ad_group_creation[
+                                                     'campaign_creation__campaign_id'] ==
+                                                 c['id'],
                                        campaigns):
-                    for ad_group in filter(lambda a: a['id'] not in matched_ad_group_ids, campaign['ad_groups']):
+                    for ad_group in filter(
+                            lambda a: a['id'] not in matched_ad_group_ids,
+                            campaign['ad_groups']):
                         if ad_group['name'].endswith(uid_key):
                             AdGroupCreation.objects.filter(
                                 id=ad_group_creation['id']

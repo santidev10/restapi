@@ -1,29 +1,27 @@
-from datetime import datetime, timedelta
-from django.contrib.auth import get_user_model
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_405_METHOD_NOT_ALLOWED
-from urllib.parse import urlencode
+from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
+
 from aw_creation.models import *
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
-
     details_keys = {
         'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+        "is_disapproved", "from_aw"
     }
 
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_fail_post(self):
-
         url = reverse("aw_creation_urls:performance_targeting_list")
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_405_METHOD_NOT_ALLOWED)
@@ -42,12 +40,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -82,12 +80,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get("{}?max_campaigns_count=2".format(url))
 
@@ -120,3 +118,21 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             self.details_keys,
         )
         self.assertEqual(len(item['weekly_chart']), 7)
+
+    def test_success_from_aw(self):
+        account_1 = Account.objects.create(id=1)
+        account_2 = Account.objects.create(id=2
+                                           )
+        Campaign.objects.create(id=1, account=account_1, cost=1)
+        aw_account = AccountCreation.objects.create(name="From AdWords", owner=self.user, is_managed=False,
+                                                    account=account_1)
+        Campaign.objects.create(id=2, account=account_2, cost=1)
+        internal_account = AccountCreation.objects.create(name="Internal", owner=self.user, is_managed=True,
+                                                          account=account_2)
+
+        url = reverse("aw_creation_urls:performance_targeting_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts_map = dict((acc.get('id'), acc) for acc in response.data.get('items'))
+        self.assertTrue(accounts_map.get(aw_account.id).get('from_aw'))
+        self.assertFalse(accounts_map.get(internal_account.id).get('from_aw'))

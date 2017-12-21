@@ -1,0 +1,18 @@
+Hi Media Services,
+
+{{ first_name }} {{ last_name }} is requesting pixel application to {{ account }}. Please see below:
+
+{{ cid }}
+• {{ account }}
+{% for campaign in campaigns %}
+    • {{ campaign.name }}
+    {% for ad_group in campaign.ad_groups %}
+        • {{ ad_group.name }}
+        {% for ad in ad_group.ads %}
+            • {{ ad.name }}
+            {% for tag in ad.tags %}
+                • {{ tag.name }}: {{ tag.url }}
+            {% endfor %}
+        {% endfor %}
+    {% endfor %}
+{% endfor %}

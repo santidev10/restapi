@@ -263,7 +263,7 @@ def ad_performance_report(client, dates=None):
 
     fields = [
         'AdGroupId', 'Headline', 'Id', 'ImageCreativeName', 'DisplayUrl',
-        'Status', 'Date', 'AveragePosition'
+        'Status', 'Date', 'AveragePosition', 'CombinedApprovalStatus'
     ] + completed_fields + main_statistics
 
     selector = {

@@ -1,10 +1,11 @@
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
+
 from aw_creation.models import AccountCreation, CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, DEMO_AD_GROUPS
 from aw_reporting.models import Account, Campaign, AdGroup, AWConnectionToUserRelation, AWConnection
 from saas.utils_tests import ExtendedAPITestCase
-from django.utils import timezone
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -31,7 +32,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
+                                                          is_approved=True)
 
         campaigns_count = 3
         ad_groups_count = 2
@@ -95,7 +97,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             campaign_creation_id = None
             if campaign["id"] == managed_campaign.id:
                 campaign_creation_id = campaign_creation.id
-            self.assertIs(campaign['campaign_creation_id'], campaign_creation_id)
+            self.assertEqual(campaign['campaign_creation_id'], campaign_creation_id)
 
     def test_success_get_demo(self):
         self.create_test_user()

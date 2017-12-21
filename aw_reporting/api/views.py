@@ -321,12 +321,7 @@ class AnalyzeDetailsApiView(APIView):
             ids = [i['creative_id'] for i in creative]
             creative = []
             try:
-                channel_info = SingleDatabaseApiConnector().get_custom_query_result(
-                    model_name="video",
-                    fields=["id", "title", "thumbnail_image_url"],
-                    id__in=list(ids),
-                    limit=len(ids),
-                )
+                channel_info = SingleDatabaseApiConnector().get_videos_base_info(ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.critical(e)
             else:
@@ -957,126 +952,6 @@ class ConnectAWAccountApiView(APIView):
         ).order_by("connection__email")
         data = AWAccountConnectionRelationsSerializer(qs, many=True).data
         return Response(data)
-
-
-class AwHistoricalDataApiView(APIView):
-    @staticmethod
-    def get(request, item_type, pk, **_):
-        accounts = Account.user_objects(request.user)
-        filters = dict(ad_group__campaign__account__in=accounts, yt_id=pk)
-        if item_type == "channel":
-            queryset = YTChannelStatistic.objects.filter(**filters)
-        elif item_type == "video":
-            queryset = YTVideoStatistic.objects.filter(**filters)
-        else:
-            return Response(data=dict(error="Item type not found: {}".format(item_type)),
-                            status=HTTP_400_BAD_REQUEST)
-
-        if not queryset.count():  # if there is no data, show cf data
-            accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
-            filters['ad_group__campaign__account__in'] = accounts
-            queryset = queryset.model.objects.filter(**filters)
-
-        # base stats
-        base_stats = ('clicks', 'impressions', 'video_views')
-
-        # this and lat week stats
-        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
-        week_start = week_end - timedelta(days=6)
-        prev_week_end = week_start - timedelta(days=1)
-        prev_week_start = prev_week_end - timedelta(days=6)
-        aggregate = {
-            "{}_{}_week".format(s, k): Sum(
-                Case(
-                    When(
-                        date__gte=sd,
-                        date__lte=ed,
-                        then=s,
-                    ),
-                    output_field=IntegerField()
-                )
-            )
-            for k, sd, ed in (("this", week_start, week_end),
-                              ("last", prev_week_start, prev_week_end))
-            for s in base_stats
-            }
-        base_aggregate = {"sum_{}".format(s): Sum(s) for s in BASE_STATS}
-        base_aggregate.update(
-            video_impressions=Sum(
-                Case(
-                    When(
-                        ad_group__video_views__gt=0,
-                        then="impressions",
-                    ),
-                    output_field=IntegerField()
-                )
-            )
-        )
-        aggregate.update(base_aggregate)
-        data = queryset.aggregate(**aggregate)
-        dict_norm_base_stats(data)
-        dict_calculate_stats(data)
-        del data['video_impressions'], data['cost'], data['average_cpm']
-
-        annotate = dict(
-            average_cpv=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_cost__isnull=False,
-                        sum_video_views__gt=0,
-                        then=F("sum_cost") / F("sum_video_views"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-            ctr=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_clicks__isnull=False,
-                        sum_impressions__gt=0,
-                        then=F("sum_clicks") * Value(100.0) / F("sum_impressions"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-            ctr_v=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_clicks__isnull=False,
-                        sum_video_views__gt=0,
-                        then=F("sum_clicks") * Value(100.0) / F("sum_video_views"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-            video_view_rate=ExpressionWrapper(
-                Case(
-                    When(
-                        sum_video_views__isnull=False,
-                        video_impressions__gt=0,
-                        then=F("sum_video_views") * Value(100.0) / F("video_impressions"),
-                    ),
-                    output_field=FloatField()
-                ),
-                output_field=FloatField()
-            ),
-        )
-
-        top_bottom_data = queryset.values("date").order_by("date").annotate(
-            **base_aggregate
-        ).annotate(**annotate).aggregate(
-            **{
-                "{}_{}".format(s, n): a(s)
-                for s in annotate.keys()
-                for n, a in (("top", Max), ("bottom", Min))
-                }
-        )
-        data.update(top_bottom_data)
-
-        return Response(data=data)
 
 
 class BenchmarkBaseChartsApiView(TrackApiBase):

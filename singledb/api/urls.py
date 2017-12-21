@@ -1,10 +1,10 @@
 from django.conf.urls import url
-
-from singledb.api.views import CountryListApiView
+from channel.api.country_view import CountryListApiView
 from singledb.api.views.augmentation import AugmentationChannelListApiView
 from singledb.api.views.augmentation import AugmentationChannelSegmentListApiView
 from singledb.api.views.highlights import HighlightChannelsListApiView
 from singledb.api.views.highlights import HighlightVideosListApiView
+
 
 urlpatterns = [
     url(r'^countries/$', CountryListApiView.as_view(), name="countries_list"),

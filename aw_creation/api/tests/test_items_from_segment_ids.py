@@ -10,6 +10,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def test_success_video(self):
         if settings.DATABASES['default']['ENGINE'] != "django.db.backends.postgresql_psycopg2":

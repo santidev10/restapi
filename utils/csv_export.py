@@ -6,6 +6,9 @@ from io import StringIO
 
 from django.http import StreamingHttpResponse
 from django.utils import timezone
+from rest_framework.status import HTTP_201_CREATED
+
+from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
 class CSVExportException(Exception):
@@ -51,42 +54,47 @@ class CSVExport(object):
                 yield output.getvalue()
 
         response = StreamingHttpResponse(
-            stream_generator(), content_type='text/csv')
+            stream_generator(),
+            content_type="text/csv",
+            status=HTTP_201_CREATED
+        )
         filename = "{title}_export_report {date}.csv".format(
             title=self.file_title,
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
-        response['Content-Disposition'] = 'attachment; filename="{}"'.format(
+        response["Content-Disposition"] = "attachment; filename='{}'".format(
             filename)
         return response
 
 
-def list_export(method):
+class CassandraExportMixin(object):
     """
-    Decorator function for objects list export
+    Export mixin for cassandra data
     """
-    def wrapper_get(self, request, *args, **kwargs):
+    def post(self, request):
         """
-        Extended get method
+        Export mechanism
         """
-        is_export = request.query_params.get("export")
-        if is_export == "1":
-            # check required export options
-            # assert self.fields_to_export and self.export_file_title
-            # prepare api call
-            request.query_params._mutable = True
-            request.query_params["flat"] = "1"
-            response = method(
-                self=self, request=request, *args, **kwargs)
-            if response.status_code > 300:
-                return response
-            # generate csv file
-            csv_generator = CSVExport(
-                fields=self.fields_to_export,
-                data=response.data, file_title=self.export_file_title)
-            response = csv_generator.prepare_csv_file_response()
+        assert self.fields_to_export and self.export_file_title
+        # max export size limit
+        max_export_size = 10000
+        ids = request.data.pop("ids", None)
+        if ids:
+            connector = Connector()
+            request.data["ids_hash"] = connector.store_ids(ids.split(","))
+        request.query_params._mutable = True
+        request.query_params["size"] = max_export_size
+        request.query_params["fields"] = ",".join(self.fields_to_export)
+        request.query_params.update(request.data)
+        # prepare api call
+        request.query_params._mutable = True
+        response = self.get(request)
+        if response.status_code > 300:
             return response
-        response = method(
-            self=self, request=request, *args, **kwargs)
+        # generate csv file
+        csv_generator = CSVExport(
+            fields=self.fields_to_export,
+            data=response.data.get("items"),
+            file_title=self.export_file_title)
+        response = csv_generator.prepare_csv_file_response()
         return response
-    return wrapper_get

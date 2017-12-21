@@ -1,5 +1,5 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 from aw_creation.models import *
 from aw_reporting.models import Topic
 from saas.utils_tests import ExtendedAPITestCase, \
@@ -11,6 +11,22 @@ class TargetingImportTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
+
+    def test_success_fail_has_no_permission(self):
+        self.remove_custom_user_permission(self.user, "view_media_buying")
+
+        topics = ((3, "Arts & Entertainment"),)
+        for uid, name in topics:
+            Topic.objects.get_or_create(id=uid, defaults={'name': name})
+
+        url = reverse("aw_creation_urls:targeting_items_import",
+                      args=(TargetingItem.TOPIC_TYPE,))
+        with open('aw_creation/fixtures/topic_list_tool.csv',
+                  'rb') as fp:
+            response = self.client.post("{}?is_negative=1".format(url), {'file': fp},
+                                        format='multipart')
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_import_topic(self):
         topics = (

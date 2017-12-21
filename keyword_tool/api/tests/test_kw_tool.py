@@ -51,37 +51,6 @@ class KWToolAPITestCase(APITestCase):
         self.assertEqual(data['max_page'], 1)
         self.assertEqual(data['items_count'], 2)
 
-        for n, item in enumerate(response.data['items']):
-            fixture_item = RESP[n]
-
-            self.assertEqual(
-                set(item.keys()),
-                {
-                    'search_volume',
-                    'average_cpc',
-                    'competition',
-                    'keyword_text',
-                    'monthly_searches',
-                    'interests',
-                    'updated_at',
-
-                    'campaigns_count',
-                    'average_cpm',
-                    'average_cpv',
-                    'clicks',
-                    'cost',
-                    'ctr',
-                    'ctr_v',
-                    'impressions',
-                    'video_view_rate',
-                    'video_views',
-                    'interests_top_kw',
-                }
-            )
-
-            json_keys = ('search_volume', 'average_cpc', 'competition', 'keyword_text',
-                         'monthly_searches', 'interests')
-
         # test again
         optimize_keyword.return_value = deepcopy(RESP)
         self.client.get(url)

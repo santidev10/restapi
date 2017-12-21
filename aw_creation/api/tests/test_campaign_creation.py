@@ -1,20 +1,23 @@
-from datetime import datetime, timedelta
-from django.utils import timezone
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
-from aw_reporting.demo.models import DemoAccount
+
 from aw_creation.models import *
+from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import *
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class CampaignAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
@@ -54,6 +57,22 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
         return campaign_creation
 
+    def test_success_fail_has_no_permission(self):
+        self.remove_custom_user_permission(self.user, "view_media_buying")
+
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ac = self.create_campaign(**defaults)
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(ac.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
     def test_success_get(self):
         today = datetime.now().date()
         defaults = dict(
@@ -62,7 +81,8 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_campaign(**defaults)
-        url = reverse("aw_creation_urls:campaign_creation_setup", args=(ac.id,))
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(ac.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -163,12 +183,14 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data['location_rules']), 2)
         self.assertEqual(len(response.data['devices']), 1)
         self.assertEqual(len(response.data['content_exclusions']), 1)
-        self.assertEqual(response.data['content_exclusions'][0]['id'], content_exclusions[0])
+        self.assertEqual(response.data['content_exclusions'][0]['id'],
+                         content_exclusions[0])
 
     def test_success_update_empty_dates(self):
         campaign = self.create_campaign(owner=self.user)
         account_creation = campaign.account_creation
-        AccountCreation.objects.filter(id=account_creation.id).update(is_deleted=True)
+        AccountCreation.objects.filter(id=account_creation.id).update(
+            is_deleted=True)
 
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_deleted, True)
@@ -185,12 +207,17 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             "location_rules": [],
             "languages": [1000],
             "ad_schedule_rules": [],
-            "age_ranges": ["AGE_RANGE_18_24", "AGE_RANGE_25_34", "AGE_RANGE_35_44","AGE_RANGE_45_54",
-                           "AGE_RANGE_55_64", "AGE_RANGE_65_UP", "AGE_RANGE_UNDETERMINED"],
-            "content_exclusions": ["VIDEO_RATING_DV_MA", "VIDEO_NOT_YET_RATED"],
-            "parents": ["PARENT_PARENT", "PARENT_NOT_A_PARENT", "PARENT_UNDETERMINED"],
+            "age_ranges": ["AGE_RANGE_18_24", "AGE_RANGE_25_34",
+                           "AGE_RANGE_35_44", "AGE_RANGE_45_54",
+                           "AGE_RANGE_55_64", "AGE_RANGE_65_UP",
+                           "AGE_RANGE_UNDETERMINED"],
+            "content_exclusions": ["VIDEO_RATING_DV_MA",
+                                   "VIDEO_NOT_YET_RATED"],
+            "parents": ["PARENT_PARENT", "PARENT_NOT_A_PARENT",
+                        "PARENT_UNDETERMINED"],
             "genders": ["GENDER_FEMALE", "GENDER_MALE", "GENDER_UNDETERMINED"],
-            "video_networks": ["YOUTUBE_SEARCH", "YOUTUBE_VIDEO", "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"],
+            "video_networks": ["YOUTUBE_SEARCH", "YOUTUBE_VIDEO",
+                               "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"],
         }
         response = self.client.put(
             url, json.dumps(request_data), content_type='application/json',
@@ -362,4 +389,23 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation.refresh_from_db()
         self.assertIs(campaign_creation.is_deleted, True)
 
+    def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
+        user = self.user
+        user.set_permissions_from_plan('enterprise')
+        campaign = self.create_campaign(owner=self.user)
+        update_data = {
+            "name": "Campaign 12",
+            "devices": ["DESKTOP_DEVICE", "MOBILE_DEVICE", "TABLET_DEVICE"],
+            "content_exclusions": ["VIDEO_RATING_DV_MA",
+                                   "VIDEO_NOT_YET_RATED"],
+            "video_networks": ["YOUTUBE_SEARCH", "YOUTUBE_VIDEO",
+                               "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"]
+        }
 
+        url = reverse("aw_creation_urls:campaign_creation_setup",
+                      args=(campaign.id,))
+
+        response = self.client.put(url, json.dumps(update_data),
+                                   content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_200_OK)

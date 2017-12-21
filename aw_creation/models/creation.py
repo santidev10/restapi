@@ -1,18 +1,18 @@
 import calendar
 import json
 import logging
+import re
 import uuid
+from datetime import datetime
 from decimal import Decimal
+
+import pytz
 from PIL import Image
-from django.core.validators import MaxValueValidator, MinValueValidator, \
-    RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q, F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from datetime import datetime
-import pytz
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ BULK_CREATE_AD_GROUPS_COUNT = 5
 WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
                                "# and ' are not allowed for titles")
-YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)"\
+YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)" \
                  r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
 TrackingTemplateValidator = RegexValidator(
@@ -47,14 +47,12 @@ def get_yt_id_from_url(url):
 
 
 class CreationItemQueryset(models.QuerySet):
-
     def changed(self):
         qs = self.filter(Q(sync_at__isnull=True) | Q(updated_at__gt=F("sync_at")))
         return qs
 
 
 class UniqueCreationItem(models.Model):
-
     objects = CreationItemQueryset.as_manager()
 
     name = models.CharField(max_length=250, validators=[NameValidator])
@@ -120,7 +118,6 @@ class AccountCreation(UniqueCreationItem):
             )
             return "\n".join(lines)
 
-    STATUS_FROM_AW = "From AdWords"
     STATUS_ENDED = "Ended"
     STATUS_PAUSED = "Paused"
     STATUS_RUNNING = "Running"
@@ -129,18 +126,20 @@ class AccountCreation(UniqueCreationItem):
 
     @property
     def status(self):
-        if not self.is_managed:
-            return self.STATUS_FROM_AW
-        elif self.is_ended:
+        if self.is_ended:
             return self.STATUS_ENDED
         elif self.is_paused:
             return self.STATUS_PAUSED
-        elif self.sync_at:
+        elif self.sync_at or not self.is_managed:
             return self.STATUS_RUNNING
         elif self.is_approved:
             return self.STATUS_APPROVED
         else:
             return self.STATUS_PENDING
+
+    @property
+    def from_aw(self):
+        return not self.is_managed
 
 
 @receiver(post_save, sender=AccountCreation, dispatch_uid="save_account_receiver")
@@ -160,14 +159,12 @@ class Language(models.Model):
 
 
 class CampaignCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.filter(budget__isnull=False)
         return qs
 
 
 class CampaignCreation(UniqueCreationItem):
-
     objects = CampaignCreationQueryset.as_manager()
 
     account_creation = models.ForeignKey(
@@ -272,6 +269,7 @@ class CampaignCreation(UniqueCreationItem):
 
     def set_video_networks(self, value):
         self.video_networks_raw = json.dumps(value)
+
     video_networks = property(get_video_networks, set_video_networks)
 
     DESKTOP_DEVICE = 'DESKTOP_DEVICE'
@@ -294,6 +292,7 @@ class CampaignCreation(UniqueCreationItem):
 
     def set_devices(self, value):
         self.devices_raw = json.dumps(value)
+
     devices = property(get_devices, set_devices)
 
     # content exclusions
@@ -392,7 +391,7 @@ class CampaignCreation(UniqueCreationItem):
                     freq_caps={
                         f["event_type"]: f
                         for f in self.frequency_capping.all(
-                        ).values("event_type", "level", "time_unit", "limit")
+                    ).values("event_type", "level", "time_unit", "limit")
                     },
                     locations=list(
                         self.location_rules.filter(
@@ -429,7 +428,6 @@ def save_campaign_receiver(sender, instance, created, **_):
 
 
 class AdGroupCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.filter(max_rate__isnull=False)
         return qs
@@ -467,7 +465,8 @@ class AdGroupCreation(UniqueCreationItem):
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
-                AdCreation.objects.filter(ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+                        AdCreation.objects.filter(
+                            ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
@@ -602,7 +601,7 @@ class AdGroupCreation(UniqueCreationItem):
         )
         lines = [
             "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
-               json.dumps(params)
+                json.dumps(params)
             ),
         ]
 
@@ -622,7 +621,6 @@ def save_group_receiver(sender, instance, created, **_):
 
 
 class AdCreationQueryset(CreationItemQueryset):
-
     def not_empty(self):
         qs = self.exclude(
             models.Q(video_url="") | models.Q(display_url="") | models.Q(display_url__isnull=True) |
@@ -637,6 +635,9 @@ class AdCreation(UniqueCreationItem):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="ad_creations",
     )
+    ad = models.ForeignKey(
+        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True,
+    )
     video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
     display_url = models.CharField(max_length=200, default="")
@@ -650,6 +651,76 @@ class AdCreation(UniqueCreationItem):
     video_thumbnail = models.URLField(default="")
     video_duration = models.FloatField(default=0)
     video_channel_title = models.CharField(max_length=250, default="")
+
+    # Beacon urls
+    beacon_impression_1 = models.URLField(default="", blank=True)
+    beacon_impression_2 = models.URLField(default="", blank=True)
+    beacon_impression_3 = models.URLField(default="", blank=True)
+    beacon_view_1 = models.URLField(default="", blank=True)
+    beacon_view_2 = models.URLField(default="", blank=True)
+    beacon_view_3 = models.URLField(default="", blank=True)
+    beacon_skip_1 = models.URLField(default="", blank=True)
+    beacon_skip_2 = models.URLField(default="", blank=True)
+    beacon_skip_3 = models.URLField(default="", blank=True)
+    beacon_first_quartile_1 = models.URLField(default="", blank=True)
+    beacon_first_quartile_2 = models.URLField(default="", blank=True)
+    beacon_first_quartile_3 = models.URLField(default="", blank=True)
+    beacon_midpoint_1 = models.URLField(default="", blank=True)
+    beacon_midpoint_2 = models.URLField(default="", blank=True)
+    beacon_midpoint_3 = models.URLField(default="", blank=True)
+    beacon_third_quartile_1 = models.URLField(default="", blank=True)
+    beacon_third_quartile_2 = models.URLField(default="", blank=True)
+    beacon_third_quartile_3 = models.URLField(default="", blank=True)
+    beacon_completed_1 = models.URLField(default="", blank=True)
+    beacon_completed_2 = models.URLField(default="", blank=True)
+    beacon_completed_3 = models.URLField(default="", blank=True)
+    beacon_vast_1 = models.URLField(default="", blank=True)
+    beacon_vast_2 = models.URLField(default="", blank=True)
+    beacon_vast_3 = models.URLField(default="", blank=True)
+    beacon_dcm_1 = models.URLField(default="", blank=True)
+    beacon_dcm_2 = models.URLField(default="", blank=True)
+    beacon_dcm_3 = models.URLField(default="", blank=True)
+
+    beacon_impression_1_changed = models.BooleanField(default=False)
+    beacon_impression_2_changed = models.BooleanField(default=False)
+    beacon_impression_3_changed = models.BooleanField(default=False)
+    beacon_view_1_changed = models.BooleanField(default=False)
+    beacon_view_2_changed = models.BooleanField(default=False)
+    beacon_view_3_changed = models.BooleanField(default=False)
+    beacon_skip_1_changed = models.BooleanField(default=False)
+    beacon_skip_2_changed = models.BooleanField(default=False)
+    beacon_skip_3_changed = models.BooleanField(default=False)
+    beacon_first_quartile_1_changed = models.BooleanField(default=False)
+    beacon_first_quartile_2_changed = models.BooleanField(default=False)
+    beacon_first_quartile_3_changed = models.BooleanField(default=False)
+    beacon_midpoint_1_changed = models.BooleanField(default=False)
+    beacon_midpoint_2_changed = models.BooleanField(default=False)
+    beacon_midpoint_3_changed = models.BooleanField(default=False)
+    beacon_third_quartile_1_changed = models.BooleanField(default=False)
+    beacon_third_quartile_2_changed = models.BooleanField(default=False)
+    beacon_third_quartile_3_changed = models.BooleanField(default=False)
+    beacon_completed_1_changed = models.BooleanField(default=False)
+    beacon_completed_2_changed = models.BooleanField(default=False)
+    beacon_completed_3_changed = models.BooleanField(default=False)
+    beacon_vast_1_changed = models.BooleanField(default=False)
+    beacon_vast_2_changed = models.BooleanField(default=False)
+    beacon_vast_3_changed = models.BooleanField(default=False)
+    beacon_dcm_1_changed = models.BooleanField(default=False)
+    beacon_dcm_2_changed = models.BooleanField(default=False)
+    beacon_dcm_3_changed = models.BooleanField(default=False)
+
+    tag_field_names = (
+        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+        "beacon_view_1", "beacon_view_2", "beacon_view_3",
+        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+        "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+        "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+    )
+    tag_changes_field_names = tuple("{}_changed".format(f) for f in tag_field_names)
 
     def get_custom_params(self):
         return json.loads(self.custom_params_raw)

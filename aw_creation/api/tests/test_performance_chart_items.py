@@ -1,20 +1,21 @@
-from unittest.mock import patch
-from django.core.urlresolvers import reverse
+import json
 from datetime import datetime, timedelta
+from unittest.mock import patch
+
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
+from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad,\
+    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
-from aw_creation.models import AccountCreation
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 from saas.utils_tests import ExtendedAPITestCase
-import json
+from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
-
     @staticmethod
     def create_stats(account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -51,7 +52,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
 
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+                                                          is_approved=True)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart_items",
@@ -106,7 +108,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_approved=True, account=account)
         self.create_stats(account)
         url = reverse("aw_creation_urls:performance_chart_items",
                       args=(account_creation.id, 'video'))
@@ -246,7 +248,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+                                                          is_approved=True)
         self.create_stats(account)
 
         url = reverse("aw_creation_urls:performance_chart_items",
@@ -281,7 +284,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+                                                          is_approved=True)
         self.create_stats(account)
 
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
@@ -289,7 +293,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             for dimension in ('device', 'gender', 'age', 'topic',
                               'interest', 'creative', 'channel', 'video',
                               'keyword', 'location', 'ad'):
-
                 url = reverse("aw_creation_urls:performance_chart_items",
                               args=(account_creation.id, dimension))
                 response = self.client.post(url)
@@ -303,7 +306,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+                                                          is_approved=True)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group_cpv = AdGroup.objects.create(id=1, name="", campaign=campaign)
         ad_group_cpm = AdGroup.objects.create(id=2, name="", campaign=campaign)

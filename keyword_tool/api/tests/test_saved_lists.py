@@ -239,6 +239,12 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
                     'video_view_rate',
                     'video_views',
                     'interests_top_kw',
+
+                    'views',
+                    'category',
+                    'thirty_days_views',
+                    'weekly_views',
+                    'daily_views',
                 }
             )
 

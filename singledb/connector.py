@@ -7,6 +7,10 @@ from urllib.parse import urlencode
 import requests
 from django.conf import settings
 
+from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
+    DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
+    DEFAULT_CHANNEL_DETAILS_FIELDS
+
 
 class SingleDatabaseApiConnectorException(Exception):
     """
@@ -59,7 +63,8 @@ class SingleDatabaseApiConnector(object):
         try:
             response_data = self.response.json()
         except Exception as e:
-            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}".format(e))
+            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}\n{}" \
+                                                      .format(e, self.response.text))
         return response_data
 
     def get_country_list(self, query_params):
@@ -77,6 +82,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk
+        self.set_fields_query_param(
+            query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -86,6 +93,7 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk + "/"
+        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
@@ -95,10 +103,7 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/"
-        if 'ids' in query_params:
-            ids = query_params.get('ids').split(',')
-            query_params.pop('ids')
-            query_params['ids_hash'] = self.store_ids(ids)
+        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -120,16 +125,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def get_channel_videos_by_keywords(self, query_params, keyword):
-        """
-        Get top videos by channel keyword
-        :param query_params: dict
-        :param keyword: str
-        """
-        endpoint = "channels/video_by_keyword/{}".format(keyword)
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
     def delete_channels(self, query_params, data):
         """
         Delete channels
@@ -145,6 +140,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "videos/" + pk
+        self.set_fields_query_param(
+            query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -163,10 +160,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "videos/"
-        if 'ids' in query_params:
-            ids = query_params.get('ids').split(',')
-            query_params.pop('ids')
-            query_params['ids_hash'] = self.store_ids(ids)
+        self.set_fields_query_param(
+            query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -188,11 +183,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
-    def get_custom_query_result(self, model_name, **params):
-        endpoint = "custom_query/{}/".format(model_name)
-        response_data = self.execute_post_call(endpoint, {}, data=params)
-        return response_data
-
     def get_channels_statistics(self, **params):
         endpoint = "channels/statistics/"
         response_data = self.execute_post_call(endpoint, {}, data=params)
@@ -204,19 +194,82 @@ class SingleDatabaseApiConnector(object):
         return response_data
 
     def store_ids(self, ids):
-        endpoint = "cached_object/"
+        """
+        Wrap requested ids into hash
+        """
+        endpoint = "cached_objects/"
         response_data = self.execute_post_call(endpoint, {}, data=ids)
         return response_data['hash']
 
+    @staticmethod
+    def set_fields_query_param(query_params, default_fields):
+        """
+        Add fields query param to query params if absent
+        """
+        if "fields" not in query_params:
+            query_params._mutable = True
+            query_params["fields"] = ",".join(default_fields)
+        return query_params
+
     def get_highlights_channels(self, query_params):
-        endpoint = "highlights/channels/"
+        endpoint = "channels/"
+        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
 
     def get_highlights_videos(self, query_params):
-        endpoint = "highlights/videos/"
+        endpoint = "videos/"
+        self.set_fields_query_param(query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
+
+    def get_channels_base_info(self, ids):
+        fields = ("channel_id", "title", "thumbnail_image_url")
+        ids_hash = self.store_ids(ids)
+        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        response_data = self.get_channel_list(query_params)
+        items = response_data["items"]
+        for i in items:
+            i["id"] = i["channel_id"]
+            del i["channel_id"]
+        return items
+
+    def get_videos_base_info(self, ids):
+        fields = ("video_id", "title", "thumbnail_image_url", "duration")
+        ids_hash = self.store_ids(ids)
+        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        response_data = self.get_video_list(query_params)
+        items = response_data["items"]
+        for i in items:
+            i["id"] = i["video_id"]
+            del i["video_id"]
+        return items
+
+    def auth_channel(self, data):
+        """
+        Authenticate channel
+        :param query_params: dict
+        """
+        endpoint = "channels/authentication/"
+        response_data = self.execute_post_call(endpoint, {}, data)
+        return response_data
+
+    def post_channels(self, channels_ids):
+        """
+        Create channels
+        :param channels_ids: list of ids
+        """
+        endpoint = "channels/"
+        response_data = self.execute_post_call(
+            endpoint, {}, {"channels_ids": channels_ids})
+        return response_data
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL

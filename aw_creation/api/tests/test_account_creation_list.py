@@ -1,22 +1,23 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
-from urllib.parse import urlencode
+
 from aw_creation.models import *
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
-
     details_keys = {
         'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
         'is_changed', 'weekly_chart', 'thumbnail',
         'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
         "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+        "is_disapproved", "from_aw"
     }
 
     def setUp(self):
@@ -68,15 +69,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             {'channel', 'video', 'topic', 'interest', 'keyword'}
         )
         self.assertEqual(len(ad_group_creation['ad_creations']), 1)
-        self.assertEqual(
-            set(ad_group_creation['ad_creations'][0].keys()),
-            {
-                'id', 'name', 'updated_at', 'tracking_template', 'final_url',
-                'video_url', 'video_ad_format', 'custom_params', 'display_url', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail',
-                'video_channel_title', 'video_duration',
-            }
-        )
 
     def test_fail_get_data_of_another_user(self):
         user = get_user_model().objects.create(
@@ -136,12 +128,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:account_creation_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -164,7 +156,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_sort_by(self):
         account1 = Account.objects.create(id="123", name="")
-        stats = dict(account=account1,  name="", impressions=10, video_views=9, clicks=9, cost=9)
+        stats = dict(account=account1, name="", impressions=10, video_views=9, clicks=9, cost=9)
         Campaign.objects.create(id=1, **stats)
         Campaign.objects.create(id=2, **stats)
         top_account = AccountCreation.objects.create(
@@ -184,18 +176,50 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         for sort_by in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
             with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
+                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                        new=SingleDatabaseApiConnectorPatcher
                 ):
                     response = self.client.get("{}?sort_by={}".format(url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data['items']
             expected_top_account = items[1]
             self.assertEqual(top_account.name, expected_top_account['name'])
+
+    def test_success_sort_by_name(self):
+        account1 = Account.objects.create(id="123", name="")
+        creation_1 = AccountCreation.objects.create(
+            name="First account", owner=self.user, account=account1,
+        )
+
+        account2 = Account.objects.create(id="456", name="Second account")
+        creation_2 = AccountCreation.objects.create(name="", owner=self.user, account=account2, is_managed=False,
+                                                    is_approved=True)
+
+        creation_3 = AccountCreation.objects.create(name="Third account", owner=self.user, account=account2)
+
+        # --
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch(
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
+        ):
+            with patch(
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
+            ):
+                response = self.client.get("{}?sort_by=name".format(url))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        items = response.data['items']
+
+        self.assertEqual(
+            ("Demo", creation_1.name, creation_2.account.name, creation_3.name),
+            tuple(a["name"] for a in items)
+        )
 
     def test_success_metrics_filter(self):
         AccountCreation.objects.create(name="Empty", owner=self.user,
@@ -229,12 +253,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         for metric, min1, max1, min2, max2 in test_filters:
             with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
+                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                        new=SingleDatabaseApiConnectorPatcher
                 ):
                     response = self.client.get(
                         "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
@@ -247,12 +271,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 self.assertLessEqual(item[metric], max1)
 
             with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
+                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                        new=SingleDatabaseApiConnectorPatcher
                 ):
                     response = self.client.get(
                         "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
@@ -275,13 +299,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="Running", owner=self.user, sync_at=datetime.now(),
         )
-        account = Account.objects.create(id="111", name="From AdWords")
-        AccountCreation.objects.create(
-            name="", owner=self.user, is_managed=False, account=account,
-        )
         # --
         expected = (
-            ("From AdWords", 1),
             ("Pending", 1),
             ("Ended", 1),
             ("Paused", 1),
@@ -342,6 +361,23 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         for item in response.data['items']:
             self.assertIs(item['name'].endswith("+"), True)
 
+    def test_success_from_aw_filter(self):
+        AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+
+        ac = AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+        CampaignCreation.objects.create(name="", account_creation=ac)
+
+        account = Account.objects.create(id=1, name="")
+        Campaign.objects.create(id=1, name="", account=account)
+        managed_acc = AccountCreation.objects.create(name="", owner=self.user, account=account, is_managed=False)
+
+        base_url = reverse("aw_creation_urls:account_creation_list")
+
+        response = self.client.get("{}?from_aw=1".format(base_url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(response.data['items'][0]['id'], managed_acc.id)
+
     # ended account cases
     def test_success_get_account_no_end_date(self):
         ac_creation = AccountCreation.objects.create(
@@ -394,8 +430,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:account_creation_list")
         with patch(
-            "aw_reporting.demo.models.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -502,12 +538,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:account_creation_list")
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
+                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher
             ):
                 response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

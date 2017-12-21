@@ -18,10 +18,48 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         'tracking_template', 'custom_params', 'display_url', 'video_ad_format',
         'companion_banner',
         'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
+
+        "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
+        "beacon_view_1", "beacon_view_2", "beacon_view_3",
+        "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
+        "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+        "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
+        "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+        "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
+        "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
+        "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved"
     }
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.add_custom_user_permission(self.user, "view_media_buying")
+
+    def test_success_fail_has_no_permission(self):
+        self.remove_custom_user_permission(self.user, "view_media_buying")
+
+        today = datetime.now().date()
+        account_creation = AccountCreation.objects.create(
+            name="Pep", owner=self.user,
+        )
+        campaign_creation = CampaignCreation.objects.create(
+            name="", account_creation=account_creation,
+            start=today, end=today + timedelta(days=20),
+        )
+
+        ad_group = AdGroupCreation.objects.create(
+            name="Wow", campaign_creation=campaign_creation,
+        )
+        AdCreation.objects.create(
+            name="Mmm", ad_group_creation=ad_group,
+        )
+        AdCreation.objects.create(
+            name="Deleted", ad_group_creation=ad_group, is_deleted=True,
+        )
+        url = reverse("aw_creation_urls:ad_creation_list_setup",
+                      args=(ad_group.id,))
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
         today = datetime.now().date()

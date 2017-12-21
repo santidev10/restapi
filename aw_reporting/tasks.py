@@ -1,14 +1,16 @@
+import csv
+import heapq
+import logging
+from collections import defaultdict
+from collections import namedtuple
 from datetime import datetime, timedelta
-from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+
+import pytz
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
-from collections import namedtuple
-from collections import defaultdict
-import csv
-import pytz
-import heapq
-import logging
+
+from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ def get_base_stats(row, quartiles=False):
         impressions=int(row.Impressions),
         video_views=int(row.VideoViews),
         clicks=int(row.Clicks),
-        cost=float(row.Cost)/1000000,
+        cost=float(row.Cost) / 1000000,
         conversions=float(row.Conversions.replace(',', '')),
         all_conversions=float(row.AllConversions.replace(',', ''))
         if hasattr(row, "AllConversions") else 0,
@@ -39,6 +41,7 @@ def get_base_stats(row, quartiles=False):
             video_views_100_quartile=quart_views(row, 100),
         )
     return stats
+
 
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
 
@@ -59,7 +62,10 @@ def get_account_border_dates(account):
     )
     return dates['min_date'], dates['max_date']
 
+
 GET_DF = '%Y-%m-%d'
+
+
 # -- helpers
 
 
@@ -85,15 +91,15 @@ def load_hourly_stats(client, account, *_):
             date = last_entry.date
             queryset.filter(date__gte=date).delete()
 
-        #  get report
+        # get report
         report = campaign_performance_report(
             client,
             dates=(date, today),
             fields=[
-               'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
-               'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
-               'Date', 'HourOfDay',
-            ] + main_statistics[:4],
+                       'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
+                       'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
+                       'Date', 'HourOfDay',
+                   ] + main_statistics[:4],
             include_zero_impressions=False,
         )
         if report:
@@ -132,7 +138,7 @@ def load_hourly_stats(client, account, *_):
                         video_views=row.VideoViews,
                         impressions=row.Impressions,
                         clicks=row.Clicks,
-                        cost=float(row.Cost)/1000000,
+                        cost=float(row.Cost) / 1000000,
                     )
                 )
 
@@ -141,6 +147,12 @@ def load_hourly_stats(client, account, *_):
 
             if create_stat:
                 CampaignHourlyStatistic.objects.bulk_create(create_stat)
+
+
+def is_ad_disapproved(campaign_row):
+    return campaign_row.CombinedApprovalStatus == 'disapproved' \
+        if hasattr(campaign_row, 'CombinedApprovalStatus') \
+        else False
 
 
 @task
@@ -177,8 +189,8 @@ def upload_initial_aw_data(connection_pk):
 def detect_success_aw_read_permissions():
     from aw_reporting.models import AWAccountPermission
     for permission in AWAccountPermission.objects.filter(
-        can_read=False,
-        aw_connection__revoked_access=False,
+            can_read=False,
+            aw_connection__revoked_access=False,
     ):
         try:
             client = get_web_app_client(
@@ -221,7 +233,7 @@ def get_campaigns(client, account, today):
                 'start_date': datetime.strptime(row_obj.StartDate,
                                                 GET_DF),
                 'end_date': end_date,
-                'budget': float(row_obj.Amount)/1000000,
+                'budget': float(row_obj.Amount) / 1000000,
                 'status': row_obj.CampaignStatus if row_obj.CampaignStatus in ACTION_STATUSES else row_obj.ServingStatus,
             }
             stats.update(get_base_stats(row_obj))
@@ -407,6 +419,7 @@ def get_ads(client, account, today):
                 ad_group__campaign__account=account
             ).values_list('id', flat=True)
         )
+
         report = ad_performance_report(
             client,
             dates=(min_date, max_date),
@@ -426,6 +439,7 @@ def get_ads(client, account, today):
                         'creative_name': row_obj.ImageCreativeName,
                         'display_url': row_obj.DisplayUrl,
                         'status': row_obj.Status,
+                        'is_disapproved': is_ad_disapproved(row_obj)
                     }
                     kwargs = {
                         'id': ad_id, 'ad_group_id': row_obj.AdGroupId
@@ -922,13 +936,13 @@ def get_cities(client, account, today):
         report = geo_performance_report(
             client, dates=(min_date, max_date),
             additional_fields=tuple(main_statistics) +
-            ('Date', 'AdGroupId')
+                              ('Date', 'AdGroupId')
         )
 
         bulk_data = []
         for row_obj in filter(
-            lambda i: i.CityCriteriaId.isnumeric() and
-                int(i.CityCriteriaId) in top_cities, report):
+                lambda i: i.CityCriteriaId.isnumeric()
+                and int(i.CityCriteriaId) in top_cities, report):
 
             city_id = int(row_obj.CityCriteriaId)
             date = latest_dates.get((city_id, row_obj.CampaignId))
@@ -944,6 +958,8 @@ def get_cities(client, account, today):
             bulk_data.append(CityStatistic(**stats))
         if bulk_data:
             CityStatistic.objects.bulk_create(bulk_data)
+
+
 ##
 # statistics
 ##
@@ -1004,7 +1020,7 @@ def load_google_categories(skip_audiences=False, skip_topics=False):
                         id=r.ID,
                         name=r.Category,
                         parent_id=r.ParentID if 'ParentID' in fields and
-                                  r.ParentID != '0' else None,
+                                                r.ParentID != '0' else None,
                         type=list_type,
                     )
                 )

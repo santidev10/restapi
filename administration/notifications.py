@@ -15,6 +15,8 @@ def send_new_registration_email(email_data):
     text = "Dear Admin, \n\n" \
            "A new user has just registered on {host}. \n\n" \
            "User email: {email} \n" \
+           "User first_name: {first_name} \n" \
+           "User last_name: {last_name} \n" \
            "User company: {company}\n" \
            "User phone: {phone} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)

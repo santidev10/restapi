@@ -67,3 +67,31 @@ def add_relation_between_report_and_creation_ad_groups():
             logger.critical("Unhandled: {}".format(e))
         else:
             AdGroupCreation.objects.filter(pk=a["id"]).update(ad_group=ad_group)
+
+
+def add_relation_between_report_and_creation_ads():
+    from aw_creation.models import AdCreation
+    from aw_reporting.models import Ad
+
+    ad_group_id_key = "ad_group_creation__ad_group_id"
+    ad_creations = AdCreation.objects.filter(
+        ad_group_creation__ad_group__isnull=False,
+        ad__isnull=True,
+        sync_at__gt=F("created_at"),
+    ).values("id", ad_group_id_key).order_by(ad_group_id_key)
+
+    ad_group_id = ""
+    ads = Ad.objects.none()
+    for a in ad_creations:
+        if ad_group_id != a[ad_group_id_key]:
+            ad_group_id = a[ad_group_id_key]
+            ads = Ad.objects.filter(ad_group_id=ad_group_id)
+
+        try:
+            ad = ads.get(creative_name__endswith="#{}".format(a["id"]))
+        except Ad.DoesNotExist:
+            pass
+        except Exception as e:
+            logger.critical("Unhandled: {}".format(e))
+        else:
+            AdCreation.objects.filter(pk=a["id"]).update(ad=ad)
