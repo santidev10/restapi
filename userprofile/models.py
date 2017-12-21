@@ -218,7 +218,9 @@ class Plan(models.Model):
 
             users = UserProfile.objects.filter(plan=plan)
             for user in users:
-                user.set_permissions_from_plan(key)
+                Subscription.objects.filter(user=user).delete()
+                subscription = Subscription.objects.create(user=user, plan=plan)
+                user.update_permissions_from_subscription(subscription)
                 user.save()
 
 
