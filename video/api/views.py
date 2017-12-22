@@ -263,7 +263,6 @@ class VideoListApiView(
                 item.pop('audience', None)
                 item.pop('aw_data', None)
                 item['brand_safety'] = None
-                item.pop('genre', None)
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
 
