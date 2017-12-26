@@ -8,9 +8,7 @@ from rest_framework.test import APITestCase
 from userprofile.models import Plan
 
 
-class ExtendedAPITestCase(APITestCase):
-    multi_db = True
-
+class TestUserMixin:
     test_user_data = {
         "username": "TestUser",
         "first_name": "TestUser",
@@ -32,12 +30,19 @@ class ExtendedAPITestCase(APITestCase):
         user.set_password(user.password)
 
         if auth:
-            token = Token.objects.create(user=user)
-            # pylint: disable=no-member
+            Token.objects.create(user=user)
+        return user
+
+
+class ExtendedAPITestCase(APITestCase, TestUserMixin):
+    multi_db = True
+
+    def create_test_user(self, auth=True):
+        user = super(ExtendedAPITestCase, self).create_test_user(auth)
+        if Token.objects.filter(user=user).exists():
             self.client.credentials(
-                HTTP_AUTHORIZATION='Token {}'.format(token.key)
+                HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
-            # pylint: enable=no-member
         return user
 
 
