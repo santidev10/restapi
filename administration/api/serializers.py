@@ -8,6 +8,7 @@ from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
+from administration.notifications import send_plan_changed_email
 from userprofile.models import Subscription, Plan
 
 
@@ -103,6 +104,7 @@ class UserUpdateSerializer(ModelSerializer):
         subscription = Subscription.objects.create(user=user, plan=plan)
         user.update_permissions_from_subscription(subscription)
         user.save()
+        send_plan_changed_email(user, self.context.get("request"))
         return user
 
     def get_can_access_media_buying(self, obj):

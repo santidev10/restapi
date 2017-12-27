@@ -100,7 +100,8 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         Update user
         """
         serializer = self.update_serializer_class(
-            instance=self.get_object(), data=request.data, partial=True)
+            instance=self.get_object(), data=request.data,
+            partial=True, context={"request": request})
         if serializer.is_valid():
             serializer.save()
             return self.get(request)
