@@ -39,11 +39,10 @@ def send_welcome_email(user, request):
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Congratulation!" \
+    text_content = "Congratulation!\n" \
                    " You've just registered on {}\n\n" \
                    "Kind regards\n" \
-                   "Channel Factory Team".format(
-                        user.get_full_name(), request.get_host())
+                   "Channel Factory Team".format(request.get_host())
     send_html_email(subject, to, text_header, text_content)
 
 
