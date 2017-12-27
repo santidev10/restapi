@@ -30,6 +30,30 @@ def send_new_registration_email(email_data):
     return
 
 
+def send_new_channel_authentication_email(user, channel_id, request):
+    """
+    Send new channel authentication email
+    """
+    sender = settings.SENDER_EMAIL_ADDRESS
+    to = settings.CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES
+    subject = "New channel authentication"
+    text = "Dear Admin, \n\n" \
+           "A user has just authenticated a channel on {host}. \n\n" \
+           "User email: {email} \n" \
+           "User first_name: {first_name} \n" \
+           "User last_name: {last_name} \n" \
+           "Channel id: {channel_id}\n" \
+           "Link to channel: {link} \n\n".format(
+                host=request.get_host(),
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                channel_id=channel_id,
+                link="https://rc.viewiq.com/research/channels/{}".format(
+                    channel_id))
+    send_mail(subject, text, sender, to, fail_silently=True)
+
+
 def send_welcome_email(user, request):
     """
     Send welcome email to user
@@ -79,4 +103,4 @@ def send_html_email(subject, to, text_header, text_content):
     msg = EmailMultiAlternatives(subject, "{}{}".format(
         text_header, text_content), sender, [to])
     msg.attach_alternative(html_content, "text/html")
-    msg.send()
+    msg.send(fail_silently=True)

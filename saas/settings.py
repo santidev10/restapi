@@ -262,6 +262,12 @@ REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software"
 ]
 
+CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
+
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "alexander.dobrzhansky@sigma.software",
     "aleksandr.yakovenko@sigma.software",
