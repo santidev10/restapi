@@ -143,7 +143,7 @@ class SingleDatabaseApiConnector(object):
         :param pk: str Channel ID
         """
         endpoint = "channel/" + pk
-        response_data = self.execute_delete_call(endpoint)
+        response_data = self.execute_delete_call(endpoint, query_params=dict())
         return response_data
 
     def get_video(self, query_params, pk):

@@ -3,6 +3,7 @@ import json
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
+from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from userprofile.models import Plan
@@ -89,3 +90,16 @@ class SingleDatabaseApiConnectorPatcher:
         channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
         channel.update(dict(is_owner=True))
         return channel
+
+
+class MockResponse(object):
+    def __init__(self, status_code=HTTP_200_OK, json=None):
+        self.status_code = status_code
+        self._json = json
+
+    def json(self):
+        return self._json or dict()
+
+    @property
+    def text(self):
+        return json.dumps(self.json())
