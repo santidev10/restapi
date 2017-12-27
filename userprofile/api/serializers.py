@@ -10,7 +10,8 @@ from rest_framework.serializers import ModelSerializer, CharField, \
     EmailField, MaxLengthValidator, EmailValidator
 from rest_framework.validators import UniqueValidator
 
-from administration.notifications import send_new_registration_email
+from administration.notifications import send_new_registration_email, \
+    send_welcome_email
 from aw_reporting.models import Ad
 from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
 from payments.api.serializers import \
@@ -98,7 +99,7 @@ class UserCreateSerializer(ModelSerializer):
             "last_name": user.last_name
         }
         send_new_registration_email(email_data)
-        # done
+        send_welcome_email(user, self.context.get("request"))
         return user
 
 

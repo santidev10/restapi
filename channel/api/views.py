@@ -23,6 +23,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_202_ACCEPTED
 from rest_framework.views import APIView
 
+from administration.notifications import send_welcome_email
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
@@ -462,6 +463,7 @@ class ChannelAuthenticationApiView(APIView):
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
             created = True
+            send_welcome_email(user, self.request)
         return user, created
 
     @staticmethod
