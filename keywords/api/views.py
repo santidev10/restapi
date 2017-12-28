@@ -14,10 +14,13 @@ from singledb.api.views import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS
+from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
-class KeywordListApiView(APIView, PermissionRequiredMixin):
+class KeywordListApiView(APIView,
+                         PermissionRequiredMixin,
+                         CassandraExportMixin):
     """
     Proxy view for keywords list
     """
@@ -25,6 +28,8 @@ class KeywordListApiView(APIView, PermissionRequiredMixin):
     permission_required = (
         "userprofile.keyword_list",
     )
+    fields_to_export = DEFAULT_KEYWORD_LIST_FIELDS
+    export_file_title = "keyword"
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
     def obtain_segment(self, segment_id):
@@ -124,7 +129,7 @@ class KeywordListApiView(APIView, PermissionRequiredMixin):
         # min_competition, max_competition
         make_range("competition")
 
-        # category
+        # keyword
         make("terms", "keyword")
 
         # viral
@@ -179,5 +184,6 @@ class KeywordRetrieveUpdateApiView(SingledbApiView):
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)
-        KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
+        if not response.data.get('error'):
+            KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
         return response
