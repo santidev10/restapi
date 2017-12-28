@@ -92,8 +92,13 @@ class SingleDatabaseApiConnectorPatcher:
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
-        channel.update(dict(is_owner=True))
         return channel
+
+    def get_video(self, query_params, pk):
+        with open('saas/fixtures/singledb_video_list.json') as data_file:
+            videos = json.load(data_file)
+        video = next(filter(lambda c: c["id"] == pk, videos["items"]))
+        return video
 
 
 def get_custom_permission(codename: str):
