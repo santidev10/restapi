@@ -1,10 +1,14 @@
 """
 SegmentKeyword models module
 """
-from celery import task
+from django.contrib.postgres.fields import JSONField
+from django.db.models import BigIntegerField
 from django.db.models import CharField
+from django.db.models import FloatField
 from django.db.models import ForeignKey
 
+from aw_reporting.models import KeywordStatistic
+from singledb.connector import SingleDatabaseApiConnector as Connector
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
@@ -22,15 +26,78 @@ class SegmentKeyword(BaseSegment):
     )
 
     category = CharField(max_length=255, choices=CATEGORIES)
+    keywords = BigIntegerField(default=0, db_index=True)
+    average_volume = BigIntegerField(default=0, db_index=True)
+    average_cpc = FloatField(default=0, db_index=True)
+    competition = FloatField(default=0, db_index=True)
+    top_keywords = JSONField(null=True, blank=True)
+
+    related_aw_statistics_model = KeywordStatistic
+    singledb_method = Connector().get_keyword_list
 
     segment_type = 'keyword'
 
     objects = SegmentManager()
 
-    @task
-    def update_statistics(self):
-        pass
- 
+    def obtain_singledb_data(self, ids_hash):
+        """
+        Execute call to SDB
+        """
+        result = {}
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "keyword",
+            "size": 0,
+            "aggregations": "avg_search_volume,avg_average_cpc,avg_competition",
+        }
+        result['data'] = self.singledb_method(query_params=params)
+
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "keyword,search_volume",
+            "sort": "search_volume:desc",
+            "size": 10,
+        }
+        result['top_keywords'] = self.singledb_method(query_params=params)
+        return result
+
+    def populate_statistics_fields(self, data):
+        """
+        Update segment statistics fields
+        """
+
+        self.keywords = data.get('data', {}).get('items_count')
+
+        average_volume = data.get('data', {}).get('aggregations', {}).get('avg_search_volume')
+        if average_volume:
+            self.average_volume = average_volume[0].get('value')
+
+        average_cpc = data.get('data', {}).get('aggregations', {}).get('avg_average_cpc')
+        if average_cpc:
+            self.average_cpc = average_cpc[0].get('value')
+
+        competition = data.get('data', {}).get('aggregations', {}).get('avg_competition')
+        if competition:
+            self.competition = competition[0].get('value')
+
+        keywords = data['top_keywords']['items']
+        if keywords:
+            self.top_keywords = [{'keyword': kw['keyword'], 'value': kw['search_volume']} for kw in keywords]
+
+    @property
+    def statistics(self):
+        """
+        Count segment statistics
+        """
+        statistics = {
+            "keywords_count": self.keywords,
+            "average_volume": self.average_volume,
+            "average_cpc": self.average_cpc,
+            "competition": self.competition,
+            "top_keywords": self.top_keywords,
+        }
+        return statistics
+
 
 class SegmentRelatedKeyword(BaseSegmentRelated):
     segment = ForeignKey(SegmentKeyword, related_name='related')

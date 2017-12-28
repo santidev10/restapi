@@ -185,3 +185,33 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     # "engage_rate",
     # <-- disabled SAAS-1584
 )
+
+DEFAULT_KEYWORD_LIST_FIELDS = (
+    "keyword",
+    "updated_at",
+    "category_daily_views",
+    "category_weekly_views",
+    "category_thirty_days_views",
+    "monthly_searches",
+    "video_count",
+    "search_volume",
+    "competition",
+    "average_cpc",
+    "interests",
+    "is_viral",
+)
+
+DEFAULT_KEYWORD_DETAILS_FIELDS = (
+    "keyword",
+    "updated_at",
+    "category_daily_views",
+    "category_weekly_views",
+    "category_thirty_days_views",
+    "monthly_searches",
+    "video_count",
+    "search_volume",
+    "competition",
+    "average_cpc",
+    "interests",
+    "is_viral",
+)

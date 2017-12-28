@@ -19,15 +19,20 @@ def count_segment_adwords_statistics(segment, **kwargs):
         raise AttributeError(
             "Serializer context with request is required in kwargs")
     # obtain related to segment videos ids
-    videos_ids = segment.related.model.objects.filter(
+    related_ids = segment.related.model.objects.filter(
         segment_id=segment.id).values_list("related_id", flat=True)
     # obtain aw account
     accounts = Account.user_objects(user)
     # prepare queryset
     filters = {
         "ad_group__campaign__account__in": accounts,
-        "yt_id__in": videos_ids
     }
+
+    if segment.segment_type == 'keyword':
+        filters['keyword__in'] = related_ids
+    else:
+        filters['yt_id__in'] = related_ids
+
     queryset = segment.related_aw_statistics_model.objects.filter(**filters)
     # if no queryset is empty - show CHF data
     if not queryset.exists():
