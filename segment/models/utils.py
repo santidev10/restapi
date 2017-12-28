@@ -18,7 +18,7 @@ def count_segment_adwords_statistics(segment, **kwargs):
     except AttributeError:
         raise AttributeError(
             "Serializer context with request is required in kwargs")
-    # obtain related to segment videos ids
+    # obtain related to segments related ids
     related_ids = segment.related.model.objects.filter(
         segment_id=segment.id).values_list("related_id", flat=True)
     # obtain aw account
