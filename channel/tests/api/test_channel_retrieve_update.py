@@ -93,3 +93,17 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("aw_data", response.data)
+
+    def test_delete_should_remove_channel_from_channel_list(self):
+        user = self.create_test_user(True)
+        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+            data = json.load(data_file)
+        channel_id = data["items"][0]["id"]
+        UserChannel.objects.create(user=user, channel_id=channel_id)
+        url = reverse("channel_api_urls:channel",
+                      args=(channel_id,))
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        self.assertEqual(len(user.channels.all()), 0)

@@ -303,7 +303,7 @@ class OwnChannelPermissions(BasePermission):
             .exists()
 
 
-class ChannelRetrieveUpdateApiView(
+class ChannelRetrieveUpdateDeleteApiView(
     SingledbApiView, ChannelYoutubeStatisticsMixin):
     permission_classes = (
         or_permission_classes(
@@ -380,6 +380,13 @@ class ChannelRetrieveUpdateApiView(
         ChannelListApiView.adapt_response_data(
             {'items': [response.data]}, self.request.user)
         return response
+
+    def delete(self, *args, **kwargs):
+        pk = kwargs.get('pk')
+        UserChannel.objects \
+            .filter(channel_id=pk, user=self.request.user) \
+            .delete()
+        return Response()
 
 
 class ChannelSetApiView(SingledbApiView):
