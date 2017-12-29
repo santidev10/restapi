@@ -242,6 +242,15 @@ class SingleDatabaseApiConnector(object):
             response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
 
+    def get_highlights_keywords(self, query_params):
+        endpoint = "keywords/"
+        self.set_fields_query_param(query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
+        return response_data
+
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)

@@ -132,6 +132,9 @@ class KeywordListApiView(APIView,
         # keyword
         make("terms", "keyword")
 
+        # keyword_text search
+        make("terms", "keyword_text")
+
         # viral
         is_viral = query_params.pop("is_viral", [None])[0]
         if is_viral is not None:
