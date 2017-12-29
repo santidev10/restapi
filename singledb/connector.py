@@ -53,7 +53,8 @@ class SingleDatabaseApiConnector(object):
             if data is None:
                 self.response = method(url, headers=headers, verify=False)
             else:
-                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
+                self.response = method(url, headers=headers, verify=False,
+                                       data=json.dumps(data))
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
@@ -64,8 +65,9 @@ class SingleDatabaseApiConnector(object):
         try:
             response_data = self.response.json()
         except Exception as e:
-            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}\n{}" \
-                                                      .format(e, self.response.text))
+            raise SingleDatabaseApiConnectorException(
+                "Unable to parse api response: {}\n{}" \
+                    .format(e, self.response.text))
         return response_data
 
     def get_country_list(self, query_params):
@@ -94,7 +96,8 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk + "/"
-        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_fields_query_param(query_params,
+                                    DEFAULT_CHANNEL_DETAILS_FIELDS)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
@@ -133,6 +136,15 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channel_set/"
         response_data = self.execute_delete_call(endpoint, query_params, data)
+        return response_data
+
+    def delete_channel_test(self, pk: str):
+        """
+        Delete channel
+        :param pk: str Channel ID
+        """
+        endpoint = "channel_test/" + pk
+        response_data = self.execute_delete_call(endpoint, query_params=dict())
         return response_data
 
     def get_video(self, query_params, pk):
@@ -233,7 +245,8 @@ class SingleDatabaseApiConnector(object):
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        query_params = dict(fields=",".join(fields), size=len(ids),
+                            ids_hash=ids_hash)
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -244,7 +257,8 @@ class SingleDatabaseApiConnector(object):
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        query_params = dict(fields=",".join(fields), size=len(ids),
+                            ids_hash=ids_hash)
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -317,7 +331,8 @@ class IQApiConnector(object):
             if data is None:
                 self.response = method(url, headers=headers, verify=False)
             else:
-                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
+                self.response = method(url, headers=headers, verify=False,
+                                       data=json.dumps(data))
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))

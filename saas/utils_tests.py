@@ -5,14 +5,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.authtoken.models import Token
+from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from userprofile.models import Plan
 
 
-class ExtendedAPITestCase(APITestCase):
-    multi_db = True
-
+class TestUserMixin:
     test_user_data = {
         "username": "TestUser",
         "first_name": "TestUser",
@@ -34,12 +33,7 @@ class ExtendedAPITestCase(APITestCase):
         user.set_password(user.password)
 
         if auth:
-            token = Token.objects.create(user=user)
-            # pylint: disable=no-member
-            self.client.credentials(
-                HTTP_AUTHORIZATION='Token {}'.format(token.key)
-            )
-            # pylint: enable=no-member
+            Token.objects.create(user=user)
         return user
 
     def add_custom_user_permission(self, user, perm: str):
@@ -49,6 +43,18 @@ class ExtendedAPITestCase(APITestCase):
     def remove_custom_user_permission(self, user, perm: str):
         permission = get_custom_permission(perm)
         user.user_permissions.remove(permission)
+
+
+class ExtendedAPITestCase(APITestCase, TestUserMixin):
+    multi_db = True
+
+    def create_test_user(self, auth=True):
+        user = super(ExtendedAPITestCase, self).create_test_user(auth)
+        if Token.objects.filter(user=user).exists():
+            self.client.credentials(
+                HTTP_AUTHORIZATION='Token {}'.format(user.token)
+            )
+        return user
 
 
 class SingleDatabaseApiConnectorPatcher:
@@ -107,3 +113,16 @@ def get_custom_permission(codename: str):
         content_type=content_type,
         codename=codename)
     return permission
+
+
+class MockResponse(object):
+    def __init__(self, status_code=HTTP_200_OK, json=None):
+        self.status_code = status_code
+        self._json = json
+
+    def json(self):
+        return self._json or dict()
+
+    @property
+    def text(self):
+        return json.dumps(self.json())

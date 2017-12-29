@@ -43,7 +43,8 @@ PROJECT_APPS = (
     "keyword_tool",
     "landing",
     "administration",
-    "payments"
+    "payments",
+    "channel"
 )
 
 THIRD_PARTY_APPS = (
