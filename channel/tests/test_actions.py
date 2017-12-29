@@ -19,8 +19,8 @@ class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
         channel_id = channels["items"][0]["id"]
         channel = UserChannel.objects.create(channel_id=channel_id, user=user)
 
-        with patch(
-                "channel.api.views.Connector.delete_channel") as delete_mock:
+        with patch("channel.api.views.Connector.delete_channel_test") \
+                as delete_mock:
             remove_auth_channel(user.email)
 
             delete_mock.assert_called_once_with(channel_id)

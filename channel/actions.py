@@ -13,7 +13,7 @@ def remove_auth_channel(email):
     connector = SingleDatabaseApiConnector()
     for channel in user_channels:
         try:
-            connector.delete_channel(channel.channel_id)
+            connector.delete_channel_test(channel.channel_id)
         except SingleDatabaseApiConnectorException:
             logger.warning(
                 "Failed to remove channel {channel_id} from single DB".format(

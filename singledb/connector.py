@@ -137,12 +137,12 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
-    def delete_channel(self, pk: str):
+    def delete_channel_test(self, pk: str):
         """
         Delete channel
         :param pk: str Channel ID
         """
-        endpoint = "channel/" + pk
+        endpoint = "channel_test/" + pk
         response_data = self.execute_delete_call(endpoint, query_params=dict())
         return response_data
 
