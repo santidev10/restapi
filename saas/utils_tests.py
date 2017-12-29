@@ -2,6 +2,8 @@ import json
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -33,6 +35,14 @@ class TestUserMixin:
         if auth:
             Token.objects.create(user=user)
         return user
+
+    def add_custom_user_permission(self, user, perm: str):
+        permission = get_custom_permission(perm)
+        user.user_permissions.add(permission)
+
+    def remove_custom_user_permission(self, user, perm: str):
+        permission = get_custom_permission(perm)
+        user.user_permissions.remove(permission)
 
 
 class ExtendedAPITestCase(APITestCase, TestUserMixin):
@@ -88,8 +98,21 @@ class SingleDatabaseApiConnectorPatcher:
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
-        channel.update(dict(is_owner=True))
         return channel
+
+    def get_video(self, query_params, pk):
+        with open('saas/fixtures/singledb_video_list.json') as data_file:
+            videos = json.load(data_file)
+        video = next(filter(lambda c: c["id"] == pk, videos["items"]))
+        return video
+
+
+def get_custom_permission(codename: str):
+    content_type = ContentType.objects.get_for_model(Plan)
+    permission, _ = Permission.objects.get_or_create(
+        content_type=content_type,
+        codename=codename)
+    return permission
 
 
 class MockResponse(object):

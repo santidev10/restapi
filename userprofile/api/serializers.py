@@ -3,17 +3,20 @@ Userprofile api serializers module
 """
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import update_last_login
+from django.contrib.auth.models import update_last_login, PermissionsMixin
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
-    EmailField
+    EmailField, MaxLengthValidator, EmailValidator
+from rest_framework.validators import UniqueValidator
 
-from administration.notifications import send_new_registration_email
-from payments.stripe_api.subscriptions import retrieve, is_valid
+from administration.notifications import send_new_registration_email, \
+    send_welcome_email
 from aw_reporting.models import Ad
 from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
-from payments.api.serializers import SubscriptionSerializer as PaymentSubscriptionSerializer
+from payments.api.serializers import \
+    SubscriptionSerializer as PaymentSubscriptionSerializer
+from payments.stripe_api.subscriptions import retrieve, is_valid
 from userprofile.models import Subscription, Plan
 
 PHONE_REGEX = RegexValidator(
@@ -33,6 +36,16 @@ class UserCreateSerializer(ModelSerializer):
     phone_number = CharField(
         max_length=15, required=True, validators=[PHONE_REGEX])
     verify_password = CharField(max_length=255, required=True)
+    email = EmailField(
+        max_length=254,
+        validators=[
+            UniqueValidator(
+                queryset=get_user_model().objects.all(),
+                message="Looks like you already have an account"
+                        " with this email address. Please try to login"),
+            MaxLengthValidator,
+            EmailValidator]
+    )
 
     class Meta:
         """
@@ -86,7 +99,7 @@ class UserCreateSerializer(ModelSerializer):
             "last_name": user.last_name
         }
         send_new_registration_email(email_data)
-        # done
+        send_welcome_email(user, self.context.get("request"))
         return user
 
 
@@ -105,6 +118,7 @@ class UserSerializer(ModelSerializer):
     has_paid_subscription_error = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
     vendor = SerializerMethodField()
+    can_access_media_buying = SerializerMethodField()
 
     class Meta:
         """
@@ -177,6 +191,9 @@ class UserSerializer(ModelSerializer):
 
     def get_vendor(self, obj):
         return settings.VENDOR
+
+    def get_can_access_media_buying(self, obj: PermissionsMixin):
+        return obj.has_perm("userprofile.view_media_buying")
 
 
 class UserSetPasswordSerializer(Serializer):

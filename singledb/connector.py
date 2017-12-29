@@ -9,7 +9,8 @@ from django.conf import settings
 
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
-    DEFAULT_CHANNEL_DETAILS_FIELDS
+    DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
+    DEFAULT_KEYWORD_LIST_FIELDS
 
 
 class SingleDatabaseApiConnectorException(Exception):
@@ -282,6 +283,29 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/"
         response_data = self.execute_post_call(
             endpoint, {}, {"channels_ids": channels_ids})
+        return response_data
+
+    def get_keyword(self, query_params, pk):
+        """
+        Obtain keywords
+        :param query_params: dict
+        :param pk: str
+        """
+        endpoint = "keywords/" + pk + "/"
+        self.set_fields_query_param(
+            query_params, DEFAULT_KEYWORD_DETAILS_FIELDS)
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def get_keyword_list(self, query_params):
+        """
+        Obtain keywords list
+        :param query_params: dict
+        """
+        endpoint = "keywords/"
+        self.set_fields_query_param(
+            query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
 

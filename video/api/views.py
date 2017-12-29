@@ -25,7 +25,7 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(
-        APIView, PermissionRequiredMixin, CassandraExportMixin):
+    APIView, PermissionRequiredMixin, CassandraExportMixin):
     """
     Proxy view for video list
     """
@@ -90,7 +90,8 @@ class VideoListApiView(
             try:
                 ids_hash = connector.store_ids(list(videos_ids))
             except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
 
         channel = query_params.get("channel")
@@ -99,8 +100,6 @@ class VideoListApiView(
             # user should be able to see own videos
             if request.user.channels.filter(channel_id=channel).count() < 1:
                 return Response(empty_response)
-        elif not request.user.has_perm("userprofile.video_audience"):
-            query_params.update(verified="0")
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -122,6 +121,7 @@ class VideoListApiView(
         """
         Adapt SDB request format
         """
+
         # filters --->
         def make_range(name, name_min=None, name_max=None):
             if name_min is None:
@@ -257,8 +257,20 @@ class VideoListApiView(
             if "history_date" in item and item["history_date"]:
                 item["history_date"] = item["history_date"][:10]
 
-            if "has_audience" in item:
-                item["verified"] = item["has_audience"]
+            is_own = item.get("is_owner", False)
+            if user.has_perm('userprofile.video_audience') or is_own:
+                if "has_audience" in item:
+                    item["verified"] = item["has_audience"]
+            else:
+                item['has_audience'] = False
+                item.pop('audience', None)
+                item['brand_safety'] = None
+                item['safety_chart_data'] = None
+                item.pop('traffic_sources', None)
+
+            if not user.has_perm('userprofile.video_aw_performance') \
+                    and not is_own:
+                item.pop('aw_data', None)
 
             if "country" in item and item["country"] is None:
                 item["country"] = ""
@@ -285,7 +297,7 @@ class VideoListApiView(
 
 
 class VideoListFiltersApiView(SingledbApiView):
-    permission_required = ('userprofile.video_filter', )
+    permission_required = ('userprofile.video_filter',)
 
     connector_get = Connector().get_video_filters_list
 
@@ -293,9 +305,19 @@ class VideoListFiltersApiView(SingledbApiView):
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.video_details',)
-    connector_get = Connector().get_video
+    _connector_get = None
     connector_put = Connector().put_video
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
+
+    @property
+    def connector_get(self):
+        """
+        Lazy init for test purpose
+        :return:
+        """
+        if self._connector_get is None:
+            self._connector_get = Connector().get_video
+        return self._connector_get
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)

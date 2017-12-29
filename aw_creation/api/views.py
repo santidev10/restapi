@@ -841,8 +841,6 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         MediaBuyingAddOnPermission),
     )
 
-    # permission_classes = (MediaBuyingAddOnPermission,)
-
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(owner=self.request.user,
                                                   is_managed=True)
@@ -1000,7 +998,10 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = CampaignCreationSetupSerializer
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -1163,7 +1164,10 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
@@ -1232,7 +1236,10 @@ class AdCreationListSetupApiView(ListCreateAPIView):
 @demo_view_decorator
 class AdCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdCreationSetupSerializer
-    permission_classes = (MediaBuyingAddOnPermission,)
+    permission_classes = (or_permission_classes(
+        user_has_permission("userprofile.settings_my_aw_accounts"),
+        MediaBuyingAddOnPermission),
+    )
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(

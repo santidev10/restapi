@@ -1,21 +1,21 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST,\
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
-from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import Account
+
 from aw_creation.models import *
+from aw_reporting.demo.models import DemoAccount
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def create_ad_group(self, owner, start=None, end=None, account=None):
         account_creation = AccountCreation.objects.create(
@@ -34,8 +34,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_group_creation
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -70,7 +69,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             set(data.keys()),
             {
                 'id', 'name', 'ad_creations', 'updated_at', 'max_rate',
-                'targeting', 'parents', 'genders', 'age_ranges', 'video_ad_format',
+                'targeting', 'parents', 'genders', 'age_ranges',
+            'video_ad_format',
             }
         )
         for f in ('age_ranges', 'genders', 'parents'):
@@ -133,7 +133,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             age_ranges=[AdGroupCreation.AGE_RANGE_55_64,
                         AdGroupCreation.AGE_RANGE_65_UP],
             targeting={
-                "keyword": {"positive": ["spam", "ham"], "negative": ["ai", "neural nets"]},
+                "keyword": {"positive": ["spam", "ham"],
+                            "negative": ["ai", "neural nets"]},
                 "video": {"positive": ["iTKJ_itifQg"], "negative": ["1112yt"]},
             }
         )
@@ -197,8 +198,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad_group.id,))
         data = {
             "name": "AdGroup 1", "max_rate": 0,
-            "targeting": {"keyword": {"positive": [], "negative": []}, "topic": {"positive": [], "negative": []},
-                          "interest": {"positive": [], "negative": []}, "channel": {"positive": [], "negative": []},
+            "targeting": {"keyword": {"positive": [], "negative": []},
+                          "topic": {"positive": [], "negative": []},
+                          "interest": {"positive": [], "negative": []},
+                          "channel": {"positive": [], "negative": []},
                           "video": {"positive": [], "negative": []}},
             "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
                            AdGroupCreation.AGE_RANGE_25_34],
@@ -284,4 +287,35 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         ad_group.refresh_from_db()
         self.assertIs(ad_group.is_deleted, True)
 
+    def test_enterprise_user_can_edit_ad_group(self):
+        user = self.user
+        user.set_permissions_from_plan('enterprise')
 
+        today = datetime.now().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {"keyword": {"positive": [], "negative": []},
+                          "topic": {"positive": [], "negative": []},
+                          "interest": {"positive": [], "negative": []},
+                          "channel": {"positive": [], "negative": []},
+                          "video": {"positive": [], "negative": []}},
+            "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
+                           AdGroupCreation.AGE_RANGE_25_34],
+            "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
+            "genders": [AdGroupCreation.GENDER_FEMALE],
+        }
+
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.put(
+                url, json.dumps(data), content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)

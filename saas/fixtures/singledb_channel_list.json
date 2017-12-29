@@ -14,7 +14,21 @@
       "engage_rate": 3.74230602983019,
       "thirty_days_subscribers": 355180,
       "thirty_days_views": 224243589,
-      "sentiment": 97.0767078760018
+      "sentiment": 97.0767078760018,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "HolaSoyGerman.",
@@ -28,7 +42,21 @@
       "engage_rate": 3.9335933301619,
       "thirty_days_subscribers": 169538,
       "thirty_days_views": 34270337,
-      "sentiment": 98.2659457728293
+      "sentiment": 98.2659457728293,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "JustinBieberVEVO",
@@ -42,7 +70,21 @@
       "engage_rate": 0.687087526995031,
       "thirty_days_subscribers": 656106,
       "thirty_days_views": 284659924,
-      "sentiment": 82.1355196452911
+      "sentiment": 82.1355196452911,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "YouTube Spotlight",
@@ -56,7 +98,21 @@
       "engage_rate": 1.06799297083789,
       "thirty_days_subscribers": -14968,
       "thirty_days_views": 7528232,
-      "sentiment": 87.321578191589
+      "sentiment": 87.321578191589,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "RihannaVEVO",
@@ -70,7 +126,21 @@
       "engage_rate": 0.434274678671765,
       "thirty_days_subscribers": 183641,
       "thirty_days_views": 138406432,
-      "sentiment": 93.7734534792477
+      "sentiment": 93.7734534792477,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "elrubiusOMG",
@@ -84,7 +154,21 @@
       "engage_rate": 6.06870041066928,
       "thirty_days_subscribers": 351663,
       "thirty_days_views": 128522342,
-      "sentiment": 98.2628954896149
+      "sentiment": 98.2628954896149,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "Smosh",
@@ -98,7 +182,21 @@
       "engage_rate": 1.28625092622271,
       "thirty_days_subscribers": 34847,
       "thirty_days_views": 55915623,
-      "sentiment": 97.5270005692391
+      "sentiment": 97.5270005692391,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "KatyPerryVEVO",
@@ -112,7 +210,21 @@
       "engage_rate": 0.449345045465028,
       "thirty_days_subscribers": 491465,
       "thirty_days_views": 434450509,
-      "sentiment": 92.6967077004099
+      "sentiment": 92.6967077004099,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "TaylorSwiftVEVO",
@@ -126,7 +238,21 @@
       "engage_rate": 0.500295212042471,
       "thirty_days_subscribers": 239448,
       "thirty_days_views": 249188307,
-      "sentiment": 93.3604115620917
+      "sentiment": 93.3604115620917,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "OneDirectionVEVO",
@@ -140,7 +266,21 @@
       "engage_rate": 0.863822522066788,
       "thirty_days_subscribers": 143260,
       "thirty_days_views": 68742853,
-      "sentiment": 95.9661983848864
+      "sentiment": 95.9661983848864,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "EminemVEVO",
@@ -154,7 +294,21 @@
       "engage_rate": 0.607771861922191,
       "thirty_days_subscribers": 304045,
       "thirty_days_views": 155728765,
-      "sentiment": 96.91419266194
+      "sentiment": 96.91419266194,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "Fernanfloo",
@@ -168,7 +322,21 @@
       "engage_rate": 4.89871754114884,
       "thirty_days_subscribers": 567915,
       "thirty_days_views": 74644181,
-      "sentiment": 97.0417102991156
+      "sentiment": 97.0417102991156,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "VanossGaming",
@@ -182,7 +350,21 @@
       "engage_rate": 1.54888572164592,
       "thirty_days_subscribers": 169064,
       "thirty_days_views": 187166500,
-      "sentiment": 98.8935898181947
+      "sentiment": 98.8935898181947,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "whinderssonnunes",
@@ -196,7 +378,21 @@
       "engage_rate": 10.9298085521216,
       "thirty_days_subscribers": 934448,
       "thirty_days_views": 87872348,
-      "sentiment": 99.0417295333456
+      "sentiment": 99.0417295333456,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "TheEllenShow",
@@ -210,7 +406,21 @@
       "engage_rate": 0.961644535848758,
       "thirty_days_subscribers": 296329,
       "thirty_days_views": 407049255,
-      "sentiment": 97.2912960753408
+      "sentiment": 97.2912960753408,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "nigahiga",
@@ -224,7 +434,21 @@
       "engage_rate": 2.53823930560441,
       "thirty_days_subscribers": 138061,
       "thirty_days_views": 49132172,
-      "sentiment": 98.6600344551368
+      "sentiment": 98.6600344551368,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "JuegaGerman",
@@ -238,7 +462,21 @@
       "engage_rate": 5.79370872779068,
       "thirty_days_subscribers": 517035,
       "thirty_days_views": 204213716,
-      "sentiment": 97.8822032470267
+      "sentiment": 97.8822032470267,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "T-Series",
@@ -252,7 +490,21 @@
       "engage_rate": 0.312771457188475,
       "thirty_days_subscribers": 1053661,
       "thirty_days_views": 1197961350,
-      "sentiment": 90.2941774316732
+      "sentiment": 90.2941774316732,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "Dude Perfect",
@@ -266,7 +518,21 @@
       "engage_rate": 1.1166681131206,
       "thirty_days_subscribers": 663938,
       "thirty_days_views": 149095249,
-      "sentiment": 97.829494333782
+      "sentiment": 97.829494333782,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     },
     {
       "title": "Yuya",
@@ -280,7 +546,21 @@
       "engage_rate": 3.09613222902059,
       "thirty_days_subscribers": 214505,
       "thirty_days_views": 28938799,
-      "sentiment": 97.2350831680225
+      "sentiment": 97.2350831680225,
+      "aw_data": {
+        "ctr_v_top": 33.33333206176758,
+        "ctr": 0.12139005959033966,
+        "video_view_rate_top": 100.0,
+        "ctr_top": 25.0,
+        "average_cpv_bottom": 0.0,
+        "video_view_rate": 44.460445404052734,
+        "ctr_bottom": 0.0,
+        "video_view_rate_bottom": 0.0,
+        "average_cpv_top": 0.10974747687578201,
+        "ctr_v_bottom": 0.0,
+        "average_cpv": 0.04430035129189491,
+        "ctr_v": 0.2842724621295929
+      }
     }
   ],
   "current_page": 1

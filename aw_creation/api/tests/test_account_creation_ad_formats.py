@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django.core.urlresolvers import reverse
 from django.utils import timezone
-from datetime import timedelta
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
+    HTTP_403_FORBIDDEN
+
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
@@ -11,12 +14,10 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.can_access_media_buying = True
-        self.user.save()
+        self.add_custom_user_permission(self.user, "view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.user.can_access_media_buying = False
-        self.user.save()
+        self.remove_custom_user_permission(self.user, "view_media_buying")
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
@@ -56,10 +57,12 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD])
+        self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE,
+                                         AdGroupCreation.BUMPER_AD])
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
             content_type='application/json',
         )
@@ -99,7 +102,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data, [AdGroupCreation.BUMPER_AD])
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.IN_STREAM_TYPE)),
             content_type='application/json',
         )
@@ -127,7 +131,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE])
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
             content_type='application/json',
         )
@@ -157,7 +162,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE])
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
             content_type='application/json',
         )
@@ -189,7 +195,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE])
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
             json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD)),
             content_type='application/json',
         )
@@ -211,15 +218,19 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
-            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD, video_duration=7)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
+            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD,
+                            video_duration=7)),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
         response = self.client.patch(
-            reverse("aw_creation_urls:ad_creation_setup", args=(ad_creation.id,)),
-            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD, video_duration=6)),
+            reverse("aw_creation_urls:ad_creation_setup",
+                    args=(ad_creation.id,)),
+            json.dumps(dict(video_ad_format=AdGroupCreation.BUMPER_AD,
+                            video_duration=6)),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -23,6 +23,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_202_ACCEPTED
 from rest_framework.views import APIView
 
+from administration.notifications import send_welcome_email, \
+    send_new_channel_authentication_email
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
@@ -263,18 +265,21 @@ class ChannelListApiView(
             if "history_date" in item and item["history_date"]:
                 item["history_date"] = item["history_date"][:10]
 
-            if user.has_perm('userprofile.channel_audience') or item[
-                "is_owner"]:
+            is_own = item.get("is_owner", False)
+            if user.has_perm('userprofile.channel_audience') \
+                    or is_own:
                 if "has_audience" in item:
                     item["verified"] = item["has_audience"]
             else:
                 item['has_audience'] = False
                 item.pop('audience', None)
-                item.pop('aw_data', None)
                 item['brand_safety'] = None
-                item.pop('genre', None)
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
+
+            if not user.has_perm('userprofile.channel_aw_performance') \
+                    and not is_own:
+                item.pop('aw_data', None)
 
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item and item[field]:
@@ -406,7 +411,8 @@ class ChannelAuthenticationApiView(APIView):
                 if channel_id not in user_channels:
                     UserChannel.objects.create(channel_id=channel_id,
                                                user=user)
-
+                    send_new_channel_authentication_email(
+                        user, channel_id, request)
                 # set user avatar
                 if not created:
                     self.set_user_avatar(user, data.get("access_token"))
@@ -462,6 +468,7 @@ class ChannelAuthenticationApiView(APIView):
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
             created = True
+            send_welcome_email(user, self.request)
         return user, created
 
     @staticmethod
