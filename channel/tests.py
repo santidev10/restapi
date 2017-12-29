@@ -106,3 +106,24 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_professional_user_should_see_channel_aw_data(self):
+        """
+        Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
+        """
+        user = self.create_test_user(True)
+        user.set_permissions_from_plan('professional')
+        user.save()
+
+        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+            data = json.load(data_file)
+        channel_id = data["items"][0]["id"]
+
+        url = reverse("channel_api_urls:channel",
+                      args=(channel_id,))
+        with patch("channel.api.views.Connector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("aw_data", response.data)

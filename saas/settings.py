@@ -288,8 +288,8 @@ ACCESS_PLANS = {
     'free': {
         'hidden': False,
         'permissions': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
-            'video': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'channel': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False,'details': False},
+            'video': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False, 'details': False},
             'keyword': {'list': False, 'details': False, },
             'segment': {
                 'channel': {'all': False, 'private': False},
@@ -314,8 +314,8 @@ ACCESS_PLANS = {
     'professional': {
         'hidden': False,
         'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
@@ -340,8 +340,8 @@ ACCESS_PLANS = {
     'enterprise': {
         'hidden': True,
         'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
             'keyword': {'list': True, 'details': True},
             'segment': {
                 'channel': {'all': True, 'private': True},
