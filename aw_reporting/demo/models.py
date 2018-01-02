@@ -770,7 +770,8 @@ class DemoAccount(BaseDemo):
             creative=[dict(id=i['id'], name=i['label'], thumbnail=i['thumbnail'])
                       for i in self.creative],
 
-            delivery_trend=[]
+            delivery_trend=[],
+            ad_network=self.ad_network
         )
         for indicator in ("impressions", "video_views"):
             filters = dict(

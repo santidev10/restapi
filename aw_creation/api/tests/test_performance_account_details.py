@@ -6,8 +6,10 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, TOTAL_DEMO_AD_GROUPS_COUNT
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, AdCreation
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
+    TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
 from saas.utils_tests import ExtendedAPITestCase
@@ -16,9 +18,12 @@ from saas.utils_tests import SingleDatabaseApiConnectorPatcher
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
     account_list_header_fields = {
-        'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart', 'thumbnail', 'is_changed',
-        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v', 'is_managed',
-        "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
+        'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart',
+        'thumbnail', 'is_changed',
+        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate',
+        'ctr_v', 'is_managed',
+        "ad_count", "channel_count", "video_count", "interest_count",
+        "topic_count", "keyword_count",
         "is_disapproved", "from_aw"
     }
     overview_keys = {
@@ -42,19 +47,24 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         'age', 'gender', 'device',
         "all_conversions", "conversions", "view_through", 'average_position',
         'video100rate', 'video25rate', 'video50rate', 'video75rate',
-        'delivery_trend',
+        'delivery_trend', "ad_network"
     }
 
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_success_get(self):
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=self.user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", is_managed=False, owner=self.user, account=account,
+        account_creation = AccountCreation.objects.create(name="",
+                                                          is_managed=False,
+                                                          owner=self.user,
+                                                          account=account,
                                                           is_approved=True)
         stats = dict(
             impressions=4, video_views=2, clicks=1, cost=1,
@@ -66,9 +76,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         )
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         date = datetime.now().date() - timedelta(days=1)
-        AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, **stats)
-        target, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name=""))
-        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target, **stats)
+        ad_network = "ad_network"
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=date,
+                                        average_position=1,
+                                        ad_network=ad_network, **stats)
+        target, _ = GeoTarget.objects.get_or_create(id=1,
+                                                    defaults=dict(name=""))
+        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target,
+                                     **stats)
 
         url = reverse("aw_creation_urls:performance_account_details",
                       args=(account_creation.id,))
@@ -96,6 +111,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['details']['video50rate'], 75)
         self.assertEqual(data['details']['video75rate'], 50)
         self.assertEqual(data['details']['video100rate'], 25)
+        self.assertEqual(data['details']['ad_network'], ad_network)
         self.assertEqual(
             set(data["overview"].keys()),
             self.overview_keys,
@@ -103,12 +119,16 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=self.user,
         )
 
-        account_creation = AccountCreation.objects.create(name="", owner=self.user, sync_at=timezone.now())
+        account_creation = AccountCreation.objects.create(name="",
+                                                          owner=self.user,
+                                                          sync_at=timezone.now())
 
         account = Account.objects.create(id=1, name="")
         campaign = Campaign.objects.create(id=1, name="", account=account)
@@ -169,8 +189,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             set(data["overview"].keys()),
             self.overview_keys,
         )
-        self.assertEqual(data["details"]['delivery_trend'][0]['label'], "Impressions")
-        self.assertEqual(data["details"]['delivery_trend'][1]['label'], "Views")
+        self.assertEqual(data["details"]['delivery_trend'][0]['label'],
+                         "Impressions")
+        self.assertEqual(data["details"]['delivery_trend'][1]['label'],
+                         "Views")
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
@@ -204,10 +226,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo_data(self):
-        account_creation = AccountCreation.objects.create(name="Name 123", owner=self.user)
-        campaign_creation = CampaignCreation.objects.create(name="", account_creation=account_creation)
-        ad_group_creation = AdGroupCreation.objects.create(name="", campaign_creation=campaign_creation)
-        ad_creation = AdCreation.objects.create(name="", ad_group_creation=ad_group_creation,
+        account_creation = AccountCreation.objects.create(name="Name 123",
+                                                          owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(name="",
+                                                            account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(name="",
+                                                           campaign_creation=campaign_creation)
+        ad_creation = AdCreation.objects.create(name="",
+                                                ad_group_creation=ad_group_creation,
                                                 video_thumbnail="https://f.i/123.jpeg")
         url = reverse("aw_creation_urls:performance_account_details",
                       args=(account_creation.id,))
