@@ -116,9 +116,9 @@ def get_custom_permission(codename: str):
 
 
 class MockResponse(object):
-    def __init__(self, status_code=HTTP_200_OK, json=None):
+    def __init__(self, status_code=HTTP_200_OK, **kwargs):
         self.status_code = status_code
-        self._json = json
+        self._json = kwargs.pop("json", None)
 
     def json(self):
         return self._json or dict()

@@ -402,6 +402,11 @@ class ChannelAuthenticationApiView(APIView):
         try:
             data = connector.auth_channel(request.data)
         except SingleDatabaseApiConnectorException as e:
+            if e.sdb_response is not None:
+                return Response(
+                    data=e.sdb_response.json(),
+                    status=e.sdb_response.status_code
+                )
             data = {"error": " ".join(e.args)}
             return Response(data=data, status=HTTP_408_REQUEST_TIMEOUT)
 

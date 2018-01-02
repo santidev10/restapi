@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from rest_framework.reverse import reverse
-from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_202_ACCEPTED, HTTP_400_BAD_REQUEST
 
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, MockResponse
@@ -30,3 +30,25 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
         self.assertIn('auth_token', data)
+
+    @patch("singledb.connector.requests")
+    def test_proxy_errors_from_sdb(self, requests_mock):
+        """
+        Bug: https://channelfactory.atlassian.net/browse/SAAS-1718
+        Profile Page > Authorize > 408 error when user try
+        to Authenticate YT channel on account which doesn't have It
+        """
+        url = reverse("channel_api_urls:channel_authentication")
+        test_error = {"code": "channel_not_found",
+                      "detail": "This account doesn't include any channels. "
+                                "Please try to authorize other YT channel"}
+        requests_mock.post.return_value = MockResponse(
+            status_code=HTTP_400_BAD_REQUEST, json=test_error
+        )
+
+        response = self.client.post(url, dict(),
+                                    # content_type="application/json"
+                                    )
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, test_error)
