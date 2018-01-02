@@ -17,7 +17,12 @@ class SingleDatabaseApiConnectorException(Exception):
     """
     Exception class for single database api connector
     """
-    pass
+
+    def __init__(self, *args, **kwargs):
+        sdb_response = kwargs.pop("sdb_response", None)
+        super(SingleDatabaseApiConnectorException, self) \
+            .__init__(*args, **kwargs)
+        self.sdb_response = sdb_response
 
 
 class SingleDatabaseApiConnector(object):
@@ -61,7 +66,9 @@ class SingleDatabaseApiConnector(object):
         else:
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(self.response.text))
+                    "Error during iq api call: {}".format(self.response.text),
+                    sdb_response=self.response
+                )
         try:
             response_data = self.response.json()
         except Exception as e:
