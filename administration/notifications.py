@@ -1,8 +1,10 @@
 """
 Administration notifications module
 """
+import os
+from email.mime.image import MIMEImage
+
 from django.conf import settings
-from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
 from django.template.loader import get_template
@@ -10,6 +12,8 @@ from django.template.loader import get_template
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
 }
+EMAIL_IMAGES_DIR = os.path.join(settings.STATICFILES_DIRS[0],
+                                'img/notifications')
 
 
 def send_new_registration_email(email_data):
@@ -92,13 +96,17 @@ def send_html_email(subject, to, text_header, text_content):
     context = {"text_header": text_header,
                "text_content": text_content}
     html_content = html.render(context=context)
-    html_content = html_content \
-        .replace("cf_logo_wt_big.png",
-                 static("img/notifications/cf_logo_wt_big.png")) \
-        .replace("img.png", static("img/notifications/img.png")) \
-        .replace("logo.gif", static("img/notifications/logo.gif")) \
-        .replace("bg.png", static("img/notifications/bg.png"))
+
     msg = EmailMultiAlternatives(subject, "{}{}".format(
         text_header, text_content), sender, [to])
     msg.attach_alternative(html_content, "text/html")
+    msg.mixed_subtype = "related"
+
+    for img in ["cf_logo_wt_big.png", "img.png", "logo.gif", "bg.png"]:
+        img_path = os.path.join(EMAIL_IMAGES_DIR, img)
+        with open(img_path, 'rb') as fp:
+            msg_img = MIMEImage(fp.read())
+        msg_img.add_header('Content-ID', '<{}>'.format(img))
+        msg.attach(msg_img)
+
     msg.send(fail_silently=True)
