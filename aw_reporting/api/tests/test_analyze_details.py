@@ -9,27 +9,27 @@ from .base import AwReportingAPITestCase
 
 class AccountDetailsAPITestCase(AwReportingAPITestCase):
     overview_keys = {
-        'age', 'gender', 'device', 'location',
-        'clicks', 'cost', 'impressions', 'video_views',
-        'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
+        "age", "gender", "device", "location",
+        "clicks", "cost", "impressions", "video_views",
+        "ctr", "ctr_v", "average_cpm", "average_cpv",
         "all_conversions", "conversions", "view_through",
-        'video_view_rate',
-        'video100rate', 'video25rate', 'video50rate',
-        'video75rate', 'video_views_this_week',
-        'video_view_rate_top', 'impressions_this_week',
-        'video_views_last_week', 'cost_this_week',
-        'video_view_rate_bottom', 'clicks_this_week',
-        'ctr_v_top', 'cost_last_week', 'average_cpv_top',
-        'ctr_v_bottom', 'ctr_bottom', 'clicks_last_week',
-        'average_cpv_bottom', 'ctr_top', 'impressions_last_week',
+        "video_view_rate",
+        "video100rate", "video25rate", "video50rate",
+        "video75rate", "video_views_this_week",
+        "video_view_rate_top", "impressions_this_week",
+        "video_views_last_week", "cost_this_week",
+        "video_view_rate_bottom", "clicks_this_week",
+        "ctr_v_top", "cost_last_week", "average_cpv_top",
+        "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
+        "average_cpv_bottom", "ctr_top", "impressions_last_week",
     }
 
     detail_keys = {
-        'creative',
-        'age', 'gender', 'device',
-        "all_conversions", "conversions", "view_through", 'average_position',
-        'video100rate', 'video25rate', 'video50rate', 'video75rate',
-        'delivery_trend',
+        "creative",
+        "age", "gender", "device",
+        "all_conversions", "conversions", "view_through", "average_position",
+        "video100rate", "video25rate", "video50rate", "video75rate",
+        "delivery_trend", "ad_network"
     }
 
     def setUp(self):
@@ -47,7 +47,7 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         )
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         date = datetime.now().date() - timedelta(days=1)
-        AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, **stats)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, ad_network="123", **stats)
         target, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name=""))
         CityStatistic.objects.create(ad_group=ad_group, date=date, city=target, **stats)
 

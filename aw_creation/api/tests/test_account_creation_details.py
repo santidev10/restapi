@@ -1,20 +1,20 @@
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
 from django.utils import timezone
+from rest_framework.status import HTTP_200_OK
+
 from aw_creation.models import *
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
 from saas.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from aw_reporting.api.tests.base import AwReportingAPITestCase
 
 
 class AccountCreationDetailsAPITestCase(AwReportingAPITestCase):
-
     details_keys = {
-        'video25rate', 'video50rate', 'video75rate', 'video100rate',
-        'average_position', 'view_through', 'conversions', 'all_conversions',
-        'age', 'gender', 'device',
-        'delivery_trend', 'creative',
+        "video25rate", "video50rate", "video75rate", "video100rate",
+        "average_position", "view_through", "conversions", "all_conversions",
+        "age", "gender", "device", "delivery_trend", "creative", "ad_network"
     }
 
     def setUp(self):
@@ -35,10 +35,11 @@ class AccountCreationDetailsAPITestCase(AwReportingAPITestCase):
             average_position=average_position, impressions=impressions,
         )
         # --
-        url = reverse("aw_creation_urls:account_creation_details", args=(ac_creation.id,))
+        url = reverse("aw_creation_urls:account_creation_details",
+                      args=(ac_creation.id,))
         with patch(
-            "aw_creation.api.serializers.SingleDatabaseApiConnector",
-            new=SingleDatabaseApiConnectorPatcher
+                "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                new=SingleDatabaseApiConnectorPatcher
         ):
             response = self.client.get(url)
 
@@ -48,5 +49,4 @@ class AccountCreationDetailsAPITestCase(AwReportingAPITestCase):
             set(data.keys()),
             self.details_keys,
         )
-        self.assertEqual(data['average_position'], average_position)
-
+        self.assertEqual(data["average_position"], average_position)
