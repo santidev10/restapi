@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
+from django.core import mail
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_202_ACCEPTED, HTTP_400_BAD_REQUEST
 
 from saas.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, MockResponse
+from userprofile.models import Plan
 
 
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
@@ -46,9 +48,26 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
             status_code=HTTP_400_BAD_REQUEST, json=test_error
         )
 
-        response = self.client.post(url, dict(),
-                                    # content_type="application/json"
-                                    )
+        response = self.client.post(url, dict(), )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, test_error)
+
+    @patch("channel.api.views.requests")
+    def test_send_welcome_email(self, requests_mock):
+        Plan.update_defaults()
+        url = reverse("channel_api_urls:channel_authentication")
+        user_details = {
+            "email": "test@test.test",
+            "image": {"isDefault": False},
+        }
+        requests_mock.get.return_value = MockResponse(json=user_details)
+
+        with patch("channel.api.views.Connector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url, dict(), )
+
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        welcome_emails = [m for m in mail.outbox
+                          if m.subject.startswith("Welcome")]
+        self.assertEqual(len(welcome_emails), 1)

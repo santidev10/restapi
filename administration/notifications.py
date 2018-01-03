@@ -2,10 +2,10 @@
 Administration notifications module
 """
 from django.conf import settings
+from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
 from django.template.loader import get_template
-from django.core.mail import EmailMultiAlternatives
-from django.contrib.staticfiles.templatetags.staticfiles import static
 
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
@@ -43,11 +43,9 @@ def send_new_channel_authentication_email(user, channel_id, request):
            "User first_name: {first_name} \n" \
            "User last_name: {last_name} \n" \
            "Channel id: {channel_id}\n" \
-           "Link to channel: {link} \n\n".format(
-                host=request.get_host(),
-                email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
+           "Link to channel: {link} \n\n" \
+        .format(host=request.get_host(), email=user.email,
+                first_name=user.first_name, last_name=user.last_name,
                 channel_id=channel_id,
                 link="https://rc.viewiq.com/research/channels/{}".format(
                     channel_id))
@@ -63,8 +61,8 @@ def send_welcome_email(user, request):
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Congratulation!\n" \
-                   " You've just registered on {}\n\n" \
+    text_content = "Congratulation!" \
+                   " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
     send_html_email(subject, to, text_header, text_content)
@@ -80,8 +78,8 @@ def send_plan_changed_email(user, request):
     text_content = "Your access on {} was changed\n" \
                    "Currently you have '{}' access\n\n" \
                    "Kind regards\n" \
-                   "Channel Factory Team".format(
-                        request.get_host(), user.plan.name)
+                   "Channel Factory Team" \
+        .format(request.get_host(), user.plan.name)
     send_html_email(subject, to, text_header, text_content)
 
 
@@ -94,12 +92,12 @@ def send_html_email(subject, to, text_header, text_content):
     context = {"text_header": text_header,
                "text_content": text_content}
     html_content = html.render(context=context)
-    html_content = html_content.replace(
-        "cf_logo_wt_big.png",
-        static("img/notifications/cf_logo_wt_big.png")).replace(
-        "img.png", static("img/notifications/img.png")).replace(
-        "logo.gif", static("img/notifications/logo.gif")).replace(
-        "bg.png", static("img/notifications/bg.png"))
+    html_content = html_content \
+        .replace("cf_logo_wt_big.png",
+                 static("img/notifications/cf_logo_wt_big.png")) \
+        .replace("img.png", static("img/notifications/img.png")) \
+        .replace("logo.gif", static("img/notifications/logo.gif")) \
+        .replace("bg.png", static("img/notifications/bg.png"))
     msg = EmailMultiAlternatives(subject, "{}{}".format(
         text_header, text_content), sender, [to])
     msg.attach_alternative(html_content, "text/html")
