@@ -69,7 +69,7 @@ def send_welcome_email(user, request):
                    " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
-    send_html_email(subject, to, text_header, text_content)
+    send_html_email(subject, to, text_header, text_content, request.get_host())
 
 
 def send_plan_changed_email(user, request):
@@ -84,17 +84,18 @@ def send_plan_changed_email(user, request):
                    "Kind regards\n" \
                    "Channel Factory Team" \
         .format(user.plan.name)
-    send_html_email(subject, to, text_header, text_content)
+    send_html_email(subject, to, text_header, text_content, request.get_host())
 
 
-def send_html_email(subject, to, text_header, text_content):
+def send_html_email(subject, to, text_header, text_content, host):
     """
     Send email with html
     """
     sender = settings.SENDER_EMAIL_ADDRESS
     html = get_template("main.html")
     context = {"text_header": text_header,
-               "text_content": text_content}
+               "text_content": text_content,
+               "host": host}
     html_content = html.render(context=context)
 
     msg = EmailMultiAlternatives(subject, "{}{}".format(
