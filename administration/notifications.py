@@ -74,12 +74,12 @@ def send_plan_changed_email(user, request):
     """
     subject = "Access on {} changed".format(request.get_host())
     to = user.email
-    text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Your access on {} was changed\n" \
-                   "Currently you have '{}' access\n\n" \
+    text_header = "Dear {},\n".format(user.get_full_name())
+    text_content = "Your access was changed. " \
+                   "Currently, you have an \"{}\".\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team" \
-        .format(request.get_host(), user.plan.name)
+        .format(user.plan.name)
     send_html_email(subject, to, text_header, text_content)
 
 
