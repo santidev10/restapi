@@ -1840,6 +1840,7 @@ class PerformanceAccountDetailsApiView(APIView):
     def get_details_data(account_creation):
         fs = dict(ad_group__campaign__account=account_creation.account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
+            ad_network=ConcatAggregate('ad_network', distinct=True),
             average_position=Avg(
                 Case(
                     When(
