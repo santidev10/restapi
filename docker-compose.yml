@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:9.6
+  api:
+    build: .
+    command: python3 manage.py runserver 0.0.0.0:5000
+    volumes:
+      - .:/code
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+      - sdb
+      - redis
+  web:
+    image: saas-ui
+    ports:
+      - "8000:8000"
+    depends_on:
+      - api
+  sdb:
+    image: saas-sdb
+    depends_on:
+      - es
+      - cassandra
+  es:
+    image: elasticsearch
+  cassandra:
+    image: cassandra
+    expose:
+    - "7000"
+    - "7001"
+    - "7199"
+    - "9160"
+    - "9042"
+  redis:
+    image: redis
