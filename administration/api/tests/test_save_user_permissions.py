@@ -69,4 +69,3 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 1)
-        print(mail.outbox[0].alternatives[0][0])
