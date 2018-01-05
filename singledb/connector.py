@@ -324,6 +324,13 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
+    def unauthorize_channel(self, channel_id):
+        """
+        Remove access token for the channel
+        """
+        endpoint = "channels/" + channel_id + "/unauthorize"
+        return self.execute_put_call(endpoint, {})
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL
