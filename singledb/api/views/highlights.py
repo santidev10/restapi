@@ -74,9 +74,7 @@ class HighlightsQuery:
     allowed_filters = ('category__terms',)
     allowed_sorts = ('thirty_days_subscribers', 'thirty_days_views', 'thirty_days_comments', 'thirty_days_likes',
                      'weekly_subscribers', 'weekly_views', 'weekly_comments', 'weekly_likes',
-                     'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes',
-                     'category_daily_views_total', 'category_weekly_views_total',
-                     'category_thirty_days_views_total')
+                     'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes')
     allowed_sorts_type = ('desc',)
     allowed_aggregations = ('category',)
 
