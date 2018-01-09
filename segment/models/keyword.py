@@ -10,18 +10,23 @@ from django.db.models import ForeignKey
 
 from aw_reporting.models import KeywordStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from segment.models.base import BaseSegment
-from segment.models.base import BaseSegmentRelated
-from segment.models.base import SegmentManager
+from .base import BaseSegment
+from .base import BaseSegmentRelated
+from .base import SegmentManager
 
 logger = logging.getLogger(__name__)
 
 
 class SegmentKeywordManager(SegmentManager):
     def update_youtube_segments(self):
-        query_params = {'filter': 'categories'}
-        filters_categories = Connector().get_keyword_filters_list(query_params=query_params)
-        categories = [i['category'] for i in filters_categories]
+        query_params = {
+            'size': 0,
+            'aggregations': 'category',
+            'fields': 'video_id',
+        }
+        response = Connector().get_keyword_list(query_params=query_params)
+        filters_categories = dict(response['aggregations']['category:count'])
+        categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube keyword-segment by category: {}'.format(category))
             query_params = {
