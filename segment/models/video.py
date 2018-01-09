@@ -31,7 +31,7 @@ class SegmentVideoManager(SegmentManager):
                 'sort_by': 'views',
                 'fields': 'video_id',
                 'category': category,
-                'limit': '10000',
+                'size': '10000',
                 'preferred_channel': '0',
                 'is_monetizable': '1',
                 'min_views': '100000',

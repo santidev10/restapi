@@ -33,7 +33,7 @@ class SegmentKeywordManager(SegmentManager):
                 'sort_by': 'video_count',
                 'fields': 'keyword',
                 'category': category,
-                'limit': '10000',
+                'size': '10000',
             }
             result = Connector().get_keyword_list(query_params=query_params)
             items = result.get('items', [])
