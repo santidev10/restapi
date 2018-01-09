@@ -386,6 +386,8 @@ class ChannelRetrieveUpdateDeleteApiView(
         UserChannel.objects \
             .filter(channel_id=pk, user=self.request.user) \
             .delete()
+        if not UserChannel.objects.filter(channel_id=pk).exists():
+            Connector().unauthorize_channel(pk)
         return Response()
 
 
