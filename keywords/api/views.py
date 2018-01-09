@@ -97,6 +97,10 @@ class KeywordListApiView(APIView,
         """
         Adapt SDB request format
         """
+        # adapt keyword_text for terms search
+        keyword_text = query_params.pop('keyword_text', [None])[0]
+        if keyword_text:
+            query_params.update(**{"keyword_text": keyword_text.replace(' ', ',')})
 
         # filters --->
         def make_range(name, name_min=None, name_max=None):
