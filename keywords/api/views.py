@@ -144,6 +144,10 @@ class KeywordListApiView(APIView,
         if is_viral is not None:
             query_params.update(
                 is_viral__term="false" if is_viral == "0" else "true")
+
+        # category
+        make("terms", "category")
+
         # <--- filters
 
     @staticmethod

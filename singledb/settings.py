@@ -200,6 +200,7 @@ DEFAULT_KEYWORD_LIST_FIELDS = (
     "average_cpc",
     "interests",
     "is_viral",
+    "category",
 )
 
 DEFAULT_KEYWORD_DETAILS_FIELDS = (
@@ -216,4 +217,5 @@ DEFAULT_KEYWORD_DETAILS_FIELDS = (
     "average_cpc",
     "interests",
     "is_viral",
+    "category",
 )
