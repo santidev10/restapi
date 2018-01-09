@@ -30,15 +30,15 @@ class SegmentKeywordManager(SegmentManager):
         for category in categories:
             logger.info('Updating youtube keyword segment by category: {}'.format(category))
             query_params = {
-                'sort_by': 'views',
+                'sort_by': 'views:desc',
                 'fields': 'keyword',
-                'category': category,
+                'category__terms': category,
                 'size': '1000',
             }
             result = Connector().get_keyword_list(query_params=query_params)
             items = result.get('items', [])
             ids = [i['keyword'] for i in items]
-            segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
+            segment, created = self.get_or_create(title=category, category=self.model.CHF)
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
             logger.info('   ... keywords: {}'.format(len(ids)))
@@ -46,7 +46,7 @@ class SegmentKeywordManager(SegmentManager):
 
 class SegmentKeyword(BaseSegment):
     YOUTUBE = "youtube"
-    CHF = "channel_factory"
+    CHF = "chf"
     BLACKLIST = "blacklist"
     PRIVATE = "private"
 
