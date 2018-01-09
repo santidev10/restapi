@@ -17,9 +17,14 @@ logger = logging.getLogger(__name__)
 
 class SegmentVideoManager(SegmentManager):
     def update_youtube_segments(self):
-        query_params = {'filter': 'categories'}
-        filters_categories = Connector().get_video_filters_list(query_params=query_params)
-        categories = [i['category'] for i in filters_categories]
+        query_params = {
+            'size': 0,
+            'aggregations': 'category',
+            'fields': 'video_id',
+        }
+        response = Connector().get_video_list(query_params=query_params)
+        filters_categories = dict(response['aggregations']['category:count'])
+        categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube video-segment by category: {}'.format(category))
             query_params = {
