@@ -29,7 +29,7 @@ class SegmentVideoManager(SegmentManager):
             logger.info('Updating youtube video-segment by category: {}'.format(category))
             query_params = {
                 'sort_by': 'views',
-                'fields': 'id',
+                'fields': 'video_id',
                 'category': category,
                 'limit': '10000',
                 'preferred_channel': '0',
@@ -41,7 +41,7 @@ class SegmentVideoManager(SegmentManager):
             }
             result = Connector().get_video_list(query_params=query_params)
             items = result.get('items', [])
-            ids = [i['id'] for i in items]
+            ids = [i['video_id'] for i in items]
             segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
