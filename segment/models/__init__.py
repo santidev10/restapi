@@ -27,5 +27,6 @@ def get_segment_model_by_type(segment_type):
 
 def total_update_segments():
     SegmentVideo.objects.update_youtube_segments()
+    SegmentKeyword.objects.update_youtube_segments()
     for model in SEGMENT_MODELS.fget():
         model.objects.update_statistics()

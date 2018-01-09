@@ -1,6 +1,7 @@
 """
 SegmentKeyword models module
 """
+import logging
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
 from django.db.models import CharField
@@ -13,13 +14,44 @@ from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
 
+logger = logging.getLogger(__name__)
+
+
+class SegmentKeywordManager(SegmentManager):
+    def update_youtube_segments(self):
+        query_params = {
+            'size': 0,
+            'aggregations': 'category',
+            'fields': 'video_id',
+        }
+        response = Connector().get_keyword_list(query_params=query_params)
+        filters_categories = dict(response['aggregations']['category:count'])
+        categories = [k for k, v in filters_categories.items()]
+        for category in categories:
+            logger.info('Updating youtube keyword-segment by category: {}'.format(category))
+            query_params = {
+                'sort_by': 'video_count',
+                'fields': 'keyword',
+                'category': category,
+                'limit': '10000',
+            }
+            result = Connector().get_keyword_list(query_params=query_params)
+            items = result.get('items', [])
+            ids = [i['keyword'] for i in items]
+            segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
+            segment.replace_related_ids(ids)
+            segment.update_statistics(segment)
+            logger.info('   ... keywords: {}'.format(len(ids)))
+
 
 class SegmentKeyword(BaseSegment):
+    YOUTUBE = "youtube"
     CHF = "channel_factory"
     BLACKLIST = "blacklist"
     PRIVATE = "private"
 
     CATEGORIES = (
+        (YOUTUBE, YOUTUBE),
         (CHF, CHF),
         (BLACKLIST, BLACKLIST),
         (PRIVATE, PRIVATE),
@@ -37,7 +69,7 @@ class SegmentKeyword(BaseSegment):
 
     segment_type = 'keyword'
 
-    objects = SegmentManager()
+    objects = SegmentKeywordManager()
 
     def obtain_singledb_data(self, ids_hash):
         """
