@@ -28,12 +28,12 @@ class SegmentKeywordManager(SegmentManager):
         filters_categories = dict(response['aggregations']['category:count'])
         categories = [k for k, v in filters_categories.items()]
         for category in categories:
-            logger.info('Updating youtube keyword-segment by category: {}'.format(category))
+            logger.info('Updating youtube keyword segment by category: {}'.format(category))
             query_params = {
-                'sort_by': 'video_count',
+                'sort_by': 'views',
                 'fields': 'keyword',
                 'category': category,
-                'size': '10000',
+                'size': '1000',
             }
             result = Connector().get_keyword_list(query_params=query_params)
             items = result.get('items', [])
