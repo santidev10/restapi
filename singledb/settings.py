@@ -215,3 +215,40 @@ DEFAULT_KEYWORD_DETAILS_FIELDS = (
     "interests",
     "is_viral",
 )
+
+DEFAULT_VIDEO_LIST_SOURCES = (
+)
+
+DEFAULT_VIDEO_DETAILS_SOURCES = (
+)
+
+DEFAULT_CHANNEL_LIST_SOURCES = (
+    "subscribers",
+    "thirty_days_subscribers",
+    "views_per_video",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+)
+
+DEFAULT_CHANNEL_DETAILS_SOURCES = (
+    "subscribers",
+    "thirty_days_subscribers",
+    "views_per_video",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+    "audience",
+    "traffic_sources",
+    "gender",
+    "age_group",
+    "views_history",
+    "subscribers_history",
+)
+
+DEFAULT_KEYWORD_LIST_SOURCES = (
+)
+
+DEFAULT_KEYWORD_DETAILS_SOURCES = (
+)
+
