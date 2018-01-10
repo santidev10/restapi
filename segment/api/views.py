@@ -50,6 +50,18 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
 
+    default_allowed_sorts = {
+        "title",
+        "videos",
+        "engage_rate",
+        "sentiment",
+        "created_at",
+    }
+    allowed_sorts = {
+        "channel": default_allowed_sorts.union({"channels"}),
+        "keyword": {"competition", "average_cpc", "average_volume"}
+    }
+
     def do_filters(self, queryset):
         """
         Filter queryset
@@ -72,13 +84,9 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         """
         Sort queryset
         """
-        allowed_sorts = {
-            "title",
-            "videos",
-            "engage_rate",
-            "sentiment",
-            "created_at",
-        }
+        segment = self.model.segment_type
+        allowed_sorts = self.allowed_sorts.get(segment,
+                                               self.default_allowed_sorts)
 
         def get_sort_prefix():
             """
@@ -89,8 +97,7 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
             if ascending == "1":
                 reverse = ""
             return reverse
-        if self.model.segment_type == 'channel':
-            allowed_sorts.add('channels')
+
         sort = self.request.query_params.get("sort_by")
         if sort in allowed_sorts:
             queryset = queryset.order_by("{}{}".format(
@@ -116,7 +123,8 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         return super().paginate_queryset(queryset)
 
 
-class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
+class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,
+                                         RetrieveUpdateDestroyAPIView):
     serializer_class = SegmentSerializer
 
     def delete(self, request, *args, **kwargs):
@@ -182,7 +190,8 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
 
         if segment.top_recommend_channels:
             try:
-                query_params['ids'] = ','.join(segment.top_recommend_channels[:100])
+                query_params['ids'] = ','.join(
+                    segment.top_recommend_channels[:100])
                 response_data = self.connector.get_channel_list(query_params)
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)
