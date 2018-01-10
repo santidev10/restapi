@@ -28,16 +28,16 @@ class SegmentVideoManager(SegmentManager):
         for category in categories:
             logger.info('Updating youtube video-segment by category: {}'.format(category))
             query_params = {
-                'sort_by': 'views',
+                'sort': 'views:desc',
                 'fields': 'video_id',
-                'category': category,
+                'category__terms': category,
                 'size': '10000',
-                'preferred_channel': '0',
-                'is_monetizable': '1',
-                'min_views': '100000',
-                'min_sentiment': '80',
-                'min_engage_rate': '1',
-                'has_lang_code': '1',
+                'channel__preferred__term': 'false',
+                'is_monetizable__term': 'true',
+                'views__range': '100000,',
+                'sentiment__range': '80,',
+                'engage_rate__range': '1,',
+                'has_lang_code__term': 'true',
             }
             result = Connector().get_video_list(query_params=query_params)
             items = result.get('items', [])
