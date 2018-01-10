@@ -12,6 +12,11 @@ from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
     DEFAULT_KEYWORD_LIST_FIELDS
 
+from singledb.settings import DEFAULT_VIDEO_DETAILS_SOURCES, \
+    DEFAULT_VIDEO_LIST_SOURCES, DEFAULT_CHANNEL_LIST_SOURCES, \
+    DEFAULT_CHANNEL_DETAILS_SOURCES, DEFAULT_KEYWORD_DETAILS_SOURCES, \
+    DEFAULT_KEYWORD_LIST_SOURCES
+
 
 class SingleDatabaseApiConnectorException(Exception):
     """
@@ -94,6 +99,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -105,6 +112,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + pk + "/"
         self.set_fields_query_param(query_params,
                                     DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(query_params,
+                                     DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
@@ -115,6 +124,7 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
+        self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -162,6 +172,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -182,6 +194,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/"
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -229,6 +243,16 @@ class SingleDatabaseApiConnector(object):
         if "fields" not in query_params:
             query_params._mutable = True
             query_params["fields"] = ",".join(default_fields)
+        return query_params
+
+    @staticmethod
+    def set_sources_query_param(query_params, default_sources):
+        """
+        Add sources query param to query params if absent
+        """
+        if "sources" not in query_params:
+            query_params._mutable = True
+            query_params["sources"] = ",".join(default_sources)
         return query_params
 
     def get_highlights_channels(self, query_params):
@@ -310,6 +334,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "keywords/" + quote_plus(pk) + "/"
         self.set_fields_query_param(
             query_params, DEFAULT_KEYWORD_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -321,6 +347,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "keywords/"
         self.set_fields_query_param(
             query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
