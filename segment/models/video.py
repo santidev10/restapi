@@ -21,6 +21,7 @@ class SegmentVideoManager(SegmentManager):
             'size': 0,
             'aggregations': 'category',
             'fields': 'video_id',
+            'sources': (),
         }
         response = Connector().get_video_list(query_params=query_params)
         filters_categories = dict(response['aggregations']['category:count'])
@@ -30,6 +31,7 @@ class SegmentVideoManager(SegmentManager):
             query_params = {
                 'sort': 'views:desc',
                 'fields': 'video_id',
+                'sources': (),
                 'category__terms': category,
                 'size': '10000',
                 'channel__preferred__term': 'false',
@@ -90,6 +92,7 @@ class SegmentVideo(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "video_id,title,thumbnail_image_url",
+            "sources": (),
             "sort": "views:desc",
             "size": 3
         }

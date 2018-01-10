@@ -23,6 +23,7 @@ class SegmentKeywordManager(SegmentManager):
             'size': 0,
             'aggregations': 'category',
             'fields': 'video_id',
+            'sources': (),
         }
         response = Connector().get_keyword_list(query_params=query_params)
         filters_categories = dict(response['aggregations']['category:count'])
@@ -32,6 +33,7 @@ class SegmentKeywordManager(SegmentManager):
             query_params = {
                 'sort_by': 'views:desc',
                 'fields': 'keyword',
+                'sources': (),
                 'category__terms': category,
                 'size': '1000',
             }
@@ -79,6 +81,7 @@ class SegmentKeyword(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "keyword",
+            "sources": (),
             "size": 0,
             "aggregations": "avg_search_volume,avg_average_cpc,avg_competition",
         }
@@ -87,6 +90,7 @@ class SegmentKeyword(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "keyword,search_volume",
+            "sources": (),
             "sort": "search_volume:desc",
             "size": 10,
         }
