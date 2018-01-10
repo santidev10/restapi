@@ -115,7 +115,8 @@ class SegmentChannel(BaseSegment):
         """
         statistics = {
             "channels_count": self.channels,
-            "videos_count": self.videos,
+            # disabled SAAS-1832
+            # "videos_count": self.videos,
             "top_three_channels": self.top_three_channels,
             # <--- deprecated
             # "top_recommend_channels": self.top_recommend_channels,
