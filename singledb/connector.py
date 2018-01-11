@@ -2,7 +2,7 @@
 Single database API connector module
 """
 import json
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import urlencode, quote
 
 import requests
 from django.conf import settings
@@ -334,7 +334,7 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         :param pk: str
         """
-        endpoint = "keywords/" + quote_plus(pk) + "/"
+        endpoint = "keywords/" + quote(pk) + "/"
         self.set_fields_query_param(
             query_params, DEFAULT_KEYWORD_DETAILS_FIELDS)
         self.set_sources_query_param(
