@@ -8,6 +8,8 @@ from django.db import models
 
 from aw_reporting.models import YTChannelStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.settings import DEFAULT_CHANNEL_LIST_SOURCES, \
+    DEFAULT_VIDEO_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
@@ -64,6 +66,7 @@ class SegmentChannel(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "channel_id,title,thumbnail_image_url",
+            "sources": DEFAULT_CHANNEL_LIST_SOURCES,
             "sort": "subscribers:desc",
             "size": 3
         }
@@ -72,6 +75,7 @@ class SegmentChannel(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "videos",
+            "sources": DEFAULT_VIDEO_LIST_SOURCES,
             "size": 10000
         }
         base_data = self.singledb_method(query_params=params)
