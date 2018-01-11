@@ -31,7 +31,7 @@ class SegmentKeywordManager(SegmentManager):
         for category in categories:
             logger.info('Updating youtube keyword segment by category: {}'.format(category))
             query_params = {
-                'sort_by': 'views:desc',
+                'sort': 'views:desc',
                 'fields': 'keyword',
                 'sources': (),
                 'category__terms': category,
