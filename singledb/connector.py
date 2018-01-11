@@ -251,7 +251,10 @@ class SingleDatabaseApiConnector(object):
         Add sources query param to query params if absent
         """
         if "sources" not in query_params:
-            query_params._mutable = True
+            try:
+                query_params._mutable = True
+            except AttributeError:
+                pass
             query_params["sources"] = ",".join(default_sources)
         return query_params
 
@@ -286,7 +289,7 @@ class SingleDatabaseApiConnector(object):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
         query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash)
+                            ids_hash=ids_hash, sources=DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -298,7 +301,7 @@ class SingleDatabaseApiConnector(object):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
         query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash)
+                            ids_hash=ids_hash, sources=DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
