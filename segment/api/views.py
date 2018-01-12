@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import SegmentSerializer
-from segment.models import get_segment_model_by_type
+from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_paginator import CustomPageNumberPaginator

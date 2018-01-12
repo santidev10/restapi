@@ -7,7 +7,7 @@ from segment.api.views import SegmentDuplicateApiView
 from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
 from segment.api.views import SegmentSuggestedChannelApiView
-from segment.models import SEGMENT_TYPES
+from segment.utils import SEGMENT_TYPES
 
 
 segment_types = '|'.join(SEGMENT_TYPES.fget())
