@@ -6,6 +6,7 @@ from administration.api import urls as admin_api_urls
 from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api import urls as aw_reporting_urls
 from channel.api import urls as channel_api_urls
+from keywords.api import urls as keyword_api_urls
 from keyword_tool.api import urls as keyword_tool_urls
 from segment.api import urls as segment_api_urls
 # pylint: disable=import-error
@@ -38,6 +39,9 @@ urlpatterns = [
 
     # Video api urls
     url(r'^api/v1/', include(video_api_urls, namespace='video_api_urls')),
+
+    # Keyword api urls
+    url(r'^api/v1/', include(keyword_api_urls, namespace='keyword_api_urls')),
 
     # Segment api urls
     url(r'^api/v1/', include(segment_api_urls, namespace='segment_api_urls')),

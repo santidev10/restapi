@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
@@ -51,3 +52,20 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         self.assertIs(response.data["can_access_media_buying"], False)
         test_user.refresh_from_db()
         self.assertFalse(test_user.has_perm("userprofile,view_media_buying"))
+
+    def test_update_send_email_to_the_user(self):
+        self.user = self.create_test_user()
+        self.user.is_staff = True
+        self.user.save()
+
+        test_user = get_user_model().objects.create(
+            email="mr_bond_james_bond@mail.kz"
+        )
+
+        url = reverse("admin_api_urls:user_details", args=(test_user.id,))
+        response = self.client.put(
+            url, json.dumps(dict(can_access_media_buying=True)),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)

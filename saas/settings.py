@@ -43,7 +43,8 @@ PROJECT_APPS = (
     "keyword_tool",
     "landing",
     "administration",
-    "payments"
+    "payments",
+    "channel"
 )
 
 THIRD_PARTY_APPS = (
@@ -68,13 +69,30 @@ ROOT_URLCONF = 'saas.urls'
 WSGI_APPLICATION = 'saas.wsgi.application'
 
 STATIC_URL = '/static/'
+
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 MEDIA_URL = '/media/'
 
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
 
@@ -245,6 +263,12 @@ REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software"
 ]
 
+CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
+    "aleksandr.yakovenko@sigma.software",
+    "anna.chumak@sigma.software",
+    "maria.konareva@sigma.software"
+]
+
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "alexander.dobrzhansky@sigma.software",
     "aleksandr.yakovenko@sigma.software",
@@ -265,8 +289,8 @@ ACCESS_PLANS = {
     'free': {
         'hidden': False,
         'permissions': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'details': False},
-            'video': {'list': False, 'filter': False, 'audience': False, 'details': False},
+            'channel': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False,'details': False},
+            'video': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False, 'details': False},
             'keyword': {'list': False, 'details': False, },
             'segment': {
                 'channel': {'all': False, 'private': False},
@@ -291,8 +315,8 @@ ACCESS_PLANS = {
     'professional': {
         'hidden': False,
         'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
             'keyword': {'list': True, 'details': True, },
             'segment': {
                 'channel': {'all': False, 'private': True},
@@ -317,8 +341,8 @@ ACCESS_PLANS = {
     'enterprise': {
         'hidden': True,
         'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'details': True},
+            'channel': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
+            'video': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
             'keyword': {'list': True, 'details': True},
             'segment': {
                 'channel': {'all': True, 'private': True},

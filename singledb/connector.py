@@ -2,21 +2,32 @@
 Single database API connector module
 """
 import json
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 import requests
 from django.conf import settings
 
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
-    DEFAULT_CHANNEL_DETAILS_FIELDS
+    DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
+    DEFAULT_KEYWORD_LIST_FIELDS
+
+from singledb.settings import DEFAULT_VIDEO_DETAILS_SOURCES, \
+    DEFAULT_VIDEO_LIST_SOURCES, DEFAULT_CHANNEL_LIST_SOURCES, \
+    DEFAULT_CHANNEL_DETAILS_SOURCES, DEFAULT_KEYWORD_DETAILS_SOURCES, \
+    DEFAULT_KEYWORD_LIST_SOURCES
 
 
 class SingleDatabaseApiConnectorException(Exception):
     """
     Exception class for single database api connector
     """
-    pass
+
+    def __init__(self, *args, **kwargs):
+        sdb_response = kwargs.pop("sdb_response", None)
+        super(SingleDatabaseApiConnectorException, self) \
+            .__init__(*args, **kwargs)
+        self.sdb_response = sdb_response
 
 
 class SingleDatabaseApiConnector(object):
@@ -52,19 +63,23 @@ class SingleDatabaseApiConnector(object):
             if data is None:
                 self.response = method(url, headers=headers, verify=False)
             else:
-                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
+                self.response = method(url, headers=headers, verify=False,
+                                       data=json.dumps(data))
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
         else:
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(self.response.text))
+                    "Error during iq api call: {}".format(self.response.text),
+                    sdb_response=self.response
+                )
         try:
             response_data = self.response.json()
         except Exception as e:
-            raise SingleDatabaseApiConnectorException("Unable to parse api response: {}\n{}" \
-                                                      .format(e, self.response.text))
+            raise SingleDatabaseApiConnectorException(
+                "Unable to parse api response: {}\n{}" \
+                    .format(e, self.response.text))
         return response_data
 
     def get_country_list(self, query_params):
@@ -84,6 +99,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -93,7 +110,10 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         """
         endpoint = "channels/" + pk + "/"
-        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_fields_query_param(query_params,
+                                    DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(query_params,
+                                     DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
@@ -104,6 +124,7 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
+        self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -134,6 +155,15 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
+    def delete_channel_test(self, pk: str):
+        """
+        Delete channel
+        :param pk: str Channel ID
+        """
+        endpoint = "channels_test/" + pk
+        response_data = self.execute_delete_call(endpoint, query_params=dict())
+        return response_data
+
     def get_video(self, query_params, pk):
         """
         Obtain video
@@ -142,6 +172,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -162,6 +194,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/"
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -211,6 +245,19 @@ class SingleDatabaseApiConnector(object):
             query_params["fields"] = ",".join(default_fields)
         return query_params
 
+    @staticmethod
+    def set_sources_query_param(query_params, default_sources):
+        """
+        Add sources query param to query params if absent
+        """
+        if "sources" not in query_params:
+            try:
+                query_params._mutable = True
+            except AttributeError:
+                pass
+            query_params["sources"] = ",".join(default_sources)
+        return query_params
+
     def get_highlights_channels(self, query_params):
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
@@ -229,10 +276,20 @@ class SingleDatabaseApiConnector(object):
             response_data['max_page'] = 5 if max_page > 5 else max_page
         return response_data
 
+    def get_highlights_keywords(self, query_params):
+        endpoint = "keywords/"
+        self.set_fields_query_param(query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        response_data = self.execute_get_call(endpoint, query_params)
+        max_page = response_data.get('max_page', None)
+        if max_page:
+            response_data['max_page'] = 5 if max_page > 5 else max_page
+        return response_data
+
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        query_params = dict(fields=",".join(fields), size=len(ids),
+                            ids_hash=ids_hash, sources=DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -243,7 +300,8 @@ class SingleDatabaseApiConnector(object):
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids), ids_hash=ids_hash)
+        query_params = dict(fields=",".join(fields), size=len(ids),
+                            ids_hash=ids_hash, sources=DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -270,6 +328,40 @@ class SingleDatabaseApiConnector(object):
             endpoint, {}, {"channels_ids": channels_ids})
         return response_data
 
+    def get_keyword(self, query_params, pk):
+        """
+        Obtain keywords
+        :param query_params: dict
+        :param pk: str
+        """
+        endpoint = "keywords/" + quote(pk) + "/"
+        self.set_fields_query_param(
+            query_params, DEFAULT_KEYWORD_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_DETAILS_SOURCES)
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def get_keyword_list(self, query_params):
+        """
+        Obtain keywords list
+        :param query_params: dict
+        """
+        endpoint = "keywords/"
+        self.set_fields_query_param(
+            query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_LIST_SOURCES)
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def unauthorize_channel(self, channel_id):
+        """
+        Remove access token for the channel
+        """
+        endpoint = "channels/" + channel_id + "/unauthorize"
+        return self.execute_put_call(endpoint, {})
+
 
 class IQApiConnector(object):
     single_database_api_url = settings.IQ_API_URL
@@ -293,7 +385,8 @@ class IQApiConnector(object):
             if data is None:
                 self.response = method(url, headers=headers, verify=False)
             else:
-                self.response = method(url, headers=headers, verify=False, data=json.dumps(data))
+                self.response = method(url, headers=headers, verify=False,
+                                       data=json.dumps(data))
         except Exception as e:
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))

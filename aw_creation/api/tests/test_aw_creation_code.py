@@ -1,9 +1,10 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from aw_creation.models import *
-from aw_reporting.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from django.core.files.uploadedfile import SimpleUploadedFile
+from aw_reporting.models import *
 
 
 class CreationCodeAPITestCase(AwReportingAPITestCase):
@@ -30,9 +31,11 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         CampaignCreation.objects.create(
             id=2, name="", account_creation=account_creation
         )
-        AdGroupCreation.objects.create(id=1, name="", campaign_creation=campaign_creation)
+        AdGroupCreation.objects.create(id=1, name="",
+                                       campaign_creation=campaign_creation)
         ad_group_creation = AdGroupCreation.objects.create(
-            id=2, name="Not empty", campaign_creation=campaign_creation, max_rate="0.07")
+            id=2, name="Not empty", campaign_creation=campaign_creation,
+            max_rate="0.07")
 
         AdCreation.objects.create(
             id=1,
@@ -42,13 +45,15 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             final_url="https://www.nasdaq.com",
             companion_banner=SimpleUploadedFile(
                 name='video_thumbnail.png',
-                content=open("aw_creation/fixtures/video_thumbnail.png", 'rb').read(),
+                content=open("aw_creation/fixtures/video_thumbnail.png",
+                             'rb').read(),
                 content_type='image/png',
             ),
             tracking_template="https://iq.channelfactory.com",
             custom_params_raw='[{"name": "name", "value": "value1"}]',
         )
-        AdCreation.objects.create(id=2, name="", ad_group_creation=ad_group_creation)
+        AdCreation.objects.create(id=2, name="",
+                                  ad_group_creation=ad_group_creation)
         # --
         url = reverse("aw_creation_urls:aw_creation_code", args=(account.id,))
         response = self.client.get(url)
@@ -61,26 +66,28 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         code = data['code']
 
         self.assertIsNotNone(
-            re.search(r"createOrUpdateCampaign\(.*?\"id\": 1", code, re.MULTILINE)
+            re.search(r"createOrUpdateCampaign\(.*?\"id\": 1", code,
+                      re.MULTILINE)
         )
         self.assertIsNone(
-            re.search(r"createOrUpdateCampaign\(.*?\"id\": 2", code, re.MULTILINE)
+            re.search(r"createOrUpdateCampaign\(.*?\"id\": 2", code,
+                      re.MULTILINE)
         )
 
         self.assertIsNotNone(
-            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 2", code, re.MULTILINE)
+            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 2", code,
+                      re.MULTILINE)
         )
         self.assertIsNone(
-            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 1", code, re.MULTILINE)
+            re.search(r"createOrUpdateAdGroup\(.*?\"id\": 1", code,
+                      re.MULTILINE)
         )
 
         self.assertIsNotNone(
-            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 1", code, re.MULTILINE)
+            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 1", code,
+                      re.MULTILINE)
         )
         self.assertIsNone(
-            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 2", code, re.MULTILINE)
+            re.search(r"createOrUpdateVideoAd\(.*?\"id\": 2", code,
+                      re.MULTILINE)
         )
-        with open("code.js", "w") as f:
-            f.write(code)
-
-

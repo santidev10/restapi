@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
+    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
+    <title>CHF</title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+
+
+    <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
+    <!--[if mso]>
+		<style>
+			* {
+				font-family: sans-serif !important;
+			}
+		</style>
+	<![endif]-->
+
+    <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
+    <!--[if !mso]><!-->
+    <!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
+    <!--<![endif]-->
+
+    <!-- Web Font / @font-face : END -->
+
+    <!-- CSS Reset -->
+    <style>
+
+        /* What it does: Remove spaces around the email design added by some email clients. */
+        /* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
+        html,
+        body {
+            margin: 0 auto !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        /* What it does: Stops email clients resizing small text. */
+        * {
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* What it does: Centers email on Android 4.4 */
+        div[style*="margin: 16px 0"] {
+            margin: 0 !important;
+        }
+
+        /* What it does: Stops Outlook from adding extra spacing to tables. */
+        table,
+        td {
+            mso-table-lspace: 0pt !important;
+            mso-table-rspace: 0pt !important;
+        }
+
+        /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            margin: 0 auto !important;
+        }
+
+        table table table {
+            table-layout: auto;
+        }
+
+        /* What it does: Uses a better rendering method when resizing images in IE. */
+        img {
+            -ms-interpolation-mode: bicubic;
+        }
+
+        /* What it does: A work-around for email clients meddling in triggered links. */
+        *[x-apple-data-detectors], /* iOS */
+        .x-gmail-data-detectors, /* Gmail */
+        .x-gmail-data-detectors *,
+        .aBn {
+            border-bottom: 0 !important;
+            cursor: default !important;
+            color: inherit !important;
+            text-decoration: none !important;
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
+
+        /* What it does: Prevents Gmail from displaying an download button on large, non-linked images. */
+        .a6S {
+            display: none !important;
+            opacity: 0.01 !important;
+        }
+
+        /* If the above doesn't work, add a .g-img class to any image in question. */
+        img.g-img + div {
+            display: none !important;
+        }
+
+        /* What it does: Prevents underlining the button text in Windows 10 */
+        .button-link {
+            text-decoration: none !important;
+        }
+
+        /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
+        /* Create one of these media queries for each additional viewport size you'd like to fix */
+        /* Thanks to Eric Lepetit (@ericlepetitsf) for help troubleshooting */
+        @media only screen and (min-device-width: 375px) and (max-device-width: 413px) {
+            /* iPhone 6 and 6+ */
+            .email-container {
+                min-width: 375px !important;
+            }
+        }
+
+    </style>
+
+    <!-- Progressive Enhancements -->
+    <style>
+
+        table tr {
+            background-color: #ffffff;
+            text-align: center;
+            font-family: Aria, Helvetica, sans-serif;
+            color: #505050;
+        }
+
+        td.text-content {
+            line-height: 1.5em;
+            padding: 0 100px;
+            background-color: #ffffff;
+            text-align: center;
+            font-family: Aria, Helvetica, sans-serif;
+            color: #505050;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+    </style>
+
+    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
+    <!--[if gte mso 9]>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+     </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+
+</head>
+<body width="100%" bgcolor="#eaeaea" style="margin: 0; mso-line-height-rule: exactly;">
+<center style="width: 100%; background: #eaeaea; text-align: left;">
+
+    <!-- Email Body : BEGIN -->
+    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
+           style="margin: auto;" class="email-container">
+        <!-- Clear Spacer : BEGIN -->
+        <tr style="background-color: transparent;">
+            <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
+
+        <!-- Email title : BEGIN -->
+        <tr>
+            <td bgcolor="#ffffff"
+                style="background-image: url(cid:bg.png); background-size: 100% 100%; padding: 30px 20px; text-align: center;">
+                <img src="cid:cf_logo_wt_big.png" height="23" hspace="0" vspace="0" border="0" title="Channel Factory"
+                     alt="Channel Factory"/>
+            </td>
+        </tr>
+        <!-- Email title : END -->
+
+        <tr>
+            <td bgcolor="#ffffff" style="padding: 70px 20px; text-align: center;">
+                <img src="cid:img.png" hspace="0" vspace="0" border="0"/>
+            </td>
+        </tr>
+
+        <tr>
+            <td style="background-color: #ffffff; text-align: center;font-family: Aria, Helvetica, sans-serif; color:#505050;">
+                {{ text_header }}
+            </td>
+        </tr>
+
+        <tr>
+            <td style="background-color: #ffffff; font-size: 0; line-height: 0; padding: 20px 50px;" align="left"
+                valign="top">
+                <div style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+            </td>
+        </tr>
+
+        <tr>
+            <td class="text-content">{{ text_content }}</td>
+        </tr>
+
+        <!-- Clear Spacer : BEGIN -->
+        <tr>
+            <td bgcolor="#ffffff" height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
+
+        <!-- Email Footer : BEGIN -->
+        <tr>
+            <td valign="top" align="center" bgcolor="#333333"
+                style="font-size: 0; line-height: 0; text-align: center; background-color: #333333; padding:20px;"
+                class="x-gmail-data-detectors">
+                <a href="{{ host }}">
+                    <img src="cid:logo.gif" width="155" height="19" hspace="0" vspace="0" border="0" title="Channel Factory"
+                         alt="Channel Factory"/>
+                </a>
+            </td>
+        </tr>
+        <!-- Email Footer : END -->
+
+        <!-- Clear Spacer : BEGIN -->
+        <tr style="background-color: transparent;">
+            <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+        </tr>
+        <!-- Clear Spacer : END -->
+
+    </table>
+    <!-- Email Body : END -->
+
+</center>
+</body>
+</html>

@@ -17,26 +17,33 @@ logger = logging.getLogger(__name__)
 
 class SegmentVideoManager(SegmentManager):
     def update_youtube_segments(self):
-        query_params = {'filter': 'categories'}
-        filters_categories = Connector().get_video_filters_list(query_params=query_params)
-        categories = [i['category'] for i in filters_categories]
+        query_params = {
+            'size': 0,
+            'aggregations': 'category',
+            'fields': 'video_id',
+            'sources': (),
+        }
+        response = Connector().get_video_list(query_params=query_params)
+        filters_categories = dict(response['aggregations']['category:count'])
+        categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube video-segment by category: {}'.format(category))
             query_params = {
-                'sort_by': 'views',
-                'fields': 'id',
-                'category': category,
-                'limit': '10000',
-                'preferred_channel': '0',
-                'is_monetizable': '1',
-                'min_views': '100000',
-                'min_sentiment': '80',
-                'min_engage_rate': '1',
-                'has_lang_code': '1',
+                'sort': 'views:desc',
+                'fields': 'video_id',
+                'sources': (),
+                'category__terms': category,
+                'size': '10000',
+                'channel__preferred__term': 'false',
+                'is_monetizable__term': 'true',
+                'views__range': '100000,',
+                'sentiment__range': '80,',
+                'engage_rate__range': '1,',
+                'has_lang_code__term': 'true',
             }
             result = Connector().get_video_list(query_params=query_params)
             items = result.get('items', [])
-            ids = [i['id'] for i in items]
+            ids = [i['video_id'] for i in items]
             segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
@@ -85,6 +92,7 @@ class SegmentVideo(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "video_id,title,thumbnail_image_url",
+            "sources": (),
             "sort": "views:desc",
             "size": 3
         }

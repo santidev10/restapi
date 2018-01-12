@@ -130,7 +130,7 @@ class BaseSegment(Timestampable):
 class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
-    related_id = CharField(max_length=30)
+    related_id = CharField(max_length=100)
 
     class Meta:
         abstract = True
