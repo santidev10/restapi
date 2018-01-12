@@ -260,13 +260,15 @@ REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "yuriy.matso@channelfactory.com",
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software"
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software"
+    "yulia.prokudina@sigma.software"
 ]
 
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
@@ -274,6 +276,7 @@ PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software"
+    "yulia.prokudina@sigma.software"
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
@@ -281,6 +284,7 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software"
+    "yulia.prokudina@sigma.software"
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
