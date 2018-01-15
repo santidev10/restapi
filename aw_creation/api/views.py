@@ -2568,7 +2568,7 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
 class UserListsImportMixin:
     @staticmethod
     def get_lists_items_ids(ids, list_type):
-        from segment.models import get_segment_model_by_type
+        from segment.utils import get_segment_model_by_type
         from keyword_tool.models import KeywordsList
 
         if list_type == "keyword":

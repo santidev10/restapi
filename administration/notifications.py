@@ -51,8 +51,8 @@ def send_new_channel_authentication_email(user, channel_id, request):
         .format(host=request.get_host(), email=user.email,
                 first_name=user.first_name, last_name=user.last_name,
                 channel_id=channel_id,
-                link="https://rc.viewiq.com/research/channels/{}".format(
-                    channel_id))
+                link="{}/research/channels/{}".format(
+                    request.get_host(), channel_id))
     send_mail(subject, text, sender, to, fail_silently=True)
 
 
