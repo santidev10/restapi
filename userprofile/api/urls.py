@@ -5,7 +5,7 @@ from django.conf.urls import url
 
 from userprofile.api.views import UserCreateApiView, UserAuthApiView, \
     UserProfileApiView, UserPasswordResetApiView, UserPasswordSetApiView, \
-    ContactFormApiView, VendorDetailsApiView
+    ContactFormApiView, VendorDetailsApiView, ErrorReportApiView
 
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name="user_create"),
@@ -19,4 +19,5 @@ urlpatterns = [
         ContactFormApiView.as_view(), name="contact_from"),
     url(r'^vendor/$',
         VendorDetailsApiView.as_view(), name="vendor_details"),
+    url(r'^error_report/$', ErrorReportApiView.as_view(), name="error_report"),
 ]

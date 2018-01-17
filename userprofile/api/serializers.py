@@ -261,3 +261,8 @@ class SubscriptionSerializer(Serializer):
         if obj.payments_subscription is None:
             return dict()
         return PaymentSubscriptionSerializer(obj.payments_subscription).data
+
+
+class ErrorReportSerializer(Serializer):
+    email = EmailField(max_length=255)
+    message = CharField(required=True)
