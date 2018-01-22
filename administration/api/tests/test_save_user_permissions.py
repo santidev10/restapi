@@ -68,4 +68,5 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(mail.outbox), 1)
+        # email sending disabled according to SAAS-1895
+        # self.assertEqual(len(mail.outbox), 1)
