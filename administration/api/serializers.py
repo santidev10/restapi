@@ -104,7 +104,8 @@ class UserUpdateSerializer(ModelSerializer):
         subscription = Subscription.objects.create(user=user, plan=plan)
         user.update_permissions_from_subscription(subscription)
         user.save()
-        send_plan_changed_email(user, self.context.get("request"))
+        # turned off according to SAAS-1895
+        # send_plan_changed_email(user, self.context.get("request"))
         return user
 
     def get_can_access_media_buying(self, obj):
