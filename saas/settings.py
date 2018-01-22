@@ -371,6 +371,7 @@ ACCESS_PLANS = {
 }
 
 DEFAULT_ACCESS_PLAN_NAME = 'free'
+CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
 VENDOR = 'viewiq'
 
