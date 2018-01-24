@@ -85,7 +85,7 @@ class TopAuthChannels(APIView):
         query_params = dict(ids_hash=ids_hash,
                             fields=fields,
                             subscribers__range="1000,",
-                            sort="subscribers",
+                            sort="subscribers:desc",
                             size="21")
         ChannelListApiView.adapt_query_params(query_params)
 
