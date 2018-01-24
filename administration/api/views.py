@@ -99,7 +99,7 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         """
         Update user
         """
-        new_permissions = request.data.pop('permissions')
+        new_permissions = request.data.pop('permissions', None)
         user = self.get_object()
         serializer = self.update_serializer_class(
             instance=user, data=request.data,
