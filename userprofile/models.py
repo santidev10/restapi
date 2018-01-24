@@ -179,6 +179,17 @@ class Plan(models.Model):
                                       on_delete=models.SET_NULL)
     hidden = models.BooleanField(default=False)
 
+    @staticmethod
+    def update_defaults():
+        plan_preset = settings.ACCESS_PLANS
+        for key, value in plan_preset.items():
+            plan, created = Plan.objects.get_or_create(name=key, defaults=value)
+            # update permissions and features
+            if not created:
+                plan.permissions = value['permissions']
+                plan.hidden = value['hidden']
+                plan.save()
+
 
 class Subscription(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
