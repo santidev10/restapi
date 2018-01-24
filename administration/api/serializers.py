@@ -106,11 +106,7 @@ class UserUpdateSerializer(ModelSerializer):
                 user.plan_id = settings.DEFAULT_ACCESS_PLAN_NAME
             plan = Plan.objects.get(name=user.plan_id)
             subscription = Subscription.objects.create(user=user, plan=plan)
-            user.update_permissions_from_subscription(subscription)
-        else:
-            user.update_permissions()
-
-        user.save()
+            user.update_permissions(subscription.plan.permissions)
         # turned off according to SAAS-1895
         # send_plan_changed_email(user, self.context.get("request"))
         return user

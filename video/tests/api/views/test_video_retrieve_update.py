@@ -14,7 +14,7 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         user = self.create_test_user(True)
-        user.set_permissions_from_plan('professional')
+        user.update_permissions_from_plan('professional')
         user.save()
 
         with open('saas/fixtures/singledb_video_list.json') as data_file:
