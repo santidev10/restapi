@@ -8,7 +8,6 @@ from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
-from administration.notifications import send_plan_changed_email
 from userprofile.models import Subscription, Plan
 
 
@@ -89,6 +88,7 @@ class UserUpdateSerializer(ModelSerializer):
         model = get_user_model()
         fields = (
             "plan",
+            "permissions",
             "can_access_media_buying",
         )
 
@@ -96,13 +96,20 @@ class UserUpdateSerializer(ModelSerializer):
         """
         Make 'post-save' actions
         """
+        old_plan = self.instance.plan_id
+
         user = super(UserUpdateSerializer, self).save(**kwargs)
-        Subscription.objects.filter(user=user).delete()
-        if user.plan_id is None:
-            user.plan_id = settings.DEFAULT_ACCESS_PLAN_NAME
-        plan = Plan.objects.get(name=user.plan_id)
-        subscription = Subscription.objects.create(user=user, plan=plan)
-        user.update_permissions_from_subscription(subscription)
+
+        if user.plan_id != old_plan:
+            Subscription.objects.filter(user=user).delete()
+            if user.plan_id is None:
+                user.plan_id = settings.DEFAULT_ACCESS_PLAN_NAME
+            plan = Plan.objects.get(name=user.plan_id)
+            subscription = Subscription.objects.create(user=user, plan=plan)
+            user.update_permissions_from_subscription(subscription)
+        else:
+            user.update_permissions()
+
         user.save()
         # turned off according to SAAS-1895
         # send_plan_changed_email(user, self.context.get("request"))
@@ -137,6 +144,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "plan",
+            "permissions",
             "can_access_media_buying",
             "is_user_paid_for_subscription",
             "current_period_end",

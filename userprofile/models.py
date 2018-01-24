@@ -56,6 +56,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     plan = models.ForeignKey('userprofile.Plan', null=True,
                              on_delete=models.SET_NULL)
+    permissions = JSONField(default={})
 
     objects = UserManager()
 
@@ -102,7 +103,30 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         return self.auth_token.key
 
-    def set_permissions_from_plan(self, plan_name):
+    def update_permissions_tree(self, source, destination):
+        for key, value in source.items():
+            if type(value) == dict:
+                if destination.get(key) is not None:
+                    self.update_permissions_tree(value, destination[key])
+                    continue
+            destination[key] = value
+
+    def update_permissions_from_node(self, node, path=''):
+        for key, value in node.items():
+            if len(path) > 0:
+                new_path = path + '_' + key
+            else:
+                new_path = key
+
+            if type(value) == dict:
+                self.update_permissions_from_node(value, new_path)
+            else:
+                if value:
+                    self.add_custom_user_permission(new_path)
+                else:
+                    self.remove_custom_user_permission(new_path)
+
+    def update_permissions_from_plan(self, plan_name):
         """
         Convert plan to django permissions
         """
@@ -114,31 +138,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 defaults=settings.ACCESS_PLANS[
                     settings.DEFAULT_ACCESS_PLAN_NAME])
 
-        self.set_permissions_from_node(plan.permissions)
-
-    def set_permissions_from_node(self, node, path=''):
-        self.content_type = ContentType.objects.get_for_model(Plan)
-        for key, value in node.items():
-            if len(path) > 0:
-                new_path = path + '_' + key
-            else:
-                new_path = key
-
-            if type(value) == dict:
-                self.set_permissions_from_node(value, new_path)
-            else:
-                permission, created = Permission.objects.get_or_create(
-                    codename=new_path,
-                    defaults=dict(content_type=self.content_type))
-                if value:
-                    self.user_permissions.add(permission)
-                else:
-                    self.user_permissions.remove(permission)
+        self.update_permissions_tree(plan.permissions, self.permissions)
+        self.update_permissions_from_node(self.permissions)
+        self.save()
 
     def update_permissions_from_subscription(self, subscription):
         self.plan = subscription.plan
-        self.set_permissions_from_plan(self.plan.name)
-        self.save()
+        self.update_permissions_from_plan(self.plan.name)
 
     def add_custom_user_permission(self, perm: str):
         permission = get_custom_permission(perm)
