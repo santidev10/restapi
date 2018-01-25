@@ -107,7 +107,7 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         if serializer.is_valid():
             serializer.save()
             if new_access:
-                user.
+                user.update_access(new_access)
             return self.get(request)
         return Response(serializer.errors, HTTP_400_BAD_REQUEST)
 
