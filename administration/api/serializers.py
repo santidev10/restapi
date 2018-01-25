@@ -88,7 +88,7 @@ class UserUpdateSerializer(ModelSerializer):
         model = get_user_model()
         fields = (
             "plan",
-            "permissions",
+            "access",
             "can_access_media_buying",
         )
 
@@ -140,7 +140,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "plan",
-            "permissions",
+            "access",
             "can_access_media_buying",
             "is_user_paid_for_subscription",
             "current_period_end",

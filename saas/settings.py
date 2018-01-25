@@ -370,6 +370,43 @@ ACCESS_PLANS = {
     },
 }
 
+DEFAULT_USER_ACCESS = {
+    'Highlights': True,
+    'Research': False,
+    'Segments': False,
+    'Segments - pre-baked segments': False,
+    'Media buying': False,
+    'Auth channels and audience data': False,
+}
+
+USER_ACCESS_LOGIC = {
+    'Highlights': {
+        'view': {'highlights': True, },
+    },
+    'Research': {
+        'channel': {'list': True, 'filter': True, 'details': True, },
+        'video': {'list': True, 'filter': True, 'details': True, },
+        'keyword': {'list': True, 'filter': True, },
+    },
+    'Segments': {
+        'segment': {
+            'channel': {'private': True, },
+            'video': {'private': True, },
+            'keyword': {'private': True, },
+        },
+    },
+    'Segments - pre-baked segments': {
+        'view': {'pre_baked_segments': True, },
+    },
+    'Media buying': {
+        'view': {'media_buying': True, },
+    },
+    'Auth channels and audience data': {
+        'channel': {'audience': True, 'aw_performance': True, },
+        'video': {'audience': True, 'aw_performance': True, },
+    },
+}
+
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 

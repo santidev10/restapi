@@ -57,6 +57,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     plan = models.ForeignKey('userprofile.Plan', null=True,
                              on_delete=models.SET_NULL)
     permissions = JSONField(default={})
+    access = JSONField(default={})
 
     objects = UserManager()
 
@@ -156,6 +157,30 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     def remove_custom_user_permission(self, perm: str):
         permission = get_custom_permission(perm)
         self.user_permissions.remove(permission)
+
+    def update_access(self, access):
+        for key, value in access.items():
+            self.apply_access_item(key, value)
+
+    def apply_access_item(self, name, action):
+        access = self.access
+        logic = settings.USER_ACCESS_LOGIC.get(name)
+        if logic is None:
+            return
+        permissions = dict()
+        access[name] = action
+        self.access = access
+        self.apply_accesss_logic(logic, permissions, action)
+        self.update_permissions(permissions)
+
+    def apply_accesss_logic(self, logic, destination, action):
+        for key, value in logic.items():
+            if type(value) == dict:
+                if destination.get(key) is None:
+                    destination[key] = {}
+                self.apply_accesss_logic(value, destination[key], action)
+                continue
+            destination[key] = action
 
 
 def get_custom_permission(codename: str):
