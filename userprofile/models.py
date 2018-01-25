@@ -126,7 +126,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             if type(value) == dict:
                 self.create_custom_permissions(value, new_path)
             else:
-                if value:
+                if value is not None:
                     self.add_custom_user_permission(new_path)
                 else:
                     self.remove_custom_user_permission(new_path)
