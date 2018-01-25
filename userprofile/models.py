@@ -163,11 +163,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             self.apply_access_item(key, value)
 
     def apply_access_item(self, name, action):
-        self.access[name] = action
+        access = self.access
         logic = settings.USER_ACCESS_LOGIC.get(name)
         if logic is None:
             return
         permissions = dict()
+        access[name] = action
+        self.access = access
         self.apply_accesss_logic(logic, permissions, action)
         self.update_permissions(permissions)
 
