@@ -57,7 +57,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     plan = models.ForeignKey('userprofile.Plan', null=True,
                              on_delete=models.SET_NULL)
     permissions = JSONField(default={})
-    access = JSONField(default=settings.DEFAULT_USER_ACCESS)
+    access = JSONField(default={})
 
     objects = UserManager()
 
