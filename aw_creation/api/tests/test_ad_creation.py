@@ -238,7 +238,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.user.set_permissions_from_plan('enterprise')
+        self.user.update_permissions_from_plan('enterprise')
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,

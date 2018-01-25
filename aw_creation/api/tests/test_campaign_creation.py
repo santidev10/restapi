@@ -391,7 +391,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
         user = self.user
-        user.set_permissions_from_plan('enterprise')
+        user.update_permissions_from_plan('enterprise')
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",
