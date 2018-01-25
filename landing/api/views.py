@@ -4,11 +4,15 @@ Feedback api views module
 from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework.response import Response
-from rest_framework.status import HTTP_202_ACCEPTED, HTTP_200_OK
+from rest_framework.status import HTTP_202_ACCEPTED, HTTP_200_OK, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
+from channel.api.views import ChannelListApiView
 from landing.api.serializers import ContactMessageSendSerializer
 from landing.models import ContactMessage
+from userprofile.models import UserProfile
+from singledb.connector import SingleDatabaseApiConnector as Connector, \
+    SingleDatabaseApiConnectorException
 
 
 class ContanctMessageSendApiView(APIView):
@@ -56,3 +60,38 @@ class ContanctMessageSendApiView(APIView):
                "{message}".format(**data)
         send_mail(subject, text, sender, to, fail_silently=True)
         return
+
+
+class TopAuthChannels(APIView):
+    permission_classes = tuple()
+
+    def get(self, request):
+        ids_from_request = request.query_params.get("ids")
+        if ids_from_request:
+            channels_ids = ids_from_request.split(",")
+        else:
+            channels_ids = list(UserProfile.objects.filter(
+                channels__isnull=False).values_list(
+                'channels__channel_id', flat=True))
+
+        connector = Connector()
+        try:
+            ids_hash = connector.store_ids(channels_ids)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(data={"error": " ".join(e.args)},
+                            status=HTTP_408_REQUEST_TIMEOUT)
+
+        fields = "channel_id,title,thumbnail_image_url,url,subscribers"
+        query_params = dict(ids_hash=ids_hash,
+                            fields=fields,
+                            sort="subscribers:desc",
+                            size="21")
+        ChannelListApiView.adapt_query_params(query_params)
+
+        try:
+            channels = connector.get_channel_list(query_params)
+        except SingleDatabaseApiConnectorException as e:
+            return Response(data={"error": " ".join(e.args)},
+                            status=HTTP_408_REQUEST_TIMEOUT)
+
+        return Response(channels)
