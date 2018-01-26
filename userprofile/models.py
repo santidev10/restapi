@@ -168,7 +168,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         if logic is None:
             return
         permissions = dict()
-        access[name] = action
+        for item in access:
+            if item.get('name') == name:
+                item['value'] = action
+                break
         self.access = access
         self.apply_accesss_logic(logic, permissions, action)
         self.update_permissions(permissions)
