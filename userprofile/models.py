@@ -159,7 +159,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         self.user_permissions.remove(permission)
 
     def update_access(self, access):
-        for item in access.items():
+        for item in access:
             self.apply_access_item(item.get('name'), item.get('value'))
 
     def apply_access_item(self, name, action):
