@@ -370,14 +370,14 @@ ACCESS_PLANS = {
     },
 }
 
-DEFAULT_USER_ACCESS = {
-    'Highlights': True,
-    'Research': False,
-    'Segments': False,
-    'Segments - pre-baked segments': False,
-    'Media buying': False,
-    'Auth channels and audience data': False,
-}
+DEFAULT_USER_ACCESS = [
+    {'name': 'Highlights', 'value': True, },
+    {'name': 'Research', 'value': False, },
+    {'name': 'Segments', 'value': False, },
+    {'name': 'Segments - pre-baked segments', 'value': False, },
+    {'name': 'Media buying', 'value': False, },
+    {'name': 'Auth channels and audience data', 'value': False, },
+]
 
 USER_ACCESS_LOGIC = {
     'Highlights': {
