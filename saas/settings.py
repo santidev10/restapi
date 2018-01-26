@@ -400,6 +400,7 @@ USER_ACCESS_LOGIC = {
     },
     'Media buying': {
         'view': {'media_buying': True, },
+        'settings': {'my_aw_accounts': True, },
     },
     'Auth channels and audience data': {
         'channel': {'audience': True, 'aw_performance': True, },
