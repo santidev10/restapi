@@ -7,10 +7,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED, HTTP_200_OK, HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
-from channel.api.views import ChannelListApiView
 from landing.api.serializers import ContactMessageSendSerializer
 from landing.models import ContactMessage
-from userprofile.models import UserProfile
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 
@@ -66,32 +64,39 @@ class TopAuthChannels(APIView):
     permission_classes = tuple()
 
     def get(self, request):
-        ids_from_request = request.query_params.get("ids")
-        if ids_from_request:
-            channels_ids = ids_from_request.split(",")
-        else:
-            channels_ids = list(UserProfile.objects.filter(
-                channels__isnull=False).values_list(
-                'channels__channel_id', flat=True))
-
         connector = Connector()
+        params_last_authed = dict(fields="channel_id,"
+                                         "title,"
+                                         "thumbnail_image_url,"
+                                         "url,"
+                                         "subscribers,"
+                                         "auth__created_at",
+                                  sort="auth__created_at:desc",
+                                  sources="",
+                                  auth__created_at__exists="true",
+                                  subscribers__range="10000,",
+                                  size="21")
+
+        params_testimonials = dict(fields="channel_id,"
+                                          "title,"
+                                          "thumbnail_image_url,"
+                                          "url,"
+                                          "subscribers",
+                                   sort="subscribers:desc",
+                                   sources="",
+                                   channel_id__terms=",".join(settings.TESTIMONIALS.keys()))
         try:
-            ids_hash = connector.store_ids(channels_ids)
+            channels_last_authed = connector.get_channel_list(params_last_authed)["items"]
+            channels_testimonials = connector.get_channel_list(params_testimonials)["items"]
         except SingleDatabaseApiConnectorException as e:
-            return Response(data={"error": " ".join(e.args)},
-                            status=HTTP_408_REQUEST_TIMEOUT)
+            return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
-        fields = "channel_id,title,thumbnail_image_url,url,subscribers"
-        query_params = dict(ids_hash=ids_hash,
-                            fields=fields,
-                            sort="subscribers:desc",
-                            size="21")
-        ChannelListApiView.adapt_query_params(query_params)
+        for channel in channels_testimonials:
+            channel_id = channel.get("channel_id")
+            if channel_id in settings.TESTIMONIALS:
+                channel["video_id"] = settings.TESTIMONIALS[channel_id]
 
-        try:
-            channels = connector.get_channel_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(data={"error": " ".join(e.args)},
-                            status=HTTP_408_REQUEST_TIMEOUT)
+        data = {"last": channels_last_authed,
+                "testimonials": channels_testimonials}
 
-        return Response(channels)
+        return Response(data)
