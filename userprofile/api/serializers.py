@@ -138,6 +138,7 @@ class UserSerializer(ModelSerializer):
             "token",
             "has_aw_accounts",
             "plan",
+            "access",
             "profile_image_url",
             "can_access_media_buying",
             "has_paid_subscription_error",
