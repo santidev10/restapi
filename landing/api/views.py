@@ -74,6 +74,7 @@ class TopAuthChannels(APIView):
                                   sort="auth__created_at:desc",
                                   sources="",
                                   auth__created_at__exists="true",
+                                  subscribers__range="10000,",
                                   size="21")
 
         params_testimonials = dict(fields="channel_id,"
