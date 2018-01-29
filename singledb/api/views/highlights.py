@@ -108,7 +108,7 @@ class HighlightsQuery:
                 filter_cat = self.request_query_params.get(allowed_filter)
                 self.result_query_params[allowed_filter] = filter_cat.split(',')[0]
 
-        aggregations = self.request_query_params.get('aggregations').split(',')
+        aggregations = self.request_query_params.get('aggregations', "").split(',')
         if set(aggregations).issubset(set(self.allowed_aggregations)):
             self.result_query_params['aggregations'] = ",".join(aggregations)
 
