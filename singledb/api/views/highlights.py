@@ -71,12 +71,12 @@ class HighlightKeywordsListApiView(SingledbApiView):
 
 
 class HighlightsQuery:
-    allowed_filters = ('category__terms',)
+    allowed_filters = ('category__terms', 'language__terms')
     allowed_sorts = ('thirty_days_subscribers', 'thirty_days_views', 'thirty_days_comments', 'thirty_days_likes',
                      'weekly_subscribers', 'weekly_views', 'weekly_comments', 'weekly_likes',
                      'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes')
     allowed_sorts_type = ('desc',)
-    allowed_aggregations = ('category',)
+    allowed_aggregations = ('category', 'language')
 
     def __init__(self, query_params):
         self.result_query_params = CustomQueryParamsDict()
@@ -112,8 +112,10 @@ class HighlightsQuery:
             self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
 
         if mode is not None:
-            if mode == 'video' or mode == 'channel':
-                self.result_query_params['language__terms'] = 'English'
+            pass
+            # Disabled due to SAAS-1932
+            # if mode == 'video' or mode == 'channel':
+            #     self.result_query_params['language__terms'] = 'English'
 
         return self.result_query_params
 
