@@ -263,8 +263,9 @@ class ErrorReportApiView(APIView):
         serializer.is_valid(raise_exception=True)
         to = settings.CONTACT_FORM_EMAIL_ADDRESSES
         sender = settings.SENDER_EMAIL_ADDRESS
-        subject = "UI Prod Error Report"
-        message = "User {email} has experienced an error: \n\n" \
-                  "{message}".format(**serializer.data)
+        host = request.get_host()
+        subject = "UI Error Report from: {}".format(host)
+        message = "User {email} has experienced an error on {host}: \n\n" \
+                  "{message}".format(host=host, **serializer.data)
         send_mail(subject, message, sender, to, fail_silently=True)
         return Response(status=HTTP_201_CREATED)
