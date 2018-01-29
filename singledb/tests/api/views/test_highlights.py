@@ -17,7 +17,7 @@ class HighlightKeywordsListApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         call_url = requests_mock.get.call_args[0][0]
-        requests_mock.get.assert_called_once_with(call_url)
+        requests_mock.get.assert_called_once_with(call_url, headers={'Content-Type': 'application/json'}, verify=False)
         parsed_url = parse.urlparse(call_url)
         query_params = parse.parse_qs(parsed_url.query)
         fields = query_params.get("fields", [])
