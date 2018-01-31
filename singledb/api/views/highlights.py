@@ -28,6 +28,7 @@ class HighlightChannelsListApiView(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         ChannelListApiView.adapt_response_data(response_data, request.user)
+        response_data = HighlightsQuery.adapt_language_aggregation(response_data)
         return Response(response_data)
 
 
@@ -47,6 +48,7 @@ class HighlightVideosListApiView(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         VideoListApiView.adapt_response_data(response_data, request.user)
+        response_data = HighlightsQuery.adapt_language_aggregation(response_data)
         return Response(response_data)
 
 
@@ -119,6 +121,13 @@ class HighlightsQuery:
             #     self.result_query_params['language__terms'] = 'English'
 
         return self.result_query_params
+
+    @staticmethod
+    def adapt_language_aggregation(response_data):
+        language_aggregation = response_data.get('aggregations', {}).get('language:count', [])
+        if language_aggregation:
+            response_data['aggregations']['language:count'] = language_aggregation[:10]
+        return response_data
 
 
 class CustomQueryParamsDict(dict):
