@@ -95,11 +95,15 @@ class VideoListApiView(
             query_params.update(ids_hash=ids_hash)
 
         channel = query_params.get("channel")
-        if channel is not None and not request.user.has_perm(
-                "userprofile.video_list"):
-            # user should be able to see own videos
-            if request.user.channels.filter(channel_id=channel).count() < 1:
-                return Response(empty_response)
+        if not request.user.has_perm("userprofile.video_list"):
+            user_channels = set(
+                request.user.channels.values_list(
+                    "channel_id", flat=True))
+            if channel:
+                if channel not in user_channels:
+                    return Response(empty_response)
+            else:
+                query_params.update(**{'channel': ','.join(user_channels)})
 
         # adapt the request params
         self.adapt_query_params(query_params)
