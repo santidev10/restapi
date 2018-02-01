@@ -2782,6 +2782,10 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
         criteria_list = []
         for _, file_obj in request.data.items():
+            if not hasattr(file_obj, 'content_type'):
+                #skip empty items
+                continue
+
             fct = file_obj.content_type
             try:
                 if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
