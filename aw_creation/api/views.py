@@ -2783,13 +2783,18 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
         criteria_list = []
         for _, file_obj in request.data.items():
             fct = file_obj.content_type
-            if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                data = self.get_xlsx_contents(file_obj, return_lines=True)
-            elif fct in ("text/csv", "application/vnd.ms-excel"):
-                data = self.get_csv_contents(file_obj, return_lines=True)
-            else:
+            try:
+                if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    data = self.get_xlsx_contents(file_obj, return_lines=True)
+                elif fct in ("text/csv", "application/vnd.ms-excel"):
+                    data = self.get_csv_contents(file_obj, return_lines=True)
+                else:
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+            except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                data={"errors": ['File loading failed with error: {}'.format(e)]})
+
             try:
                 criteria_list.extend(getattr(self, method)(data))
             except UnicodeDecodeError:
