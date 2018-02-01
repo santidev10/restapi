@@ -2801,11 +2801,12 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
-            except UnicodeDecodeError:
+            except Exception as e:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={
-                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                   'Data extraction failed with error: {}'.format(e)]
                     },
                 )
 
