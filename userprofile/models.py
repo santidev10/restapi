@@ -190,13 +190,17 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         for item in pre_actions:
             for access_name in item.get('access', []):
-                self.apply_access_item(access_name, self.get_access_item_value(access_name))
+                if access_name != name:
+                    self.apply_access_item(access_name,
+                                           self.get_access_item_value(access_name))
 
         self.apply_accesss_logic(logic, permissions, action)
 
         for item in post_actions:
             for access_name in item.get('access', []):
-                self.apply_access_item(access_name, self.get_access_item_value(access_name))
+                if access_name != name:
+                    self.apply_access_item(access_name,
+                                           self.get_access_item_value(access_name))
 
         self.update_permissions(permissions)
 
