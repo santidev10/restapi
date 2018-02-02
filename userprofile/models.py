@@ -163,10 +163,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             self.apply_access_item(item.get('name'), item.get('value'))
 
     def apply_access_item(self, name, action):
+        if action is None:
+            return
         access = self.access
         logic = settings.USER_ACCESS_LOGIC.get(name)
         if logic is None:
             return
+        logic = logic.copy()
         permissions = dict()
         for item in access:
             if item.get('name') == name:
@@ -176,7 +179,29 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         self.apply_accesss_logic(logic, permissions, action)
         self.update_permissions(permissions)
 
+    def get_access_item_value(self, name):
+        for item in self.access:
+            if item.get('name') == name:
+                return item.get('value')
+        return None
+
     def apply_accesss_logic(self, logic, destination, action):
+        pre_actions = []
+        post_actions = []
+
+        actions = logic.pop('actions', [])
+        for item in actions:
+            if item.get('input') == action:
+                if item.get('action_type') == 'pre':
+                    pre_actions.append(item)
+                else:
+                    post_actions.append(item)
+
+        # TODO: not safe - could cause infinite recursion
+        for item in pre_actions:
+            for access_name in item.get('access', []):
+                self.apply_access_item(access_name, self.get_access_item_value(access_name))
+
         for key, value in logic.items():
             if type(value) == dict:
                 if destination.get(key) is None:
@@ -184,6 +209,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 self.apply_accesss_logic(value, destination[key], action)
                 continue
             destination[key] = action
+
+        # TODO: not safe - could cause infinite recursion
+        for item in post_actions:
+            for access_name in item.get('access', []):
+                self.apply_access_item(access_name, self.get_access_item_value(access_name))
 
 
 def get_custom_permission(codename: str):
