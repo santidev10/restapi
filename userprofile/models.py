@@ -169,6 +169,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         logic = settings.USER_ACCESS_LOGIC.get(name)
         if logic is None:
             return
+
         logic = logic.copy()
         permissions = dict()
         for item in access:
@@ -176,7 +177,27 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 item['value'] = action
                 break
         self.access = access
+
+        pre_actions = []
+        post_actions = []
+        actions = logic.pop('actions', [])
+        for item in actions:
+            if item.get('input') == action:
+                if item.get('action_type') == 'pre':
+                    pre_actions.append(item)
+                else:
+                    post_actions.append(item)
+
+        for item in pre_actions:
+            for access_name in item.get('access', []):
+                self.apply_access_item(access_name, self.get_access_item_value(access_name))
+
         self.apply_accesss_logic(logic, permissions, action)
+
+        for item in post_actions:
+            for access_name in item.get('access', []):
+                self.apply_access_item(access_name, self.get_access_item_value(access_name))
+
         self.update_permissions(permissions)
 
     def get_access_item_value(self, name):
@@ -186,22 +207,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         return None
 
     def apply_accesss_logic(self, logic, destination, action):
-        pre_actions = []
-        post_actions = []
-
-        actions = logic.pop('actions', [])
-        for item in actions:
-            if item.get('input') == action:
-                if item.get('action_type') == 'pre':
-                    pre_actions.append(item)
-                else:
-                    post_actions.append(item)
-
-        # TODO: not safe - could cause infinite recursion
-        for item in pre_actions:
-            for access_name in item.get('access', []):
-                self.apply_access_item(access_name, self.get_access_item_value(access_name))
-
         for key, value in logic.items():
             if type(value) == dict:
                 if destination.get(key) is None:
@@ -210,10 +215,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 continue
             destination[key] = action
 
-        # TODO: not safe - could cause infinite recursion
-        for item in post_actions:
-            for access_name in item.get('access', []):
-                self.apply_access_item(access_name, self.get_access_item_value(access_name))
 
 
 def get_custom_permission(codename: str):
