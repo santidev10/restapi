@@ -394,9 +394,6 @@ USER_ACCESS_LOGIC = {
             'video': {'private': True, },
             'keyword': {'private': True, },
         },
-        'settings': {
-            'my_yt_channels': True,
-        },
     },
     'Segments - pre-baked segments': {
         'actions': [{'input': False, 'action_type': 'post', 'access': ['Research'], }, ],
