@@ -190,17 +190,21 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         for item in pre_actions:
             for access_name in item.get('access', []):
-                if access_name != name:
-                    self.apply_access_item(access_name,
-                                           self.get_access_item_value(access_name))
+                pre_logic = settings.USER_ACCESS_LOGIC.get(access_name)
+                if access_name != name and pre_logic is not None:
+                    self.apply_access_logic(pre_logic,
+                                            permissions,
+                                            self.get_access_item_value(access_name))
 
-        self.apply_accesss_logic(logic, permissions, action)
+        self.apply_access_logic(logic, permissions, action)
 
         for item in post_actions:
             for access_name in item.get('access', []):
-                if access_name != name:
-                    self.apply_access_item(access_name,
-                                           self.get_access_item_value(access_name))
+                post_logic = settings.USER_ACCESS_LOGIC.get(access_name)
+                if access_name != name and post_logic is not None:
+                    self.apply_access_logic(post_logic,
+                                            permissions,
+                                            self.get_access_item_value(access_name))
 
         self.update_permissions(permissions)
 
@@ -210,15 +214,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 return item.get('value')
         return None
 
-    def apply_accesss_logic(self, logic, destination, action):
+    def apply_access_logic(self, logic, destination, action):
         for key, value in logic.items():
             if type(value) == dict:
                 if destination.get(key) is None:
                     destination[key] = {}
-                self.apply_accesss_logic(value, destination[key], action)
+                self.apply_access_logic(value, destination[key], action)
                 continue
             destination[key] = action
-
 
 
 def get_custom_permission(codename: str):
