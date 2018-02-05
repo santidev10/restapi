@@ -417,6 +417,11 @@ CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
 VENDOR = 'viewiq'
 
+TESTIMONIALS = {
+    "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
+    "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
+}
+
 try:
     from .local_settings import *
 except ImportError:
