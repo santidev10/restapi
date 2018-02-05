@@ -102,7 +102,8 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
-                           "Also please use the UTF-8 encoding."
+                           "Also please use the UTF-8 encoding. It is expected that item ID "\
+                           "placed in one of first two columns."
 
 
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
@@ -2797,7 +2798,8 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                                     data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
             except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": ['File loading failed with error: {}'.format(e)]})
+                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                                 'Stage: Load File Data. Cause: {}'.format(e)]})
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
@@ -2806,7 +2808,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                     status=HTTP_400_BAD_REQUEST,
                     data={
                         "errors": [DOCUMENT_LOAD_ERROR_TEXT,
-                                   'Data extraction failed with error: {}'.format(e)]
+                                   'Stage: Data Extraction. Cause: {}'.format(e)]
                     },
                 )
 
