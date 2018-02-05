@@ -78,6 +78,9 @@ class KeywordListApiView(APIView,
                 return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
 
+        if not request.user.has_perm("userprofile.keyword_list"):
+            return Response(empty_response)
+
         # adapt the request params
         self.adapt_query_params(query_params)
 
