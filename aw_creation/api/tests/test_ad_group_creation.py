@@ -289,7 +289,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_can_edit_ad_group(self):
         user = self.user
-        user.set_permissions_from_plan('enterprise')
+        user.update_permissions_from_plan('enterprise')
 
         today = datetime.now().date()
         defaults = dict(

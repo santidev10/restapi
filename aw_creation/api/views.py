@@ -102,7 +102,8 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
-                           "Also please use the UTF-8 encoding."
+                           "Also please use the UTF-8 encoding. It is expected that item ID "\
+                           "placed in one of first two columns."
 
 
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
@@ -2782,21 +2783,32 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
         criteria_list = []
         for _, file_obj in request.data.items():
+            if not hasattr(file_obj, 'content_type'):
+                #skip empty items
+                continue
+
             fct = file_obj.content_type
-            if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                data = self.get_xlsx_contents(file_obj, return_lines=True)
-            elif fct in ("text/csv", "application/vnd.ms-excel"):
-                data = self.get_csv_contents(file_obj, return_lines=True)
-            else:
+            try:
+                if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    data = self.get_xlsx_contents(file_obj, return_lines=True)
+                elif fct in ("text/csv", "application/vnd.ms-excel"):
+                    data = self.get_csv_contents(file_obj, return_lines=True)
+                else:
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+            except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                                 'Stage: Load File Data. Cause: {}'.format(e)]})
+
             try:
                 criteria_list.extend(getattr(self, method)(data))
-            except UnicodeDecodeError:
+            except Exception as e:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={
-                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                   'Stage: Data Extraction. Cause: {}'.format(e)]
                     },
                 )
 

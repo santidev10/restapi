@@ -61,7 +61,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_should_be_able_to_see_channel_details(self):
         user = self.create_test_user(True)
-        user.set_permissions_from_plan('enterprise')
+        user.update_permissions_from_plan('enterprise')
         user.save()
 
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
@@ -81,7 +81,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         user = self.create_test_user(True)
-        user.set_permissions_from_plan('professional')
+        user.update_permissions_from_plan('professional')
         user.save()
 
         with open('saas/fixtures/singledb_channel_list.json') as data_file:

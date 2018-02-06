@@ -107,25 +107,7 @@ class ChannelListApiView(
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
 
-        # segment
-        segment = query_params.get("segment")
-        if segment is not None:
-            # obtain segment
-            segment = self.obtain_segment(segment)
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            # obtain channels ids
-            channels_ids = list(segment.get_related_ids())
-            if not channels_ids:
-                return Response(empty_response)
-            query_params.pop("segment")
-            try:
-                ids_hash = connector.store_ids(channels_ids)
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
-
+        channels_ids = []
         # own_channels
         if not request.user.has_perm("userprofile.channel_list") and \
                 request.user.has_perm("userprofile.settings_my_yt_channels"):
@@ -140,11 +122,39 @@ class ChannelListApiView(
             user = self.request.user
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = user.channels.values_list("channel_id", flat=True)
+            channels_ids = list(user.channels.values_list("channel_id", flat=True))
             if not channels_ids:
                 return Response(empty_response)
-            query_params.update(ids=",".join(channels_ids))
-            query_params.update(timestamp=str(time.time()))
+
+        # segment
+        segment = query_params.get("segment")
+        if segment is not None:
+            # obtain segment
+            segment = self.obtain_segment(segment)
+            if segment is None:
+                return Response(status=HTTP_404_NOT_FOUND)
+            # obtain channels ids
+            segment_channels_ids = list(segment.get_related_ids())
+            if channels_ids:
+                channels_ids = [
+                    channel_id
+                    for channel_id in channels_ids
+                    if channel_id in segment_channels_ids
+                ]
+            else:
+                channels_ids = segment_channels_ids
+
+            if not channels_ids:
+                return Response(empty_response)
+            query_params.pop("segment")
+
+        if channels_ids:
+            try:
+                ids_hash = connector.store_ids(channels_ids)
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
 
         # adapt the request params
         self.adapt_query_params(query_params)

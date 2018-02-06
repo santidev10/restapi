@@ -261,30 +261,30 @@ REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software",
-    "yulia.prokudina@sigma.software"
+    "yulia.prokudina@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
-    "yulia.prokudina@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "alexander.dobrzhansky@sigma.software",
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
-    "yulia.prokudina@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
     # "yuriy.matso@channelfactory.com",
     "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
-    "yulia.prokudina@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
@@ -367,6 +367,48 @@ ACCESS_PLANS = {
                 'my_aw_accounts': True,
             }
         },
+    },
+}
+
+DEFAULT_USER_ACCESS = [
+    {'name': 'Highlights', 'value': True, },
+    {'name': 'Research', 'value': False, },
+    {'name': 'Segments', 'value': False, },
+    {'name': 'Segments - pre-baked segments', 'value': False, },
+    {'name': 'Media buying', 'value': False, },
+    {'name': 'Auth channels and audience data', 'value': False, },
+]
+
+USER_ACCESS_LOGIC = {
+    'Highlights': {
+        'view': {'highlights': True, },
+    },
+    'Research': {
+        'channel': {'list': True, 'filter': True, 'details': True, },
+        'video': {'list': True, 'filter': True, 'details': True, },
+        'keyword': {'list': True, 'filter': True, },
+    },
+    'Segments': {
+        'segment': {
+            'channel': {'private': True, },
+            'video': {'private': True, },
+            'keyword': {'private': True, },
+        },
+    },
+    'Segments - pre-baked segments': {
+        'actions': [{'input': False, 'action_type': 'post', 'access': ['Research'], }, ],
+        'view': {'pre_baked_segments': True, },
+        'channel': {'list': True, },
+        'video': {'list': True, },
+        'keyword': {'list': True, },
+    },
+    'Media buying': {
+        'view': {'media_buying': True, },
+        'settings': {'my_aw_accounts': True, },
+    },
+    'Auth channels and audience data': {
+        'channel': {'audience': True, 'aw_performance': True, },
+        'video': {'audience': True, 'aw_performance': True, },
     },
 }
 

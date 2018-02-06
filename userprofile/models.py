@@ -56,6 +56,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     plan = models.ForeignKey('userprofile.Plan', null=True,
                              on_delete=models.SET_NULL)
+    permissions = JSONField(default={})
+    access = JSONField(default={})
 
     objects = UserManager()
 
@@ -102,7 +104,35 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         return self.auth_token.key
 
-    def set_permissions_from_plan(self, plan_name):
+    def update_permissions(self, source):
+        self.update_permissions_tree(source, self.permissions)
+        self.create_custom_permissions(self.permissions)
+        self.save()
+
+    def update_permissions_tree(self, source, destination):
+        for key, value in source.items():
+            if type(value) == dict:
+                if destination.get(key) is not None:
+                    self.update_permissions_tree(value, destination[key])
+                    continue
+            destination[key] = value
+
+    def create_custom_permissions(self, node, path=''):
+        for key, value in node.items():
+            if len(path) > 0:
+                new_path = path + '_' + key
+            else:
+                new_path = key
+
+            if type(value) == dict:
+                self.create_custom_permissions(value, new_path)
+            else:
+                if value:
+                    self.add_custom_user_permission(new_path)
+                else:
+                    self.remove_custom_user_permission(new_path)
+
+    def update_permissions_from_plan(self, plan_name):
         """
         Convert plan to django permissions
         """
@@ -114,31 +144,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 defaults=settings.ACCESS_PLANS[
                     settings.DEFAULT_ACCESS_PLAN_NAME])
 
-        self.set_permissions_from_node(plan.permissions)
-
-    def set_permissions_from_node(self, node, path=''):
-        self.content_type = ContentType.objects.get_for_model(Plan)
-        for key, value in node.items():
-            if len(path) > 0:
-                new_path = path + '_' + key
-            else:
-                new_path = key
-
-            if type(value) == dict:
-                self.set_permissions_from_node(value, new_path)
-            else:
-                permission, created = Permission.objects.get_or_create(
-                    codename=new_path,
-                    defaults=dict(content_type=self.content_type))
-                if value:
-                    self.user_permissions.add(permission)
-                else:
-                    self.user_permissions.remove(permission)
+        self.update_permissions(plan.permissions)
 
     def update_permissions_from_subscription(self, subscription):
         self.plan = subscription.plan
-        self.set_permissions_from_plan(self.plan.name)
-        self.save()
+        self.update_permissions_from_plan(self.plan.name)
 
     def add_custom_user_permission(self, perm: str):
         permission = get_custom_permission(perm)
@@ -147,6 +157,71 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     def remove_custom_user_permission(self, perm: str):
         permission = get_custom_permission(perm)
         self.user_permissions.remove(permission)
+
+    def update_access(self, access):
+        for item in access:
+            self.apply_access_item(item.get('name'), item.get('value'))
+
+    def apply_access_item(self, name, action):
+        if action is None:
+            return
+        access = self.access
+        logic = settings.USER_ACCESS_LOGIC.get(name)
+        if logic is None:
+            return
+
+        logic = logic.copy()
+        permissions = dict()
+        for item in access:
+            if item.get('name') == name:
+                item['value'] = action
+                break
+        self.access = access
+
+        pre_actions = []
+        post_actions = []
+        actions = logic.pop('actions', [])
+        for item in actions:
+            if item.get('input') == action:
+                if item.get('action_type') == 'pre':
+                    pre_actions.append(item)
+                else:
+                    post_actions.append(item)
+
+        for item in pre_actions:
+            for access_name in item.get('access', []):
+                pre_logic = settings.USER_ACCESS_LOGIC.get(access_name)
+                if access_name != name and pre_logic is not None:
+                    self.apply_access_logic(pre_logic,
+                                            permissions,
+                                            self.get_access_item_value(access_name))
+
+        self.apply_access_logic(logic, permissions, action)
+
+        for item in post_actions:
+            for access_name in item.get('access', []):
+                post_logic = settings.USER_ACCESS_LOGIC.get(access_name)
+                if access_name != name and post_logic is not None:
+                    self.apply_access_logic(post_logic,
+                                            permissions,
+                                            self.get_access_item_value(access_name))
+
+        self.update_permissions(permissions)
+
+    def get_access_item_value(self, name):
+        for item in self.access:
+            if item.get('name') == name:
+                return item.get('value')
+        return None
+
+    def apply_access_logic(self, logic, destination, action):
+        for key, value in logic.items():
+            if type(value) == dict:
+                if destination.get(key) is None:
+                    destination[key] = {}
+                self.apply_access_logic(value, destination[key], action)
+                continue
+            destination[key] = action
 
 
 def get_custom_permission(codename: str):
@@ -174,54 +249,12 @@ class Plan(models.Model):
     def update_defaults():
         plan_preset = settings.ACCESS_PLANS
         for key, value in plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key,
-                                                       defaults=value)
+            plan, created = Plan.objects.get_or_create(name=key, defaults=value)
             # update permissions and features
             if not created:
                 plan.permissions = value['permissions']
                 plan.hidden = value['hidden']
                 plan.save()
-
-        # set admin plans
-        plan = Plan.objects.get(name='enterprise')
-        users = UserProfile.objects.filter(is_staff=True)
-        for user in users:
-            user.plan = plan
-            user.set_permissions_from_plan(plan.name)
-            user.save()
-
-        # set default plan for non-admin users
-        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-        users = UserProfile.objects.filter(plan__isnull=True)
-        for user in users:
-            user.plan = plan
-            user.set_permissions_from_plan(plan.name)
-            user.save()
-
-        # tie with the payments
-        # from payments.models import Plan as PaymentPlan
-        # plan = Plan.objects.get(name='professional')
-        # try:
-        #     plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
-        # except PaymentPlan.DoesNotExist:
-        #     pass
-        # plan.save()
-
-        for key, value in plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key,
-                                                       defaults=value)
-            if created:
-                continue
-            plan.permissions = value['permissions']
-            plan.hidden = value['hidden']
-            plan.save()
-
-            users = UserProfile.objects.filter(plan=plan)
-            for user in users:
-                Subscription.objects.filter(user=user).delete()
-                subscription = Subscription.objects.create(user=user, plan=plan)
-                user.update_permissions_from_subscription(subscription)
-                user.save()
 
 
 class Subscription(models.Model):

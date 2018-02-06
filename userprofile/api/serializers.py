@@ -84,6 +84,7 @@ class UserCreateSerializer(ModelSerializer):
         plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
         subscription = Subscription.objects.create(user=user, plan=plan)
         user.update_permissions_from_subscription(subscription)
+        user.access = settings.DEFAULT_USER_ACCESS
         user.save()
         # set token
         Token.objects.get_or_create(user=user)
@@ -138,6 +139,7 @@ class UserSerializer(ModelSerializer):
             "token",
             "has_aw_accounts",
             "plan",
+            "access",
             "profile_image_url",
             "can_access_media_buying",
             "has_paid_subscription_error",
@@ -261,3 +263,8 @@ class SubscriptionSerializer(Serializer):
         if obj.payments_subscription is None:
             return dict()
         return PaymentSubscriptionSerializer(obj.payments_subscription).data
+
+
+class ErrorReportSerializer(Serializer):
+    email = EmailField(max_length=255)
+    message = CharField(required=True)

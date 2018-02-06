@@ -99,11 +99,15 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         """
         Update user
         """
+        new_access = request.data.pop('access', None)
+        user = self.get_object()
         serializer = self.update_serializer_class(
-            instance=self.get_object(), data=request.data,
+            instance=user, data=request.data,
             partial=True, context={"request": request})
         if serializer.is_valid():
             serializer.save()
+            if new_access:
+                user.update_access(new_access)
             return self.get(request)
         return Response(serializer.errors, HTTP_400_BAD_REQUEST)
 
