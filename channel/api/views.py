@@ -122,7 +122,7 @@ class ChannelListApiView(
             user = self.request.user
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = user.channels.values_list("channel_id", flat=True)
+            channels_ids = list(user.channels.values_list("channel_id", flat=True))
             if not channels_ids:
                 return Response(empty_response)
 
