@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentVideoManager(SegmentManager):
-    def update_youtube_segments(self):
+    def update_youtube_segments(self, force_creation=False):
         query_params = {
             'size': 0,
             'aggregations': 'category',
@@ -28,6 +28,20 @@ class SegmentVideoManager(SegmentManager):
         categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube video-segment by category: {}'.format(category))
+
+            try:
+                segment = self.get(title=category, category=self.model.YOUTUBE)
+            except SegmentVideo.DoesNotExist:
+                if force_creation:
+                    logger.info("Creating new segment '{}'".format(category))
+                    segment = self.create(title=category, category=self.model.YOUTUBE)
+                else:
+                    logger.warning(
+                        "Skipped category '{}' - related segment not found".format(
+                            category)
+                    )
+                    continue
+
             query_params = {
                 'sort': 'views:desc',
                 'fields': 'video_id',
@@ -44,7 +58,7 @@ class SegmentVideoManager(SegmentManager):
             result = Connector().get_video_list(query_params=query_params)
             items = result.get('items', [])
             ids = [i['video_id'] for i in items]
-            segment, created = self.get_or_create(title=category, category=self.model.YOUTUBE)
+
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
             logger.info('   ... videos: {}'.format(len(ids)))
