@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentKeywordManager(SegmentManager):
-    def update_youtube_segments(self):
+    def update_youtube_segments(self, force_creation=False):
         query_params = {
             'size': 0,
             'aggregations': 'category',
@@ -30,6 +30,19 @@ class SegmentKeywordManager(SegmentManager):
         categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube keyword segment by category: {}'.format(category))
+            try:
+                segment = self.get(title=category, category=self.model.CHF)
+            except SegmentKeyword.DoesNotExist:
+                if force_creation:
+                    logger.info("Creating new segment '{}'".format(category))
+                    segment = self.create(title=category, category=self.model.CHF)
+                else:
+                    logger.warning(
+                        "Skipped category '{}' - related segment not found".format(
+                            category)
+                    )
+                    continue
+
             query_params = {
                 'sort': 'views:desc',
                 'fields': 'keyword',
@@ -40,7 +53,7 @@ class SegmentKeywordManager(SegmentManager):
             result = Connector().get_keyword_list(query_params=query_params)
             items = result.get('items', [])
             ids = [i['keyword'] for i in items]
-            segment, created = self.get_or_create(title=category, category=self.model.CHF)
+
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
             logger.info('   ... keywords: {}'.format(len(ids)))
