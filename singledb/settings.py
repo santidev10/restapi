@@ -43,7 +43,8 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "url",
     "ptk",
     "license",
-    "channel__channel_id"
+    "channel__channel_id",
+    "bad_statuses"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -98,7 +99,8 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "aw_data",
     "license",
     "weekly_views",
-    "daily_views"
+    "daily_views",
+    "bad_statuses"
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -142,6 +144,8 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "views_per_video_history",
     "channel_group",
     "has_audience",
+    "bad_percents",
+    "bad_statuses"
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
@@ -185,7 +189,8 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "has_audience",
     "aw_data",
     "weekly_views",
-    "daily_views"
+    "bad_percents",
+    "bad_statuses"
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
