@@ -325,11 +325,11 @@ class ItemsFromSegmentIdsApiView(APIView):
 
     @staticmethod
     def get_keyword_item_ids(ids):
-        from keyword_tool.models import KeyWord
-        ids = KeyWord.objects.filter(
-            text__isnull=False,
-            lists__in=ids,
-        ).values_list("text", flat=True).order_by("text").distinct()
+        from segment.models import SegmentRelatedKeyword
+        ids = SegmentRelatedKeyword.objects.filter(
+            segment_id__in=ids
+        ).values_list("related_id", flat=True).order_by(
+            "related_id").distinct()
         return ids
 
 
