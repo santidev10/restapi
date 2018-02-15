@@ -28,8 +28,17 @@ class KeywordListApiView(APIView,
     permission_required = (
         "userprofile.keyword_list",
     )
-    fields_to_export = DEFAULT_KEYWORD_LIST_FIELDS
     export_file_title = "keyword"
+
+    fields_to_export = [
+        "keyword",
+        "search_volume",
+        "average_cpc",
+        "competition",
+        "video_count",
+        "views",
+    ]
+
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
     def obtain_segment(self, segment_id):
