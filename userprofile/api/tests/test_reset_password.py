@@ -1,8 +1,8 @@
 import re
-from unittest.mock import patch
+
 from django.core import mail
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, \
+from rest_framework.status import HTTP_404_NOT_FOUND, \
     HTTP_403_FORBIDDEN, HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
 from saas.utils_tests import ExtendedAPITestCase
