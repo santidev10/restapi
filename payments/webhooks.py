@@ -108,7 +108,7 @@ class Webhook(with_metaclass(Registerable, object)):
                                                 'Please do not respond to this email.'
                                                 .format(self.message),
                                                 from_email=settings.SENDER_EMAIL_ADDRESS)
-            self.send_new_registration_email()
+            # self.send_new_registration_email()
 
     def send_new_registration_email(self):
 
