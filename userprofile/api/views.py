@@ -168,10 +168,7 @@ class UserPasswordResetApiView(APIView):
                   "Kind regards, Channel Factory Team".format(reset_uri)
         send_html_email(
             subject, email, text_header, message, request.get_host())
-        return Response(
-            {"reset_url": reset_uri,
-             "token": token,
-             "email": email}, HTTP_200_OK)
+        return Response(status=HTTP_202_ACCEPTED)
 
 
 class UserPasswordSetApiView(APIView):
