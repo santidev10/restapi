@@ -2,21 +2,22 @@
 Userprofile api views module
 """
 import requests
-
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
-    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_200_OK
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
+    HTTP_202_ACCEPTED
 from rest_framework.views import APIView
 
 from administration.notifications import send_html_email
-from userprofile.api.serializers import ContactFormSerializer, ErrorReportSerializer
+from userprofile.api.serializers import ContactFormSerializer, \
+    ErrorReportSerializer
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
 
@@ -146,34 +147,28 @@ class UserPasswordResetApiView(APIView):
         """
         Send email notification
         """
-        email = request.data.get('email')
-
+        email = request.data.get("email")
         try:
             user = get_user_model().objects.get(email=email)
         except get_user_model().DoesNotExist:
-            return Response({'email': email}, HTTP_404_NOT_FOUND)
-
+            return Response(status=HTTP_404_NOT_FOUND)
         if user.is_superuser:
-            return Response({'email': email}, HTTP_403_FORBIDDEN)
-
-        token = default_token_generator.make_token(user)
-        host = request.build_absolute_uri('/')
-
-        reset_uri = '{host}password_reset?email={email}&token={token}'.format(
+            return Response(status=HTTP_403_FORBIDDEN)
+        token = PasswordResetTokenGenerator().make_token(user)
+        host = request.build_absolute_uri("/")
+        reset_uri = "{host}password_reset/?email={email}&token={token}".format(
             host=host,
             email=email,
             token=token)
-
-        subject = 'SaaS > Password reset notification'
-        text_header = 'Dear {} \n'.format(user.get_full_name())
-        message = 'Click the link below to reset your password.\n' \
-                  '{}\n\n' \
-                  'Please do not respond to this email.\n\n' \
-                  'Kind regards, Channel Factory Team'.format(reset_uri)
-
-        send_html_email(subject, email, text_header, message, request.get_host())
-
-        return Response({'email': email}, HTTP_200_OK)
+        subject = "SaaS > Password reset notification"
+        text_header = "Dear {} \n".format(user.get_full_name())
+        message = "Click the link below to reset your password.\n" \
+                  "{}\n\n" \
+                  "Please do not respond to this email.\n\n" \
+                  "Kind regards, Channel Factory Team".format(reset_uri)
+        send_html_email(
+            subject, email, text_header, message, request.get_host())
+        return Response(status=HTTP_202_ACCEPTED)
 
 
 class UserPasswordSetApiView(APIView):
@@ -188,23 +183,19 @@ class UserPasswordSetApiView(APIView):
         Update user password
         """
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            email = serializer.data.get('email')
-            token = serializer.data.get('token')
-
-            try:
-                user = get_user_model().objects.get(email=email)
-            except get_user_model().DoesNotExist:
-                return Response({'email': email}, HTTP_404_NOT_FOUND)
-
-            if not default_token_generator.check_token(user, token):
-                return Response({'token': 'Your link has expired. '
-                                          'Please reset your password again.'},
-                                HTTP_403_FORBIDDEN)
-            user.set_password(serializer.data.get('new_password'))
-            user.save()
-            return Response(UserSerializer(user).data)
-        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        email = serializer.data.get("email")
+        token = serializer.data.get("token")
+        try:
+            user = get_user_model().objects.get(email=email)
+        except get_user_model().DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            return Response({"error": "Invalid link"}, HTTP_400_BAD_REQUEST)
+        user.set_password(serializer.data.get("new_password"))
+        user.save()
+        return Response(status=HTTP_202_ACCEPTED)
 
 
 class ContactFormApiView(APIView):
