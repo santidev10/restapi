@@ -217,6 +217,8 @@ EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
+PASSWORD_RESET_TIMEOUT_DAYS = 1
+
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
