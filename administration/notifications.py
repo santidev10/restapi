@@ -65,7 +65,7 @@ def send_welcome_email(user, request):
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Congratulation!" \
+    text_content = "Congratulations!" \
                    " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
