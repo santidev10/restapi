@@ -158,6 +158,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "channel_id",
     "title",
     "ptk_value",
+    "daily_views",
     "thumbnail_image_url",
     "subscribers",
     "thirty_days_subscribers",
