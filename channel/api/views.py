@@ -282,7 +282,7 @@ class ChannelListApiView(
                 item.pop('traffic_sources', None)
 
             if not user.is_staff:
-                item.pop("cms_content_owner", None)
+                item.pop("cms__title", None)
 
             if not user.has_perm('userprofile.channel_aw_performance') \
                     and not is_own:
