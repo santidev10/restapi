@@ -242,12 +242,6 @@ class ChannelListApiView(
             regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
             query_params.update(category__regexp=regexp)
 
-        # verified
-        verified = query_params.pop("verified", [None])[0]
-        if verified is not None:
-            query_params.update(
-                has_audience__term="false" if verified == "0" else "true")
-
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
@@ -278,14 +272,17 @@ class ChannelListApiView(
             is_own = item.get("is_owner", False)
             if user.has_perm('userprofile.channel_audience') \
                     or is_own:
-                if "has_audience" in item:
-                    item["verified"] = item["has_audience"]
+                pass
             else:
                 item['has_audience'] = False
+                item["verified"] = False
                 item.pop('audience', None)
                 item['brand_safety'] = None
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
+
+            if not user.is_staff:
+                item.pop("cms_content_owner", None)
 
             if not user.has_perm('userprofile.channel_aw_performance') \
                     and not is_own:
