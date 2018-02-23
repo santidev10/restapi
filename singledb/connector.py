@@ -35,6 +35,8 @@ class SingleDatabaseApiConnector(object):
     Connector class for IQ api
     """
     single_database_api_url = settings.SINGLE_DATABASE_API_URL
+    index_info = False
+    actual_index = None
 
     def execute_get_call(self, *args, **kwargs):
         return self.execute_call(requests.get, *args, **kwargs)
@@ -52,6 +54,14 @@ class SingleDatabaseApiConnector(object):
         """
         Make GET call to api
         """
+        if self.index_info:
+            query_params["index_info"] = 1
+        else:
+            query_params.pop("index_info", None)
+        if self.actual_index:
+            query_params["actual_index"] = self.actual_index
+        else:
+            query_params.pop("actual_index", None)
         # prepare header
         headers = {"Content-Type": "application/json"}
         # prepare query params
