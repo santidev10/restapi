@@ -54,6 +54,8 @@ class SingleDatabaseApiConnector(object):
         """
         Make GET call to api
         """
+        if hasattr(query_params, "_mutable"):
+            query_params._mutable = True
         if self.index_info:
             query_params["index_info"] = 1
         else:
