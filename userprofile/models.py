@@ -144,7 +144,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 defaults=settings.ACCESS_PLANS[
                     settings.DEFAULT_ACCESS_PLAN_NAME])
 
-        self.update_permissions(plan.permissions)
+        self.update_access(plan.access)
 
     def update_permissions_from_subscription(self, subscription):
         self.plan = subscription.plan
@@ -239,7 +239,7 @@ class Plan(models.Model):
 
     name = models.CharField(max_length=255, primary_key=True)
     description = models.TextField(blank=True)
-    permissions = JSONField(default=dict())
+    access = JSONField(default=dict())
     features = JSONField(default=list())
     payments_plan = models.ForeignKey('payments.Plan', null=True,
                                       on_delete=models.SET_NULL)
@@ -252,7 +252,7 @@ class Plan(models.Model):
             plan, created = Plan.objects.get_or_create(name=key, defaults=value)
             # update permissions and features
             if not created:
-                plan.permissions = value['permissions']
+                plan.access = value['access']
                 plan.hidden = value['hidden']
                 plan.save()
 
