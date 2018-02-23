@@ -306,7 +306,7 @@ ACCESS_PLANS = {
             {'name': 'Highlights', 'value': True, },
             {'name': 'Research', 'value': True, },
             {'name': 'Segments', 'value': True, },
-            {'name': 'Segments - pre-baked segments', 'value': False, },
+            {'name': 'Segments - pre-baked segments', 'value': True, },
             {'name': 'Media buying', 'value': True, },
             {'name': 'Auth channels and audience data', 'value': True, },
         ]
