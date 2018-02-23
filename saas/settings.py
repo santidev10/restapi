@@ -354,6 +354,7 @@ USER_ACCESS_LOGIC = {
         'view': {'highlights': True, },
     },
     'Research': {
+        'actions': [{'input': False, 'action_type': 'post', 'access': ['Segments - pre-baked segments'], }, ],
         'channel': {'list': True, 'filter': True, 'details': True, },
         'video': {'list': True, 'filter': True, 'details': True, },
         'keyword': {'list': True, 'filter': True, },
