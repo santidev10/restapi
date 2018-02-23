@@ -46,7 +46,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "license",
     "channel__channel_id",
     "bad_statuses",
-    "cms_content_owner",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -105,7 +105,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "weekly_views",
     "daily_views",
     "bad_statuses",
-    "cms_content_owner",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -152,7 +152,7 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "verified",
     "bad_percents",
     "bad_statuses",
-    "cms_content_owner",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
@@ -200,7 +200,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "weekly_views",
     "bad_percents",
     "bad_statuses",
-    "cms_content_owner",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
