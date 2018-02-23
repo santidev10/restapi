@@ -144,6 +144,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 defaults=settings.ACCESS_PLANS[
                     settings.DEFAULT_ACCESS_PLAN_NAME])
 
+        self.permissions = settings.DEFAULT_USER_PERMISSIONS
         self.update_access(plan.access)
 
     def update_permissions_from_subscription(self, subscription):
