@@ -231,12 +231,6 @@ class VideoListApiView(
         trending = query_params.pop("trending", [None])[0]
         if trending is not None and trending != "all":
             query_params.update(trends_list__term=trending)
-
-        # verified
-        verified = query_params.pop("verified", [None])[0]
-        if verified is not None:
-            query_params.update(
-                has_audience__term="false" if verified == "0" else "true")
         # <--- filters
 
     @staticmethod
@@ -263,14 +257,19 @@ class VideoListApiView(
 
             is_own = item.get("is_owner", False)
             if user.has_perm('userprofile.video_audience') or is_own:
-                if "has_audience" in item:
-                    item["verified"] = item["has_audience"]
+                pass
             else:
                 item['has_audience'] = False
+                item["verified"] = False
                 item.pop('audience', None)
                 item['brand_safety'] = None
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
+                item.pop("channel__verified", None)
+                item.pop("channel__has_audience", None)
+
+            if not user.is_staff:
+                item.pop("cms__title", None)
 
             if not user.has_perm('userprofile.video_aw_performance') \
                     and not is_own:
