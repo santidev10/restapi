@@ -218,7 +218,7 @@ class PlanSerializer(ModelSerializer):
         model = Plan
         fields = (
             'name',
-            'permissions',
+            'access',
             'payments_plan',
         )
 
