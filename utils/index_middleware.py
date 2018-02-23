@@ -19,6 +19,6 @@ class IndexMiddleware(object):
 
         if is_staff:
             from singledb.connector import SingleDatabaseApiConnector
-            actual_index = request.COOKIES.get("CHF-Actual-Index")
+            actual_index = request.META.get("HTTP_CHF_ACTUAL_INDEX")
             SingleDatabaseApiConnector.index_info = True
             SingleDatabaseApiConnector.actual_index = actual_index
