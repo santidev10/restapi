@@ -77,10 +77,9 @@ class ChannelListApiView(
         """
         channel_segment_id = self.request.query_params.get("channel_segment")
         video_segment_id = self.request.query_params.get("video_segment")
-        segment_data = {
-            SegmentChannel: channel_segment_id,
-            SegmentVideo: video_segment_id}
-        for model, segment_id in segment_data.items():
+        segment_data = ((SegmentChannel, channel_segment_id),
+                        (SegmentVideo, video_segment_id))
+        for model, segment_id in segment_data:
             if not segment_id:
                 continue
             try:
