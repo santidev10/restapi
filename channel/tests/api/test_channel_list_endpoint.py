@@ -31,6 +31,11 @@ class ChannelListTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.keys(), {"error"})
 
+    def test_simple_list_works(self):
+        self._create_admin_user()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
     def test_channel_segment_filter_success(self):
         self._create_admin_user()
         channels_ids_count = 5
