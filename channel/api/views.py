@@ -3,7 +3,6 @@ Channel api views module
 """
 import hashlib
 import re
-import time
 from copy import deepcopy
 from datetime import datetime
 
@@ -27,7 +26,7 @@ from administration.notifications import send_welcome_email, \
     send_new_channel_authentication_email
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
-from segment.models import SegmentChannel
+from segment.models import SegmentChannel, SegmentVideo
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
@@ -72,25 +71,45 @@ class ChannelListApiView(
     ]
     export_file_title = "channel"
 
-    def obtain_segment(self, segment_id):
+    def _obtain_segment(self):
         """
         Try to get segment from db
         """
-        try:
-            if self.request.user.is_staff:
-                segment = SegmentChannel.objects.get(id=segment_id)
-            else:
-                segment = SegmentChannel.objects.filter(
-                    Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
-        except SegmentChannel.DoesNotExist:
-            return None
-        return segment
+        channel_segment_id = self.request.query_params.get("channel_segment")
+        video_segment_id = self.request.query_params.get("video_segment")
+        segment_data = {
+            SegmentChannel: channel_segment_id,
+            SegmentVideo: video_segment_id}
+        for model, segment_id in segment_data.items():
+            if not segment_id:
+                continue
+            try:
+                if self.request.user.is_staff:
+                    segment = model.objects.get(id=segment_id)
+                else:
+                    segment = model.objects.filter(
+                        Q(owner=self.request.user) |
+                        ~Q(category="private")).get(id=segment_id)
+                return segment
+            except model.DoesNotExist:
+                return None
+        return None
+
+    def _validate_query_params(self):
+        channel_segment_id = self.request.query_params.get("channel_segment")
+        video_segment_id = self.request.query_params.get("video_segment")
+        if all((channel_segment_id, video_segment_id)):
+            return False, "'channel_segment_id' and 'video_segment_id'" \
+                          " query params can't be use together"
+        return True, ""
 
     def get(self, request):
         """
         Get procedure
         """
+        is_query_params_valid, error = self._validate_query_params()
+        if not is_query_params_valid:
+            return Response({"error": error}, HTTP_400_BAD_REQUEST)
         empty_response = {
             "max_page": 1,
             "items_count": 0,
@@ -101,6 +120,10 @@ class ChannelListApiView(
                 request.query_params.get("youtube_link"),
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
+
+        segment = self._obtain_segment()
+        if segment is None:
+            return Response(status=HTTP_404_NOT_FOUND)
 
         connector = Connector()
         # prepare query params
@@ -122,35 +145,45 @@ class ChannelListApiView(
             user = self.request.user
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = list(user.channels.values_list("channel_id", flat=True))
+            channels_ids = list(
+                user.channels.values_list("channel_id", flat=True))
             if not channels_ids:
                 return Response(empty_response)
 
-        # segment
-        segment = query_params.get("segment")
-        if segment is not None:
-            # obtain segment
-            segment = self.obtain_segment(segment)
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            # obtain channels ids
-            segment_channels_ids = list(segment.get_related_ids())
-            if channels_ids:
-                channels_ids = [
-                    channel_id
-                    for channel_id in channels_ids
-                    if channel_id in segment_channels_ids
-                ]
-            else:
-                channels_ids = segment_channels_ids
+        if isinstance(segment, SegmentVideo):
+            segment_videos_ids = segment.get_related_ids()
+            try:
+                ids_hash = connector.store_ids(list(segment_videos_ids))
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
+            request_params = {"ids_hash": ids_hash, "fields": "channel_id"}
+            try:
+                videos_data = connector.get_video_list(request_params)
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
+            segment_channels_ids = {
+                obj.get("channel_id") for obj in videos_data.get("items")}
+            query_params.pop("video_segment")
+        else:
+            segment_channels_ids = segment.get_related_ids()
+            query_params.pop("channel_segment")
+        if channels_ids:
+            channels_ids = [
+                channel_id
+                for channel_id in channels_ids
+                if channel_id in segment_channels_ids
+            ]
+        else:
+            channels_ids = segment_channels_ids
 
-            if not channels_ids:
-                return Response(empty_response)
-            query_params.pop("segment")
+        if not channels_ids:
+            return Response(empty_response)
 
         if channels_ids:
             try:
-                ids_hash = connector.store_ids(channels_ids)
+                ids_hash = connector.store_ids(list(channels_ids))
             except SingleDatabaseApiConnectorException as e:
                 return Response(data={"error": " ".join(e.args)},
                                 status=HTTP_408_REQUEST_TIMEOUT)
