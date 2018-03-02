@@ -4,7 +4,7 @@ from unittest.mock import patch
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 

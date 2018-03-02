@@ -2,7 +2,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):

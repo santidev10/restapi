@@ -12,8 +12,8 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
-from saas.utils_tests import ExtendedAPITestCase
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):

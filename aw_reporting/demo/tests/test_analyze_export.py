@@ -6,7 +6,7 @@ from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 

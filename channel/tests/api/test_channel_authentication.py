@@ -4,7 +4,7 @@ from django.core import mail
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_202_ACCEPTED, HTTP_400_BAD_REQUEST
 
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, MockResponse
 from userprofile.models import Plan
 

@@ -7,12 +7,12 @@ from datetime import timedelta, timezone
 
 from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
+from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT, \
+    HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
-from segment.models import SegmentVideo
+from segment.models import SegmentChannel
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
@@ -20,12 +20,16 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
     DEFAULT_VIDEO_DETAILS_FIELDS
 # pylint: enable=import-error
+from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(
-    APIView, PermissionRequiredMixin, CassandraExportMixin):
+        APIView,
+        PermissionRequiredMixin,
+        CassandraExportMixin,
+        SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -48,22 +52,10 @@ class VideoListApiView(
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
-    def obtain_segment(self, segment_id):
-        """
-        Try to get segment from db
-        """
-        try:
-            if self.request.user.is_staff:
-                segment = SegmentVideo.objects.get(id=segment_id)
-            else:
-                segment = SegmentVideo.objects.filter(
-                    Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
-        except SegmentVideo.DoesNotExist:
-            return None
-        return segment
-
     def get(self, request):
+        is_query_params_valid, error = self._validate_query_params()
+        if not is_query_params_valid:
+            return Response({"error": error}, HTTP_400_BAD_REQUEST)
         connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
@@ -76,17 +68,35 @@ class VideoListApiView(
         }
 
         # segment
-        segment = query_params.get("segment")
-        if segment is not None:
+        channel_segment_id = self.request.query_params.get("channel_segment")
+        video_segment_id = self.request.query_params.get("video_segment")
+        if any((channel_segment_id, video_segment_id)):
             # obtain segment
-            segment = self.obtain_segment(segment)
+            segment = self._obtain_segment()
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
-            # obtain channels ids
-            videos_ids = segment.get_related_ids()
+            if isinstance(segment, SegmentChannel):
+                segment_channels_ids = segment.get_related_ids()
+                try:
+                    ids_hash = connector.store_ids(list(segment_channels_ids))
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                request_params = {
+                    "hashed_channel_id__terms": ids_hash,
+                    "fields": "video_id"}
+                try:
+                    videos_data = connector.get_video_list(request_params)
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                videos_ids = []  # TODO SAAS-2067
+                query_params.pop("channel_segment")
+            else:
+                videos_ids = segment.get_related_ids()
+                query_params.pop("video_segment")
             if not videos_ids:
                 return Response(empty_response)
-            query_params.pop("segment")
             try:
                 ids_hash = connector.store_ids(list(videos_ids))
             except SingleDatabaseApiConnectorException as e:
@@ -107,7 +117,6 @@ class VideoListApiView(
 
         # adapt the request params
         self.adapt_query_params(query_params)
-
         # make call
         try:
             response_data = connector.get_video_list(query_params)

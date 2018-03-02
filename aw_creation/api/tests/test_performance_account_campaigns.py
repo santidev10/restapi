@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation, CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, DEMO_AD_GROUPS
 from aw_reporting.models import Account, Campaign, AdGroup, AWConnectionToUserRelation, AWConnection
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):

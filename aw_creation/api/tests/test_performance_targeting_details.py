@@ -1,12 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
-from urllib.parse import urlencode
 from aw_creation.models import *
 from aw_reporting.models import *
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 
