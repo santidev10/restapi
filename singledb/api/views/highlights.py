@@ -89,6 +89,8 @@ class HighlightsQuery:
         self.result_query_params['updated_at__range'] = (datetime.now().date() - timedelta(days=3)).strftime(
             '%Y-%m-%d') + ','
 
+        self.result_query_params["engage_rate__range"] = "1,"
+
         page = self.request_query_params.get('page')
         if page and int(page) <= 5:
             self.result_query_params['page'] = page
