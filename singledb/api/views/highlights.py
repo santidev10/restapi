@@ -86,8 +86,7 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self, mode=None):
-        self.result_query_params['updated_at__range'] = (datetime.now().date() - timedelta(days=3)).strftime(
-            '%Y-%m-%d') + ','
+        self.result_query_params['updated_at__days_range'] = 3
 
         page = self.request_query_params.get('page')
         if page and int(page) <= 5:
