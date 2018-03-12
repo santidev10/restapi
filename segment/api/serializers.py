@@ -17,7 +17,6 @@ class SegmentSerializer(ModelSerializer):
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
     ids_to_create = ListField(required=False)
-    statistics = SerializerMethodField()
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False)
 
@@ -28,6 +27,7 @@ class SegmentSerializer(ModelSerializer):
                   'segment_type',
                   'category',
                   'statistics',
+                  'adw_data',
                   # 'mini_dash_data',   #Disabled by issuse SAAS-1172
                   'owner',
                   'created_at',
@@ -109,16 +109,3 @@ class SegmentSerializer(ModelSerializer):
             segment.update_statistics(segment)
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
-
-    def get_statistics(self, instance):
-        """
-        Prepare segment statistics
-        """
-        # prepare base statistics
-        base_statistics = instance.statistics
-        # prepare adwords statistics
-        adwords_statistics = count_segment_adwords_statistics(
-            instance, **self.context)
-        # finalize response
-        base_statistics.update(adwords_statistics)
-        return base_statistics
