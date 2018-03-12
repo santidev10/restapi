@@ -31,12 +31,12 @@ class ChannelListTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.keys(), {"error"})
 
-    def test_simple_list_works(self):
+    def _test_simple_list_works(self):
         self._create_admin_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_channel_segment_filter_success(self):
+    def _test_channel_segment_filter_success(self):
         self._create_admin_user()
         channels_ids_count = 5
         channels_ids = self._obtain_channels_ids(channels_ids_count)
@@ -50,7 +50,7 @@ class ChannelListTestCase(ExtendedAPITestCase):
         self.assertEqual(
             {obj["id"] for obj in response.data["items"]}, channels_ids)
 
-    def test_video_segment_filter_success(self):
+    def _test_video_segment_filter_success(self):
         self._create_admin_user()
         videos_limit = 5
         videos_data = self._obtain_videos_data(videos_limit)
