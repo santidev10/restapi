@@ -12,6 +12,7 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
+from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 
@@ -41,6 +42,7 @@ class BaseSegment(Timestampable):
     """
     title = CharField(max_length=255, null=True, blank=True)
     mini_dash_data = JSONField(default=dict())
+    adw_data = JSONField(default=dict())
     owner = ForeignKey('userprofile.userprofile', null=True, blank=True, on_delete=SET_NULL)
 
     class Meta:
@@ -101,8 +103,19 @@ class BaseSegment(Timestampable):
             return
         # populate statistics fields
         self.populate_statistics_fields(data)
+        self.get_adw_statistics()
         self.save()
         return "Done"
+
+    def get_adw_statistics(self):
+        """
+        Prepare segment adwords statistics
+        """
+        # prepare adwords statistics
+        adwords_statistics = count_segment_adwords_statistics(self)
+
+        # finalize data
+        self.adw_data.update(adwords_statistics)
 
     def duplicate(self, owner):
         exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related']

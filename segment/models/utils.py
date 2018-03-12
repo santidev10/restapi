@@ -8,19 +8,18 @@ from aw_reporting.models import Account, dict_add_calculated_stats, \
     dict_norm_base_stats
 
 
-def count_segment_adwords_statistics(segment, **kwargs):
+def count_segment_adwords_statistics(segment):
     """
     Prepare adwords statistics for segment
     """
-    # obtain user from kwargs -> serializer context -> request
+    # obtain user from segment owner field
     try:
-        user = kwargs.get("request").user
-    except AttributeError:
-        raise AttributeError(
-            "Serializer context with request is required in kwargs")
+        user = segment.owner
+    except Exception:
+        return {}
+
     # obtain related to segments related ids
-    related_ids = segment.related.model.objects.filter(
-        segment_id=segment.id).values_list("related_id", flat=True)
+    related_ids = segment.related.model.objects.filter(segment_id=segment.id).values_list("related_id", flat=True)
     # obtain aw account
     accounts = Account.user_objects(user)
     # prepare queryset
