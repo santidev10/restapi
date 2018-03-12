@@ -111,14 +111,11 @@ class BaseSegment(Timestampable):
         """
         Prepare segment adwords statistics
         """
-        # prepare base statistics
-        base_statistics = self.adw_data
-
         # prepare adwords statistics
         adwords_statistics = count_segment_adwords_statistics(self)
 
-        # finalize response
-        base_statistics.update(adwords_statistics)
+        # finalize data
+        self.adw_data.update(adwords_statistics)
 
     def duplicate(self, owner):
         exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related']
