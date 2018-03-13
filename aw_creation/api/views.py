@@ -2,6 +2,7 @@
 import calendar
 import csv
 import itertools
+import re
 from collections import OrderedDict
 from datetime import timedelta, datetime
 from decimal import Decimal
