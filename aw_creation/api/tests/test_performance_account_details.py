@@ -252,3 +252,35 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         self.assertIsNotNone(data['impressions'])
         self.assertIsNotNone(data['overview']['impressions'])
+
+    def test_updated_at(self):
+        test_time = datetime(2017, 1, 1)
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.user,
+        )
+        account = Account.objects.create(update_time=test_time)
+        account_creation = AccountCreation.objects.create(name="Name 123",
+                                                          account=account,
+                                                          is_approved=True,
+                                                          owner=self.user)
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], test_time)
+
+    def test_created_at_demo(self):
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], None)

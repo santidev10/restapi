@@ -871,7 +871,8 @@ class DemoAccount(BaseDemo):
             topic_count=8,
             keyword_count=8,
             is_disapproved=False,
-            from_aw=False
+            from_aw=False,
+            updated_at=None
         )
         return data
 
