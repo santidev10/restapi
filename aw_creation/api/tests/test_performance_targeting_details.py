@@ -14,11 +14,13 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 class AccountAPITestCase(AwReportingAPITestCase):
 
     details_keys = {
-        'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
-        'is_changed', 'weekly_chart', 'thumbnail',
-        'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
-        "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "id", "name", "account", "status", "start", "end", "is_managed",
+        "is_changed", "weekly_chart", "thumbnail",
+        "video_views", "cost", "video_view_rate", "ctr_v", "impressions",
+        "clicks",
+        "ad_count", "channel_count", "video_count", "interest_count",
+        "topic_count", "keyword_count",
+        "is_disapproved", "from_aw", "updated_at"
     }
 
     def setUp(self):

@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -24,7 +25,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         'ctr_v', 'is_managed',
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "is_disapproved", "from_aw", "updated_at"
     }
     overview_keys = {
         'age', 'gender', 'device', 'location',
@@ -254,7 +255,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIsNotNone(data['overview']['impressions'])
 
     def test_updated_at(self):
-        test_time = datetime(2017, 1, 1)
+        test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
