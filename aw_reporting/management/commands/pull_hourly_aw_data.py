@@ -8,7 +8,8 @@ from django.utils import timezone
 
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
-from aw_reporting.tasks import load_hourly_stats, get_campaigns
+from aw_reporting.tasks import load_hourly_stats, get_campaigns, \
+    get_ad_groups_and_stats
 from aw_reporting.utils import command_single_process_lock
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class Command(BaseCommand):
         for account in accounts:
             updater.run_task_with_any_manager(
                 get_campaigns, account,
+            )
+            updater.run_task_with_any_manager(
+                get_ad_groups_and_stats, account,
             )
             updater.run_task_with_any_manager(
                 load_hourly_stats, account,
