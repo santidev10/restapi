@@ -9,7 +9,6 @@ import pytz
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
-from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 
@@ -149,10 +148,6 @@ def load_hourly_stats(client, account, *_):
             if create_stat:
                 CampaignHourlyStatistic.objects.bulk_create(create_stat)
 
-    get_campaigns(client, account, None)
-    account.update_time = timezone.now()
-    account.save()
-
 
 def is_ad_disapproved(campaign_row):
     return campaign_row.CombinedApprovalStatus == 'disapproved' \
@@ -214,7 +209,7 @@ def detect_success_aw_read_permissions():
                 permission.save()
 
 
-def get_campaigns(client, account, today):
+def get_campaigns(client, account, today=None):
     from aw_reporting.models import Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report
 
