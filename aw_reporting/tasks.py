@@ -9,6 +9,7 @@ import pytz
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
+from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 
@@ -148,6 +149,10 @@ def load_hourly_stats(client, account, *_):
             if create_stat:
                 CampaignHourlyStatistic.objects.bulk_create(create_stat)
 
+    get_campaigns(client, account, None)
+    account.update_time = timezone.now()
+    account.save()
+
 
 def is_ad_disapproved(campaign_row):
     return campaign_row.CombinedApprovalStatus == 'disapproved' \
@@ -226,15 +231,18 @@ def get_campaigns(client, account, today):
                 end_date = datetime.strptime(row_obj.EndDate, GET_DF)
             except ValueError:
                 end_date = None
+
+            status = row_obj.CampaignStatus \
+                if row_obj.CampaignStatus in ACTION_STATUSES \
+                else row_obj.ServingStatus
             stats = {
                 'name': row_obj.CampaignName,
                 'account': account,
                 'type': row_obj.AdvertisingChannelType,
-                'start_date': datetime.strptime(row_obj.StartDate,
-                                                GET_DF),
+                'start_date': datetime.strptime(row_obj.StartDate, GET_DF),
                 'end_date': end_date,
                 'budget': float(row_obj.Amount) / 1000000,
-                'status': row_obj.CampaignStatus if row_obj.CampaignStatus in ACTION_STATUSES else row_obj.ServingStatus,
+                'status': status,
             }
             stats.update(get_base_stats(row_obj))
 
