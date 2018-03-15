@@ -9,6 +9,7 @@ import pytz
 from celery import task
 from django.db import transaction
 from django.db.models import Max, Min, Sum
+from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 
@@ -251,9 +252,10 @@ def get_campaigns(client, account, today=None):
             Campaign.objects.bulk_create(insert_campaign)
 
 
-def get_ad_groups_and_stats(client, account, today):
+def get_ad_groups_and_stats(client, account, today=None):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
+    today = today or timezone.now().date()
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
