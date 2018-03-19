@@ -517,9 +517,10 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            plan = Plan.objects.get(name=settings.CHANNEL_AUTHENTICATION_PLAN_NAME)
+            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
             subscription = Subscription.objects.create(user=user, plan=plan)
             user.update_permissions_from_subscription(subscription)
+            user.access = settings.DEFAULT_USER_ACCESS
             user.save()
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
