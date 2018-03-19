@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -24,7 +25,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         'ctr_v', 'is_managed',
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "is_disapproved", "from_aw", "updated_at"
     }
     overview_keys = {
         'age', 'gender', 'device', 'location',
@@ -252,3 +253,35 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         self.assertIsNotNone(data['impressions'])
         self.assertIsNotNone(data['overview']['impressions'])
+
+    def test_updated_at(self):
+        test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.user,
+        )
+        account = Account.objects.create(update_time=test_time)
+        account_creation = AccountCreation.objects.create(name="Name 123",
+                                                          account=account,
+                                                          is_approved=True,
+                                                          owner=self.user)
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], test_time)
+
+    def test_created_at_demo(self):
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], None)

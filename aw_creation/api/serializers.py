@@ -1,18 +1,19 @@
+import json
+import logging
+from collections import defaultdict
+
 from django.db.models import Min, Max, Sum, Count
-from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, ListField, ValidationError, BooleanField, DictField, CharField
+from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
+    ListField, ValidationError, BooleanField, DictField, CharField
+
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
-    FrequencyCap, AdCreation, YT_VIDEO_REGEX
+    FrequencyCap, AdCreation
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
-    Campaign, base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
-    ConcatAggregate, VideoCreativeStatistic, Ad
+    Campaign, base_stats_aggregate, dict_norm_base_stats, \
+    dict_calculate_stats, ConcatAggregate, VideoCreativeStatistic, Ad
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-from collections import defaultdict
-import json
-import re
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -102,14 +103,17 @@ class AdCreationSetupSerializer(ModelSerializer):
             'id', 'name', 'updated_at', 'companion_banner',
             'final_url', 'video_url', 'display_url',
             'tracking_template', 'custom_params', 'video_ad_format',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail', 'video_channel_title', 'video_duration',
+            'video_id', 'video_title', 'video_description', 'video_thumbnail',
+            'video_channel_title', 'video_duration',
 
             "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
             "beacon_view_1", "beacon_view_2", "beacon_view_3",
             "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
-            "beacon_first_quartile_1", "beacon_first_quartile_2", "beacon_first_quartile_3",
+            "beacon_first_quartile_1", "beacon_first_quartile_2",
+            "beacon_first_quartile_3",
             "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
-            "beacon_third_quartile_1", "beacon_third_quartile_2", "beacon_third_quartile_3",
+            "beacon_third_quartile_1", "beacon_third_quartile_2",
+            "beacon_third_quartile_3",
             "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
             "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
             "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved"
@@ -165,16 +169,19 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
 
     @staticmethod
     def get_targeting(obj):
-        items = obj.targeting_items.all().values('type', 'criteria', 'is_negative')
+        items = obj.targeting_items.all() \
+            .values('type', 'criteria', 'is_negative')
 
         for t_type, _ in TargetingItem.TYPES:
             t_items = list(filter(lambda e: e['type'] == t_type, items))
             if t_items:
                 add_targeting_list_items_info(t_items, t_type)
 
-        targeting = {k[0]: {"positive": [], "negative": []} for k in TargetingItem.TYPES}
+        targeting = {k[0]: {"positive": [], "negative": []}
+                     for k in TargetingItem.TYPES}
         for item in items:
-            targeting[item['type']]["negative" if item['is_negative'] else "positive"].append(item)
+            key = "negative" if item['is_negative'] else "positive"
+            targeting[item['type']][key].append(item)
 
         return targeting
 
@@ -265,8 +272,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     @staticmethod
     def get_ad_group_creations(obj):
         queryset = obj.ad_group_creations.filter(is_deleted=False)
-        ad_group_creations = AdGroupCreationSetupSerializer(queryset, many=True).data
-        return ad_group_creations
+        ad_group_creations = AdGroupCreationSetupSerializer(queryset, many=True)
+        return ad_group_creations.data
 
     @staticmethod
     def get_content_exclusions(obj):
@@ -319,7 +326,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
         fields = (
             'id', 'name', 'updated_at',
             'start', 'end', 'budget', 'languages',
-            'devices', 'location_rules', 'frequency_capping', 'ad_schedule_rules',
+            'devices', 'location_rules', 'frequency_capping',
+            'ad_schedule_rules',
             'video_networks', 'delivery_method', 'type',
             'content_exclusions',
             'ad_group_creations'
@@ -346,6 +354,7 @@ class AccountCreationListSerializer(ModelSerializer):
     end = SerializerMethodField()
     is_disapproved = SerializerMethodField()
     from_aw = BooleanField()
+    updated_at = SerializerMethodField()
 
     # analytic data
     impressions = StatField()
@@ -404,6 +413,11 @@ class AccountCreationListSerializer(ModelSerializer):
             return settings['end']
         else:
             return self.stats.get(obj.id, {}).get("end")
+
+    def get_updated_at(self, obj: AccountCreation):
+        if obj.account is None:
+            return None
+        return obj.account.update_time
 
     def __init__(self, *args, **kwargs):
         self.settings = {}
@@ -491,7 +505,7 @@ class AccountCreationListSerializer(ModelSerializer):
             # delivered stats
             'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
             "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-            "is_disapproved", "from_aw"
+            "is_disapproved", "from_aw", "updated_at"
         )
 
 
