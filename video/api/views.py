@@ -90,7 +90,7 @@ class VideoListApiView(
                 except SingleDatabaseApiConnectorException as e:
                     return Response(data={"error": " ".join(e.args)},
                                     status=HTTP_408_REQUEST_TIMEOUT)
-                videos_ids = []  # TODO SAAS-2067
+                videos_ids = [i.get('video_id') for i in videos_data['items']]
                 query_params.pop("channel_segment")
             else:
                 videos_ids = segment.get_related_ids()
