@@ -36,7 +36,7 @@ class VideoListTestCase(
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_video_segment_filter_success(self):
+    def _test_video_segment_filter_success(self):
         self.create_admin_user()
         videos_limit = 5
         video_fields = "video_id"
