@@ -36,21 +36,6 @@ class VideoListTestCase(
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    # TODO SAAS-2067
-    # def test_channel_segment_filter_success(self):
-    #     self._create_admin_user()
-    #     channels_ids_count = 5
-    #     channels_ids = self._obtain_channels_ids(channels_ids_count)
-    #     segment = SegmentChannel.objects.create()
-    #     self._create_segment_relations(
-    #         SegmentRelatedChannel, segment, channels_ids)
-    #     url = "{}?channel_segment={}".format(self.url, segment.id)
-    #     response = self.client.get(url)
-    #     self.assertEqual(response.status_code, HTTP_200_OK)
-    #     self.assertEqual(response.data["items_count"], channels_ids_count)
-    #     self.assertEqual(
-    #         {obj["id"] for obj in response.data["items"]}, channels_ids)
-
     def test_video_segment_filter_success(self):
         self.create_admin_user()
         videos_limit = 5
