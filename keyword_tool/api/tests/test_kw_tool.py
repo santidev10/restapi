@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK
 
 from keyword_tool.models import *
 from keyword_tool.settings import PREDEFINED_QUERIES
-from saas.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 
 class KWToolAPITestCase(APITestCase):

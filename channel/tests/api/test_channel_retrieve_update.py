@@ -7,7 +7,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, \
     HTTP_403_FORBIDDEN
 
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, MockResponse
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel

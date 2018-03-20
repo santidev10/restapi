@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 

@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 
 from aw_creation.models import *
 from aw_reporting.demo.models import DemoAccount
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 

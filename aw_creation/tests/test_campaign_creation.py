@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
 from aw_reporting.models import DEFAULT_TIMEZONE
 from time import sleep

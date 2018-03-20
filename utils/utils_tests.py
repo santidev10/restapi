@@ -8,6 +8,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
+from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import Plan
 
 
@@ -43,6 +44,12 @@ class TestUserMixin:
     def remove_custom_user_permission(self, user, perm: str):
         permission = get_custom_permission(perm)
         user.user_permissions.remove(permission)
+
+    def create_admin_user(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
 
 
 class ExtendedAPITestCase(APITestCase, TestUserMixin):
@@ -126,3 +133,28 @@ class MockResponse(object):
     @property
     def text(self):
         return json.dumps(self.json())
+
+
+class SegmentFunctionalityMixin(object):
+    def create_segment_relations(self, relation_model, segment, related_ids):
+        for related_id in related_ids:
+            relation_model.objects.create(
+                segment=segment, related_id=related_id)
+
+
+class SingleDBMixin(object):
+    def obtain_channels_ids(self, size=50):
+        size = min(size, 50)
+        connector = SingleDatabaseApiConnector()
+        params = {"fields": "channel_id", "size": size}
+        response = connector.get_channel_list(params)
+        return {obj["channel_id"] for obj in response["items"]}
+
+    def obtain_videos_data(self, fields=None, size=50):
+        if fields is None:
+            fields = "channel_id,video_id"
+        size = min(size, 50)
+        connector = SingleDatabaseApiConnector()
+        params = {"fields": fields, "size": size}
+        response = connector.get_video_list(params)
+        return response

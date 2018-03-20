@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
 
 from aw_creation.models import *
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 

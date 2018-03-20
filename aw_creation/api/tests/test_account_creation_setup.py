@@ -12,7 +12,7 @@ from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):

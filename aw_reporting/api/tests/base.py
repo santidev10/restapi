@@ -1,4 +1,4 @@
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 from aw_reporting.models import *
 from datetime import datetime
 import pytz

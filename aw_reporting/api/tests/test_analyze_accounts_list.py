@@ -1,10 +1,9 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from .base import AwReportingAPITestCase
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
-from aw_reporting.models import Campaign, AdGroup, VideoCreative, VideoCreativeStatistic
-from datetime import datetime
+from aw_reporting.models import Campaign
 
 
 class AccountNamesAPITestCase(AwReportingAPITestCase):

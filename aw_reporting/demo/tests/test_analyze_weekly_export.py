@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.models import *
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AnalyzeExportAPITestCase(ExtendedAPITestCase):

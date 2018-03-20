@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.demo.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from .base import AwReportingAPITestCase
 
 

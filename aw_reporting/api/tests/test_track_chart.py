@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 import json
 

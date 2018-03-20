@@ -6,7 +6,7 @@ from django.test import testcases
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from channel.actions import remove_auth_channel
-from saas.utils_tests import TestUserMixin, MockResponse
+from utils.utils_tests import TestUserMixin, MockResponse
 from userprofile.models import UserProfile, UserChannel
 
 

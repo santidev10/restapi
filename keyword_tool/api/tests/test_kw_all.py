@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from rest_framework.status import HTTP_200_OK
 from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
-from saas.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
 from keyword_tool.models import *
 
 

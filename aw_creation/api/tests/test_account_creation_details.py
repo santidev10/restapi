@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountCreationDetailsAPITestCase(AwReportingAPITestCase):

@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import Audience
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AudienceToolTestCase(ExtendedAPITestCase):
