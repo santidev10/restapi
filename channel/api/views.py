@@ -99,10 +99,10 @@ class ChannelListApiView(
 
         # own channels
         user = request.user
-        own_channels = int(query_params.get("own_channels", "0"))
+        own_channels = query_params.get("own_channels", "0")
         user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
 
-        if own_channels and user_can_see_own_channels:
+        if own_channels == "1" and user_can_see_own_channels:
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
 
