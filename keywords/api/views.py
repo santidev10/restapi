@@ -69,6 +69,11 @@ class KeywordListApiView(APIView,
             "current_page": 1,
         }
 
+        if query_params.get("tags"):
+            keyword_ids = query_params.get("tags").split(',')
+            ids_hash = connector.store_ids(keyword_ids)
+            query_params.update(ids_hash=ids_hash)
+
         # segment
         segment = query_params.get("segment")
         if segment is not None:
