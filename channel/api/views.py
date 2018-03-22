@@ -96,22 +96,20 @@ class ChannelListApiView(
         query_params._mutable = True
 
         channels_ids = []
-        # own_channels
-        if not request.user.has_perm("userprofile.channel_list") and \
-                request.user.has_perm("userprofile.settings_my_yt_channels"):
-            own_channels = "1"
-        else:
-            own_channels = query_params.get("own_channels", "0")
 
-        if query_params.get("own_channels") is not None:
-            query_params.pop("own_channels")
+        # own channels
+        user = request.user
+        own_channels = query_params.get("own_channels", "0")
+        user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
 
-        if own_channels == "1":
-            user = self.request.user
+        if own_channels == "1" and user_can_see_own_channels:
             if not user or not user.is_authenticated():
                 return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = list(
-                user.channels.values_list("channel_id", flat=True))
+
+            channels_ids = list(user.channels.values_list("channel_id", flat=True))
+            ids_hash = connector.store_ids(list(channels_ids))
+            query_params.update(ids_hash=ids_hash)
+
             if not channels_ids:
                 return Response(empty_response)
 
