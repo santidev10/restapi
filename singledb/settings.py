@@ -46,6 +46,9 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "license",
     "channel__channel_id",
     "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
     "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
@@ -105,6 +108,9 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "weekly_views",
     "daily_views",
     "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
     "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",

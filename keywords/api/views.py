@@ -69,10 +69,13 @@ class KeywordListApiView(APIView,
             "current_page": 1,
         }
 
-        if query_params.get("tags"):
-            keyword_ids = query_params.get("tags").split(',')
-            ids_hash = connector.store_ids(keyword_ids)
-            query_params.update(ids_hash=ids_hash)
+        if query_params.get("from_channel"):
+            channel = query_params.get("from_channel")
+            channel_data = connector.get_channel(query_params=EmptyQueryDict(), pk=channel)
+            if channel_data.get('tags'):
+                keyword_ids = channel_data.get('tags').split(',')
+                ids_hash = connector.store_ids(keyword_ids)
+                query_params.update(ids_hash=ids_hash)
 
         # segment
         segment = query_params.get("segment")
@@ -215,3 +218,7 @@ class KeywordRetrieveUpdateApiView(SingledbApiView):
         if not response.data.get('error'):
             KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
         return response
+
+
+class EmptyQueryDict(dict):
+    pass
