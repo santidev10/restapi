@@ -152,6 +152,8 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "verified",
     "bad_percents",
     "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
     "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
