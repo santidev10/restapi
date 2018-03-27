@@ -288,8 +288,8 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
 DEFAULT_USER_ACCESS = [
-    {'name': 'Highlights', 'value': True, },
-    {'name': 'Research', 'value': False, },
+    {'name': 'Trendings', 'value': True, },
+    {'name': 'Discovery', 'value': False, },
     {'name': 'Segments', 'value': False, },
     {'name': 'Segments - pre-baked segments', 'value': False, },
     {'name': 'Media buying', 'value': False, },
@@ -304,8 +304,8 @@ ACCESS_PLANS = {
     'professional': {
         'hidden': False,
         'access': [
-            {'name': 'Highlights', 'value': True, },
-            {'name': 'Research', 'value': True, },
+            {'name': 'Trendings', 'value': True, },
+            {'name': 'Discovery', 'value': True, },
             {'name': 'Segments', 'value': True, },
             {'name': 'Segments - pre-baked segments', 'value': True, },
             {'name': 'Media buying', 'value': True, },
@@ -315,8 +315,8 @@ ACCESS_PLANS = {
     'enterprise': {
         'hidden': True,
         'access': [
-            {'name': 'Highlights', 'value': True, },
-            {'name': 'Research', 'value': True, },
+            {'name': 'Trendings', 'value': True, },
+            {'name': 'Discovery', 'value': True, },
             {'name': 'Segments', 'value': True, },
             {'name': 'Segments - pre-baked segments', 'value': True, },
             {'name': 'Media buying', 'value': True, },
@@ -350,10 +350,10 @@ DEFAULT_USER_PERMISSIONS = {
 }
 
 USER_ACCESS_LOGIC = {
-    'Highlights': {
+    'Trendings': {
         'view': {'highlights': True, },
     },
-    'Research': {
+    'Discovery': {
         'actions': [{'input': False, 'action_type': 'post', 'access': ['Segments - pre-baked segments'], }, ],
         'channel': {'list': True, 'filter': True, 'details': True, },
         'video': {'list': True, 'filter': True, 'details': True, },
@@ -367,7 +367,7 @@ USER_ACCESS_LOGIC = {
         },
     },
     'Segments - pre-baked segments': {
-        'actions': [{'input': False, 'action_type': 'post', 'access': ['Research'], }, ],
+        'actions': [{'input': False, 'action_type': 'post', 'access': ['Discovery'], }, ],
         'view': {'pre_baked_segments': True, },
         'channel': {'list': True, },
         'video': {'list': True, },
