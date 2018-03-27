@@ -39,7 +39,6 @@ class VideoListApiView(
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
     )
-
     fields_to_export = [
         "title",
         "url",
@@ -56,17 +55,25 @@ class VideoListApiView(
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
             return Response({"error": error}, HTTP_400_BAD_REQUEST)
-        connector = Connector()
-        # prepare query params
-        query_params = deepcopy(request.query_params)
-        query_params._mutable = True
         empty_response = {
             "max_page": 1,
             "items_count": 0,
             "items": [],
             "current_page": 1,
         }
-
+        # prepare query params
+        query_params = deepcopy(request.query_params)
+        query_params._mutable = True
+        # channel
+        channel_id = query_params.get("channel")
+        if not request.user.has_perm("userprofile.video_list"):
+            user_channels_ids = set(request.user.channels.values_list(
+                                        "channel_id", flat=True))
+            if channel_id and (channel_id not in user_channels_ids):
+                return Response(empty_response)
+            query_params.update(**{"channel": ",".join(user_channels_ids)})
+        # set up connector
+        connector = Connector()
         # segment
         channel_segment_id = self.request.query_params.get("channel_segment")
         video_segment_id = self.request.query_params.get("video_segment")
@@ -82,19 +89,18 @@ class VideoListApiView(
                 except SingleDatabaseApiConnectorException as e:
                     return Response(data={"error": " ".join(e.args)},
                                     status=HTTP_408_REQUEST_TIMEOUT)
-                request_params = {
-                    "hashed_channel_id__terms": ids_hash,
-                    "fields": "video_id"}
+                query_params["hashed_channel_id__terms"] = ids_hash
+                query_params.pop("channel_segment")
+                self.adapt_query_params(query_params)
                 try:
-                    videos_data = connector.get_video_list(request_params)
+                    response_data = connector.get_video_list(query_params)
                 except SingleDatabaseApiConnectorException as e:
                     return Response(data={"error": " ".join(e.args)},
                                     status=HTTP_408_REQUEST_TIMEOUT)
-                videos_ids = [i.get('video_id') for i in videos_data['items']]
-                query_params.pop("channel_segment")
-            else:
-                videos_ids = segment.get_related_ids()
-                query_params.pop("video_segment")
+                self.adapt_response_data(response_data, request.user)
+                return Response(response_data)
+            videos_ids = segment.get_related_ids()
+            query_params.pop("video_segment")
             if not videos_ids:
                 return Response(empty_response)
             try:
@@ -103,18 +109,6 @@ class VideoListApiView(
                 return Response(data={"error": " ".join(e.args)},
                                 status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
-
-        channel = query_params.get("channel")
-        if not request.user.has_perm("userprofile.video_list"):
-            user_channels = set(
-                request.user.channels.values_list(
-                    "channel_id", flat=True))
-            if channel:
-                if channel not in user_channels:
-                    return Response(empty_response)
-            else:
-                query_params.update(**{'channel': ','.join(user_channels)})
-
         # adapt the request params
         self.adapt_query_params(query_params)
         # make call
@@ -124,7 +118,6 @@ class VideoListApiView(
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-
         # adapt the response data
         self.adapt_response_data(response_data, request.user)
         return Response(response_data)
