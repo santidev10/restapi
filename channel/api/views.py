@@ -54,7 +54,6 @@ class ChannelListApiView(
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-
     fields_to_export = [
         "title",
         "url",
@@ -76,43 +75,43 @@ class ChannelListApiView(
         """
         Get procedure
         """
+        # search procedure
+        if request.user.is_staff and any((
+                request.query_params.get("youtube_link"),
+                request.query_params.get("youtube_keyword"))):
+            return self.search_channels()
+        # query params validation
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
             return Response({"error": error}, HTTP_400_BAD_REQUEST)
+        # init procedures
         empty_response = {
             "max_page": 1,
             "items_count": 0,
             "items": [],
             "current_page": 1,
         }
-        if request.user.is_staff and any((
-                request.query_params.get("youtube_link"),
-                request.query_params.get("youtube_keyword"))):
-            return self.search_channels()
-
-        connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
-
         channels_ids = []
-
+        connector = Connector()
         # own channels
         user = request.user
         own_channels = query_params.get("own_channels", "0")
-        user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
-
+        user_can_see_own_channels = user.has_perm(
+            "userprofile.settings_my_yt_channels")
         if own_channels == "1" and user_can_see_own_channels:
-            if not user or not user.is_authenticated():
-                return Response(status=HTTP_412_PRECONDITION_FAILED)
-
-            channels_ids = list(user.channels.values_list("channel_id", flat=True))
-            ids_hash = connector.store_ids(list(channels_ids))
-            query_params.update(ids_hash=ids_hash)
-
+            channels_ids = list(
+                user.channels.values_list("channel_id", flat=True))
             if not channels_ids:
                 return Response(empty_response)
-
+            try:
+                ids_hash = connector.store_ids(list(channels_ids))
+            except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
         channel_segment_id = self.request.query_params.get("channel_segment")
         video_segment_id = self.request.query_params.get("video_segment")
         if any((channel_segment_id, video_segment_id)):
@@ -126,7 +125,10 @@ class ChannelListApiView(
                 except SingleDatabaseApiConnectorException as e:
                     return Response(data={"error": " ".join(e.args)},
                                     status=HTTP_408_REQUEST_TIMEOUT)
-                request_params = {"ids_hash": ids_hash, "fields": "channel_id"}
+                request_params = {
+                    "ids_hash": ids_hash,
+                    "fields": "channel_id",
+                    "size": 10000}
                 try:
                     videos_data = connector.get_video_list(request_params)
                 except SingleDatabaseApiConnectorException as e:
@@ -142,25 +144,19 @@ class ChannelListApiView(
                 channels_ids = [
                     channel_id
                     for channel_id in channels_ids
-                    if channel_id in segment_channels_ids
-                ]
+                    if channel_id in segment_channels_ids]
             else:
                 channels_ids = segment_channels_ids
-
             if not channels_ids:
                 return Response(empty_response)
-
-            if channels_ids:
-                try:
-                    ids_hash = connector.store_ids(list(channels_ids))
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                query_params.update(ids_hash=ids_hash)
-
+            try:
+                ids_hash = connector.store_ids(list(channels_ids))
+            except SingleDatabaseApiConnectorException as e:
+                return Response(data={"error": " ".join(e.args)},
+                                status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
         # adapt the request params
         self.adapt_query_params(query_params)
-
         # make call
         try:
             response_data = connector.get_channel_list(query_params)
@@ -168,10 +164,8 @@ class ChannelListApiView(
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-
         # adapt the response data
         self.adapt_response_data(response_data, request.user)
-
         return Response(response_data)
 
     @staticmethod
