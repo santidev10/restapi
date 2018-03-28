@@ -66,7 +66,8 @@ class VideoListApiView(
         query_params._mutable = True
         # channel
         channel_id = query_params.get("channel")
-        if not request.user.has_perm("userprofile.video_list"):
+        if not request.user.has_perm("userprofile.video_list") and \
+                not request.user.has_perm("userprofile.view_highlights"):
             user_channels_ids = set(request.user.channels.values_list(
                                         "channel_id", flat=True))
             if channel_id and (channel_id not in user_channels_ids):
