@@ -363,9 +363,9 @@ class Ad(BaseStatisticModel):
     id = models.CharField(max_length=15, primary_key=True)
     ad_group = models.ForeignKey(AdGroup, related_name='ads')
 
-    headline = models.CharField(max_length=150, null=True)
-    creative_name = models.CharField(max_length=150, null=True)
-    display_url = models.CharField(max_length=150, null=True)
+    headline = models.TextField(null=True)
+    creative_name = models.TextField(null=True)
+    display_url = models.TextField(null=True)
     status = models.CharField(max_length=10, null=True)
     is_disapproved = models.BooleanField(default=False, null=False)
 
