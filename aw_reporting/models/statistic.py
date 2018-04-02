@@ -1,4 +1,8 @@
-from .base import *
+from django.db import models
+
+from aw_reporting.models.ad_words import BaseStatisticModel, Devices, AdGroup, \
+    Ad, Topic, RemarkList, Genders, GeoTarget, VideoCreative, Campaign, \
+    AgeRanges, Audience
 
 
 class DailyStatisticModel(BaseStatisticModel):
