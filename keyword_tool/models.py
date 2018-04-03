@@ -150,7 +150,8 @@ class KeyWord(BaseModel):
     updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
-    category = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    category = models.CharField(max_length=255, null=True, blank=True,
+                                db_index=True)
     daily_views = models.BigIntegerField(default=0, db_index=True)
     weekly_views = models.BigIntegerField(default=0, db_index=True)
     thirty_days_views = models.BigIntegerField(default=0, db_index=True)
@@ -174,7 +175,8 @@ class KeyWord(BaseModel):
         top_kw_interests = {}
         interests_ids = self.interests.all().values_list('id', flat=True)
         for interests_id in interests_ids:
-            keywords = Interest.objects.get(id=interests_id).keyword_set.all().exclude(text=self.text).order_by(
+            keywords = Interest.objects.get(id=interests_id).keyword_set.all() \
+                           .exclude(text=self.text).order_by(
                 '-search_volume').values_list('text', flat=True)[:5]
             top_kw_interests[interests_id] = keywords
         return top_kw_interests
