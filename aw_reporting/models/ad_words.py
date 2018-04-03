@@ -32,7 +32,6 @@ Genders = ("Undetermined", "Female", "Male")
 
 DATE_FORMAT = "%Y-%m-%d"
 ACTION_STATUSES = ("paused", "removed")
-DEFAULT_TIMEZONE = 'America/Los_Angeles'
 
 
 def get_average_cpv(*args, **kwargs):

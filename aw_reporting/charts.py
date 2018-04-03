@@ -1,14 +1,16 @@
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
-from django.db.models import Sum, Max, When, Case, IntegerField, \
-    FloatField, Value, Avg, F
+from django.db.models import Sum, When, Case, FloatField, Avg, F
 from django.db.models.sql.query import get_field_names_from_opts
 from collections import defaultdict
 from datetime import datetime, timedelta
+
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 import pytz
 import logging
+
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -687,8 +689,7 @@ class DeliveryChart:
 
     def get_account_segmented_data(self):
 
-        yesterday = datetime.now(
-            tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        yesterday = now_in_default_tz().date() - timedelta(days=1)
         four_days_ago = yesterday - timedelta(days=4)
 
         values_func = self.get_values_func()
