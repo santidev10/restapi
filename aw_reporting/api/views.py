@@ -20,7 +20,7 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Audience
 from aw_reporting.models import SUM_STATS, BASE_STATS, QUARTILE_STATS, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, AgeRangeStatistic, CityStatistic, Genders, \
-    AgeRanges, Devices, ConcatAggregate, DEFAULT_TIMEZONE, AWConnection, Account, AWAccountPermission, \
+    AgeRanges, Devices, ConcatAggregate, AWConnection, Account, AWAccountPermission, \
     Campaign, AdGroupStatistic, DATE_FORMAT, VideoCreativeStatistic, YTChannelStatistic, \
     AWConnectionToUserRelation, CONVERSIONS, dict_calculate_stats, dict_norm_base_stats, \
     all_stats_aggregate, YTVideoStatistic, base_stats_aggregate
@@ -37,6 +37,8 @@ from singledb.connector import SingleDatabaseApiConnector, SingleDatabaseApiConn
 from utils.api_paginator import CustomPageNumberPaginator
 import pytz
 import logging
+
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +215,7 @@ class AnalyzeDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
 
         # this and last week base stats
-        week_end = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_end = now_in_default_tz().date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)

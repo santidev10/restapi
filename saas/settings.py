@@ -139,6 +139,8 @@ USE_L10N = True
 
 USE_TZ = True
 
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
@@ -392,6 +394,17 @@ TESTIMONIALS = {
     "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
 }
+
+IS_TEST = False
+
+CACHE_ENABLED = False
+CACHE_MAIN_KEY = 'http_cache_requests_history'
+CACHE_KEY_PREFIX = 'http_cache_path_'
+CACHE_TIMEOUT = 1800
+CACHE_HISTORY_LIMIT = 5000
+CACHE_PAGES_LIMIT = 500
+CACHE_BASE_URL = 'http://localhost:8000'
+CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
 try:
     from .local_settings import *

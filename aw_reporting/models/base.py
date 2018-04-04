@@ -1,6 +1,8 @@
+import logging
+
 from django.db import models, transaction, IntegrityError
 
-from keyword_tool.models import logger
+logger = logging.getLogger(__name__)
 
 
 class BaseQueryset(models.QuerySet):

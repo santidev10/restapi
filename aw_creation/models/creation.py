@@ -102,8 +102,8 @@ class AccountCreation(UniqueCreationItem):
         if self.account and self.account.timezone:
             return self.account.timezone
         else:
-            from aw_reporting.models import DEFAULT_TIMEZONE
-            return DEFAULT_TIMEZONE
+            from django.conf import settings
+            return settings.DEFAULT_TIMEZONE
 
     def get_today_date(self):
         return datetime.now(tz=pytz.timezone(self.timezone)).date()
