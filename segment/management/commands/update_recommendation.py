@@ -9,9 +9,6 @@ from django.conf import settings
 
 from segment.models import SegmentChannel
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level='INFO')
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
