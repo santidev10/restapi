@@ -58,4 +58,9 @@ urlpatterns = [
     url(r'^benchmarks/filters/$',
         views.BenchmarkFiltersListApiView.as_view(),
         name="benchmarks_filters$"),
+
+    # Pacing report
+    url(r'^pacing_report_filters/$',
+        views.PacingReportFiltersView.as_view(),
+        name="pacing_report_filters")
 ]
