@@ -23,7 +23,7 @@ urlpatterns = [
         views.AnalyzeExportApiView.as_view(),
         name="analyze_export"),
     url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
-        views.AnalyzeExportWeeklyReport.as_view(),
+        views.AnalyzeExportWeeklyReportApiView.as_view(),
         name="analyze_export_weekly_report"),
 
     # track

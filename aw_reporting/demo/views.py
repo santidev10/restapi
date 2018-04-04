@@ -153,7 +153,7 @@ class AnalyzeExportApiView:
         return method
 
 
-class AnalyzeExportWeeklyReport:
+class AnalyzeExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):

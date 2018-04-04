@@ -39,7 +39,6 @@ from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
 from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
-from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
@@ -50,7 +49,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic
+    TopicStatistic, DATE_FORMAT
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
