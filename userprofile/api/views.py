@@ -1,6 +1,8 @@
 """
 Userprofile api views module
 """
+from itertools import chain
+
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -16,10 +18,12 @@ from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
 from rest_framework.views import APIView
 
 from administration.notifications import send_html_email
+from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
 from userprofile.api.serializers import ContactFormSerializer, \
     ErrorReportSerializer
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
+from userprofile.models import UserProfile
 
 
 class UserCreateApiView(APIView):
@@ -135,6 +139,41 @@ class UserProfileApiView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class UserProfileSharedListApiView(APIView):
+    def get(self, request):
+        user = request.user
+        response = []
+
+        # filter all user segments
+        user_channel_segment = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
+        user_video_segment = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
+        user_keyword_segment = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
+
+        # build unique emails set
+        unique_emails = set()
+        for item in [user_channel_segment, user_video_segment, user_keyword_segment]:
+            unique_emails |= set(chain.from_iterable(item))
+
+        # collect required user data for each email
+        for email in unique_emails:
+            user_data = {}
+            try:
+                user = UserProfile.objects.get(email=email)
+                user_data['email'] = user.email
+                user_data['username'] = user.username
+                user_data['registered'] = True
+                user_data['date_joined'] = user.date_joined
+                user_data['last_login'] = user.last_login
+
+            except UserProfile.DoesNotExist:
+                user_data['email'] = email
+                user_data['registered'] = False
+
+            response.append(user_data)
+
+        return Response(data=response)
 
 
 class UserPasswordResetApiView(APIView):

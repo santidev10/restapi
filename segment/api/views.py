@@ -1,8 +1,11 @@
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import Q
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
@@ -12,6 +15,7 @@ from segment.api.serializers import SegmentSerializer
 from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.models import UserProfile
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -36,10 +40,15 @@ class DynamicModelViewMixin(object):
             queryset = self.model.objects.all()
         elif self.request.user.has_perm('userprofile.view_pre_baked_segments'):
             queryset = self.model.objects.filter(
-                Q(owner=self.request.user) |
-                ~Q(category='private'))
+                Q(owner=self.request.user)
+                | ~Q(category='private')
+                | Q(shared_with__contains=[self.request.user.email])
+            )
         else:
-            queryset = self.model.objects.filter(owner=self.request.user)
+            queryset = self.model.objects.filter(
+                Q(owner=self.request.user)
+                | Q(shared_with__contains=[self.request.user.email])
+            )
         return queryset
 
 
@@ -158,6 +167,92 @@ class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,
             context=serializer_context
         ).data
         return Response(response_data)
+
+
+class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
+    serializer_class = SegmentSerializer
+
+    def delete(self, request, *args, **kwargs):
+        segment = self.get_object()
+        user = request.user
+        shared_with = request.data.get('shared_with')
+
+        # reject if request user has no permissions
+        if not (user.is_staff or segment.owner == user):
+            return Response(status=HTTP_403_FORBIDDEN)
+
+        # return empty response if no data in request
+        if not shared_with:
+            return Response(status=HTTP_200_OK)
+
+        # remove emails from segment
+        for email in shared_with:
+            segment.shared_with.remove(email)
+        segment.save()
+
+        # return saved segment
+        serializer_context = {"request": request}
+        response_data = self.serializer_class(
+            segment,
+            context=serializer_context
+        ).data
+        return Response(data=response_data, status=HTTP_200_OK)
+
+    def put(self, request, *args, **kwargs):
+        segment = self.get_object()
+        user = request.user
+        shared_with = request.data.get('shared_with')
+
+        # reject if request user has no permissions
+        if not (user.is_staff or segment.owner == user):
+            return Response(status=HTTP_403_FORBIDDEN)
+
+        # return empty response if no data in request
+        if not shared_with:
+            return Response(status=HTTP_200_OK)
+
+        # send invitation email if user exists, else send registration email
+        self.proceed_emails(segment, shared_with)
+
+        # return saved segment
+        serializer_context = {"request": request}
+        response_data = self.serializer_class(
+            segment,
+            context=serializer_context
+        ).data
+        return Response(data=response_data, status=HTTP_200_OK)
+
+    def proceed_emails(self, segment, emails):
+        sender = settings.SENDER_EMAIL_ADDRESS
+        exist_emails = segment.shared_with
+
+        # collect only new emails for current segment
+        emails_to_iterate = [e for e in emails if e not in exist_emails]
+
+        for email in emails_to_iterate:
+            try:
+                user = UserProfile.objects.get(email=email)
+                user.email_user('ViewIQ > You have been added as collaborator',
+                                '{}\n\n'
+                                'Please do not respond to this email.'
+                                .format('Fill me with data please'),
+                                from_email=sender)
+
+                # provide access to segments for collaborator
+                user.update_access([{'name': 'Segments', 'value': True}, ])
+
+            except UserProfile.DoesNotExist:
+                subject = "ViewIQ"
+                to = email
+                text = "You have been added as collaborator\n" \
+                       "You can register on ViewIQ to work with shared segment\n\n" \
+                       "Please do not respond to this email.\n"
+                send_mail(subject, text, sender, (to,), fail_silently=True)
+
+            # extend collaborators list
+            segment.shared_with.append(email)
+
+        segment.save()
 
 
 class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):

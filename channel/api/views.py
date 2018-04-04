@@ -25,6 +25,8 @@ from administration.notifications import send_welcome_email, \
     send_new_channel_authentication_email
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
+from segment.models import SegmentChannel
+from segment.models import SegmentKeyword
 from segment.models import SegmentVideo
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
@@ -487,7 +489,15 @@ class ChannelAuthenticationApiView(APIView):
             Token.objects.get_or_create(user=user)
             created = True
             send_welcome_email(user, self.request)
+            self.check_user_segment_access(user)
         return user, created
+
+    def check_user_segment_access(self, user):
+        user_channel_segment = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
+        user_video_segment = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
+        user_keyword_segment = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
+        if any([user_channel_segment, user_video_segment, user_keyword_segment]):
+            user.update_access([{'name': 'Segments', 'value': True}, ])
 
     @staticmethod
     def obtain_extra_user_data(token, user_id):

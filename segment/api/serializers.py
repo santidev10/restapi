@@ -13,6 +13,7 @@ from singledb.connector import SingleDatabaseApiConnector
 
 class SegmentSerializer(ModelSerializer):
     owner = SerializerMethodField()
+    shared_with = ListField(required=False)
     is_editable = SerializerMethodField()
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
@@ -30,6 +31,7 @@ class SegmentSerializer(ModelSerializer):
                   'adw_data',
                   # 'mini_dash_data',   #Disabled by issuse SAAS-1172
                   'owner',
+                  'shared_with',
                   'created_at',
                   'is_editable',
                   'ids_to_add',
