@@ -30,9 +30,7 @@ class Command(BaseCommand):
     @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
         from aw_reporting.models import Account
-        qs = Account.objects.filter(id__in=[])
-
-        timezones =qs.filter(timezone__isnull=False).values_list(
+        timezones = Account.objects.filter(timezone__isnull=False).values_list(
             "timezone", flat=True).order_by("timezone").distinct()
 
         now = datetime.now(tz=utc)
@@ -44,7 +42,7 @@ class Command(BaseCommand):
         logger.info("Timezones: {}".format(timezones))
 
         # first we will update accounts based on MCC timezone
-        mcc_to_update = qs.filter(
+        mcc_to_update = Account.objects.filter(
             timezone__in=timezones,
             can_manage_clients=True,
         ).filter(
@@ -56,7 +54,7 @@ class Command(BaseCommand):
             updater.full_update(mcc)
 
         # 2) update all the advertising accounts
-        accounts_to_update = qs.filter(
+        accounts_to_update = Account.objects.filter(
             timezone__in=timezones,
             can_manage_clients=False,
         ).filter(
