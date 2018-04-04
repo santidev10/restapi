@@ -37,7 +37,8 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     TargetingItem, default_languages
 from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
-from aw_reporting.api.serializers import CampaignListSerializer
+from aw_reporting.api.serializers.campaign_list_serializer import \
+    CampaignListSerializer
 from aw_reporting.api.views import DATE_FORMAT
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo import demo_view_decorator

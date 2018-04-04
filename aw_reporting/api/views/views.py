@@ -13,8 +13,12 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from oauth2client import client
 from suds import WebFault
 from oauth2client.client import HttpAccessTokenRefreshError
-from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer, AccountsListSerializer, \
+from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
+from aw_reporting.api.serializers.aw_account_connection_relations_serializer import \
+    AWAccountConnectionRelationsSerializer
+from aw_reporting.api.serializers.accounts_list_serializer import \
+    AccountsListSerializer
 from aw_reporting.benchmark import ChartsHandler
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Audience

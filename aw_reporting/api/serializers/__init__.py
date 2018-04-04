@@ -1,3 +1,6 @@
-# todo: get rid of using wildcard import
-from .serializers import *
-from .simple_serializers import CategorySerializer
+from .accounts_list_serializer import AccountsListSerializer
+from .aw_account_connection_relations_serializer import \
+    AWAccountConnectionRelationsSerializer
+from .campaign_list_serializer import CampaignListSerializer
+from .simple_serializers import CategorySerializer, AdGroupListSerializer, \
+    MCCAccountSerializer
