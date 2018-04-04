@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+from teamcity import is_running_under_teamcity
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -405,6 +406,9 @@ CACHE_HISTORY_LIMIT = 5000
 CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
+
+if is_running_under_teamcity():
+    TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
 try:
     from .local_settings import *
