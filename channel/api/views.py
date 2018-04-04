@@ -493,10 +493,10 @@ class ChannelAuthenticationApiView(APIView):
         return user, created
 
     def check_user_segment_access(self, user):
-        user_channel_segment = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
-        user_video_segment = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
-        user_keyword_segment = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
-        if any([user_channel_segment, user_video_segment, user_keyword_segment]):
+        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
             user.update_access([{'name': 'Segments', 'value': True}, ])
 
     @staticmethod

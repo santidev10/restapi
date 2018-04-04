@@ -147,13 +147,13 @@ class UserProfileSharedListApiView(APIView):
         response = []
 
         # filter all user segments
-        user_channel_segment = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
-        user_video_segment = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
-        user_keyword_segment = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
+        channel_segment_email_lists = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
+        video_segment_email_lists = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
 
         # build unique emails set
         unique_emails = set()
-        for item in [user_channel_segment, user_video_segment, user_keyword_segment]:
+        for item in [channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]:
             unique_emails |= set(chain.from_iterable(item))
 
         # collect required user data for each email
