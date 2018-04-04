@@ -41,6 +41,7 @@ simple-salesforce==0.68.1
 six==1.10.0
 stripe==1.65.0
 suds-jurko==0.6
+teamcity-messages==1.17
 uritemplate==3.0.0
 wrapt==1.10.10
 XlsxWriter==0.9.6

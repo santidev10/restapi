@@ -4,9 +4,6 @@ from django.core.management.base import BaseCommand
 
 from segment.utils import get_segment_model_by_type
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level='INFO')
 logger = logging.getLogger(__name__)
 
 

@@ -23,7 +23,7 @@ urlpatterns = [
         views.AnalyzeExportApiView.as_view(),
         name="analyze_export"),
     url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
-        views.AnalyzeExportWeeklyReport.as_view(),
+        views.AnalyzeExportWeeklyReportApiView.as_view(),
         name="analyze_export_weekly_report"),
 
     # track
@@ -58,4 +58,9 @@ urlpatterns = [
     url(r'^benchmarks/filters/$',
         views.BenchmarkFiltersListApiView.as_view(),
         name="benchmarks_filters$"),
+
+    # Pacing report
+    url(r'^pacing_report_filters/$',
+        views.PacingReportFiltersView.as_view(),
+        name="pacing_report_filters")
 ]
