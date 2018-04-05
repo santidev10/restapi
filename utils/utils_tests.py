@@ -1,5 +1,6 @@
 import json
 from contextlib import contextmanager
+from datetime import datetime, date
 from unittest.mock import patch
 
 from django.conf import settings
@@ -13,6 +14,7 @@ from rest_framework.test import APITestCase
 from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import Plan
+from utils.datetime import Time
 
 
 class TestUserMixin:
@@ -177,3 +179,10 @@ def patch_instance_settings(**kwargs):
     with patch.object(InstanceSettings, "get",
                       side_effect=test_instance_settings(**kwargs)) as mock_get:
         yield mock_get
+
+@contextmanager
+def patch_now(now):
+    if isinstance(now, date):
+        now = datetime.combine(now, datetime.min.time())
+    with patch.object(Time, "now", return_value=now):
+        yield

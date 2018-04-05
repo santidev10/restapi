@@ -9,7 +9,7 @@ from aw_reporting.models.salesforce import User, SalesForceRegions, \
 from utils.datetime import now_in_default_tz
 
 
-class PacingReportFiltersView(APIView):
+class PacingReportFiltersApiView(APIView):
 
     @staticmethod
     def get(*a, **_):
