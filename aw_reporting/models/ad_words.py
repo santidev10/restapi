@@ -1,4 +1,5 @@
 import re
+from functools import wraps
 
 from django.conf import settings
 from django.db import models
@@ -7,6 +8,7 @@ from django.db.models.aggregates import Aggregate
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -71,7 +73,7 @@ def get_video_view_rate(*args, **kwargs):
         return
 
     if impressions:
-        return 100 * views / impressions
+        return views / impressions
 
 
 def get_ctr(*args, **kwargs):
@@ -84,7 +86,7 @@ def get_ctr(*args, **kwargs):
         return
 
     if impressions:
-        return 100 * clicks / impressions
+        return clicks / impressions
 
 
 def get_ctr_v(*args, **kwargs):
@@ -97,21 +99,75 @@ def get_ctr_v(*args, **kwargs):
         return
 
     if video_views:
-        return 100 * clicks / video_views
+        return clicks / video_views
+
+
+def get_margin(*_, plan_cost, cost,
+               goal_type_id=None, plan_cpv=None, video_views=None, plan_cpm=None, impressions=None,
+               client_cost=None):
+    """
+    Margin calculation
+    :param _:
+    :param goal_type: "CPV", "CPM" or "CPV & CPM"
+    :param plan_cost: Budget IO from SF, maximum allowed cost
+    :param cost: real cost from AdWords
+    :param plan_cpv: ordered/client cost per view from SF
+    :param video_views: number of delivered views from AdWords
+    :param plan_cpm: ordered/client cost per 1000 impressions from SF
+    :param impressions: number of delivered impressions from AdWords
+
+    :param client_cost: shorter calculation with goal_type, plan_cost, cost and client_cost only
+    :return:
+    """
+    # ((Served IO * Goals CPV/CPM ) – Cost) /  (Goals CPV/CPM * Served IO)
+    if client_cost is None:
+        client_cost = 0
+        if goal_type_id in [SalesForceGoalType.CPV,
+                            SalesForceGoalType.CPM_AND_CPV] \
+                and plan_cpv and video_views:
+            client_cost += video_views * plan_cpv
+
+        if goal_type_id in [SalesForceGoalType.CPM,
+                            SalesForceGoalType.CPM_AND_CPV] \
+                and plan_cpm and impressions:
+            client_cost += impressions / 1000 * plan_cpm
+        if goal_type_id == SalesForceGoalType.HARD_COST:
+            client_cost = plan_cost or 0
+
+    # IF actual spend is below contracted, use actual. Else, use contracted budget (from SalesForce)
+    if plan_cost is not None and client_cost > plan_cost:
+        client_cost = plan_cost
+    cost = cost or 0
+    client_cost = client_cost or 0
+    if cost == 0:
+        return 1
+    if client_cost == 0:
+        return -1
+    return 1 - cost / client_cost
+
+
+def multiply_percent(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        value = fn(*args, **kwargs)
+        if isinstance(value, (int, float)):
+            value *= 100
+        return value
+    return wrapper
 
 
 CALCULATED_STATS = {
     'video_view_rate': {
         'dependencies': ('video_views', 'video_impressions'),
-        'receipt': get_video_view_rate,
+        'receipt': multiply_percent(get_video_view_rate),
     },
     'ctr': {
         'dependencies': ('clicks', 'impressions'),
-        'receipt': get_ctr,
+        'receipt': multiply_percent(get_ctr),
     },
     'ctr_v': {
         'dependencies': ('clicks', 'video_views'),
-        'receipt': get_ctr_v,
+        'receipt': multiply_percent(get_ctr_v),
     },
     'average_cpv': {
         'dependencies': ('cost', 'video_views'),
@@ -331,7 +387,7 @@ class BaseStatisticModel(BaseModel):
 class Campaign(BaseStatisticModel):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
-    account = models.ForeignKey(Account, related_name='campaigns')
+    account = models.ForeignKey(Account, null=True, related_name='campaigns')
 
     start_date = models.DateField(null=True, db_index=True)
     end_date = models.DateField(null=True)
@@ -345,6 +401,7 @@ class Campaign(BaseStatisticModel):
         related_name='adwords_campaigns',
         on_delete=models.SET_NULL,
     )
+    goal_allocation = models.FloatField(default=0)
 
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 
