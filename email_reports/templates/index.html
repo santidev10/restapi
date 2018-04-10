@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+	<meta charset="utf-8"> <!-- utf-8 works for most cases -->
+	<meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
+	<title>CHF</title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+
+
+	<!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
+	<!--[if mso]>
+		<style>
+			* {
+				font-family: sans-serif !important;
+			}
+		</style>
+	<![endif]-->
+
+	<!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
+	<!--[if !mso]><!-->
+		<!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
+	<!--<![endif]-->
+
+	<!-- Web Font / @font-face : END -->
+
+	<!-- CSS Reset -->
+    <style>
+
+		/* What it does: Remove spaces around the email design added by some email clients. */
+		/* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
+        html,
+        body {
+	        margin: 0 auto !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        /* What it does: Stops email clients resizing small text. */
+        * {
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* What it does: Centers email on Android 4.4 */ 
+        div[style*="margin: 16px 0"] {
+            margin:0 !important;
+        }
+
+        /* What it does: Stops Outlook from adding extra spacing to tables. */
+        table,
+        td {
+            mso-table-lspace: 0pt !important;
+            mso-table-rspace: 0pt !important;
+        }
+
+        /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            margin: 0 auto !important;
+        }
+        table table table {
+            table-layout: auto;
+        }
+
+        /* What it does: Uses a better rendering method when resizing images in IE. */
+        img {
+            -ms-interpolation-mode:bicubic;
+        }
+
+        /* What it does: A work-around for email clients meddling in triggered links. */
+        *[x-apple-data-detectors],	/* iOS */
+        .x-gmail-data-detectors, 	/* Gmail */
+        .x-gmail-data-detectors *,
+        .aBn {
+            border-bottom: 0 !important;
+            cursor: default !important;
+            color: inherit !important;
+            text-decoration: none !important;
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
+        
+        /* What it does: Prevents Gmail from displaying an download button on large, non-linked images. */
+        .a6S {
+	        display: none !important;
+	        opacity: 0.01 !important;
+        }
+        /* If the above doesn't work, add a .g-img class to any image in question. */
+        img.g-img + div {
+	        display:none !important;
+	   	}
+
+        /* What it does: Prevents underlining the button text in Windows 10 */
+        .button-link {
+            text-decoration: none !important;
+        }
+
+        /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
+        /* Create one of these media queries for each additional viewport size you'd like to fix */
+        /* Thanks to Eric Lepetit (@ericlepetitsf) for help troubleshooting */
+        @media only screen and (min-device-width: 375px) and (max-device-width: 413px) { /* iPhone 6 and 6+ */
+            .email-container {
+                min-width: 375px !important;
+            }
+        }
+
+    </style>
+    
+    <!-- Progressive Enhancements -->
+    <style>
+
+        /* What it does: Hover styles for buttons */
+        .button-td,
+        .button-a {
+            transition: all 100ms ease-in;
+        }
+        .button-td:hover,
+        .button-a:hover {
+            background: #555555 !important;
+            border-color: #555555 !important;
+        }
+
+        /* Media Queries */
+        @media screen and (max-width: 600px) {
+
+            .email-container {
+                width: 100% !important;
+                margin: auto !important;
+            }
+
+            /* What it does: Forces elements to resize to the full width of their container. Useful for resizing images beyond their max-width. */
+            .fluid {
+                max-width: 100% !important;
+                height: auto !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+
+            /* What it does: Forces table cells into full-width rows. */
+            .stack-column,
+            .stack-column-center {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                direction: ltr !important;
+            }
+            /* And center justify these ones. */
+            .stack-column-center {
+                text-align: center !important;
+            }
+
+            /* What it does: Generic utility class for centering. Useful for images, buttons, and nested tables. */
+            .center-on-narrow {
+                text-align: center !important;
+                display: block !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                float: none !important;
+            }
+            table.center-on-narrow {
+                display: inline-block !important;
+            }
+
+            /* What it does: Adjust typography on small screens to improve readability */
+			.email-container p {
+				font-size: 17px !important;
+				line-height: 22px !important;
+			}
+			
+        }
+
+    </style>
+
+    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. --> 
+    <!--[if gte mso 9]>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+     </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+    
+</head>
+<body width="100%" bgcolor="#eaeaea" style="margin: 0; mso-line-height-rule: exactly;">
+    <center style="width: 100%; background: #eaeaea; text-align: left;">
+
+        <!-- Visually Hidden Preheader Text : BEGIN -->
+        <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family: sans-serif;">
+            (Optional) This text will appear in the inbox preview, but not the email body.
+        </div>
+        <!-- Visually Hidden Preheader Text : END -->
+       
+        <!-- Email Body : BEGIN -->
+        <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="margin: auto;" class="email-container">
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="25" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+
+            <!-- Browser View : BEGIN -->
+            <tr>
+                <td align="right" style="font-size:12px; line-height: 15px; text-align: right;padding:0 0 10px 0;"  >
+                    <a style="font-family: Aria, Helvetica, sans-serif; color: #888888;" href="{{ email_link }}">View in browser</a>
+                </td>
+            </tr>
+            <!-- Browser View : END -->
+
+            <!-- Email title : BEGIN -->
+            <tr>
+				<td bgcolor="#bbb2a7" color="#fffff" style="padding:19px 30px 20px 30px; text-align: center; font-size:18px; line-height: 21px; font-family: Aria, Helvetica, sans-serif; text-transform: uppercase; color: #ffffff;">
+                    <p style="margin: 0;">
+                        <strong>Ally Financial Q1-Q2’17 Brand Campaign OP0001796</strong>
+                    </p>
+				</td>
+            </tr>
+            <!-- Email title : END -->
+
+            <!-- Text block with Progress bars : BEGIN -->
+            <tr>
+                <td bgcolor="#ffffff" align="left" valign="top" style="padding: 30px;">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td align="left" valign="top" style="padding-bottom: 23px; font-size:14px; line-height: 17px; font-family: Aria, Helvetica, sans-serif; color:#505050;">
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>Type</strong></td>
+                                        <td valign="top" align="left">YouTube In-Stream (CPV)</td>
+                                    </tr>
+                                    <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>Brand</strong></td>
+                                        <td valign="top" align="left">Discovery</td>
+                                    </tr>
+                                    <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>Vertical</strong></td>
+                                        <td valign="top" align="left">Food & Drinks</td>
+                                    </tr>
+                                    <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>AdOps</strong></td>
+                                        <td valign="top" align="left">Name</td>
+                                    </tr>
+                                     <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>AM</strong></td>
+                                        <td valign="top" align="left">Name</td>
+                                    </tr>
+                                     <tr>
+                                        <td valign="top" align="left" width="70" style="padding-bottom: 7px;"><strong>Sales</strong></td>
+                                        <td valign="top" align="left">Name</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 0; line-height: 0; padding-bottom: 30px;" align="left" valign="top">
+                                <div class="divider" style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="left" valign="top">
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="left" valign="top" style="font-size:14px; line-height: 17px; font-family: Aria, Helvetica, sans-serif; color:#505050; padding-bottom: 25px;">
+                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td width="50%">
+                                                        26 days
+                                                    </td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                        67 days left
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" style="padding: 10px 0 12px;">
+                                                        <div class="progress-bar" style="border-radius: 4px; background-color: #ebebeb; height: 10px;">
+                                                            <div class="progress" style="width: 25%; background-color: #5a9db0; border-radius: 4px; height:10px;">&nbsp;</div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width="50%">05.01.</td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                        07.01.
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" valign="top" style="font-size:14px; line-height: 17px; font-family: Aria, Helvetica, sans-serif; color:#505050; padding-bottom: 25px;">
+                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td width="50%">
+                                                       $13,500
+                                                    </td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                       $36,500 to spend
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" style="padding: 10px 0 12px;">
+                                                        <div class="progress-bar" style="border-radius: 4px; background-color: #ebebeb; height: 10px;">
+                                                            <div class="progress" style="width: 40%; background-color: #0c9c2c; border-radius: 4px; height:10px;">&nbsp;</div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width="50%">0 </td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                        $50,000
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" valign="top" style="font-size:14px; line-height: 17px; font-family: Aria, Helvetica, sans-serif; color:#505050;">
+                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td width="50%">
+                                                       50,000
+                                                    </td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                      250,000 to deliver
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" style="padding: 10px 0 12px;">
+                                                        <div class="progress-bar" style="border-radius: 4px; background-color: #ebebeb; height: 10px;">
+                                                            <div class="progress" style="width: 40%; background-color: #fdbd37; border-radius: 4px; height:10px;">&nbsp;</div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width="50%">0 </td>
+                                                    <td width="50%" align="right" style="text-align: right;">
+                                                       300,000
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <!-- Text block with Progress bars : END -->
+
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+
+            <!-- Block with linear Bars : BEGIN -->
+            <tr>
+                <td align="left" valign="top" bgcolor="#ffffff">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="font-size: 16px; line-height: 19px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding: 30px 30px 27px;">
+                                <p style="margin:0;">
+                                    ACCOUNT: Ally Financial Q1-Q2’17 Brand Campaign OP0001796
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 0; line-height: 0; padding: 0 30px 30px;" align="left" valign="top">
+                                <div class="divider" style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:0 30px;">
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                    <!-- Chart Legend : BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 40px;">
+                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                               <tr>
+                                                    <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #c2c0c2;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 1
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                                   <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #0c9c2c;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 2
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                                   <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #5a9db0;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 3
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                               </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Legend : END -->
+
+                                    <!-- Chart Block: BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 20px;">
+                                            <p style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                                AdWords Spend
+                                            </p>
+
+                                            <div class="chart-bar" style="width: 60%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$406</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 75%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$450</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 50%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$385</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Block : END -->
+
+                                    <!-- Chart Block: BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 20px;">
+                                            <p style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                               Campaign Views
+                                            </p>
+
+                                            <div class="chart-bar" style="width: 80%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>4,209</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 95%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>4,504</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 75%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>3,894</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Block : END -->
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- 2 Even Columns : BEGIN -->
+                        <tr>
+                            <td align="left" valign="top" style="padding:0 15px;">
+                                <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                    <tr>
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center" valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>104%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (-3%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        PACING
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center"  valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>59%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (+5%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        MARGIN
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                    </tr>
+                                    <tr>
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center" valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>$0.04</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (+5%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        CPV
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center"  valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>38%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                        (0%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        VIEW RATE
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- 2 Even Columns : END -->
+                    </table>
+                </td>
+            </tr>
+            <!-- Block with linear Bars : END -->
+
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+
+            <!-- Block with linear Bars : BEGIN -->
+            <tr>
+                <td align="left" valign="top" bgcolor="#ffffff">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="font-size: 16px; line-height: 19px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding: 30px 30px 27px;">
+                                <p style="margin:0;">
+                                    PLACEMENT: Ally Financial Placement 1
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 0; line-height: 0; padding: 0 30px 30px;" align="left" valign="top">
+                                <div class="divider" style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:0 30px;">
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                    <!-- Chart Legend : BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 40px;">
+                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                               <tr>
+                                                    <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #c2c0c2;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 1
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                                   <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #0c9c2c;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 2
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                                   <td valign="top" align="left">
+                                                        <div style="width: 95px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                               <tr>
+                                                                   <td align="left" width="10">
+                                                                       <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #5a9db0;">&nbsp;</div>
+                                                                   </td>
+                                                                   <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                                       June 3
+                                                                   </td>
+                                                               </tr>
+                                                            </table>
+                                                        </div>
+                                                   </td>
+                                               </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Legend : END -->
+
+                                    <!-- Chart Block: BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 20px;">
+                                            <p style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                                AdWords Spend
+                                            </p>
+
+                                            <div class="chart-bar" style="width: 60%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$156</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 75%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$187</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 50%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>$134</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Block : END -->
+
+                                    <!-- Chart Block: BEGIN -->
+                                    <tr>
+                                        <td valign="top" align="left" style="padding-bottom: 20px;">
+                                            <p style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                               Campaign Views
+                                            </p>
+
+                                            <div class="chart-bar" style="width: 80%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>1,209</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 95%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>1,504</strong>
+                                                </div>
+                                            </div>
+                                            <div class="chart-bar" style="width: 75%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                                <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                                    <strong>1,894</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Chart Block : END -->
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- 2 Even Columns : BEGIN -->
+                        <tr>
+                            <td align="left" valign="top" style="padding:0 15px;">
+                                <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                    <tr>
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center" valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>104%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (-3%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        PACING
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center"  valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>59%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (+5%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        MARGIN
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                    </tr>
+                                    <tr>
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center" valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>$0.04</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#0c9c2c;">
+                                                                        (+5%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        CPV
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                        <!-- Column : BEGIN -->
+                                        <td class="stack-column-center"  valign="top" align="left">
+                                            <table width="100%" role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                    <td valign="top" align="left" style="padding: 0 15px 30px;">
+                                                        <div style="border: 1px solid #ededed; border-radius: 4px; padding:15px 20px 16px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td width="66.666%" valign="top" align="left" style="font-size: 40px; line-height: 40px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                       <strong>41%</strong>
+                                                                    </td>
+                                                                    <td width="33.333%" valign="top" align="right" style="text-align: right; font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050;">
+                                                                        (0%)
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td colspan="2" style="font-size: 14px; line-height: 17px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding-top: 10px; text-transform: uppercase;">
+                                                                        VIEW RATE
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- Column : END -->
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- 2 Even Columns : END -->
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+
+            <!-- Email Footer : BEGIN -->
+            <tr>
+                <td valign="top" align="center" bgcolor="#333333" style="font-size: 0; line-height: 0; text-align: center; background-color: #333333; padding:20px;" class="x-gmail-data-detectors">
+                    <a href="#">
+                        <img src="logo.gif" width="155" height="19" hspace="0" vspace="0" border="0" title="Channel Factory" alt="Channel Factory" />
+                    </a>
+                </td>
+            </tr>
+            <!-- Email Footer : END -->
+
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+
+            <!-- UnSubscribe : BEGIN -->
+            <tr>
+                <td align="center" style="font-size:12px; line-height: 15px; text-align: center;"  >
+                    <a style="font-family: Aria, Helvetica, sans-serif; color: #888888;" href="{{ unsubscribe_link }}">
+                        Click on the following link to unsubscribe
+                    </a>
+                </td>
+            </tr>
+            <!-- UnSubscribe : END -->
+
+            <!-- Clear Spacer : BEGIN -->
+            <tr>
+                <td height="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+            </tr>
+            <!-- Clear Spacer : END -->
+        </table>
+        <!-- Email Body : END -->
+
+    </center>
+</body>
+</html>

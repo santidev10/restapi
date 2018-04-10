@@ -45,7 +45,8 @@ PROJECT_APPS = (
     "landing",
     "administration",
     "payments",
-    "channel"
+    "channel",
+    "email_reports"
 )
 
 THIRD_PARTY_APPS = (
@@ -406,6 +407,12 @@ CACHE_HISTORY_LIMIT = 5000
 CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
+
+HOST = "https://viewiq.com"
+
+CF_AD_OPS_DIRECTORS = [
+    ('Kim, John', "john.kim@channelfactory.com"),
+]
 
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"

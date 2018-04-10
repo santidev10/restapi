@@ -17,6 +17,7 @@ MIGRATION_MODULES = {
     "segment": None,
     "sessions": None,
     "userprofile": None,
+    "email_reports": None,
 }
 
 LOGGING["loggers"] = {
