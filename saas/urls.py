@@ -16,6 +16,7 @@ from userprofile.api import urls as userprofile_api_urls
 from payments.api import urls as stripe_api_urls
 from video.api import urls as video_api_urls
 from landing.api import urls as landing_api_urls
+from email_reports import urls as email_reports_api_urls
 
 urlpatterns = [
     # Admin api urls
@@ -59,4 +60,8 @@ urlpatterns = [
 
     # landing api urls
     url(r'^api/v1/', include(landing_api_urls, namespace="landing_api_urls")),
+
+    # Email reports
+    url(r'^api/v1/', include(email_reports_api_urls,
+                             namespace="email_reports_api_urls")),
 ]

@@ -1,0 +1,200 @@
+<!-- Block with linear Bars : BEGIN -->
+<tr>
+    <td align="left" valign="top" bgcolor="#ffffff">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td style="font-size: 16px; line-height: 19px; font-family: Arial,Helvetica, sans-serif; color:#505050; padding: 30px 30px 27px;">
+                    <p style="margin:0;">
+                        {{ item.type|upper }}: {{item.name}}
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style="font-size: 0; line-height: 0; padding: 0 30px 30px;" align="left" valign="top">
+                    <div class="divider" style="height: 1px; background-color: #dcdcdc;">&nbsp;</div>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:0 30px;">
+                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                        <!-- Chart Legend : BEGIN -->
+                        <tr>
+                            <td valign="top" align="left" style="padding-bottom: 40px;">
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                   <tr>
+                                        <td valign="top" align="left">
+                                            <div style="width: 95px;">
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                   <tr>
+                                                       <td align="left" width="10">
+                                                           <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #c2c0c2;">&nbsp;</div>
+                                                       </td>
+                                                       <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                           {{ before_yesterday|date:"F j" }}
+                                                       </td>
+                                                   </tr>
+                                                </table>
+                                            </div>
+                                       </td>
+                                       <td valign="top" align="left">
+                                            <div style="width: 95px;">
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                   <tr>
+                                                       <td align="left" width="10">
+                                                           <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #0c9c2c;">&nbsp;</div>
+                                                       </td>
+                                                       <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                           {{ yesterday|date:"F j" }}
+                                                       </td>
+                                                   </tr>
+                                                </table>
+                                            </div>
+                                       </td>
+                                       <td valign="top" align="left">
+                                            <div style="width: 95px;">
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                   <tr>
+                                                       <td align="left" width="10">
+                                                           <div style="width: 10px; height: 10px; border-radius: 10px; background-color: #5a9db0;">&nbsp;</div>
+                                                       </td>
+                                                       <td align="left" width="75" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; padding-left: 10px;">
+                                                           {{ today|date:"F j" }}
+                                                       </td>
+                                                   </tr>
+                                                </table>
+                                            </div>
+                                       </td>
+                                   </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- Chart Legend : END -->
+
+                        <!-- Chart Block: BEGIN -->
+                        <tr>
+                            <td valign="top" align="left" style="padding-bottom: 20px;">
+                                <p style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                    AdWords Spend
+                                </p>
+
+                                <div id="adwordsSpendBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_budget_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>${{ item.before_yesterday_budget|floatformat:"2" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="adwordsSpendYesterday" class="chart-bar" style="min-width: {{ item.yesterday_budget_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>${{ item.yesterday_budget|floatformat:"2" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="adwordsSpendToday" class="chart-bar" style="min-width: {{ item.today_budget_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>${{ item.today_budget|floatformat:"2" }}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% if is_cpv %}
+                        <tr id="cpvUnits">
+                            <td valign="top" align="left" style="padding-bottom: 20px;">
+                                <p class="title" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                   Campaign Views
+                                </p>
+
+                                <div id="opportunityViewsBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.before_yesterday_delivered_views|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="opportunityViewsYesterday" class="chart-bar" style="min-width: {{ item.yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.yesterday_delivered_views|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="opportunityViewsToday" class="chart-bar" style="min-width: {{ item.today_goal_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.today_goal_views|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        {% if is_cpm %}
+                        <tr id="cpmUnits">
+                            <td valign="top" align="left" style="padding-bottom: 20px;">
+                                <p class="title" style="font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color: #505050; margin: 0 0 10px;">
+                                   Campaign Impressions
+                                </p>
+
+                                <div id="opportunityImpressionsBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.before_yesterday_delivered_impressions|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="opportunityImpressionsYesterday" class="chart-bar" style="min-width: {{ item.yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.yesterday_delivered_impressions|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                                <div id="opportunityImpressionsToday" class="chart-bar" style="min-width: {{ item.today_goal_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
+                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                        <strong>{{ item.today_goal_impressions|floatformat:"0" }}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        <!-- Chart Block : END -->
+                    </table>
+                </td>
+            </tr>
+            <!-- 2 Even Columns : BEGIN -->
+            <tr>
+                <td align="left" valign="top" style="padding:0 15px;">
+                    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <!-- Column : BEGIN -->
+                            {{ pacing_str }}
+                            <td class="stack-column-center" valign="top" align="left">
+                                {% include "daily_campaign_report_item_stats_block.html" with value=item.pacing_str label="PACING" %}
+                            </td>
+                            <!-- Column : END -->
+                            <!-- Column : BEGIN -->
+                            <td class="stack-column-center"  valign="top" align="left">
+                                {% include "daily_campaign_report_item_stats_block.html" with value=item.margin_str label="MARGIN" %}
+                            </td>
+                            <!-- Column : END -->
+                        </tr>
+                        <tr>
+                            <!-- Column : BEGIN -->
+                            <td class="stack-column-center" valign="top" align="left">
+                                {% if is_cpv %}
+                                    {% include "daily_campaign_report_item_stats_block.html" with value=item.cpv_str label="CPV" %}
+                                {% elif is_cpm %}
+                                    {% include "daily_campaign_report_item_stats_block.html" with value=item.cpm_str label="CPM" %}
+                                {% endif %}
+                            </td>
+                            <!-- Column : END -->
+                            <!-- Column : BEGIN -->
+                            <td class="stack-column-center"  valign="top" align="left">
+                                {% include "daily_campaign_report_item_stats_block.html" with value=item.view_rate_str label="VIEW RATE" %}
+                            </td>
+                            <!-- Column : END -->
+                        </tr>
+                        {% if is_cpm and is_cpv %}
+                            <tr>
+                                <td class="stack-column-center" valign="top" align="left">
+                                    {% include "daily_campaign_report_item_stats_block.html" with value=item.cpm_str label="CPM" %}
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </table>
+                </td>
+            </tr>
+            <!-- 2 Even Columns : END -->
+        </table>
+    </td>
+</tr>
+<!-- Block with linear Bars : END -->

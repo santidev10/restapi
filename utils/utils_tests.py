@@ -180,9 +180,30 @@ def patch_instance_settings(**kwargs):
                       side_effect=test_instance_settings(**kwargs)) as mock_get:
         yield mock_get
 
+
 @contextmanager
 def patch_now(now):
     if isinstance(now, date):
         now = datetime.combine(now, datetime.min.time())
     with patch.object(Time, "now", return_value=now):
         yield
+
+
+class SettingDoesNotExist:
+    pass
+
+
+@contextmanager
+def patch_settings(**kwargs):
+    from django.conf import settings
+    old_settings = []
+    for key, new_value in kwargs.items():
+        old_value = getattr(settings, key, SettingDoesNotExist)
+        old_settings.append((key, old_value))
+        setattr(settings, key, new_value)
+    yield
+    for key, old_value in old_settings:
+        if old_value is SettingDoesNotExist:
+            delattr(settings, key)
+        else:
+            setattr(settings, key, old_value)
