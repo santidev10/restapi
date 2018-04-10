@@ -1,3 +1,4 @@
 from .pacing_report_filters import PacingReportFiltersApiView
 from .pacing_report_flights import PacingReportFlightsApiView
 from .pacing_report_placements import PacingReportPlacementsApiView
+from .pacing_report_campaigns import PacingReportCampaignsApiView
