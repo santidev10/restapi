@@ -98,3 +98,4 @@ ENV/
 media
 dump.rdb
 iq_errors.*
+/aw_reporting/settings/instance.yml

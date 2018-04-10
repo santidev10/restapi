@@ -1,1 +1,2 @@
-from .pacing_report_filters import PacingReportFiltersView
+from .pacing_report_filters import PacingReportFiltersApiView
+from .pacing_report_flights import PacingReportFlightsApiView

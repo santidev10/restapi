@@ -166,3 +166,14 @@ class CampaignHourlyStatistic(models.Model):
     class Meta:
         unique_together = (("campaign", "date", "hour"),)
         ordering = ["campaign", "date", "hour"]
+
+
+class CampaignStatistic(DeviceDailyStatisticModel):
+    campaign = models.ForeignKey(Campaign, related_name='statistics')
+
+    class Meta:
+        unique_together = (("campaign", "date", "device_id"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.campaign.name, self.date)

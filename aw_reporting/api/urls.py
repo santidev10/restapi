@@ -61,6 +61,9 @@ urlpatterns = [
 
     # Pacing report
     url(r'^pacing_report_filters/$',
-        views.PacingReportFiltersView.as_view(),
-        name="pacing_report_filters")
+        views.PacingReportFiltersApiView.as_view(),
+        name="pacing_report_filters"),
+    url(r'^pacing_report_flights/(?P<pk>\w+)/$',
+        views.PacingReportFlightsApiView.as_view(),
+        name="pacing_report_flights"),
 ]

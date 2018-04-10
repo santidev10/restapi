@@ -1,4 +1,7 @@
 import json
+from contextlib import contextmanager
+from datetime import datetime, date
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -8,8 +11,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
+from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import Plan
+from utils.datetime import Time
 
 
 class TestUserMixin:
@@ -158,3 +163,26 @@ class SingleDBMixin(object):
         params = {"fields": fields, "size": size}
         response = connector.get_video_list(params)
         return response
+
+
+def test_instance_settings(**kwargs):
+    data = kwargs
+
+    def get_settings(key):
+        return data.get(key)
+
+    return get_settings
+
+
+@contextmanager
+def patch_instance_settings(**kwargs):
+    with patch.object(InstanceSettings, "get",
+                      side_effect=test_instance_settings(**kwargs)) as mock_get:
+        yield mock_get
+
+@contextmanager
+def patch_now(now):
+    if isinstance(now, date):
+        now = datetime.combine(now, datetime.min.time())
+    with patch.object(Time, "now", return_value=now):
+        yield
