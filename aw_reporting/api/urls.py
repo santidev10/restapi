@@ -66,4 +66,7 @@ urlpatterns = [
     url(r'^pacing_report_flights/(?P<pk>\w+)/$',
         views.PacingReportFlightsApiView.as_view(),
         name="pacing_report_flights"),
+    url(r'^pacing_report_placements/(?P<pk>\w+)/$',
+        views.PacingReportPlacementsApiView.as_view(),
+        name="pacing_report_placements"),
 ]
