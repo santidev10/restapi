@@ -3,6 +3,8 @@ try:
 except ImportError:
     pass
 
+IS_TEST = True
+
 MIGRATION_MODULES = {
     "administration": None,
     "auth": None,

@@ -69,4 +69,13 @@ urlpatterns = [
     url(r'^pacing_report_placements/(?P<pk>\w+)/$',
         views.PacingReportPlacementsApiView.as_view(),
         name="pacing_report_placements"),
+    url(r'^pacing_report_opportunities/$',
+        views.PacingReportOpportunitiesApiView.as_view(),
+        name="pacing_report_opportunities"),
+    url(r'^pacing_report_campaigns/(?P<pk>\w+)/$',
+        views.PacingReportCampaignsApiView.as_view(),
+        name="pacing_report_campaigns"),
+    url(r'^pacing_report_update_opportunity/(?P<pk>\w+)/$',
+        views.PacingReportOpportunityUpdateApiView.as_view(),
+        name="pacing_report_update_opportunity"),
 ]
