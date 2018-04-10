@@ -3,3 +3,4 @@ from .pacing_report_flights import PacingReportFlightsApiView
 from .pacing_report_opportunity_update import \
     PacingReportOpportunityUpdateApiView
 from .pacing_report_placements import PacingReportPlacementsApiView
+from .pacing_report_campaigns import PacingReportCampaignsApiView
