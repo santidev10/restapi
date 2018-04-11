@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from aw_reporting.api.serializers import CategorySerializer
 from aw_reporting.models.salesforce import User, SalesForceRegions, \
-    SalesForceGoalTypes, UserRole, Category
+    SalesForceGoalTypes, Category
 from utils.datetime import now_in_default_tz
 
 
@@ -27,10 +27,9 @@ class PacingReportFiltersApiView(APIView):
         ]
         period.append(dict(id="custom", name="Custom"))
 
-        active_users = User.objects.filter(is_active=True,
-                                           role__isnull=False).values("id",
-                                                                      "name",
-                                                                      "role__name")
+        sales = User.objects.exclude(sold_opportunities__isnull=True)
+        ams = User.objects.exclude(managed_opportunities__isnull=True)
+        ad_ops = User.objects.exclude(ad_managed_opportunities__isnull=True)
 
         filters = dict(
             category=CategorySerializer(Category.objects.all().order_by('id'),
@@ -39,25 +38,9 @@ class PacingReportFiltersApiView(APIView):
                     enumerate(SalesForceRegions)],
             goal_type=[dict(id=n, name=r) for n, r in
                        enumerate(SalesForceGoalTypes[:3])],
-            ad_ops=[
-                dict(id=u['id'], name=u['name']) for u in filter(
-                    lambda e: e['role__name'] == UserRole.AD_OPS_NAME,
-                    active_users
-                )
-            ],
-            am=[
-                dict(id=u['id'], name=u['name']) for u in filter(
-                    lambda e: e['role__name'] == UserRole.ACCOUNT_MANAGER_NAME,
-                    active_users
-                )
-            ],
-            sales=[
-                dict(id=u['id'], name=u['name']) for u in filter(
-                    lambda e: e['role__name'] not in (
-                    UserRole.ACCOUNT_MANAGER_NAME, UserRole.AD_OPS_NAME),
-                    active_users
-                )
-            ],
+            am=_map_users(ams),
+            sales=_map_users(sales),
+            ad_ops=_map_users(ad_ops),
             period=period,
             start=start_date,
             end=end_date,
@@ -68,3 +51,7 @@ class PacingReportFiltersApiView(APIView):
         )
 
         return Response(filters)
+
+
+def _map_users(users_qs):
+    return [dict(id=u.id, name=u.name) for u in users_qs]
