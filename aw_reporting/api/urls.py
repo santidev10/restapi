@@ -78,4 +78,8 @@ urlpatterns = [
     url(r'^pacing_report_update_opportunity/(?P<pk>\w+)/$',
         views.PacingReportOpportunityUpdateApiView.as_view(),
         name="pacing_report_update_opportunity"),
+
+    # Health check tool
+    url(r'^setup_health_check_list/$', views.HealthCheckView.as_view(),
+        name="health_check_tool"),
 ]
