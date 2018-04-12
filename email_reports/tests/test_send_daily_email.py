@@ -311,7 +311,94 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 0)
         self.assertEqual(len(tree.xpath("//tr[@id='cpmUnits']")), 0)
 
+    def test_adwords_spend_bar_width(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        goal_items_factor = 1.02
+        ordered_views = 1000
+        goal_views = ordered_views * goal_items_factor
+        test_cost_1, test_views_1 = 123, 12
+        test_cost_2, test_views_2 = 1240, 130
+        days_left = 3
+        views_left = goal_views - sum([test_views_1, test_views_2])
+        today_goal = views_left / days_left
+        yesterday_cpv = test_cost_2 / test_views_2
+        today_cost = today_goal * yesterday_cpv
+        max_value = max(today_cost, test_cost_1, test_cost_2)
+        width_style = lambda v: str(round(v * 100 / max_value)) + "%"
+        width_1 = width_style(test_cost_1)
+        width_2 = width_style(test_cost_2)
+        width_3 = width_style(today_cost)
+        now = datetime(2017, 1, 1)
+        today = now.date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(id="1", name="", placement=placement,
+                              start=today - timedelta(days=10),
+                              end=today + timedelta(days=days_left - 1),
+                              ordered_units=ordered_views)
+        account = Account.objects.create(pk="1", name="")
+        campaign = Campaign.objects.create(pk="1", name="", account=account,
+                                           salesforce_placement=placement)
+
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=2),
+                                         video_views=test_views_1,
+                                         cost=test_cost_1)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=1),
+                                         video_views=test_views_2,
+                                         cost=test_cost_2)
+
+        with patch_now(now):
+            call_command("send_daily_email_reports",
+                         reports="DailyCampaignReport")
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        html_body = email.alternatives[0][0]
+        tree = etree.HTML(html_body)
+
+        get_width = partial(get_style_value, tree, "width")
+
+        before_yesterday_spend_width = get_width(
+            "//div[@id='adwordsSpendBeforeYesterday']")
+        yesterday_spend_width = get_width(
+            "//div[@id='adwordsSpendYesterday']")
+        today_spend_width = get_width("//div[@id='adwordsSpendToday']")
+
+        self.assertEqual(before_yesterday_spend_width, width_1)
+        self.assertEqual(yesterday_spend_width, width_2)
+        self.assertEqual(today_spend_width, width_3)
+
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]
     return "".join(node.itertext()).strip()
+
+
+def get_own_styles(tree, xpath):
+    node = tree.xpath(xpath)[0]
+    styles = [split_and_strip(v, ":") for v in node.get("style").split(";")]
+    styles = filter(lambda pair: len(pair) == 2, styles)
+    return dict(styles)
+
+
+def split_and_strip(string: str, divider: str):
+    return tuple(s.strip() for s in string.split(divider))
+
+
+def get_style_value(tree, key, xpath):
+    return get_own_styles(tree, xpath).get(key)

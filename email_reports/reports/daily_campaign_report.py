@@ -28,6 +28,12 @@ spend_budget_fields = ("today_budget", "yesterday_budget",
                        "before_yesterday_budget")
 spend_fields = spend_units_fields + spend_budget_fields
 
+adwords_spend_percent_map = {
+    "before_yesterday_budget": "before_yesterday_budget_width",
+    "yesterday_budget": "yesterday_budget_width",
+    "today_budget": "today_budget_width"
+}
+
 
 class DailyCampaignReport(BaseEmailReport):
 
@@ -104,6 +110,8 @@ class DailyCampaignReport(BaseEmailReport):
         opportunity_path = "/reports/opportunities/{opportunity_id}" \
             .format(opportunity_id=opportunity.get("id"))
         goal_type_ids = opportunity["goal_type_ids"]
+
+        self._add_flight_data(opportunity, report)
         context = dict(
             title=title,
             email_uid=email_uid,
@@ -118,8 +126,6 @@ class DailyCampaignReport(BaseEmailReport):
             is_cpv=SalesForceGoalType.CPV in goal_type_ids,
             host=self.host,
         )
-
-        self._add_flight_data(opportunity, report)
 
         return context
 
@@ -151,6 +157,8 @@ def _map_opportunity(opportunity):
                                                  2, "%")
     opportunity["cpm_str"] = _float_format(opportunity["cpm"], 4)
     opportunity["cpv_str"] = _float_format(opportunity["cpv"], 4)
+
+    opportunity = _calculate_widths(opportunity)
     return opportunity
 
 
@@ -159,3 +167,26 @@ def _float_format(value, float_round=1, suffix=""):
         return "N/A"
     round_value = round(value, float_round)
     return "{}{}".format(round_value, suffix)
+
+
+def _calculate_widths(opportunity):
+    for fields_map in [adwords_spend_percent_map]:
+        _calculate_with_general(opportunity, fields_map)
+    return opportunity
+
+
+def _calculate_with_general(opportunity, keys_map: dict):
+    def get_value(key):
+        return opportunity.get(key, 0)
+
+    input_keys = keys_map.keys()
+    values = [get_value(key) for key in input_keys]
+    max_value = max(values)
+
+    def get_width_value(v):
+        return "{0:.0f}%".format(v * 100 / max_value)
+
+    for input_key, output_key in keys_map.items():
+        value = get_value(input_key)
+        opportunity[output_key] = get_width_value(value)
+    return opportunity
