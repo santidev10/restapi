@@ -35,6 +35,21 @@ Genders = ("Undetermined", "Female", "Male")
 DATE_FORMAT = "%Y-%m-%d"
 ACTION_STATUSES = ("paused", "removed")
 
+AgeRangeOptions = (
+    "AGE_RANGE_UNDETERMINED",
+    "AGE_RANGE_18_24",
+    "AGE_RANGE_25_34",
+    "AGE_RANGE_35_44",
+    "AGE_RANGE_45_54",
+    "AGE_RANGE_55_64",
+    "AGE_RANGE_65_UP",
+)
+
+GenderOptions = (
+    "GENDER_UNDETERMINED",
+    "GENDER_FEMALE",
+    "GENDER_MALE",
+)
 
 def get_average_cpv(*args, **kwargs):
     if len(args) == 2:
@@ -292,7 +307,7 @@ class Account(models.Model):
     timezone = models.CharField(max_length=100, null=True)
     can_manage_clients = models.BooleanField(default=False)
     is_test_account = models.BooleanField(default=False)
-    managers = models.ManyToManyField("self", related_name='customers')
+    managers = models.ManyToManyField("self")
     visible = models.BooleanField(default=True)
     update_time = models.DateTimeField(null=True)
 
@@ -484,3 +499,27 @@ class RemarkList(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class CampaignAgeRangeTargeting(models.Model):
+    age_range_id = models.SmallIntegerField()
+    campaign = models.ForeignKey(Campaign, related_name="age_range_targeting")
+
+    class Meta:
+        unique_together = (("age_range_id", "campaign"),)
+
+
+class CampaignGenderTargeting(models.Model):
+    gender_id = models.SmallIntegerField()
+    campaign = models.ForeignKey(Campaign, related_name="gender_targeting")
+
+    class Meta:
+        unique_together = (("gender_id", "campaign"),)
+
+
+class CampaignLocationTargeting(models.Model):
+    location = models.ForeignKey(GeoTarget)
+    campaign = models.ForeignKey(Campaign, related_name="location_targeting")
+
+    class Meta:
+        unique_together = (("location", "campaign"),)
