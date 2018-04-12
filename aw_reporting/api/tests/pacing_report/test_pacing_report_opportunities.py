@@ -1,4 +1,5 @@
 from datetime import timedelta, date
+from itertools import product
 from unittest import skip
 from urllib.parse import urlencode
 
@@ -11,6 +12,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
     Opportunity, Category, User, SalesForceRegions, OpPlacement, \
     SalesForceGoalType
+from aw_reporting.models.salesforce_constants import \
+    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -315,7 +318,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             opportunity=opportunity, tech_fee=tech_fee,
             goal_type_id=SalesForceGoalType.CPV,
             tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE)
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE)
         Flight.objects.create(placement=placement, total_cost=510, cost=123,
                               start=start, end=end)
         campaign = Campaign.objects.create(salesforce_placement=placement)
@@ -461,7 +464,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=start, end=end)
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=tech_fee)
         Flight.objects.create(placement=placement,
                               start=start, end=end,
@@ -506,7 +509,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=start, end=end)
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=tech_fee)
         Flight.objects.create(placement=placement,
                               start=start, end=end,
@@ -539,20 +542,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             start=today - timedelta(days=1),
             end=today + timedelta(days=1)
         )
-        OpPlacement.objects.create(
-            id=2,
-            opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
-            start=today - timedelta(days=1),
-            end=today + timedelta(days=1)
-        )
-        OpPlacement.objects.create(
-            id=3,
-            opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
-            start=today + timedelta(days=1),
-            end=today + timedelta(days=2)
-        )
 
         url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
@@ -561,21 +550,24 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertFalse(response.data[0]["has_dynamic_placements"])
 
-    def test_dynamic_placement_ongoing(self):
+    def test_dynamic_placement_positive(self):
         today = date(2017, 1, 1)
         dates = [
             (today - timedelta(days=2), today - timedelta(days=1)),
             (today - timedelta(days=1), today + timedelta(days=1)),
             (today + timedelta(days=1), today + timedelta(days=2)),
         ]
-        for index, start_end in enumerate(dates):
+        test_data = tuple(product(dates, DYNAMIC_PLACEMENT_TYPES))
+        count = len(test_data)
+        for index, item in enumerate(test_data):
+            start_end, dynamic_placement = item
+            start, end = start_end
             opportunity = Opportunity.objects.create(id=index, probability=100,
                                                      start=today, end=today)
-            start, end = start_end
             OpPlacement.objects.create(
                 id=index,
                 opportunity=opportunity,
-                dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+                dynamic_placement=dynamic_placement,
                 start=start,
                 end=end
             )
@@ -583,5 +575,5 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data), count)
         self.assertTrue(all(o["has_dynamic_placements"] for o in response.data))

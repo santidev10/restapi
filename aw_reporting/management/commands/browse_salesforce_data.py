@@ -211,7 +211,7 @@ class Command(BaseCommand):
         # When the flight is created, IQ needs to put a 0 for costs and 1
         # for delivered units on each of the flights
         service_flights_to_update = Flight.objects.filter(
-            placement__dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
+            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE,
         ).exclude(
             delivered=1, cost=0,
         )
@@ -254,8 +254,8 @@ class Command(BaseCommand):
         type_filters = Q(placement__goal_type_id__in=(
             SalesForceGoalType.CPM, SalesForceGoalType.CPV)) \
                        | Q(placement__dynamic_placement__in=(
-            OpPlacement.DYNAMIC_TYPE_BUDGET,
-            OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE))
+            DynamicPlacementType.BUDGET,
+            DynamicPlacementType.RATE_AND_TECH_FEE))
 
         flights = Flight.objects.filter(
             start__gte=WRITE_START,

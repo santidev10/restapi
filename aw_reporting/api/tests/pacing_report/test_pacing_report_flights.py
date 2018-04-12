@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
     HTTP_404_NOT_FOUND
 
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    SalesForceGoalType, Campaign, CampaignStatistic
+    SalesForceGoalType, Campaign, CampaignStatistic, DynamicPlacementType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -286,7 +286,7 @@ class PacingReportTestCase(APITestCase):
             id="1", name="Where is my money", opportunity=opportunity,
             start=start_1, end=end_2,
             goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=1234
         )
         campaign = Campaign.objects.create(salesforce_placement=placement)
@@ -342,7 +342,7 @@ class PacingReportTestCase(APITestCase):
             id="1", name="Where is my money", opportunity=opportunity,
             start=start_1, end=end_2,
             goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=1234
         )
         campaign = Campaign.objects.create(salesforce_placement=placement,
@@ -406,7 +406,7 @@ class PacingReportTestCase(APITestCase):
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
             goal_type_id=SalesForceGoalType.CPM_AND_CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=total_cost,
         )
         Flight.objects.create(id="1", placement=placement, start=start,

@@ -5,7 +5,8 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Sum
 
-from aw_reporting.models import OpPlacement, dict_calculate_stats
+from aw_reporting.models import OpPlacement, dict_calculate_stats, \
+    DynamicPlacementType
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
 
@@ -28,7 +29,7 @@ class TechFeeCapExceeded(BaseEmailReport):
         placements = OpPlacement.objects.filter(
             opportunity__probability=100,
             start__lte=today, end__gte=today,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap__isnull=False,
             tech_fee_type__isnull=False,
         ).values(

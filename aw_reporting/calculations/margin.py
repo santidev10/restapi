@@ -1,7 +1,7 @@
 from django.db.models import Sum, When, Case, Value, F, FloatField
 
 from aw_reporting.models import OpPlacement, SalesForceGoalType, Flight, \
-    get_margin
+    get_margin, DynamicPlacementType
 
 
 def get_margin_from_flights(flights, cost, plan_cost,
@@ -11,7 +11,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
         set(f["placement__dynamic_placement"] for f in flights)
     )
     if len(dynamic_placements) == 1 \
-            and dynamic_placements[0] == OpPlacement.DYNAMIC_TYPE_SERVICE_FEE:
+            and dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
         margin = 1
     else:
         sum_client_cost = 0  # total delivery cost
@@ -33,7 +33,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
                 continue
 
             elif dynamic_placement \
-                    == OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE:
+                    == DynamicPlacementType.RATE_AND_TECH_FEE:
                 tech_fee = float(f["placement__tech_fee"] or 0)
 
                 units = 0
@@ -118,8 +118,8 @@ flight_delivery_annotate = Sum(
                 ),
                 When(
                     placement__dynamic_placement__in=[
-                        OpPlacement.DYNAMIC_TYPE_BUDGET,
-                        OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE],
+                        DynamicPlacementType.BUDGET,
+                        DynamicPlacementType.RATE_AND_TECH_FEE],
                     then=F(flight_cost),
                 ),
                 output_field=FloatField(),

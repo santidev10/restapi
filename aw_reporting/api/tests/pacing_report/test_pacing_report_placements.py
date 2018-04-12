@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
     HTTP_404_NOT_FOUND
 
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes
+    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
+    DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
@@ -178,7 +179,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE
         )
 
         url = reverse("aw_reporting_urls:pacing_report_placements",
@@ -188,7 +189,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         placement_data = response.data[0]
         self.assertEqual(placement_data["dynamic_placement"],
-                         OpPlacement.DYNAMIC_TYPE_SERVICE_FEE)
+                         DynamicPlacementType.SERVICE_FEE)
 
     def test_dynamic_placement_bar_chart(self):
         now = timezone.now()
@@ -205,7 +206,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
             goal_type_id=SalesForceGoalType.CPM_AND_CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=total_cost,
         )
         Flight.objects.create(id="1", placement=placement, start=start,
@@ -242,7 +243,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=123,
             goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_type=OpPlacement.TECH_FEE_CPM_TYPE
         )
         total_cost = 1234
@@ -279,7 +280,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=123,
             goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_type=OpPlacement.TECH_FEE_CPM_TYPE
         )
         total_cost = 1234

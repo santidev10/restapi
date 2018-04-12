@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Campaign, CampaignStatistic
+    Flight, Campaign, CampaignStatistic, DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
@@ -138,7 +138,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(id="1", name="", probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.HARD_COST, start=start, end=end,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE, total_cost=80000,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE, total_cost=80000,
             tech_fee=0.01, tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
 
         )

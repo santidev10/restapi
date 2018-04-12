@@ -10,7 +10,8 @@ from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, dict_calculate_stats, \
     Opportunity, Campaign, CampaignStatistic, get_margin
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    SalesForceGoalTypes, goal_type_str, SalesForceRegions
+    SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
+    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -79,8 +80,8 @@ class PacingReport:
                             ),
                             When(
                                 placement__dynamic_placement__in=[
-                                    OpPlacement.DYNAMIC_TYPE_BUDGET,
-                                    OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE],
+                                    DynamicPlacementType.BUDGET,
+                                    DynamicPlacementType.RATE_AND_TECH_FEE],
                                 then=F(
                                     "placement__adwords_campaigns__statistics__cost"),
                             ),
@@ -119,8 +120,8 @@ class PacingReport:
                             ),
                             When(
                                 placement__dynamic_placement__in=[
-                                    OpPlacement.DYNAMIC_TYPE_BUDGET,
-                                    OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE],
+                                    DynamicPlacementType.BUDGET,
+                                    DynamicPlacementType.RATE_AND_TECH_FEE],
                                 then=F(
                                     "placement__adwords_campaigns__statistics__cost"),
                             ),
@@ -205,8 +206,8 @@ class PacingReport:
             "placement__goal_type_id"] == SalesForceGoalType.HARD_COST and \
                 flight_dict[
                     "placement__dynamic_placement"] \
-                in (OpPlacement.DYNAMIC_TYPE_BUDGET,
-                    OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE):
+                in (DynamicPlacementType.BUDGET,
+                    DynamicPlacementType.RATE_AND_TECH_FEE):
             return "cost"
         elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPM:
             return "impressions"
@@ -302,10 +303,10 @@ class PacingReport:
 
             fl["plan_units"] = 0
             if fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
-                if fl["placement__dynamic_placement"] == OpPlacement.DYNAMIC_TYPE_BUDGET:
+                if fl["placement__dynamic_placement"] == DynamicPlacementType.BUDGET:
                     fl["plan_units"] = fl["total_cost"] or 0
 
-                elif fl["placement__dynamic_placement"] == OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE:
+                elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
                     fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor if fl[
@@ -479,7 +480,7 @@ class PacingReport:
             sum_delivery += stats["delivery"] or 0
             aw_cost = stats["sum_cost"] or 0
 
-            if dynamic_placement == OpPlacement.DYNAMIC_TYPE_BUDGET:
+            if dynamic_placement == DynamicPlacementType.BUDGET:
                 sum_spent_cost += aw_cost
                 flight_count = Flight.objects.filter(
                     placement_id=f["placement_id"]).count()
@@ -531,7 +532,7 @@ class PacingReport:
         if len(goal_type_ids) == 1 \
                 and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
                 and len(dynamic_placements) == 1 and \
-                dynamic_placements[0] == OpPlacement.DYNAMIC_TYPE_SERVICE_FEE:
+                dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
             pacing = 1
         else:
             units_by_yesterday = sum_delivery = 0
@@ -561,11 +562,11 @@ class PacingReport:
         today_budget = today_units = 0
         total_cost = flight["total_cost"] or 0
 
-        if dynamic_placement == OpPlacement.DYNAMIC_TYPE_BUDGET:
+        if dynamic_placement == DynamicPlacementType.BUDGET:
             today_budget = self.get_today_goal(
                 total_cost * allocation_ko,
                 stats_total["cost"], flight["end"], last_day)
-        elif dynamic_placement == OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE:
+        elif dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
             last_day = min(date, self.today)
             stats_3days = get_stats_from_flight(
                 flight, campaign_id=campaign_id,
@@ -740,10 +741,10 @@ class PacingReport:
 
             dynamic_placement = flight["placement__dynamic_placement"]
             budget_is_goal = dynamic_placement in (
-                OpPlacement.DYNAMIC_TYPE_BUDGET,
-                OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE)
+                DynamicPlacementType.BUDGET,
+                DynamicPlacementType.RATE_AND_TECH_FEE)
 
-            if dynamic_placement == OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE:
+            if dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
                 goal = self.get_budget_to_spend_from_added_fee_flight(
                     flight, allocation_ko=allocation_ko,
                     campaign_id=campaign_id)
@@ -1093,9 +1094,9 @@ class PacingReport:
                 if
                 f["placement__goal_type_id"] == SalesForceGoalType.HARD_COST and
                 f["placement__dynamic_placement"] in (
-                    OpPlacement.DYNAMIC_TYPE_BUDGET,
-                    OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
-                    OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE)
+                    DynamicPlacementType.BUDGET,
+                    DynamicPlacementType.SERVICE_FEE,
+                    DynamicPlacementType.RATE_AND_TECH_FEE)
             ]
             if budget_flights:
                 chart_data["budget"] = self.get_chart_data(
@@ -1129,7 +1130,8 @@ class PacingReport:
 
             dynamic_placements_types = set(p["dynamic_placement"]
                                            for p in placements)
-            o["has_dynamic_placements"] = any([dp == OpPlacement.DYNAMIC_TYPE_BUDGET for dp in dynamic_placements_types])
+            o["has_dynamic_placements"] = any([dp in DYNAMIC_PLACEMENT_TYPES
+                                               for dp in dynamic_placements_types])
             o["dynamic_placements_types"] = dynamic_placements_types
 
         return opportunities
@@ -1377,7 +1379,7 @@ class PacingReport:
         all_aw_before_yesterday_stats = {i[id_field]: i for i in
                                          all_aw_before_yesterday_stats}
         is_budget_dynamic_placement = placement.dynamic_placement \
-                                      == OpPlacement.DYNAMIC_TYPE_BUDGET
+                                      == DynamicPlacementType.BUDGET
 
         flights = []
         for f in flights_data:

@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Campaign, CampaignStatistic
+    Flight, Campaign, CampaignStatistic, DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
@@ -188,7 +188,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(
             id="2", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
             placement_type=OpPlacement.OUTGOING_FEE_TYPE,
         )
         Flight.objects.create(
@@ -386,7 +386,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         placement_1 = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=.01,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
         )
         Flight.objects.create(
             id="1", name="", placement=placement_1, start=today, end=today,
@@ -395,7 +395,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id="2", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
         )
         Flight.objects.create(
             id="2", name="", placement=placement_2, start=today, end=today,
@@ -404,7 +404,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         placement_3 = OpPlacement.objects.create(
             id="3", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
         )
         Flight.objects.create(
             id="3", name="", placement=placement_3, start=today, end=today,
@@ -415,7 +415,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(opportunities), 1)
 
         opportunity_data = opportunities[0]
-        expected_types = {OpPlacement.DYNAMIC_TYPE_BUDGET,
-                          OpPlacement.DYNAMIC_TYPE_SERVICE_FEE}
+        expected_types = {DynamicPlacementType.BUDGET,
+                          DynamicPlacementType.SERVICE_FEE}
         actual_types = set(opportunity_data["dynamic_placements_types"])
         self.assertEqual(actual_types, expected_types)
