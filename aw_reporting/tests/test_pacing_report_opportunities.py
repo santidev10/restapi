@@ -377,45 +377,6 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(len(delivery_chart["data"]), 3)
         self.assertEqual(delivery_chart["data"][-1]["value"], 3060)
 
-    def test_get_opportunities_has_dynamic_placements(self):
-        today = now_in_default_tz().date()
-        opportunity_1 = Opportunity.objects.create(
-            id="1", name="A", start=today, end=today, probability=100,
-            budget=110,
-        )
-        placement = OpPlacement.objects.create(
-            id="1", name="", opportunity=opportunity_1,
-            goal_type_id=SalesForceGoalType.CPV, ordered_rate=.01,
-        )
-        Flight.objects.create(
-            id="1", name="", placement=placement, start=today, end=today,
-        )
-
-        opportunity_2 = Opportunity.objects.create(
-            id="2", name="B", start=today, end=today, probability=100,
-            budget=110,
-        )
-        placement = OpPlacement.objects.create(
-            id="2", name="", opportunity=opportunity_2,
-            goal_type_id=SalesForceGoalType.HARD_COST,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
-        )
-        Flight.objects.create(
-            id="2", name="", placement=placement, start=today, end=today,
-        )
-
-        report = PacingReport()
-        opportunities = report.get_opportunities({})
-        self.assertEqual(len(opportunities), 2)
-
-        first = opportunities[0]
-        self.assertEqual(first["id"], opportunity_1.id)
-        self.assertIs(first["has_dynamic_placements"], False)
-
-        second = opportunities[1]
-        self.assertEqual(second["id"], opportunity_2.id)
-        self.assertIs(second["has_dynamic_placements"], True)
-
     def test_get_opportunities_has_dynamic_placements_type(self):
         today = now_in_default_tz().date()
         opportunity = Opportunity.objects.create(

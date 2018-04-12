@@ -213,6 +213,12 @@ class PacingReport:
         elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPV:
             return "video_views"
 
+    def get_placements_data(self, **filters):
+        queryset = OpPlacement.objects.filter(**filters)
+        placement_fields = ("id", "dynamic_placement", "opportunity_id")
+        raw_data = queryset.values(*placement_fields)
+        return raw_data
+
     def get_flights_data(self, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
@@ -1030,12 +1036,20 @@ class PacingReport:
         else:
             thumbnails = {}
 
-        opp_key = "placement__opportunity_id"
+        flight_opp_key = "placement__opportunity_id"
+        placement_opp_key = "opportunity_id"
         flights_data = self.get_flights_data(
             placement__opportunity_id__in=opportunity_ids)
+        placements_data = self.get_placements_data(
+            opportunity_id__in=opportunity_ids)
         all_flights = defaultdict(list)
+        all_placements = defaultdict(list)
+
         for f in flights_data:
-            all_flights[f[opp_key]].append(f)
+            all_flights[f[flight_opp_key]].append(f)
+
+        for p in placements_data:
+            all_placements[p[placement_opp_key]].append(p)
 
         # prepare response
         for o in opportunities:
@@ -1051,6 +1065,7 @@ class PacingReport:
             o['goal_type_ids'] = goal_type_ids
 
             flights = all_flights[o["id"]]
+            placements = all_placements[o["id"]]
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             o.update(delivery_stats)
@@ -1112,9 +1127,9 @@ class PacingReport:
 
             self.add_calculated_fields(o)
 
-            dynamic_placements_types = set(f["placement__dynamic_placement"]
-                                           for f in flights)
-            o["has_dynamic_placements"] = any(dynamic_placements_types)
+            dynamic_placements_types = set(p["dynamic_placement"]
+                                           for p in placements)
+            o["has_dynamic_placements"] = any([dp == OpPlacement.DYNAMIC_TYPE_BUDGET for dp in dynamic_placements_types])
             o["dynamic_placements_types"] = dynamic_placements_types
 
         return opportunities

@@ -527,3 +527,61 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         chart_data = response.data[0]["chart_data"]["cpm"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
+
+    def test_dynamic_placement_negative(self):
+        today = date(2017, 1, 1)
+        opportunity = Opportunity.objects.create(probability=100,
+                                                 start=today, end=today)
+
+        OpPlacement.objects.create(
+            id=1,
+            opportunity=opportunity,
+            start=today - timedelta(days=1),
+            end=today + timedelta(days=1)
+        )
+        OpPlacement.objects.create(
+            id=2,
+            opportunity=opportunity,
+            dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
+            start=today - timedelta(days=1),
+            end=today + timedelta(days=1)
+        )
+        OpPlacement.objects.create(
+            id=3,
+            opportunity=opportunity,
+            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            start=today + timedelta(days=1),
+            end=today + timedelta(days=2)
+        )
+
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertFalse(response.data[0]["has_dynamic_placements"])
+
+    def test_dynamic_placement_ongoing(self):
+        today = date(2017, 1, 1)
+        dates = [
+            (today - timedelta(days=2), today - timedelta(days=1)),
+            (today - timedelta(days=1), today + timedelta(days=1)),
+            (today + timedelta(days=1), today + timedelta(days=2)),
+        ]
+        for index, start_end in enumerate(dates):
+            opportunity = Opportunity.objects.create(id=index, probability=100,
+                                                     start=today, end=today)
+            start, end = start_end
+            OpPlacement.objects.create(
+                id=index,
+                opportunity=opportunity,
+                dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+                start=start,
+                end=end
+            )
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertTrue(all(o["has_dynamic_placements"] for o in response.data))
