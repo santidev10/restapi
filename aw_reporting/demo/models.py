@@ -16,6 +16,9 @@ DEMO_AD_GROUPS = (
     "Topics", "Interests", "Keywords", "Channels", "Videos"
 )
 TOTAL_DEMO_AD_GROUPS_COUNT = len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT
+DEMO_BRAND = "Demo Brand"
+DEMO_COST_METHOD = "CPM, CPV"
+DEMO_AGENCY = "Initiative LA"
 
 IMPRESSIONS = 150000
 VIDEO_VIEWS = 53000
@@ -872,7 +875,10 @@ class DemoAccount(BaseDemo):
             keyword_count=8,
             is_disapproved=False,
             from_aw=False,
-            updated_at=None
+            updated_at=None,
+            brand=DEMO_BRAND,
+            cost_method=DEMO_COST_METHOD,
+            agency=DEMO_AGENCY
         )
         return data
 

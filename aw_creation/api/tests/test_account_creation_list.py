@@ -1,12 +1,13 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DEMO_BRAND, DEMO_COST_METHOD, DEMO_AGENCY
 from aw_reporting.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -19,7 +20,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "clicks",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw", "updated_at"
+        "is_disapproved", "from_aw", "updated_at",
+        "brand", "cost_method", "agency"
     }
 
     def setUp(self):
@@ -567,3 +569,96 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(item['name'], account.name)
         self.assertEqual(item['is_managed'], False)
+
+    def test_brand(self):
+        test_brand = "Test Brand"
+        opportunity = Opportunity.objects.create(brand=test_brand)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["brand"], test_brand)
+
+    def test_cost_type(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        OpPlacement.objects.create(id=1,
+                                   opportunity=opportunity,
+                                   goal_type_id=SalesForceGoalType.CPV)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["cost_method"],
+                         opportunity.goal_type)
+
+    def test_agency(self):
+        agency = Contact.objects.create(first_name="first", last_name="last")
+        opportunity = Opportunity.objects.create(agency=agency)
+        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["agency"], agency.name)
+
+    def test_demo_brand(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
+
+    def test_demo_cost_type(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"],
+                         DEMO_COST_METHOD)
+
+    def test_demo_agency(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)
