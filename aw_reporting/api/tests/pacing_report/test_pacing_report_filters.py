@@ -25,22 +25,18 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
                           ("3", "Super-sales-man")):
             UserRole.objects.create(id=uid, name=name)
 
-        users = (
-            ("Jah", "1", True),
-            ("Tal", "1", False),
-            ("Dol", "2", False),
-            ("Ith", "2", True),
-            ("Sol", "2", False),
-            ("Ral", "3", True),
-            ("Um", "3", False),
-            ("Ber", None, True),
-        )
-        User.objects.bulk_create(
-            [User(id=name, name=name, role_id=role_id, is_active=is_active)
-             for name, role_id, is_active in users])
-        Opportunity.objects.create(id=1, name="1", probability=100, )
-        Opportunity.objects.create(id=2, name="2", probability=100, )
-        Opportunity.objects.create(id=3, name="3", probability=100, )
+        am = User.objects.create(id="Ith", is_active=True)
+        ad_ops = User.objects.create(id="Jah", is_active=True)
+        sales = User.objects.create(id="Ral", is_active=True)
+        users_data = dict(account_manager=am,
+                          sales_manager=sales,
+                          ad_ops_manager=ad_ops)
+        Opportunity.objects.create(id=1, name="1", probability=100,
+                                   **users_data)
+        Opportunity.objects.create(id=2, name="2", probability=100,
+                                   **users_data)
+        Opportunity.objects.create(id=3, name="3", probability=100,
+                                   **users_data)
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -81,3 +77,57 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         categories_data = response.data["category"]
         categories_data_ids = [c["id"] for c in categories_data]
         self.assertEqual(categories_data_ids, category_ids)
+
+    def test_sales(self):
+        self.create_test_user()
+        test_user = User.objects.create(id="1",
+                                        name="Test User",
+                                        is_active=True)
+        User.objects.create(id="2", name="Test User 2", is_active=True)
+        Opportunity.objects.create(id=1, sales_manager=test_user)
+        Opportunity.objects.create(id=2, sales_manager=test_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sales_filter = response.data["sales"]
+        expected_sales = [dict(id=test_user.id, name=test_user.name)]
+        self.assertEqual(sales_filter, expected_sales)
+        self.assertEqual(len(response.data["am"]), 0)
+        self.assertEqual(len(response.data["ad_ops"]), 0)
+
+    def test_account_managers(self):
+        self.create_test_user()
+        test_user = User.objects.create(id="1",
+                                        name="Test User",
+                                        is_active=True)
+        User.objects.create(id="2", name="Test User 2", is_active=True)
+        Opportunity.objects.create(id=1, account_manager=test_user)
+        Opportunity.objects.create(id=2, account_manager=test_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        am_filter = response.data["am"]
+        expected_am = [dict(id=test_user.id, name=test_user.name)]
+        self.assertEqual(am_filter, expected_am)
+        self.assertEqual(len(response.data["sales"]), 0)
+        self.assertEqual(len(response.data["ad_ops"]), 0)
+
+    def test_ad_ops(self):
+        self.create_test_user()
+        test_user = User.objects.create(id="1",
+                                        name="Test User",
+                                        is_active=True)
+        User.objects.create(id="2", name="Test User 2", is_active=True)
+        Opportunity.objects.create(id=1, ad_ops_manager=test_user)
+        Opportunity.objects.create(id=2, ad_ops_manager=test_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ad_ops_filter = response.data["ad_ops"]
+        expected_ad_ops = [dict(id=test_user.id, name=test_user.name)]
+        self.assertEqual(ad_ops_filter, expected_ad_ops)
+        self.assertEqual(len(response.data["sales"]), 0)
+        self.assertEqual(len(response.data["am"]), 0)

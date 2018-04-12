@@ -9,8 +9,8 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
-    Opportunity, Category, User, SalesForceRegions, \
-    OpPlacement, UserRole, SalesForceGoalType
+    Opportunity, Category, User, SalesForceRegions, OpPlacement, \
+    SalesForceGoalType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -18,68 +18,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-
-    def test_get_filters(self):
-        """
-        we gonna check that all the filters are available, simple check lengths
-        and carefully check user roles (am, sales, ad_ops)
-        :return:
-        """
-
-        for uid, name in (("1", UserRole.AD_OPS_NAME),
-                          ("2", UserRole.ACCOUNT_MANAGER_NAME),
-                          ("3", "Super-sales-man")):
-            UserRole.objects.create(id=uid, name=name)
-
-        users = (
-            ("Jah", "1", True),
-            ("Tal", "1", False),
-            ("Dol", "2", False),
-            ("Ith", "2", True),
-            ("Sol", "2", False),
-            ("Ral", "3", True),
-            ("Um", "3", False),
-            ("Ber", None, True),
-        )
-        User.objects.bulk_create(
-            [User(id=name, name=name, role_id=role_id, is_active=is_active)
-             for name, role_id, is_active in users])
-        Opportunity.objects.create(
-            id=1, name="1",
-            probability=100,
-        )
-        Opportunity.objects.create(
-            id=2, name="2",
-            probability=100,
-        )
-        Opportunity.objects.create(
-            id=3, name="3",
-            probability=100,
-        )
-
-        url = reverse("aw_reporting_urls:pacing_report_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(
-            set(data.keys()),
-            {
-                'start', 'end', 'status', 'ad_ops', 'am', 'sales',
-                'goal_type', 'period', 'category', 'region',
-            }
-        )
-        self.assertEqual(len(data['period']), 7)
-        self.assertEqual(len(data['status']), 3)
-
-        self.assertEqual(
-            set(u['id'] for u in data['ad_ops']), {"Jah"}
-        )
-        self.assertEqual(
-            set(u['id'] for u in data['am']), {"Ith"}
-        )
-        self.assertEqual(
-            set(u['id'] for u in data['sales']), {"Ral"}
-        )
 
     def test_forbidden_get_opportunities(self):
         self.user.delete()
