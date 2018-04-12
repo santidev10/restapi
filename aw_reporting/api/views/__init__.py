@@ -14,3 +14,5 @@ from .pacing_report import *
 from .track_accounts_data import TrackAccountsDataApiView
 from .track_chart import TrackChartApiView
 from .track_filters_list import TrackFiltersListApiView
+from .web_hook import WebHookAWAccountsListApiView
+from .web_hook import WebHookAWSaveSettingsApiView
