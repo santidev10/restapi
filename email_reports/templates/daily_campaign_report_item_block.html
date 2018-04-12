@@ -101,17 +101,17 @@
                                    Campaign Views
                                 </p>
 
-                                <div id="opportunityViewsBeforeYesterday" class="chart-bar chart-bar-gray" style="">
+                                <div id="opportunityViewsBeforeYesterday" class="chart-bar chart-bar-gray" style="width: {{ item.before_yesterday_delivered_views_width }}">
                                     <div>
                                         <strong>{{ item.before_yesterday_delivered_views|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityViewsYesterday" class="chart-bar chart-bar-green" style="">
+                                <div id="opportunityViewsYesterday" class="chart-bar chart-bar-green" style="width: {{ item.yesterday_delivered_views_width }}">
                                     <div>
                                         <strong>{{ item.yesterday_delivered_views|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityViewsToday" class="chart-bar chart-bar-blue" style="">
+                                <div id="opportunityViewsToday" class="chart-bar chart-bar-blue" style="width: {{ item.today_goal_views_width }}">
                                     <div>
                                         <strong>{{ item.today_goal_views|floatformat:"0" }}</strong>
                                     </div>
@@ -127,17 +127,17 @@
                                    Campaign Impressions
                                 </p>
 
-                                <div id="opportunityImpressionsBeforeYesterday" class="chart-bar chart-bar-gray" style="">
+                                <div id="opportunityImpressionsBeforeYesterday" class="chart-bar chart-bar-gray" style="width: {{ item.before_yesterday_delivered_impressions_width }}">
                                     <div>
                                         <strong>{{ item.before_yesterday_delivered_impressions|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityImpressionsYesterday" class="chart-bar chart-bar-green" style="">
+                                <div id="opportunityImpressionsYesterday" class="chart-bar chart-bar-green" style="width: {{ item.yesterday_delivered_impressions_width }}">
                                     <div>
                                         <strong>{{ item.yesterday_delivered_impressions|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityImpressionsToday" class="chart-bar chart-bar-blue" style="">
+                                <div id="opportunityImpressionsToday" class="chart-bar chart-bar-blue" style="width: {{ item.today_goal_impressions_width }}">
                                     <div>
                                         <strong>{{ item.today_goal_impressions|floatformat:"0" }}</strong>
                                     </div>

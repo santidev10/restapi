@@ -34,6 +34,18 @@ adwords_spend_percent_map = {
     "today_budget": "today_budget_width"
 }
 
+campaign_views_percent_map = {
+    "before_yesterday_delivered_views": "before_yesterday_delivered_views_width",
+    "yesterday_delivered_views": "yesterday_delivered_views_width",
+    "today_goal_views": "today_goal_views_width"
+}
+
+campaign_impressions_percent_map = {
+    "before_yesterday_delivered_impressions": "before_yesterday_delivered_impressions_width",
+    "yesterday_delivered_impressions": "yesterday_delivered_impressions_width",
+    "today_goal_impressions": "today_goal_impressions_width",
+}
+
 
 class DailyCampaignReport(BaseEmailReport):
 
@@ -170,7 +182,9 @@ def _float_format(value, float_round=1, suffix=""):
 
 
 def _calculate_widths(opportunity):
-    for fields_map in [adwords_spend_percent_map]:
+    for fields_map in [adwords_spend_percent_map,
+                       campaign_views_percent_map,
+                       campaign_impressions_percent_map]:
         _calculate_with_general(opportunity, fields_map)
     return opportunity
 
@@ -181,7 +195,7 @@ def _calculate_with_general(opportunity, keys_map: dict):
 
     input_keys = keys_map.keys()
     values = [get_value(key) for key in input_keys]
-    max_value = max(values)
+    max_value = max(values) or 1
 
     def get_width_value(v):
         return "{0:.0f}%".format(v * 100 / max_value)
