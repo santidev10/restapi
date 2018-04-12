@@ -77,18 +77,18 @@
                                     AdWords Spend
                                 </p>
 
-                                <div id="adwordsSpendBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_budget_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="adwordsSpendBeforeYesterday" class="chart-bar chart-bar-gray" style="width: {{ item.before_yesterday_budget_width }}">
+                                    <div>
                                         <strong>${{ item.before_yesterday_budget|floatformat:"2" }}</strong>
                                     </div>
                                 </div>
-                                <div id="adwordsSpendYesterday" class="chart-bar" style="min-width: {{ item.yesterday_budget_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="adwordsSpendYesterday" class="chart-bar chart-bar-green" style="width: {{ item.yesterday_budget_width }}">
+                                    <div>
                                         <strong>${{ item.yesterday_budget|floatformat:"2" }}</strong>
                                     </div>
                                 </div>
-                                <div id="adwordsSpendToday" class="chart-bar" style="min-width: {{ item.today_budget_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="adwordsSpendToday" class="chart-bar chart-bar-blue" style="width: {{ item.today_budget_width }}">
+                                    <div>
                                         <strong>${{ item.today_budget|floatformat:"2" }}</strong>
                                     </div>
                                 </div>
@@ -101,18 +101,18 @@
                                    Campaign Views
                                 </p>
 
-                                <div id="opportunityViewsBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityViewsBeforeYesterday" class="chart-bar chart-bar-gray" style="width: {{ item.before_yesterday_delivered_views_width }}">
+                                    <div>
                                         <strong>{{ item.before_yesterday_delivered_views|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityViewsYesterday" class="chart-bar" style="min-width: {{ item.yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityViewsYesterday" class="chart-bar chart-bar-green" style="width: {{ item.yesterday_delivered_views_width }}">
+                                    <div>
                                         <strong>{{ item.yesterday_delivered_views|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityViewsToday" class="chart-bar" style="min-width: {{ item.today_goal_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityViewsToday" class="chart-bar chart-bar-blue" style="width: {{ item.today_goal_views_width }}">
+                                    <div>
                                         <strong>{{ item.today_goal_views|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
@@ -127,18 +127,18 @@
                                    Campaign Impressions
                                 </p>
 
-                                <div id="opportunityImpressionsBeforeYesterday" class="chart-bar" style="min-width: {{ item.before_yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #c2c0c2; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityImpressionsBeforeYesterday" class="chart-bar chart-bar-gray" style="width: {{ item.before_yesterday_delivered_impressions_width }}">
+                                    <div>
                                         <strong>{{ item.before_yesterday_delivered_impressions|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityImpressionsYesterday" class="chart-bar" style="min-width: {{ item.yesterday_delivered_len|add:'46' }}px;width: 100%; background-color: #0c9c2c; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityImpressionsYesterday" class="chart-bar chart-bar-green" style="width: {{ item.yesterday_delivered_impressions_width }}">
+                                    <div>
                                         <strong>{{ item.yesterday_delivered_impressions|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
-                                <div id="opportunityImpressionsToday" class="chart-bar" style="min-width: {{ item.today_goal_len|add:'46' }}px;width: 100%; background-color: #5a9db0; border-radius: 4px; margin-bottom: 10px;">
-                                    <div style="padding:12px 20px 11px; height: 17px; font-size: 14px; line-height: 17px; font-family: Arial, Helvetica, sans-serif; color:#ffffff;">
+                                <div id="opportunityImpressionsToday" class="chart-bar chart-bar-blue" style="width: {{ item.today_goal_impressions_width }}">
+                                    <div>
                                         <strong>{{ item.today_goal_impressions|floatformat:"0" }}</strong>
                                     </div>
                                 </div>
