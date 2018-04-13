@@ -1,11 +1,16 @@
 from datetime import datetime
 
-from aw_reporting.models import AGE_25_34, AGE_18_24, AgeRanges, \
-    CampaignGenderTargeting, CampaignAgeRangeTargeting, Genders, MALE_GENDER, \
-    UNDETERMINED_GENDER, FEMALE_GENDER, Opportunity, OpPlacement, Campaign, \
+from aw_reporting.models import AgeRanges, CampaignGenderTargeting, \
+    CampaignAgeRangeTargeting, Genders, Opportunity, OpPlacement, Campaign, \
     GeoTarget, CampaignLocationTargeting
 from aw_reporting.tools.health_check_tool import HealthCheckTool
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
+
+AGE_18_24 = "18-24"
+AGE_25_34 = "25-34"
+UNDETERMINED_GENDER = "Undetermined Gender"
+MALE_GENDER = "Male"
+FEMALE_GENDER = "Female"
 
 
 class SetupHealthCheckToolTestCase(APITestCase):
