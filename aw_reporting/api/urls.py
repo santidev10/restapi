@@ -79,6 +79,14 @@ urlpatterns = [
         views.PacingReportOpportunityUpdateApiView.as_view(),
         name="pacing_report_update_opportunity"),
 
+    # AW WebHooks
+    url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
+        views.WebHookAWAccountsListApiView.as_view(),
+        name="webhook_accounts_list"),
+    url(r'^webhook_aw/save_settings/(?P<pk>\w+)/$',
+        views.WebHookAWSaveSettingsApiView.as_view(),
+        name="campaigns_setup_check_save_settings"),
+
     # Health check tool
     url(r'^setup_health_check_list/$', views.HealthCheckView.as_view(),
         name="health_check_tool"),
