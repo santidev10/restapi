@@ -418,6 +418,19 @@ class Campaign(BaseStatisticModel):
     )
     goal_allocation = models.FloatField(default=0)
 
+    # setup fields
+    targeting_interests = models.BooleanField(default=False)
+    targeting_topics = models.BooleanField(default=False)
+    targeting_keywords = models.BooleanField(default=False)
+    targeting_channels = models.BooleanField(default=False)
+    targeting_videos = models.BooleanField(default=False)
+    targeting_remarketings = models.BooleanField(default=False)
+    targeting_custom_affinity = models.BooleanField(default=False)
+    tracking_template_is_set = models.BooleanField(default=False)
+    targeting_excluded_channels = models.BooleanField(default=False)
+    targeting_excluded_topics = models.BooleanField(default=False)
+    targeting_excluded_keywords = models.BooleanField(default=False)
+    
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 
     def __str__(self):
