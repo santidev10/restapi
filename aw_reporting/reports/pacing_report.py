@@ -307,6 +307,8 @@ class PacingReport:
 
             elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
                 fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
+            elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
+                fl["plan_units"] = 0
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor if fl[
                     "ordered_units"] else 0
