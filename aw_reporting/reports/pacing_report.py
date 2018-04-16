@@ -67,6 +67,13 @@ class PacingReport:
                     When(
                         then=Case(
                             When(
+                                placement__dynamic_placement__in=[
+                                    DynamicPlacementType.BUDGET,
+                                    DynamicPlacementType.RATE_AND_TECH_FEE],
+                                then=F(
+                                    "placement__adwords_campaigns__statistics__cost"),
+                            ),
+                            When(
                                 placement__goal_type_id=Value(
                                     SalesForceGoalType.CPM),
                                 then=F(
@@ -77,13 +84,6 @@ class PacingReport:
                                     SalesForceGoalType.CPV),
                                 then=F(
                                     "placement__adwords_campaigns__statistics__video_views"),
-                            ),
-                            When(
-                                placement__dynamic_placement__in=[
-                                    DynamicPlacementType.BUDGET,
-                                    DynamicPlacementType.RATE_AND_TECH_FEE],
-                                then=F(
-                                    "placement__adwords_campaigns__statistics__cost"),
                             ),
                             output_field=FloatField(),
                         ),
@@ -302,12 +302,11 @@ class PacingReport:
                 goal_factor = self.goal_factor
 
             fl["plan_units"] = 0
-            if fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
-                if fl["placement__dynamic_placement"] == DynamicPlacementType.BUDGET:
-                    fl["plan_units"] = fl["total_cost"] or 0
+            if fl["placement__dynamic_placement"] == DynamicPlacementType.BUDGET:
+                fl["plan_units"] = fl["total_cost"] or 0
 
-                elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-                    fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
+            elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
+                fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor if fl[
                     "ordered_units"] else 0
