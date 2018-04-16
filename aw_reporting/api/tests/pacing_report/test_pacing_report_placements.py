@@ -281,7 +281,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             start=start, end=end, total_cost=123,
             goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
-            tech_fee_type=OpPlacement.TECH_FEE_CPM_TYPE
         )
         total_cost = 1234
         ordered_units = 4321

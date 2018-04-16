@@ -50,7 +50,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
                     sum_client_cost += units * (rate + tech_fee)
 
             elif dynamic_placement == DynamicPlacementType.BUDGET:
-                sum_client_cost += stats["total_cost"]
+                sum_client_cost += stats["total_cost"] or 0
             elif goal_type_id == SalesForceGoalType.CPV:
                 sum_client_cost += delivery * placement_ordered_rate
 

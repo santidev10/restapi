@@ -305,8 +305,8 @@ class PacingReport:
             if fl["placement__dynamic_placement"] == DynamicPlacementType.BUDGET:
                 fl["plan_units"] = fl["total_cost"] or 0
 
-            elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-                fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
+            # elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
+            #     fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
             else:
@@ -387,7 +387,7 @@ class PacingReport:
         )
         #
         tech_fee = float(f["placement__tech_fee"] or 0)
-        if f["placement__tech_fee_type"] == OpPlacement.TECH_FEE_CPV_TYPE:
+        if f["placement__goal_type_id"] == SalesForceGoalType.CPV:
             video_views = stats_total["video_views"] or 0
             total_cpv = self.DEFAULT_AVERAGE_CPV \
                 if stats_total["cpv"] is None \
@@ -398,7 +398,7 @@ class PacingReport:
             client_cost_spent = video_views * (total_cpv + tech_fee)
             spend_kf = three_days_cpv / (three_days_cpv + tech_fee)
 
-        elif f["placement__tech_fee_type"] == OpPlacement.TECH_FEE_CPM_TYPE:
+        elif f["placement__goal_type_id"] == SalesForceGoalType.CPM:
             impressions = stats_total["impressions"] or 0
             total_cpm = self.DEFAULT_AVERAGE_CPM \
                 if stats_total["cpm"] is None \
