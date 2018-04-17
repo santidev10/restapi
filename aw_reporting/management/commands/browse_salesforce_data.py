@@ -150,7 +150,7 @@ class Command(BaseCommand):
                 'account_id',
                 flat=True).distinct()
 
-            aw_cid = ",".join(ids)
+            aw_cid = ",".join(filter(lambda x: x is not None, ids))
             if not aw_cid:
                 continue
 
