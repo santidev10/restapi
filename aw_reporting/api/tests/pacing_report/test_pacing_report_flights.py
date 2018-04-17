@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
     HTTP_404_NOT_FOUND
 
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    SalesForceGoalType, Campaign, CampaignStatistic, DynamicPlacementType
+    SalesForceGoalType, Campaign, CampaignStatistic
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
@@ -424,7 +425,7 @@ class PacingReportTestCase(APITestCase):
             .aggregate(cost=Sum("cost"))["cost"]
 
         url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+                      args=(opportunity.id,))
         response = self.client.get(url)
 
         placement_data = response.data[0]

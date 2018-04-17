@@ -5,8 +5,8 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Sum
 
-from aw_reporting.models import OpPlacement, dict_calculate_stats, \
-    DynamicPlacementType
+from aw_reporting.models import OpPlacement, dict_calculate_stats
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
 

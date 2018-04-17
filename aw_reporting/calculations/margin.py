@@ -1,7 +1,8 @@
 from django.db.models import Sum, When, Case, Value, F, FloatField
 
 from aw_reporting.models import OpPlacement, SalesForceGoalType, Flight, \
-    get_margin, DynamicPlacementType
+    get_margin
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 
 
 def get_margin_from_flights(flights, cost, plan_cost,
