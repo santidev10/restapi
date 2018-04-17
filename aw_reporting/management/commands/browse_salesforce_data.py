@@ -11,7 +11,8 @@ from django.db.models import Q
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \
     User, Contact, SFAccount, Category, Flight, Activity
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
+    DynamicPlacementType
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz

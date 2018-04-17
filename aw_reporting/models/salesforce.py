@@ -7,7 +7,7 @@ from django.db import models
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    goal_type_str, SalesForceRegions, SalesForceGoalTypes, DynamicPlacementType
+    goal_type_str, SalesForceRegions, SalesForceGoalTypes
 
 logger = logging.getLogger(__name__)
 
