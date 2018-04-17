@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from django.core.management import call_command
 
 from aw_reporting.models import OpPlacement, Flight, Opportunity, Campaign, \
-    CampaignStatistic, SFAccount
+    CampaignStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
     SalesForceGoalType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
