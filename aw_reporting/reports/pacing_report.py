@@ -784,7 +784,6 @@ class PacingReport:
                 delivered = daily_delivery.get(date, 0)
 
                 if delivered:
-                    delivery_variance = delivered - initial_daily_goal
                     sum_delivered += delivered
                 else:
                     delivery_variance = 0

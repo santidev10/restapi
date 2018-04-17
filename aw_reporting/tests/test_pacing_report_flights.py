@@ -7,7 +7,7 @@ from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Campaign, CampaignStatistic, DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, patch_now
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -183,17 +183,23 @@ class PacingReportTestCase(ExtendedAPITestCase):
     def test_cpv_flight_ended_pacing_chart(self):
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 8).date()
         today = datetime(2017, 1, 8).date()
-        opportunity = Opportunity.objects.create(id="1", name="", probability=100)
+        opportunity = Opportunity.objects.create(id="1", name="",
+                                                 probability=100)
         placement = OpPlacement.objects.create(
-            id="1", name="Second", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+            id="1", name="Second", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
             ordered_units=8000, total_cost=80000,
         )
         Flight.objects.create(id="1", name="", placement=placement, start=start,
-                              end=end, total_cost=placement.total_cost, ordered_units=placement.ordered_units)
+                              end=end, total_cost=placement.total_cost,
+                              ordered_units=placement.ordered_units)
 
-        campaign = Campaign.objects.create(id="1", name="", video_views=1, salesforce_placement=placement)
+        campaign = Campaign.objects.create(id="1", name="", video_views=1,
+                                           salesforce_placement=placement)
         for i in range(8):
-            CampaignStatistic.objects.create(campaign=campaign, date=start + timedelta(days=i), video_views=2040)
+            CampaignStatistic.objects.create(campaign=campaign,
+                                             date=start + timedelta(days=i),
+                                             video_views=2040)
 
         report = PacingReport(today=today)
         flights = report.get_flights(placement)
