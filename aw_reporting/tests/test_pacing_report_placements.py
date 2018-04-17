@@ -3,7 +3,8 @@ from datetime import timedelta, datetime
 from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Campaign, CampaignStatistic, DynamicPlacementType
+    Flight, Campaign, CampaignStatistic
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase

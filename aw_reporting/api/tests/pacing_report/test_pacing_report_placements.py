@@ -7,8 +7,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
     HTTP_404_NOT_FOUND
 
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
-    DynamicPlacementType
+    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
