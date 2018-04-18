@@ -18,6 +18,11 @@ from utils.datetime import now_in_default_tz
 from django.db.models import F, Sum, Case, When, Value, FloatField, IntegerField
 
 
+class PacingReportChartId:
+    IDEAL_PACING = "ideal_pacing"
+    DAILY_DEVIATION = "daily_deviation"
+
+
 class PacingReport:
     DEFAULT_AVERAGE_CPV = .04
     DEFAULT_AVERAGE_CPM = 6.25
@@ -627,14 +632,12 @@ class PacingReport:
                     if yesterdays_stats["cpm"] is None \
                     else yesterdays_stats["cpm"]
                 today_budget = cpm * today_units / 1000
-
         return today_units, today_budget
 
     def get_chart_data(self, *_, flights, before_yesterday_stats=None,
                        allocation_ko=1, campaign_id=None):
 
-        flights = [f for f in flights if None not in (
-            f["start"], f["end"], f["placement__goal_type_id"])]
+        flights = [f for f in flights if None not in (f["start"], f["end"])]
         if not flights:
             goal_type_id = None
         else:
@@ -724,8 +727,7 @@ class PacingReport:
 
     def get_flight_charts(self, flights, allocation_ko=1, campaign_id=None,
                           goal_type_id=None):
-        if goal_type_id is None \
-                or goal_type_id == SalesForceGoalType.HARD_COST:
+        if goal_type_id == SalesForceGoalType.HARD_COST:
             return None
         charts = []
         if not flights:
@@ -768,20 +770,21 @@ class PacingReport:
                 initial_daily_goal = today_budget if budget_is_goal else today_units
 
                 daily_goal = initial_daily_goal + delivery_variance
+
+                if date <= self.today:
+                    daily_goal -= sum_pacing - sum_delivered
+                daily_goal = min(daily_goal, goal - sum_pacing)
                 if daily_goal + sum_pacing > goal:
                     daily_goal = goal - sum_pacing
-
                 flight["daily_goal"][date] = daily_goal
                 sum_pacing += daily_goal
 
                 delivered = daily_delivery.get(date, 0)
 
                 if delivered:
-                    delivery_variance = delivered - initial_daily_goal
                     sum_delivered += delivered
                 else:
                     delivery_variance = 0
-                    sum_delivered += initial_daily_goal
 
         delivered_chart = []
         pacing_chart = []
@@ -829,6 +832,7 @@ class PacingReport:
             charts.append(
                 dict(
                     title="Ideal Pacing",
+                    id=PacingReportChartId.IDEAL_PACING,
                     data=pacing_chart,
                 )
             )
@@ -836,10 +840,10 @@ class PacingReport:
             charts.append(
                 dict(
                     title="Daily Deviation",
+                    id=PacingReportChartId.DAILY_DEVIATION,
                     data=delivered_chart,
                 )
             )
-
         return charts
 
     def get_today_goal(self, goal_items, delivered_items, end, today):
