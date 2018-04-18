@@ -78,6 +78,7 @@ class PacingReportTestCase(APITestCase):
                 "today_goal_impressions",
                 "before_yesterday_delivered_impressions",
                 "yesterday_delivered_impressions",
+                "tech_fee", "goal_type_id", "dynamic_placement"
             }
         )
         flight.refresh_from_db()
@@ -553,3 +554,70 @@ class PacingReportTestCase(APITestCase):
         flight_data = response.data[0]
         self.assertEqual(flight_data["yesterday_budget"], yesterday_spend)
         self.assertEqual(flight_data["today_budget"], today_goal)
+
+    def test_dynamic_placement_rate_and_tech_fee(self):
+        today = date(2017, 1, 1)
+        start = today - timedelta(days=3)
+        end = today + timedelta(days=3)
+        tech_fee = 0.12
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        total_cost = 123
+        aw_cost = 23
+        clicks, views, impressions = 3, 14, 164
+        aw_cpv = aw_cost * 1. / views
+        aw_cpm = aw_cost * 1000. / impressions
+        rate = 2.3
+        rate_margin = tech_fee * 100. / (aw_cpv + tech_fee)
+        video_view_rate = views * 100. / impressions
+        ctr = clicks * 100. / views
+        client_cost = views * (rate + tech_fee)
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start, end=end, total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=rate,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=tech_fee
+        )
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           video_views=1)
+        CampaignStatistic.objects.create(date=today, campaign=campaign,
+                                         cost=aw_cost,
+                                         clicks=clicks,
+                                         video_views=views,
+                                         impressions=impressions)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        pl = response.data[0]
+        self.assertEqual(pl["dynamic_placement"], DynamicPlacementType.RATE_AND_TECH_FEE)
+        self.assertAlmostEqual(pl["tech_fee"], tech_fee)
+        # ordered units
+        self.assertEqual(pl["plan_video_views"], 0)
+        self.assertIsNone(pl["plan_impressions"])
+        # contracted rate
+        self.assertEqual(pl["plan_cpv"], rate)
+        self.assertIsNone(pl["plan_cpm"])
+        # client budget
+        self.assertEqual(pl["plan_cost"], total_cost)
+        # amount spent
+        self.assertEqual(pl["cost"], aw_cost)
+        # view rate
+        self.assertEqual(pl["video_view_rate"], video_view_rate)
+
+        self.assertEqual(pl["ctr"], ctr)
+        self.assertEqual(pl["cpv"], aw_cpv)
+        self.assertEqual(pl["cpm"], aw_cpm)
+        self.assertEqual(pl["impressions"], impressions)
+        self.assertEqual(pl["video_views"], views)
+        # margin
+        self.assertAlmostEqual(pl["rate_margin"], rate_margin)
+        # pacing
+        self.assertAlmostEqual(pl["client_cost"], client_cost)
