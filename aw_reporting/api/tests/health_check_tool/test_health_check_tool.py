@@ -1,16 +1,14 @@
 from datetime import datetime
 
 from aw_reporting.models import AgeRanges, CampaignGenderTargeting, \
-    CampaignAgeRangeTargeting, Genders, Opportunity, OpPlacement, Campaign, \
+    CampaignAgeRangeTargeting, Opportunity, OpPlacement, Campaign, \
     GeoTarget, CampaignLocationTargeting
-from aw_reporting.tools.health_check_tool import HealthCheckTool
+from aw_reporting.tools.health_check_tool import HealthCheckTool, MALE_GENDER, \
+    FEMALE_GENDER, UNDETERMINED_GENDER, GENDERS
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 AGE_18_24 = "18-24"
 AGE_25_34 = "25-34"
-UNDETERMINED_GENDER = "Undetermined Gender"
-MALE_GENDER = "Male"
-FEMALE_GENDER = "Female"
 
 
 class SetupHealthCheckToolTestCase(APITestCase):
@@ -444,17 +442,18 @@ class SetupHealthCheckToolTestCase(APITestCase):
 
     def test_demo_section(self):
         opportunity = Opportunity.objects.create(
-            id="1", name="", demographic="A 18 - 24; A 25 - 34;No unknown age")
+            id="1", name="", demographic="A 18 - 24; A 25 - 34;"
+                                         "No unknown age;Unknown Gender")
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity)
         campaign = Campaign.objects.create(
             id="1", name="", salesforce_placement=placement)
         CampaignGenderTargeting.objects.create(
-            campaign=campaign, gender_id=Genders.index(UNDETERMINED_GENDER))
+            campaign=campaign, gender_id=GENDERS.index(UNDETERMINED_GENDER))
         CampaignGenderTargeting.objects.create(
-            campaign=campaign, gender_id=Genders.index(FEMALE_GENDER))
+            campaign=campaign, gender_id=GENDERS.index(FEMALE_GENDER))
         CampaignGenderTargeting.objects.create(
-            campaign=campaign, gender_id=Genders.index(MALE_GENDER))
+            campaign=campaign, gender_id=GENDERS.index(MALE_GENDER))
         CampaignAgeRangeTargeting.objects.create(
             campaign=campaign, age_range_id=AgeRanges.index(AGE_18_24))
         CampaignAgeRangeTargeting.objects.create(
@@ -462,7 +461,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["demographic"]["match"], False)
+        self.assertIs(response["demographic"]["match"], True)
         self.assertEqual(
             set(e["name"] for e in response["demographic"]["aw"]),
             {UNDETERMINED_GENDER, FEMALE_GENDER,

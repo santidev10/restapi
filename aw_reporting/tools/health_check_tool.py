@@ -5,8 +5,8 @@ from itertools import zip_longest
 from django.contrib.auth import get_user_model
 from django.db.models import Min, Max, Count, Case, When, F, Sum, CharField
 
-from aw_reporting.models import Campaign, ConcatAggregate, Genders, \
-    AgeRanges, GeoTarget, VideoCreativeStatistic
+from aw_reporting.models import Campaign, ConcatAggregate, AgeRanges, \
+    GeoTarget, VideoCreativeStatistic
 
 AW_TARGETING_FIELDS = (
     "targeting_interests", "targeting_topics", "targeting_keywords",
@@ -16,6 +16,11 @@ AW_TARGETING_FIELDS = (
     "targeting_excluded_keywords",
 )
 
+UNDETERMINED_GENDER = "Undetermined Gender"
+MALE_GENDER = "Male"
+FEMALE_GENDER = "Female"
+GENDERS = (UNDETERMINED_GENDER, FEMALE_GENDER, MALE_GENDER)
+
 
 class HealthCheckTool(list):
     user_fields = (
@@ -24,7 +29,6 @@ class HealthCheckTool(list):
 
     def __init__(self, items):
         opp_ids = [o.id for o in items]
-
         emails = [
             getattr(getattr(o, f), "email", None)
             for o in items for f in self.user_fields]
@@ -186,7 +190,7 @@ class DemoSection(Section):
         gender_targeting = setup_data["gender_targeting"]
         if gender_targeting:
             gender_targeting = [
-                Genders[int(e)] for e in
+                GENDERS[int(e)] for e in
                 gender_targeting.split(self.coma_sep)]
             self.gender_targeting = gender_targeting
             response.extend(gender_targeting)
