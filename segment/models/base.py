@@ -4,7 +4,7 @@ BaseSegment models module
 import logging
 
 from celery import task
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
 from django.db.models import CharField
 from django.db.models import ForeignKey
@@ -44,6 +44,7 @@ class BaseSegment(Timestampable):
     mini_dash_data = JSONField(default=dict())
     adw_data = JSONField(default=dict())
     owner = ForeignKey('userprofile.userprofile', null=True, blank=True, on_delete=SET_NULL)
+    shared_with = ArrayField(CharField(max_length=200), blank=True, default=list)
 
     class Meta:
         abstract = True
