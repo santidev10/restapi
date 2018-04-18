@@ -3,19 +3,19 @@ from datetime import timedelta
 from math import ceil
 
 from django.contrib.auth import get_user_model
+from django.db.models import F, Sum, Case, When, Value, FloatField, IntegerField
 
 from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
-    get_average_cpv, get_average_cpm, get_video_view_rate, dict_calculate_stats, \
-    Opportunity, Campaign, CampaignStatistic, get_margin
+    get_average_cpv, get_average_cpm, get_video_view_rate, \
+    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
-from django.db.models import F, Sum, Case, When, Value, FloatField, IntegerField
 
 
 class PacingReportChartId:
@@ -49,7 +49,8 @@ class PacingReport:
 
     def get_goal_items_factor(self, budget):
         """
-        Add 2(or 1)% to overall views goal which would trickle down to the lower levels (placements, flights, etc.)
+        Add 2(or 1)% to overall views goal which would trickle down
+        to the lower levels (placements, flights, etc.)
         :param budget:
         :return:
         """
@@ -307,7 +308,9 @@ class PacingReport:
                 goal_factor = self.goal_factor
 
             fl["plan_units"] = 0
-            if fl["placement__dynamic_placement"] == DynamicPlacementType.BUDGET:
+            if fl["placement__dynamic_placement"] \
+                    in (DynamicPlacementType.BUDGET,
+                        DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
 
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
@@ -484,7 +487,8 @@ class PacingReport:
             sum_delivery += stats["delivery"] or 0
             aw_cost = stats["sum_cost"] or 0
 
-            if dynamic_placement == DynamicPlacementType.BUDGET:
+            if dynamic_placement in (DynamicPlacementType.BUDGET,
+                                     DynamicPlacementType.SERVICE_FEE):
                 sum_spent_cost += aw_cost
                 flight_count = Flight.objects.filter(
                     placement_id=f["placement_id"]).count()
@@ -566,7 +570,9 @@ class PacingReport:
         today_budget = today_units = 0
         total_cost = flight["total_cost"] or 0
 
-        if dynamic_placement == DynamicPlacementType.BUDGET:
+        if dynamic_placement in (DynamicPlacementType.BUDGET,
+                                 DynamicPlacementType.SERVICE_FEE):
+            # print(total_cost, stats_total["cost"], flight["end"], last_day)
             today_budget = self.get_today_goal(
                 total_cost * allocation_ko,
                 stats_total["cost"], flight["end"], last_day)
@@ -743,6 +749,7 @@ class PacingReport:
             dynamic_placement = flight["placement__dynamic_placement"]
             budget_is_goal = dynamic_placement in (
                 DynamicPlacementType.BUDGET,
+                DynamicPlacementType.SERVICE_FEE,
                 DynamicPlacementType.RATE_AND_TECH_FEE)
 
             if dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
