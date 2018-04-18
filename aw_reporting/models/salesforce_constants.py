@@ -25,3 +25,16 @@ class SalesForceGoalTypeStr:
     CPM = goal_type_str(SalesForceGoalType.CPM)
     CPV = goal_type_str(SalesForceGoalType.CPV)
     HARD_COST = goal_type_str(SalesForceGoalType.HARD_COST)
+
+
+class DynamicPlacementType:
+    BUDGET = "Budget"
+    SERVICE_FEE = "Service Fee"
+    RATE_AND_TECH_FEE = "Rate + Tech Fee"
+
+
+DYNAMIC_PLACEMENT_TYPES = (
+    DynamicPlacementType.BUDGET,
+    DynamicPlacementType.SERVICE_FEE,
+    DynamicPlacementType.RATE_AND_TECH_FEE
+)

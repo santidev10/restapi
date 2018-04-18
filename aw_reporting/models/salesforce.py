@@ -9,7 +9,6 @@ from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     goal_type_str, SalesForceRegions, SalesForceGoalTypes
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -396,10 +395,6 @@ class OpPlacement(BaseModel):
     incremental = models.BooleanField(default=False)
 
     OUTGOING_FEE_TYPE = "Outgoing Fee"
-
-    DYNAMIC_TYPE_BUDGET = "Budget"
-    DYNAMIC_TYPE_SERVICE_FEE = "Service Fee"
-    DYNAMIC_TYPE_RATE_AND_TECH_FEE = "Rate + Tech Fee"
 
     def __str__(self):
         return "%s" % self.name

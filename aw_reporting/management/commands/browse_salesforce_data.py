@@ -11,7 +11,8 @@ from django.db.models import Q
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \
     User, Contact, SFAccount, Category, Flight, Activity
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
+    DynamicPlacementType
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz
@@ -149,7 +150,7 @@ class Command(BaseCommand):
                 'account_id',
                 flat=True).distinct()
 
-            aw_cid = ",".join(ids)
+            aw_cid = ",".join(filter(lambda x: x is not None, ids))
             if not aw_cid:
                 continue
 
@@ -211,7 +212,7 @@ class Command(BaseCommand):
         # When the flight is created, IQ needs to put a 0 for costs and 1
         # for delivered units on each of the flights
         service_flights_to_update = Flight.objects.filter(
-            placement__dynamic_placement=OpPlacement.DYNAMIC_TYPE_SERVICE_FEE,
+            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE,
         ).exclude(
             delivered=1, cost=0,
         )
@@ -239,8 +240,7 @@ class Command(BaseCommand):
     def flights_to_update_qs(self):
         now = now_in_default_tz()
 
-        date_filters = Q(start__month=now.month, start__year=now.year) | Q(
-            end__month=now.month, end__year=now.year)
+        date_filters = Q(start__lte=now, end__gte=now)
 
         stop_updating_date = self.prev_month_flight_write_stop_day
         if now.hour > 5:
@@ -254,13 +254,18 @@ class Command(BaseCommand):
         type_filters = Q(placement__goal_type_id__in=(
             SalesForceGoalType.CPM, SalesForceGoalType.CPV)) \
                        | Q(placement__dynamic_placement__in=(
-            OpPlacement.DYNAMIC_TYPE_BUDGET,
-            OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE))
+            DynamicPlacementType.BUDGET,
+            DynamicPlacementType.RATE_AND_TECH_FEE))
 
         flights = Flight.objects.filter(
             start__gte=WRITE_START,
             placement__adwords_campaigns__isnull=False,
-        ).filter(type_filters).filter(date_filters).prefetch_related(
+        ) \
+            .exclude(
+            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
+            .filter(type_filters) \
+            .filter(date_filters) \
+            .prefetch_related(
             "placement").distinct()
 
         return flights
