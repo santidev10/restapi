@@ -11,7 +11,6 @@ from datetime import datetime
 from pytz import timezone, utc
 import logging
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
 
 

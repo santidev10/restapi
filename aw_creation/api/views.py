@@ -9,9 +9,7 @@ from decimal import Decimal
 from io import StringIO
 
 import isodate
-import pytz
 from apiclient.discovery import build
-from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
@@ -39,8 +37,8 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     TargetingItem, default_languages
 from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
-from aw_reporting.api.serializers import CampaignListSerializer
-from aw_reporting.api.views import DATE_FORMAT
+from aw_reporting.api.serializers.campaign_list_serializer import \
+    CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
@@ -48,13 +46,16 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
     AgeRanges, Devices, \
-    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, Topic, Audience, \
+    CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic
+    TopicStatistic, DATE_FORMAT
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
+from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -1751,8 +1752,7 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
 
         # this and last week base stats
-        week_end = datetime.now(
-            tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_end = now_in_default_tz().date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)

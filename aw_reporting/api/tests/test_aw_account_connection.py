@@ -59,26 +59,22 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
                 testAccount=False,
             ),
         ]
-        with patch(
-            "aw_reporting.api.views.client.OAuth2WebServerFlow"
-        ) as flow:
+        view_path = "aw_reporting.api.views.connect_aw_account"
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_google_access_token_info",
+                      new=lambda _: dict(email=test_email)), \
+                patch(view_path + ".get_customers",
+                      new=lambda *_, **k: test_customers), \
+                patch(view_path +
+                      ".upload_initial_aw_data") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             test_email = "test@mail.kz"
-            with patch(
-                "aw_reporting.api.views.get_google_access_token_info",
-                new=lambda _: dict(email=test_email)
-            ):
-                with patch("aw_reporting.api.views.get_customers",
-                           new=lambda *_, **k: test_customers):
-                    with patch(
-                        "aw_reporting.api.views.upload_initial_aw_data"
-                    ) as initial_upload_task:
-                        response = self.client.post(
-                            url,
-                            json.dumps(dict(code="1111")),
-                            content_type='application/json',
-                        )
-                        self.assertEqual(initial_upload_task.delay.call_count, 1)
+            response = self.client.post(
+                url,
+                json.dumps(dict(code="1111")),
+                content_type='application/json',
+            )
+            self.assertEqual(initial_upload_task.delay.call_count, 1)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()),

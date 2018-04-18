@@ -23,9 +23,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         url = reverse("segment_api_urls:segment_list",
                       kwargs={"segment_type": "keyword"}) \
               + "?" + urlencode(query_params)
-        print(url)
         response = self.client.get(url)
-        print(response.data)
 
         average_cpcs = [s["statistics"]["average_cpc"] for s in
                         response.data["items"]]
@@ -48,9 +46,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         url = reverse("segment_api_urls:segment_list",
                       kwargs={"segment_type": "keyword"}) \
               + "?" + urlencode(query_params)
-        print(url)
         response = self.client.get(url)
-        print(response.data)
 
         competitions = [s["statistics"]["competition"] for s in
                         response.data["items"]]
@@ -73,9 +69,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         url = reverse("segment_api_urls:segment_list",
                       kwargs={"segment_type": "keyword"}) \
               + "?" + urlencode(query_params)
-        print(url)
         response = self.client.get(url)
-        print(response.data)
 
         average_volumes = [s["statistics"]["average_volume"] for s in
                            response.data["items"]]

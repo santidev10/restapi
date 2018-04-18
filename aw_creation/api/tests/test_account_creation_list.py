@@ -1,12 +1,13 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DEMO_BRAND, DEMO_COST_METHOD, DEMO_AGENCY
 from aw_reporting.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -19,7 +20,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "clicks",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw", "updated_at"
+        "is_disapproved", "from_aw", "updated_at",
+        "brand", "cost_method", "agency"
     }
 
     def setUp(self):
@@ -36,41 +38,42 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'id', 'name', 'account', 'campaign_creations',
-                'updated_at', 'is_ended', 'is_paused', 'is_approved',
+                "id", "name", "account", "campaign_creations",
+                "updated_at", "is_ended", "is_paused", "is_approved",
             }
         )
 
-        item = AccountCreation.objects.get(pk=response.data['id'])
+        item = AccountCreation.objects.get(pk=response.data["id"])
         self.assertEqual(item.is_deleted, True)  # item is hidden
 
-        campaign_creation = response.data['campaign_creations'][0]
+        campaign_creation = response.data["campaign_creations"][0]
         self.assertEqual(
             set(campaign_creation.keys()),
             {
-                'id', 'name', 'updated_at', 'content_exclusions',
-                'start', 'end', 'budget', 'languages', 'devices',
-                'frequency_capping', 'ad_schedule_rules',
-                'location_rules', 'ad_group_creations',
-                'video_networks', 'type', 'delivery_method',
+                "id", "name", "updated_at", "content_exclusions",
+                "start", "end", "budget", "languages", "devices",
+                "frequency_capping", "ad_schedule_rules",
+                "location_rules", "ad_group_creations",
+                "video_networks", "type", "delivery_method",
             }
         )
-        self.assertEqual(len(campaign_creation['languages']), 1)
+        self.assertEqual(len(campaign_creation["languages"]), 1)
 
-        ad_group_creation = campaign_creation['ad_group_creations'][0]
+        ad_group_creation = campaign_creation["ad_group_creations"][0]
         self.assertEqual(
             set(ad_group_creation.keys()),
             {
-                'id', 'name', 'updated_at', 'ad_creations', 'max_rate',
-                'genders', 'parents', 'age_ranges', 'targeting', 'video_ad_format',
+                "id", "name", "updated_at", "ad_creations", "max_rate",
+                "genders", "parents", "age_ranges", "targeting",
+                "video_ad_format",
             }
         )
 
         self.assertEqual(
-            set(ad_group_creation['targeting'].keys()),
-            {'channel', 'video', 'topic', 'interest', 'keyword'}
+            set(ad_group_creation["targeting"].keys()),
+            {"channel", "video", "topic", "interest", "keyword"}
         )
-        self.assertEqual(len(ad_group_creation['ad_creations']), 1)
+        self.assertEqual(len(ad_group_creation["ad_creations"]), 1)
 
     def test_fail_get_data_of_another_user(self):
         user = get_user_model().objects.create(
@@ -87,15 +90,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 1,
+        self.assertEqual(response.data["items_count"], 1,
                          "Only Demo account")
-        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(len(response.data["items"]), 1)
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
@@ -104,8 +107,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
         date = datetime.now()
-        VideoCreativeStatistic.objects.create(creative=creative1, date=date, ad_group=ad_group, impressions=10)
-        VideoCreativeStatistic.objects.create(creative=creative2, date=date, ad_group=ad_group, impressions=12)
+        VideoCreativeStatistic.objects.create(creative=creative1, date=date,
+                                              ad_group=ad_group, impressions=10)
+        VideoCreativeStatistic.objects.create(creative=creative2, date=date,
+                                              ad_group=ad_group, impressions=12)
 
         ac_creation = AccountCreation.objects.create(
             name="", owner=self.user, account=account,
@@ -142,15 +147,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 2)
-        self.assertEqual(len(response.data['items']), 2)
-        item = response.data['items'][1]
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(len(response.data["items"]), 2)
+        item = response.data["items"][1]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -158,7 +163,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_sort_by(self):
         account1 = Account.objects.create(id="123", name="")
-        stats = dict(account=account1, name="", impressions=10, video_views=9, clicks=9, cost=9)
+        stats = dict(account=account1, name="", impressions=10, video_views=9,
+                     clicks=9, cost=9)
         Campaign.objects.create(id=1, **stats)
         Campaign.objects.create(id=2, **stats)
         top_account = AccountCreation.objects.create(
@@ -166,7 +172,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
         account2 = Account.objects.create(id="456", name="")
-        stats = dict(account=account2, name="", impressions=3, video_views=2, clicks=1, cost=3)
+        stats = dict(account=account2, name="", impressions=3, video_views=2,
+                     clicks=1, cost=3)
         Campaign.objects.create(id=3, **stats)
         Campaign.objects.create(id=4, **stats)
         AccountCreation.objects.create(
@@ -176,20 +183,17 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # --
         url = reverse("aw_creation_urls:account_creation_list")
 
-        for sort_by in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                with patch(
-                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                        new=SingleDatabaseApiConnectorPatcher
-                ):
-                    response = self.client.get("{}?sort_by={}".format(url, sort_by))
+        for sort_by in ("impressions", "video_views", "clicks", "cost",
+                        "video_view_rate", "ctr_v"):
+            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher):
+                response = self.client.get("{}?sort_by={}".format(url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
-            items = response.data['items']
+            items = response.data["items"]
             expected_top_account = items[1]
-            self.assertEqual(top_account.name, expected_top_account['name'])
+            self.assertEqual(top_account.name, expected_top_account["name"])
 
     def test_success_sort_by_name(self):
         account1 = Account.objects.create(id="123", name="")
@@ -198,10 +202,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
         account2 = Account.objects.create(id="456", name="Second account")
-        creation_2 = AccountCreation.objects.create(name="", owner=self.user, account=account2, is_managed=False,
+        creation_2 = AccountCreation.objects.create(name="", owner=self.user,
+                                                    account=account2,
+                                                    is_managed=False,
                                                     is_approved=True)
 
-        creation_3 = AccountCreation.objects.create(name="Third account", owner=self.user, account=account2)
+        creation_3 = AccountCreation.objects.create(name="Third account",
+                                                    owner=self.user,
+                                                    account=account2)
 
         # --
         url = reverse("aw_creation_urls:account_creation_list")
@@ -216,7 +224,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 response = self.client.get("{}?sort_by=name".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        items = response.data['items']
+        items = response.data["items"]
 
         self.assertEqual(
             ("Demo", creation_1.name, creation_2.account.name, creation_3.name),
@@ -225,7 +233,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_metrics_filter(self):
         AccountCreation.objects.create(name="Empty", owner=self.user,
-                                       is_ended=False, is_paused=False, is_approved=True)
+                                       is_ended=False, is_paused=False,
+                                       is_approved=True)
         account = Account.objects.create(id=1, name="")
         AccountCreation.objects.create(
             name="Maximum", owner=self.user, account=account,
@@ -254,50 +263,45 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         base_url = reverse("aw_creation_urls:account_creation_list")
 
         for metric, min1, max1, min2, max2 in test_filters:
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                with patch(
-                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                        new=SingleDatabaseApiConnectorPatcher
-                ):
-                    response = self.client.get(
-                        "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
-                            base_url=base_url, metric=metric, min=min1, max=max1)
-                    )
+            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher):
+                response = self.client.get(
+                    "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                        base_url=base_url, metric=metric, min=min1, max=max1)
+                )
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.data['items'][-1]['name'], "Minimum")
-            for item in response.data['items']:
+            self.assertEqual(response.data["items"][-1]["name"], "Minimum")
+            for item in response.data["items"]:
                 self.assertGreaterEqual(item[metric], min1)
                 self.assertLessEqual(item[metric], max1)
 
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                with patch(
-                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                        new=SingleDatabaseApiConnectorPatcher
-                ):
-                    response = self.client.get(
-                        "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
-                            base_url=base_url, metric=metric, min=min2, max=max2)
-                    )
+            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher):
+                response = self.client.get(
+                    "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
+                        base_url=base_url, metric=metric, min=min2, max=max2)
+                )
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.data['items'][-1]['name'], "Maximum")
-            for item in response.data['items']:
+            self.assertEqual(response.data["items"][-1]["name"], "Maximum")
+            for item in response.data["items"]:
                 self.assertGreaterEqual(item[metric], min2)
                 self.assertLessEqual(item[metric], max2)
 
     def test_success_status_filter(self):
         AccountCreation.objects.create(name="Pending", owner=self.user)
         AccountCreation.objects.create(name="Ended", owner=self.user,
-                                       is_ended=True, is_paused=True, is_approved=True)
+                                       is_ended=True, is_paused=True,
+                                       is_approved=True)
         AccountCreation.objects.create(name="Paused", owner=self.user,
-                                       is_ended=False, is_paused=True, is_approved=True)
+                                       is_ended=False, is_paused=True,
+                                       is_approved=True)
         AccountCreation.objects.create(name="Approved", owner=self.user,
-                                       is_ended=False, is_paused=False, is_approved=True)
+                                       is_ended=False, is_paused=False,
+                                       is_approved=True)
         AccountCreation.objects.create(
             name="Running", owner=self.user, sync_at=datetime.now(),
         )
@@ -312,20 +316,17 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         base_url = reverse("aw_creation_urls:account_creation_list")
 
         for status, count in expected:
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                with patch(
-                        "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                        new=SingleDatabaseApiConnectorPatcher
-                ):
-                    response = self.client.get("{}?show_closed=1&status={}".format(base_url, status))
+            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher):
+                response = self.client.get(
+                    "{}?show_closed=1&status={}".format(base_url, status))
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.data['items_count'], count)
-            self.assertEqual(response.data['items'][-1]['name'], status)
-            for i in response.data['items']:
-                self.assertEqual(i['status'], status)
+            self.assertEqual(response.data["items_count"], count)
+            self.assertEqual(response.data["items"][-1]["name"], status)
+            for i in response.data["items"]:
+                self.assertEqual(i["status"], status)
 
     def test_success_dates_filter(self):
         today = datetime(2015, 1, 1).date()
@@ -333,52 +334,61 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         AccountCreation.objects.create(name="Empty", owner=self.user)
         ac = AccountCreation.objects.create(name="Settings+", owner=self.user)
-        CampaignCreation.objects.create(name="", account_creation=ac, start=min_start, end=max_end)
+        CampaignCreation.objects.create(name="", account_creation=ac,
+                                        start=min_start, end=max_end)
 
         ac = AccountCreation.objects.create(name="Settings-", owner=self.user)
-        CampaignCreation.objects.create(name="", account_creation=ac, start=min_start, end=max_end + timedelta(days=1))
+        CampaignCreation.objects.create(name="", account_creation=ac,
+                                        start=min_start,
+                                        end=max_end + timedelta(days=1))
 
         account = Account.objects.create(id=1, name="")
-        Campaign.objects.create(id=1, name="", account=account, start_date=min_start, end_date=max_end)
-        AccountCreation.objects.create(name="Improted+", owner=self.user, account=account)
+        Campaign.objects.create(id=1, name="", account=account,
+                                start_date=min_start, end_date=max_end)
+        AccountCreation.objects.create(name="Improted+", owner=self.user,
+                                       account=account)
 
         account = Account.objects.create(id=2, name="")
         Campaign.objects.create(id=2, name="", account=account,
-                                start_date=min_start - timedelta(days=1), end_date=max_end)
-        AccountCreation.objects.create(name="Improted-", owner=self.user, account=account)
+                                start_date=min_start - timedelta(days=1),
+                                end_date=max_end)
+        AccountCreation.objects.create(name="Improted-", owner=self.user,
+                                       account=account)
 
         base_url = reverse("aw_creation_urls:account_creation_list")
 
-        with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                response = self.client.get("{}?min_start={}&max_end={}".format(base_url, min_start, max_end))
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(
+                "{}?min_start={}&max_end={}".format(base_url, min_start,
+                                                    max_end))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 2)
-        for item in response.data['items']:
-            self.assertIs(item['name'].endswith("+"), True)
+        self.assertEqual(response.data["items_count"], 2)
+        for item in response.data["items"]:
+            self.assertIs(item["name"].endswith("+"), True)
 
     def test_success_from_aw_filter(self):
-        AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+        AccountCreation.objects.create(name="", owner=self.user,
+                                       is_managed=True)
 
-        ac = AccountCreation.objects.create(name="", owner=self.user, is_managed=True)
+        ac = AccountCreation.objects.create(name="", owner=self.user,
+                                            is_managed=True)
         CampaignCreation.objects.create(name="", account_creation=ac)
 
         account = Account.objects.create(id=1, name="")
         Campaign.objects.create(id=1, name="", account=account)
-        managed_acc = AccountCreation.objects.create(name="", owner=self.user, account=account, is_managed=False)
+        managed_acc = AccountCreation.objects.create(name="", owner=self.user,
+                                                     account=account,
+                                                     is_managed=False)
 
         base_url = reverse("aw_creation_urls:account_creation_list")
 
         response = self.client.get("{}?from_aw=1".format(base_url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(response.data['items'][0]['id'], managed_acc.id)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], managed_acc.id)
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
@@ -396,7 +406,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data['items_count'], 2,
+            response.data["items_count"], 2,
             "The account has no end date that's why it's shown"
         )
 
@@ -409,21 +419,21 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
 
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
         )
-        self.assertEqual(len(item['weekly_chart']), 7)
+        self.assertEqual(len(item["weekly_chart"]), 7)
 
     def test_list_no_deleted_accounts(self):
         AccountCreation.objects.create(
@@ -437,8 +447,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
 
     def test_filter_campaigns_count(self):
         AccountCreation.objects.create(name="", owner=self.user)
@@ -450,15 +460,17 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
         ):
-            response = self.client.get("{}?min_campaigns_count=1&max_campaigns_count=1".format(url))
+            response = self.client.get(
+                "{}?min_campaigns_count=1&max_campaigns_count=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertEqual(response.data['items'][0]['id'], ac.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_filter_campaigns_count_from_ad_words(self):
         account = Account.objects.create(id=1, name="")
         Campaign.objects.create(id=1, name="", account=account)
-        ac = AccountCreation.objects.create(name="", account=account, owner=self.user, is_managed=False)
+        ac = AccountCreation.objects.create(name="", account=account,
+                                            owner=self.user, is_managed=False)
         AccountCreation.objects.create(name="", owner=self.user)
         # --
         url = reverse("aw_creation_urls:account_creation_list")
@@ -466,47 +478,55 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
         ):
-            response = self.client.get("{}?min_campaigns_count=1&max_campaigns_count=1".format(url))
+            response = self.client.get(
+                "{}?min_campaigns_count=1&max_campaigns_count=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertEqual(response.data['items'][0]['id'], ac.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_filter_start_date(self):
         ac = AccountCreation.objects.create(name="", owner=self.user)
-        CampaignCreation.objects.create(account_creation=ac, name="", start="2017-01-10")
+        CampaignCreation.objects.create(account_creation=ac, name="",
+                                        start="2017-01-10")
 
         ac2 = AccountCreation.objects.create(name="", owner=self.user)
-        CampaignCreation.objects.create(account_creation=ac2, name="", start="2017-02-10")
+        CampaignCreation.objects.create(account_creation=ac2, name="",
+                                        start="2017-02-10")
         # --
         url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
         ):
-            response = self.client.get("{}?min_start=2017-01-01&max_start=2017-01-31".format(url))
+            response = self.client.get(
+                "{}?min_start=2017-01-01&max_start=2017-01-31".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertEqual(response.data['items'][0]['id'], ac.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_filter_end_date(self):
         ac = AccountCreation.objects.create(name="", owner=self.user)
-        CampaignCreation.objects.create(account_creation=ac, name="", end="2017-01-10")
+        CampaignCreation.objects.create(account_creation=ac, name="",
+                                        end="2017-01-10")
 
         ac2 = AccountCreation.objects.create(name="", owner=self.user)
-        CampaignCreation.objects.create(account_creation=ac2, name="", end="2017-02-10")
+        CampaignCreation.objects.create(account_creation=ac2, name="",
+                                        end="2017-02-10")
         # --
         url = reverse("aw_creation_urls:account_creation_list")
         with patch(
                 "aw_reporting.demo.models.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
         ):
-            response = self.client.get("{}?min_end=2017-01-01&max_end=2017-01-31".format(url))
+            response = self.client.get(
+                "{}?min_end=2017-01-01&max_end=2017-01-31".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        self.assertEqual(response.data['items'][0]['id'], ac.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_success_get_import_historical_accounts(self):
-        from aw_reporting.models import AWConnection, AWConnectionToUserRelation, AWAccountPermission, Account
+        from aw_reporting.models import AWConnection, \
+            AWConnectionToUserRelation, AWAccountPermission, Account
 
         connection = AWConnection.objects.create(
             email="test@gmail.com",
@@ -535,7 +555,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         # and create an usual running account creation
         created_account = Account.objects.create(id="3", name="")
         created_account.managers.add(manager)
-        AccountCreation.objects.create(name="", owner=self.user, account=created_account)
+        AccountCreation.objects.create(name="", owner=self.user,
+                                       account=created_account)
 
         # --
         url = reverse("aw_creation_urls:account_creation_list")
@@ -552,18 +573,111 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data.keys()),
             {
-                'max_page',
-                'items_count',
-                'items',
-                'current_page',
+                "max_page",
+                "items_count",
+                "items",
+                "current_page",
             }
         )
-        self.assertEqual(response.data['items_count'], 3)
-        self.assertEqual(len(response.data['items']), 3)
-        item = response.data['items'][1]
+        self.assertEqual(response.data["items_count"], 3)
+        self.assertEqual(len(response.data["items"]), 3)
+        item = response.data["items"][1]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
         )
-        self.assertEqual(item['name'], account.name)
-        self.assertEqual(item['is_managed'], False)
+        self.assertEqual(item["name"], account.name)
+        self.assertEqual(item["is_managed"], False)
+
+    def test_brand(self):
+        test_brand = "Test Brand"
+        opportunity = Opportunity.objects.create(brand=test_brand)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["brand"], test_brand)
+
+    def test_cost_type(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        OpPlacement.objects.create(id=1,
+                                   opportunity=opportunity,
+                                   goal_type_id=SalesForceGoalType.CPV)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["cost_method"],
+                         opportunity.goal_type)
+
+    def test_agency(self):
+        agency = Contact.objects.create(first_name="first", last_name="last")
+        opportunity = Opportunity.objects.create(agency=agency)
+        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id="1", name="")
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=campaign)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[account_creation.id]["agency"], agency.name)
+
+    def test_demo_brand(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
+
+    def test_demo_cost_type(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"],
+                         DEMO_COST_METHOD)
+
+    def test_demo_agency(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)

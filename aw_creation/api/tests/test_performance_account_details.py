@@ -19,36 +19,37 @@ from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
     account_list_header_fields = {
-        'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart',
-        'thumbnail', 'is_changed',
-        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate',
-        'ctr_v', 'is_managed',
+        "id", "name", "end", "account", "start", "status", "weekly_chart",
+        "thumbnail", "is_changed",
+        "clicks", "cost", "impressions", "video_views", "video_view_rate",
+        "ctr_v", "is_managed",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw", "updated_at"
+        "is_disapproved", "from_aw", "updated_at",
+        "cost_method", "agency", "brand"
     }
     overview_keys = {
-        'age', 'gender', 'device', 'location',
-        'clicks', 'cost', 'impressions', 'video_views',
-        'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
+        "age", "gender", "device", "location",
+        "clicks", "cost", "impressions", "video_views",
+        "ctr", "ctr_v", "average_cpm", "average_cpv",
         "all_conversions", "conversions", "view_through",
-        'video_view_rate',
-        'video100rate', 'video25rate', 'video50rate',
-        'video75rate', 'video_views_this_week',
-        'video_view_rate_top', 'impressions_this_week',
-        'video_views_last_week', 'cost_this_week',
-        'video_view_rate_bottom', 'clicks_this_week',
-        'ctr_v_top', 'cost_last_week', 'average_cpv_top',
-        'ctr_v_bottom', 'ctr_bottom', 'clicks_last_week',
-        'average_cpv_bottom', 'ctr_top', 'impressions_last_week',
+        "video_view_rate",
+        "video100rate", "video25rate", "video50rate",
+        "video75rate", "video_views_this_week",
+        "video_view_rate_top", "impressions_this_week",
+        "video_views_last_week", "cost_this_week",
+        "video_view_rate_bottom", "clicks_this_week",
+        "ctr_v_top", "cost_last_week", "average_cpv_top",
+        "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
+        "average_cpv_bottom", "ctr_top", "impressions_last_week",
     }
 
     detail_keys = {
-        'creative',
-        'age', 'gender', 'device',
-        "all_conversions", "conversions", "view_through", 'average_position',
-        'video100rate', 'video25rate', 'video50rate', 'video75rate',
-        'delivery_trend', "ad_network"
+        "creative",
+        "age", "gender", "device",
+        "all_conversions", "conversions", "view_through", "average_position",
+        "video100rate", "video25rate", "video50rate", "video75rate",
+        "delivery_trend", "ad_network"
     }
 
     def setUp(self):

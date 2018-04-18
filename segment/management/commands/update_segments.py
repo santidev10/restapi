@@ -6,9 +6,6 @@ from django.core.management import BaseCommand
 
 from segment.utils import total_update_segments
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level='INFO')
 logger = logging.getLogger(__name__)
 
 

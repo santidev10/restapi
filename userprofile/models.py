@@ -59,6 +59,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     permissions = JSONField(default={})
     access = JSONField(default={})
 
+    is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

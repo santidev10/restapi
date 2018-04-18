@@ -23,7 +23,7 @@ urlpatterns = [
         views.AnalyzeExportApiView.as_view(),
         name="analyze_export"),
     url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
-        views.AnalyzeExportWeeklyReport.as_view(),
+        views.AnalyzeExportWeeklyReportApiView.as_view(),
         name="analyze_export_weekly_report"),
 
     # track
@@ -58,4 +58,32 @@ urlpatterns = [
     url(r'^benchmarks/filters/$',
         views.BenchmarkFiltersListApiView.as_view(),
         name="benchmarks_filters$"),
+
+    # Pacing report
+    url(r'^pacing_report_filters/$',
+        views.PacingReportFiltersApiView.as_view(),
+        name="pacing_report_filters"),
+    url(r'^pacing_report_flights/(?P<pk>\w+)/$',
+        views.PacingReportFlightsApiView.as_view(),
+        name="pacing_report_flights"),
+    url(r'^pacing_report_placements/(?P<pk>\w+)/$',
+        views.PacingReportPlacementsApiView.as_view(),
+        name="pacing_report_placements"),
+    url(r'^pacing_report_opportunities/$',
+        views.PacingReportOpportunitiesApiView.as_view(),
+        name="pacing_report_opportunities"),
+    url(r'^pacing_report_campaigns/(?P<pk>\w+)/$',
+        views.PacingReportCampaignsApiView.as_view(),
+        name="pacing_report_campaigns"),
+    url(r'^pacing_report_update_opportunity/(?P<pk>\w+)/$',
+        views.PacingReportOpportunityUpdateApiView.as_view(),
+        name="pacing_report_update_opportunity"),
+
+    # AW WebHooks
+    url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
+        views.WebHookAWAccountsListApiView.as_view(),
+        name="webhook_accounts_list"),
+    url(r'^webhook_aw/save_settings/(?P<pk>\w+)/$',
+        views.WebHookAWSaveSettingsApiView.as_view(),
+        name="campaigns_setup_check_save_settings"),
 ]
