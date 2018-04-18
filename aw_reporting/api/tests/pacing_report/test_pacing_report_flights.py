@@ -474,3 +474,40 @@ class PacingReportTestCase(APITestCase):
             self.assertEqual(actual["label"], label)
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
+
+    def test_dynamic_placement_service_fee_daily_data_budget(self):
+        today = date(2017, 1, 15)
+        yesterday = today - timedelta(days=1)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=10)
+        days_left = (end - today).days + 1
+        total_cost = 1234
+        total_spend = yesterday_spend = 32
+        today_goal = (total_cost - total_spend) / days_left
+
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement, start=start,
+                              end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(id=1, salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=yesterday,
+                                         campaign=campaign,
+                                         cost=yesterday_spend)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["yesterday_budget"], yesterday_spend)
+        self.assertEqual(flight_data["today_budget"], today_goal)
