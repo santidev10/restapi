@@ -240,8 +240,7 @@ class Command(BaseCommand):
     def flights_to_update_qs(self):
         now = now_in_default_tz()
 
-        date_filters = Q(start__month=now.month, start__year=now.year) | Q(
-            end__month=now.month, end__year=now.year)
+        date_filters = Q(start__lte=now, end__gte=now)
 
         stop_updating_date = self.prev_month_flight_write_stop_day
         if now.hour > 5:
@@ -261,7 +260,12 @@ class Command(BaseCommand):
         flights = Flight.objects.filter(
             start__gte=WRITE_START,
             placement__adwords_campaigns__isnull=False,
-        ).filter(type_filters).filter(date_filters).prefetch_related(
+        ) \
+            .exclude(
+            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
+            .filter(type_filters) \
+            .filter(date_filters) \
+            .prefetch_related(
             "placement").distinct()
 
         return flights
