@@ -474,3 +474,45 @@ class PacingReportTestCase(APITestCase):
             self.assertEqual(actual["label"], label)
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
+
+    def test_dynamic_placement_service_fee_charts_ideal_pacing(self):
+        today = date(2017, 1, 15)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=1)
+        total_cost = 12
+
+        expected_ideal_pacing = [
+            dict(value=4, label=start),  # yesterday
+            dict(value=6, label=today),  # today
+            dict(value=12, label=end),  # tomorrow
+        ]
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement, start=start,
+                              end=end,
+                              total_cost=total_cost)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["plan_cost"], total_cost)
+        self.assertIsNotNone(flight_data["charts"])
+        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
+        for actual, expected in charts_zipped:
+            label = expected["label"]
+            self.assertEqual(actual["label"], label)
+            self.assertAlmostEqual(actual["value"], expected["value"],
+                                   msg=label)
