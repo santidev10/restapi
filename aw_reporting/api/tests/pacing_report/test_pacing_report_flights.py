@@ -13,7 +13,7 @@ from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
-class PacingReportTestCase(APITestCase):
+class PacingReportFlightsTestCase(APITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -554,6 +554,39 @@ class PacingReportTestCase(APITestCase):
         flight_data = response.data[0]
         self.assertEqual(flight_data["yesterday_budget"], yesterday_spend)
         self.assertEqual(flight_data["today_budget"], today_goal)
+
+    def test_dynamic_placement_service_fee(self):
+        today = date(2017, 1, 1)
+        start = today - timedelta(days=3)
+        end = today + timedelta(days=3)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        total_cost = 123
+        aw_cost = 23
+        views, impressions = 14, 164
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start, end=end, total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
+        )
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           video_views=1)
+        CampaignStatistic.objects.create(date=today, campaign=campaign,
+                                         cost=aw_cost,
+                                         video_views=views,
+                                         impressions=impressions)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        pl = response.data[0]
+        self.assertEqual(pl["plan_cost"], placement.total_cost)
 
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)

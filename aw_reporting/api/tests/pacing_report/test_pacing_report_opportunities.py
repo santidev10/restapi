@@ -593,7 +593,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         aw_cpv = aw_cost * 1. / views
         aw_cpm = aw_cost * 1000. / impressions
         expected_pacing = aw_cost / (total_cost / total_days * days_pass) * 100
-        expected_marging = (total_cost - aw_cost) / total_cost * 100
+        expected_margin = (total_cost - aw_cost) / total_cost * 100
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=total_cost,
@@ -625,4 +625,4 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(pl["impressions"], impressions)
         self.assertEqual(pl["video_views"], views)
         self.assertAlmostEqual(pl["pacing"], expected_pacing)
-        self.assertAlmostEqual(pl["margin"], expected_marging)
+        self.assertAlmostEqual(pl["margin"], expected_margin)
