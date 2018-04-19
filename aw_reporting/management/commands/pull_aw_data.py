@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from aw_reporting.aw_data_loader import AWDataLoader
-from aw_reporting.tasks import detect_success_aw_read_permissions
+from aw_reporting.tasks import detect_success_aw_read_permissions, recalculate_de_norm_fields
 from aw_reporting.utils import command_single_process_lock
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
@@ -63,6 +63,8 @@ class Command(BaseCommand):
             logger.info("Customer account update: {}".format(account))
             updater.full_update(account)
 
+        recalculate_de_norm_fields()
+
     @staticmethod
     def create_cf_account_connection():
         from aw_reporting.models import AWConnection, Account, AWAccountPermission
@@ -101,4 +103,3 @@ class Command(BaseCommand):
                     AWAccountPermission.objects.get_or_create(
                         aw_connection=connection, account=obj,
                     )
-

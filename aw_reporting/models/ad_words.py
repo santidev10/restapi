@@ -399,7 +399,45 @@ class BaseStatisticModel(BaseModel):
             raise AttributeError(self, name)
 
 
-class Campaign(BaseStatisticModel):
+class ModelPlusDeNormFields(BaseStatisticModel):
+    # for now we will use them in Pricing Tool
+    de_norm_fields_are_recalculated = models.BooleanField(default=False)
+    min_stat_date = models.DateField(null=True)
+    max_stat_date = models.DateField(null=True)
+
+    gender_undetermined = models.BooleanField(default=False)
+    gender_male = models.BooleanField(default=False)
+    gender_female = models.BooleanField(default=False)
+
+    parent_parent = models.BooleanField(default=False)
+    parent_not_parent = models.BooleanField(default=False)
+    parent_undetermined = models.BooleanField(default=False)
+
+    age_undetermined = models.BooleanField(default=False)
+    age_18_24 = models.BooleanField(default=False)
+    age_25_34 = models.BooleanField(default=False)
+    age_35_44 = models.BooleanField(default=False)
+    age_45_54 = models.BooleanField(default=False)
+    age_55_64 = models.BooleanField(default=False)
+    age_65 = models.BooleanField(default=False)
+
+    device_computers = models.BooleanField(default=False)
+    device_mobile = models.BooleanField(default=False)
+    device_tablets = models.BooleanField(default=False)
+    device_other = models.BooleanField(default=False)
+
+    has_interests = models.BooleanField(default=False)
+    has_keywords = models.BooleanField(default=False)
+    has_channels = models.BooleanField(default=False)
+    has_videos = models.BooleanField(default=False)
+    has_remarketing = models.BooleanField(default=False)
+    has_topics = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+
+
+class Campaign(ModelPlusDeNormFields):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     account = models.ForeignKey(Account, null=True, related_name='campaigns')
@@ -430,14 +468,14 @@ class Campaign(BaseStatisticModel):
     targeting_excluded_channels = models.BooleanField(default=False)
     targeting_excluded_topics = models.BooleanField(default=False)
     targeting_excluded_keywords = models.BooleanField(default=False)
-    
+
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 
     def __str__(self):
         return "%s" % self.name
 
 
-class AdGroup(BaseStatisticModel):
+class AdGroup(ModelPlusDeNormFields):
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True)

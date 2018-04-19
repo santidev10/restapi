@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Max, Min, Sum
+from django.db.models import Q, Min, Max, Count, Case, When
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -1126,3 +1126,250 @@ def load_google_geo_targets():
     if bulk_data:
         logger.info('Saving %d new geo targets...' % len(bulk_data))
         GeoTarget.objects.bulk_create(bulk_data)
+
+
+def recalculate_de_norm_fields(*args, **kwargs):
+    from aw_reporting.models import Campaign, AdGroup
+    from math import ceil
+    from django.conf import settings
+
+    batch_size = 100
+
+    for model in (Campaign, AdGroup):
+        queryset = model.objects.filter(de_norm_fields_are_recalculated=False).order_by("id")
+        iterations = ceil(queryset.count() / batch_size)
+        if not settings.IS_TEST:
+            logger.info("Calculating de-norm fields: {} {}".format(queryset.model, iterations))
+
+        ag_link = "ad_groups__" if model is Campaign else ""
+        for i in range(iterations):
+            if not settings.IS_TEST:
+                logger.info("Iteration: {}".format(i + 1))
+            queryset = queryset[:batch_size]
+            items = queryset.values("id")
+
+            data = items.annotate(
+                min_date=Min("statistics__date"),
+                max_date=Max("statistics__date"),
+                device_computers=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 0}
+                        ),
+                    ),
+                ),
+                device_mobile=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 1}
+                        ),
+                    ),
+                ),
+                device_tablets=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 2}
+                        ),
+                    ),
+                ),
+                device_other=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 3}
+                        ),
+                    ),
+                ),
+            )
+            gender_data = items.annotate(
+                gender_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(ag_link): 0}
+                        ),
+                    ),
+                ),
+                gender_female=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(ag_link): 1}
+                        ),
+                    ),
+                ),
+                gender_male=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(ag_link): 2}
+                        ),
+                    ),
+                ),
+            )
+            gender_data = {e["id"]: e for e in gender_data}
+
+            age_data = items.annotate(
+                age_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 0}
+                        ),
+                    ),
+                ),
+                age_18_24=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 1}
+                        ),
+                    ),
+                ),
+                age_25_34=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 2}
+                        ),
+                    ),
+                ),
+                age_35_44=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 3}
+                        ),
+                    ),
+                ),
+                age_45_54=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 4}
+                        ),
+                    ),
+                ),
+                age_55_64=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 5}
+                        ),
+                    ),
+                ),
+                age_65=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(ag_link): 6}
+                        ),
+                    ),
+                ),
+            )
+            age_data = {e["id"]: e for e in age_data}
+
+            parent_data = items.annotate(
+                parent_parent=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(ag_link): 0}
+                        ),
+                    ),
+                ),
+                parent_not_parent=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(ag_link): 1}
+                        ),
+                    ),
+                ),
+                parent_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(ag_link): 2}
+                        ),
+                    ),
+                ),
+            )
+            parent_data = {e["id"]: e for e in parent_data}
+
+            audience_data = items.annotate(
+                count=Count("{}audiences__audience_id".format(ag_link)),
+            )
+            audience_data = {e["id"]: e["count"] for e in audience_data}
+
+            keyword_data = items.annotate(
+                count=Count("{}keywords__keyword".format(ag_link)),
+            )
+            keyword_data = {e["id"]: e["count"] for e in keyword_data}
+
+            channel_data = items.annotate(
+                count=Count("{}channel_statistics__id".format(ag_link)),
+            )
+            channel_data = {e["id"]: e["count"] for e in channel_data}
+
+            video_data = items.annotate(
+                count=Count("{}managed_video_statistics__id".format(ag_link)),
+            )
+            video_data = {e["id"]: e["count"] for e in video_data}
+
+            rem_data = items.annotate(
+                count=Count("{}remark_statistic__remark_id".format(ag_link)),
+            )
+            rem_data = {e["id"]: e["count"] for e in rem_data}
+
+            topic_data = items.annotate(
+                count=Count("{}topics__topic_id".format(ag_link)),
+            )
+            topic_data = {e["id"]: e["count"] for e in topic_data}
+
+            update = {}
+            for i in data:
+                uid = i["id"]
+                genders = gender_data.get(uid, {})
+                ages = age_data.get(uid, {})
+                parents = parent_data.get(uid, {})
+                update[uid] = dict(
+                    de_norm_fields_are_recalculated=True,
+
+                    min_stat_date=i["min_date"],
+                    max_stat_date=i["max_date"],
+
+                    device_computers=i["device_computers"],
+                    device_mobile=i["device_mobile"],
+                    device_tablets=i["device_tablets"],
+                    device_other=i["device_other"],
+
+                    gender_male=genders.get("gender_male", False),
+                    gender_female=genders.get("gender_female", False),
+                    gender_undetermined=genders.get("gender_undetermined", False),
+
+                    age_undetermined=ages.get("age_undetermined", False),
+                    age_18_24=ages.get("age_18_24", False),
+                    age_25_34=ages.get("age_25_34", False),
+                    age_35_44=ages.get("age_35_44", False),
+                    age_45_54=ages.get("age_45_54", False),
+                    age_55_64=ages.get("age_55_64", False),
+                    age_65=ages.get("age_65", False),
+
+                    parent_parent=parents.get("parent_parent", False),
+                    parent_not_parent=parents.get("parent_not_parent", False),
+                    parent_undetermined=parents.get("parent_undetermined", False),
+
+                    has_interests=audience_data.get(uid, False),
+                    has_keywords=keyword_data.get(uid, False),
+                    has_channels=channel_data.get(uid, False),
+                    has_videos=video_data.get(uid, False),
+                    has_remarketing=rem_data.get(uid, False),
+                    has_topics=topic_data.get(uid, False),
+                )
+
+            for uid, updates in update.items():
+                model.objects.filter(id=uid).update(**updates)
