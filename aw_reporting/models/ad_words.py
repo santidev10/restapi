@@ -275,7 +275,7 @@ class ConcatAggregate(Aggregate):
         if type(value) is str:
             value = value.split(",")
         if type(value) is list:
-            value = ", ".join(str(i) for i in value)
+            value = ", ".join(str(i) for i in value if i is not None)
         return value
 
 
