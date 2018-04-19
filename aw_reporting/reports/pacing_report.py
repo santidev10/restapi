@@ -23,9 +23,15 @@ class PacingReportChartId:
     DAILY_DEVIATION = "daily_deviation"
 
 
+class DefaultRate:
+    CPM = 6.25
+    CPV = .04
+
+
 class PacingReport:
-    DEFAULT_AVERAGE_CPV = .04
-    DEFAULT_AVERAGE_CPM = 6.25
+    # todo: remove these two properties
+    DEFAULT_AVERAGE_CPV = DefaultRate.CPV
+    DEFAULT_AVERAGE_CPM = DefaultRate.CPM
 
     borders = dict(
         margin=(.4, .29),
@@ -312,12 +318,23 @@ class PacingReport:
                     in (DynamicPlacementType.BUDGET,
                         DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
+            elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
+                effective_cpv = (fl["sum_cost"] / (fl["video_views"] or 1)) \
+                                or DefaultRate.CPV
+                effective_cpm = (fl["sum_cost"] / (
+                            fl["impressions"] or 1) * 1000.) or DefaultRate.CPM
+                effective_rate = effective_cpv \
+                    if fl["placement__goal_type_id"] == SalesForceGoalType.CPV \
+                    else effective_cpm
+                fl["plan_units"] = fl["total_cost"] * effective_rate \
+                                   / (effective_rate
+                                      + float(fl["placement__tech_fee"] or 0))
 
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
             else:
-                fl["plan_units"] = fl["ordered_units"] * goal_factor if fl[
-                    "ordered_units"] else 0
+                fl["plan_units"] = fl["ordered_units"] * goal_factor \
+                    if fl["ordered_units"] else 0
 
             for field in (
                     "delivery", "yesterday_cost", "yesterday_delivery",
@@ -1517,9 +1534,9 @@ def get_stats_from_flight(flight, start=None, end=None, campaign_id=None):
 def add_data_for_rate_and_tech_fee_dynamic_placement(placement):
     tech_fee = placement["tech_fee"] or 0
     goal_type_id = placement["goal_type_id"]
-    effective_rate = placement["cpv"] \
+    effective_rate = placement["cpv"] or DefaultRate.CPV \
         if goal_type_id == SalesForceGoalType.CPV \
-        else (placement["cpm"] or 0) / 1000.
+        else (placement["cpm"] or DefaultRate.CPM) / 1000.
     rate = placement["plan_cpv"] \
         if goal_type_id == SalesForceGoalType.CPV \
         else (placement["plan_cpm"] or 0) / 1000.
