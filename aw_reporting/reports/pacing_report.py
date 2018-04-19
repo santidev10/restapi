@@ -3,7 +3,8 @@ from datetime import timedelta
 from math import ceil
 
 from django.contrib.auth import get_user_model
-from django.db.models import F, Sum, Case, When, Value, FloatField, IntegerField
+from django.db.models import F, Sum, Case, When, Value, FloatField, \
+    IntegerField, Q
 
 from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
@@ -197,9 +198,11 @@ class PacingReport:
             sum_cost=Sum(
                 Case(
                     When(
+                        ~Q(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
+                        & Q(**in_flight_dates_criteria),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
-                        **in_flight_dates_criteria
+
                     ),
                 ),
             ),
@@ -572,7 +575,6 @@ class PacingReport:
 
         if dynamic_placement in (DynamicPlacementType.BUDGET,
                                  DynamicPlacementType.SERVICE_FEE):
-            # print(total_cost, stats_total["cost"], flight["end"], last_day)
             today_budget = self.get_today_goal(
                 total_cost * allocation_ko,
                 stats_total["cost"], flight["end"], last_day)
