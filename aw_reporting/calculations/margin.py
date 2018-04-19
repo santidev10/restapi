@@ -6,7 +6,7 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 
 
 def get_margin_from_flights(flights, cost, plan_cost,
-                            allocation_ko=1, campaign_id=None, yesterday=None):
+                            allocation_ko=1, campaign_id=None):
 
     dynamic_placements = list(
         set(f["placement__dynamic_placement"] for f in flights)
@@ -38,12 +38,10 @@ def get_margin_from_flights(flights, cost, plan_cost,
                 tech_fee = float(f["placement__tech_fee"] or 0)
 
                 units = 0
-                if f["placement__tech_fee_type"] \
-                        == OpPlacement.TECH_FEE_CPV_TYPE:
+                if goal_type_id == SalesForceGoalType.CPV:
                     units = stats["video_views"]
 
-                elif f["placement__tech_fee_type"] \
-                        == OpPlacement.TECH_FEE_CPM_TYPE:
+                elif goal_type_id == SalesForceGoalType.CPM:
                     units = stats["impressions"] / 1000
 
                 if units:
