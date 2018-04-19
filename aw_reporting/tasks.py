@@ -211,16 +211,41 @@ def detect_success_aw_read_permissions():
 
 
 def get_campaigns(client, account, today=None):
-    from aw_reporting.models import Campaign, ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report
+    from aw_reporting.models import ACTION_STATUSES
+    from aw_reporting.models import Campaign
+    from aw_reporting.models import CampaignStatistic
+    from aw_reporting.models import Devices
+    from django.conf import settings
+
+    min_fetch_date = datetime(2012, 1, 1).date()
+    tz = pytz.timezone(account.timezone or settings.DEFAULT_TIMEZONE)
+    today = datetime.now(tz=tz).date()
+
+    stats_queryset = CampaignStatistic.objects.filter(
+        campaign__account=account
+    )
+    drop_latest_stats(stats_queryset, today)
+
+    # lets find min and max dates for the report request
+    dates = stats_queryset.aggregate(max_date=Max('date'))
+    min_date = dates['max_date'] + timedelta(days=1)\
+        if dates['max_date']\
+        else min_fetch_date
+    max_date = today - timedelta(1)
 
     campaign_ids = set(
         Campaign.objects.filter(
             account=account).values_list('id', flat=True)
     )
-    report = campaign_performance_report(client)
+    report = campaign_performance_report(client,
+                                         dates=[min_date, max_date],
+                                         include_zero_impressions=False,
+                                         additional_fields=('Device', 'Date')
+)
     with transaction.atomic():
         insert_campaign = []
+        insert_stat = []
         for row_obj in report:
             campaign_id = row_obj.CampaignId
             try:
@@ -242,6 +267,19 @@ def get_campaigns(client, account, today=None):
             }
             stats.update(get_base_stats(row_obj))
 
+            statistic_data = {
+                'date': row_obj.Date,
+                'campaign_id': row_obj.CampaignId,
+                'device_id': Devices.index(row_obj.Device),
+
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            statistic_data.update(get_base_stats(row_obj))
+            insert_stat.append(CampaignStatistic(**statistic_data))
+
             if campaign_id not in campaign_ids:
                 stats['id'] = campaign_id
                 insert_campaign.append(Campaign(**stats))
@@ -251,6 +289,8 @@ def get_campaigns(client, account, today=None):
         if insert_campaign:
             Campaign.objects.bulk_create(insert_campaign)
 
+        if insert_stat:
+            CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
 def get_ad_groups_and_stats(client, account, today=None):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, SUM_STATS
