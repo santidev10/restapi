@@ -9,7 +9,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
     CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from aw_reporting.reports.pacing_report import PacingReport, PacingReportChartId
+from aw_reporting.reports.pacing_report import PacingReport, \
+    PacingReportChartId, DefaultRate
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -268,33 +269,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             self.assertAlmostEqual(actual_pacing[str(day)], pacing,
                                    msg="wrong pacing for {} day".format(i + 1))
 
-    def test_dynamic_placement_rate_tech_fee_plan_units(self):
-        now = timezone.now()
-        today = now.date()
-        start = today - timedelta(days=3)
-        end = today + timedelta(days=3)
-        opportunity = Opportunity.objects.create(
-            id="1", name="1", start=start, end=end
-        )
-        placement = OpPlacement.objects.create(
-            id="1", name="BBB", opportunity=opportunity,
-            start=start, end=end, total_cost=123,
-            goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
-        )
-        total_cost = 1234
-        ordered_units = 4321
-        Flight.objects.create(placement=placement, start=start, end=end,
-                              total_cost=total_cost,
-                              ordered_units=ordered_units)
-
-        url = reverse("aw_reporting_urls:pacing_report_placements",
-                      args=(opportunity.id,))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data[0]["plan_impressions"],
-                         ordered_units * PacingReport.goal_factor)
-
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
         start = today - timedelta(days=3)
@@ -390,9 +364,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         pl = response.data[0]
         self.assertEqual(pl["dynamic_placement"], DynamicPlacementType.RATE_AND_TECH_FEE)
         self.assertAlmostEqual(pl["tech_fee"], tech_fee)
-        # ordered units
-        self.assertEqual(pl["plan_video_views"], 0)
-        self.assertIsNone(pl["plan_impressions"])
         # contracted rate
         self.assertEqual(pl["plan_cpv"], rate)
         self.assertIsNone(pl["plan_cpm"])
@@ -533,3 +504,53 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         flight_data = response.data[0]
         self.assertEqual(flight_data["yesterday_budget"], yesterday_spend)
         self.assertEqual(flight_data["today_budget"], today_goal)
+
+    def test_dynamic_placement_rate_and_tech_fee_no_statistic(self):
+        today = date(2017, 1, 1)
+        start = today
+        end = today + timedelta(days=8)
+        duration = (end - start).days + 1
+        tech_fee = 0.12
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        total_cost = 123
+        rate = 2.3
+        goal = DefaultRate.CPV / (DefaultRate.CPV + tech_fee) * total_cost
+        daily_goal = goal / duration
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start, end=end, total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=rate,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=tech_fee
+        )
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              total_cost=total_cost)
+        Campaign.objects.create(salesforce_placement=placement,
+                                video_views=1)
+        url = reverse("aw_reporting_urls:pacing_report_placements",
+                      args=(opportunity.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        pl = response.data[0]
+        ideal_pacing_chart = dict((c["id"], c["data"])
+                                  for c in pl["charts"]) \
+            .get(PacingReportChartId.IDEAL_PACING, [])
+        self.assertEqual(len(ideal_pacing_chart), duration)
+
+        self.assertEqual(pl["dynamic_placement"],
+                         DynamicPlacementType.RATE_AND_TECH_FEE)
+        self.assertEqual(pl["plan_video_views"], goal)
+        self.assertEqual(pl["today_budget"], daily_goal)
+
+        self.assertIsNotNone(pl["charts"])
+        charts = dict((c["id"], c["data"]) for c in pl["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        pacing_values = [c["value"] for c in ideal_pacing]
+        expected_chart = [(i + 1) * daily_goal for i in range(duration)]
+        for actual, expected in zip(pacing_values, expected_chart):
+            self.assertAlmostEqual(actual, expected)
