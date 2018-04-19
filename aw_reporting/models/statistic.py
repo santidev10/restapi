@@ -4,6 +4,9 @@ from aw_reporting.models.ad_words import BaseStatisticModel, Devices, AdGroup, \
     Ad, Topic, RemarkList, Genders, GeoTarget, VideoCreative, Campaign, \
     AgeRanges, Audience
 
+ParentStatuses = ('Parent', 'Not a parent', 'Undetermined')
+
+
 
 class DailyStatisticModel(BaseStatisticModel):
     date = models.DateField(db_index=True)
@@ -177,3 +180,19 @@ class CampaignStatistic(DeviceDailyStatisticModel):
 
     def __str__(self):
         return "%s %s" % (self.campaign.name, self.date)
+
+
+class ParentStatistic(DailyStatisticModel):
+    parent_status_id = models.SmallIntegerField(default=0, db_index=True)
+    ad_group = models.ForeignKey(AdGroup, related_name='parent_statistics')
+
+    class Meta:
+        unique_together = (("parent_status_id", "ad_group", "date"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.parent_status, self.date)
+
+    @property
+    def parent_status(self):
+        return ParentStatuses[int(self.parent_status_id)]

@@ -284,12 +284,19 @@ def ad_performance_report(client, dates=None):
     return _output_to_rows(result, fields)
 
 
-def campaign_performance_report(client, dates=None, fields=None, include_zero_impressions=True):
+def campaign_performance_report(client,
+                                dates=None,
+                                fields=None,
+                                include_zero_impressions=True,
+                                additional_fields=None):
     if fields is None:
         fields = [
             'CampaignId', 'CampaignName', 'ServingStatus', 'CampaignStatus',
             'StartDate', 'EndDate', 'Amount',  'AdvertisingChannelType',
         ] + completed_fields + main_statistics
+    fields = list(fields)
+    if additional_fields:
+        fields.extend(additional_fields)
     selector = {
         'fields': fields,
         'predicates': [],
