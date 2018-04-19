@@ -3,8 +3,8 @@ from datetime import datetime
 from aw_reporting.models import AgeRanges, CampaignGenderTargeting, \
     CampaignAgeRangeTargeting, Opportunity, OpPlacement, Campaign, \
     GeoTarget, CampaignLocationTargeting
-from aw_reporting.tools.health_check_tool import HealthCheckTool, MALE_GENDER, \
-    FEMALE_GENDER, UNDETERMINED_GENDER, GENDERS
+from aw_reporting.tools.health_check_tool import HealthCheckTool, \
+    MALE_GENDER, FEMALE_GENDER, UNDETERMINED_GENDER, GENDERS
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 AGE_18_24 = "18-24"
