@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from aw_reporting.models import User, Opportunity, \
     OpPlacement, Flight, Campaign, Account
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 
@@ -28,7 +29,7 @@ class SendDailyEmailsTestCase(APITestCase):
             id="1", name="<ExceedPlacement>",
             start=opportunity.start, end=opportunity.end,
             opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap=0.07, tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
         )
         Flight.objects.create(id="1", name="", placement=placement,
@@ -60,7 +61,7 @@ class SendDailyEmailsTestCase(APITestCase):
             id="1", name="<ExceedPlacement>",
             start=opportunity.start, end=opportunity.end,
             opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap=0.07, tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
         )
         Flight.objects.create(id="1", name="", placement=placement,
@@ -102,12 +103,13 @@ class SendDailyEmailsTestCase(APITestCase):
             id="1", name="<ExceedPlacement>",
             start=opportunity.start, end=opportunity.end,
             opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap=7, tech_fee_type=OpPlacement.TECH_FEE_CPM_TYPE,
         )
         Flight.objects.create(id="1", name="", placement=placement,
                               start=today.replace(day=1),
-                              end=today.replace(day=28), ordered_units=1000)
+                              end=today.replace(day=28),
+                              ordered_units=1000)
         account = Account.objects.create(pk="1", name="")
         stats = dict(impressions=1000, cost=7)
         Campaign.objects.create(pk="1", name="", account=account,
@@ -133,7 +135,7 @@ class SendDailyEmailsTestCase(APITestCase):
             id="1", name="<ExceedPlacement>",
             start=opportunity.start, end=opportunity.end,
             opportunity=opportunity,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap=7, tech_fee_type=OpPlacement.TECH_FEE_CPM_TYPE,
         )
         Flight.objects.create(id="1", name="", placement=placement,

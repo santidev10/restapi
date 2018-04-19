@@ -1,4 +1,5 @@
 from datetime import timedelta, date
+from itertools import product
 from unittest import skip
 from urllib.parse import urlencode
 
@@ -9,8 +10,10 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
-    Opportunity, Category, User, SalesForceRegions, \
-    OpPlacement, UserRole, SalesForceGoalType
+    Opportunity, Category, User, SalesForceRegions, OpPlacement, \
+    SalesForceGoalType
+from aw_reporting.models.salesforce_constants import \
+    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -18,68 +21,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-
-    def test_get_filters(self):
-        """
-        we gonna check that all the filters are available, simple check lengths
-        and carefully check user roles (am, sales, ad_ops)
-        :return:
-        """
-
-        for uid, name in (("1", UserRole.AD_OPS_NAME),
-                          ("2", UserRole.ACCOUNT_MANAGER_NAME),
-                          ("3", "Super-sales-man")):
-            UserRole.objects.create(id=uid, name=name)
-
-        users = (
-            ("Jah", "1", True),
-            ("Tal", "1", False),
-            ("Dol", "2", False),
-            ("Ith", "2", True),
-            ("Sol", "2", False),
-            ("Ral", "3", True),
-            ("Um", "3", False),
-            ("Ber", None, True),
-        )
-        User.objects.bulk_create(
-            [User(id=name, name=name, role_id=role_id, is_active=is_active)
-             for name, role_id, is_active in users])
-        Opportunity.objects.create(
-            id=1, name="1",
-            probability=100,
-        )
-        Opportunity.objects.create(
-            id=2, name="2",
-            probability=100,
-        )
-        Opportunity.objects.create(
-            id=3, name="3",
-            probability=100,
-        )
-
-        url = reverse("aw_reporting_urls:pacing_report_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(
-            set(data.keys()),
-            {
-                'start', 'end', 'status', 'ad_ops', 'am', 'sales',
-                'goal_type', 'period', 'category', 'region',
-            }
-        )
-        self.assertEqual(len(data['period']), 7)
-        self.assertEqual(len(data['status']), 3)
-
-        self.assertEqual(
-            set(u['id'] for u in data['ad_ops']), {"Jah"}
-        )
-        self.assertEqual(
-            set(u['id'] for u in data['am']), {"Ith"}
-        )
-        self.assertEqual(
-            set(u['id'] for u in data['sales']), {"Ral"}
-        )
 
     def test_forbidden_get_opportunities(self):
         self.user.delete()
@@ -365,7 +306,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]['id'], second.id)
 
-    @skip("Enable in scope of ticket IQD-2515")
+    @skip("Enable in scope of ticket SAAS-2299")
     def test_get_opportunities_dynamic_placement_rate_tech_fee_margin(self):
         today = timezone.now()
         start, end = today - timedelta(days=1), today + timedelta(days=1)
@@ -377,7 +318,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             opportunity=opportunity, tech_fee=tech_fee,
             goal_type_id=SalesForceGoalType.CPV,
             tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE)
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE)
         Flight.objects.create(placement=placement, total_cost=510, cost=123,
                               start=start, end=end)
         campaign = Campaign.objects.create(salesforce_placement=placement)
@@ -523,7 +464,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=start, end=end)
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=tech_fee)
         Flight.objects.create(placement=placement,
                               start=start, end=end,
@@ -568,7 +509,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=start, end=end)
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_RATE_AND_TECH_FEE,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=tech_fee)
         Flight.objects.create(placement=placement,
                               start=start, end=end,
@@ -589,3 +530,99 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         chart_data = response.data[0]["chart_data"]["cpm"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
+
+    def test_dynamic_placement_negative(self):
+        today = date(2017, 1, 1)
+        opportunity = Opportunity.objects.create(probability=100,
+                                                 start=today, end=today)
+
+        OpPlacement.objects.create(
+            id=1,
+            opportunity=opportunity,
+            start=today - timedelta(days=1),
+            end=today + timedelta(days=1)
+        )
+
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertFalse(response.data[0]["has_dynamic_placements"])
+
+    def test_dynamic_placement_positive(self):
+        today = date(2017, 1, 1)
+        dates = [
+            (today - timedelta(days=2), today - timedelta(days=1)),
+            (today - timedelta(days=1), today + timedelta(days=1)),
+            (today + timedelta(days=1), today + timedelta(days=2)),
+        ]
+        test_data = tuple(product(dates, DYNAMIC_PLACEMENT_TYPES))
+        count = len(test_data)
+        for index, item in enumerate(test_data):
+            start_end, dynamic_placement = item
+            start, end = start_end
+            opportunity = Opportunity.objects.create(id=index, probability=100,
+                                                     start=today, end=today)
+            OpPlacement.objects.create(
+                id=index,
+                opportunity=opportunity,
+                dynamic_placement=dynamic_placement,
+                start=start,
+                end=end
+            )
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), count)
+        self.assertTrue(all(o["has_dynamic_placements"] for o in response.data))
+
+    def test_dynamic_placement_budget(self):
+        today = date(2017, 1, 1)
+        start = today - timedelta(days=3)
+        end = today + timedelta(days=3)
+        total_days = (end - start).days + 1
+        days_pass = (today - start).days
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end, probability=100
+        )
+        total_cost = 123
+        aw_cost = 23
+        views, impressions = 14, 164
+        aw_cpv = aw_cost * 1. / views
+        aw_cpm = aw_cost * 1000. / impressions
+        expected_pacing = aw_cost / (total_cost / total_days * days_pass) * 100
+        expected_marging = (total_cost - aw_cost) / total_cost * 100
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start, end=end, total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+        )
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           video_views=1)
+        CampaignStatistic.objects.create(date=today, campaign=campaign,
+                                         cost=aw_cost,
+                                         video_views=views,
+                                         impressions=impressions)
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        pl = response.data[0]
+        self.assertIsNone(pl["plan_video_views"])
+        self.assertIsNone(pl["plan_impressions"])
+        self.assertIsNone(pl["plan_cpv"])
+        self.assertIsNone(pl["plan_cpm"])
+        self.assertEqual(pl["plan_cost"], total_cost)
+        self.assertEqual(pl["cost"], aw_cost)
+        self.assertEqual(pl["cpv"], aw_cpv)
+        self.assertEqual(pl["cpm"], aw_cpm)
+        self.assertEqual(pl["impressions"], impressions)
+        self.assertEqual(pl["video_views"], views)
+        self.assertAlmostEqual(pl["pacing"], expected_pacing)
+        self.assertAlmostEqual(pl["margin"], expected_marging)

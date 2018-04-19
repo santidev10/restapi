@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Campaign, CampaignStatistic
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
@@ -173,7 +174,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         placement2 = OpPlacement.objects.create(
             id="2", name="B", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
-            dynamic_placement=OpPlacement.DYNAMIC_TYPE_BUDGET,
+            dynamic_placement=DynamicPlacementType.BUDGET,
         )
         Flight.objects.create(
             id="2", name="", placement=placement2, start=yesterday, end=yesterday,
@@ -189,4 +190,4 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
 
         second = placements[1]
         self.assertEqual(second["id"], placement2.id)
-        self.assertEqual(second["dynamic_placement"], OpPlacement.DYNAMIC_TYPE_BUDGET)
+        self.assertEqual(second["dynamic_placement"], DynamicPlacementType.BUDGET)
