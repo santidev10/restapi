@@ -239,7 +239,7 @@ def get_campaigns(client, account, today=None):
             account=account).values_list('id', flat=True)
     )
     report = campaign_performance_report(client,
-                                         dates=[min_date, max_date],
+                                         dates=(min_date, max_date),
                                          include_zero_impressions=False,
                                          additional_fields=('Device', 'Date')
 )
