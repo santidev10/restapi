@@ -65,6 +65,15 @@ class HealthCheckApiView(ListAPIView):
             end = datetime.strptime(end, "%Y-%m-%d").date()
             queryset = queryset.exclude(end__gt=end).exclude(
                 start__gt=end)
+        campaign_start = request_data.get("campaign_start")
+        campaign_end = request_data.get("campaign_end")
+        if all((campaign_start, campaign_end)):
+            campaign_start = datetime.strptime(
+                campaign_start, "%Y-%m-%d").date()
+            campaign_end = datetime.strptime(
+                campaign_end, "%Y-%m-%d").date()
+            queryset = queryset.filter(
+                start__range=(campaign_start, campaign_end))
         brands = request_data.get("brands")
         if brands is not None:
             queryset = queryset.filter(brand__in=brands.split(","))
