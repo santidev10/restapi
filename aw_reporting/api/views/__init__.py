@@ -10,7 +10,7 @@ from .benchmark_filters_list import BenchmarkFiltersListApiView
 from .benchmark_product_charts import BenchmarkProductChartsApiView
 from .connect_aw_account import ConnectAWAccountApiView
 from .connect_aw_account_list import ConnectAWAccountListApiView
-from .health_check_tool.health_check_views import HealthCheckView
+from .health_check_tool.health_check_views import HealthCheckApiView
 from .pacing_report import *
 from .track_accounts_data import TrackAccountsDataApiView
 from .track_chart import TrackChartApiView

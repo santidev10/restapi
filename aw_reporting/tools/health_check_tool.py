@@ -5,16 +5,18 @@ from itertools import zip_longest
 from django.contrib.auth import get_user_model
 from django.db.models import Min, Max, Count, Case, When, F, Sum, CharField
 
-from aw_reporting.models import Campaign, ConcatAggregate, AgeRanges, \
-    GeoTarget, VideoCreativeStatistic
+from aw_reporting.models import Campaign, ConcatAggregate, GeoTarget, \
+    VideoCreativeStatistic
 
 AW_TARGETING_FIELDS = (
     "targeting_interests", "targeting_topics", "targeting_keywords",
     "targeting_remarketings", "targeting_channels", "targeting_videos",
     "targeting_custom_affinity", "tracking_template_is_set",
     "targeting_excluded_channels", "targeting_excluded_topics",
-    "targeting_excluded_keywords",
-)
+    "targeting_excluded_keywords")
+
+AGE_RANGES = ("Undetermined Age", "18-24", "25-34", "35-44", "45-54", "55-64",
+              "65 or more")
 
 UNDETERMINED_GENDER = "Undetermined Gender"
 MALE_GENDER = "Male"
@@ -198,7 +200,7 @@ class DemoSection(Section):
         age_range_targeting = setup_data["age_range_targeting"]
         if age_range_targeting:
             age_range_targeting = [
-                AgeRanges[int(e)] for e in
+                AGE_RANGES[int(e)] for e in
                 age_range_targeting.split(self.coma_sep)]
             self.age_range_targeting = age_range_targeting
             response.extend(age_range_targeting)
