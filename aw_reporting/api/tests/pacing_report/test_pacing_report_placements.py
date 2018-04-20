@@ -321,8 +321,11 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
+        yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
-        end = today + timedelta(days=3)
+        end = today + timedelta(days=5)
+        total_duration = (end - start).days + 1
+        days_passed = (yesterday - start).days + 1
         tech_fee = 0.12
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=start, end=end
@@ -333,10 +336,12 @@ class PacingReportPlacementsTestCase(APITestCase):
         aw_cpv = aw_cost * 1. / views
         aw_cpm = aw_cost * 1000. / impressions
         rate = 2.3
-        rate_margin = tech_fee * 100. / (aw_cpv + tech_fee)
+        expected_margin = tech_fee * 100. / (aw_cpv + tech_fee)
         video_view_rate = views * 100. / impressions
         ctr = clicks * 100. / views
-        client_cost = views * (rate + tech_fee)
+        planned_cost = total_cost / total_duration * days_passed
+        expected_pacing = aw_cost * 100. / planned_cost
+
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=total_cost,
@@ -349,7 +354,8 @@ class PacingReportPlacementsTestCase(APITestCase):
                               total_cost=total_cost)
         campaign = Campaign.objects.create(salesforce_placement=placement,
                                            video_views=1)
-        CampaignStatistic.objects.create(date=today, campaign=campaign,
+        CampaignStatistic.objects.create(date=today - timedelta(days=1),
+                                         campaign=campaign,
                                          cost=aw_cost,
                                          clicks=clicks,
                                          video_views=views,
@@ -379,10 +385,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(pl["cpm"], aw_cpm)
         self.assertEqual(pl["impressions"], impressions)
         self.assertEqual(pl["video_views"], views)
-        # margin
-        self.assertAlmostEqual(pl["rate_margin"], rate_margin)
-        # pacing
-        self.assertAlmostEqual(pl["client_cost"], client_cost)
+        self.assertAlmostEqual(pl["margin"], expected_margin)
+        self.assertAlmostEqual(pl["pacing"], expected_pacing)
 
     def test_dynamic_placement_budget_charts_ideal_pacing(self):
         today = date(2017, 1, 15)
@@ -544,7 +548,7 @@ class PacingReportPlacementsTestCase(APITestCase):
 
         self.assertEqual(pl["dynamic_placement"],
                          DynamicPlacementType.RATE_AND_TECH_FEE)
-        self.assertEqual(pl["plan_video_views"], goal)
+        self.assertEqual(pl["plan_video_views"], total_cost)
         self.assertEqual(pl["today_budget"], daily_goal)
 
         self.assertIsNotNone(pl["charts"])

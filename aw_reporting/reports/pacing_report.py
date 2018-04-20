@@ -319,20 +319,11 @@ class PacingReport:
             fl["plan_units"] = 0
             if fl["placement__dynamic_placement"] \
                     in (DynamicPlacementType.BUDGET,
+                        DynamicPlacementType.RATE_AND_TECH_FEE,
                         DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
-            elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-                effective_cpv = (fl["sum_cost"] / (fl["video_views"] or 1)) \
-                                or DefaultRate.CPV
-                effective_cpm = (fl["sum_cost"] / (
-                            fl["impressions"] or 1) * 1000.) or DefaultRate.CPM
-                effective_rate = effective_cpv \
-                    if fl["placement__goal_type_id"] == SalesForceGoalType.CPV \
-                    else effective_cpm
-                fl["plan_units"] = fl["total_cost"] * effective_rate \
-                                   / (effective_rate
-                                      + float(fl["placement__tech_fee"] or 0))
-
+            # elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
+            #     fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
             else:
@@ -577,7 +568,7 @@ class PacingReport:
     def get_margin_from_flights(self, flights, cost, plan_cost,
                                 allocation_ko=1, campaign_id=None):
         return get_margin_from_flights(flights, cost, plan_cost, allocation_ko,
-                                       campaign_id, yesterday=self.yesterday)
+                                       campaign_id)
 
     def get_pacing_goal_for_date(self, flight, date, allocation_ko=1,
                                  campaign_id=None):
@@ -1386,9 +1377,6 @@ class PacingReport:
             chart_data = self.get_chart_data(flights=flights)
             p.update(chart_data)
 
-            if p["dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-                add_data_for_rate_and_tech_fee_dynamic_placement(p)
-
         return placements
 
     # ## PLACEMENTS ## #
@@ -1453,9 +1441,6 @@ class PacingReport:
             elif flight["goal_type_id"] == SalesForceGoalType.CPM:
                 flight["plan_cpm"] = ordered_rate
                 flight["plan_cpv"] = None
-
-            if flight["dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-                add_data_for_rate_and_tech_fee_dynamic_placement(flight)
 
             flights.append(flight)
 
@@ -1532,19 +1517,3 @@ def get_stats_from_flight(flight, start=None, end=None, campaign_id=None):
     delivery["cpv"] = get_average_cpv(delivery["cost"],
                                       delivery["video_views"])
     return delivery
-
-
-def add_data_for_rate_and_tech_fee_dynamic_placement(placement):
-    tech_fee = placement["tech_fee"] or 0
-    goal_type_id = placement["goal_type_id"]
-    effective_rate = placement["cpv"] or DefaultRate.CPV \
-        if goal_type_id == SalesForceGoalType.CPV \
-        else (placement["cpm"] or DefaultRate.CPM) / 1000.
-    rate = placement["plan_cpv"] \
-        if goal_type_id == SalesForceGoalType.CPV \
-        else (placement["plan_cpm"] or 0) / 1000.
-    units = placement["video_views"] \
-        if goal_type_id == SalesForceGoalType.CPV else placement["impressions"]
-    placement["rate_margin"] = tech_fee * 100. / (
-                (effective_rate + tech_fee) or 1)
-    placement["client_cost"] = units * (rate + tech_fee)
