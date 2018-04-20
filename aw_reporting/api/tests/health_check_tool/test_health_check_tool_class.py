@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 from aw_reporting.models import AgeRanges, CampaignGenderTargeting, \
     CampaignAgeRangeTargeting, Opportunity, OpPlacement, Campaign, \
@@ -98,9 +98,9 @@ class SetupHealthCheckToolTestCase(APITestCase):
         self.assertIs(response["flight"]["match"], True)
 
     def test_match_same_day_start(self):
-        before_start = datetime(2017, 9, 25).date()
-        start = datetime(2017, 9, 25).date()
-        end = datetime(2017, 11, 26).date()
+        before_start = date(2017, 9, 25)
+        start = date(2017, 9, 25)
+        end = date(2017, 11, 26)
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end)
         placement = OpPlacement.objects.create(
@@ -130,9 +130,9 @@ class SetupHealthCheckToolTestCase(APITestCase):
         self.assertIs(response["flight"]["match"], False)
 
     def test_match_4_days_before_start(self):
-        before_start = datetime(2017, 9, 21).date()
-        start = datetime(2017, 9, 25).date()
-        end = datetime(2017, 11, 26).date()
+        before_start = date(2017, 9, 26)
+        start = date(2017, 9, 25)
+        end = date(2017, 11, 26)
         opportunity = Opportunity.objects.create(
             id="1", name="", start=start, end=end)
         placement = OpPlacement.objects.create(

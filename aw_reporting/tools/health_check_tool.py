@@ -454,17 +454,19 @@ class FlightSection(Section):
         return data
 
     def run_comparison(self, aw, sf):
-        if len(aw) > 0 and len(sf) > 0:
-            aw_start, sf_start = aw[0]["name"], sf[0]["name"]
-            diff = (sf_start - aw_start).days
-            if 0 <= diff <= 3:
-                self.set_positive_matching(aw[0])
-                self.set_positive_matching(sf[0])
-                if len(aw) > 1 and len(sf) > 1:
-                    aw_end, sf_end = aw[1]["name"], sf[1]["name"]
-                    if aw_end == sf_end:
-                        self.set_positive_matching(aw[1])
-                        self.set_positive_matching(sf[1])
+        if not all((aw, sf)):
+            return aw, sf
+        aw_start, sf_start = aw[0]["name"], sf[0]["name"]
+        if sf_start >= aw_start:
+            self.set_positive_matching(aw[0])
+            self.set_positive_matching(sf[0])
+        try:
+            aw_end, sf_end = aw[1]["name"], sf[1]["name"]
+        except IndexError:
+            return aw, sf
+        if aw_end == sf_end:
+            self.set_positive_matching(aw[1])
+            self.set_positive_matching(sf[1])
         return aw, sf
 
 
