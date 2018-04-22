@@ -573,10 +573,10 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        self.assertNotIn(sm.email, email.to)
-        self.assertNotIn(sm.email, email.cc)
-        self.assertNotIn(sm.email, email.bcc)
-
+        receivers = email.to + email.cc + email.bcc
+        receivers_mails = (r[1] if isinstance(r, tuple) else r
+                           for r in receivers)
+        self.assertNotIn(sm.email, receivers_mails)
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]
