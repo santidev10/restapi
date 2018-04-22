@@ -542,6 +542,41 @@ class SendDailyEmailsTestCase(APITestCase):
         email = mail.outbox[0]
         self.assertEqual(email.to, [am.email])
 
+    def test_receivers_no_sales(self):
+        ad_ops = User.objects.create(id=1, email="AdOps@channelfactory.com")
+        sm = User.objects.create(id=2, email="SM@channelfactory.com")
+
+        today = timezone.now().date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            sales_manager=sm,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(id="1", name="", placement=placement,
+                              start=today.replace(day=1),
+                              end=today.replace(day=28), ordered_units=1000)
+        Campaign.objects.create(pk="1", name="",
+                                salesforce_placement=placement)
+
+        call_command("send_daily_email_reports", reports="DailyCampaignReport")
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertNotIn(sm.email, email.to)
+        self.assertNotIn(sm.email, email.cc)
+        self.assertNotIn(sm.email, email.bcc)
+
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]

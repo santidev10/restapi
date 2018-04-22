@@ -81,7 +81,6 @@ class DailyCampaignReport(BaseEmailReport):
 
     def _get_recipients(self, opportunity):
         recipient_roles = self.roles or (OpportunityManager.ACCOUNT_MANAGER,
-                                         OpportunityManager.SALES_MANAGER,
                                          OpportunityManager.AD_OPS_MANAGER)
         opportunity_keys = [_manager_map.get(r) for r in recipient_roles]
         user_ids = list(filter(None, [(opportunity.get(k) or {}).get('id')
