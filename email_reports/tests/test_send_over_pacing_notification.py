@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.utils import timezone
@@ -59,6 +60,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject,
                          "FLIGHT OVER PACING for {}".format(opportunity.name))
-        self.assertEqual(len(mail.outbox[0].to), 1)
-        self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
-        self.assertEqual(len(mail.outbox[0].cc), 3)
+        self.assertEqual(mail.outbox[0].to, [ad_ops.email])
+        self.assertEqual(set(mail.outbox[0].cc),
+                         {(acc_mng.name, acc_mng.email),
+                          *settings.CF_AD_OPS_DIRECTORS})

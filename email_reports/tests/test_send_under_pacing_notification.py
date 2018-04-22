@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.utils import timezone
@@ -14,7 +15,7 @@ class SendDailyEmailsTestCase(APITestCase):
     def setUp(self):
         pass
 
-    def _test_send_minimum_email(self):
+    def test_send_minimum_email(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
         sales = User.objects.create(id="2", name="Dave", email="2@mail.cz")
         acc_mng = User.objects.create(id="3", name="John", email="3@mail.cz")
@@ -63,9 +64,10 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject,
                          "FLIGHT UNDER PACING for {}".format(opportunity.name))
-        self.assertEqual(len(mail.outbox[0].to), 1)
-        self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
-        self.assertEqual(len(mail.outbox[0].cc), 3)
+        self.assertEqual(mail.outbox[0].to, [ad_ops.email])
+        self.assertEqual(set(mail.outbox[0].cc),
+                         {(acc_mng.name, acc_mng.email),
+                          *settings.CF_AD_OPS_DIRECTORS})
         body = mail.outbox[0].body
         body_template = "The flight {} is under pacing by"
         self.assertIn(body_template.format(flight_1_name), body)
