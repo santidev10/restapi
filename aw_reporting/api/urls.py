@@ -94,4 +94,15 @@ urlpatterns = [
         name="health_check_tool"),
     url(r'^setup_health_check_filters/$', HealthCheckFiltersApiView.as_view(),
         name="health_check_tool_filters"),
+
+    # Pricing tool
+    url(r'^pricing_tool/filters/$',
+        views.PricingToolFiltersView.as_view(),
+        name="pricing_tool_filters"),
+    url(r'^pricing_tool/estimate/$',
+        views.PricingToolEstimateView.as_view(),
+        name="pricing_tool_estimate"),
+    url(r'^pricing_tool/opportunity/$',
+        views.PricingToolOpportunityView.as_view(),
+        name="pricing_tool_opportunities"),
 ]
