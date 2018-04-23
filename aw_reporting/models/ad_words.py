@@ -1,14 +1,18 @@
 import re
+from datetime import datetime
 from functools import wraps
 
+import pytz
 from django.conf import settings
 from django.db import models
-from django.db.models import Min, Sum, Case, When, IntegerField
+from django.db.models import Min, Sum, Case, When, IntegerField, Q
 from django.db.models.aggregates import Aggregate
+from django.db.models.query import QuerySet as DBQuerySet
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.settings import InstanceSettings
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -51,11 +55,12 @@ GenderOptions = (
     "GENDER_MALE",
 )
 
+
 def get_average_cpv(*args, **kwargs):
     if len(args) == 2:
         cost, video_views = args
     elif 'cost' in kwargs and 'video_views' in kwargs:
-        cost = kwargs['cost']
+        cost = kwargs['cost'] or 0
         video_views = kwargs['video_views']
     else:
         return
@@ -437,7 +442,51 @@ class ModelPlusDeNormFields(BaseStatisticModel):
         abstract = True
 
 
+DEFAULT_TIMEZONE = settings.DEFAULT_TIMEZONE
+
+
+class CampaignQueryset(DBQuerySet):
+    def status(self, status, *args, tz=None, **kwargs):
+        if status == 'paused':
+            return self.filter(_status=status, *args, **kwargs)
+        else:
+            tz = tz or DEFAULT_TIMEZONE
+            if type(tz) is str:
+                tz = pytz.timezone(tz)
+            today = datetime.now(tz=tz).date()
+            if status == 'ended':
+                return self.filter(
+                    _status='enabled',
+                    end_date__lt=today, *args, **kwargs
+                )
+            elif status == 'not_ended':
+                return self.filter(
+                    Q(end_date__gte=today) | Q(end_date__isnull=True),
+                    *args, **kwargs
+                )
+            elif status == 'enabled':
+                return self.filter(_status='enabled').filter(
+                    Q(end_date__gte=today) | Q(end_date__isnull=True),
+                    *args, **kwargs
+                )
+            else:
+                raise ValueError("Unrecognized status '%s'" % status)
+
+
+class CampaignQuerySetManager(models.Manager):
+
+    def get_queryset(self):
+        return CampaignQueryset(self.model, using=self._db)
+
+    def visible_campaigns(self):
+        visible_accounts = InstanceSettings().get("visible_accounts")
+        return self.get_queryset().filter(Q(account__in=visible_accounts)
+                                          | Q(account__isnull=True))
+
+
 class Campaign(ModelPlusDeNormFields):
+    objects = CampaignQuerySetManager()
+
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     account = models.ForeignKey(Account, null=True, related_name='campaigns')
@@ -469,7 +518,18 @@ class Campaign(ModelPlusDeNormFields):
     targeting_excluded_topics = models.BooleanField(default=False)
     targeting_excluded_keywords = models.BooleanField(default=False)
 
+    _start = models.DateField(null=True)
+    _end = models.DateField(null=True)
+
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
+
+    @property
+    def start(self):
+        return self._start or self.start_date
+
+    @property
+    def end(self):
+        return self._end or self.end_date
 
     def __str__(self):
         return "%s" % self.name
