@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Q, Min, Max, Count, Case, When
+from django.db.models import Q, Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
