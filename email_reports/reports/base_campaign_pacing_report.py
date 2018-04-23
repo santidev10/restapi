@@ -77,10 +77,10 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         return self.get_to(to_recipients)
 
     def _get_cc(self, opportunity):
-        cc = [(u.name, u.email)
-              for u in [opportunity.sales_manager, opportunity.account_manager]
-              if u is not None]
-        return self.get_cc(cc + settings.CF_AD_OPS_DIRECTORS)
+        am = opportunity.account_manager
+        cc = [(am.name, am.email)] + settings.CF_AD_OPS_DIRECTORS \
+            if am else settings.CF_AD_OPS_DIRECTORS
+        return self.get_cc(cc)
 
     def _build_body(self, opportunity, flights_with_pacing, date_end):
         flight_descriptions = [

@@ -47,6 +47,19 @@ campaign_impressions_percent_map = {
 }
 
 
+class OpportunityManager:
+    ACCOUNT_MANAGER = "Account Manager"
+    SALES_MANAGER = "Sales Manager"
+    AD_OPS_MANAGER = "Ad Ops Manager"
+
+
+_manager_map = {
+    OpportunityManager.ACCOUNT_MANAGER: "am",
+    OpportunityManager.AD_OPS_MANAGER: "ad_ops",
+    OpportunityManager.SALES_MANAGER: "sales"
+}
+
+
 class DailyCampaignReport(BaseEmailReport):
 
     def __init__(self, *args, **kwargs):
@@ -66,6 +79,14 @@ class DailyCampaignReport(BaseEmailReport):
                and p["end"] >= self.before_yesterday \
                and p["goal_type_id"] < 2
 
+    def _get_recipients(self, opportunity):
+        recipient_roles = self.roles or (OpportunityManager.ACCOUNT_MANAGER,
+                                         OpportunityManager.AD_OPS_MANAGER)
+        opportunity_keys = [_manager_map.get(r) for r in recipient_roles]
+        user_ids = list(filter(None, [(opportunity.get(k) or {}).get('id')
+                                      for k in opportunity_keys]))
+        return User.objects.filter(id__in=user_ids)
+
     def send(self):
 
         html = get_template('daily_campaign_report.html')
@@ -77,11 +98,7 @@ class DailyCampaignReport(BaseEmailReport):
             opportunity['type'] = "opportunity"
             PacingReportHelper.multiply_percents([opportunity])
 
-            user_ids = list(filter(None, [(opportunity.get(k) or {}).get('id')
-                                          for k in ("ad_ops", "am", "sales")]))
-            users = User.objects.filter(id__in=user_ids)
-            if self.roles:
-                users = users.filter(role__name__in=self.roles)
+            users = self._get_recipients(opportunity)
             to_emails = users.values_list("email", flat=True)
             to_emails = set(filter(None, to_emails))
             exclude_emails = set(
