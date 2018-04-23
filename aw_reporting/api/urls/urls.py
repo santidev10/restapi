@@ -1,6 +1,7 @@
 from django.conf.urls import url
 
 from aw_reporting.api import views
+from aw_reporting.api.urls.names import Name
 
 urlpatterns = [
     # analyze
@@ -29,7 +30,7 @@ urlpatterns = [
     # track
     url(r'^track_filters/$',
         views.TrackFiltersListApiView.as_view(),
-        name="track_filters"),
+        name=Name.Track.FILTERS),
     url(r'^track_chart/$',
         views.TrackChartApiView.as_view(),
         name="track_chart"),
@@ -105,4 +106,15 @@ urlpatterns = [
     url(r'^pricing_tool/opportunity/$',
         views.PricingToolOpportunityView.as_view(),
         name="pricing_tool_opportunities"),
+
+    # Global trends
+    url(r'^global_trends/filters',
+        views.GlobalTrendsFiltersApiView.as_view(),
+        name=Name.GlobalTrends.FILTERS),
+    url(r'^global_trends/data',
+        views.GlobalTrendsDataApiView.as_view(),
+        name=Name.GlobalTrends.DATA),
+    url(r'^global_trends/charts',
+        views.GlobalTrendsChartsApiView.as_view(),
+        name=Name.GlobalTrends.CHARTS)
 ]

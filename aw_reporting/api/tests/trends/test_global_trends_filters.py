@@ -1,0 +1,114 @@
+from django.core.urlresolvers import reverse
+from rest_framework.status import HTTP_200_OK
+
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.api.urls.names import Name
+from aw_reporting.demo import DemoAccount
+from aw_reporting.models import Campaign, Account
+from aw_reporting.settings import InstanceSettingsKey
+from saas.urls.namespaces import Namespace
+from utils.utils_tests import patch_instance_settings
+
+
+class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.FILTERS)
+
+    def test_global_accounts(self):
+        self.create_test_user()
+
+        def new_account(new_id):
+            return Account.objects.create(id=new_id)
+
+        manager = new_account(1)
+        child_account = new_account(2)
+        child_account.managers.add(manager)
+        child_account.save()
+        child_account.refresh_from_db()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = response.data.get("accounts", [])
+        self.assertEqual(len(accounts), 1)
+        account = accounts[0]
+        self.assertEqual(account["id"], child_account.id)
+
+    def test_success_get(self):
+        user = self.create_test_user()
+        account = self.create_account(user)
+        manager = account.managers.first()
+        for i in range(1, 3):
+            Campaign.objects.create(
+                id=i, name="", account=account, impressions=1)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                'accounts',
+                'dimension',
+                'indicator',
+                'breakdown',
+            }
+        )
+        self.assertEqual(len(response.data['accounts']), 1)
+        account_data = response.data['accounts'][0]
+        self.assertEqual(
+            set(account_data.keys()),
+            {
+                'id',
+                'name',
+                'start_date',
+                'end_date',
+                'campaigns',
+            }
+        )
+        self.assertEqual(account_data['id'], account.id)
+        self.assertEqual(len(account_data['campaigns']), 2)
+        self.assertEqual(
+            set(account_data['campaigns'][0].keys()),
+            {
+                'id',
+                'name',
+                'start_date',
+                'end_date',
+            }
+        )
+
+    def test_demo_account(self):
+        self.create_test_user()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        self.assertEqual(len(response.data['accounts']), 1)
+        account_data = response.data['accounts'][0]
+        self.assertEqual(
+            set(account_data.keys()),
+            {
+                'id',
+                'name',
+                'start_date',
+                'end_date',
+                'campaigns',
+            }
+        )
+        self.assertEqual(account_data['id'], DemoAccount().id)
+        self.assertEqual(len(account_data['campaigns']), 2)
+        self.assertEqual(
+            set(account_data['campaigns'][0].keys()),
+            {
+                'id',
+                'name',
+                'start_date',
+                'end_date',
+            }
+        )
