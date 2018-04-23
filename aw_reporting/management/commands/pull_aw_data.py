@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+
+        parser.add_argument(
+            '--forced',
+            dest='forced',
+            default=False,
+            type=bool,
+            help='Forced update of all accounts'
+        )
+
 
     def pre_process(self):
         detect_success_aw_read_permissions()
@@ -43,10 +53,12 @@ class Command(BaseCommand):
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
             timezone__in=timezones,
-            can_manage_clients=True,
-        ).filter(
-            Q(update_time__date__lt=today) | Q(update_time__isnull=True)
+            can_manage_clients=True
         )
+        if not options.get('forced'):
+            mcc_to_update = mcc_to_update.filter(
+                Q(update_time__date__lt=today) | Q(update_time__isnull=True)
+            )
         updater = AWDataLoader(today)
         for mcc in mcc_to_update:
             logger.info("MCC update: {}".format(mcc))
@@ -55,10 +67,12 @@ class Command(BaseCommand):
         # 2) update all the advertising accounts
         accounts_to_update = Account.objects.filter(
             timezone__in=timezones,
-            can_manage_clients=False,
-        ).filter(
-           Q(update_time__date__lt=today) | Q(update_time__isnull=True)
+            can_manage_clients=False
         )
+        if not options.get('forced'):
+            accounts_to_update = accounts_to_update.filter(
+                Q(update_time__date__lt=today) | Q(update_time__isnull=True)
+            )
         for account in accounts_to_update:
             logger.info("Customer account update: {}".format(account))
             updater.full_update(account)

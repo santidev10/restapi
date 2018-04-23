@@ -276,7 +276,10 @@ def get_campaigns(client, account, today=None):
             insert_stat.append(CampaignStatistic(**statistic_data))
 
             try:
-                Campaign.objects.get(pk=campaign_id).update(**stats)
+                campaign = Campaign.objects.get(pk=campaign_id)
+                for field, value in stats.items():
+                    setattr(campaign, field, value)
+                campaign.save()
             except Campaign.DoesNotExist:
                 stats['id'] = campaign_id
                 Campaign.objects.create(**stats)
