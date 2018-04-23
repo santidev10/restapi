@@ -1,6 +1,6 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from .base import AwReportingAPITestCase
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \

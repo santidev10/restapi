@@ -1,8 +1,6 @@
 from django.conf.urls import url
 
 from aw_reporting.api import views
-from aw_reporting.api.views.health_check_tool.health_check_views import \
-    HealthCheckFiltersApiView, HealthCheckApiView
 
 urlpatterns = [
     # analyze
@@ -90,9 +88,11 @@ urlpatterns = [
         name="campaigns_setup_check_save_settings"),
 
     # Health check tool
-    url(r'^setup_health_check_list/$', HealthCheckApiView.as_view(),
+    url(r'^setup_health_check_list/$',
+        views.HealthCheckApiView.as_view(),
         name="health_check_tool"),
-    url(r'^setup_health_check_filters/$', HealthCheckFiltersApiView.as_view(),
+    url(r'^setup_health_check_filters/$',
+        views.HealthCheckFiltersApiView.as_view(),
         name="health_check_tool_filters"),
 
     # Pricing tool
