@@ -10,6 +10,7 @@ from io import StringIO
 
 import isodate
 from apiclient.discovery import build
+from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
@@ -54,8 +55,6 @@ from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
-from django.conf import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -618,28 +617,26 @@ class AccountCreationListApiView(ListAPIView):
                                                            **kwargs)
 
     def get_queryset(self, **filters):
+        # TODO here replace queryset by query param
         queryset = AccountCreation.objects.filter(
             is_deleted=False,
             owner=self.request.user, **filters
         )
-        sort_by = self.request.query_params.get('sort_by')
 
+        sort_by = self.request.query_params.get('sort_by')
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]
             if dependencies:
                 queryset = queryset.annotate(
                     **{d: self.annotate_sorts[d][1] for d in dependencies})
-
             if sort_by == "name":
                 sort_by = "sort_by"
             else:
                 annotate = Coalesce(annotate, 0)
                 sort_by = "-sort_by"
-
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-
         return queryset.order_by('is_ended', sort_by)
 
     def filter_queryset(self, queryset):
