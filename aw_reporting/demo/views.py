@@ -230,6 +230,7 @@ class GlobalTrendsFiltersApiView:
                 return response
             data = dict(
                 accounts=[get_demo_account_data()],
+                am=[],
                 **view._get_static_filters()
             )
             return Response(data=data)

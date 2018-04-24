@@ -1,10 +1,11 @@
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo import DemoAccount
-from aw_reporting.models import Campaign, Account
+from aw_reporting.models import Campaign, Account, User, Opportunity, \
+    OpPlacement
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import patch_instance_settings
@@ -12,6 +13,12 @@ from utils.utils_tests import patch_instance_settings
 
 class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.FILTERS)
+    expected_keys = {"accounts", "dimension", "indicator", "breakdown", "am"}
+
+    def test_authentication_required(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_global_accounts(self):
         self.create_test_user()
@@ -53,34 +60,29 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
         self.assertEqual(
             set(response.data.keys()),
-            {
-                'accounts',
-                'dimension',
-                'indicator',
-                'breakdown',
-            }
+            self.expected_keys
         )
-        self.assertEqual(len(response.data['accounts']), 1)
-        account_data = response.data['accounts'][0]
+        self.assertEqual(len(response.data["accounts"]), 1)
+        account_data = response.data["accounts"][0]
         self.assertEqual(
             set(account_data.keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
-                'campaigns',
+                "id",
+                "name",
+                "start_date",
+                "end_date",
+                "campaigns",
             }
         )
-        self.assertEqual(account_data['id'], account.id)
-        self.assertEqual(len(account_data['campaigns']), 2)
+        self.assertEqual(account_data["id"], account.id)
+        self.assertEqual(len(account_data["campaigns"]), 2)
         self.assertEqual(
-            set(account_data['campaigns'][0].keys()),
+            set(account_data["campaigns"][0].keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
+                "id",
+                "name",
+                "start_date",
+                "end_date",
             }
         )
 
@@ -89,26 +91,54 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        self.assertEqual(len(response.data['accounts']), 1)
-        account_data = response.data['accounts'][0]
+        self.assertEqual(len(response.data["accounts"]), 1)
+        account_data = response.data["accounts"][0]
         self.assertEqual(
             set(account_data.keys()),
-            {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
-                'campaigns',
-            }
+            self.expected_keys
         )
-        self.assertEqual(account_data['id'], DemoAccount().id)
-        self.assertEqual(len(account_data['campaigns']), 2)
+        self.assertEqual(account_data["id"], DemoAccount().id)
+        self.assertEqual(len(account_data["campaigns"]), 2)
         self.assertEqual(
-            set(account_data['campaigns'][0].keys()),
+            set(account_data["campaigns"][0].keys()),
             {
-                'id',
-                'name',
-                'start_date',
-                'end_date',
+                "id",
+                "name",
+                "start_date",
+                "end_date",
             }
         )
+
+    def test_account_managers(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_account_manager = User.objects.create(id="123",
+                                                   name="Test User Name")
+        expected_am_data = dict(id=test_account_manager.id,
+                                name=test_account_manager.name)
+
+        def create_relations(_id):
+            opportunity = Opportunity.objects.create(
+                id=_id,
+                account_manager=test_account_manager)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            Campaign.objects.create(id=_id,
+                                    salesforce_placement=placement,
+                                    account=test_account)
+
+            test_account.managers.add(manager)
+            test_account.save()
+        create_relations(1)
+        create_relations(2)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account_managers = response.data.get("am", [])
+        self.assertEqual(account_managers, [expected_am_data])
