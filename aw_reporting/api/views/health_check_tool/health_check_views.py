@@ -37,7 +37,7 @@ class HealthCheckApiView(ListAPIView):
         if period:
             today = datetime.now(
                 tz=pytz.timezone(settings.DEFAULT_TIMEZONE)).date()
-            if period == "current":
+            if period == "currently running":
                 queryset = queryset.filter(start__lte=today, end__gte=today)
             elif period == "past":
                 queryset = queryset.filter(end__lt=today)
@@ -120,7 +120,7 @@ class HealthCheckFiltersApiView(APIView):
         filters = dict(
             period=[
                 dict(id=status, name=status.capitalize())
-                for status in ("current", "past", "future")
+                for status in ("currently running", "past", "future")
             ],
             ad_ops=[
                 dict(id=u['ad_ops_manager__id'],
