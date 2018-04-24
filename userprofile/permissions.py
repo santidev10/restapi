@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, Group
 from django.contrib.contenttypes.models import ContentType
 
 from userprofile.models import PermissionSet
@@ -41,7 +41,6 @@ class PermissionHandler:
 
     def remove_custom_user_permission(self, perm):
         """
-        todo fill
         :param perm: str, permission name
         :return:
         """
@@ -49,30 +48,41 @@ class PermissionHandler:
         self.user.user_permissions.remove(permission)
 
     def get_custom_permission(self, perm):
+        """
+        :param perm: str, permission name
+        :return: GlobalPermission object
+        """
         permission, _ = GlobalPermission.objects.get_or_create(codename=perm)
         return permission
 
-    def get_user_perm_sets(self):
-        compliance = {}
-        all_perm_sets = PermissionSet.objects.all()
-        for perm_set in all_perm_sets:
-            user_perm = self.user.user_permissions.filter(codename__in=perm_set.permissions_values,
-                                                          content_type__model='access_permission').values_list(
-                'codename', flat=True)
-            compliance[perm_set.permission_set] = set(user_perm) == set(perm_set.permissions_values)
-        return compliance
+    def get_user_groups(self):
+        return self.user.groups.values_list('name', flat=True)
 
-    def manage_permission_by_set(self, perm_set, action=None):
-        assert action is not None, 'specify action: add or remove'
+    def add_custom_user_group(self, raw_group):
         try:
-            p_set_obj = PermissionSet.objects.get(permission_set=perm_set)
-            if action == 'add':
-                for perm in p_set_obj.permissions_values:
-                    self.add_custom_user_permission(perm)
-            elif action == 'remove':
-                for perm in p_set_obj.permissions_values:
-                    self.remove_custom_user_permission(perm)
-        except PermissionSet.DoesNotExist:
-            return False
-        return True
+            group = Group.objects.get(name=raw_group)
+            self.user.groups.add(group)
+        except Group.DoesNotExist:
+            pass
+
+    def remove_custom_user_group(self, raw_group):
+        try:
+            group = Group.objects.get(name=raw_group)
+            self.user.groups.remove(group)
+        except Group.DoesNotExist:
+            pass
+
+    def sync_groups(self):
+        """
+        sync permission groups from PermissionSet model
+        """
+        perm_set_data = PermissionSet.objects.all()
+        for perm_data in perm_set_data:
+            group_name = perm_data.permission_set
+            raw_group_permissions = perm_data.permissions_values
+
+            group, _ = Group.objects.get_or_create(name=group_name)
+            group_permissions = tuple([self.get_custom_permission(perm) for perm in raw_group_permissions])
+            group.permissions.set(group_permissions)
+            group.save()
 

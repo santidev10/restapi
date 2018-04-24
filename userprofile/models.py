@@ -3,7 +3,7 @@ Userprofile models module
 """
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
-    UserManager, Permission
+    UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.core import validators
@@ -108,8 +108,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     @property
     def permissions_sets(self):
-        from userprofile.permissions import PermissionHandler
-        return PermissionHandler(self).get_user_perm_sets()
+        return self.groups.values('name')
 
     def update_permissions(self, source):
         self.update_permissions_tree(source, self.permissions)
