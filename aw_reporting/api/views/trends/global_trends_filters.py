@@ -16,12 +16,26 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
     def _get_filters(self, request):
         base_filters = super(GlobalTrendsFiltersApiView, self) \
             ._get_filters(request)
-        account_managers = User.objects.filter(
-            managed_opportunities__placements__adwords_campaigns__account__in=self._get_accounts(
-                request)) \
-            .distinct()
-        am_data = [dict(id=am.id, name=am.name) for am in account_managers]
+        am_data = _users_data(
+            managed_opportunities__placements__adwords_campaigns__account__in=self._get_accounts(request)
+        )
+        ad_ops_data = _users_data(
+            ad_managed_opportunities__placements__adwords_campaigns__account__in=self._get_accounts(
+                request)
+        )
         return dict(
             am=am_data,
+            ad_ops=ad_ops_data,
+            sales=[],
+            brands=[],
+            goal_types=[],
+            verticals=[],
+            regions=[],
             **base_filters,
         )
+
+
+def _users_data(**filters):
+    users = User.objects.filter(**filters) \
+        .distinct()
+    return [dict(id=am.id, name=am.name) for am in users]

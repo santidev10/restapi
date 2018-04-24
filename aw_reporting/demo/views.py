@@ -231,6 +231,12 @@ class GlobalTrendsFiltersApiView:
             data = dict(
                 accounts=[get_demo_account_data()],
                 am=[],
+                ad_ops=[],
+                sales=[],
+                brands=[],
+                goal_types=[],
+                verticals=[],
+                regions=[],
                 **view._get_static_filters()
             )
             return Response(data=data)
