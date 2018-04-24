@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
@@ -105,6 +105,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         User auth token
         """
         return self.auth_token.key
+
+    @property
+    def permissions_sets(self):
+        from userprofile.permissions import PermissionHandler
+        return PermissionHandler(self).get_user_perm_sets()
 
     def update_permissions(self, source):
         self.update_permissions_tree(source, self.permissions)
@@ -274,3 +279,8 @@ class UserChannel(Timestampable):
 
     class Meta:
         unique_together = ("channel_id", "user")
+
+
+class PermissionSet(models.Model):
+    permission_set = models.CharField(max_length=255, null=True, blank=True)
+    permissions_values = ArrayField(models.CharField(max_length=200), blank=True, default=list)

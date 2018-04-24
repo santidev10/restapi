@@ -139,6 +139,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
+            "permissions_sets",
             "plan",
             "access",
             "can_access_media_buying",

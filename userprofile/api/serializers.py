@@ -137,6 +137,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
+            "permissions_sets",
             "has_aw_accounts",
             "plan",
             "access",
