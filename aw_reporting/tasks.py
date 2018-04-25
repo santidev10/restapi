@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Q, Min, Max, Count, Case, When
+from django.db.models import Q, Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -234,17 +234,12 @@ def get_campaigns(client, account, today=None):
         else min_fetch_date
     max_date = today - timedelta(1)
 
-    campaign_ids = set(
-        Campaign.objects.filter(
-            account=account).values_list('id', flat=True)
-    )
     report = campaign_performance_report(client,
                                          dates=(min_date, max_date),
                                          include_zero_impressions=False,
                                          additional_fields=('Device', 'Date')
 )
     with transaction.atomic():
-        insert_campaign = []
         insert_stat = []
         for row_obj in report:
             campaign_id = row_obj.CampaignId
@@ -280,14 +275,14 @@ def get_campaigns(client, account, today=None):
             statistic_data.update(get_base_stats(row_obj))
             insert_stat.append(CampaignStatistic(**statistic_data))
 
-            if campaign_id not in campaign_ids:
+            try:
+                campaign = Campaign.objects.get(pk=campaign_id)
+                for field, value in stats.items():
+                    setattr(campaign, field, value)
+                campaign.save()
+            except Campaign.DoesNotExist:
                 stats['id'] = campaign_id
-                insert_campaign.append(Campaign(**stats))
-            else:
-                Campaign.objects.filter(pk=campaign_id).update(**stats)
-
-        if insert_campaign:
-            Campaign.objects.bulk_create(insert_campaign)
+                Campaign.objects.create(**stats)
 
         if insert_stat:
             CampaignStatistic.objects.safe_bulk_create(insert_stat)

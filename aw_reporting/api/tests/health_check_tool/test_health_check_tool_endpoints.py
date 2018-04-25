@@ -323,6 +323,39 @@ class AWSetupHealthCheckTestCase(APITestCase):
         opportunity_ids = [item["id"] for item in response.data["items"]]
         self.assertEqual(set(opportunity_ids), {op_1.id, op_2.id})
 
+    def test_get_list_filtered_by_campaign_start(self):
+        left_date_border = date(2017, 1, 1)
+        right_date_border = date(2017, 1, 5)
+        start_dates = (
+            # include
+            left_date_border,
+            date(2017, 1, 3),
+            right_date_border,
+            # exclude
+            date(2016, 12, 30),
+            date(2017, 1, 8))
+        expected_opportunities_count = 3
+        opportunities = [Opportunity.objects.create(
+            id=str(opp_id), name="", probability=100, start=start_date)
+            for opp_id, start_date in enumerate(start_dates)]
+        expected_opportunities_ids = {
+            opportunity.id for opportunity
+            in opportunities[:expected_opportunities_count]}
+        query_params = QueryDict("", mutable=True)
+        query_params.update(
+            dict(campaign_start=left_date_border,
+                 campaign_end=right_date_border))
+        url = "?".join([
+            reverse("aw_reporting_urls:health_check_tool"),
+            query_params.urlencode()])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            response.data["items_count"], expected_opportunities_count)
+        self.assertEqual(
+            expected_opportunities_ids,
+            {obj["id"] for obj in response.data["items"]})
+
     def __create_not_auth_user(self):
         self.user.delete()
         self.create_test_user(False)

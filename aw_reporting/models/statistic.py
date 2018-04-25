@@ -196,3 +196,19 @@ class ParentStatistic(DailyStatisticModel):
     @property
     def parent_status(self):
         return ParentStatuses[int(self.parent_status_id)]
+
+
+class GeoTargeting(BaseStatisticModel):
+    """
+    A model for geo targeting settings at the campaign level
+    """
+    campaign = models.ForeignKey(Campaign, related_name='geo_performance')
+    geo_target = models.ForeignKey(GeoTarget, related_name='geo_performance')
+    is_negative = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (("campaign", "geo_target"),)
+        ordering = ["campaign", "geo_target"]
+
+    def __str__(self):
+        return "%s %s" % (self.campaign, self.geo_target)

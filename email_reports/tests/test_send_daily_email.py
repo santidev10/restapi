@@ -8,8 +8,9 @@ from django.utils import timezone
 from lxml import etree
 
 from aw_reporting.models import SalesForceGoalType, User, Opportunity, \
-    OpPlacement, Flight, Account, Campaign, CampaignStatistic
+    OpPlacement, Flight, Account, Campaign, CampaignStatistic, UserRole
 from email_reports.models import SavedEmail
+from email_reports.reports.daily_campaign_report import OpportunityManager
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, \
     patch_settings, patch_now
 
@@ -50,8 +51,9 @@ class SendDailyEmailsTestCase(APITestCase):
 
     def test_do_not_send_un_subscribed(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
-        get_user_model().objects.create(email=ad_ops.email,
-                                        is_subscribed_to_campaign_notifications=False)
+        get_user_model().objects.create(
+            email=ad_ops.email,
+            is_subscribed_to_campaign_notifications=False)
         today = timezone.now().date()
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
@@ -517,6 +519,64 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(yesterday_impressions_width, width_2)
         self.assertEqual(today_impressions_width, width_3)
 
+    def test_send_report_only_to_account_manager(self):
+        now = datetime(2017, 1, 15)
+        am_role = UserRole.objects.create(id="1",
+                                          name=UserRole.ACCOUNT_MANAGER_NAME)
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz",
+                                     role=am_role)
+        am = User.objects.create(id="2", name="Paul", email="2@mail.cz",
+                                 role=am_role)
+        Opportunity.objects.create(
+            id="1",
+            ad_ops_manager=ad_ops,
+            account_manager=am,
+            start=now - timedelta(days=3),
+            end=now + timedelta(days=2),
+            probability=100)
+        with patch_now(now):
+            call_command("send_daily_email_reports",
+                         reports="DailyCampaignReport",
+                         roles=OpportunityManager.ACCOUNT_MANAGER)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, [am.email])
+
+    def test_receivers_no_sales(self):
+        ad_ops = User.objects.create(id=1, email="AdOps@channelfactory.com")
+        sm = User.objects.create(id=2, email="SM@channelfactory.com")
+
+        today = timezone.now().date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            sales_manager=sm,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(id="1", name="", placement=placement,
+                              start=today.replace(day=1),
+                              end=today.replace(day=28), ordered_units=1000)
+        Campaign.objects.create(pk="1", name="",
+                                salesforce_placement=placement)
+
+        call_command("send_daily_email_reports", reports="DailyCampaignReport")
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        receivers = email.to + email.cc + email.bcc
+        receivers_mails = (r[1] if isinstance(r, tuple) else r
+                           for r in receivers)
+        self.assertNotIn(sm.email, receivers_mails)
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]

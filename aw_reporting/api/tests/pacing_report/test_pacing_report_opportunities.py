@@ -1,6 +1,5 @@
 from datetime import timedelta, date
 from itertools import product
-from unittest import skip
 from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
@@ -306,7 +305,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]['id'], second.id)
 
-    @skip("Enable in scope of ticket SAAS-2299")
     def test_get_opportunities_dynamic_placement_rate_tech_fee_margin(self):
         today = timezone.now()
         start, end = today - timedelta(days=1), today + timedelta(days=1)
