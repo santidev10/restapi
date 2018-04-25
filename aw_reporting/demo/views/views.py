@@ -4,9 +4,11 @@ from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.views.constants import \
+    GEO_LOCATION_TIP, GEO_LOCATION_CONDITION
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from .charts import DemoChart
-from .models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 
 
 class AnalyzeAccountsListApiView:
@@ -226,7 +228,7 @@ class GlobalTrendsFiltersApiView:
         def method(view, request, **kwargs):
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK \
-                and len(response.data.get("accounts", [])) > 0:
+                    and len(response.data.get("accounts", [])) > 0:
                 return response
             data = dict(
                 accounts=[get_demo_account_data()],
@@ -234,9 +236,7 @@ class GlobalTrendsFiltersApiView:
                 ad_ops=[],
                 sales=[],
                 brands=[],
-                goal_types=[],
                 categories=[],
-                regions=[],
                 **view._get_static_filters()
             )
             return Response(data=data)

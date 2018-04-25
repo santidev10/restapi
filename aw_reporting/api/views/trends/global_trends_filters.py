@@ -1,5 +1,7 @@
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
+from aw_reporting.api.views.constants import \
+    GEO_LOCATION_TIP, GEO_LOCATION_CONDITION
 from aw_reporting.demo import demo_view_decorator
 from aw_reporting.models import Account, User, Opportunity, goal_type_str, \
     SalesForceGoalType
@@ -21,6 +23,8 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             goal_types=[dict(id=t, name=goal_type_str(t))
                         for t in sorted([SalesForceGoalType.CPM,
                                          SalesForceGoalType.CPV])],
+            geo_locations=GEO_LOCATION_TIP,
+            geo_locations_condition=GEO_LOCATION_CONDITION,
             **static_filters
         )
 
@@ -53,7 +57,6 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             sales=sales_data,
             brands=_map_items(brands),
             categories=_map_items(categories),
-            regions=[],
             **base_filters,
         )
 
