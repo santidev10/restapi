@@ -1,5 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import Permission, Group
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 
 
@@ -83,25 +84,30 @@ class PermissionHandler:
 
 class Permissions:
     PERMISSION_SETS = (
-        ('Highlights', ("view_highlights", "my_yt_channels")),
-        ('Discovery', ("channel_list",
-                       "channel_filter",
-                       "channel_details",
-                       "video_list",
-                       "video_filter",
-                       "video_details",
-                       "keyword_list",
-                       "keyword_details",
-                       "keyword_filter",)),
-        ('Segments', ("segment_video_private",
-                      "segment_channel_private",
-                      "segment_keyword_private",)),
-        ('Segments - pre-baked segments', ("segment_video_all",
-                                           "segment_channel_all",
-                                           "segment_keyword_all",
-                                           "view_pre_baked_segments",)),
-        ('Media buying', ("view_media_buying",
-                          "settings_my_aw_accounts",)),
+        ('Highlights',                      ("view_highlights", "my_yt_channels")),
+
+        ('Discovery',                       ("channel_list",
+                                             "channel_filter",
+                                             "channel_details",
+                                             "video_list",
+                                             "video_filter",
+                                             "video_details",
+                                             "keyword_list",
+                                             "keyword_details",
+                                             "keyword_filter",)),
+
+        ('Segments',                        ("segment_video_private",
+                                             "segment_channel_private",
+                                             "segment_keyword_private",)),
+
+        ('Segments - pre-baked segments',   ("segment_video_all",
+                                             "segment_channel_all",
+                                             "segment_keyword_all",
+                                             "view_pre_baked_segments",)),
+
+        ('Media buying',                    ("view_media_buying",
+                                             "settings_my_aw_accounts",)),
+
         ('Auth channels and audience data', ("channel_audience",
                                              "channel_aw_performance",
                                              "video_audience",
