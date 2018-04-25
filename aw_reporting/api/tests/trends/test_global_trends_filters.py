@@ -211,3 +211,37 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         account_managers = response.data.get("sales", [])
         self.assertEqual(account_managers, [expected_sales_data])
+
+    def test_brand(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_brand_1 = "test brand 1"
+        test_brand_2 = "test brand 2"
+        test_brands = sorted([test_brand_1, test_brand_2])
+        expected_brands = [dict(id=b, name=b) for b in test_brands]
+
+        def create_relations(_id, brand):
+            opportunity = Opportunity.objects.create(
+                id=_id, brand=brand)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            Campaign.objects.create(id=_id,
+                                    salesforce_placement=placement,
+                                    account=test_account)
+
+            test_account.managers.add(manager)
+            test_account.save()
+
+        create_relations(1, test_brand_1)
+        create_relations(2, test_brand_1)
+        create_relations(3, test_brand_2)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["brands"], expected_brands)
