@@ -1,7 +1,8 @@
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
 from aw_reporting.demo import demo_view_decorator
-from aw_reporting.models import Account, User, Opportunity
+from aw_reporting.models import Account, User, Opportunity, goal_type_str, \
+    SalesForceGoalType
 from aw_reporting.settings import InstanceSettings, InstanceSettingsKey
 
 
@@ -12,6 +13,16 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             .get(InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS)
         return Account.objects \
             .filter(managers__id__in=global_trends_accounts_id)
+
+    def _get_static_filters(self):
+        static_filters = super(GlobalTrendsFiltersApiView,
+                               self)._get_static_filters()
+        return dict(
+            goal_types=[dict(id=t, name=goal_type_str(t))
+                        for t in sorted([SalesForceGoalType.CPM,
+                                         SalesForceGoalType.CPV])],
+            **static_filters
+        )
 
     def _get_filters(self, request):
         base_filters = super(GlobalTrendsFiltersApiView, self) \
@@ -29,16 +40,16 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
         brands = Opportunity.objects.filter(
             placements__adwords_campaigns__account__in=accounts,
             brand__isnull=False,
-        )\
-            .values_list("brand", flat=True)\
-            .order_by("brand")\
+        ) \
+            .values_list("brand", flat=True) \
+            .order_by("brand") \
             .distinct()
         return dict(
             am=am_data,
             ad_ops=ad_ops_data,
             sales=sales_data,
             brands=[dict(id=b, name=b) for b in brands],
-            goal_types=[],
+
             verticals=[],
             regions=[],
             **base_filters,

@@ -5,7 +5,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo import DemoAccount
 from aw_reporting.models import Campaign, Account, User, Opportunity, \
-    OpPlacement
+    OpPlacement, SalesForceGoalType, goal_type_str
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import patch_instance_settings
@@ -245,3 +245,23 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["brands"], expected_brands)
+
+    def test_goal_types(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_account = Account.objects.create()
+        test_account.managers.add(manager)
+        test_account.save()
+        expected_types = sorted(
+            [SalesForceGoalType.CPM, SalesForceGoalType.CPV])
+        expected_goal_types = [dict(id=t, name=goal_type_str(t))
+                               for t in expected_types]
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["goal_types"], expected_goal_types)
