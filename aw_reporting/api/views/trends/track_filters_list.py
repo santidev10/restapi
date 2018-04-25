@@ -2,7 +2,7 @@ from django.db.models import Sum
 
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account
 
 

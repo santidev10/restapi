@@ -2,7 +2,7 @@ from rest_framework.response import Response
 
 from aw_reporting.api.views.trends.base_track import TrackApiBase
 from aw_reporting.charts import DeliveryChart
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account
 
 

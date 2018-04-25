@@ -40,7 +40,7 @@ from aw_reporting.adwords_api import create_customer_account, \
 from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     dict_quartiles_to_rates, all_stats_aggregate, \

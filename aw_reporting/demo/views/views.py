@@ -4,8 +4,6 @@ from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.api.views.constants import \
-    GEO_LOCATION_TIP, GEO_LOCATION_CONDITION
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID

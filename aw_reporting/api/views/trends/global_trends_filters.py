@@ -1,8 +1,8 @@
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
-from aw_reporting.api.views.constants import \
+from aw_reporting.api.constants import \
     GEO_LOCATION_TIP, GEO_LOCATION_CONDITION
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account, User, Opportunity, goal_type_str, \
     SalesForceGoalType
 from aw_reporting.settings import InstanceSettings, InstanceSettingsKey
