@@ -114,17 +114,23 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
 
     @staticmethod
     def update_access(user, access):
+        """
+        :param user: user obj
+        :param access: {access: [{name: "group_name", value: true/false}]}
+        :return:
+        """
         # get data from access
-        group_name = access.get('name', None)
-        is_group_for_add = access.get('value', None)
+        for access_item in access:
+            group_name = access_item.get('name', None)
+            is_group_for_add = access_item.get('value', None)
 
-        # set data from access
-        if group_name is not None and is_group_for_add is not None:
+            # set data from access
+            if group_name is not None and is_group_for_add is not None:
 
-            if is_group_for_add:
-                user.add_custom_user_group(group_name)
-            else:
-                user.remove_custom_user_group(group_name)
+                if is_group_for_add:
+                    user.add_custom_user_group(group_name)
+                else:
+                    user.remove_custom_user_group(group_name)
 
 
 class AuthAsAUserAdminApiView(APIView):

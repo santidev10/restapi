@@ -92,7 +92,7 @@ class Permissions:
 
     """
     PERMISSION_SETS = (
-        ('Trendings', ("view_highlights",)),
+        ('Highlights', ("view_highlights", "my_yt_channels")),
         ('Discovery', ("channel_list",
                        "channel_filter",
                        "channel_details",
@@ -116,7 +116,6 @@ class Permissions:
                                              "video_audience",
                                              "video_aw_performance",
                                              )),
-        ('Default', ("my_yt_channels", "view_highlights")),
     )
 
     PERM_LIST = (
