@@ -24,7 +24,7 @@ class DeliveryChart:
                  indicator=None, dimension=None, breakdown="daily",
                  start_date=None, end_date=None,
                  additional_chart=None, segmented_by=None,
-                 date=True, **_):
+                 date=True, am_ids=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -47,6 +47,7 @@ class DeliveryChart:
             end=end_date,
             segmented_by=segmented_by,
             date=date,
+            ams=User.objects.filter(id__in=am_ids or [])
         )
 
         if additional_chart is None:
@@ -335,6 +336,9 @@ class DeliveryChart:
         if self.params['indicator'] in ('average_cpv', 'ctr_v',
                                         'video_view_rate'):
             filters['video_views__gt'] = 0
+
+        if self.params["ams"]:
+            filters["ad_group__campaign__salesforce_placement__opportunity__account_manager__in"] = self.params["ams"]
 
         if filters:
             queryset = queryset.filter(**filters)
