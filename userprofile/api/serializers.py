@@ -3,7 +3,7 @@ Userprofile api serializers module
 """
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import update_last_login, PermissionsMixin
+from django.contrib.auth.models import update_last_login, PermissionsMixin, Group
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
@@ -80,12 +80,19 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
+
+        # todo FIX
         # create default subscription
-        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-        subscription = Subscription.objects.create(user=user, plan=plan)
-        user.update_permissions_from_subscription(subscription)
-        user.access = settings.DEFAULT_USER_ACCESS
-        user.save()
+        # plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
+        # subscription = Subscription.objects.create(user=user, plan=plan)
+        # user.update_permissions_from_subscription(subscription)
+        # user.access = settings.DEFAULT_USER_ACCESS
+        # user.save()
+
+        # new default access implementation
+        default_group = Group.objects.get(name=settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+        user.groups.add(default_group)
+
         # set token
         Token.objects.get_or_create(user=user)
         # update last login
@@ -137,7 +144,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
-            "permissions_sets",
+            "permission_groups",
             "has_aw_accounts",
             "plan",
             "access",
@@ -206,6 +213,16 @@ class UserSetPasswordSerializer(Serializer):
     new_password = CharField(required=True)
     email = CharField(required=True)
     token = CharField(required=True)
+
+
+class GroupSerializer(Serializer):
+    name = CharField(read_only=True)
+
+    class Meta:
+        model = Group
+        fields = (
+            'name',
+        )
 
 
 class PlanSerializer(ModelSerializer):

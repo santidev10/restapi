@@ -11,6 +11,7 @@ from dateutil import parser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.models import Group
 from django.http import QueryDict
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -480,11 +481,19 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
+
+            # todo fix
             plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
             subscription = Subscription.objects.create(user=user, plan=plan)
             user.update_permissions_from_subscription(subscription)
             user.access = settings.DEFAULT_USER_ACCESS
             user.save()
+
+            # new default access implementation
+            default_group = Group.objects.get(name=settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+            user.groups.add(default_group)
+
+
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
             created = True
@@ -497,6 +506,7 @@ class ChannelAuthenticationApiView(APIView):
         video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
         keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
         if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+            # TODO fix
             user.update_access([{'name': 'Segments', 'value': True}, ])
 
     @staticmethod

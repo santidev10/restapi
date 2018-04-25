@@ -7,6 +7,7 @@ from functools import reduce
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
@@ -23,7 +24,7 @@ from rest_framework.views import APIView
 from administration.api.serializers import UserActionRetrieveSerializer, \
     UserActionCreateSerializer, UserUpdateSerializer
 from administration.api.serializers import UserSerializer
-from userprofile.api.serializers import UserSerializer as RegularUserSerializer
+from userprofile.api.serializers import UserSerializer as RegularUserSerializer, GroupSerializer
 from administration.models import UserAction
 from userprofile.api.serializers import PlanSerializer, SubscriptionSerializer
 from userprofile.models import UserProfile, Plan, Subscription
@@ -53,7 +54,7 @@ class UserListAdminApiView(ListAPIView):
     """
     serializer_class = UserSerializer
     pagination_class = UserPaginator
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
 
     def get_queryset(self):
         """
@@ -85,7 +86,7 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
     """
     Admin user delete endpoint
     """
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
     serializer_class = UserSerializer
     update_serializer_class = UserUpdateSerializer
 
@@ -99,24 +100,38 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         """
         Update user
         """
-        new_access = request.data.pop('access', None)
+        access = request.data.pop('access', None)
         user = self.get_object()
         serializer = self.update_serializer_class(
             instance=user, data=request.data,
             partial=True, context={"request": request})
         if serializer.is_valid():
             serializer.save()
-            if new_access:
-                user.update_access(new_access)
+            if access:
+                self.update_access(user, access)
             return self.get(request)
         return Response(serializer.errors, HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def update_access(user, access):
+        # get data from access
+        group_name = access.get('name', None)
+        is_group_for_add = access.get('value', None)
+
+        # set data from access
+        if group_name is not None and is_group_for_add is not None:
+
+            if is_group_for_add:
+                user.add_custom_user_group(group_name)
+            else:
+                user.remove_custom_user_group(group_name)
 
 
 class AuthAsAUserAdminApiView(APIView):
     """
     Login as a user endpoint
     """
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
 
     def get(self, request, pk):
         """
@@ -253,8 +268,17 @@ class UserActionDeleteAdminApiView(DestroyAPIView):
     """
     User action delete endpoint
     """
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
     queryset = UserAction.objects.all()
+
+
+class AccessGroupsListApiView(ListAPIView):
+    """
+    User permissions groups endpoing
+    """
+    permission_classes = (IsAdminUser,)
+    serializer_class = GroupSerializer
+    queryset = Group.objects.all()
 
 
 class PlanListCreateApiView(ListCreateAPIView):
@@ -265,7 +289,7 @@ class PlanListCreateApiView(ListCreateAPIView):
 
 
 class PlanChangeDeleteApiView(RetrieveUpdateDestroyAPIView):
-    permission_classes = (IsAdminUser, )
+    permission_classes = (IsAdminUser,)
     serializer_class = PlanSerializer
     queryset = Plan.objects.exclude(hidden=True).all()
 
@@ -393,5 +417,3 @@ class SubscriptionUpdateView(APIView):
             subscription.save()
             request.user.update_permissions_from_subscription(subscription)
         return Response(status=HTTP_200_OK)
-
-

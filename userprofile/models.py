@@ -5,17 +5,18 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields import JSONField, ArrayField
+from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 
-class UserProfile(AbstractBaseUser, PermissionsMixin):
+class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
     admin-compliant permissions.
@@ -60,6 +61,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     access = JSONField(default={})
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
+    is_subscribed = models.BooleanField(default=False)
 
     objects = UserManager()
 
@@ -107,7 +109,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         return self.auth_token.key
 
     @property
-    def permissions_sets(self):
+    def permission_groups(self):
         return self.groups.values('name')
 
     def update_permissions(self, source):
@@ -279,7 +281,3 @@ class UserChannel(Timestampable):
     class Meta:
         unique_together = ("channel_id", "user")
 
-
-class PermissionSet(models.Model):
-    permission_set = models.CharField(max_length=255, null=True, blank=True)
-    permissions_values = ArrayField(models.CharField(max_length=200), blank=True, default=list)

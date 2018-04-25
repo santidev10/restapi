@@ -237,7 +237,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
                                 'Please do not respond to this email.'
                                 .format('Fill me with data please'),
                                 from_email=sender)
-
+                # TODO fix
                 # provide access to segments for collaborator
                 user.update_access([{'name': 'Segments', 'value': True}, ])
 
