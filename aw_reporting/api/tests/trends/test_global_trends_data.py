@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, Account
+    CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
@@ -17,13 +17,13 @@ from utils.utils_tests import patch_instance_settings
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.DATA)
 
-    def _create_test_data(self):
+    def _create_test_data(self, uid=1):
         user = self.create_test_user()
-        account = self.create_account(user)
+        account = self.create_account(user, "{}-".format(uid))
         campaign = Campaign.objects.create(
-            id="1", name="", account=account)
+            id=uid, name="", account=account)
         ad_group = AdGroup.objects.create(
-            id="1", name="", campaign=campaign
+            id=uid, name="", campaign=campaign
         )
         return user, account, campaign, ad_group
 
@@ -153,23 +153,23 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         )
         self.assertEqual(len(account['trend']), 2 * 24)
 
-    def _create_ad_group_statistic(self, uid, account):
+    def _create_ad_group_statistic(self, uid):
+        _, account, campaign, ad_group = self._create_test_data(uid)
         yesterday = now_in_default_tz().date() - timedelta(days=1)
-        campaign = Campaign.objects.create(id=uid, account=account)
-        ad_group = AdGroup.objects.create(id=uid, campaign=campaign)
+        # campaign = Campaign.objects.create(id=uid, account=account)
+        # ad_group = AdGroup.objects.create(id=uid, campaign=campaign)
         AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group,
                                         video_views=1, average_position=1)
+        return account, campaign
 
     def test_filter_manage_account(self):
-        self.create_test_user()
-        manager = Account.objects.create(id="manager")
-        account = Account.objects.create(id="account")
-        account.managers.add(manager)
-        account.save()
-        irrelevant_acc = Account.objects.create(id="irrelevant acc")
+        # self.create_test_user()
+        account, _ = self._create_ad_group_statistic("relevant")
+        self._create_ad_group_statistic("irrelevant")
+        manager = account.managers.first()
 
-        self._create_ad_group_statistic(1, account)
-        self._create_ad_group_statistic(2, irrelevant_acc)
+        self._create_ad_group_statistic(1)
+        self._create_ad_group_statistic(2)
 
         instance_settings = {
             InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
@@ -181,4 +181,51 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         account_data = response.data[0]
         self.assertEqual(account_data['label'], account.name)
 
-    # def test_filter_
+    def _create_opportunity(self, campaign, **kwargs):
+        uid = kwargs.pop("uid")
+        opportunity = Opportunity.objects.create(id=uid, **kwargs)
+        placement = OpPlacement.objects.create(id=uid, opportunity=opportunity)
+        campaign.salesforce_placement = placement
+        campaign.save()
+
+    def test_filter_am(self):
+        am_1 = User.objects.create(id=1)
+        am_2 = User.objects.create(id=2)
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1,
+                                 account_manager=am_1)
+        self._create_opportunity(uid=2, campaign=campaign_2,
+                                 account_manager=am_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(am=am_1.id)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
+
+    def test_filter_ad_ops(self):
+        self.fail("Not defined")
+
+    def test_filter_sales(self):
+        self.fail("Not defined")
+
+    def test_filter_brands(self):
+        self.fail("Not defined")
+
+    def test_filter_goal_types(self):
+        self.fail("Not defined")
+
+    def test_filter_categories(self):
+        self.fail("Not defined")
+
+    def test_filter_geo(self):
+        self.fail("Not defined")

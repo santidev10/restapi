@@ -39,7 +39,7 @@ class TestUserMixin:
         user.set_password(user.password)
 
         if auth:
-            Token.objects.create(user=user)
+            Token.objects.get_or_create(user=user)
         return user
 
     def add_custom_user_permission(self, user, perm: str):

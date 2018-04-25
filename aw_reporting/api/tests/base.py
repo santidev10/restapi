@@ -11,21 +11,21 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
         'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
     }
 
-    def create_account(self, user):
+    def create_account(self, user, prefix=""):
         now = datetime.now(tz=pytz.utc)
-        account = Account.objects.create(id="123{}".format(user.id), name="Test account", update_time=now)
-        manager = Account.objects.create(id="456{}".format(user.id), name="")
+        account = Account.objects.create(id="{}123{}".format(prefix, user.id), name="Test account", update_time=now)
+        manager = Account.objects.create(id="{}456{}".format(prefix, user.id), name="")
         account.managers.add(manager)
 
-        connection = AWConnection.objects.create(
+        connection, _ = AWConnection.objects.get_or_create(
             email=user.email,
             refresh_token="",
         )
-        AWConnectionToUserRelation.objects.create(
+        AWConnectionToUserRelation.objects.get_or_create(
             connection=connection,
             user=user,
         )
-        AWAccountPermission.objects.create(
+        AWAccountPermission.objects.get_or_create(
             aw_connection=connection,
             account=manager,
         )
