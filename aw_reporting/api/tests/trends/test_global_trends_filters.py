@@ -14,7 +14,7 @@ from utils.utils_tests import patch_instance_settings
 class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.FILTERS)
     expected_keys = {"accounts", "dimension", "indicator", "breakdown", "am",
-                     "ad_ops", "sales", "brands", "goal_types", "verticals",
+                     "ad_ops", "sales", "brands", "goal_types", "categories",
                      "regions"}
     account_keys = {"id", "name", "start_date", "end_date", "campaigns"}
 
@@ -265,3 +265,37 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["goal_types"], expected_goal_types)
+
+    def test_categories(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_category_1 = "test brand 1"
+        test_category_2 = "test brand 2"
+        test_categories = sorted([test_category_1, test_category_2])
+        expected_categories = [dict(id=b, name=b) for b in test_categories]
+
+        def create_relations(_id, category):
+            opportunity = Opportunity.objects.create(
+                id=_id, category_id=category)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            Campaign.objects.create(id=_id,
+                                    salesforce_placement=placement,
+                                    account=test_account)
+
+            test_account.managers.add(manager)
+            test_account.save()
+
+        create_relations(1, test_category_1)
+        create_relations(2, test_category_1)
+        create_relations(3, test_category_2)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["categories"], expected_categories)

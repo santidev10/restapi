@@ -37,20 +37,22 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
         sales_data = _users_data(
             sold_opportunities__placements__adwords_campaigns__account__in=accounts
         )
-        brands = Opportunity.objects.filter(
+        opportunities = Opportunity.objects.filter(
             placements__adwords_campaigns__account__in=accounts,
-            brand__isnull=False,
         ) \
-            .values_list("brand", flat=True) \
-            .order_by("brand") \
             .distinct()
+        brands = opportunities.filter(brand__isnull=False) \
+            .values_list("brand", flat=True) \
+            .order_by("brand")
+        categories = opportunities.filter(category__isnull=False) \
+            .values_list("category_id", flat=True) \
+            .order_by("category_id")
         return dict(
             am=am_data,
             ad_ops=ad_ops_data,
             sales=sales_data,
-            brands=[dict(id=b, name=b) for b in brands],
-
-            verticals=[],
+            brands=_map_items(brands),
+            categories=_map_items(categories),
             regions=[],
             **base_filters,
         )
@@ -60,3 +62,7 @@ def _users_data(**filters):
     users = User.objects.filter(**filters) \
         .distinct()
     return [dict(id=am.id, name=am.name) for am in users]
+
+
+def _map_items(items):
+    return [dict(id=i, name=i) for i in items]

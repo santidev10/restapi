@@ -235,7 +235,7 @@ class GlobalTrendsFiltersApiView:
                 sales=[],
                 brands=[],
                 goal_types=[],
-                verticals=[],
+                categories=[],
                 regions=[],
                 **view._get_static_filters()
             )
