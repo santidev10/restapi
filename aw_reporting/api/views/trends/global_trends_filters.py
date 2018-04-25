@@ -23,10 +23,14 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             ad_managed_opportunities__placements__adwords_campaigns__account__in=self._get_accounts(
                 request)
         )
+        sales_data = _users_data(
+            sold_opportunities__placements__adwords_campaigns__account__in=self._get_accounts(
+                request)
+        )
         return dict(
             am=am_data,
             ad_ops=ad_ops_data,
-            sales=[],
+            sales=sales_data,
             brands=[],
             goal_types=[],
             verticals=[],
