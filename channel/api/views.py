@@ -11,7 +11,6 @@ from dateutil import parser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.contrib.auth.models import Group
 from django.http import QueryDict
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -33,7 +32,6 @@ from segment.models import SegmentVideo
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from userprofile.models import Plan, Subscription
 from userprofile.models import UserChannel
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
@@ -481,13 +479,6 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-
-            # todo fix
-            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-            subscription = Subscription.objects.create(user=user, plan=plan)
-            user.update_permissions_from_subscription(subscription)
-            user.access = settings.DEFAULT_USER_ACCESS
-            user.save()
 
             # new default access implementation
             user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)

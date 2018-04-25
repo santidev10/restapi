@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+from django.contrib.auth.models import Group
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
@@ -14,8 +15,10 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         user = self.create_test_user(True)
-        user.update_permissions_from_plan('professional')
-        user.save()
+
+        all_perm_groups = Group.objects.values_list('name', flat=True)
+        for perm_group in all_perm_groups:
+            user.add_custom_user_group(perm_group)
 
         with open('saas/fixtures/singledb_video_list.json') as data_file:
             data = json.load(data_file)

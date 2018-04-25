@@ -1,11 +1,9 @@
 """
 Userprofile models module
 """
-from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
@@ -55,10 +53,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
 
-    plan = models.ForeignKey('userprofile.Plan', null=True,
-                             on_delete=models.SET_NULL)
-    permissions = JSONField(default={})
-    access = JSONField(default={})
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
@@ -111,167 +105,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     def permission_groups(self):
         return self.groups.values('name')
 
-    def update_permissions(self, source):
-        self.update_permissions_tree(source, self.permissions)
-        self.create_custom_permissions(self.permissions)
-        self.save()
-
-    def update_permissions_tree(self, source, destination):
-        for key, value in source.items():
-            if type(value) == dict:
-                if destination.get(key) is not None:
-                    self.update_permissions_tree(value, destination[key])
-                    continue
-            destination[key] = value
-
-    def create_custom_permissions(self, node, path=''):
-        for key, value in node.items():
-            if len(path) > 0:
-                new_path = path + '_' + key
-            else:
-                new_path = key
-
-            if type(value) == dict:
-                self.create_custom_permissions(value, new_path)
-            else:
-                if value:
-                    self.add_custom_user_permission(new_path)
-                else:
-                    self.remove_custom_user_permission(new_path)
-
-    def update_permissions_from_plan(self, plan_name):
-        """
-        Convert plan to django permissions
-        """
-        try:
-            plan = Plan.objects.get(name=plan_name)
-        except Plan.DoesNotExist:
-            plan, created = Plan.objects.get_or_create(
-                name=settings.DEFAULT_ACCESS_PLAN_NAME,
-                defaults=settings.ACCESS_PLANS[
-                    settings.DEFAULT_ACCESS_PLAN_NAME])
-
-        self.permissions = settings.DEFAULT_USER_PERMISSIONS
-        self.update_access(plan.access)
-
-    def update_permissions_from_subscription(self, subscription):
-        self.plan = subscription.plan
-        self.update_permissions_from_plan(self.plan.name)
-
-    def add_custom_user_permission(self, perm: str):
-        permission = get_custom_permission(perm)
-        self.user_permissions.add(permission)
-
-    def remove_custom_user_permission(self, perm: str):
-        permission = get_custom_permission(perm)
-        self.user_permissions.remove(permission)
-
-    def update_access(self, access):
-        for item in access:
-            self.apply_access_item(item.get('name'), item.get('value'))
-
-    def apply_access_item(self, name, action):
-        if action is None:
-            return
-        access = self.access
-        logic = settings.USER_ACCESS_LOGIC.get(name)
-        if logic is None:
-            return
-
-        logic = logic.copy()
-        permissions = dict()
-        for item in access:
-            if item.get('name') == name:
-                item['value'] = action
-                break
-        self.access = access
-
-        pre_actions = []
-        post_actions = []
-        actions = logic.pop('actions', [])
-        for item in actions:
-            if item.get('input') == action:
-                if item.get('action_type') == 'pre':
-                    pre_actions.append(item)
-                else:
-                    post_actions.append(item)
-
-        for item in pre_actions:
-            for access_name in item.get('access', []):
-                pre_logic = settings.USER_ACCESS_LOGIC.get(access_name)
-                if access_name != name and pre_logic is not None:
-                    self.apply_access_logic(pre_logic,
-                                            permissions,
-                                            self.get_access_item_value(access_name))
-
-        self.apply_access_logic(logic, permissions, action)
-
-        for item in post_actions:
-            for access_name in item.get('access', []):
-                post_logic = settings.USER_ACCESS_LOGIC.get(access_name)
-                if access_name != name and post_logic is not None:
-                    self.apply_access_logic(post_logic,
-                                            permissions,
-                                            self.get_access_item_value(access_name))
-
-        self.update_permissions(permissions)
-
-    def get_access_item_value(self, name):
-        for item in self.access:
-            if item.get('name') == name:
-                return item.get('value')
-        return None
-
-    def apply_access_logic(self, logic, destination, action):
-        for key, value in logic.items():
-            if type(value) == dict:
-                if destination.get(key) is None:
-                    destination[key] = {}
-                self.apply_access_logic(value, destination[key], action)
-                continue
-            destination[key] = action
-
-
-def get_custom_permission(codename: str):
-    content_type = ContentType.objects.get_for_model(Plan)
-    permission, _ = Permission.objects.get_or_create(
-        content_type=content_type,
-        codename=codename)
-    return permission
-
-
-class Plan(models.Model):
-    """
-    Default plan
-    """
-
-    name = models.CharField(max_length=255, primary_key=True)
-    description = models.TextField(blank=True)
-    access = JSONField(default=dict())
-    features = JSONField(default=list())
-    payments_plan = models.ForeignKey('payments.Plan', null=True,
-                                      on_delete=models.SET_NULL)
-    hidden = models.BooleanField(default=False)
-
-    @staticmethod
-    def update_defaults():
-        plan_preset = settings.ACCESS_PLANS
-        for key, value in plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key, defaults=value)
-            # update permissions and features
-            if not created:
-                plan.access = value['access']
-                plan.hidden = value['hidden']
-                plan.save()
-
-
-class Subscription(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
-    payments_subscription = models.ForeignKey(
-        'payments.Subscription', default=None, null=True,
-        on_delete=models.CASCADE)
-
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)
@@ -279,4 +112,3 @@ class UserChannel(Timestampable):
 
     class Meta:
         unique_together = ("channel_id", "user")
-

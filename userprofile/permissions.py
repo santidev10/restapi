@@ -81,16 +81,7 @@ class PermissionHandler:
             group.save()
 
 
-# tmp class
 class Permissions:
-    """
-    purpose: fill db with permissions sets
-
-    for k,v in dict(PERMISSION_SETS).items():
-        PermissionSet.objects.create(permission_set=k, permissions_values=list(v))
-
-
-    """
     PERMISSION_SETS = (
         ('Highlights', ("view_highlights", "my_yt_channels")),
         ('Discovery', ("channel_list",

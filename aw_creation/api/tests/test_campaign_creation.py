@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
@@ -17,7 +18,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
@@ -58,7 +59,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         return campaign_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -391,7 +392,9 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
         user = self.user
-        user.update_permissions_from_plan('enterprise')
+        all_perm_groups = Group.objects.values_list('name', flat=True)
+        for perm_group in all_perm_groups:
+            user.add_custom_user_group(perm_group)
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",
