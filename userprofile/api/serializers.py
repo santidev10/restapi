@@ -132,7 +132,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
-            "permission_groups",
+            "access",
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",

@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 class GlobalPermissionManager(models.Manager):
     def get_queryset(self):
         return super(GlobalPermissionManager, self). \
-            get_queryset().filter(content_type__model='access_permission')
+            get_queryset().filter(content_type__model='userprofile')
 
 
 class GlobalPermission(Permission):
@@ -15,12 +15,13 @@ class GlobalPermission(Permission):
 
     class Meta:
         proxy = True
-        verbose_name = "access_permission"
+        # user verbose_name of existing model to get content type
+        verbose_name = "userprofile"
 
     def save(self, *args, **kwargs):
-        ct, created = ContentType.objects.get_or_create(
-            model=self._meta.verbose_name, app_label=self._meta.app_label,
-        )
+        ct = ContentType.objects.get(
+            model=self._meta.verbose_name,
+            app_label=self._meta.app_label)
         self.content_type = ct
         super(GlobalPermission, self).save(*args)
 
@@ -84,7 +85,7 @@ class PermissionHandler:
 
 class Permissions:
     PERMISSION_SETS = (
-        ('Highlights',                      ("view_highlights", "my_yt_channels")),
+        ('Highlights', ("view_highlights", "my_yt_channels")),
 
         ('Discovery',                       ("channel_list",
                                              "channel_filter",

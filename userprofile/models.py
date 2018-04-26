@@ -102,7 +102,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         return self.auth_token.key
 
     @property
-    def permission_groups(self):
+    def access(self):
         return self.groups.values('name')
 
 

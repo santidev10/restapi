@@ -125,7 +125,7 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
-            "permission_groups",
+            "access",
             "can_access_media_buying",
         )
 
