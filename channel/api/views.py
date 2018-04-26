@@ -495,8 +495,7 @@ class ChannelAuthenticationApiView(APIView):
         video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
         keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
         if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
-            # TODO fix
-            user.update_access([{'name': 'Segments', 'value': True}, ])
+            user.add_custom_user_group('Segments')
 
     @staticmethod
     def obtain_extra_user_data(token, user_id):
