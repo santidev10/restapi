@@ -1,5 +1,17 @@
-from rest_framework.views import APIView
+from aw_reporting.api.views.trends.base_global_trends import \
+    get_account_queryset, get_filters
+from aw_reporting.api.views.trends.base_track_chart import BaseTrackChartApiView
 
 
-class GlobalTrendsChartsApiView(APIView):
-    pass
+class GlobalTrendsChartsApiView(BaseTrackChartApiView):
+    def _get_accounts(self, request):
+        return get_account_queryset()
+
+    def get_filters(self):
+        filters = super(GlobalTrendsChartsApiView, self).get_filters()
+        global_filters = get_filters(self.request)
+
+        return dict(
+            **filters,
+            **global_filters
+        )

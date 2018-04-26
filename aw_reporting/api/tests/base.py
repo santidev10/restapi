@@ -13,8 +13,8 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
 
     def create_account(self, user, prefix=""):
         now = datetime.now(tz=pytz.utc)
-        account = Account.objects.create(id="{}123{}".format(prefix, user.id), name="Test account", update_time=now)
-        manager = Account.objects.create(id="{}456{}".format(prefix, user.id), name="")
+        account = Account.objects.create(id="{}123{}".format(prefix, user.id)[-15:], name="Test account", update_time=now)
+        manager = Account.objects.create(id="{}456{}".format(prefix, user.id)[-15:], name="")
         account.managers.add(manager)
 
         connection, _ = AWConnection.objects.get_or_create(
