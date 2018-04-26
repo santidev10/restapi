@@ -29,7 +29,7 @@ def load_data(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0024_add_statistics.py'),
+        ('aw_reporting', '0026_add_campaign_start_end_properties'),
     ]
 
     operations = [
