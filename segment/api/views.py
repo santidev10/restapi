@@ -172,32 +172,6 @@ class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,
 class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = SegmentSerializer
 
-    def delete(self, request, *args, **kwargs):
-        segment = self.get_object()
-        user = request.user
-        shared_with = request.data.get('shared_with')
-
-        # reject if request user has no permissions
-        if not (user.is_staff or segment.owner == user):
-            return Response(status=HTTP_403_FORBIDDEN)
-
-        # return empty response if no data in request
-        if not shared_with:
-            return Response(status=HTTP_200_OK)
-
-        # remove emails from segment
-        for email in shared_with:
-            segment.shared_with.remove(email)
-        segment.save()
-
-        # return saved segment
-        serializer_context = {"request": request}
-        response_data = self.serializer_class(
-            segment,
-            context=serializer_context
-        ).data
-        return Response(data=response_data, status=HTTP_200_OK)
-
     def put(self, request, *args, **kwargs):
         segment = self.get_object()
         user = request.user
@@ -249,8 +223,8 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
                        "Please do not respond to this email.\n"
                 send_mail(subject, text, sender, (to,), fail_silently=True)
 
-            # extend collaborators list
-            segment.shared_with.append(email)
+        # update collaborators list
+        segment.shared_with = emails
 
         segment.save()
 

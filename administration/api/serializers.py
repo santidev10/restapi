@@ -100,7 +100,7 @@ class UserUpdateSerializer(ModelSerializer):
         return user
 
     def get_can_access_media_buying(self, obj):
-        return obj.has_perm("view_media_buying")
+        return obj.has_perm("userprofile.view_media_buying")
 
 
 class UserSerializer(ModelSerializer):
