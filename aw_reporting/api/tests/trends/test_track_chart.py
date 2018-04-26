@@ -1,13 +1,16 @@
+import json
+from datetime import datetime, timedelta
+from unittest.mock import patch
+from urllib.parse import urlencode
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from datetime import datetime, timedelta
-from urllib.parse import urlencode
+from aw_reporting.charts import TrendLabel
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-import json
 
 
 class TrackChartAPITestCase(AwReportingAPITestCase):
@@ -43,9 +46,8 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         url = "{}?{}".format(url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1, "one chart")
-        self.assertEqual(len(response.data[0]['data']), 1, "one line")
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 2)
         self.assertEqual(set(i['value'] for i in trend),
                          {test_impressions})
@@ -75,10 +77,11 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
-        self.assertEqual(len(response.data[0]['data']), 1, "one line")
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 1)
-        self.assertEqual(set(i['value'] for i in trend), {10})  # 10% video view rate
+        self.assertEqual(set(i['value'] for i in trend),
+                         {10})  # 10% video view rate
 
     def test_success_dimension_device(self):
         today = datetime.now().date()
@@ -202,5 +205,12 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
         url = "{}?{}".format(url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
+
+
+def get_trend(data, label):
+    trends = dict(((t["label"], t["trend"])
+                   for t in data[0]["data"]))
+    return trends.get(label)

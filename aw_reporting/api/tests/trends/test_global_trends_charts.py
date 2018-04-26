@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -8,11 +8,14 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
+from aw_reporting.charts import TrendLabel
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
-    Opportunity, OpPlacement
+    Opportunity, OpPlacement, SalesForceGoalType
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
+from utils.datetime import as_datetime
+from utils.lang import flatten
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher, \
     patch_instance_settings
 
@@ -70,7 +73,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
-        self.assertEqual(len(response.data[0]["data"]), 1)
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
 
     def test_filter_by_am_negative(self):
         today = datetime.now().date()
@@ -96,7 +100,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]["data"]), 0)
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNone(trend)
 
     def test_filter_by_am_positive(self):
         am = User.objects.create(id="12")
@@ -127,7 +132,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]["data"]), 1)
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
 
     def test_filter_by_sales(self):
         today = datetime.now().date()
@@ -155,7 +161,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]["data"]), 0)
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNone(trend)
 
     def test_success_get(self):
         today = datetime.now().date()
@@ -184,8 +191,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
-        self.assertEqual(len(response.data[0]['data']), 1, "one line")
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 2)
         self.assertEqual(set(i['value'] for i in trend),
                          {test_impressions})
@@ -219,8 +226,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
-        self.assertEqual(len(response.data[0]['data']), 1, "one line")
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 1)
         self.assertEqual(set(i['value'] for i in trend),
                          {10})  # 10% video view rate
@@ -364,8 +371,122 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        trend = response.data[0]['data'][0]['trend']
+        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
+
+    def test_planned_daily(self):
+        account = self.account
+        campaign_1 = self.campaign
+        campaign_2 = Campaign.objects.create(id=2, account=account)
+        any_date = date(2108, 4, 10)
+        start_1, end_1 = any_date, any_date + timedelta(days=1)
+        start_2, end_2 = any_date + timedelta(days=1), any_date + timedelta(
+            days=2)
+        start, end = min([start_1, start_2]), max([end_1, end_2])
+        create_opportunity(campaign_1, id=1)
+        create_opportunity(campaign_2, id=2)
+        ordered_units_1, ordered_units_2 = 234, 345
+        daily_plan_1 = ordered_units_1 / ((end_1 - start_1).days + 1)
+        daily_plan_2 = ordered_units_2 / ((end_2 - start_2).days + 1)
+        placement_1 = campaign_1.salesforce_placement
+        placement_2 = campaign_2.salesforce_placement
+        placement_1.ordered_units = ordered_units_1
+        placement_2.ordered_units = ordered_units_2
+        placement_1.goal_type_id = SalesForceGoalType.CPM
+        placement_2.goal_type_id = SalesForceGoalType.CPM
+        placement_1.start, placement_1.end = start_1, end_1
+        placement_2.start, placement_2.end = start_2, end_2
+        placement_1.save()
+        placement_2.save()
+        expected_planned_trend = [
+            dict(label=start + timedelta(days=0), value=daily_plan_1),
+            dict(label=start + timedelta(days=1),
+                 value=daily_plan_1 + daily_plan_2),
+            dict(label=start + timedelta(days=2), value=daily_plan_2),
+        ]
+
+        filters = dict(
+            start_date=start,
+            end_date=end,
+            indicator="impressions"
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = account.managers.first()
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trends = dict(((t["label"], t["trend"])
+                       for t in response.data[0]["data"]))
+        planned_trend = trends[TrendLabel.PLANNED]
+        self.assertEqual(planned_trend, expected_planned_trend)
+
+    def test_planned_hourly(self):
+        account = self.account
+        campaign_1 = self.campaign
+        campaign_2 = Campaign.objects.create(id=2, account=account)
+        any_date = date(2108, 4, 10)
+        start_1, end_1 = any_date, any_date + timedelta(days=1)
+        start_2, end_2 = any_date + timedelta(days=1), any_date + timedelta(
+            days=2)
+        start, end = min([start_1, start_2]), max([end_1, end_2])
+        create_opportunity(campaign_1, id=1)
+        create_opportunity(campaign_2, id=2)
+        ordered_units_1, ordered_units_2 = 234, 345
+        daily_plan_1 = ordered_units_1 / ((end_1 - start_1).days + 1)
+        daily_plan_2 = ordered_units_2 / ((end_2 - start_2).days + 1)
+        placement_1 = campaign_1.salesforce_placement
+        placement_2 = campaign_2.salesforce_placement
+        placement_1.ordered_units = ordered_units_1
+        placement_2.ordered_units = ordered_units_2
+        placement_1.goal_type_id = SalesForceGoalType.CPM
+        placement_2.goal_type_id = SalesForceGoalType.CPM
+        placement_1.start, placement_1.end = start_1, end_1
+        placement_2.start, placement_2.end = start_2, end_2
+        placement_1.save()
+        placement_2.save()
+        expected_daily_planned_trend = [
+            dict(label=start + timedelta(days=0), value=daily_plan_1),
+            dict(label=start + timedelta(days=1),
+                 value=daily_plan_1 + daily_plan_2),
+            dict(label=start + timedelta(days=2), value=daily_plan_2),
+        ]
+
+        def expand(item):
+            label, value = item["label"], item["value"]
+            return (dict(label=as_datetime(label) + timedelta(hours=hour),
+                         value=value / 24)
+                    for hour in range(24))
+
+        expected_planned_trend = flatten(expand(i)
+                                         for i in expected_daily_planned_trend)
+        filters = dict(
+            start_date=start,
+            end_date=end,
+            indicator="impressions",
+            breakdown="hourly",
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = account.managers.first()
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trends = dict(((t["label"], t["trend"])
+                       for t in response.data[0]["data"]))
+        planned_trend = trends[TrendLabel.PLANNED]
+        self.assertEqual(planned_trend, expected_planned_trend)
+
+
+def get_trend(data, label):
+    trends = dict(((t["label"], t["trend"])
+                   for t in data[0]["data"]))
+    return trends.get(label)
 
 
 def create_opportunity(campaign, **kwargs):
