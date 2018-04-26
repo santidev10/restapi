@@ -1,16 +1,15 @@
+from collections import defaultdict
+from datetime import timedelta
+
+from django.db.models import FloatField, Avg, F
+from django.db.models.sql.query import get_field_names_from_opts
+
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
-from django.db.models import Sum, When, Case, FloatField, Avg, F
-from django.db.models.sql.query import get_field_names_from_opts
-from collections import defaultdict
-from datetime import datetime, timedelta
-
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-import pytz
-import logging
-
 from utils.datetime import now_in_default_tz
+from utils.query import Operator, build_query_value
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +19,15 @@ TOP_LIMIT = 10
 
 class DeliveryChart:
 
-    def __init__(self, accounts, account=None, campaigns=None, campaign=None, ad_groups=None,
+    def __init__(self, accounts, account=None, campaigns=None, campaign=None,
+                 ad_groups=None,
                  indicator=None, dimension=None, breakdown="daily",
                  start_date=None, end_date=None,
                  additional_chart=None, segmented_by=None,
-                 date=True, am_ids=None, **_):
+                 date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
+                 goal_type_ids=None, brands=None, category_ids=None,
+                 geo_location_ids=None,
+                 geo_location_condition=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -47,7 +50,14 @@ class DeliveryChart:
             end=end_date,
             segmented_by=segmented_by,
             date=date,
-            ams=User.objects.filter(id__in=am_ids or [])
+            am_ids=am_ids,
+            ad_ops_ids=ad_ops_ids,
+            sales_ids=sales_ids,
+            goal_type_ids=goal_type_ids,
+            brands=brands,
+            category_ids=category_ids,
+            geo_location_ids=geo_location_ids,
+            geo_location_condition=geo_location_condition or Operator.OR,
         )
 
         if additional_chart is None:
@@ -337,11 +347,44 @@ class DeliveryChart:
                                         'video_view_rate'):
             filters['video_views__gt'] = 0
 
-        if self.params["ams"]:
-            filters["ad_group__campaign__salesforce_placement__opportunity__account_manager__in"] = self.params["ams"]
+        if self.params["am_ids"] is not None:
+            filters["ad_group__campaign__salesforce_placement__opportunity__account_manager_id__in"] = self.params["am_ids"]
+
+        if self.params["ad_ops_ids"] is not None:
+            filters[
+                "ad_group__campaign__salesforce_placement__opportunity__ad_ops_manager_id__in"] = \
+            self.params["ad_ops_ids"]
+
+        if self.params["sales_ids"] is not None:
+            filters[
+                "ad_group__campaign__salesforce_placement__opportunity__sales_manager_id__in"] = \
+            self.params["sales_ids"]
+
+        if self.params["brands"] is not None:
+            filters[
+                "ad_group__campaign__salesforce_placement__opportunity__brand__in"] = \
+                self.params["brands"]
+
+        if self.params["goal_type_ids"] is not None:
+            filters[
+                "ad_group__campaign__salesforce_placement__goal_type_id__in"] = \
+            self.params["goal_type_ids"]
+
+        if self.params["category_ids"] is not None:
+            filters[
+                "ad_group__campaign__salesforce_placement__opportunity__category_id__in"] = \
+            self.params["category_ids"]
+
+        if self.params["geo_location_ids"] is not None:
+            field = "ad_group__campaign__location_targeting__location_id"
+            queryset = build_query_value(queryset,
+                                         field,
+                                         self.params["geo_location_ids"],
+                                         self.params["geo_location_condition"])
 
         if filters:
             queryset = queryset.filter(**filters)
+
         return queryset
 
     def add_annotate(self, queryset):

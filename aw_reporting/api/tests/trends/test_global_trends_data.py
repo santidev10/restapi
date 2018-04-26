@@ -7,10 +7,12 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement
+    CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement, \
+    SalesForceGoalType, GeoTarget, CampaignLocationTargeting
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
+from utils.query import Operator
 from utils.utils_tests import patch_instance_settings
 
 
@@ -213,19 +215,213 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_ad_ops(self):
-        self.fail("Not defined")
+        ad_ops_1 = User.objects.create(id=1)
+        ad_ops_2 = User.objects.create(id=2)
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1,
+                                 ad_ops_manager=ad_ops_1)
+        self._create_opportunity(uid=2, campaign=campaign_2,
+                                 ad_ops_manager=ad_ops_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(ad_ops=ad_ops_1.id)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_sales(self):
-        self.fail("Not defined")
+        sales_1 = User.objects.create(id=1)
+        sales_2 = User.objects.create(id=2)
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irr")
+        self._create_opportunity(uid=1, campaign=campaign_1,
+                                 sales_manager=sales_1)
+        self._create_opportunity(uid=2, campaign=campaign_2,
+                                 sales_manager=sales_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(sales=sales_1.id)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_brands(self):
-        self.fail("Not defined")
+        brand_1 = "Test Brand 1"
+        brand_2 = "Test Brand 2"
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1,
+                                 brand=brand_1)
+        self._create_opportunity(uid=2, campaign=campaign_2,
+                                 brand=brand_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(brands=brand_1)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_goal_types(self):
-        self.fail("Not defined")
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1)
+        self._create_opportunity(uid=2, campaign=campaign_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+        campaign_1.salesforce_placement.goal_type_id = SalesForceGoalType.CPV
+        campaign_1.salesforce_placement.save()
+        campaign_2.salesforce_placement.goal_type_id = SalesForceGoalType.CPM
+        campaign_2.salesforce_placement.save()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(goal_type=SalesForceGoalType.CPV)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_categories(self):
-        self.fail("Not defined")
+        category_1 = "Test Category 1"
+        category_2 = "Test Category 2"
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1,
+                                 category_id=category_1)
+        self._create_opportunity(uid=2, campaign=campaign_2,
+                                 category_id=category_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(category=category_1)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_geo(self):
-        self.fail("Not defined")
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1)
+        self._create_opportunity(uid=2, campaign=campaign_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+        geo_target_1 = GeoTarget.objects.create(id="1")
+        geo_target_2 = GeoTarget.objects.create(id="2")
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_1, location=geo_target_1)
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_2, location=geo_target_2)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(geo_locations=geo_target_1.id)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
+
+    def test_filter_geo_or(self):
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant 1")
+        account_2, campaign_2 = self._create_ad_group_statistic("relevant 2")
+        account_3, campaign_3 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1)
+        self._create_opportunity(uid=2, campaign=campaign_2)
+        self._create_opportunity(uid=3, campaign=campaign_3)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+        manager_3 = account_3.managers.first()
+        geo_target_1 = GeoTarget.objects.create(id="1")
+        geo_target_2 = GeoTarget.objects.create(id="2")
+        geo_target_3 = GeoTarget.objects.create(id="3")
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_1, location=geo_target_1)
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_2, location=geo_target_2)
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_3, location=geo_target_3)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id,
+                                                         manager_3.id]
+        }
+        filters = dict(
+            geo_locations=",".join([geo_target_1.id, geo_target_2.id]),
+            geo_locations_condition=Operator.OR)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        account_ids = [acc["id"] for acc in response.data]
+        self.assertEqual(account_ids, sorted([account_1.id, account_2.id]))
+
+    def test_filter_geo_and(self):
+        account_1, campaign_1 = self._create_ad_group_statistic("relevant")
+        account_2, campaign_2 = self._create_ad_group_statistic("irrelevant")
+        self._create_opportunity(uid=1, campaign=campaign_1)
+        self._create_opportunity(uid=2, campaign=campaign_2)
+        manager_1 = account_1.managers.first()
+        manager_2 = account_2.managers.first()
+        geo_target_1 = GeoTarget.objects.create(id="1")
+        geo_target_2 = GeoTarget.objects.create(id="2")
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_1, location=geo_target_1)
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_1, location=geo_target_2)
+        CampaignLocationTargeting.objects.create(
+            campaign=campaign_2, location=geo_target_2)
+
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+                                                         manager_2.id]
+        }
+        filters = dict(
+            geo_locations=",".join([geo_target_1.id, geo_target_2.id]),
+            geo_locations_condition=Operator.AND)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], account_1.id)
