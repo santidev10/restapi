@@ -542,7 +542,7 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
-@demo_view_decorator
+# @demo_view_decorator
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
@@ -617,13 +617,16 @@ class AccountCreationListApiView(ListAPIView):
                                                            **kwargs)
 
     def get_queryset(self, **filters):
-        # TODO here replace queryset by query param
         queryset = AccountCreation.objects.filter(
-            is_deleted=False,
-            owner=self.request.user, **filters
-        )
-
-        sort_by = self.request.query_params.get('sort_by')
+            is_deleted=False, owner=self.request.user, **filters)
+        if self.request.query_params.get("is_chf") == "1":
+            managed_accounts_ids = Account.objects.get(
+                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID)\
+                .managers.values_list("id", flat=True)
+            queryset = AccountCreation.objects.filter(
+                account__id__in=managed_accounts_ids,
+                is_deleted=False, **filters)
+        sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]
             if dependencies:
@@ -637,19 +640,19 @@ class AccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-        return queryset.order_by('is_ended', sort_by)
+        return queryset.order_by("is_ended", sort_by)
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
 
-        search = filters.get('search')
+        search = filters.get("search")
         if search:
             queryset = queryset.filter(Q(name__icontains=search) |
                                        (Q(is_managed=False) & Q(
                                            account__name__icontains=search)))
 
-        min_campaigns_count = filters.get('min_campaigns_count')
-        max_campaigns_count = filters.get('max_campaigns_count')
+        min_campaigns_count = filters.get("min_campaigns_count")
+        max_campaigns_count = filters.get("max_campaigns_count")
         if min_campaigns_count or max_campaigns_count:
             queryset = queryset.annotate(
                 campaign_creations_count=Count("campaign_creations",
@@ -672,8 +675,8 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(
                     campaigns_count__lte=max_campaigns_count)
 
-        min_start = filters.get('min_start')
-        max_start = filters.get('max_start')
+        min_start = filters.get("min_start")
+        max_start = filters.get("max_start")
         if min_start or max_start:
             queryset = queryset.annotate(
                 start=Coalesce(Min("campaign_creations__start"),
@@ -683,8 +686,8 @@ class AccountCreationListApiView(ListAPIView):
             if max_start:
                 queryset = queryset.filter(start__lte=max_start)
 
-        min_end = filters.get('min_end')
-        max_end = filters.get('max_end')
+        min_end = filters.get("min_end")
+        max_end = filters.get("max_end")
         if min_end or max_end:
             queryset = queryset.annotate(
                 end=Coalesce(Max("campaign_creations__end"),
@@ -693,7 +696,7 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
-        status = filters.get('status')
+        status = filters.get("status")
         if status:
             if status == "Ended":
                 queryset = queryset.filter(is_ended=True, is_managed=True)
@@ -714,7 +717,7 @@ class AccountCreationListApiView(ListAPIView):
                                            sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
 
-        if 'from_aw' in filters:
+        if "from_aw" in filters:
             from_aw = filters.get('from_aw') == '1'
             queryset = queryset.filter(is_managed=not from_aw)
 
