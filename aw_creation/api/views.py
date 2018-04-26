@@ -542,7 +542,7 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
-# @demo_view_decorator
+@demo_view_decorator
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
@@ -1703,7 +1703,7 @@ class PerformanceAccountDetailsApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         data = AccountCreationListSerializer(
-            account_creation).data  # header data
+            account_creation, context={"request": request}).data  # header data
         data['details'] = self.get_details_data(account_creation)
         data['overview'] = self.get_overview_data(account_creation)
         return Response(data=data)

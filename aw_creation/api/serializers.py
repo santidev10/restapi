@@ -355,7 +355,7 @@ class AccountCreationListSerializer(ModelSerializer):
     is_disapproved = SerializerMethodField()
     from_aw = SerializerMethodField()
     status = SerializerMethodField()
-    goal_type = SerializerMethodField()
+    cost_method = SerializerMethodField()
     updated_at = SerializerMethodField()
     # analytic data
     impressions = StatField()
@@ -384,7 +384,7 @@ class AccountCreationListSerializer(ModelSerializer):
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
             "ctr_v", "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
-            "updated_at", "brand", "agency", "from_aw", "goal_type")
+            "updated_at", "brand", "agency", "from_aw", "cost_method")
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
@@ -546,7 +546,7 @@ class AccountCreationListSerializer(ModelSerializer):
             return None
         return opportunity.agency.name if self.is_chf else None
 
-    def get_goal_type(self, obj):
+    def get_cost_method(self, obj):
         if not self.is_chf:
             return None
         opportunity = self._get_opportunity(obj)
