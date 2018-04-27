@@ -1074,7 +1074,9 @@ class PacingReport:
         # prepare response
         for o in opportunities:
             today = self.today
-            if o["start"] > today:
+            if o["start"] is None or o["end"] is None:
+                status = "undefined"
+            elif o["start"] > today:
                 status = "upcoming"
             elif o["end"] < today:
                 status = "completed"

@@ -624,3 +624,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(pl["video_views"], views)
         self.assertAlmostEqual(pl["pacing"], expected_pacing)
         self.assertAlmostEqual(pl["margin"], expected_margin)
+
+    def test_no_dates(self):
+        Opportunity.objects.create(
+            id="1", name="1", start=None, end=None, probability=100
+        )
+        url = reverse("aw_reporting_urls:pacing_report_opportunities")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data["status"], "undefined")
