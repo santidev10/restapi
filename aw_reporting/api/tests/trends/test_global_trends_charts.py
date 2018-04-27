@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import TrendId
+from aw_reporting.charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
     Opportunity, OpPlacement, SalesForceGoalType
@@ -61,7 +61,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=1),
             end_date=today,
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
 
@@ -86,7 +86,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=1),
             end_date=today,
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             am="1"
         )
         url = "{}?{}".format(self.url, urlencode(filters))
@@ -117,7 +117,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=1),
             end_date=today,
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             am=am.id
         )
         url = "{}?{}".format(self.url, urlencode(filters))
@@ -146,7 +146,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             sales=sales_1.id
         )
         url = "{}?{}".format(self.url, urlencode(filters))
@@ -176,7 +176,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
@@ -209,7 +209,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=1),
             end_date=today,
-            indicator="video_view_rate",
+            indicator=Indicator.VIEW_RATE,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
@@ -244,7 +244,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             dimension="device",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
@@ -283,7 +283,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             dimension="channel",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
@@ -321,7 +321,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
+            indicator=Indicator.IMPRESSIONS,
             dimension="video",
         )
         url = "{}?{}".format(base_url, urlencode(filters))
@@ -354,8 +354,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
-            indicator="impressions",
-            breakdown="hourly",
+            indicator=Indicator.IMPRESSIONS,
+            breakdown=Breakdown.HOURLY,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
@@ -403,7 +403,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=start,
             end_date=end,
-            indicator="impressions"
+            indicator=Indicator.IMPRESSIONS
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
@@ -458,8 +458,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         filters = dict(
             start_date=start,
             end_date=end,
-            indicator="impressions",
-            breakdown="hourly",
+            indicator=Indicator.IMPRESSIONS,
+            breakdown=Breakdown.HOURLY,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
@@ -470,6 +470,152 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         planned_trend = get_trend(response.data, TrendId.PLANNED)[0]["trend"]
+        self.assertEqual(planned_trend, expected_planned_trend)
+
+    def test_planned_cpv(self):
+        account = self.account
+        campaign_1 = self.campaign
+        campaign_2 = Campaign.objects.create(id=2, account=account)
+        any_date = date(2108, 4, 10)
+        start_1, end_1 = any_date, any_date
+        start_2, end_2 = any_date, any_date
+        start, end = any_date, any_date
+        create_opportunity(campaign_1, id=1)
+        create_opportunity(campaign_2, id=2)
+        ordered_units_1, ordered_units_2 = 234, 345
+        total_cost_1, total_cost_2 = 100, 100
+        placement_1 = campaign_1.salesforce_placement
+        placement_2 = campaign_2.salesforce_placement
+        placement_1.ordered_units = ordered_units_1
+        placement_2.ordered_units = ordered_units_2
+        placement_1.total_cost = total_cost_1
+        placement_2.total_cost = total_cost_2
+        placement_1.goal_type_id = SalesForceGoalType.CPV
+        placement_2.goal_type_id = SalesForceGoalType.CPV
+        placement_1.start, placement_1.end = start_1, end_1
+        placement_2.start, placement_2.end = start_2, end_2
+        placement_1.save()
+        placement_2.save()
+        expected_planned_trend = [
+            dict(label=any_date, value=sum([total_cost_1, total_cost_2])
+                                       / sum(
+                [ordered_units_1, ordered_units_2])),
+        ]
+
+        filters = dict(
+            start_date=start,
+            end_date=end,
+            indicator=Indicator.CPV
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = account.managers.first()
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = get_trend(response.data, TrendId.PLANNED)
+        self.assertIsNotNone(trend)
+        planned_trend = trend[0]["trend"]
+        self.assertEqual(planned_trend, expected_planned_trend)
+
+    def test_planned_cpm(self):
+        account = self.account
+        campaign_1 = self.campaign
+        campaign_2 = Campaign.objects.create(id=2, account=account)
+        any_date = date(2108, 4, 10)
+        start_1, end_1 = any_date, any_date
+        start_2, end_2 = any_date, any_date
+        start, end = any_date, any_date
+        create_opportunity(campaign_1, id=1)
+        create_opportunity(campaign_2, id=2)
+        ordered_units_1, ordered_units_2 = 234, 345
+        total_cost_1, total_cost_2 = 47, 47
+        placement_1 = campaign_1.salesforce_placement
+        placement_2 = campaign_2.salesforce_placement
+        placement_1.ordered_units = ordered_units_1
+        placement_2.ordered_units = ordered_units_2
+        placement_1.total_cost = total_cost_1
+        placement_2.total_cost = total_cost_2
+        placement_1.goal_type_id = SalesForceGoalType.CPM
+        placement_2.goal_type_id = SalesForceGoalType.CPM
+        placement_1.start, placement_1.end = start_1, end_1
+        placement_2.start, placement_2.end = start_2, end_2
+        placement_1.save()
+        placement_2.save()
+        expected_planned_trend = [
+            dict(label=any_date,
+                 value=sum([total_cost_1, total_cost_2]) * 1000.
+                       / sum([ordered_units_1, ordered_units_2])),
+        ]
+
+        filters = dict(
+            start_date=start,
+            end_date=end,
+            indicator=Indicator.CPM
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = account.managers.first()
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = get_trend(response.data, TrendId.PLANNED)
+        self.assertIsNotNone(trend)
+        planned_trend = trend[0]["trend"]
+        self.assertEqual(planned_trend, expected_planned_trend)
+
+    def test_planned_cpv_hourly(self):
+        account = self.account
+        campaign_1 = self.campaign
+        campaign_2 = Campaign.objects.create(id=2, account=account)
+        any_date = date(2108, 4, 10)
+        start_1, end_1 = any_date, any_date
+        start_2, end_2 = any_date, any_date
+        start, end = any_date, any_date
+        create_opportunity(campaign_1, id=1)
+        create_opportunity(campaign_2, id=2)
+        ordered_units_1, ordered_units_2 = 234, 345
+        total_cost_1, total_cost_2 = 100, 100
+        placement_1 = campaign_1.salesforce_placement
+        placement_2 = campaign_2.salesforce_placement
+        placement_1.ordered_units = ordered_units_1
+        placement_2.ordered_units = ordered_units_2
+        placement_1.total_cost = total_cost_1
+        placement_2.total_cost = total_cost_2
+        placement_1.goal_type_id = SalesForceGoalType.CPV
+        placement_2.goal_type_id = SalesForceGoalType.CPV
+        placement_1.start, placement_1.end = start_1, end_1
+        placement_2.start, placement_2.end = start_2, end_2
+        placement_1.save()
+        placement_2.save()
+        expected_planned_trend = [
+            dict(label=as_datetime(any_date) + timedelta(hours=i),
+                 value=sum([total_cost_1, total_cost_2])
+                       / sum([ordered_units_1, ordered_units_2]))
+            for i in range(24)
+        ]
+
+        filters = dict(
+            start_date=start,
+            end_date=end,
+            indicator="average_cpv",
+            breakdown=Breakdown.HOURLY
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = account.managers.first()
+        instance_settings = {
+            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+        }
+        with patch_instance_settings(**instance_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = get_trend(response.data, TrendId.PLANNED)
+        self.assertIsNotNone(trend)
+        planned_trend = trend[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
 
 

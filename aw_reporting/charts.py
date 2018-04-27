@@ -22,17 +22,32 @@ class TrendId:
     PLANNED = "planned"
 
 
-INDICATOR_MAP = dict((
-    ("impressions", SalesForceGoalType.CPM),
-    ("video_views", SalesForceGoalType.CPV),
-))
+class Indicator:
+    CPV = "average_cpv"
+    CPM = "average_cpm"
+    VIEW_RATE = "video_view_rate"
+    CTR = "ctr"
+    CTR_V = "ctr_v"
+    IMPRESSIONS = "impressions"
+    VIEWS = "video_views"
+    CLICKS = "clicks"
+    COSTS = "cost"
+
+
+class Breakdown:
+    HOURLY = "hourly"
+    DAILY = "daily"
+
+
+INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
+                           Indicator.VIEWS, Indicator.COSTS)
 
 
 class DeliveryChart:
 
     def __init__(self, accounts, account=None, campaigns=None, campaign=None,
                  ad_groups=None,
-                 indicator=None, dimension=None, breakdown="daily",
+                 indicator=None, dimension=None, breakdown=Breakdown.DAILY,
                  start_date=None, end_date=None,
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
@@ -154,37 +169,45 @@ class DeliveryChart:
             )
         return result
 
-    def _plan_placement_value_for_date(self, placement, date):
+    def _plan_placement_value_for_date(self, placement, date) -> tuple:
         if placement["start"] > date or placement["end"] < date:
-            return 0
+            return 0,
         indicator = self.params.get("indicator")
         total_days = (placement["end"] - placement["start"]).days + 1
-        if INDICATOR_MAP.get(indicator) == placement["goal_type_id"]:
-            return placement["ordered_units"] / total_days
-        if indicator == "cost":
-            return placement["total_cost"] / total_days
-        return 0
+        if indicator in (Indicator.IMPRESSIONS, Indicator.VIEWS):
+            return placement["ordered_units"] / total_days,
+        if indicator == Indicator.COSTS:
+            return placement["total_cost"] / total_days,
+        if indicator == Indicator.CPV:
+            return placement["total_cost"], placement["ordered_units"]
+        if indicator == Indicator.CPM:
+            return placement["total_cost"], placement["ordered_units"] / 1000.
+        return 0,
 
     def _plan_value_for_date(self, placements, date):
         values = [self._plan_placement_value_for_date(p, date) for p in
                   placements]
+        values_groups = list(zip(*values))
+        numerator = sum(values_groups[0]) if len(values_groups) > 0 else 0
+        denominator = sum(values_groups[1]) if len(values_groups) > 1 else 1
 
-        return dict(value=sum(values),
+        return dict(value=numerator / denominator,
                     label=date)
 
     def _extend_to_day(self, item):
-        value = item["value"] * 1. / 24
+        divider = 1 \
+            if self.params["indicator"] in (Indicator.CPV, Indicator.CPM) \
+            else 24
+        value = item["value"] * 1. / divider
         start_of_day = as_datetime(item["label"])
         return [dict(value=value, label=start_of_day + timedelta(hours=i))
                 for i in range(24)]
 
     def _get_planned_data(self):
-        indicator = self.params.get("indicator")
-        if indicator not in ("impressions", "video_views"):
+        if self.params.get("indicator") not in INDICATORS_HAVE_PLANNED:
             return
         placements = self.get_placements() \
-            .values("start", "end", "goal_type_id", "total_cost",
-                    "ordered_units")
+            .values("start", "end", "total_cost", "ordered_units")
 
         start, end = self.params.get("start"), self.params.get("end")
         total_days = (end - start).days + 1
@@ -193,7 +216,7 @@ class DeliveryChart:
             for i in range(total_days)
         ]
         breakdown = self.params['breakdown']
-        if breakdown == "hourly":
+        if breakdown == Breakdown.HOURLY:
             trend = flatten([self._extend_to_day(i) for i in trend])
         return dict(
             trend=trend,
@@ -209,7 +232,7 @@ class DeliveryChart:
 
         if method:
             items_by_label = method()
-        elif breakdown == "hourly":
+        elif breakdown == Breakdown.HOURLY:
             group_by = ('date', 'hour')
             data = self.get_raw_stats(
                 CampaignHourlyStatistic.objects.all(), group_by, False
@@ -439,6 +462,12 @@ class DeliveryChart:
                                          self.params["geo_location_ids"],
                                          self.params["geo_location_condition"])
 
+        indicator = self.params["indicator"]
+        if indicator in (Indicator.CPM, Indicator.IMPRESSIONS):
+            filters["goal_type_id"] = SalesForceGoalType.CPM
+        if indicator in (Indicator.CPV, Indicator.VIEWS):
+            filters["goal_type_id"] = SalesForceGoalType.CPV
+
         if filters:
             queryset = queryset.filter(**filters)
 
@@ -459,8 +488,8 @@ class DeliveryChart:
         if self.params['campaigns']:
             filters["%s_id__in" % camp_link] = self.params['campaigns']
 
-        if self.params['indicator'] in ('average_cpv', 'ctr_v',
-                                        'video_view_rate'):
+        if self.params['indicator'] in (Indicator.CPV, Indicator.CTR_V,
+                                        Indicator.VIEW_RATE):
             filters['video_views__gt'] = 0
 
         if self.params["am_ids"] is not None:
@@ -572,7 +601,7 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == 'cost':
+        if self.params['indicator'] == Indicator.COSTS:
             return 'cost'
         return 'impressions'
 
@@ -859,7 +888,7 @@ class DeliveryChart:
 
         values_func = self.get_values_func()
 
-        if self.params['breakdown'] == "hourly":
+        if self.params['breakdown'] == Breakdown.HOURLY:
             queryset = CampaignHourlyStatistic.objects.all()
             account_id_field = "campaign__account_id"
             account_name_field = "campaign__account__name"
