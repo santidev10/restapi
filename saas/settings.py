@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+
 from teamcity import is_running_under_teamcity
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -245,6 +246,8 @@ CELERY_REDIS_PORT = 6379
 CELERY_REDIS_DB = 0
 CELERY_ACKS_LATE = True
 CELERYD_PREFETCH_MULTIPLIER = 1
+
+CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 
 BROKER_URL = "redis://localhost:6379/0"
 

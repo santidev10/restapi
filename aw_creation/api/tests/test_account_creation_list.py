@@ -161,6 +161,34 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             self.details_keys,
         )
 
+    def test_get_chf_account_creation_list_queryset(self):
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        expected_account_id = "1"
+        managed_account = Account.objects.create(
+            id=expected_account_id, name="")
+        managed_account.managers.add(chf_account)
+        AccountCreation.objects.create(
+            name="Test", owner=self.user, account=managed_account)
+        account1 = Account.objects.create(id="2", name="")
+        AccountCreation.objects.create(
+            name="Test", owner=self.user, account=account1)
+        account2 = Account.objects.create(id="3", name="")
+        AccountCreation.objects.create(
+            name="Test", owner=self.user, account=account2)
+        account3 = Account.objects.create(id="4", name="")
+        AccountCreation.objects.create(
+            name="Test", owner=self.user, account=account3)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get("{}?is_chf=1".format(url))
+        accounts_ids = {a["account"] for a in response.data["items"]}
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(accounts_ids, {"demo", expected_account_id})
+
     def test_success_sort_by(self):
         account1 = Account.objects.create(id="123", name="")
         stats = dict(account=account1, name="", impressions=10, video_views=9,
@@ -590,13 +618,16 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(item["is_managed"], False)
 
     def test_brand(self):
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="2", name="")
+        account_creation = AccountCreation.objects.create(
+            name="Test", owner=self.user, account=managed_account)
+        managed_account.managers.add(chf_account)
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
         placement = OpPlacement.objects.create(opportunity=opportunity)
         campaign = Campaign.objects.create(salesforce_placement=placement)
-        account = Account.objects.create(id="1", name="")
-        account_creation = AccountCreation.objects.create(
-            name="1", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=campaign)
         url = reverse("aw_creation_urls:account_creation_list")
@@ -604,46 +635,22 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+            response = self.client.get("{}?is_chf=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
-        self.assertEqual(len(accounts), 2)
         self.assertEqual(accounts[account_creation.id]["brand"], test_brand)
-
-    def test_cost_type(self):
-        opportunity = Opportunity.objects.create()
-        placement = OpPlacement.objects.create(
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM)
-        OpPlacement.objects.create(id=1,
-                                   opportunity=opportunity,
-                                   goal_type_id=SalesForceGoalType.CPV)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        account = Account.objects.create(id="1", name="")
-        account_creation = AccountCreation.objects.create(
-            name="1", owner=self.user, account=account)
-        CampaignCreation.objects.create(account_creation=account_creation,
-                                        campaign=campaign)
-        url = reverse("aw_creation_urls:account_creation_list")
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        accounts = dict((a["id"], a) for a in response.data["items"])
-        self.assertEqual(len(accounts), 2)
-        self.assertEqual(accounts[account_creation.id]["cost_method"],
-                         opportunity.goal_type)
 
     def test_agency(self):
         agency = Contact.objects.create(first_name="first", last_name="last")
         opportunity = Opportunity.objects.create(agency=agency)
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         campaign = Campaign.objects.create(salesforce_placement=placement)
-        account = Account.objects.create(id="1", name="")
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
-            name="1", owner=self.user, account=account)
+            name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=campaign)
         url = reverse("aw_creation_urls:account_creation_list")
@@ -651,11 +658,75 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+            response = self.client.get("{}?is_chf=1".format(url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
-        self.assertEqual(len(accounts), 2)
         self.assertEqual(accounts[account_creation.id]["agency"], agency.name)
+
+    def test_demo_agency(self):
+        url = reverse("aw_creation_urls:account_creation_list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)
+
+    def test_chf_from_aw_is_null(self):
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user,
+            account=managed_account, is_managed=True)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+             response = self.client.get("{}?is_chf=1".format(url))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(accounts[account_creation.id]["from_aw"], None)
+
+    def test_cost_method(self):
+        opportunity = Opportunity.objects.create()
+        placement1 = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
+        placement2 = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+        placement3 = OpPlacement.objects.create(
+            id=3, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        campaign1 = Campaign.objects.create(
+            id="1", salesforce_placement=placement1)
+        campaign2 = Campaign.objects.create(
+            id="2", salesforce_placement=placement2)
+        campaign3 = Campaign.objects.create(
+            id="3", salesforce_placement=placement3)
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=managed_account)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=campaign1)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=campaign2)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=campaign3)
+        url = reverse("aw_creation_urls:account_creation_list")
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get("{}?is_chf=1".format(url))
+        accounts = dict((a["id"], a) for a in response.data["items"])
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(accounts[account_creation.id]["cost_method"]),
+            {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_demo_brand(self):
         url = reverse("aw_creation_urls:account_creation_list")
@@ -674,10 +745,4 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"],
                          DEMO_COST_METHOD)
 
-    def test_demo_agency(self):
-        url = reverse("aw_creation_urls:account_creation_list")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        accounts = dict((a["id"], a) for a in response.data["items"])
-        self.assertEqual(len(accounts), 1)
-        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)
+
