@@ -617,15 +617,15 @@ class AccountCreationListApiView(ListAPIView):
                                                            **kwargs)
 
     def get_queryset(self, **filters):
-        queryset = AccountCreation.objects.filter(
-            is_deleted=False, owner=self.request.user, **filters)
+        filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
             managed_accounts_ids = Account.objects.get(
                     id=settings.CHANNEL_FACTORY_ACCOUNT_ID)\
                 .managers.values_list("id", flat=True)
-            queryset = AccountCreation.objects.filter(
-                account__id__in=managed_accounts_ids,
-                is_deleted=False, **filters)
+            filters["account__id__in"] = managed_accounts_ids
+        else:
+            filters["owner"] = self.request.user
+        queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]
