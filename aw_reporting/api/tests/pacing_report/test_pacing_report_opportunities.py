@@ -1,7 +1,9 @@
+import logging
 from datetime import timedelta, date
 from itertools import product
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -15,8 +17,16 @@ from aw_reporting.models.salesforce_constants import \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
+logger = logging.getLogger(__name__)
 
 class PacingReportOpportunitiesTestCase(APITestCase):
+
+    @staticmethod
+    def setUpClass():
+        # The test runner sets DEBUG to False. Set to True to enable SQL logging.
+        settings.DEBUG = True
+        super(PacingReportOpportunitiesTestCase,
+              PacingReportOpportunitiesTestCase).setUpClass()
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -629,8 +639,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Opportunity.objects.create(
             id="1", name="1", start=None, end=None, probability=100
         )
+        print("=" * 80)
         url = reverse("aw_reporting_urls:pacing_report_opportunities")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data["status"], "undefined")
+        self.assertEqual(response.data[0]["status"], "undefined")

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+
 from teamcity import is_running_under_teamcity
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -188,11 +189,6 @@ LOGGING = {
         }
     },
     'loggers': {
-        'segment_creating': {
-            'handlers': ['console', 'file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-            'propagate': False
-        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
@@ -213,6 +209,10 @@ LOGGING = {
         'require_debug_false': {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: not DEBUG,
+        },
+        "disable_in_tests": {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda r: None,
         }
     }
 }

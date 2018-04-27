@@ -10,13 +10,17 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
+    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin, \
+    logging
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
+from utils.logging import log_all_methods
+
+logger = logging.getLogger(__name__)
 
 
 class PacingReportChartId:
@@ -29,6 +33,7 @@ class DefaultRate:
     CPV = .04
 
 
+@log_all_methods(logger)
 class PacingReport:
     # todo: remove these two properties
     DEFAULT_AVERAGE_CPV = DefaultRate.CPV
@@ -204,7 +209,8 @@ class PacingReport:
             sum_cost=Sum(
                 Case(
                     When(
-                        ~Q(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
+                        ~Q(
+                            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
                         & Q(**in_flight_dates_criteria),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
@@ -627,10 +633,11 @@ class PacingReport:
         elif goal_type_id in (SalesForceGoalType.CPV, SalesForceGoalType.CPM):
             delivery_field = "video_views" \
                 if goal_type_id == SalesForceGoalType.CPV else "impressions"
-            today_units = self.get_today_goal(flight["plan_units"] * allocation_ko,
-                                              stats_total[delivery_field],
-                                              flight["end"],
-                                              last_day)
+            today_units = self.get_today_goal(
+                flight["plan_units"] * allocation_ko,
+                stats_total[delivery_field],
+                flight["end"],
+                last_day)
 
             yesterday = last_day - timedelta(days=1)
             yesterdays_stats = get_stats_from_flight(flight,
@@ -718,7 +725,6 @@ class PacingReport:
                                           goal_type_id=goal_type_id,
                                           campaign_id=campaign_id),
             targeting=targeting,
-
 
         )
 
@@ -1015,7 +1021,8 @@ class PacingReport:
             video_view_rate_quality=video_view_rate_quality,
             ctr_quality=ctr_quality,
             is_completed=report["end"] < self.today if report["end"] else None,
-            is_upcoming=report["start"] > self.today if report["start"] else None
+            is_upcoming=report["start"] > self.today if report[
+                "start"] else None
 
         )
 
@@ -1152,7 +1159,8 @@ class PacingReport:
             dynamic_placements_types = set(p["dynamic_placement"]
                                            for p in placements)
             o["has_dynamic_placements"] = any([dp in DYNAMIC_PLACEMENT_TYPES
-                                               for dp in dynamic_placements_types])
+                                               for dp in
+                                               dynamic_placements_types])
             o["dynamic_placements_types"] = dynamic_placements_types
 
         return opportunities
@@ -1405,7 +1413,7 @@ class PacingReport:
 
         flights = []
         for f in flights_data:
-            tech_fee = float(f["placement__tech_fee"])\
+            tech_fee = float(f["placement__tech_fee"]) \
                 if f["placement__tech_fee"] else None
             flight = dict(
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],
