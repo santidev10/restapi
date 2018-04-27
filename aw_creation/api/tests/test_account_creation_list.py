@@ -167,7 +167,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         expected_account_id = "1"
         managed_account = Account.objects.create(
             id=expected_account_id, name="")
-        chf_account.managers.add(managed_account)
+        managed_account.managers.add(chf_account)
         AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
         account1 = Account.objects.create(id="2", name="")
@@ -623,7 +623,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         managed_account = Account.objects.create(id="2", name="")
         account_creation = AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
-        chf_account.managers.add(managed_account)
+        managed_account.managers.add(chf_account)
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
         placement = OpPlacement.objects.create(opportunity=opportunity)
@@ -648,7 +648,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
-        chf_account.managers.add(managed_account)
+        managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
@@ -675,7 +675,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
-        chf_account.managers.add(managed_account)
+        managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user,
             account=managed_account, is_managed=True)
@@ -707,7 +707,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
-        chf_account.managers.add(managed_account)
+        managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(
@@ -725,7 +725,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            set(accounts[account_creation.id]["cost_method"].split(", ")),
+            set(accounts[account_creation.id]["cost_method"]),
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_demo_brand(self):

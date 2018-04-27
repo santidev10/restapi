@@ -12,7 +12,7 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
     Campaign, base_stats_aggregate, dict_norm_base_stats, \
     dict_calculate_stats, ConcatAggregate, VideoCreativeStatistic, Ad, \
-    Opportunity, goal_type_str
+    Opportunity
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 
@@ -552,10 +552,7 @@ class AccountCreationListSerializer(ModelSerializer):
         opportunity = self._get_opportunity(obj)
         if not opportunity:
             return None
-        goal_type_ids = opportunity.placements.filter(
-            goal_type_id__isnull=False).values_list("goal_type_id", flat=True)
-        return ", ".join(
-            [goal_type_str(goal_type_id) for goal_type_id in goal_type_ids])
+        return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
         return Opportunity.objects.filter(
