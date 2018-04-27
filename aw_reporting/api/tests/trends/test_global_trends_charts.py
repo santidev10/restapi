@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import TrendLabel
+from aw_reporting.charts import TrendId
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
     Opportunity, OpPlacement, SalesForceGoalType
@@ -72,8 +72,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1, "one chart")
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
 
     def test_filter_by_am_negative(self):
@@ -99,8 +98,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNone(trend)
 
     def test_filter_by_am_positive(self):
@@ -131,8 +129,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
 
     def test_filter_by_sales(self):
@@ -160,8 +157,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNone(trend)
 
     def test_success_get(self):
@@ -190,11 +186,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1, "one chart")
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
-        self.assertEqual(len(trend), 2)
-        self.assertEqual(set(i['value'] for i in trend),
+        self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
                          {test_impressions})
 
     def test_success_get_view_rate_calculation(self):
@@ -226,7 +220,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
         self.assertEqual(len(trend), 1)
         self.assertEqual(set(i['value'] for i in trend),
@@ -261,8 +255,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]['data']), 2)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
+        self.assertEqual(len(trend), 2)
         for line in response.data[0]['data']:
             if line['label'] == "Computers":
                 self.assertEqual(line['average'], test_impressions[0])
@@ -303,8 +297,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]['data']), 10)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
+        self.assertEqual(len(trend), 10)
 
     def test_success_dimension_video(self):
         today = datetime.now().date()
@@ -341,8 +335,8 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]['data']), 10)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
+        self.assertEqual(len(trend), 10)
 
     def test_success_hourly(self):
         today = datetime.now().date()
@@ -371,9 +365,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        trend = get_trend(response.data, TrendLabel.SUMMARY)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
-        self.assertEqual(len(trend), 48, "24 hours x 2 days")
+        self.assertEqual(len(trend[0]["trend"]), 48, "24 hours x 2 days")
 
     def test_planned_daily(self):
         account = self.account
@@ -419,9 +413,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        trends = dict(((t["label"], t["trend"])
-                       for t in response.data[0]["data"]))
-        planned_trend = trends[TrendLabel.PLANNED]
+        planned_trend = get_trend(response.data, TrendId.PLANNED)[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
 
     def test_planned_hourly(self):
@@ -477,16 +469,14 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        trends = dict(((t["label"], t["trend"])
-                       for t in response.data[0]["data"]))
-        planned_trend = trends[TrendLabel.PLANNED]
+        planned_trend = get_trend(response.data, TrendId.PLANNED)[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
 
 
-def get_trend(data, label):
-    trends = dict(((t["label"], t["trend"])
-                   for t in data[0]["data"]))
-    return trends.get(label)
+def get_trend(data, uid):
+    trends = dict(((t["id"], t["data"])
+                   for t in data))
+    return trends.get(uid) or None
 
 
 def create_opportunity(campaign, **kwargs):

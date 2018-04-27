@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 TOP_LIMIT = 10
 
 
-class TrendLabel:
-    SUMMARY = "Summary"
-    PLANNED = "Planned"
+class TrendId:
+    HISTORICAL = "historical"
+    PLANNED = "planned"
 
 
 INDICATOR_MAP = dict((
@@ -95,11 +95,22 @@ class DeliveryChart:
         else:
             charts = [
                 dict(
+                    id=TrendId.HISTORICAL,
                     title="",
                     data=self.get_chart_data(),
                     **chart_type_kwargs
                 )
             ]
+            planned_data = self._get_planned_data()
+            if planned_data is not None:
+                charts.append(dict(
+                    id=TrendId.PLANNED,
+                    title="",
+                    data=[planned_data],
+                    additional_chart=False,
+                    additional_chart_type="bar"
+                ))
+
         return charts
 
     def get_segmented_data(self, method, segmented_by, **kwargs):
@@ -185,10 +196,8 @@ class DeliveryChart:
         if breakdown == "hourly":
             trend = flatten([self._extend_to_day(i) for i in trend])
         return dict(
-            value=12,
             trend=trend,
-            average=11,
-            label=TrendLabel.PLANNED
+            label="Planned"
         )
 
     def get_chart_data(self):
@@ -217,9 +226,6 @@ class DeliveryChart:
         values_func = self.get_values_func()
         chart_items = []
 
-        planned_data = self._get_planned_data()
-        if planned_data is not None:
-            chart_items.append(planned_data)
         #
         for label, items in items_by_label.items():
             results = []
