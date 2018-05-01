@@ -1,8 +1,7 @@
 from django.conf.urls import url
 
 from aw_reporting.api import views
-from aw_reporting.api.views.health_check_tool.health_check_views import \
-    HealthCheckFiltersApiView, HealthCheckApiView
+from aw_reporting.api.urls.names import Name
 
 urlpatterns = [
     # analyze
@@ -31,7 +30,7 @@ urlpatterns = [
     # track
     url(r'^track_filters/$',
         views.TrackFiltersListApiView.as_view(),
-        name="track_filters"),
+        name=Name.Track.FILTERS),
     url(r'^track_chart/$',
         views.TrackChartApiView.as_view(),
         name="track_chart"),
@@ -90,9 +89,11 @@ urlpatterns = [
         name="campaigns_setup_check_save_settings"),
 
     # Health check tool
-    url(r'^setup_health_check_list/$', HealthCheckApiView.as_view(),
+    url(r'^setup_health_check_list/$',
+        views.HealthCheckApiView.as_view(),
         name="health_check_tool"),
-    url(r'^setup_health_check_filters/$', HealthCheckFiltersApiView.as_view(),
+    url(r'^setup_health_check_filters/$',
+        views.HealthCheckFiltersApiView.as_view(),
         name="health_check_tool_filters"),
 
     # Pricing tool
@@ -105,4 +106,15 @@ urlpatterns = [
     url(r'^pricing_tool/opportunity/$',
         views.PricingToolOpportunityView.as_view(),
         name="pricing_tool_opportunities"),
+
+    # Global trends
+    url(r'^global_trends/filters',
+        views.GlobalTrendsFiltersApiView.as_view(),
+        name=Name.GlobalTrends.FILTERS),
+    url(r'^global_trends/data',
+        views.GlobalTrendsDataApiView.as_view(),
+        name=Name.GlobalTrends.DATA),
+    url(r'^global_trends/charts',
+        views.GlobalTrendsChartsApiView.as_view(),
+        name=Name.GlobalTrends.CHARTS)
 ]

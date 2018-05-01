@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DEMO_BRAND, DEMO_COST_METHOD, DEMO_AGENCY
 from aw_reporting.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher

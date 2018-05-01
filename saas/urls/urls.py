@@ -8,6 +8,7 @@ from aw_reporting.api import urls as aw_reporting_urls
 from channel.api import urls as channel_api_urls
 from keywords.api import urls as keyword_api_urls
 from keyword_tool.api import urls as keyword_tool_urls
+from saas.urls.namespaces import Namespace
 from segment.api import urls as segment_api_urls
 # pylint: disable=import-error
 from singledb.api import urls as singledb_api_urls
@@ -29,7 +30,7 @@ urlpatterns = [
 
     # AdWords reporting api urls
     url(r'^api/v1/', include(aw_reporting_urls,
-                             namespace='aw_reporting_urls')),
+                             namespace=Namespace.AW_REPORTING)),
 
     # KeyWord tool api urls
     url(r'^api/v1/', include(keyword_tool_urls,

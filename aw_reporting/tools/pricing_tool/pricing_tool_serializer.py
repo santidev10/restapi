@@ -10,7 +10,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     CampaignStatistic, AdGroup
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
-from utils.datetime import to_date
+from utils.datetime import as_date
 from utils.query import merge_when
 
 
@@ -257,15 +257,15 @@ class PricingToolSerializer:
                         self.kwargs.get("end", None),
                         campaign_start, campaign_end]:
             campaign_data["relevant_date_range"] = dict(
-                start=max(to_date(self.kwargs['start']), campaign_start),
-                end=min(to_date(self.kwargs['end']), campaign_end)
+                start=max(as_date(self.kwargs['start']), campaign_start),
+                end=min(as_date(self.kwargs['end']), campaign_end)
             )
         return campaign_data
 
     def _get_relevant_date_range(self, start, end):
-        starts = [to_date(s) for s in [start, self.kwargs.get("start")]
+        starts = [as_date(s) for s in [start, self.kwargs.get("start")]
                   if s is not None]
-        ends = [to_date(e) for e in [end, self.kwargs.get("end")]
+        ends = [as_date(e) for e in [end, self.kwargs.get("end")]
                 if e is not None]
         relevant_start = max(starts) if len(starts) > 0 else None
         relevant_end = min(ends) if len(ends) > 0 else None
@@ -417,8 +417,8 @@ def get_campaign_start_end(campaign):
     statistic = CampaignStatistic.objects \
         .filter(campaign_id=campaign["id"], date__isnull=False) \
         .aggregate(min=Min("date"), max=Max("date"))
-    return to_date(campaign_start or statistic["min"]), \
-           to_date(campaign_end or statistic["max"])
+    return as_date(campaign_start or statistic["min"]), \
+           as_date(campaign_end or statistic["max"])
 
 
 def placement_date_filter(periods):

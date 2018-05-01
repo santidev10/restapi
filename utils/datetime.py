@@ -1,14 +1,14 @@
-from datetime import datetime, date
+from datetime import datetime, date, time
 
 import pytz
 from django.conf import settings
 
 
 def now_in_default_tz():
-    return time.now()
+    return time_instance.now()
 
 
-def to_date(dt):
+def as_date(dt):
     """
     Cast datetime.datetime, datetime.date and string to datetime.date
     """
@@ -21,12 +21,22 @@ def to_date(dt):
     return dt
 
 
+def as_datetime(dt):
+    """
+    Cast datetime.date and datetime.datetime to datetime.datetime
+    """
+    if isinstance(dt, datetime):
+        return dt
+    if isinstance(dt, date):
+        return datetime.combine(dt, time.min)
+
+
 class Time:
     def now(self):
         return datetime.now(tz=pytz.timezone(settings.DEFAULT_TIMEZONE))
 
 
-time = Time()
+time_instance = Time()
 
 
 def build_periods(quarters=None, start=None, end=None, compare_yoy=False,
