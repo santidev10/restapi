@@ -4,7 +4,7 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem, AdCreation, AccountOptimizationSetting
+    Language, TargetingItem, AdCreation
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 from django.http import HttpResponse

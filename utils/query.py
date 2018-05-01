@@ -1,6 +1,6 @@
 from functools import reduce
 
-from django.db.models import Q, When
+from django.db.models import Q, When, Count
 
 
 class Operator:
@@ -17,6 +17,18 @@ def build_query(expressions, condition):
     return Q()
 
 
+def build_query_value(queryset, field, values, condition):
+    in_query = Q(**{field + "__in": values})
+    if condition == Operator.OR:
+        return queryset.filter(in_query)
+    elif condition == Operator.AND:
+        temp_queryset = queryset.annotate(count=Count(in_query)) \
+            .filter(count=len(values))
+        pks = temp_queryset.values_list("pk", flat=True)
+
+        return queryset.filter(pk__in=pks)
+
+
 def build_query_bool(fields, condition, value=True):
     expressions = [{f: value} for f in fields]
     return build_query(expressions, condition)
@@ -31,7 +43,7 @@ def AND(*args):
 
 
 def split_request(initial_queryset, filters, chunk_size):
-    chunks = [filters[i:i+chunk_size]
+    chunks = [filters[i:i + chunk_size]
               for i in range(0, len(filters), chunk_size)]
     queryset = initial_queryset
     for chunk in chunks:

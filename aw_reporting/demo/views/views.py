@@ -3,9 +3,10 @@ from datetime import datetime
 from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from .charts import DemoChart
-from .models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 
 
 class AnalyzeAccountsListApiView:
@@ -174,8 +175,8 @@ class AnalyzeExportWeeklyReportApiView:
                     'Content-Disposition'
                 ] = 'attachment; filename="Channel Factory {} Weekly ' \
                     'Report {}.xlsx"'.format(
-                        account.name,
-                        datetime.now().date().strftime("%m.%d.%y")
+                    account.name,
+                    datetime.now().date().strftime("%m.%d.%y")
                 )
                 return response
             else:
@@ -184,36 +185,60 @@ class AnalyzeExportWeeklyReportApiView:
         return method
 
 
-class TrackFiltersListApiView:
+def get_demo_account_data():
+    account = DemoAccount()
+    return dict(
+        id=account.id,
+        name=account.name,
+        start_date=account.start_date,
+        end_date=account.end_date,
+        campaigns=[
+            dict(
+                id=c.id,
+                name=c.name,
+                start_date=c.start_date,
+                end_date=c.end_date,
+            )
+            for c in account.children
+        ]
+    )
 
+
+class TrackFiltersListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, **kwargs):
             if request.user.aw_connections.count():
                 return original_method(view, request, **kwargs)
             else:
-                account = DemoAccount()
                 data = dict(
-                    accounts=[
-                        dict(
-                            id=account.id,
-                            name=account.name,
-                            start_date=account.start_date,
-                            end_date=account.end_date,
-                            campaigns=[
-                                dict(
-                                    id=c.id,
-                                    name=c.name,
-                                    start_date=c.start_date,
-                                    end_date=c.end_date,
-                                )
-                                for c in account.children
-                            ]
-                        )
-                    ],
-                    **view.get_static_filters()
+                    accounts=[get_demo_account_data()],
+                    **view._get_static_filters()
                 )
             return Response(data=data)
+
+        return method
+
+
+class GlobalTrendsFiltersApiView:
+    @staticmethod
+    def get(original_method):
+        def method(view, request, **kwargs):
+            response = original_method(view, request, **kwargs)
+            if response.status_code == HTTP_200_OK \
+                    and len(response.data.get("accounts", [])) > 0:
+                return response
+            data = dict(
+                accounts=[get_demo_account_data()],
+                am=[],
+                ad_ops=[],
+                sales=[],
+                brands=[],
+                categories=[],
+                **view._get_static_filters()
+            )
+            return Response(data=data)
+
         return method
 
 
@@ -234,6 +259,7 @@ class TrackChartApiView:
                 charts_obj = DemoChart(account, filters)
                 return Response(status=HTTP_200_OK,
                                 data=charts_obj.charts)
+
         return method
 
 
@@ -264,13 +290,14 @@ class TrackAccountsDataApiView:
                         id=account.id,
                         label=account.name,
                         average_1d=sum(i['value'] for i in latest_1d_data)
-                        / len(latest_1d_data) if len(latest_1d_data)
+                                   / len(latest_1d_data) if len(latest_1d_data)
                         else None,
                         average_5d=sum(i['value'] for i in latest_5d_data)
-                        / len(latest_5d_data) if len(latest_5d_data)
+                                   / len(latest_5d_data) if len(latest_5d_data)
                         else None,
                         trend=trend,
                     )
                 ]
                 return Response(status=HTTP_200_OK, data=accounts)
+
         return method

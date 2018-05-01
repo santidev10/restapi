@@ -1,18 +1,16 @@
 from django.db.models import Sum
 from rest_framework.response import Response
 
-from aw_reporting.api.views.base_track import TrackApiBase
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.api.views.trends.base_track import TrackApiBase
 from aw_reporting.models import Account
 
 
-@demo_view_decorator
-class TrackFiltersListApiView(TrackApiBase):
+class BaseTrackFiltersListApiView(TrackApiBase):
     """
     Lists of the filter names and values
     """
 
-    def get_static_filters(self):
+    def _get_static_filters(self):
         static_filters = dict(
             indicator=[
                 dict(id=uid, name=name)
@@ -29,14 +27,13 @@ class TrackFiltersListApiView(TrackApiBase):
         )
         return static_filters
 
-    def get(self, request, *args, **kwargs):
-        accounts = Account.user_objects(request.user).filter(
-            can_manage_clients=False,
-        ).annotate(
-            impressions=Sum("campaigns__impressions")
-        ).filter(impressions__gt=0).distinct()
+    def _get_accounts(self, request):
+        raise NotImplemented
 
-        filters = dict(
+    def _get_filters(self, request):
+        accounts = self._get_accounts(request)
+
+        return dict(
             accounts=[
                 dict(
                     id=account.id,
@@ -55,6 +52,9 @@ class TrackFiltersListApiView(TrackApiBase):
                 )
                 for account in accounts
             ],
-            **self.get_static_filters()
+            **self._get_static_filters()
         )
+
+    def get(self, request, *args, **kwargs):
+        filters = self._get_filters(request)
         return Response(data=filters)

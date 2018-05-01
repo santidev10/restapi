@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.api.serializers import AccountsListSerializer
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT, Account, AdGroupStatistic, \
     all_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
     dict_quartiles_to_rates, GenderStatistic, Genders, AgeRangeStatistic, \

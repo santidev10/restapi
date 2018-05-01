@@ -83,6 +83,7 @@ class YAMLSettings(FileSettings):
 class InstanceSettingsKey:
     HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
     VISIBLE_ACCOUNTS = "visible_accounts"
+    GLOBAL_TRENDS_ACCOUNTS = "global_trends_accounts"
 
 
 class InstanceSettings(YAMLSettings):
@@ -96,6 +97,7 @@ class InstanceSettings(YAMLSettings):
         InstanceSettingsKey.VISIBLE_ACCOUNTS: [],
         'hidden_campaign_types': {},
         'global_account_visibility': False,
+        InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [],
     }
 
     file_name = "instance"
