@@ -1,4 +1,5 @@
 import inspect
+from datetime import datetime
 from functools import wraps
 
 
@@ -28,11 +29,12 @@ def log_method(logger, prefix=""):
                 args = (type(args[0])) + args[1:]
             elif is_static_method:
                 args = args[1:]
-            logger.debug(
-                "(+) {}{} was called".format(prefix, fn.__name__))
+            start = datetime.now()
             res = fn(*args, **kwargs)
+            end = datetime.now()
+            duration = (end - start).total_seconds()
             logger.debug(
-                "(-) {}{} finished".format(prefix, fn.__name__, ))
+                "({}) {}{}".format(duration, prefix, fn.__name__))
             return res
 
         return decorator
