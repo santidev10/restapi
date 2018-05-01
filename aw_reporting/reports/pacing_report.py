@@ -237,7 +237,8 @@ class PacingReport:
 
     def get_placements_data(self, **filters):
         queryset = OpPlacement.objects.filter(**filters)
-        placement_fields = ("id", "dynamic_placement", "opportunity_id")
+        placement_fields = ("id", "dynamic_placement", "opportunity_id",
+                            "goal_type_id")
         raw_data = queryset.values(*placement_fields)
         return raw_data
 
@@ -776,6 +777,7 @@ class PacingReport:
 
             delivery_field_name = self.get_delivery_field_name(flight)
             daily_delivery = defaultdict(int)
+            flight["_delivery_field_name"] = delivery_field_name
             if delivery_field_name:
                 for row in flight["daily_delivery"]:
                     date = row["date"]
@@ -833,7 +835,7 @@ class PacingReport:
             # delivered cumulative chart
             delivered = 0
             for f in current_flights:
-                delivery_field_name = self.get_delivery_field_name(f)
+                delivery_field_name = f["_delivery_field_name"]
                 if delivery_field_name:
                     for row in f["daily_delivery"]:
                         if date == row["date"]:
@@ -1089,12 +1091,15 @@ class PacingReport:
                 status = "completed"
             else:
                 status = "active"
-            o["status"] = status
-            goal_type_ids = Opportunity.objects.get(pk=o["id"]).goal_type_ids
-            o['goal_type_ids'] = goal_type_ids
-
-            flights = all_flights[o["id"]]
             placements = all_placements[o["id"]]
+            flights = all_flights[o["id"]]
+
+            o["status"] = status
+            goal_type_ids = sorted(filter(
+                lambda g: g is not None,
+                set([p["goal_type_id"] for p in placements])
+            ))
+            o['goal_type_ids'] = goal_type_ids
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             o.update(delivery_stats)
