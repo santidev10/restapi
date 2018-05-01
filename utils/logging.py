@@ -28,17 +28,11 @@ def log_method(logger, prefix=""):
                 args = (type(args[0])) + args[1:]
             elif is_static_method:
                 args = args[1:]
-            try:
-                res = fn(*args, **kwargs)
-                logger.debug(
-                    "{}{} was called with {} {}. result={}".format(prefix,
-                                                                   fn.__name__,
-                                                                   args,
-                                                                   kwargs,
-                                                                   res))
-            except Exception as ex:
-                print(ex)
-                raise ex
+            logger.debug(
+                "(+) {}{} was called".format(prefix, fn.__name__))
+            res = fn(*args, **kwargs)
+            logger.debug(
+                "(-) {}{} finished".format(prefix, fn.__name__, ))
             return res
 
         return decorator

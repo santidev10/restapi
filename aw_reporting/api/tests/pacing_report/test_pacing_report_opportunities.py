@@ -19,14 +19,13 @@ from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 logger = logging.getLogger(__name__)
 
-class PacingReportOpportunitiesTestCase(APITestCase):
 
-    @staticmethod
-    def setUpClass():
+class PacingReportOpportunitiesTestCase(APITestCase):
+    @classmethod
+    def setUpClass(cls):
         # The test runner sets DEBUG to False. Set to True to enable SQL logging.
         settings.DEBUG = True
-        super(PacingReportOpportunitiesTestCase,
-              PacingReportOpportunitiesTestCase).setUpClass()
+        super(PacingReportOpportunitiesTestCase, cls).setUpClass()
 
     def setUp(self):
         self.user = self.create_test_user()
