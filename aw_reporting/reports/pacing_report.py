@@ -10,17 +10,13 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin, \
-    logging
+    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
-from utils.logging import log_all_methods
-
-logger = logging.getLogger(__name__)
 
 
 class PacingReportChartId:
@@ -33,7 +29,6 @@ class DefaultRate:
     CPV = .04
 
 
-@log_all_methods(logger)
 class PacingReport:
     # todo: remove these two properties
     DEFAULT_AVERAGE_CPV = DefaultRate.CPV
