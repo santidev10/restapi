@@ -10,13 +10,17 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
+    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin, \
+    logging
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
+from utils.logging import log_all_methods
+
+logger = logging.getLogger(__name__)
 
 
 class PacingReportChartId:
@@ -29,6 +33,7 @@ class DefaultRate:
     CPV = .04
 
 
+@log_all_methods(logger)
 class PacingReport:
     # todo: remove these two properties
     DEFAULT_AVERAGE_CPV = DefaultRate.CPV
@@ -204,7 +209,8 @@ class PacingReport:
             sum_cost=Sum(
                 Case(
                     When(
-                        ~Q(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
+                        ~Q(
+                            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
                         & Q(**in_flight_dates_criteria),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
@@ -231,7 +237,8 @@ class PacingReport:
 
     def get_placements_data(self, **filters):
         queryset = OpPlacement.objects.filter(**filters)
-        placement_fields = ("id", "dynamic_placement", "opportunity_id")
+        placement_fields = ("id", "dynamic_placement", "opportunity_id",
+                            "goal_type_id")
         raw_data = queryset.values(*placement_fields)
         return raw_data
 
@@ -627,10 +634,11 @@ class PacingReport:
         elif goal_type_id in (SalesForceGoalType.CPV, SalesForceGoalType.CPM):
             delivery_field = "video_views" \
                 if goal_type_id == SalesForceGoalType.CPV else "impressions"
-            today_units = self.get_today_goal(flight["plan_units"] * allocation_ko,
-                                              stats_total[delivery_field],
-                                              flight["end"],
-                                              last_day)
+            today_units = self.get_today_goal(
+                flight["plan_units"] * allocation_ko,
+                stats_total[delivery_field],
+                flight["end"],
+                last_day)
 
             yesterday = last_day - timedelta(days=1)
             yesterdays_stats = get_stats_from_flight(flight,
@@ -719,7 +727,6 @@ class PacingReport:
                                           campaign_id=campaign_id),
             targeting=targeting,
 
-
         )
 
         if before_yesterday_stats is not None:
@@ -770,6 +777,7 @@ class PacingReport:
 
             delivery_field_name = self.get_delivery_field_name(flight)
             daily_delivery = defaultdict(int)
+            flight["_delivery_field_name"] = delivery_field_name
             if delivery_field_name:
                 for row in flight["daily_delivery"]:
                     date = row["date"]
@@ -827,7 +835,7 @@ class PacingReport:
             # delivered cumulative chart
             delivered = 0
             for f in current_flights:
-                delivery_field_name = self.get_delivery_field_name(f)
+                delivery_field_name = f["_delivery_field_name"]
                 if delivery_field_name:
                     for row in f["daily_delivery"]:
                         if date == row["date"]:
@@ -1015,7 +1023,8 @@ class PacingReport:
             video_view_rate_quality=video_view_rate_quality,
             ctr_quality=ctr_quality,
             is_completed=report["end"] < self.today if report["end"] else None,
-            is_upcoming=report["start"] > self.today if report["start"] else None
+            is_upcoming=report["start"] > self.today if report[
+                "start"] else None
 
         )
 
@@ -1074,18 +1083,23 @@ class PacingReport:
         # prepare response
         for o in opportunities:
             today = self.today
-            if o["start"] > today:
+            if o["start"] is None or o["end"] is None:
+                status = "undefined"
+            elif o["start"] > today:
                 status = "upcoming"
             elif o["end"] < today:
                 status = "completed"
             else:
                 status = "active"
-            o["status"] = status
-            goal_type_ids = Opportunity.objects.get(pk=o["id"]).goal_type_ids
-            o['goal_type_ids'] = goal_type_ids
-
-            flights = all_flights[o["id"]]
             placements = all_placements[o["id"]]
+            flights = all_flights[o["id"]]
+
+            o["status"] = status
+            goal_type_ids = sorted(filter(
+                lambda g: g is not None,
+                set([p["goal_type_id"] for p in placements])
+            ))
+            o['goal_type_ids'] = goal_type_ids
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             o.update(delivery_stats)
@@ -1150,7 +1164,8 @@ class PacingReport:
             dynamic_placements_types = set(p["dynamic_placement"]
                                            for p in placements)
             o["has_dynamic_placements"] = any([dp in DYNAMIC_PLACEMENT_TYPES
-                                               for dp in dynamic_placements_types])
+                                               for dp in
+                                               dynamic_placements_types])
             o["dynamic_placements_types"] = dynamic_placements_types
 
         return opportunities
@@ -1403,7 +1418,7 @@ class PacingReport:
 
         flights = []
         for f in flights_data:
-            tech_fee = float(f["placement__tech_fee"])\
+            tech_fee = float(f["placement__tech_fee"]) \
                 if f["placement__tech_fee"] else None
             flight = dict(
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],

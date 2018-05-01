@@ -1,30 +1,43 @@
+import logging
 from datetime import timedelta, date
 from itertools import product
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
     Opportunity, Category, User, SalesForceRegions, OpPlacement, \
     SalesForceGoalType
 from aw_reporting.models.salesforce_constants import \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+
+logger = logging.getLogger(__name__)
 
 
 class PacingReportOpportunitiesTestCase(APITestCase):
+    url = reverse(
+        Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES)
+
+    @classmethod
+    def setUpClass(cls):
+        # The test runner sets DEBUG to False. Set to True to enable SQL logging.
+        settings.DEBUG = True
+        super(PacingReportOpportunitiesTestCase, cls).setUpClass()
 
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_forbidden_get_opportunities(self):
         self.user.delete()
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_get_opportunities(self):
@@ -56,8 +69,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Opportunity.objects.create(id="3", name="3", start=month_after,
                                    end=month_after, probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?period=this_month".format(url))
+        response = self.client.get("{}?period=this_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -108,8 +120,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  end=month_after,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?period=next_month".format(url))
+        response = self.client.get("{}?period=next_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -127,8 +138,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  ad_ops_manager=user2,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?ad_ops={}".format(url, user2.id))
+        response = self.client.get("{}?ad_ops={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -146,8 +156,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  account_manager=user2,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?am={}".format(url, user2.id))
+        response = self.client.get("{}?am={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -164,8 +173,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  end=today, sales_manager=user2,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?sales={}".format(url, user2.id))
+        response = self.client.get("{}?sales={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -182,8 +190,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  end=today, category=category2,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?category={}".format(url, category2.id))
+        response = self.client.get(
+            "{}?category={}".format(self.url, category2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -199,8 +207,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="2", name="2", start=today, end=today,
             goal_type_id=SalesForceGoalType.CPV, probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?goal_type={}".format(url, 1))
+        response = self.client.get("{}?goal_type={}".format(self.url, 1))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -215,8 +222,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  end=today, region_id=1,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?region={}".format(url, 1))
+        response = self.client.get("{}?region={}".format(self.url, 1))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -231,8 +237,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=today, end=today,
                                                  probability=100)
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get("{}?search={}".format(url, "SIM"))
+        response = self.client.get("{}?search={}".format(self.url, "SIM"))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data
@@ -261,27 +266,31 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             end=month_after,
         )
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(
-            "{}?{}".format(url, urlencode(dict(status="active", **filters))))
+        response = self.client.get("{}?{}".format(
+            self.url,
+            urlencode(dict(status="active", **filters))
+        ))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['id'], active.id)
 
         response = self.client.get(
-            "{}?{}".format(url, urlencode(dict(status="upcoming", **filters))))
+            "{}?{}".format(self.url,
+                           urlencode(dict(status="upcoming", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['id'], upcoming.id)
 
         response = self.client.get(
-            "{}?{}".format(url, urlencode(dict(status="completed", **filters))))
+            "{}?{}".format(self.url,
+                           urlencode(dict(status="completed", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['id'], completed.id)
 
         response = self.client.get(
-            "{}?{}".format(url, urlencode(dict(status="any", **filters))))
+            "{}?{}".format(self.url,
+                           urlencode(dict(status="any", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
 
@@ -296,12 +305,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             end=today + timedelta(days=1), probability=100,
         )
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]['id'], first.id)
 
-        response = self.client.get("{}?sort_by=-account".format(url))
+        response = self.client.get("{}?sort_by=-account".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]['id'], second.id)
 
@@ -326,8 +334,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             .aggregate(cost=Sum("cost"), views=Sum("video_views"))
         cpv = stats["cost"] / stats["views"]
         expected_margin = tech_fee / (cpv + tech_fee) * 100
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data[0]['margin'], expected_margin)
 
@@ -352,8 +359,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          campaign=campaign,
                                          video_views=35,
                                          impressions=100)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data[0]
         self.assertEqual(opp_data["video_view_rate"], 35.)
@@ -370,8 +376,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             opportunity=opportunity, total_cost=10)
         Campaign.objects.create(
             salesforce_placement=placement, cost=0)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data[0]
         self.assertEqual(opp_data["margin"], expected_margin)
@@ -390,8 +395,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today,
                                          cost=1)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data[0]
         self.assertEqual(opp_data["margin"], -100)
@@ -433,8 +437,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          campaign=campaign_2,
                                          cost=campaign_2_cost,
                                          video_views=campaign_cpv_video_views)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data[0]
         self.assertEqual(opp_data["margin"], expected_margin)
@@ -476,9 +479,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          campaign=campaign,
                                          cost=last_3_days_cost,
                                          video_views=last_3_days_views)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         chart_data = response.data[0]["chart_data"]["cpv"]
@@ -521,9 +523,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          campaign=campaign,
                                          cost=last_3_days_cost,
                                          impressions=last_3_days_impressions)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         chart_data = response.data[0]["chart_data"]["cpm"]
@@ -541,9 +542,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             end=today + timedelta(days=1)
         )
 
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertFalse(response.data[0]["has_dynamic_placements"])
@@ -569,9 +569,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 start=start,
                 end=end
             )
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), count)
         self.assertTrue(all(o["has_dynamic_placements"] for o in response.data))
@@ -606,9 +605,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
-        url = reverse("aw_reporting_urls:pacing_report_opportunities")
         with patch_now(today):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         pl = response.data[0]
@@ -624,3 +622,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(pl["video_views"], views)
         self.assertAlmostEqual(pl["pacing"], expected_pacing)
         self.assertAlmostEqual(pl["margin"], expected_margin)
+
+    def test_no_dates(self):
+        Opportunity.objects.create(
+            id="1", name="1", start=None, end=None, probability=100
+        )
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["status"], "undefined")
