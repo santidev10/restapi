@@ -1405,6 +1405,7 @@ def get_budget_to_spend_from_added_fee_flight(f, today, allocation_ko=1,
     return spent + spent_remaining
 
 
+@log_function(logger, prefix="def ")
 def populate_daily_delivery_data(flights):
     placement_ids = set(f["placement_id"] for f in flights)
     campaign_stats_qs = CampaignStatistic.objects.filter(
@@ -1433,6 +1434,7 @@ def populate_daily_delivery_data(flights):
         ]
 
 
+@log_function(logger, prefix="def ")
 def get_flight_delivery_annotate(fields=None, **additional_filters):
     pre_flight_cond = dict(
         campaign__salesforce_placement__flights__start__gt=F("date"),
