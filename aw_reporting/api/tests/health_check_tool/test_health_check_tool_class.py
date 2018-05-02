@@ -63,7 +63,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["flight"]["match"], True)
+        self.assertIs(response["flight"]["match"], False)
 
     def test_match_2_days_before_start(self):
         before_start = datetime(2017, 9, 23).date()
@@ -79,7 +79,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["flight"]["match"], True)
+        self.assertIs(response["flight"]["match"], False)
 
     def test_match_1_day_before_start(self):
         before_start = datetime(2017, 9, 24).date()
@@ -95,7 +95,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["flight"]["match"], True)
+        self.assertIs(response["flight"]["match"], False)
 
     def test_match_same_day_start(self):
         before_start = date(2017, 9, 25)
@@ -127,7 +127,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["flight"]["match"], False)
+        self.assertIs(response["flight"]["match"], True)
 
     def test_match_4_days_before_start(self):
         before_start = date(2017, 9, 26)
@@ -143,7 +143,7 @@ class SetupHealthCheckToolTestCase(APITestCase):
         result = HealthCheckTool([opportunity])
         self.assertEqual(len(result), 1)
         response = result[0]
-        self.assertIs(response["flight"]["match"], False)
+        self.assertIs(response["flight"]["match"], True)
 
     def test_targeting_tactics_map(self):
         opportunity = Opportunity.objects.create(
