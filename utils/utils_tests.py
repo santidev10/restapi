@@ -11,7 +11,7 @@ from rest_framework.test import APITestCase
 
 from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
-from userprofile.permissions import PermissionHandler
+from userprofile.permissions import Permissions
 from utils.datetime import Time
 
 
@@ -28,7 +28,7 @@ class TestUserMixin:
         """
         Make test user
         """
-        PermissionHandler().sync_groups()
+        Permissions.sync_groups()
         user, created = get_user_model().objects.get_or_create(
             email=self.test_user_data["email"],
             defaults=self.test_user_data,

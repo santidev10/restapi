@@ -32,7 +32,7 @@ class PermissionHandler:
         :param perm: str, permission name
         :return:
         """
-        permission = self.get_custom_permission(perm)
+        permission = get_custom_permission(perm)
         self.user_permissions.add(permission)
 
     def remove_custom_user_permission(self, perm):
@@ -40,16 +40,8 @@ class PermissionHandler:
         :param perm: str, permission name
         :return:
         """
-        permission = self.get_custom_permission(perm)
+        permission = get_custom_permission(perm)
         self.user_permissions.remove(permission)
-
-    def get_custom_permission(self, perm):
-        """
-        :param perm: str, permission name
-        :return: GlobalPermission object
-        """
-        permission, _ = GlobalPermission.objects.get_or_create(codename=perm)
-        return permission
 
     def get_user_groups(self):
         return self.groups.values_list('name', flat=True)
@@ -85,20 +77,6 @@ class PermissionHandler:
                     self.add_custom_user_group(group_name)
                 else:
                     self.remove_custom_user_group(group_name)
-
-    def sync_groups(self):
-        """
-        sync permission groups from Permissions class
-        """
-        perm_set_data = dict(Permissions.PERMISSION_SETS)
-        for k, v in perm_set_data.items():
-            group_name = k
-            raw_group_permissions = v
-
-            group, _ = Group.objects.get_or_create(name=group_name)
-            group_permissions = tuple([self.get_custom_permission(perm) for perm in raw_group_permissions])
-            group.permissions.set(group_permissions)
-            group.save()
 
 
 class PermissionGroupNames:
@@ -179,3 +157,27 @@ class Permissions:
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
     )
+
+    @staticmethod
+    def sync_groups():
+        """
+        sync permission groups
+        """
+        perm_set_data = dict(Permissions.PERMISSION_SETS)
+        for k, v in perm_set_data.items():
+            group_name = k
+            raw_group_permissions = v
+
+            group, _ = Group.objects.get_or_create(name=group_name)
+            group_permissions = tuple([get_custom_permission(perm) for perm in raw_group_permissions])
+            group.permissions.set(group_permissions)
+            group.save()
+
+
+def get_custom_permission(perm):
+    """
+    :param perm: str, permission name
+    :return: GlobalPermission object
+    """
+    permission, _ = GlobalPermission.objects.get_or_create(codename=perm)
+    return permission
