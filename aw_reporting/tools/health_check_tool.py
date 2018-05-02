@@ -457,7 +457,7 @@ class FlightSection(Section):
         if not all((aw, sf)):
             return aw, sf
         aw_start, sf_start = aw[0]["name"], sf[0]["name"]
-        if sf_start >= aw_start:
+        if aw_start >= sf_start:
             self.set_positive_matching(aw[0])
             self.set_positive_matching(sf[0])
         try:
