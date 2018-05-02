@@ -96,6 +96,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "goal_type_ids"
             }
         )
+        import json
+        print(json.dumps(item, indent=4, default=str))
         self.assertEqual(item["id"], current_op.id)
         self.assertEqual(item['status'], "active")
         self.assertEqual(item['thumbnail'], ad_ops_user.profile_image_url)
