@@ -1,4 +1,3 @@
-import logging
 from collections import defaultdict
 from datetime import timedelta
 from math import ceil
@@ -17,7 +16,6 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
-from utils.logging import log_all_methods, log_function
 
 
 class PacingReportChartId:
@@ -36,10 +34,7 @@ DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
 
 ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
-logger = logging.getLogger(__name__)
 
-
-@log_all_methods(logger)
 class PacingReport:
     # todo: remove these two properties
 
@@ -981,7 +976,6 @@ class PacingReport:
     # ## CAMPAIGNS ## #
 
 
-@log_function(logger, prefix="def ")
 def get_stats_from_flight(flight, start=None, end=None, campaign_id=None):
     daily_delivery = flight["daily_delivery"]
     if campaign_id:
@@ -1004,7 +998,6 @@ def get_stats_from_flight(flight, start=None, end=None, campaign_id=None):
     return delivery
 
 
-@log_function(logger, prefix="def ")
 def get_today_goal(goal_items, delivered_items, end, today):
     goal = 0
     days_left = (end - today).days + 1 if end else 0
@@ -1015,7 +1008,6 @@ def get_today_goal(goal_items, delivered_items, end, today):
     return goal
 
 
-@log_function(logger, prefix="def ")
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
                    allocation_ko=1, campaign_id=None):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
@@ -1036,7 +1028,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     yesterday_views = yesterday_impressions = 0
     today_goal_views = today_goal_impressions = 0
     for f in flights:
-        stats = f["campaigns"].get(campaign_id, ZERO_STATS)\
+        stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
 
         if f["start"] <= today <= f["end"]:
@@ -1107,7 +1099,6 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     return data
 
 
-@log_function(logger, prefix="def ")
 def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
                              campaign_id=None):
     stats_total = get_stats_from_flight(flight, campaign_id=campaign_id,
@@ -1189,7 +1180,6 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-@log_function(logger, prefix="def ")
 def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
                       goal_type_id=None):
     if goal_type_id == SalesForceGoalType.HARD_COST:
@@ -1314,7 +1304,6 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
     return charts
 
 
-@log_function(logger, prefix="def ")
 def get_delivery_field_name(flight_dict):
     if flight_dict[
         "placement__goal_type_id"] == SalesForceGoalType.HARD_COST and \
@@ -1329,7 +1318,6 @@ def get_delivery_field_name(flight_dict):
         return "video_views"
 
 
-@log_function(logger, prefix="def ")
 def get_budget_to_spend_from_added_fee_flight(f, today, allocation_ko=1,
                                               campaign_id=None):
     stats_total = get_stats_from_flight(f, campaign_id=campaign_id)
@@ -1372,7 +1360,6 @@ def get_budget_to_spend_from_added_fee_flight(f, today, allocation_ko=1,
     return spent + spent_remaining
 
 
-@log_function(logger, prefix="def ")
 def populate_daily_delivery_data(flights):
     placement_ids = set(f["placement_id"] for f in flights)
     campaign_stats_qs = CampaignStatistic.objects.filter(
@@ -1403,7 +1390,6 @@ def populate_daily_delivery_data(flights):
         ]
 
 
-@log_function(logger, prefix="def ")
 def get_flight_delivery_annotate(fields=None):
     annotate = dict(
         sum_video_views=Sum("video_views"),
