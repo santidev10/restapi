@@ -4,8 +4,7 @@ from datetime import timedelta
 from math import ceil
 
 from django.contrib.auth import get_user_model
-from django.db.models import F, Sum, Case, When, Value, FloatField, \
-    IntegerField, Q
+from django.db.models import F, Sum, Case, When, Value, FloatField, Q
 
 from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
@@ -30,6 +29,12 @@ class DefaultRate:
     CPM = 6.25
     CPV = .04
 
+
+DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
+                   "video_impressions", "impressions", "yesterday_cost",
+                   "video_clicks", "clicks", "delivery", "video_cost")
+
+ZERO_STATS = {f: 0 for f in DELIVERY_FIELDS}
 
 logger = logging.getLogger(__name__)
 
@@ -74,38 +79,29 @@ class PacingReport:
         return get_days_run_and_total_days(f, self.yesterday)
 
     def get_flights_delivery_annotate(self):
-        in_flight_dates_criteria = dict(
-            placement__adwords_campaigns__statistics__date__gte=F("start"),
-            placement__adwords_campaigns__statistics__date__lte=F("end"),
-        )
         flights_delivery_annotate = dict(
             delivery=Sum(
                 Case(
                     When(
-                        then=Case(
-                            When(
-                                placement__dynamic_placement__in=[
-                                    DynamicPlacementType.BUDGET,
-                                    DynamicPlacementType.RATE_AND_TECH_FEE],
-                                then=F(
-                                    "placement__adwords_campaigns__statistics__cost"),
-                            ),
-                            When(
-                                placement__goal_type_id=Value(
-                                    SalesForceGoalType.CPM),
-                                then=F(
-                                    "placement__adwords_campaigns__statistics__impressions"),
-                            ),
-                            When(
-                                placement__goal_type_id=Value(
-                                    SalesForceGoalType.CPV),
-                                then=F(
-                                    "placement__adwords_campaigns__statistics__video_views"),
-                            ),
-                            output_field=FloatField(),
-                        ),
-                        **in_flight_dates_criteria
+                        placement__dynamic_placement__in=[
+                            DynamicPlacementType.BUDGET,
+                            DynamicPlacementType.RATE_AND_TECH_FEE],
+                        then=F(
+                            "placement__adwords_campaigns__statistics__cost"),
                     ),
+                    When(
+                        placement__goal_type_id=Value(
+                            SalesForceGoalType.CPM),
+                        then=F(
+                            "placement__adwords_campaigns__statistics__impressions"),
+                    ),
+                    When(
+                        placement__goal_type_id=Value(
+                            SalesForceGoalType.CPV),
+                        then=F(
+                            "placement__adwords_campaigns__statistics__video_views"),
+                    ),
+                    output_field=FloatField(),
                 ),
             ),
             yesterday_cost=Sum(
@@ -114,7 +110,6 @@ class PacingReport:
                         placement__adwords_campaigns__statistics__date=self.yesterday,
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
-                        **in_flight_dates_criteria
                     ),
                 ),
             ),
@@ -144,26 +139,17 @@ class PacingReport:
                             ),
                             output_field=FloatField(),
                         ),
-                        **in_flight_dates_criteria
                     ),
                 ),
             ),
             impressions=Sum(
-                Case(
-                    When(
-                        then=F(
-                            "placement__adwords_campaigns__statistics__impressions"),
-                        **in_flight_dates_criteria
-                    ),
-                ),
-            ),
+                "placement__adwords_campaigns__statistics__impressions"),
             video_impressions=Sum(
                 Case(
                     When(
                         placement__adwords_campaigns__video_views__gt=Value(0),
                         then=F(
                             "placement__adwords_campaigns__statistics__impressions"),
-                        **in_flight_dates_criteria
                     ),
                 ),
             ),
@@ -173,7 +159,6 @@ class PacingReport:
                         placement__adwords_campaigns__video_views__gt=Value(0),
                         then=F(
                             "placement__adwords_campaigns__statistics__clicks"),
-                        **in_flight_dates_criteria
                     ),
                 ),
             ),
@@ -183,34 +168,17 @@ class PacingReport:
                         placement__adwords_campaigns__video_views__gt=Value(0),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
-                        **in_flight_dates_criteria
                     ),
                 ),
             ),
             video_views=Sum(
-                Case(
-                    When(
-                        then=F(
-                            "placement__adwords_campaigns__statistics__video_views"),
-                        **in_flight_dates_criteria
-                    ),
-                ),
-            ),
-            clicks=Sum(
-                Case(
-                    When(
-                        then=F(
-                            "placement__adwords_campaigns__statistics__clicks"),
-                        **in_flight_dates_criteria
-                    ),
-                ),
-            ),
+                "placement__adwords_campaigns__statistics__video_views"),
+            clicks=Sum("placement__adwords_campaigns__statistics__clicks"),
             sum_cost=Sum(
                 Case(
                     When(
                         ~Q(
-                            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE)
-                        & Q(**in_flight_dates_criteria),
+                            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
 
@@ -231,6 +199,8 @@ class PacingReport:
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
+            placement__adwords_campaigns__statistics__date__gte=F("start"),
+            placement__adwords_campaigns__statistics__date__lte=F("end"),
             **filters
         )
 
@@ -250,32 +220,31 @@ class PacingReport:
             "placement__total_cost", "placement__ordered_rate"
         )
         raw_data = queryset.values(
-            campaign_id_key,  # segment by campaigns
-            *flight_fields
+            *group_by  # segment by campaigns
         ).order_by(*group_by).annotate(**annotate)
+        relevant_flights = Flight.objects.filter(
+            start__isnull=False,
+            end__isnull=False,
+            **filters
+        ).values(
+            *flight_fields)
 
-        annotate_keys = tuple(annotate.keys())
-        data = {}
+        data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
+                    for f in relevant_flights)
         for row in raw_data:
-            if row["id"] in data:
-                fl_data = data[row["id"]]
-            else:
-                fl_data = {k: row[k] for k in flight_fields}
-                fl_data["campaigns"] = {}
-                data[row["id"]] = fl_data
+            fl_data = data[row["id"]]
+            fl_data["campaigns"] = fl_data.get("campaigns") or {}
 
             fl_data["campaigns"][
                 row[campaign_id_key]
-            ] = {k: row[k] or 0 for k in annotate_keys}
+            ] = {k: row.get(k) or 0 for k in DELIVERY_FIELDS}
 
-            for f in annotate_keys:
-                fl_data[f] = fl_data.get(f, 0) + (row[f] or 0)
+            for f in DELIVERY_FIELDS:
+                fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
 
         data = sorted(data.values(), key=lambda el: (el["start"], el["name"]))
 
         for fl in data:
-            fl["daily_delivery"] = []
-
             start, end = fl["start"], fl["end"]
             fl["days"] = (end - start).days + 1 if end and start else 0
 
@@ -290,19 +259,11 @@ class PacingReport:
                         DynamicPlacementType.RATE_AND_TECH_FEE,
                         DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
-            # elif fl["placement__dynamic_placement"] == DynamicPlacementType.RATE_AND_TECH_FEE:
-            #     fl["plan_units"] = self.get_budget_to_spend_from_added_fee_flight(fl)
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor \
                     if fl["ordered_units"] else 0
-
-            for field in (
-                    "delivery", "yesterday_cost", "yesterday_delivery",
-                    "impressions",
-                    "video_impressions", "video_views", "clicks"):
-                fl[field] = fl[field] or 0
 
         # we need to check  "cannot_roll_over" option
         # if it's False, the over-delivery from completed flights should be spread between future ones
@@ -370,7 +331,8 @@ class PacingReport:
         for f in flights:
             goal_type_ids.add(f["placement__goal_type_id"])
 
-            stats = f["campaigns"][campaign_id] if campaign_id else f
+            stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
+                if campaign_id else f
 
             impressions += stats["impressions"] or 0
             video_impressions += stats["video_impressions"] or 0
@@ -418,12 +380,12 @@ class PacingReport:
             total_cost = (f["total_cost"] or 0) * allocation_ko
 
             if campaign_id:
-                stats = f["campaigns"][campaign_id]
+                stats = f["campaigns"].get(campaign_id, ZERO_STATS)
             else:
                 stats = f
 
-            sum_delivery += stats["delivery"] or 0
-            aw_cost = stats["sum_cost"] or 0
+            sum_delivery += stats.get("delivery") or 0
+            aw_cost = stats.get("sum_cost") or 0
 
             if dynamic_placement in (DynamicPlacementType.BUDGET,
                                      DynamicPlacementType.SERVICE_FEE):
@@ -482,7 +444,8 @@ class PacingReport:
         else:
             units_by_yesterday = sum_delivery = 0
             for f in flights:
-                stats = f["campaigns"][campaign_id] if campaign_id else f
+                stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
+                    if campaign_id else f
                 sum_delivery += stats["delivery"] or 0
                 days_run, total_days = self.get_days_run_and_total_days(f)
                 if days_run and total_days:
@@ -850,6 +813,7 @@ class PacingReport:
         pl_key = "placement_id"
         flights_data = self.get_flights_data(
             placement__opportunity=opportunity)
+        populate_daily_delivery_data(flights_data)
         all_flights = defaultdict(list)
         for f in flights_data:
             all_flights[f[pl_key]].append(f)
@@ -901,16 +865,18 @@ class PacingReport:
     # ## FLIGHTS ## #
     def get_flights(self, placement):
         flights_data = self.get_flights_data(placement=placement)
+        populate_daily_delivery_data(flights_data)
 
         id_field = "campaign__salesforce_placement__flights__id"
-
         campaign_stats_qs = CampaignStatistic.objects.filter(
+            date=self.yesterday - timedelta(days=1),
+            date__gte=F("campaign__salesforce_placement__flights__start"),
+            date__lte=F("campaign__salesforce_placement__flights__end"),
             campaign__salesforce_placement=placement)
         all_aw_before_yesterday_stats = campaign_stats_qs.values(
             id_field).order_by(id_field).annotate(
             **get_flight_delivery_annotate(
                 ("sum_video_views", "sum_impressions", "sum_cost"),
-                date=self.yesterday - timedelta(days=1),
             )
         )
         all_aw_before_yesterday_stats = {i[id_field]: i for i in
@@ -986,7 +952,7 @@ class PacingReport:
             placement=flight.placement)
         flights_data = [f for f in all_placement_flights if
                         f["id"] == flight.id]
-
+        populate_daily_delivery_data(flights_data)
         for c in campaigns:
             allocation_ko = c['goal_allocation'] / 100
             kwargs = dict(allocation_ko=allocation_ko, campaign_id=c["id"])
@@ -1070,7 +1036,8 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     yesterday_views = yesterday_impressions = 0
     today_goal_views = today_goal_impressions = 0
     for f in flights:
-        stats = f["campaigns"][campaign_id] if campaign_id else f
+        stats = f["campaigns"].get(campaign_id, ZERO_STATS)\
+            if campaign_id else f
 
         if f["start"] <= today <= f["end"]:
             today_units, today_budget = get_pacing_goal_for_date(
@@ -1409,6 +1376,8 @@ def get_budget_to_spend_from_added_fee_flight(f, today, allocation_ko=1,
 def populate_daily_delivery_data(flights):
     placement_ids = set(f["placement_id"] for f in flights)
     campaign_stats_qs = CampaignStatistic.objects.filter(
+        date__gte=F("campaign__salesforce_placement__flights__start"),
+        date__lte=F("campaign__salesforce_placement__flights__end"),
         campaign__salesforce_placement_id__in=placement_ids)
     fl_id_field = 'campaign__salesforce_placement__flights__id'
     raw_aw_daily_stats = campaign_stats_qs.values(fl_id_field,
@@ -1435,90 +1404,11 @@ def populate_daily_delivery_data(flights):
 
 
 @log_function(logger, prefix="def ")
-def get_flight_delivery_annotate(fields=None, **additional_filters):
-    pre_flight_cond = dict(
-        campaign__salesforce_placement__flights__start__gt=F("date"),
-    )
-    flight_cond = dict(
-        campaign__salesforce_placement__flights__start__lte=F("date"),
-        campaign__salesforce_placement__flights__end__gte=F("date"),
-        **additional_filters
-    )
+def get_flight_delivery_annotate(fields=None):
     annotate = dict(
-        pre_video_views=Sum(
-            Case(
-                When(
-                    then='video_views',
-                    **pre_flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        pre_impressions=Sum(
-            Case(
-                When(
-                    then='impressions',
-                    **pre_flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        sum_video_views=Sum(
-            Case(
-                When(
-                    then='video_views',
-                    **flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        video_impressions=Sum(
-            Case(
-                When(
-                    campaign__video_views__gt=0,
-                    then='impressions',
-                    **flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        sum_cost=Sum(
-            Case(
-                When(
-                    then="cost",
-                    **flight_cond
-                ),
-                output_field=FloatField()
-            )
-        ),
-        sum_impressions=Sum(
-            Case(
-                When(
-                    then='impressions',
-                    **flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        sum_clicks=Sum(
-            Case(
-                When(
-                    then='clicks',
-                    **flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
-        video_clicks=Sum(
-            Case(
-                When(
-                    campaign__video_views__gt=0,
-                    then='clicks',
-                    **flight_cond
-                ),
-                output_field=IntegerField()
-            )
-        ),
+        sum_video_views=Sum("video_views"),
+        sum_cost=Sum("cost"),
+        sum_impressions=Sum("impressions"),
     )
     if fields:
         annotate = {k: v for k, v in annotate.items() if k in fields}

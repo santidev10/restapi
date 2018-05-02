@@ -8,7 +8,7 @@ from aw_reporting.api.views.pagination import PacingReportOpportunitiesPaginator
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
     SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport, get_chart_data, \
-    get_flight_delivery_annotate, populate_daily_delivery_data
+    populate_daily_delivery_data
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
 
