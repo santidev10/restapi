@@ -35,12 +35,14 @@ class PacingReportHelper(APIView):
     def multiply_percents(data):
 
         def multiply_item_fields(i):
+            if not isinstance(i, dict):
+                return
             for sub in ("placements", "flights", "campaigns"):
                 if sub in i:
                     for it in i[sub]:
                         multiply_item_fields(it)
             for f in ("margin", "pacing", "video_view_rate", "ctr"):
-                v = i[f]
+                v = i.get(f, 0)
                 if v:
                     i[f] = v * 100
 

@@ -17,7 +17,7 @@ def log_all_methods(logger):
     return decorator
 
 
-def log_method(logger, prefix=""):
+def log_method(logger, prefix="", fix_context=True):
     def log_fn(fn):
         first_arg_name = (list(inspect.signature(fn).parameters) or [None])[0]
         is_class_method = first_arg_name == "cls"
@@ -25,10 +25,11 @@ def log_method(logger, prefix=""):
 
         @wraps(fn)
         def decorator(*args, **kwargs):
-            if is_class_method:
-                args = (type(args[0])) + args[1:]
-            elif is_static_method:
-                args = args[1:]
+            if fix_context:
+                if is_class_method:
+                    args = (type(args[0])) + args[1:]
+                elif is_static_method:
+                    args = args[1:]
             start = datetime.now()
             res = fn(*args, **kwargs)
             end = datetime.now()
@@ -40,3 +41,7 @@ def log_method(logger, prefix=""):
         return decorator
 
     return log_fn
+
+
+def log_function(logger, prefix=""):
+    return log_method(logger, prefix=prefix, fix_context=False)
