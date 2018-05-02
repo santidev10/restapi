@@ -6,7 +6,6 @@ from rest_framework.status import HTTP_202_ACCEPTED, HTTP_400_BAD_REQUEST
 
 from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, MockResponse
-from userprofile.models import Plan
 
 
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
@@ -55,7 +54,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
     @patch("channel.api.views.requests")
     def test_send_welcome_email(self, requests_mock):
-        Plan.update_defaults()
         url = reverse("channel_api_urls:channel_authentication")
         user_details = {
             "email": "test@test.test",

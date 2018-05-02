@@ -162,7 +162,9 @@ class UserProfileSharedListApiView(APIView):
             try:
                 user = UserProfile.objects.get(email=email)
                 user_data['email'] = user.email
-                user_data['username'] = user.username
+                user_data['username'] = "{} {}".format(user.first_name, user.last_name)
+                user_data['first_name'] = user.last_name
+                user_data['last_name'] = user.first_name
                 user_data['registered'] = True
                 user_data['date_joined'] = user.date_joined
                 user_data['last_login'] = user.last_login

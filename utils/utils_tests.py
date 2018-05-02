@@ -3,17 +3,15 @@ from contextlib import contextmanager
 from datetime import datetime, date
 from unittest.mock import patch
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Group
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
-from userprofile.models import Plan
+from userprofile.permissions import Permissions
 from utils.datetime import Time
 
 
@@ -24,14 +22,13 @@ class TestUserMixin:
         "last_name": "TestUser",
         "email": "test@example.com",
         "password": "test",
-        "plan_id": settings.DEFAULT_ACCESS_PLAN_NAME,
     }
 
     def create_test_user(self, auth=True):
         """
         Make test user
         """
-        Plan.update_defaults()
+        Permissions.sync_groups()
         user, created = get_user_model().objects.get_or_create(
             email=self.test_user_data["email"],
             defaults=self.test_user_data,
@@ -42,19 +39,16 @@ class TestUserMixin:
             Token.objects.get_or_create(user=user)
         return user
 
-    def add_custom_user_permission(self, user, perm: str):
-        permission = get_custom_permission(perm)
-        user.user_permissions.add(permission)
-
-    def remove_custom_user_permission(self, user, perm: str):
-        permission = get_custom_permission(perm)
-        user.user_permissions.remove(permission)
-
     def create_admin_user(self):
         user = self.create_test_user()
         user.is_staff = True
         user.is_superuser = True
         user.save()
+
+    def fill_all_groups(self, user):
+        all_perm_groups = Group.objects.values_list('name', flat=True)
+        for perm_group in all_perm_groups:
+            user.add_custom_user_group(perm_group)
 
 
 class ExtendedAPITestCase(APITestCase, TestUserMixin):
@@ -117,14 +111,6 @@ class SingleDatabaseApiConnectorPatcher:
             videos = json.load(data_file)
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
-
-
-def get_custom_permission(codename: str):
-    content_type = ContentType.objects.get_for_model(Plan)
-    permission, _ = Permission.objects.get_or_create(
-        content_type=content_type,
-        codename=codename)
-    return permission
 
 
 class MockResponse(object):

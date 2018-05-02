@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
@@ -14,7 +15,7 @@ from utils.utils_tests import ExtendedAPITestCase, \
 class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def create_ad(self, owner, start=None, end=None, account=None,
                   beacon_view_1=""):
@@ -39,7 +40,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -238,7 +239,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.user.update_permissions_from_plan('enterprise')
+        self.fill_all_groups(self.user)
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,

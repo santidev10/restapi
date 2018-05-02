@@ -32,7 +32,6 @@ from segment.models import SegmentVideo
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from userprofile.models import Plan, Subscription
 from userprofile.models import UserChannel
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
@@ -480,11 +479,10 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-            subscription = Subscription.objects.create(user=user, plan=plan)
-            user.update_permissions_from_subscription(subscription)
-            user.access = settings.DEFAULT_USER_ACCESS
-            user.save()
+
+            # new default access implementation
+            user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
             created = True
@@ -497,7 +495,7 @@ class ChannelAuthenticationApiView(APIView):
         video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
         keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
         if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
-            user.update_access([{'name': 'Segments', 'value': True}, ])
+            user.add_custom_user_group('Segments')
 
     @staticmethod
     def obtain_extra_user_data(token, user_id):
