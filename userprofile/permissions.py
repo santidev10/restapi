@@ -68,6 +68,24 @@ class PermissionHandler:
         except Group.DoesNotExist:
             pass
 
+    def update_access(self, access):
+        """
+        :param access: [{access: [{name: "group_name", value: true/false}]}, ...]
+        :return:
+        """
+        # get data from access
+        for access_item in access:
+            group_name = access_item.get('name', None)
+            is_group_for_add = access_item.get('value', None)
+
+            # set data from access
+            if group_name is not None and is_group_for_add is not None:
+
+                if is_group_for_add:
+                    self.add_custom_user_group(group_name)
+                else:
+                    self.remove_custom_user_group(group_name)
+
     def sync_groups(self):
         """
         sync permission groups from Permissions class
@@ -83,37 +101,46 @@ class PermissionHandler:
             group.save()
 
 
+class PermissionGroupNames:
+    HIGHLIGHTS = 'Highlights'
+    DISCOVERY = 'Discovery'
+    SEGMENTS = 'Segments'
+    SEGMENTS_PRE_BAKES = 'Segments - pre-baked segments'
+    MEDIA_BUYING = 'Media buying'
+    AUTH_CHANNELS = 'Auth channels and audience data'
+
+
 class Permissions:
     PERMISSION_SETS = (
-        ('Highlights', ("view_highlights", "my_yt_channels")),
+        (PermissionGroupNames.HIGHLIGHTS, ("view_highlights", "settings_my_yt_channels")),
 
-        ('Discovery',                       ("channel_list",
-                                             "channel_filter",
-                                             "channel_details",
-                                             "video_list",
-                                             "video_filter",
-                                             "video_details",
-                                             "keyword_list",
-                                             "keyword_details",
-                                             "keyword_filter",)),
+        (PermissionGroupNames.DISCOVERY, ("channel_list",
+                                          "channel_filter",
+                                          "channel_details",
+                                          "video_list",
+                                          "video_filter",
+                                          "video_details",
+                                          "keyword_list",
+                                          "keyword_details",
+                                          "keyword_filter",)),
 
-        ('Segments',                        ("segment_video_private",
-                                             "segment_channel_private",
-                                             "segment_keyword_private",)),
+        (PermissionGroupNames.SEGMENTS, ("segment_video_private",
+                                         "segment_channel_private",
+                                         "segment_keyword_private",)),
 
-        ('Segments - pre-baked segments',   ("segment_video_all",
-                                             "segment_channel_all",
-                                             "segment_keyword_all",
-                                             "view_pre_baked_segments",)),
+        (PermissionGroupNames.SEGMENTS_PRE_BAKES, ("segment_video_all",
+                                                   "segment_channel_all",
+                                                   "segment_keyword_all",
+                                                   "view_pre_baked_segments",)),
 
-        ('Media buying',                    ("view_media_buying",
+        (PermissionGroupNames.MEDIA_BUYING, ("view_media_buying",
                                              "settings_my_aw_accounts",)),
 
-        ('Auth channels and audience data', ("channel_audience",
-                                             "channel_aw_performance",
-                                             "video_audience",
-                                             "video_aw_performance",
-                                             )),
+        (PermissionGroupNames.AUTH_CHANNELS, ("channel_audience",
+                                              "channel_aw_performance",
+                                              "video_audience",
+                                              "video_aw_performance",
+                                              )),
     )
 
     PERM_LIST = (

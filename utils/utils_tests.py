@@ -4,6 +4,7 @@ from datetime import datetime, date
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -43,6 +44,11 @@ class TestUserMixin:
         user.is_staff = True
         user.is_superuser = True
         user.save()
+
+    def fill_all_groups(self, user):
+        all_perm_groups = Group.objects.values_list('name', flat=True)
+        for perm_group in all_perm_groups:
+            user.add_custom_user_group(perm_group)
 
 
 class ExtendedAPITestCase(APITestCase, TestUserMixin):

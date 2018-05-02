@@ -662,9 +662,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         user = self.user
         user.remove_custom_user_permission("view_media_buying")
 
-        all_perm_groups = Group.objects.values_list('name', flat=True)
-        for perm_group in all_perm_groups:
-            user.add_custom_user_group(perm_group)
+        self.fill_all_groups(user)
 
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects \

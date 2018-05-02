@@ -290,9 +290,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_can_edit_ad_group(self):
         user = self.user
-        all_perm_groups = Group.objects.values_list('name', flat=True)
-        for perm_group in all_perm_groups:
-            user.add_custom_user_group(perm_group)
+        self.fill_all_groups(user)
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,

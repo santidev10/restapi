@@ -239,9 +239,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        all_perm_groups = Group.objects.values_list('name', flat=True)
-        for perm_group in all_perm_groups:
-            self.user.add_custom_user_group(perm_group)
+        self.fill_all_groups(self.user)
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,
