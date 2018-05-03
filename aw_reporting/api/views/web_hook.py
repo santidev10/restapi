@@ -43,19 +43,19 @@ class WebHookAWAccountsListApiView(APIView):
             priority=Case(
                 When(
                     # settings have never been pulled
-                    settings_updated_time__isnull=True,
+                    settings_updated_at__isnull=True,
                     then=Value(0),
                 ),
                 When(
                     # settings of newest accounts were updated more than a hour ago
                     max_start__gte=today - timedelta(days=7),
-                    settings_updated_time__lte=now - timedelta(hours=1),
+                    settings_updated_at__lte=now - timedelta(hours=1),
                     then=Value(1),
                 ),
                 When(
                     # other accounts will be updated once a day
                     # this update will probably run in the night (when the date change)
-                    settings_updated_time__date__lt=today,
+                    settings_updated_at__date__lt=today,
                     then=Value(2),
                 ),
                 # else is NULL
@@ -145,6 +145,6 @@ class WebHookAWSaveSettingsApiView(APIView):
             if insert_locations:
                 CampaignLocationTargeting.objects.bulk_create(insert_locations)
 
-        account.settings_updated_time = now_in_default_tz()
+        account.settings_updated_at = now_in_default_tz()
         account.save()
         return Response()
