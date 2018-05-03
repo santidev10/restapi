@@ -316,7 +316,7 @@ class Account(models.Model):
     visible = models.BooleanField(default=True)
     update_time = models.DateTimeField(null=True)
     hourly_updated_at = models.DateTimeField(null=True)
-    settings_updated_time = models.DateTimeField(null=True)
+    settings_updated_at = models.DateTimeField(null=True)
 
     def __str__(self):
         return "Account: {}".format(self.name)
