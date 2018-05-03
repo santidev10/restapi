@@ -1,10 +1,11 @@
 from datetime import datetime
 from datetime import timedelta
+
 from django.db.models import Case
 from django.db.models import IntegerField
 from django.db.models import Max
-from django.db.models import Value
 from django.db.models import Q
+from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -12,11 +13,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_reporting.models import Account
+from aw_reporting.models import AgeRangeOptions
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignAgeRangeTargeting
 from aw_reporting.models import CampaignGenderTargeting
 from aw_reporting.models import CampaignLocationTargeting
-from aw_reporting.models import AgeRangeOptions
 from aw_reporting.models import GenderOptions
 from utils.datetime import now_in_default_tz
 
@@ -36,24 +37,25 @@ class WebHookAWAccountsListApiView(APIView):
         queryset = Account.objects.filter(id__in=account_ids)
         now = now_in_default_tz()
         today = now.date()
-        queryset = queryset.annotate(max_start=Coalesce(Max("campaigns__start_date"), today))
+        queryset = queryset.annotate(
+            max_start=Coalesce(Max("campaigns__start_date"), today))
         queryset = queryset.annotate(
             priority=Case(
                 When(
                     # settings have never been pulled
-                    update_time__isnull=True,
+                    settings_updated_time__isnull=True,
                     then=Value(0),
                 ),
                 When(
                     # settings of newest accounts were updated more than a hour ago
                     max_start__gte=today - timedelta(days=7),
-                    update_time__lte=now - timedelta(hours=1),
+                    settings_updated_time__lte=now - timedelta(hours=1),
                     then=Value(1),
                 ),
                 When(
                     # other accounts will be updated once a day
                     # this update will probably run in the night (when the date change)
-                    update_time__date__lt=today,
+                    settings_updated_time__date__lt=today,
                     then=Value(2),
                 ),
                 # else is NULL
@@ -143,6 +145,6 @@ class WebHookAWSaveSettingsApiView(APIView):
             if insert_locations:
                 CampaignLocationTargeting.objects.bulk_create(insert_locations)
 
-        account.settings_updated_time = now_in_default_tz
+        account.settings_updated_time = now_in_default_tz()
         account.save()
         return Response()
