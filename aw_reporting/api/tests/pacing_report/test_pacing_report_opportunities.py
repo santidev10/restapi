@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 from itertools import product
 from urllib.parse import urlencode
 
@@ -72,7 +72,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?period=this_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
         item = data[0]
         self.assertEqual(
@@ -96,6 +96,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "goal_type_ids"
             }
         )
+        import json
+        print(json.dumps(item, indent=4, default=str))
         self.assertEqual(item["id"], current_op.id)
         self.assertEqual(item['status'], "active")
         self.assertEqual(item['thumbnail'], ad_ops_user.profile_image_url)
@@ -123,9 +125,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?period=next_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_ad_ops(self):
         user1 = User.objects.create(id="1", name="1")
@@ -141,9 +143,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?ad_ops={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_am(self):
         user1 = User.objects.create(id="1", name="1")
@@ -159,9 +161,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?am={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_sales(self):
         user1 = User.objects.create(id="1", name="1")
@@ -176,9 +178,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?sales={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_category(self):
         category1 = Category.objects.create(id="Naive folks")
@@ -194,9 +196,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             "{}?category={}".format(self.url, category2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_goal(self):
         today = timezone.now()
@@ -210,9 +212,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?goal_type={}".format(self.url, 1))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_region(self):
         today = timezone.now()
@@ -225,9 +227,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?region={}".format(self.url, 1))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_name(self):
         today = timezone.now()
@@ -240,9 +242,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get("{}?search={}".format(self.url, "SIM"))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = response.data
+        data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(response.data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], op_expected.id)
 
     def test_get_opportunities_filter_status(self):
         today = timezone.now().date()
@@ -271,28 +273,28 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             urlencode(dict(status="active", **filters))
         ))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], active.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]['id'], active.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
                            urlencode(dict(status="upcoming", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], upcoming.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]['id'], upcoming.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
                            urlencode(dict(status="completed", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], completed.id)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]['id'], completed.id)
 
         response = self.client.get(
             "{}?{}".format(self.url,
                            urlencode(dict(status="any", **filters))))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data["items"]), 3)
 
     def test_get_opportunities_sort_by(self):
         today = timezone.now()
@@ -307,11 +309,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data[0]['id'], first.id)
+        self.assertEqual(response.data["items"][0]['id'], first.id)
 
         response = self.client.get("{}?sort_by=-account".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data[0]['id'], second.id)
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(response.data["items"][0]['id'], second.id)
+        self.assertEqual(response.data["items"][1]['id'], first.id)
 
     def test_get_opportunities_dynamic_placement_rate_tech_fee_margin(self):
         today = timezone.now()
@@ -336,7 +340,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         expected_margin = tech_fee / (cpv + tech_fee) * 100
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertAlmostEqual(response.data[0]['margin'], expected_margin)
+        self.assertAlmostEqual(response.data["items"][0]['margin'],
+                               expected_margin)
 
     def test_video_view_rate_shows_percents(self):
         """
@@ -361,7 +366,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          impressions=100)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        opp_data = response.data[0]
+        opp_data = response.data["items"][0]
         self.assertEqual(opp_data["video_view_rate"], 35.)
 
     def test_opportunity_margin_zero_cost(self):
@@ -378,7 +383,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             salesforce_placement=placement, cost=0)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        opp_data = response.data[0]
+        opp_data = response.data["items"][0]
         self.assertEqual(opp_data["margin"], expected_margin)
 
     def test_opportunity_margin_zero_total_cost(self):
@@ -397,7 +402,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          cost=1)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        opp_data = response.data[0]
+        opp_data = response.data["items"][0]
         self.assertEqual(opp_data["margin"], -100)
 
     def test_opportunity_margin(self):
@@ -439,7 +444,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          video_views=campaign_cpv_video_views)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        opp_data = response.data[0]
+        opp_data = response.data["items"][0]
         self.assertEqual(opp_data["margin"], expected_margin)
 
     def test_cpv_dynamic_placement_rate_and_tech_fee_today_goal(self):
@@ -482,8 +487,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        chart_data = response.data[0]["chart_data"]["cpv"]
+        self.assertEqual(len(response.data["items"]), 1)
+        chart_data = response.data["items"][0]["chart_data"]["cpv"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
 
     def test_cpm_dynamic_placement_rate_and_tech_fee_today_goal(self):
@@ -526,8 +531,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        chart_data = response.data[0]["chart_data"]["cpm"]
+        self.assertEqual(len(response.data["items"]), 1)
+        chart_data = response.data["items"][0]["chart_data"]["cpm"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
 
     def test_dynamic_placement_negative(self):
@@ -545,8 +550,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertFalse(response.data[0]["has_dynamic_placements"])
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertFalse(response.data["items"][0]["has_dynamic_placements"])
 
     def test_dynamic_placement_positive(self):
         today = date(2017, 1, 1)
@@ -572,8 +577,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), count)
-        self.assertTrue(all(o["has_dynamic_placements"] for o in response.data))
+        self.assertEqual(len(response.data["items"]), count)
+        self.assertTrue(all(o["has_dynamic_placements"]
+                            for o in response.data["items"]))
 
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
@@ -608,8 +614,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        pl = response.data[0]
+        self.assertEqual(len(response.data["items"]), 1)
+        pl = response.data["items"][0]
         self.assertIsNone(pl["plan_video_views"])
         self.assertIsNone(pl["plan_impressions"])
         self.assertIsNone(pl["plan_cpv"])
@@ -629,5 +635,185 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["status"], "undefined")
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["status"], "undefined")
+
+    def test_pagination(self):
+        response = self.client.get(self.url + "?page=1")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data, {"items": [],
+                                         "current_page": 1,
+                                         "items_count": 0,
+                                         "max_page": 1})
+
+    def test_opportunity_chart_data(self):
+        """
+        Daily Pacing
+        {'label': datetime.date(2017, 1, 1), 'value': 102.0}
+        {'label': datetime.date(2017, 1, 2), 'value': 204.0}
+        {'label': datetime.date(2017, 1, 3), 'value': 306.0}
+        {'label': datetime.date(2017, 1, 4), 'value': 408.0}
+        {'label': datetime.date(2017, 1, 5), 'value': 408.0}
+        {'label': datetime.date(2017, 1, 6), 'value': 408.0}
+        {'label': datetime.date(2017, 1, 7), 'value': 408.0+51.0=459.0}
+        {'label': datetime.date(2017, 1, 8), 'value': 408.0+102.0=510.0}
+
+        Delivery Chart
+        {'label': datetime.date(2017, 1, 1), 'value': 102}
+        {'label': datetime.date(2017, 1, 2), 'value': 204}
+        {'label': datetime.date(2017, 1, 3), 'value': 306}
+
+        2017-01-04
+        Today goal: 102
+        Today budget: 102 * 0.5
+        :return:
+        """
+        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 8).date()
+        today = datetime(2017, 1, 4).date()
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", probability=100, budget=100, start=start, end=end,
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        first_end = start + timedelta(days=3)
+        first_flight = Flight.objects.create(
+            id="1", name="", placement=placement,
+            start=start, end=first_end, ordered_units=400,
+        )
+
+        second_start = first_end + timedelta(days=3)
+        second_flight = Flight.objects.create(
+            id="2", name="", placement=placement,
+            start=second_start, end=end, ordered_units=100,
+        )
+
+        campaign = Campaign.objects.create(id="1", name="",
+                                           salesforce_placement=placement)
+        for i in range(3):
+            CampaignStatistic.objects.create(campaign=campaign,
+                                             date=start + timedelta(days=i),
+                                             video_views=102, cost=51)
+
+        with patch_now(today):
+            response = self.client.get(self.url)
+        opportunities = response.data["items"]
+        self.assertEqual(len(opportunities), 1)
+
+        opportunity_data = opportunities[0]["chart_data"]["cpv"]
+        self.assertEqual(opportunity_data["today_goal"], 102)
+        self.assertEqual(opportunity_data["today_budget"], 51)
+        self.assertEqual(opportunity_data["yesterday_delivered"], 102)
+        self.assertEqual(opportunity_data["yesterday_budget"], 51)
+
+        charts = opportunity_data["charts"]
+        self.assertEqual(len(charts), 2)
+
+        pacing_chart = charts[0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
+        self.assertEqual(len(pacing_chart["data"]),
+                         (second_flight.end - first_flight.start).days + 1)
+        self.assertEqual(pacing_chart["data"][3]["value"],
+                         first_flight.ordered_units * 1.02)
+        self.assertEqual(pacing_chart["data"][5]["value"],
+                         first_flight.ordered_units * 1.02)
+        self.assertEqual(pacing_chart["data"][-1]["value"],
+                         first_flight.ordered_units * 1.02 + second_flight.ordered_units * 1.02)
+
+        delivery_chart = charts[1]
+        self.assertEqual(delivery_chart["title"], "Daily Deviation")
+        self.assertEqual(len(delivery_chart["data"]), 3)
+        self.assertEqual(delivery_chart["data"][-1]["value"], 306)
+
+    def test_opportunity_cpv_and_cpm_chart_data(self):
+        """
+        We expect different chart blocks for every placement type (like CPV or CPM)
+        :return:
+        """
+        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 5).date()
+        today = datetime(2017, 1, 4).date()
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", probability=100, budget=100, start=start, end=end,
+        )
+        # CPV
+        placement_cpv = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
+        )
+        flight_cpv = Flight.objects.create(
+            id="1", name="", placement=placement_cpv, start=start, end=end,
+            ordered_units=500,
+        )
+        campaign = Campaign.objects.create(id="1", name="",
+                                           salesforce_placement=placement_cpv)
+        for i in range(3):
+            CampaignStatistic.objects.create(campaign=campaign,
+                                             date=start + timedelta(days=i),
+                                             video_views=102, cost=51)
+        # CPM
+        placement_cpm = OpPlacement.objects.create(
+            id="2", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM, start=start, end=end,
+        )
+        flight_cpm = Flight.objects.create(
+            id="2", name="", placement=placement_cpm, start=start, end=end,
+            ordered_units=5000,
+        )
+        campaign = Campaign.objects.create(id="2", name="",
+                                           salesforce_placement=placement_cpm)
+        for i in range(3):
+            CampaignStatistic.objects.create(campaign=campaign,
+                                             date=start + timedelta(days=i),
+                                             impressions=1020, cost=3)
+
+        with patch_now(today):
+            response = self.client.get(self.url)
+        opportunities = response.data["items"]
+        self.assertEqual(len(opportunities), 1)
+
+        opportunity_data = opportunities[0]
+
+        # CPV tests
+        cpv_chart_data = opportunity_data["chart_data"]["cpv"]
+        self.assertEqual(cpv_chart_data["today_goal"], 102)
+        self.assertEqual(cpv_chart_data["today_budget"], 51)
+        self.assertEqual(cpv_chart_data["yesterday_delivered"], 102)
+        self.assertEqual(cpv_chart_data["yesterday_budget"], 51)
+        self.assertEqual(cpv_chart_data["targeting"]["video_views"], 306)
+
+        charts = cpv_chart_data["charts"]
+        self.assertEqual(len(charts), 2)
+
+        pacing_chart = charts[0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
+        self.assertEqual(len(pacing_chart["data"]), (end - start).days + 1)
+        self.assertEqual(pacing_chart["data"][-1]["value"],
+                         flight_cpv.ordered_units * 1.02)
+
+        delivery_chart = charts[1]
+        self.assertEqual(delivery_chart["title"], "Daily Deviation")
+        self.assertEqual(len(delivery_chart["data"]), 3)
+        self.assertEqual(delivery_chart["data"][-1]["value"], 306)
+
+        # CPM tests
+        cpm_chart_data = opportunity_data["chart_data"]["cpm"]
+        self.assertEqual(cpm_chart_data["today_goal"], 1020)
+        self.assertAlmostEqual(cpm_chart_data["today_budget"], 3, places=10)
+        self.assertEqual(cpm_chart_data["yesterday_delivered"], 1020)
+        self.assertEqual(cpm_chart_data["yesterday_budget"], 3)
+        self.assertEqual(cpm_chart_data["targeting"]["impressions"], 3060)
+
+        charts = cpm_chart_data["charts"]
+        self.assertEqual(len(charts), 2)
+
+        pacing_chart = charts[0]
+        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
+        self.assertEqual(len(pacing_chart["data"]), (end - start).days + 1)
+        self.assertEqual(pacing_chart["data"][-1]["value"],
+                         flight_cpm.ordered_units * 1.02)
+
+        delivery_chart = charts[1]
+        self.assertEqual(delivery_chart["title"], "Daily Deviation")
+        self.assertEqual(len(delivery_chart["data"]), 3)
+        self.assertEqual(delivery_chart["data"][-1]["value"], 3060)

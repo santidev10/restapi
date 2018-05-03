@@ -7,3 +7,7 @@ class AccountsListPaginator(CustomPageNumberPaginator):
 
 class PricingToolCampaignsPagination(CustomPageNumberPaginator):
     page_size = 10
+
+
+class PacingReportOpportunitiesPaginator(CustomPageNumberPaginator):
+    page_size = 10

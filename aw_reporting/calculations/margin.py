@@ -19,7 +19,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
 
         for f in flights:
             if campaign_id:
-                stats = f["campaigns"][campaign_id]
+                stats = f["campaigns"].get(campaign_id, {})
             else:
                 stats = f
 
@@ -39,17 +39,17 @@ def get_margin_from_flights(flights, cost, plan_cost,
 
                 units = 0
                 if goal_type_id == SalesForceGoalType.CPV:
-                    units = stats["video_views"]
+                    units = stats.get("video_views") or 0
 
                 elif goal_type_id == SalesForceGoalType.CPM:
                     units = stats["impressions"] / 1000
 
                 if units:
-                    rate = stats["sum_cost"] / units
+                    rate = (stats.get("sum_cost") or 0) / units
                     sum_client_cost += units * (rate + tech_fee)
 
             elif dynamic_placement == DynamicPlacementType.BUDGET:
-                sum_client_cost += stats["total_cost"] or 0
+                sum_client_cost += stats.get("total_cost") or 0
             elif goal_type_id == SalesForceGoalType.CPV:
                 sum_client_cost += delivery * placement_ordered_rate
 
