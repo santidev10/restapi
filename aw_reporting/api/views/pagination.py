@@ -11,3 +11,4 @@ class PricingToolCampaignsPagination(CustomPageNumberPaginator):
 
 class PacingReportOpportunitiesPaginator(CustomPageNumberPaginator):
     page_size = 10
+    page_size_query_param = "size"
