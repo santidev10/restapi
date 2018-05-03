@@ -41,17 +41,17 @@ class Command(BaseCommand):
                     try:
                         obj_as_queryset.update(**obj_data)
                     except:
-                        logger.error(
+                        logger.warning(
                             "Unable to UPDATE object with the next data: {}"
-                            .format(obj_data))
+                            "Skipped".format(obj_data))
                         not_updated_objects.append(obj_data)
                 else:
                     try:
                         GeoTarget.objects.create(**obj_data)
                     except:
-                        logger.error(
-                            "Unable to CREATE object with the next data: {}"
-                            .format(obj_data))
+                        logger.warning(
+                            "Unable to CREATE object with the next data: {} ."
+                            "Skipped".format(obj_data))
                         not_created_objects.append(GeoTarget(**obj_data))
                 processed_counter += 1
                 if not processed_counter % 5000:
@@ -59,6 +59,7 @@ class Command(BaseCommand):
                         "Processed {} objects".format(processed_counter))
             logger.info(
                 "Processed {} objects".format(processed_counter))
+            logger.info("Perform skipped objects create")
             try:
                 GeoTarget.objects.bulk_create(not_created_objects)
             except Exception as e:
@@ -66,6 +67,8 @@ class Command(BaseCommand):
                     "Bulk create failed. Something went completely wrong!"
                     " Critical fail! Abort!. Original error: {}".format(e))
                 return
+            logger.info("Skipped objects create finished. Success.")
+            logger.info("Perform skipped objects update")
             for obj_data in not_updated_objects:
                 obj_as_queryset = GeoTarget.objects.filter(
                     id=obj_data.get("id"))
@@ -83,3 +86,5 @@ class Command(BaseCommand):
                 " Ids, failed to update: {}".format(
                     update_errors_counter, ", ".join(
                         failed_to_update_objects_ids)))
+        else:
+            logger.info("Skipped objects update finished. Success.")
