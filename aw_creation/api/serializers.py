@@ -13,6 +13,7 @@ from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
     Campaign, base_stats_aggregate, dict_norm_base_stats, \
     dict_calculate_stats, ConcatAggregate, VideoCreativeStatistic, Ad, \
     Opportunity
+from aw_reporting.utils import safe_max
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 
@@ -531,9 +532,9 @@ class AccountCreationListSerializer(ModelSerializer):
             return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
-        if obj.account is None:
-            return None
-        return obj.account.update_time
+        if obj.account is not None:
+            return safe_max(
+                (obj.account.update_time, obj.account.hourly_updated_at))
 
     def get_brand(self, obj: AccountCreation):
         opportunity = self._get_opportunity(obj)

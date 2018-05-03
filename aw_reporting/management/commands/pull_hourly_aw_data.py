@@ -27,29 +27,24 @@ class Command(BaseCommand):
             min_cc_start=Min("account_creations__campaign_creations__start"),
             min_c_start=Min("campaigns__start_date"),
             max_cc_end=Max("account_creations__campaign_creations__end"),
-            max_c_end=Min("campaigns__end_date"),
-        ) \
+            max_c_end=Min("campaigns__end_date")) \
             .annotate(max_end=Greatest("max_cc_end", "max_c_end"),
                       min_start=Least("min_cc_start", "min_c_start")) \
             .filter(ongoing_filter)
         total_accounts = accounts.count()
         logger.info('Total accounts: {}'.format(total_accounts))
-
         progress = 0
         updater = AWDataLoader(datetime.now().date())
         for account in accounts:
             updater.run_task_with_any_manager(
-                get_campaigns, account,
-            )
+                get_campaigns, account)
             updater.run_task_with_any_manager(
-                get_ad_groups_and_stats, account,
-            )
+                get_ad_groups_and_stats, account)
             updater.run_task_with_any_manager(
-                load_hourly_stats, account,
-            )
-
-            account.update_time = timezone.now()
+                load_hourly_stats, account)
+            account.hourly_updated_at = timezone.now()
             account.save()
             progress += 1
-            logger.info("Processed {}/{} accounts". format(progress, total_accounts))
+            logger.info("Processed {}/{} accounts". format(
+                progress, total_accounts))
         logger.info('End')
