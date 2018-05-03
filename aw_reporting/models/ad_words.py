@@ -576,7 +576,7 @@ class GeoTarget(models.Model):
     parent = models.ForeignKey('self', null=True)
     country_code = models.CharField(max_length=2)
     target_type = models.CharField(max_length=50)
-    status = models.CharField(max_length=10)
+    status = models.CharField(max_length=20)
 
     def __str__(self):
         return "%s" % self.canonical_name
