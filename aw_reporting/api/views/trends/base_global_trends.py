@@ -30,10 +30,9 @@ def get_filters(request):
     categories = data.get("category")
     category_ids = categories.split(",") if categories is not None else None
 
-    geo_locations = data.get("geo_locations")
-    geo_location_ids = geo_locations.split(",") \
-        if geo_locations is not None else None
-    geo_locations_condition = data.get("geo_locations_condition")
+    regions = data.get("region")
+    region_ids = [int(r_id) for r_id in regions.split(",")] \
+        if regions is not None else None
 
     return dict(
         am_ids=am_ids,
@@ -42,6 +41,5 @@ def get_filters(request):
         goal_type_ids=goal_type_ids,
         brands=brands,
         category_ids=category_ids,
-        geo_location_ids=geo_location_ids,
-        geo_location_condition=geo_locations_condition,
+        region_ids=region_ids,
     )
