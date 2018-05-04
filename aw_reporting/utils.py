@@ -1,8 +1,8 @@
-from datetime import timedelta
-import requests
 import os
+from datetime import timedelta
 from time import sleep
 
+import requests
 from psutil import NoSuchProcess, Process
 
 
@@ -90,3 +90,13 @@ def command_single_process_lock(name, max_sleep=3600, sleep_interval=10):
         return decorated_command
 
     return decorator
+
+
+def safe_max(sequence):
+    """
+    Simple max function with None values ignoring in sequence
+    """
+    sequence = [item for item in sequence if item is not None]
+    if not sequence:
+        return None
+    return max(sequence)

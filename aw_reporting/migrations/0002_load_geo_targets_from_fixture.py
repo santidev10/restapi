@@ -25,7 +25,7 @@ def load_geo_tagets(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0001_initial'),
+        ('aw_reporting', '0028_auto_20180503_0950'),
     ]
 
     operations = [
