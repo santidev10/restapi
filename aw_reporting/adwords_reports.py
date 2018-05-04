@@ -122,12 +122,12 @@ def account_performance_report(client):
     :param client:
     :return:
     """
-    fields = [
+    fields = (
                  'AccountDescriptiveName', 'AccountCurrencyCode',
                  'AccountTimeZone', 'CanManageClients',
                  'CustomerDescriptiveName',
                  'ExternalCustomerId', 'IsTestAccount',
-             ] + main_statistics
+             ) + main_statistics
 
     result = _get_report(
         client,
@@ -149,7 +149,7 @@ def placement_performance_report(client, dates=None):
     :param dates:
     :return:
     """
-    fields = ['AdGroupId', 'Date', 'Device', 'Criteria', 'DisplayName'] + \
+    fields = ('AdGroupId', 'Date', 'Device', 'Criteria', 'DisplayName') + \
              main_statistics + completed_fields
 
     predicates = [
@@ -224,7 +224,7 @@ def geo_performance_report(client, dates=None, additional_fields=None):
 
 def _daily_statistic_performance_report(client, name, dates=None,
                                         additional_fields=None):
-    fields = ['Criteria', 'AdGroupId', 'Date'] + main_statistics + \
+    fields = ('Criteria', 'AdGroupId', 'Date') + main_statistics + \
              completed_fields
 
     if additional_fields:
@@ -278,11 +278,11 @@ def audience_performance_report(client, dates):
 
 
 def ad_performance_report(client, dates=None):
-    fields = [
+    fields = (
                  'AdGroupId', 'Headline', 'Id', 'ImageCreativeName',
                  'DisplayUrl',
                  'Status', 'Date', 'AveragePosition', 'CombinedApprovalStatus'
-             ] + completed_fields + main_statistics
+             ) + completed_fields + main_statistics
 
     selector = {
         'fields': fields,
@@ -355,10 +355,10 @@ def ad_group_performance_report(client, dates=None):
 
 def video_performance_report(client, dates=None):
     main_stats = list(set(main_statistics) - {"AllConversions"})
-    fields = [
+    fields = (
                  'VideoChannelId', 'VideoDuration', 'VideoId', 'AdGroupId',
                  'Date'
-             ] + main_stats + completed_fields
+             ) + main_stats + completed_fields
 
     selector = {
         'fields': fields,
