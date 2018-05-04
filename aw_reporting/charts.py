@@ -10,7 +10,6 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz, as_datetime
 from utils.lang import flatten
-from utils.query import Operator, build_query_value
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +51,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 geo_location_ids=None,
-                 geo_location_condition=None, **_):
+                 region_ids=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -82,8 +80,7 @@ class DeliveryChart:
             goal_type_ids=goal_type_ids,
             brands=brands,
             category_ids=category_ids,
-            geo_location_ids=geo_location_ids,
-            geo_location_condition=geo_location_condition or Operator.OR,
+            region_ids=region_ids,
         )
 
         if additional_chart is None:
@@ -455,12 +452,8 @@ class DeliveryChart:
             filters["opportunity__category_id__in"] = self.params[
                 "category_ids"]
 
-        if self.params["geo_location_ids"] is not None:
-            field = "adwords_campaigns__location_targeting__location_id"
-            queryset = build_query_value(queryset,
-                                         field,
-                                         self.params["geo_location_ids"],
-                                         self.params["geo_location_condition"])
+        if self.params["region_ids"] is not None:
+            filters["opportunity__region_id__in"] = self.params["region_ids"]
 
         indicator = self.params["indicator"]
         if indicator in (Indicator.CPM, Indicator.IMPRESSIONS):
@@ -475,6 +468,7 @@ class DeliveryChart:
 
     def filter_queryset(self, queryset):
         camp_link = self.get_camp_link(queryset)
+        opp_link = "%s__salesforce_placement__opportunity" % camp_link
         filters = {"%s__account_id__in" % camp_link: self.params['accounts']}
         if self.params['start']:
             filters['date__gte'] = self.params['start']
@@ -493,24 +487,16 @@ class DeliveryChart:
             filters['video_views__gt'] = 0
 
         if self.params["am_ids"] is not None:
-            filters[
-                "%s__salesforce_placement__opportunity__account_manager_id__in" % camp_link] = \
-                self.params["am_ids"]
+            filters["%s__account_manager_id__in" % opp_link] = self.params["am_ids"]
 
         if self.params["ad_ops_ids"] is not None:
-            filters[
-                "%s__salesforce_placement__opportunity__ad_ops_manager_id__in" % camp_link] = \
-                self.params["ad_ops_ids"]
+            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params["ad_ops_ids"]
 
         if self.params["sales_ids"] is not None:
-            filters[
-                "%s__salesforce_placement__opportunity__sales_manager_id__in" % camp_link] = \
-                self.params["sales_ids"]
+            filters["%s__sales_manager_id__in" % opp_link] = self.params["sales_ids"]
 
         if self.params["brands"] is not None:
-            filters[
-                "%s__salesforce_placement__opportunity__brand__in" % camp_link] = \
-                self.params["brands"]
+            filters["%s__brand__in" % opp_link] = self.params["brands"]
 
         if self.params["goal_type_ids"] is not None:
             filters[
@@ -518,16 +504,10 @@ class DeliveryChart:
                 self.params["goal_type_ids"]
 
         if self.params["category_ids"] is not None:
-            filters[
-                "%s__salesforce_placement__opportunity__category_id__in" % camp_link] = \
-                self.params["category_ids"]
+            filters["%s__category_id__in" % opp_link] = self.params["category_ids"]
 
-        if self.params["geo_location_ids"] is not None:
-            field = "ad_group__campaign__location_targeting__location_id"
-            queryset = build_query_value(queryset,
-                                         field,
-                                         self.params["geo_location_ids"],
-                                         self.params["geo_location_condition"])
+        if self.params["region_ids"] is not None:
+            filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
 
         if filters:
             queryset = queryset.filter(**filters)
