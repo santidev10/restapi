@@ -4,7 +4,9 @@ from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import User, Opportunity, goal_type_str, \
-    SalesForceGoalType, SalesForceRegions
+    SalesForceGoalType
+from aw_reporting.models.salesforce_constants import ALL_SALESFORCE_REGIONS, \
+    salesforce_region_str
 
 
 @demo_view_decorator
@@ -19,8 +21,8 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             goal_types=[dict(id=t, name=goal_type_str(t))
                         for t in sorted([SalesForceGoalType.CPM,
                                          SalesForceGoalType.CPV])],
-            region=[dict(id=i, name=r)
-                    for i, r in enumerate(SalesForceRegions)],
+            region=[dict(id=region_id, name=salesforce_region_str(region_id))
+                    for region_id in ALL_SALESFORCE_REGIONS],
             **static_filters
         )
 

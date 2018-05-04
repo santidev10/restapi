@@ -6,6 +6,8 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Campaign, Account, User, Opportunity, \
     OpPlacement, SalesForceGoalType, goal_type_str, SalesForceRegions
+from aw_reporting.models.salesforce_constants import ALL_SALESFORCE_REGIONS, \
+    salesforce_region_str
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import patch_instance_settings
@@ -268,8 +270,9 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_region(self):
         self.create_test_user()
-        expected_regions = [dict(id=i, name=b)
-                            for i, b in enumerate(SalesForceRegions)]
+        expected_regions = [dict(id=region_id,
+                                 name=salesforce_region_str(region_id))
+                            for region_id in ALL_SALESFORCE_REGIONS]
 
         response = self.client.get(self.url)
 

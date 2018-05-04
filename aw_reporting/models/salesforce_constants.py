@@ -11,6 +11,30 @@ SalesForceRegions = (
     "East / Southeast",
     "International",
 )
+
+
+class SalesForceRegionId:
+    WEST_NORTHWEST = 0
+    MIDWEST = 1
+    EAST_SOUTHEAST = 2
+    INTERNATIONAL = 3
+
+
+ALL_SALESFORCE_REGIONS = (
+    SalesForceRegionId.WEST_NORTHWEST,
+    SalesForceRegionId.MIDWEST,
+    SalesForceRegionId.EAST_SOUTHEAST,
+    SalesForceRegionId.INTERNATIONAL,
+)
+
+
+def salesforce_region_str(region_id):
+    try:
+        return SalesForceRegions[region_id]
+    except (TypeError, IndexError):
+        return None
+
+
 SalesForceGoalTypes = ("CPM", "CPV", "CPM & CPV", "Hard Cost")
 
 
