@@ -40,8 +40,7 @@ class AWDataLoader:
         all_names = [m.__name__ for m in self.advertising_update_tasks]
         start_index = safe_index(all_names, start, 0)
         end_index = safe_index(all_names, end, len(all_names))
-        tasks_count = end_index - start_index + 1
-        return self.advertising_update_tasks[start_index:tasks_count]
+        return self.advertising_update_tasks[start_index:end_index+1]
 
     def get_aw_client(self, refresh_token, client_customer_id):
         if refresh_token in self.aw_cached_clients:

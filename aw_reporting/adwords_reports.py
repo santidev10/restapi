@@ -10,22 +10,30 @@ from aw_reporting.adwords_api import API_VERSION
 logger = logging.getLogger(__name__)
 
 main_statistics = (
-    'VideoViews', 'Cost', 'Clicks', 'Impressions',
-    'Conversions', 'AllConversions', 'ViewThroughConversions',
+    "VideoViews", "Cost", "Clicks", "Impressions",
+    "Conversions", "AllConversions", "ViewThroughConversions",
 )
 
-statistics_fields = ('VideoViewRate', 'Ctr',
-                     'AverageCpv', 'AverageCpm') + main_statistics
+statistics_fields = ("VideoViewRate", "Ctr",
+                     "AverageCpv", "AverageCpm") + main_statistics
 
-completed_fields = ('VideoQuartile25Rate', 'VideoQuartile50Rate',
-                    'VideoQuartile75Rate', 'VideoQuartile100Rate')
+completed_fields = ("VideoQuartile25Rate", "VideoQuartile50Rate",
+                    "VideoQuartile75Rate", "VideoQuartile100Rate")
 
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
-                                         'CampaignId', 'CampaignName',
-                                         'ServingStatus', 'CampaignStatus',
-                                         'StartDate', 'EndDate', 'Amount',
-                                         'AdvertisingChannelType',
+                                         "CampaignId", "CampaignName",
+                                         "ServingStatus", "CampaignStatus",
+                                         "StartDate", "EndDate", "Amount",
+                                         "AdvertisingChannelType",
                                      ) + completed_fields + main_statistics
+AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
+                                         "CampaignId",
+                                         "AdGroupId", "AdGroupName",
+                                         "AdGroupStatus", "AdGroupType",
+                                         "Date", "Device", "AdNetworkType1",
+                                         "AveragePosition",
+                                         "ActiveViewImpressions", "Engagements"
+                                     ) + main_statistics + completed_fields
 
 EMPTY = ' --'
 MAX_ACCESS_AD_WORDS_TRIES = 5
@@ -326,12 +334,7 @@ def campaign_performance_report(client,
 
 
 def ad_group_performance_report(client, dates=None):
-    fields = (
-                 'CampaignId',
-                 'AdGroupId', 'AdGroupName', 'AdGroupStatus', 'AdGroupType',
-                 'Date', 'Device', 'AdNetworkType1',
-                 'AveragePosition', 'ActiveViewImpressions', 'Engagements'
-             ) + main_statistics + completed_fields
+    fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         'fields': fields,

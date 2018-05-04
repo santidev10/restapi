@@ -327,11 +327,13 @@ def get_ad_groups_and_stats(client, account, today=None):
                     updated_ad_groups.append(ad_group_id)
 
                     stats = {
+                        'de_norm_fields_are_recalculated': False,
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
                         'type': row_obj.AdGroupType,
                         'campaign_id': row_obj.CampaignId,
                     }
+
                     if ad_group_id in ad_group_ids:
                         AdGroup.objects.filter(
                             pk=ad_group_id).update(**stats)
@@ -1368,10 +1370,10 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     min_stat_date=i["min_date"],
                     max_stat_date=i["max_date"],
 
-                    cost=sum_stats.get("sum_cost", 0),
-                    impressions=sum_stats.get("sum_impressions", 0),
-                    video_views=sum_stats.get("sum_video_views", 0),
-                    clicks=sum_stats.get("sum_clicks", 0),
+                    cost=sum_stats.get("sum_cost") or 0,
+                    impressions=sum_stats.get("sum_impressions") or 0,
+                    video_views=sum_stats.get("sum_video_views") or 0,
+                    clicks=sum_stats.get("sum_clicks") or 0,
 
                     device_computers=i["device_computers"],
                     device_mobile=i["device_mobile"],
