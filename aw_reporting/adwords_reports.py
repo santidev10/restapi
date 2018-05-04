@@ -1,22 +1,32 @@
-from collections import namedtuple
-from aw_reporting.adwords_api import API_VERSION
-from googleads.errors import AdWordsReportBadRequestError
-from time import sleep
 import csv
 import logging
+from collections import namedtuple
+from time import sleep
+
+from googleads.errors import AdWordsReportBadRequestError
+
+from aw_reporting.adwords_api import API_VERSION
 
 logger = logging.getLogger(__name__)
 
-main_statistics = [
+main_statistics = (
     'VideoViews', 'Cost', 'Clicks', 'Impressions',
     'Conversions', 'AllConversions', 'ViewThroughConversions',
-]
+)
 
-statistics_fields = ['VideoViewRate', 'Ctr',
-                     'AverageCpv', 'AverageCpm'] + main_statistics
+statistics_fields = ('VideoViewRate', 'Ctr',
+                     'AverageCpv', 'AverageCpm') + main_statistics
 
-completed_fields = ['VideoQuartile25Rate', 'VideoQuartile50Rate',
-                    'VideoQuartile75Rate', 'VideoQuartile100Rate']
+completed_fields = ('VideoQuartile25Rate', 'VideoQuartile50Rate',
+                    'VideoQuartile75Rate', 'VideoQuartile100Rate')
+
+CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
+                                         'CampaignId', 'CampaignName',
+                                         'ServingStatus', 'CampaignStatus',
+                                         'StartDate', 'EndDate', 'Amount',
+                                         'AdvertisingChannelType',
+                                     ) + completed_fields + main_statistics
+
 EMPTY = ' --'
 MAX_ACCESS_AD_WORDS_TRIES = 5
 
@@ -45,11 +55,11 @@ def _get_report(client, name, selector, date_range_type=None,
         try:
             try:
                 result = report_downloader.DownloadReportAsStream(
-                     report,
-                     skip_report_header=True,
-                     skip_column_header=skip_column_header,
-                     skip_report_summary=True,
-                     include_zero_impressions=include_zero_impressions
+                    report,
+                    skip_report_header=True,
+                    skip_column_header=skip_column_header,
+                    skip_report_summary=True,
+                    include_zero_impressions=include_zero_impressions
                 )
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
@@ -76,7 +86,7 @@ def _get_report(client, name, selector, date_range_type=None,
         else:
             return stream_iterator(result)
 
-        
+
 def _get_csv_reader(output):
     if type(output) is str:
         output = output.strip(' \t\n\r').split('\n')
@@ -105,10 +115,11 @@ def account_performance_report(client):
     :return:
     """
     fields = [
-         'AccountDescriptiveName', 'AccountCurrencyCode',
-         'AccountTimeZone', 'CanManageClients', 'CustomerDescriptiveName',
-         'ExternalCustomerId', 'IsTestAccount',
-    ] + main_statistics
+                 'AccountDescriptiveName', 'AccountCurrencyCode',
+                 'AccountTimeZone', 'CanManageClients',
+                 'CustomerDescriptiveName',
+                 'ExternalCustomerId', 'IsTestAccount',
+             ] + main_statistics
 
     result = _get_report(
         client,
@@ -131,7 +142,7 @@ def placement_performance_report(client, dates=None):
     :return:
     """
     fields = ['AdGroupId', 'Date', 'Device', 'Criteria', 'DisplayName'] + \
-        main_statistics + completed_fields
+             main_statistics + completed_fields
 
     predicates = [
         {
@@ -164,7 +175,6 @@ def placement_performance_report(client, dates=None):
 
 
 def geo_performance_report(client, dates=None, additional_fields=None):
-
     fields = ('CityCriteriaId', 'CountryCriteriaId', 'CampaignId')
 
     if additional_fields:
@@ -204,9 +214,10 @@ def geo_performance_report(client, dates=None, additional_fields=None):
     return _output_to_rows(result, fields)
 
 
-def _daily_statistic_performance_report(client, name, dates=None, additional_fields=None):
+def _daily_statistic_performance_report(client, name, dates=None,
+                                        additional_fields=None):
     fields = ['Criteria', 'AdGroupId', 'Date'] + main_statistics + \
-        completed_fields
+             completed_fields
 
     if additional_fields:
         fields += list(additional_fields)
@@ -228,7 +239,6 @@ def _daily_statistic_performance_report(client, name, dates=None, additional_fie
 
 
 def gender_performance_report(client, dates):
-
     return _daily_statistic_performance_report(
         client, 'GENDER_PERFORMANCE_REPORT', dates
     )
@@ -260,11 +270,11 @@ def audience_performance_report(client, dates):
 
 
 def ad_performance_report(client, dates=None):
-
     fields = [
-        'AdGroupId', 'Headline', 'Id', 'ImageCreativeName', 'DisplayUrl',
-        'Status', 'Date', 'AveragePosition', 'CombinedApprovalStatus'
-    ] + completed_fields + main_statistics
+                 'AdGroupId', 'Headline', 'Id', 'ImageCreativeName',
+                 'DisplayUrl',
+                 'Status', 'Date', 'AveragePosition', 'CombinedApprovalStatus'
+             ] + completed_fields + main_statistics
 
     selector = {
         'fields': fields,
@@ -290,10 +300,7 @@ def campaign_performance_report(client,
                                 include_zero_impressions=True,
                                 additional_fields=None):
     if fields is None:
-        fields = [
-            'CampaignId', 'CampaignName', 'ServingStatus', 'CampaignStatus',
-            'StartDate', 'EndDate', 'Amount',  'AdvertisingChannelType',
-        ] + completed_fields + main_statistics
+        fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS
     fields = list(fields)
     if additional_fields:
         fields.extend(additional_fields)
@@ -319,12 +326,12 @@ def campaign_performance_report(client,
 
 
 def ad_group_performance_report(client, dates=None):
-    fields = [
-        'CampaignId',
-        'AdGroupId', 'AdGroupName', 'AdGroupStatus', 'AdGroupType',
-        'Date', 'Device', 'AdNetworkType1',
-        'AveragePosition', 'ActiveViewImpressions', 'Engagements'
-    ] + main_statistics + completed_fields
+    fields = (
+                 'CampaignId',
+                 'AdGroupId', 'AdGroupName', 'AdGroupStatus', 'AdGroupType',
+                 'Date', 'Device', 'AdNetworkType1',
+                 'AveragePosition', 'ActiveViewImpressions', 'Engagements'
+             ) + main_statistics + completed_fields
 
     selector = {
         'fields': fields,
@@ -344,11 +351,11 @@ def ad_group_performance_report(client, dates=None):
 
 
 def video_performance_report(client, dates=None):
-
     main_stats = list(set(main_statistics) - {"AllConversions"})
     fields = [
-        'VideoChannelId', 'VideoDuration', 'VideoId', 'AdGroupId', 'Date'
-    ] + main_stats + completed_fields
+                 'VideoChannelId', 'VideoDuration', 'VideoId', 'AdGroupId',
+                 'Date'
+             ] + main_stats + completed_fields
 
     selector = {
         'fields': fields,
@@ -367,6 +374,3 @@ def video_performance_report(client, dates=None):
         include_zero_impressions=False,
     )
     return _output_to_rows(result, fields)
-
-
-
