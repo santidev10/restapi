@@ -3,11 +3,9 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.api.constants import \
-    GEO_LOCATION_TIP, GEO_LOCATION_CONDITION
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Campaign, Account, User, Opportunity, \
-    OpPlacement, SalesForceGoalType, goal_type_str
+    OpPlacement, SalesForceGoalType, goal_type_str, SalesForceRegions
 from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import patch_instance_settings
@@ -17,7 +15,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.FILTERS)
     expected_keys = {"accounts", "dimension", "indicator", "breakdown", "am",
                      "ad_ops", "sales", "brands", "goal_types", "categories",
-                     "geo_locations", "geo_locations_condition"}
+                     "region"}
     account_keys = {"id", "name", "start_date", "end_date", "campaigns"}
 
     def test_authentication_required(self):
@@ -268,11 +266,12 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["goal_types"], expected_goal_types)
 
-    def test_categories(self):
+    def test_region(self):
         self.create_test_user()
+        expected_regions = [dict(id=i, name=b)
+                            for i, b in enumerate(SalesForceRegions)]
+
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["geo_locations"], GEO_LOCATION_TIP)
-        self.assertEqual(response.data["geo_locations_condition"],
-                         GEO_LOCATION_CONDITION)
+        self.assertEqual(response.data["region"], expected_regions)
