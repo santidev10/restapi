@@ -181,10 +181,6 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         if not (user.is_staff or segment.owner == user):
             return Response(status=HTTP_403_FORBIDDEN)
 
-        # return empty response if no data in request
-        if not shared_with:
-            return Response(status=HTTP_200_OK)
-
         # send invitation email if user exists, else send registration email
         self.proceed_emails(segment, shared_with)
 
