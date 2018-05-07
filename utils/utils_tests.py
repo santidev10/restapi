@@ -169,7 +169,7 @@ def patch_instance_settings(**kwargs):
 
 @contextmanager
 def patch_now(now):
-    if isinstance(now, date):
+    if type(now) == date:
         now = datetime.combine(now, datetime.min.time())
     with patch.object(Time, "now", return_value=now):
         yield

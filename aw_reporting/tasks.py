@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Q, Min, Max, Count, Case, When, Sum
+from django.db.models import Min, Max, Count, Case, When, Sum, F
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -71,7 +71,8 @@ GET_DF = '%Y-%m-%d'
 
 
 def load_hourly_stats(client, account, *_):
-    from aw_reporting.models import CampaignHourlyStatistic, Campaign, ACTION_STATUSES
+    from aw_reporting.models import CampaignHourlyStatistic, Campaign, \
+        ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report, \
         main_statistics
 
@@ -98,7 +99,8 @@ def load_hourly_stats(client, account, *_):
             dates=(date, today),
             fields=[
                        'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
-                       'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
+                       'AdvertisingChannelType', 'Amount', 'CampaignStatus',
+                       'ServingStatus',
                        'Date', 'HourOfDay',
                    ] + main_statistics[:4],
             include_zero_impressions=False,
@@ -127,7 +129,8 @@ def load_hourly_stats(client, account, *_):
                             end_date=end_date,
                             budget=float(row.Amount) / 1000000,
                             status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
-                            impressions=1,  # to show this item on the accounts lists Track/Filters
+                            impressions=1,
+                            # to show this item on the accounts lists Track/Filters
                         )
                     )
 
@@ -229,8 +232,8 @@ def get_campaigns(client, account, today=None):
 
     # lets find min and max dates for the report request
     dates = stats_queryset.aggregate(max_date=Max('date'))
-    min_date = dates['max_date'] + timedelta(days=1)\
-        if dates['max_date']\
+    min_date = dates['max_date'] + timedelta(days=1) \
+        if dates['max_date'] \
         else min_fetch_date
     max_date = today - timedelta(1)
 
@@ -238,7 +241,7 @@ def get_campaigns(client, account, today=None):
                                          dates=(min_date, max_date),
                                          include_zero_impressions=False,
                                          additional_fields=('Device', 'Date')
-)
+                                         )
     with transaction.atomic():
         insert_stat = []
         for row_obj in report:
@@ -252,6 +255,7 @@ def get_campaigns(client, account, today=None):
                 if row_obj.CampaignStatus in ACTION_STATUSES \
                 else row_obj.ServingStatus
             stats = {
+                'de_norm_fields_are_recalculated': False,
                 'name': row_obj.CampaignName,
                 'account': account,
                 'type': row_obj.AdvertisingChannelType,
@@ -260,7 +264,6 @@ def get_campaigns(client, account, today=None):
                 'budget': float(row_obj.Amount) / 1000000,
                 'status': status,
             }
-            stats.update(get_base_stats(row_obj))
 
             statistic_data = {
                 'date': row_obj.Date,
@@ -273,6 +276,7 @@ def get_campaigns(client, account, today=None):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             statistic_data.update(get_base_stats(row_obj))
+
             insert_stat.append(CampaignStatistic(**statistic_data))
 
             try:
@@ -287,8 +291,10 @@ def get_campaigns(client, account, today=None):
         if insert_stat:
             CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
+
 def get_ad_groups_and_stats(client, account, today=None):
-    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, SUM_STATS
+    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
+        SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
     today = today or timezone.now().date()
 
@@ -321,11 +327,13 @@ def get_ad_groups_and_stats(client, account, today=None):
                     updated_ad_groups.append(ad_group_id)
 
                     stats = {
+                        'de_norm_fields_are_recalculated': False,
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
                         'type': row_obj.AdGroupType,
                         'campaign_id': row_obj.CampaignId,
                     }
+
                     if ad_group_id in ad_group_ids:
                         AdGroup.objects.filter(
                             pk=ad_group_id).update(**stats)
@@ -358,7 +366,8 @@ def get_ad_groups_and_stats(client, account, today=None):
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
         SUM_STATS += ('engagements', 'active_view_impressions')
-        stats = stats_queryset.values("ad_group_id").order_by("ad_group_id").annotate(
+        stats = stats_queryset.values("ad_group_id").order_by(
+            "ad_group_id").annotate(
             **{s: Sum(s) for s in SUM_STATS}
         )
         for ag_stats in stats:
@@ -982,7 +991,7 @@ def get_cities(client, account, today):
         bulk_data = []
         for row_obj in filter(
                 lambda i: i.CityCriteriaId.isnumeric()
-                and int(i.CityCriteriaId) in top_cities, report):
+                          and int(i.CityCriteriaId) in top_cities, report):
 
             city_id = int(row_obj.CityCriteriaId)
             date = latest_dates.get((city_id, row_obj.CampaignId))
@@ -1131,10 +1140,13 @@ def recalculate_de_norm_fields(*args, **kwargs):
     batch_size = 100
 
     for model in (Campaign, AdGroup):
-        queryset = model.objects.filter(de_norm_fields_are_recalculated=False).order_by("id")
+        queryset = model.objects.filter(
+            de_norm_fields_are_recalculated=False).order_by("id")
         iterations = ceil(queryset.count() / batch_size)
         if not settings.IS_TEST:
-            logger.info("Calculating de-norm fields: {} {}".format(queryset.model, iterations))
+            logger.info(
+                "Calculating de-norm fields: {} {}".format(queryset.model,
+                                                           iterations))
 
         ag_link = "ad_groups__" if model is Campaign else ""
         for i in range(iterations):
@@ -1179,12 +1191,20 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     ),
                 ),
             )
+            sum_statistic = items.annotate(
+                sum_cost=Sum("statistics__cost"),
+                sum_impressions=Sum("statistics__impressions"),
+                sum_video_views=Sum("statistics__video_views"),
+                sum_clicks=Sum("statistics__clicks"),
+            )
+            sum_statistic_map = {s["id"]: s for s in sum_statistic}
             gender_data = items.annotate(
                 gender_undetermined=Count(
                     Case(
                         When(
                             then="id",
-                            **{"{}gender_statistics__gender_id".format(ag_link): 0}
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 0}
                         ),
                     ),
                 ),
@@ -1192,7 +1212,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}gender_statistics__gender_id".format(ag_link): 1}
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 1}
                         ),
                     ),
                 ),
@@ -1200,7 +1221,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}gender_statistics__gender_id".format(ag_link): 2}
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 2}
                         ),
                     ),
                 ),
@@ -1212,7 +1234,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 0}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 0}
                         ),
                     ),
                 ),
@@ -1220,7 +1243,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 1}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 1}
                         ),
                     ),
                 ),
@@ -1228,7 +1252,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 2}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 2}
                         ),
                     ),
                 ),
@@ -1236,7 +1261,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 3}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 3}
                         ),
                     ),
                 ),
@@ -1244,7 +1270,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 4}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 4}
                         ),
                     ),
                 ),
@@ -1252,7 +1279,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 5}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 5}
                         ),
                     ),
                 ),
@@ -1260,7 +1288,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}age_statistics__age_range_id".format(ag_link): 6}
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 6}
                         ),
                     ),
                 ),
@@ -1272,7 +1301,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}parent_statistics__parent_status_id".format(ag_link): 0}
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 0}
                         ),
                     ),
                 ),
@@ -1280,7 +1310,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}parent_statistics__parent_status_id".format(ag_link): 1}
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 1}
                         ),
                     ),
                 ),
@@ -1288,7 +1319,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     Case(
                         When(
                             then="id",
-                            **{"{}parent_statistics__parent_status_id".format(ag_link): 2}
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 2}
                         ),
                     ),
                 ),
@@ -1331,11 +1363,17 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 genders = gender_data.get(uid, {})
                 ages = age_data.get(uid, {})
                 parents = parent_data.get(uid, {})
+                sum_stats = sum_statistic_map.get(uid, {})
                 update[uid] = dict(
                     de_norm_fields_are_recalculated=True,
 
                     min_stat_date=i["min_date"],
                     max_stat_date=i["max_date"],
+
+                    cost=sum_stats.get("sum_cost") or 0,
+                    impressions=sum_stats.get("sum_impressions") or 0,
+                    video_views=sum_stats.get("sum_video_views") or 0,
+                    clicks=sum_stats.get("sum_clicks") or 0,
 
                     device_computers=i["device_computers"],
                     device_mobile=i["device_mobile"],
@@ -1344,7 +1382,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
 
                     gender_male=genders.get("gender_male", False),
                     gender_female=genders.get("gender_female", False),
-                    gender_undetermined=genders.get("gender_undetermined", False),
+                    gender_undetermined=genders.get("gender_undetermined",
+                                                    False),
 
                     age_undetermined=ages.get("age_undetermined", False),
                     age_18_24=ages.get("age_18_24", False),
@@ -1356,7 +1395,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
 
                     parent_parent=parents.get("parent_parent", False),
                     parent_not_parent=parents.get("parent_not_parent", False),
-                    parent_undetermined=parents.get("parent_undetermined", False),
+                    parent_undetermined=parents.get("parent_undetermined",
+                                                    False),
 
                     has_interests=audience_data.get(uid, False),
                     has_keywords=keyword_data.get(uid, False),
