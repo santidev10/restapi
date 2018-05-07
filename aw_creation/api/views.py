@@ -1690,22 +1690,20 @@ class PerformanceAccountDetailsApiView(APIView):
             end_date=datetime.strptime(end_date, DATE_FORMAT).date()
             if end_date else None,
             campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"),
-        )
+            ad_groups=data.get("ad_groups"))
         return filters
 
     def post(self, request, pk, **_):
+        # TODO check is_chf
         try:
             account_creation = AccountCreation.objects.filter(
-                owner=self.request.user
-            ).get(pk=pk)
+                owner=self.request.user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-
         data = AccountCreationListSerializer(
             account_creation, context={"request": request}).data  # header data
-        data['details'] = self.get_details_data(account_creation)
-        data['overview'] = self.get_overview_data(account_creation)
+        data["overview"] = self.get_overview_data(account_creation)
+        data["details"] = self.get_details_data(account_creation)
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
@@ -1719,44 +1717,39 @@ class PerformanceAccountDetailsApiView(APIView):
             fs["date__gte"] = filters['start_date']
         if filters['end_date']:
             fs["date__lte"] = filters['end_date']
-
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
-        )
+            **all_stats_aggregate)
         dict_norm_base_stats(data)
         dict_calculate_stats(data)
         dict_quartiles_to_rates(data)
         del data['video_impressions']
-
         # 'age', 'gender', 'device', 'location'
         annotate = dict(v=Sum('cost'))
         gender = GenderStatistic.objects.filter(**fs).values(
             'gender_id').order_by('gender_id').annotate(**annotate)
         gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
                   gender]
-
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
         age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
                age]
-
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
         device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
                   device]
-
         location = CityStatistic.objects.filter(**fs).values(
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
         location = [dict(name=i['city__name'], value=i['v']) for i in location]
-
         data.update(gender=gender, age=age, device=device, location=location)
+        self.add_standard_performance_data(data, fs)
+        return data
 
+    def add_standard_performance_data(self, data, filters):
         # this and last week base stats
         week_end = now_in_default_tz().date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)
-
         annotate = {
             "{}_{}_week".format(s, k): Sum(
                 Case(
@@ -1770,12 +1763,10 @@ class PerformanceAccountDetailsApiView(APIView):
             )
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
-            for s in BASE_STATS
-        }
-        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            for s in BASE_STATS}
+        weeks_stats = AdGroupStatistic.objects.filter(**filters).aggregate(
             **annotate)
         data.update(weeks_stats)
-
         # top and bottom rates
         annotate = dict(
             average_cpv=ExpressionWrapper(
@@ -1827,16 +1818,14 @@ class PerformanceAccountDetailsApiView(APIView):
             ),
         )
         fields = tuple(annotate.keys())
-        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values(
+        top_bottom_stats = AdGroupStatistic.objects.filter(**filters).values(
             "date").order_by("date").annotate(
             *[Sum(s) for s in BASE_STATS]
         ).annotate(**annotate).aggregate(
             **{"{}_{}".format(s, n): a(s)
                for s in fields
-               for n, a in (("top", Max), ("bottom", Min))}
-        )
+               for n, a in (("top", Max), ("bottom", Min))})
         data.update(top_bottom_stats)
-        return data
 
     @staticmethod
     def get_details_data(account_creation):
