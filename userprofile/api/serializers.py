@@ -186,6 +186,14 @@ class UserSetPasswordSerializer(Serializer):
     token = CharField(required=True)
 
 
+class UserChangePasswordSerializer(Serializer):
+    """
+    Serializer for changing user's password.
+    """
+    new_password = CharField(required=True)
+    old_password = CharField(required=True)
+
+
 class GroupSerializer(Serializer):
     name = CharField(read_only=True)
 
