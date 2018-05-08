@@ -1217,28 +1217,12 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
                 if campaign_id is None or row["campaign_id"] == campaign_id:
                     daily_delivery[date] += row[delivery_field_name] or 0
 
-        sum_pacing = 0
-        # sum_delivered = 0
         for date in get_dates_range(flight["start"], flight["end"]):
             today_units, today_budget = get_pacing_goal_for_date(
                 flight, date, today, allocation_ko=allocation_ko,
                 campaign_id=campaign_id)
             daily_goal = today_budget if budget_is_goal else today_units
-            # print(daily_goal)
-
-            # if date <= today:
-            #     daily_goal -= sum_pacing
-            # daily_goal = min(daily_goal, goal - sum_pacing)
-            # if daily_goal + sum_pacing > goal:
-            #     daily_goal = goal - sum_pacing
             flight["daily_goal"][date] = daily_goal
-            # sum_pacing += daily_goal
-
-            # delivered = daily_delivery.get(date, 0)
-            # print(daily_goal, sum_pacing, sum_delivered, budget_is_goal)
-            #
-            # if delivered:
-            #     sum_delivered += delivered
 
     delivered_chart = []
     pacing_chart = []
