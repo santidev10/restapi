@@ -1695,6 +1695,9 @@ class PerformanceAccountDetailsApiView(APIView):
 
     def post(self, request, pk, **_):
         # TODO check is_chf
+        managed_accounts_ids = Account.objects.get(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+            .managers.values_list("id", flat=True)
         try:
             account_creation = AccountCreation.objects.filter(
                 owner=self.request.user).get(pk=pk)
@@ -1741,8 +1744,14 @@ class PerformanceAccountDetailsApiView(APIView):
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
         location = [dict(name=i['city__name'], value=i['v']) for i in location]
         data.update(gender=gender, age=age, device=device, location=location)
-        self.add_standard_performance_data(data, fs)
+        if self.request.data.get("is_chf") == 1:
+            self.add_chf_performance_data(data)
+        else:
+            self.add_standard_performance_data(data, fs)
         return data
+
+    def add_chf_performance_data(self, data):
+        pass
 
     def add_standard_performance_data(self, data, filters):
         # this and last week base stats
