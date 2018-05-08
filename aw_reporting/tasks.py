@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Count, Case, When, Sum, F
+from django.db.models import Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -97,14 +97,11 @@ def load_hourly_stats(client, account, *_):
         report = campaign_performance_report(
             client,
             dates=(date, today),
-            fields=[
-                       'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
-                       'AdvertisingChannelType', 'Amount', 'CampaignStatus',
-                       'ServingStatus',
-                       'Date', 'HourOfDay',
-                   ] + main_statistics[:4],
-            include_zero_impressions=False,
-        )
+            fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
+                    "AdvertisingChannelType", "Amount", "CampaignStatus",
+                    "ServingStatus", "Date", "HourOfDay"
+                    ] + list(main_statistics[:4]),
+            include_zero_impressions=False)
         if report:
             campaign_ids = list(
                 account.campaigns.values_list('id', flat=True)

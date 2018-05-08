@@ -228,7 +228,7 @@ def _daily_statistic_performance_report(client, name, dates=None,
              completed_fields
 
     if additional_fields:
-        fields += list(additional_fields)
+        fields += additional_fields
 
     selector = {
         "fields": fields,
