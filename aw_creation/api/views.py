@@ -1695,9 +1695,9 @@ class PerformanceAccountDetailsApiView(APIView):
 
     def post(self, request, pk, **_):
         # TODO check is_chf
-        managed_accounts_ids = Account.objects.get(
-            id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-            .managers.values_list("id", flat=True)
+        # managed_accounts_ids = Account.objects.get(
+        #     id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+        #     .managers.values_list("id", flat=True)
         try:
             account_creation = AccountCreation.objects.filter(
                 owner=self.request.user).get(pk=pk)
@@ -1707,6 +1707,7 @@ class PerformanceAccountDetailsApiView(APIView):
             account_creation, context={"request": request}).data  # header data
         data["overview"] = self.get_overview_data(account_creation)
         data["details"] = self.get_details_data(account_creation)
+        import ipdb; ipdb.set_trace()
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
@@ -1751,7 +1752,35 @@ class PerformanceAccountDetailsApiView(APIView):
         return data
 
     def add_chf_performance_data(self, data):
-        pass
+        null_fields = (
+            "impressions_this_week", "cost_last_week", "impressions_last_week",
+            "cost_this_week", "video_views_this_week", "clicks_this_week",
+            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
+            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
+            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
+        for field in null_fields:
+            data[field] = None
+        delivered_impressions = Sum(
+            Case(
+                When(
+                    ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                    then=F('impressions'),
+                ),
+                default=Value(0),
+                output_field=AggrIntegerField()
+            )
+        ),
+        delivered_video_views = Sum(
+            Case(
+                When(
+                    ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                    then=F('video_views'),
+                ),
+                default=Value(0),
+                output_field=AggrIntegerField()
+            )
+        ),
+
 
     def add_standard_performance_data(self, data, filters):
         # this and last week base stats
