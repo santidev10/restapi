@@ -6,6 +6,7 @@ from django.conf.urls import url
 from userprofile.api.views import UserCreateApiView, UserAuthApiView, \
     UserProfileApiView, UserPasswordResetApiView, UserPasswordSetApiView, \
     ContactFormApiView, VendorDetailsApiView, ErrorReportApiView, UserProfileSharedListApiView
+from userprofile.api.views import UserPasswordChangeApiView
 
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name="user_create"),
@@ -17,6 +18,7 @@ urlpatterns = [
         name="password_reset"),
     url(r'^set_password/$', UserPasswordSetApiView.as_view(),
         name="set_password"),
+    url(r'^change_password/$', UserPasswordChangeApiView.as_view(), name="change_password"),
     url(r'^contact_forms/$',
         ContactFormApiView.as_view(), name="contact_from"),
     url(r'^vendor/$',
