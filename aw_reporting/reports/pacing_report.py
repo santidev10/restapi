@@ -4,6 +4,7 @@ from math import ceil
 
 from django.contrib.auth import get_user_model
 from django.db.models import F, Sum, Case, When, Value, FloatField, Q
+from django.http import QueryDict
 
 from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
@@ -631,6 +632,11 @@ class PacingReport:
         return opportunities
 
     def get_opportunities_queryset(self, get):
+        if not isinstance(get, QueryDict):
+            qget = QueryDict("", mutable=True)
+            qget.update(get)
+            get = qget
+
         queryset = Opportunity.objects.filter(probability=100)
 
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
@@ -642,30 +648,29 @@ class PacingReport:
         if search:
             queryset = queryset.filter(name__icontains=search.strip())
 
-        multi_del = ","
-        ad_ops = get.get("ad_ops")
+        ad_ops = get.getlist("ad_ops")
         if ad_ops:
             queryset = queryset.filter(
-                ad_ops_manager_id__in=ad_ops.split(multi_del))
-        am = get.get("am")
+                ad_ops_manager_id__in=ad_ops)
+        am = get.getlist("am")
         if am:
             queryset = queryset.filter(
-                account_manager_id__in=am.split(multi_del))
-        sales = get.get("sales")
+                account_manager_id__in=am)
+        sales = get.getlist("sales")
         if sales:
             queryset = queryset.filter(
-                sales_manager_id__in=sales.split(multi_del))
-        category = get.get("category")
+                sales_manager_id__in=sales)
+        category = get.getlist("category")
         if category:
             queryset = queryset.filter(
-                category_id__in=category.split(multi_del))
-        goal_type = get.get("goal_type")
+                category_id__in=category)
+        goal_type = get.getlist("goal_type")
         if goal_type:
             queryset = queryset.filter(
-                goal_type_id__in=goal_type.split(multi_del))
-        region = get.get("region")
+                goal_type_id__in=goal_type)
+        region = get.getlist("region")
         if region:
-            queryset = queryset.filter(region_id__in=region.split(multi_del))
+            queryset = queryset.filter(region_id__in=region)
 
         status = get.get("status")
         if status:
