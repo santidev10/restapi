@@ -1208,6 +1208,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
         else:
             goal = (flight["plan_units"] or 0) * allocation_ko
 
+        flight["_total_goal"] = goal
         delivery_field_name = get_delivery_field_name(flight)
         daily_delivery = defaultdict(int)
         flight["_delivery_field_name"] = delivery_field_name
@@ -1235,15 +1236,18 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
         if current_flights:
             goal_for_today = sum(
                 f["daily_goal"].get(date, 0) for f in current_flights)
+            total_goal = sum(f["_total_goal"] for f in current_flights)
         else:
             goal_for_today = 0
+            total_goal = 0
 
         total_pacing = total_delivered + goal_for_today \
             if date <= today else total_pacing + goal_for_today
+
         pacing_chart.append(
             dict(
                 label=date,
-                value=total_pacing,
+                value=min(total_pacing, total_goal),
             )
         )
 
