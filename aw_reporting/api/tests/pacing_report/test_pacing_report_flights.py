@@ -798,7 +798,7 @@ class PacingReportFlightsTestCase(APITestCase):
 
         self.assertEqual(fl["dynamic_placement"],
                          DynamicPlacementType.RATE_AND_TECH_FEE)
-        self.assertEqual(fl["plan_video_views"], total_cost)
+        self.assertIsNone(fl["plan_video_views"])
         self.assertEqual(fl["today_budget"], daily_goal)
 
         self.assertIsNotNone(fl["charts"])

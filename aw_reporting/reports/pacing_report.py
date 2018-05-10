@@ -383,8 +383,7 @@ class PacingReport:
             sum_delivery += stats.get("delivery") or 0
             aw_cost = stats.get("sum_cost") or 0
 
-            if dynamic_placement in (DynamicPlacementType.BUDGET,
-                                     DynamicPlacementType.SERVICE_FEE):
+            if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
                 sum_spent_cost += aw_cost
                 flight_count = Flight.objects.filter(
                     placement_id=f["placement_id"]).count()
@@ -806,7 +805,7 @@ class PacingReport:
         # get raw  data
         placements = queryset.values(
             "id", "name", "start", "end", "goal_type_id", "ordered_units",
-            "ordered_rate", "dynamic_placement", "tech_fee"
+            "dynamic_placement", "tech_fee"
         ).annotate(plan_cost=F("total_cost"))
 
         # plan stats
@@ -841,16 +840,6 @@ class PacingReport:
             p["pacing"] = self.get_pacing_from_flights(flights)
             p["margin"] = self.get_margin_from_flights(flights, p["cost"],
                                                        p["plan_cost"])
-
-            # the  client rate is coming from the placement level
-            ordered_rate = p["ordered_rate"]
-            del p["ordered_rate"]
-            if p["goal_type_id"] == SalesForceGoalType.CPV:
-                p["plan_cpv"] = ordered_rate
-                p["plan_cpm"] = None
-            elif p["goal_type_id"] == SalesForceGoalType.CPM:
-                p["plan_cpm"] = ordered_rate
-                p["plan_cpv"] = None
 
             self.add_calculated_fields(p)
             del p["ordered_units"]
@@ -917,16 +906,6 @@ class PacingReport:
             flight.update(chart_data)
 
             self.add_calculated_fields(flight)
-
-            ordered_rate = f["placement__ordered_rate"]
-            if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
-                flight["plan_cpv"] = flight["plan_cpm"] = None
-            elif flight["goal_type_id"] == SalesForceGoalType.CPV:
-                flight["plan_cpv"] = ordered_rate
-                flight["plan_cpm"] = None
-            elif flight["goal_type_id"] == SalesForceGoalType.CPM:
-                flight["plan_cpm"] = ordered_rate
-                flight["plan_cpv"] = None
 
             flights.append(flight)
 
