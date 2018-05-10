@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
+from django.http import QueryDict
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
@@ -815,3 +816,31 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(delivery_chart["title"], "Daily Deviation")
         self.assertEqual(len(delivery_chart["data"]), 3)
         self.assertEqual(delivery_chart["data"][-1]["value"], 3060)
+
+    def test_get_opportunities_filter_category_with_coma(self):
+        category1 = Category.objects.create(id="category, value 1")
+        category2 = Category.objects.create(id="category, value 2")
+        category3 = Category.objects.create(id="category, value 3")
+        today = timezone.now()
+        opp_1 = Opportunity.objects.create(id="1", name="1", start=today,
+                                           end=today,
+                                           category=category1, probability=100)
+        opp_2 = Opportunity.objects.create(id="2", name="2", start=today,
+                                           end=today,
+                                           category=category2, probability=100)
+        Opportunity.objects.create(id="3", name="3", start=today,
+                                   end=today, category=category3,
+                                   probability=100)
+
+        query_params = QueryDict("", mutable=True)
+        query_params.update(category=category1.id)
+        query_params.update(category=category2.id)
+
+        query_url = "?".join([self.url, query_params.urlencode()])
+        response = self.client.get(query_url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        data = response.data["items"]
+        self.assertEqual(response.data["items_count"], 2)
+        response_ids = [i["id"] for i in data]
+        self.assertEqual(set(response_ids), {opp_1.id, opp_2.id})

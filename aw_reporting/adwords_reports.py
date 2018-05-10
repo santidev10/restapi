@@ -354,11 +354,9 @@ def ad_group_performance_report(client, dates=None):
 
 
 def video_performance_report(client, dates=None):
-    main_stats = list(set(main_statistics) - {"AllConversions"})
-    fields = (
-                 "VideoChannelId", "VideoDuration", "VideoId", "AdGroupId",
-                 "Date"
-             ) + main_stats + completed_fields
+    main_stats = tuple(set(main_statistics) - {"AllConversions"})
+    fields = ("VideoChannelId", "VideoDuration", "VideoId", "AdGroupId",
+              "Date") + main_stats + completed_fields
 
     selector = {
         "fields": fields,
