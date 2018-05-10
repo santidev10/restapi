@@ -442,6 +442,55 @@ class PacingReportFlightsTestCase(APITestCase):
 
         expected_ideal_pacing = [
             dict(value=4, label=start),  # yesterday
+            dict(value=8, label=today),  # today
+            dict(value=12, label=end),  # tomorrow
+        ]
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
+                              end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(campaign=campaign, date=start, cost=4,
+                                         video_views=8888)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["plan_cost"], total_cost)
+        self.assertIsNotNone(flight_data["charts"])
+        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
+        for actual, expected in charts_zipped:
+            label = expected["label"]
+            self.assertEqual(actual["label"], label)
+            self.assertAlmostEqual(actual["value"], expected["value"],
+                                   msg=label)
+
+    def test_dynamic_placement_budget_charts_ideal_pacing_no_delivery(self):
+        today = date(2017, 1, 15)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=1)
+        total_cost = 12
+
+        expected_ideal_pacing = [
+            dict(value=4, label=start),  # yesterday
             dict(value=6, label=today),  # today
             dict(value=12, label=end),  # tomorrow
         ]
@@ -451,10 +500,14 @@ class PacingReportFlightsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
             dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=total_cost,
         )
-        Flight.objects.create(id="1", placement=placement, start=start,
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
                               end=end,
                               total_cost=total_cost)
         url = reverse("aw_reporting_urls:pacing_report_flights",
@@ -484,6 +537,55 @@ class PacingReportFlightsTestCase(APITestCase):
 
         expected_ideal_pacing = [
             dict(value=4, label=start),  # yesterday
+            dict(value=8, label=today),  # today
+            dict(value=12, label=end),  # tomorrow
+        ]
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
+            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
+                              end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(campaign=campaign, date=start, cost=4,
+                                         video_views=8888)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["plan_cost"], total_cost)
+        self.assertIsNotNone(flight_data["charts"])
+        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
+        for actual, expected in charts_zipped:
+            label = expected["label"]
+            self.assertEqual(actual["label"], label)
+            self.assertAlmostEqual(actual["value"], expected["value"],
+                                   msg=label)
+
+    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(self):
+        today = date(2017, 1, 15)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=1)
+        total_cost = 12
+
+        expected_ideal_pacing = [
+            dict(value=4, label=start),  # yesterday
             dict(value=6, label=today),  # today
             dict(value=12, label=end),  # tomorrow
         ]
@@ -493,10 +595,111 @@ class PacingReportFlightsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
-        Flight.objects.create(id="1", placement=placement, start=start,
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
+                              end=end,
+                              total_cost=total_cost)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["plan_cost"], total_cost)
+        self.assertIsNotNone(flight_data["charts"])
+        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
+        for actual, expected in charts_zipped:
+            label = expected["label"]
+            self.assertEqual(actual["label"], label)
+            self.assertAlmostEqual(actual["value"], expected["value"],
+                                   msg=label)
+
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing(self):
+        today = date(2017, 1, 15)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=2)
+        total_cost = 12
+
+        expected_ideal_pacing = [
+            dict(value=3, label=start),
+            dict(value=8, label=today),
+            dict(value=10, label=today + timedelta(days=1)),
+            dict(value=12, label=end),
+        ]
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
+                              end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(campaign=campaign, date=start,
+                                         cost=6,
+                                         video_views=8888)
+        url = reverse("aw_reporting_urls:pacing_report_flights",
+                      args=(placement.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        flight_data = response.data[0]
+        self.assertEqual(flight_data["plan_cost"], total_cost)
+        self.assertIsNotNone(flight_data["charts"])
+        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
+        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
+        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
+        for actual, expected in charts_zipped:
+            label = expected["label"]
+            self.assertEqual(actual["label"], label)
+            self.assertAlmostEqual(actual["value"], expected["value"],
+                                   msg=label)
+
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(self):
+        today = date(2017, 1, 15)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=1)
+        total_cost = 12
+
+        expected_ideal_pacing = [
+            dict(value=4, label=start),
+            dict(value=6, label=today),
+            dict(value=12, label=end),
+        ]
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=9999,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            total_cost=total_cost,
+        )
+        Flight.objects.create(id="1", placement=placement,
+                              ordered_units=9999,
+                              start=start,
                               end=end,
                               total_cost=total_cost)
         url = reverse("aw_reporting_urls:pacing_report_flights",
@@ -666,7 +869,7 @@ class PacingReportFlightsTestCase(APITestCase):
         start = today - timedelta(days=3)
         end = today + timedelta(days=5)
         days_total = (end - start).days + 1
-        days_left = (end - today). days + 1
+        days_left = (end - today).days + 1
         days_passed = (yesterday - start).days + 1
         tech_fee = 0.12
         opportunity = Opportunity.objects.create(
