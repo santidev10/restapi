@@ -311,10 +311,9 @@ class PacingReportFlightsTestCase(APITestCase):
             start=start_1, end=end_1, ordered_units=ordered_unit,
         )
         Flight.objects.create(
-            id="2", placement=placement, name="F name", total_cost=200,
+            id="2", placement=placement, name="F name", total_cost=300,
             start=start_2, end=end_2, ordered_units=ordered_unit,
         )
-        flights_count = 2
         flight_1_statistic = CampaignStatistic.objects.filter(
             campaign=campaign, date__gte=start_1, date__lte=end_1) \
             .aggregate(cost=Sum("cost"), views=Sum("video_views"),
@@ -331,8 +330,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertIsNone(flight["plan_impressions"])
         self.assertIsNone(flight["plan_cpv"])
         self.assertIsNone(flight["plan_cpm"])
-        self.assertEqual(flight["plan_cost"],
-                         placement.total_cost / flights_count)
+        self.assertEqual(flight["plan_cost"], flight_1.total_cost)
         self.assertEqual(flight["cost"], cost)
 
     def test_pacing_report_dynamic_placement_statistic(self):

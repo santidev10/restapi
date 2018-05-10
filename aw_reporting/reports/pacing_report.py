@@ -385,17 +385,11 @@ class PacingReport:
 
             if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
                 sum_spent_cost += aw_cost
-                flight_count = Flight.objects.filter(
-                    placement_id=f["placement_id"]).count()
-                total_cost = (f["placement__total_cost"] or 0) * allocation_ko
-                sum_total_cost += total_cost / flight_count
             elif placement_type == OpPlacement.OUTGOING_FEE_TYPE:
                 days_run, total_days = self.get_days_run_and_total_days(f)
                 if days_run and total_days and f["cost"]:
                     cost = f["cost"] or 0
                     sum_spent_cost += cost * days_run / total_days
-
-                sum_total_cost += total_cost
 
             elif goal_type_id == SalesForceGoalType.CPV:
                 plan_video_views = (plan_video_views or 0) + plan_units
@@ -403,7 +397,6 @@ class PacingReport:
                 cpv_cost += total_cost
 
                 sum_spent_cost += aw_cost
-                sum_total_cost += total_cost
 
             elif goal_type_id == SalesForceGoalType.CPM:
                 plan_impressions = (plan_impressions or 0) + plan_units
@@ -411,11 +404,10 @@ class PacingReport:
                 cpm_cost += total_cost
 
                 sum_spent_cost += aw_cost
-                sum_total_cost += total_cost
 
             elif goal_type_id == SalesForceGoalType.HARD_COST:
                 sum_spent_cost += aw_cost
-                sum_total_cost += total_cost
+            sum_total_cost += total_cost
         result = dict(
             plan_impressions=plan_impressions,
             plan_video_views=plan_video_views,
