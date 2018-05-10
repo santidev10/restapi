@@ -13,7 +13,7 @@ from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
-    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
+    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -888,10 +888,11 @@ class PacingReport:
         for f in flights_data:
             tech_fee = float(f["placement__tech_fee"]) \
                 if f["placement__tech_fee"] else None
+            dynamic_placement = f["placement__dynamic_placement"]
             flight = dict(
                 id=f["id"], name=f["name"], start=f["start"], end=f["end"],
                 plan_cost=f["total_cost"], margin=None, pacing=None,
-                dynamic_placement=f["placement__dynamic_placement"],
+                dynamic_placement=dynamic_placement,
                 tech_fee=tech_fee, goal_type_id=f["placement__goal_type_id"]
             )
             f_data = [f]
@@ -918,7 +919,9 @@ class PacingReport:
             self.add_calculated_fields(flight)
 
             ordered_rate = f["placement__ordered_rate"]
-            if flight["goal_type_id"] == SalesForceGoalType.CPV:
+            if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
+                flight["plan_cpv"] = flight["plan_cpm"] = None
+            elif flight["goal_type_id"] == SalesForceGoalType.CPV:
                 flight["plan_cpv"] = ordered_rate
                 flight["plan_cpm"] = None
             elif flight["goal_type_id"] == SalesForceGoalType.CPM:
