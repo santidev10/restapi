@@ -596,7 +596,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         aw_cpv = aw_cost * 1. / views
         aw_cpm = aw_cost * 1000. / impressions
         expected_pacing = aw_cost / (total_cost / total_days * days_pass) * 100
-        expected_margin = (total_cost - aw_cost) / total_cost * 100
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=total_cost,
@@ -627,6 +626,39 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(pl["impressions"], impressions)
         self.assertEqual(pl["video_views"], views)
         self.assertAlmostEqual(pl["pacing"], expected_pacing)
+        self.assertAlmostEqual(pl["margin"], 0)
+
+    def test_dynamic_placement_budget_over_delivery_margin(self):
+        today = date(2017, 1, 1)
+        start = today - timedelta(days=3)
+        end = today + timedelta(days=3)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end, probability=100
+        )
+        total_cost = 123
+        aw_cost = 234
+        assert aw_cost > total_cost
+        views, impressions = 14, 164
+        expected_margin = (total_cost - aw_cost) / total_cost * 100.
+        placement = OpPlacement.objects.create(
+            id="1", name="BBB", opportunity=opportunity,
+            start=start, end=end, total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+        )
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              total_cost=total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           video_views=1)
+        CampaignStatistic.objects.create(date=today, campaign=campaign,
+                                         cost=aw_cost,
+                                         video_views=views,
+                                         impressions=impressions)
+        with patch_now(today):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        pl = response.data["items"][0]
         self.assertAlmostEqual(pl["margin"], expected_margin)
 
     def test_no_dates(self):
