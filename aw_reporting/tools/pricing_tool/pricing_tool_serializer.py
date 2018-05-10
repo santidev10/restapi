@@ -325,28 +325,28 @@ class PricingToolSerializer:
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPM,
                             then="placements__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_cpv_cost=Sum(Case(
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPV,
                             then="placements__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_hard_cost_total_cost=Sum(Case(
                 *merge_when(flights_date_filter,
                             placements__goal_type_id=SalesForceGoalType.HARD_COST,
                             then="placements__flights__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_hard_cost_our_cost=Sum(Case(
                 *merge_when(flights_date_filter,
                             placements__goal_type_id=SalesForceGoalType.HARD_COST,
                             then="placements__flights__cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_cpm_units=Sum(Case(
