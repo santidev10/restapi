@@ -1707,7 +1707,6 @@ class PerformanceAccountDetailsApiView(APIView):
             account_creation, context={"request": request}).data  # header data
         data["overview"] = self.get_overview_data(account_creation)
         data["details"] = self.get_details_data(account_creation)
-        import ipdb; ipdb.set_trace()
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
