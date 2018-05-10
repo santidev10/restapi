@@ -1,4 +1,5 @@
 from datetime import timedelta, date
+from itertools import product
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -307,7 +308,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         pl = response.data[0]
         self.assertIsNone(pl["plan_video_views"])
         self.assertIsNone(pl["plan_impressions"])
-        self.assertEqual(pl["plan_cpv"], placement.ordered_rate)
+        self.assertIsNone(pl["plan_cpv"])
         self.assertIsNone(pl["plan_cpm"])
         self.assertEqual(pl["plan_cost"], total_cost)
         self.assertEqual(pl["cost"], aw_cost)
@@ -370,7 +371,7 @@ class PacingReportPlacementsTestCase(APITestCase):
                          DynamicPlacementType.RATE_AND_TECH_FEE)
         self.assertAlmostEqual(pl["tech_fee"], tech_fee)
         # contracted rate
-        self.assertEqual(pl["plan_cpv"], rate)
+        self.assertIsNone(pl["plan_cpv"])
         self.assertIsNone(pl["plan_cpm"])
         # client budget
         self.assertEqual(pl["plan_cost"], total_cost)
@@ -547,7 +548,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
         self.assertEqual(pl["dynamic_placement"],
                          DynamicPlacementType.RATE_AND_TECH_FEE)
-        self.assertEqual(pl["plan_video_views"], total_cost)
+        self.assertIsNone(pl["plan_video_views"])
+        self.assertIsNone(pl["plan_impressions"])
         self.assertEqual(pl["today_budget"], daily_goal)
 
         self.assertIsNotNone(pl["charts"])
@@ -625,3 +627,56 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         pl = response.data[0]
         self.assertAlmostEqual(pl["margin"], expected_margin)
+
+    def test_dynamic_placement_ordered_rate(self):
+        today = date(2017, 1, 1)
+        start = today
+        end = today + timedelta(days=8)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=start, end=end
+        )
+
+        def create_placement_and_flight(uid, dynamic_placement, goal_type_id):
+            placement = OpPlacement.objects.create(
+                id=uid, opportunity=opportunity,
+                start=start, end=end, total_cost=12,
+                goal_type_id=goal_type_id,
+                ordered_rate=2.1,
+                dynamic_placement=dynamic_placement,
+                tech_fee=0.02
+            )
+            Flight.objects.create(id=uid, placement=placement, start=start,
+                                  end=end,
+                                  total_cost=12)
+            return placement
+
+        test_data = list(product(
+            (
+                DynamicPlacementType.BUDGET,
+                DynamicPlacementType.SERVICE_FEE,
+                DynamicPlacementType.RATE_AND_TECH_FEE
+            ),
+            (
+                SalesForceGoalType.CPV,
+                SalesForceGoalType.CPM
+            )
+        ))
+
+        for i, data in enumerate(test_data):
+            dynamic_type, goal_type_id = data
+            create_placement_and_flight(i, dynamic_type,
+                                        goal_type_id)
+
+        url = reverse("aw_reporting_urls:pacing_report_placements",
+                      args=(opportunity.id,))
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), len(list(test_data)))
+        for pl in response.data:
+            self.assertIsNone(pl["plan_cpm"],
+                              "plan_cpm, {}, {}".format(pl["goal_type"], pl[
+                                  "dynamic_placement"]))
+            self.assertIsNone(pl["plan_cpv"],
+                              "plan_cpv, {}, {}".format(pl["goal_type"], pl[
+                                  "dynamic_placement"]))
