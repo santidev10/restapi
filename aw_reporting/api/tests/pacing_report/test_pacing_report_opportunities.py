@@ -324,7 +324,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             probability=100)
         tech_fee = 0.12
         placement = OpPlacement.objects.create(
-            opportunity=opportunity, tech_fee=tech_fee,
+            opportunity=opportunity,
+            tech_fee=tech_fee,
             goal_type_id=SalesForceGoalType.CPV,
             tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE)

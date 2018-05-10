@@ -57,6 +57,12 @@ class DynamicPlacementType:
     RATE_AND_TECH_FEE = "Rate + Tech Fee"
 
 
+ALL_DYNAMIC_PLACEMENTS = (
+    DynamicPlacementType.BUDGET,
+    DynamicPlacementType.SERVICE_FEE,
+    DynamicPlacementType.RATE_AND_TECH_FEE
+)
+
 DYNAMIC_PLACEMENT_TYPES = (
     DynamicPlacementType.BUDGET,
     DynamicPlacementType.SERVICE_FEE,
