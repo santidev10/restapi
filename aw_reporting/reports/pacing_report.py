@@ -1229,6 +1229,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
     pacing_chart = []
     total_pacing = 0
     total_delivered = 0
+    total_goal = sum(f["_total_goal"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
         current_flights = [f for f in flights if
@@ -1236,10 +1237,8 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
         if current_flights:
             goal_for_today = sum(
                 f["daily_goal"].get(date, 0) for f in current_flights)
-            total_goal = sum(f["_total_goal"] for f in current_flights)
         else:
             goal_for_today = 0
-            total_goal = 0
 
         total_pacing = total_delivered + goal_for_today \
             if date <= today else total_pacing + goal_for_today
