@@ -3008,6 +3008,71 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(len(items), 1)
         self.assertAlmostEqual(items[0]["margin"], expected_margin)
 
+    def test_hard_cost_margin(self):
+        opportunity = Opportunity.objects.create(probability=50)
+        placement_cpm = OpPlacement.objects.create(
+            id="1",
+            opportunity=opportunity,
+            ordered_rate=0.2,
+            total_cost=9999,
+            goal_type_id=SalesForceGoalType.CPM)
+        placement_cpv = OpPlacement.objects.create(
+            id="2",
+            opportunity=opportunity,
+            ordered_rate=0.3,
+            total_cost=9999,
+            goal_type_id=SalesForceGoalType.CPV)
+        placement_hard_cost = OpPlacement.objects.create(
+            id="3",
+            opportunity=opportunity,
+            total_cost=9999,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        Flight.objects.create(id="1", placement=placement_cpm,
+                              total_cost=9999)
+        Flight.objects.create(id="2", placement=placement_cpv,
+                              total_cost=9999)
+        flight_hard_cost = Flight.objects.create(id="3",
+                                                 placement=placement_hard_cost,
+                                                 cost=324,
+                                                 total_cost=9999)
+        campaign_cpm = Campaign.objects.create(
+            id="1",
+            salesforce_placement=placement_cpm
+        )
+        campaign_cpv = Campaign.objects.create(
+            id="2",
+            salesforce_placement=placement_cpv
+        )
+        campaign_hard_cost = Campaign.objects.create(
+            id="3",
+            salesforce_placement=placement_hard_cost
+        )
+
+        today = date(2017, 1, 1)
+        impressions = 23499
+        views = 654
+        cpm_cost, cpv_cost = 543, 356
+        CampaignStatistic.objects.create(date=today, campaign=campaign_cpm,
+                                         impressions=impressions, cost=cpm_cost)
+        CampaignStatistic.objects.create(date=today, campaign=campaign_cpv,
+                                         video_views=views, cost=cpv_cost)
+        CampaignStatistic.objects.create(date=today,
+                                         campaign=campaign_hard_cost)
+
+        client_cost = impressions * placement_cpm.ordered_rate / 1000. \
+                      + views * placement_cpv.ordered_rate \
+                      + flight_hard_cost.total_cost
+        cost = cpm_cost + cpv_cost + flight_hard_cost.cost
+
+        margin = (1 - cost / client_cost) * 100.
+
+        response = self.client.post(self.url,
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        opp_data = response.data["items"][0]
+        self.assertAlmostEqual(opp_data["margin"], margin)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):
