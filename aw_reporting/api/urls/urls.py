@@ -105,7 +105,7 @@ urlpatterns = [
         name="pricing_tool_estimate"),
     url(r'^pricing_tool/opportunity/$',
         views.PricingToolOpportunityView.as_view(),
-        name="pricing_tool_opportunities"),
+        name=Name.PricingTool.OPPORTUNITIES),
 
     # Global trends
     url(r'^global_trends/filters',
