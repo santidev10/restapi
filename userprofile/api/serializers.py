@@ -3,7 +3,8 @@ Userprofile api serializers module
 """
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import update_last_login, PermissionsMixin, Group
+from django.contrib.auth.models import update_last_login, PermissionsMixin, \
+    Group
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
@@ -13,10 +14,6 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email, \
     send_welcome_email
 from aw_reporting.models import Ad
-from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
-from payments.api.serializers import \
-    SubscriptionSerializer as PaymentSubscriptionSerializer
-from payments.stripe_api.subscriptions import retrieve, is_valid
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -79,6 +76,7 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
+        user.save(update_fields=["password"])
 
         # new default access implementation
         user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
