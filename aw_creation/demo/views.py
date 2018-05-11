@@ -421,9 +421,8 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if request.data.get("is_chf") == 1:
-                return original_method(view, request, pk=pk, **kwargs)
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if request.data.get("is_chf") != 1\
+                    and (pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk)):
                 filters = view.get_filters()
 
                 account = DemoAccount()
@@ -442,9 +441,7 @@ class PerformanceAccountDetailsApiView:
                     for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
+            return original_method(view, request, pk=pk, **kwargs)
         return method
 
 

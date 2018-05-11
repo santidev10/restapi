@@ -50,7 +50,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT, SalesForceGoalType
+    TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
@@ -1767,26 +1767,27 @@ class PerformanceAccountDetailsApiView(APIView):
             "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
         for field in null_fields:
             data[field] = None
+        placements_queryset = OpPlacement.objects.filter(
+            adwords_campaigns__id__in=
+            self.account_creation.account.campaigns.values("id")).distinct()
         data.update(
-            self.account_creation.account.campaigns.aggregate(
-                delivered_cost=Sum("cost"),
-                plan_cost=Sum("salesforce_placement__total_cost"),
-                delivered_impressions=Sum("impressions"),
-                plan_impressions=Sum(
-                    Case(
-                        When(
-                            salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
-                            then=F("salesforce_placement__ordered_units")),
-                        default=Value(0)),
-                        output_field=AggrIntegerField()),
-                delivered_video_views=Sum("video_views"),
-                plan_video_views=Sum(
-                    Case(
-                        When(
-                            salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
-                            then=F("salesforce_placement__ordered_units")),
-                        default=Value(0)),
-                        output_field=AggrIntegerField())))
+            placements_queryset.aggregate(
+                delivered_cost=Sum("adwords_campaigns__cost"),
+                delivered_impressions=Sum("adwords_campaigns__impressions"),
+                delivered_video_views=Sum("adwords_campaigns__video_views")))
+        plan_cost = 0
+        plan_impressions = 0
+        plan_video_views = 0
+        for placement in placements_queryset:
+            plan_cost += placement.total_cost
+            plan_impressions += placement.ordered_units\
+                if placement.goal_type_id == SalesForceGoalType.CPM else 0
+            plan_video_views += placement.ordered_units\
+                if placement.goal_type_id == SalesForceGoalType.CPV else 0
+        data.update(
+            {"plan_cost": plan_cost,
+             "plan_impressions": plan_impressions,
+             "plan_video_views": plan_video_views})
 
     def add_standard_performance_data(self, data, filters):
         null_fields = (
