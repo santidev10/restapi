@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
     HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
     HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_406_NOT_ACCEPTABLE
 from rest_framework.views import APIView
 
 from administration.notifications import send_html_email
@@ -235,6 +236,8 @@ class UserPasswordSetApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         if not PasswordResetTokenGenerator().check_token(user, token):
             return Response({"error": "Invalid link"}, HTTP_400_BAD_REQUEST)
+        if user.email == "admin@admin.admin":
+            return Response(status=HTTP_406_NOT_ACCEPTABLE)
         user.set_password(serializer.data.get("new_password"))
         user.save()
         return Response(status=HTTP_202_ACCEPTED)
@@ -253,8 +256,9 @@ class UserPasswordChangeApiView(APIView):
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-
         user = request.user
+        if user.email == "admin@admin.admin":
+            return Response(status=HTTP_406_NOT_ACCEPTABLE)
         old_password = serializer.data.get("old_password")
         new_password = serializer.data.get("new_password")
 
