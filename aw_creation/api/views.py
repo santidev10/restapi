@@ -50,7 +50,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT
+    TopicStatistic, DATE_FORMAT, SalesForceGoalType
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
@@ -103,7 +103,7 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
-                           "Also please use the UTF-8 encoding. It is expected that item ID "\
+                           "Also please use the UTF-8 encoding. It is expected that item ID " \
                            "placed in one of first two columns."
 
 
@@ -620,7 +620,7 @@ class AccountCreationListApiView(ListAPIView):
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
             managed_accounts_ids = Account.objects.get(
-                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID)\
+                id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
                 .managers.values_list("id", flat=True)
             filters["account__id__in"] = managed_accounts_ids
         else:
@@ -1693,20 +1693,28 @@ class PerformanceAccountDetailsApiView(APIView):
             ad_groups=data.get("ad_groups"))
         return filters
 
-    def post(self, request, pk, **_):
-        # TODO check is_chf
-        # managed_accounts_ids = Account.objects.get(
-        #     id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-        #     .managers.values_list("id", flat=True)
+    def __obtain_account(self, request, pk):
+        if request.data.get("chf") == 1:
+            managed_accounts_ids = Account.objects.get(
+                id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+                .managers.values_list("id", flat=True)
+            filters = {"account__id__in": managed_accounts_ids}
+        else:
+            filters = {"owner": self.request.user}
         try:
-            account_creation = AccountCreation.objects.filter(
-                owner=self.request.user).get(pk=pk)
+            self.account_creation = AccountCreation.objects.filter(
+                **filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
+            self.account_creation = None
+
+    def post(self, request, pk, **_):
+        self.__obtain_account(request, pk)
+        if self.account_creation is None:
             return Response(status=HTTP_404_NOT_FOUND)
         data = AccountCreationListSerializer(
-            account_creation, context={"request": request}).data  # header data
-        data["overview"] = self.get_overview_data(account_creation)
-        data["details"] = self.get_details_data(account_creation)
+            self.account_creation, context={"request": request}).data
+        data["overview"] = self.get_overview_data(self.account_creation)
+        data["details"] = self.get_details_data(self.account_creation)
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
@@ -1759,29 +1767,33 @@ class PerformanceAccountDetailsApiView(APIView):
             "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
         for field in null_fields:
             data[field] = None
-        delivered_impressions = Sum(
-            Case(
-                When(
-                    ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
-                    then=F('impressions'),
-                ),
-                default=Value(0),
-                output_field=AggrIntegerField()
-            )
-        ),
-        delivered_video_views = Sum(
-            Case(
-                When(
-                    ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
-                    then=F('video_views'),
-                ),
-                default=Value(0),
-                output_field=AggrIntegerField()
-            )
-        ),
-
+        data.update(
+            self.account_creation.account.campaigns.aggregate(
+                delivered_cost=Sum("cost"),
+                plan_cost=Sum("salesforce_placement__total_cost"),
+                delivered_impressions=Sum("impressions"),
+                plan_impressions=Sum(
+                    Case(
+                        When(
+                            salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                            then=F("salesforce_placement__ordered_units")),
+                        default=Value(0)),
+                        output_field=AggrIntegerField()),
+                delivered_video_views=Sum("video_views"),
+                plan_video_views=Sum(
+                    Case(
+                        When(
+                            salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                            then=F("salesforce_placement__ordered_units")),
+                        default=Value(0)),
+                        output_field=AggrIntegerField())))
 
     def add_standard_performance_data(self, data, filters):
+        null_fields = (
+            "delivered_cost", "plan_cost", "delivered_impressions",
+            "plan_impressions", "delivered_video_views", "plan_video_views")
+        for field in null_fields:
+            data[field] = None
         # this and last week base stats
         week_end = now_in_default_tz().date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
@@ -2811,7 +2823,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
         criteria_list = []
         for _, file_obj in request.data.items():
             if not hasattr(file_obj, 'content_type'):
-                #skip empty items
+                # skip empty items
                 continue
 
             fct = file_obj.content_type
@@ -2822,11 +2834,13 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                     data = self.get_csv_contents(file_obj, return_lines=True)
                 else:
                     return Response(status=HTTP_400_BAD_REQUEST,
-                                    data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                    data={
+                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]})
             except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
                                 data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
-                                                 'Stage: Load File Data. Cause: {}'.format(e)]})
+                                                 'Stage: Load File Data. Cause: {}'.format(
+                                                     e)]})
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
@@ -2835,7 +2849,8 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                     status=HTTP_400_BAD_REQUEST,
                     data={
                         "errors": [DOCUMENT_LOAD_ERROR_TEXT,
-                                   'Stage: Data Extraction. Cause: {}'.format(e)]
+                                   'Stage: Data Extraction. Cause: {}'.format(
+                                       e)]
                     },
                 )
 
