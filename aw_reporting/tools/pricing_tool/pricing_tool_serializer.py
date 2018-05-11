@@ -179,18 +179,16 @@ class PricingToolSerializer:
         average_cpv = cost / video_views if video_views > 0 else 0
 
         goal_type_id = campaign["salesforce_placement__goal_type_id"]
-        is_cpm = goal_type_id in (SalesForceGoalType.CPM,
-                                  SalesForceGoalType.CPM_AND_CPV)
-        is_cpv = goal_type_id in (SalesForceGoalType.CPV,
-                                  SalesForceGoalType.CPM_AND_CPV)
-        ordered_rate = campaign["salesforce_placement__ordered_rate"]
-
-        margin = None
-        if ordered_rate:
-            if goal_type_id == SalesForceGoalType.CPV and average_cpv is not None:
-                margin = (1 - average_cpv / ordered_rate) * 100
-            elif goal_type_id == SalesForceGoalType.CPM and average_cpm is not None:
-                margin = (1 - average_cpm / ordered_rate) * 100
+        is_cpm = goal_type_id == SalesForceGoalType.CPM
+        is_cpv = goal_type_id == SalesForceGoalType.CPV
+        ordered_rate = campaign["salesforce_placement__ordered_rate"] or 0
+        if is_cpm:
+            client_cost = ordered_rate * impressions / 1000.
+        elif is_cpv:
+            client_cost = ordered_rate * video_views
+        else:
+            client_cost = 0
+        margin = get_margin(cost=cost, client_cost=client_cost, plan_cost=None)
 
         devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
                        if campaign[d]])
