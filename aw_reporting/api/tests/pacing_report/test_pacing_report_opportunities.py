@@ -17,6 +17,7 @@ from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
     SalesForceGoalType
 from aw_reporting.models.salesforce_constants import \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
+from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
@@ -877,3 +878,78 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 2)
         response_ids = [i["id"] for i in data]
         self.assertEqual(set(response_ids), {opp_1.id, opp_2.id})
+
+    def test_opportunity_chart_rate_and_tech_fee(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2481
+        :return:
+        """
+        today = date(2018, 5, 11)
+        start, end = date(2018, 5, 1), date(2018, 6, 30)
+        start_1, end_1 = date(2018, 5, 1), date(2018, 5, 31)
+        start_2, end_2 = date(2018, 6, 1), date(2018, 6, 30)
+        total_costs = (16969.7, 16422.3)
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            start=start, end=end,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            total_cost=sum(total_costs),
+            ordered_rate=0.045,
+            tech_fee=0.01)
+        flight_1 = Flight.objects.create(id=1, placement=placement,
+                                         start=start_1, end=end_1,
+                                         total_cost=total_costs[0])
+        flight_2 = Flight.objects.create(id=2, placement=placement,
+                                         start=start_2, end=end_2,
+                                         total_cost=total_costs[1])
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+
+        delivery = (
+            (date(2018, 5, 7), 118381, 1663.79),  # before last 3 days
+            (date(2018, 5, 8), 7844, 121.53),
+            (date(2018, 5, 9), 17513, 277.7),
+            (date(2018, 5, 10), 17689, 278.98),  # yesterday
+        )
+        spent_cost = sum(i[2] for i in delivery)
+        cost_left = flight_1.total_cost - spent_cost
+        days_left_1 = (end_1 - today).days + 1
+        days_left_2 = (end_2 - start_2).days + 1
+        daily_plan_1 = cost_left / days_left_1
+        daily_plan_2 = flight_2.total_cost / days_left_2
+        for dt, views, cost in delivery:
+            CampaignStatistic.objects.create(campaign=campaign, date=dt,
+                                             video_views=views, cost=cost)
+
+        with patch_now(today):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        opp_data = response.data["items"][0]
+        self.assertIn("budget", opp_data["chart_data"])
+        self.assertNotIn("cpm", opp_data["chart_data"])
+        self.assertNotIn("cpv", opp_data["chart_data"])
+        cpv_charts = opp_data["chart_data"]["budget"]["charts"]
+        cpv_charts_map = dict((c["id"], c["data"]) for c in cpv_charts)
+        self.assertIn(PacingReportChartId.IDEAL_PACING, cpv_charts_map)
+        ideal_pacing = cpv_charts_map.get(PacingReportChartId.IDEAL_PACING)
+        ideal_pacing_by_date = dict((item["label"], item["value"])
+                                    for item in ideal_pacing)
+
+        for i in range(days_left_1):
+            dt = today + timedelta(days=i)
+            self.assertAlmostEqual(
+                ideal_pacing_by_date[dt],
+                spent_cost + daily_plan_1 * (i + 1),
+                msg=dt)
+
+        for i in range(days_left_2):
+            dt = start_2 + timedelta(days=i)
+            self.assertAlmostEqual(
+                ideal_pacing_by_date[dt],
+                flight_1.total_cost + daily_plan_2 * (i + 1),
+                msg=dt)
+
+        self.assertAlmostEqual(ideal_pacing[-1]["value"], placement.total_cost)

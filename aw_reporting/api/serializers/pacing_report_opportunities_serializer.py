@@ -77,22 +77,22 @@ class PacingReportOpportunitiesSerializer(Serializer):
         today = self.today
         chart_data = {}
         cpv_flights = [f for f in flights if
-                       f["placement__goal_type_id"] == 1]
+                       f["placement__goal_type_id"] == SalesForceGoalType.CPV
+                       and f["placement__dynamic_placement"] is None]
         if cpv_flights:
             chart_data["cpv"] = get_chart_data(flights=cpv_flights,
                                                today=today)
 
         cpm_flights = [f for f in flights if
-                       f["placement__goal_type_id"] == 0]
+                       f["placement__goal_type_id"] == SalesForceGoalType.CPM
+                       and f["placement__dynamic_placement"] is None]
         if cpm_flights:
             chart_data["cpm"] = get_chart_data(flights=cpm_flights,
                                                today=today)
 
         budget_flights = [
             f for f in flights
-            if
-            f["placement__goal_type_id"] == SalesForceGoalType.HARD_COST and
-            f["placement__dynamic_placement"] in (
+            if f["placement__dynamic_placement"] in (
                 DynamicPlacementType.BUDGET,
                 DynamicPlacementType.SERVICE_FEE,
                 DynamicPlacementType.RATE_AND_TECH_FEE)
