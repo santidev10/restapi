@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytz
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -118,6 +119,28 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             set(data["overview"].keys()),
             self.overview_keys,
         )
+
+    def test_success_get_chf_account(self):
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="Test", owner=self.user, account=managed_account)
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, data=json.dumps({"is_chf": 1}),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        expected_fields = (
+            "delivered_cost", "plan_cost", "delivered_impressions",
+            "plan_impressions", "delivered_video_views", "plan_video_views")
+        self.assertTrue(
+            all([field in response.data["overview"]
+                 for field in expected_fields]))
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
