@@ -10,7 +10,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     CampaignStatistic, AdGroup
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
-from utils.datetime import as_date
+from utils.datetime import as_date, now_in_default_tz
 from utils.query import merge_when
 
 
@@ -288,6 +288,7 @@ class PricingToolSerializer:
                     for c in creatives)
 
     def _opportunity_annotation(self):
+        today = now_in_default_tz().date()
         targeting_aggregate = dict(
             ("has_" + t, Max(Case(When(
                 **{"placements__adwords_campaigns__has_" + t: True,
@@ -317,7 +318,7 @@ class PricingToolSerializer:
             for a in DEVICE_FIELDS)
         periods = self.kwargs.get("periods", [])
         placements_date_filter = placement_date_filter(periods)
-        flights_date_filter = flight_date_filter(periods)
+        flights_date_filter = flight_date_filter(periods, today)
         return dict(
             start_date=Min("placements__adwords_campaigns__start_date"),
             end_date=Max("placements__adwords_campaigns__end_date"),
@@ -429,9 +430,9 @@ def placement_date_filter(periods):
            ] or [dict()]
 
 
-def flight_date_filter(periods):
+def flight_date_filter(periods, max_start_date=None):
     return [dict(
-        placements__flights__start__lte=end,
+        placements__flights__start__lte=min(end, max_start_date or end),
         placements__flights__end__gte=start)
                for start, end in periods
            ] or [dict()]

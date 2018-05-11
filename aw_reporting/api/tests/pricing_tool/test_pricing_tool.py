@@ -3073,6 +3073,77 @@ class PricingToolTestCase(APITestCase):
         opp_data = response.data["items"][0]
         self.assertAlmostEqual(opp_data["margin"], margin)
 
+    def test_hard_cost_campaign_flight_filtering(self):
+        opportunity = Opportunity.objects.create(id=1, probability=50)
+        today = date(2017, 1, 15)
+        start_1, end_1 = date(2017, 1, 1), date(2017, 1, 31)
+        start_2, end_2 = date(2017, 2, 1), date(2017, 2, 28)
+        aw_cost = 234
+        impressions = 22222222
+
+        placement_cpm = OpPlacement.objects.create(
+            id="1",
+            start=min(start_1, start_2),
+            end=max(end_1, end_2),
+            opportunity=opportunity,
+            ordered_rate=0.2,
+            total_cost=9999,
+            goal_type_id=SalesForceGoalType.CPM)
+        placement_hc = OpPlacement.objects.create(
+            id="2",
+            start=min(start_1, start_2),
+            end=max(end_1, end_2),
+            opportunity=opportunity,
+            total_cost=9999,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        flight_hard_cost_1 = Flight.objects.create(id="1",
+                                                   placement=placement_hc,
+                                                   start=start_1,
+                                                   end=end_1,
+                                                   cost=3240,
+                                                   total_cost=9999)
+        flight_hard_cost_2 = Flight.objects.create(id="2",
+                                                   placement=placement_hc,
+                                                   start=start_2,
+                                                   end=end_2,
+                                                   cost=3240,
+                                                   total_cost=9999)
+        campaign = Campaign.objects.create(salesforce_placement=placement_cpm)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=date(2017, 1, 1),
+                                         cost=aw_cost,
+                                         impressions=impressions)
+        cost = aw_cost + flight_hard_cost_1.cost
+        client_cost = flight_hard_cost_1.total_cost \
+                      + placement_cpm.ordered_rate * impressions / 1000.
+        expected_margin = (1 - cost / client_cost) * 100
+
+        with patch_now(today):
+            response = self.client.post(self.url,
+                                        json.dumps(dict(quarters=["Q1"])),
+                                        content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        opp_data = response.data["items"][0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
+        cost = aw_cost + flight_hard_cost_1.cost + flight_hard_cost_2.cost
+        client_cost = flight_hard_cost_1.total_cost + \
+                      flight_hard_cost_2.total_cost \
+                      + placement_cpm.ordered_rate * impressions / 1000.
+        expected_margin = (1 - cost / client_cost) * 100
+
+        with patch_now(end_2):
+            response = self.client.post(self.url,
+                                        json.dumps(dict(quarters=["Q1"])),
+                                        content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        opp_data = response.data["items"][0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):
