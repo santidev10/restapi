@@ -236,7 +236,7 @@ class UserPasswordSetApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         if not PasswordResetTokenGenerator().check_token(user, token):
             return Response({"error": "Invalid link"}, HTTP_400_BAD_REQUEST)
-        if user.email == "admin@admin.admin":
+        if user.is_superuser:
             return Response(status=HTTP_406_NOT_ACCEPTABLE)
         user.set_password(serializer.data.get("new_password"))
         user.save()
@@ -257,7 +257,7 @@ class UserPasswordChangeApiView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
         user = request.user
-        if user.email == "admin@admin.admin":
+        if user.is_superuser:
             return Response(status=HTTP_406_NOT_ACCEPTABLE)
         old_password = serializer.data.get("old_password")
         new_password = serializer.data.get("new_password")
