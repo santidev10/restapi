@@ -9,3 +9,6 @@ class Name:
 
     class PacingReport:
         OPPORTUNITIES = "pacing_report_opportunities"
+
+    class PricingTool:
+        OPPORTUNITIES = "pricing_tool_opportunities"

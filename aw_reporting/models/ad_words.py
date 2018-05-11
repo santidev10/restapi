@@ -122,38 +122,15 @@ def get_ctr_v(*args, **kwargs):
         return clicks / video_views
 
 
-def get_margin(*_, plan_cost, cost,
-               goal_type_id=None, plan_cpv=None, video_views=None, plan_cpm=None, impressions=None,
-               client_cost=None):
+def get_margin(*_, plan_cost, cost, client_cost=None):
     """
     Margin calculation
     :param _:
-    :param goal_type: "CPV", "CPM" or "CPV & CPM"
     :param plan_cost: Budget IO from SF, maximum allowed cost
     :param cost: real cost from AdWords
-    :param plan_cpv: ordered/client cost per view from SF
-    :param video_views: number of delivered views from AdWords
-    :param plan_cpm: ordered/client cost per 1000 impressions from SF
-    :param impressions: number of delivered impressions from AdWords
-
     :param client_cost: shorter calculation with goal_type, plan_cost, cost and client_cost only
     :return:
     """
-    # ((Served IO * Goals CPV/CPM ) – Cost) /  (Goals CPV/CPM * Served IO)
-    if client_cost is None:
-        client_cost = 0
-        if goal_type_id in [SalesForceGoalType.CPV,
-                            SalesForceGoalType.CPM_AND_CPV] \
-                and plan_cpv and video_views:
-            client_cost += video_views * plan_cpv
-
-        if goal_type_id in [SalesForceGoalType.CPM,
-                            SalesForceGoalType.CPM_AND_CPV] \
-                and plan_cpm and impressions:
-            client_cost += impressions / 1000 * plan_cpm
-        if goal_type_id == SalesForceGoalType.HARD_COST:
-            client_cost = plan_cost or 0
-
     # IF actual spend is below contracted, use actual. Else, use contracted budget (from SalesForce)
     if plan_cost is not None and client_cost > plan_cost:
         client_cost = plan_cost

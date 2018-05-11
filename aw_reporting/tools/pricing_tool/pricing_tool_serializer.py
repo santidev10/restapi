@@ -10,7 +10,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     CampaignStatistic, AdGroup
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
-from utils.datetime import as_date
+from utils.datetime import as_date, now_in_default_tz
 from utils.query import merge_when
 
 
@@ -179,18 +179,16 @@ class PricingToolSerializer:
         average_cpv = cost / video_views if video_views > 0 else 0
 
         goal_type_id = campaign["salesforce_placement__goal_type_id"]
-        is_cpm = goal_type_id in (SalesForceGoalType.CPM,
-                                  SalesForceGoalType.CPM_AND_CPV)
-        is_cpv = goal_type_id in (SalesForceGoalType.CPV,
-                                  SalesForceGoalType.CPM_AND_CPV)
-        ordered_rate = campaign["salesforce_placement__ordered_rate"]
-
-        margin = None
-        if ordered_rate:
-            if goal_type_id == SalesForceGoalType.CPV and average_cpv is not None:
-                margin = (1 - average_cpv / ordered_rate) * 100
-            elif goal_type_id == SalesForceGoalType.CPM and average_cpm is not None:
-                margin = (1 - average_cpm / ordered_rate) * 100
+        is_cpm = goal_type_id == SalesForceGoalType.CPM
+        is_cpv = goal_type_id == SalesForceGoalType.CPV
+        ordered_rate = campaign["salesforce_placement__ordered_rate"] or 0
+        if is_cpm:
+            client_cost = ordered_rate * impressions / 1000.
+        elif is_cpv:
+            client_cost = ordered_rate * video_views
+        else:
+            client_cost = 0
+        margin = get_margin(cost=cost, client_cost=client_cost, plan_cost=None)
 
         devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
                        if campaign[d]])
@@ -288,6 +286,7 @@ class PricingToolSerializer:
                     for c in creatives)
 
     def _opportunity_annotation(self):
+        today = now_in_default_tz().date()
         targeting_aggregate = dict(
             ("has_" + t, Max(Case(When(
                 **{"placements__adwords_campaigns__has_" + t: True,
@@ -317,7 +316,7 @@ class PricingToolSerializer:
             for a in DEVICE_FIELDS)
         periods = self.kwargs.get("periods", [])
         placements_date_filter = placement_date_filter(periods)
-        flights_date_filter = flight_date_filter(periods)
+        flights_date_filter = flight_date_filter(periods, today)
         return dict(
             start_date=Min("placements__adwords_campaigns__start_date"),
             end_date=Max("placements__adwords_campaigns__end_date"),
@@ -325,28 +324,28 @@ class PricingToolSerializer:
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPM,
                             then="placements__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_cpv_cost=Sum(Case(
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPV,
                             then="placements__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_hard_cost_total_cost=Sum(Case(
                 *merge_when(flights_date_filter,
                             placements__goal_type_id=SalesForceGoalType.HARD_COST,
                             then="placements__flights__total_cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_hard_cost_our_cost=Sum(Case(
                 *merge_when(flights_date_filter,
                             placements__goal_type_id=SalesForceGoalType.HARD_COST,
                             then="placements__flights__cost"),
-                output_field=IntegerField(),
+                output_field=FloatField(),
                 default=0
             )),
             sf_cpm_units=Sum(Case(
@@ -429,9 +428,9 @@ def placement_date_filter(periods):
            ] or [dict()]
 
 
-def flight_date_filter(periods):
+def flight_date_filter(periods, max_start_date=None):
     return [dict(
-        placements__flights__start__lte=end,
+        placements__flights__start__lte=min(end, max_start_date or end),
         placements__flights__end__gte=start)
                for start, end in periods
            ] or [dict()]
