@@ -15,7 +15,7 @@ class GlobalPermission(Permission):
 
     class Meta:
         proxy = True
-        # user verbose_name of existing model to get content type
+        # use verbose_name of existing model to get content type
         verbose_name = "userprofile"
 
     def save(self, *args, **kwargs):

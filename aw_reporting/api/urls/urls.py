@@ -27,6 +27,13 @@ urlpatterns = [
         views.AnalyzeExportWeeklyReportApiView.as_view(),
         name="analyze_export_weekly_report"),
 
+    # Admin
+    url(r'^visible_accounts/$', views.VisibleAccountsApiView.as_view(),
+        name='visible_accounts'),
+    url(r'^aw_user_settings/$',
+        views.UserAWSettingsApiView.as_view(),
+        name='aw_user_settings'),
+
     # track
     url(r'^track_filters/$',
         views.TrackFiltersListApiView.as_view(),

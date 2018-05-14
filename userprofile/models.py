@@ -4,6 +4,7 @@ Userprofile models module
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
@@ -55,6 +56,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
+
+    aw_settings = JSONField(default=dict())
 
     objects = UserManager()
 
