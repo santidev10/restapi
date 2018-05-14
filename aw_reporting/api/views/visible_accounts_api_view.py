@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account
+from aw_reporting.settings import AdwordsAccountSettings
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 
@@ -22,11 +23,6 @@ class VisibleAccountsApiView(APIView):
     permission_classes = (IsAdminUser,)
     queryset = Account.objects.filter(managers__isnull=False).order_by('name')
     serializer_class = AdWordsTopManagerSerializer
-    campaign_types = ('display',
-                      'video',
-                      'search',
-                      'shopping',
-                      'multi_channel',)
 
     def get(self, request):
 
@@ -34,7 +30,7 @@ class VisibleAccountsApiView(APIView):
         settings = request.user.aw_settings
         visible_ids = settings.get('visible_accounts')
         types_settings = settings.get('hidden_campaign_types')
-        campaign_types = self.campaign_types
+        campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
 
         for ac_info in data:
             account_id = ac_info['id']
@@ -97,7 +93,7 @@ class VisibleAccountsApiView(APIView):
                         k for k, v in
                         account['campaign_types_visibility'].items()
                         if not v
-                    ]
+                        ]
 
             update = dict(visible_accounts=list(sorted(visible_accounts)),
                           hidden_campaign_types=hidden_types)
@@ -114,16 +110,6 @@ class UserAWSettingsApiView(APIView):
     """
     permission_classes = tuple()
 
-    available_keys = (
-        'dashboard_campaigns_segmented',
-        'demo_account_visible',
-        'dashboard_ad_words_rates',
-        'dashboard_remarketing_tab_is_hidden',
-        'dashboard_costs_are_hidden',
-        'show_conversions',
-        'global_account_visibility',
-    )
-
     def get(self, request):
         user_aw_settings = request.user.aw_settings
         return Response(data=user_aw_settings)
@@ -134,7 +120,7 @@ class UserAWSettingsApiView(APIView):
         user_aw_settings = request.user.aw_settings
 
         # check for valid data in request body
-        keys_to_update = request.data.keys() & set(self.available_keys)
+        keys_to_update = request.data.keys() & set(AdwordsAccountSettings.AVAILABLE_KEYS)
 
         # update user aw settings and save changes
         for key in keys_to_update:
