@@ -134,9 +134,11 @@ class PacingReportFlightsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1",
             opportunity=opportunity,
+            total_cost=1,
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(placement=placement,
                               ordered_units=1,
+                              total_cost=1,
                               start=date(2017, 1, 1),
                               end=date(2017, 2, 1))
         Campaign.objects.create(salesforce_placement=placement,
@@ -596,7 +598,7 @@ class PacingReportFlightsTestCase(APITestCase):
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
-        Flight.objects.create(id="1", placement=placement, ordered_units=9999,
+        Flight.objects.create(id="1", placement=placement,ordered_units=9999,
                               start=start,
                               end=end,
                               total_cost=total_cost)

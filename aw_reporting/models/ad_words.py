@@ -136,10 +136,8 @@ def get_margin(*_, plan_cost, cost, client_cost=None):
         client_cost = plan_cost
     cost = cost or 0
     client_cost = client_cost or 0
-    if cost == 0:
-        return 1
     if client_cost == 0:
-        return -1
+        return 0 if cost == 0 else -1
     return 1 - cost / client_cost
 
 
