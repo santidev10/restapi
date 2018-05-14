@@ -11,7 +11,6 @@ from django.db.models.query import QuerySet as DBQuerySet
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.settings import InstanceSettings
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")

@@ -1009,8 +1009,8 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
             if campaign_id else f
 
         if f["start"] <= today <= f["end"]:
-            today_units, today_budget = get_pacing_goal_for_date(
-                f, today, today, allocation_ko=allocation_ko,
+            today_units, today_budget = get_pacing_goal_for_today(
+                f, today, allocation_ko=allocation_ko,
                 campaign_id=campaign_id)
 
             if goal_type_id == SalesForceGoalType.CPV:
@@ -1074,6 +1074,65 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
             before_yesterday_delivered_impressions=before_yesterday_impressions,
         )
     return data
+
+
+def get_pacing_goal_for_today(flight, today, allocation_ko=1, campaign_id=None):
+    # fixme: requirements inconsistency
+    dynamic_placement = flight["placement__dynamic_placement"]
+    if dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
+        return get_rate_and_tech_fee_today_goal(flight, today, allocation_ko,
+                                                campaign_id)
+    else:
+        return get_pacing_goal_for_date(flight, today, today, allocation_ko,
+                                        campaign_id)
+
+
+def get_rate_and_tech_fee_today_goal(flight, today, allocation_ko=1,
+                                     campaign_id=None):
+    stats_total = get_stats_from_flight(flight, campaign_id=campaign_id,
+                                        end=today - timedelta(days=1))
+    goal_type_id = flight["placement__goal_type_id"]
+    today_budget = today_units = 0
+    total_cost = flight["total_cost"] or 0
+
+    stats_3days = get_stats_from_flight(
+        flight, campaign_id=campaign_id,
+        start=today - timedelta(days=3),
+        end=today - timedelta(days=1),
+    )
+
+    tech_fee = float(flight["placement__tech_fee"] or 0)
+    if goal_type_id == SalesForceGoalType.CPV:
+        video_views = stats_total["video_views"] or 0
+        total_cpv = DefaultRate.CPV \
+            if stats_total["cpv"] is None \
+            else stats_total["cpv"]
+        three_days_cpv = DefaultRate.CPV \
+            if stats_3days["cpv"] is None \
+            else stats_3days["cpv"]
+        client_cost_spent = video_views * (total_cpv + tech_fee)
+        spend_kf = three_days_cpv / (three_days_cpv + tech_fee)
+
+    elif goal_type_id == SalesForceGoalType.CPM:
+        impressions = stats_total["impressions"] or 0
+        total_cpm = DefaultRate.CPM \
+            if stats_total["cpm"] is None \
+            else stats_total["cpm"]
+        three_days_cpm = DefaultRate.CPM \
+            if stats_3days["cpm"] is None \
+            else stats_3days["cpm"]
+        client_cost_spent = impressions / 1000 * (total_cpm + tech_fee)
+        spend_kf = three_days_cpm / (three_days_cpm + tech_fee)
+    else:
+        client_cost_spent = spend_kf = 0
+
+    client_cost_remaining = total_cost * allocation_ko \
+                            - client_cost_spent
+
+    days_remain = (flight["end"] - today).days + 1
+    if days_remain > 0:
+        today_budget = spend_kf * client_cost_remaining / days_remain
+    return today_units, today_budget
 
 
 def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
