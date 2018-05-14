@@ -752,6 +752,10 @@ class DemoAccount(BaseDemo):
         return self
 
     @property
+    def visible(self):
+        return InstanceSettings().get("demo_account_visible")
+
+    @property
     def details(self):
         from aw_reporting.demo.charts import DemoChart
 
