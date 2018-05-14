@@ -386,8 +386,12 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertAlmostEqual(flight["video_view_rate"],
                                views / impressions * 100)
         self.assertAlmostEqual(flight["ctr"], clicks / views * 100)
-        self.assertIsNone(flight["pacing"])
-        self.assertIsNone(flight["margin"])
+
+        self.assertTrue(cost > flight_1.total_cost)
+        expected_margin = (1 - cost / flight_1.total_cost) * 100.
+        expected_pacing = cost / flight_1.total_cost * 100.
+        self.assertEqual(flight["margin"], expected_margin)
+        self.assertEqual(flight["pacing"], expected_pacing)
 
     def test_pacing_report_dynamic_placement_daily_statistic(self):
         now = timezone.now()
@@ -664,7 +668,8 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(self):
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(
+            self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -993,3 +998,35 @@ class PacingReportFlightsTestCase(APITestCase):
                               "plan_cpv, {}, {}".format(
                                   goal_type_str(goal_type_id),
                                   dynamic_type))
+
+    def test_dynamic_placement_budget_margin_pacing(self):
+        today = date(2017, 1, 15)
+        yesterday = today - timedelta(days=1)
+        start, end = today - timedelta(days=10), today + timedelta(days=15)
+        total_cost = 4322
+        total_days = (end - start).days + 1
+        days_left = (yesterday - start).days + 1
+        aw_cost = 1234
+        expected_pacing = aw_cost / (total_cost / total_days * days_left) * 100.
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(
+            id="1",
+            opportunity=opportunity,
+            total_cost=total_cost,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        Flight.objects.create(placement=placement,
+                              total_cost=total_cost,
+                              start=start, end=end)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=start,
+                                         cost=aw_cost)
+
+        url = self._get_url(placement.id)
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        fl_data = response.data[0]
+        self.assertEqual(fl_data["margin"], 0)
+        self.assertAlmostEqual(fl_data["pacing"], expected_pacing)
