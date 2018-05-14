@@ -379,7 +379,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         placement = OpPlacement.objects.create(
             goal_type_id=SalesForceGoalType.HARD_COST,
-            opportunity=opportunity, total_cost=10)
+            opportunity=opportunity, total_cost=1)
+        Flight.objects.create(placement=placement,
+                              start=today, end=today,
+                              total_cost=1)
         Campaign.objects.create(
             salesforce_placement=placement, cost=0)
         response = self.client.get(self.url)

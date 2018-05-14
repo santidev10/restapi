@@ -862,8 +862,6 @@ class PacingReport:
         )
         all_aw_before_yesterday_stats = {i[id_field]: i for i in
                                          all_aw_before_yesterday_stats}
-        is_budget_dynamic_placement = placement.dynamic_placement \
-                                      == DynamicPlacementType.BUDGET
 
         flights = []
         for f in flights_data:
@@ -884,10 +882,10 @@ class PacingReport:
             delivery_stats = self.get_delivery_stats_from_flights(f_data)
             flight.update(delivery_stats)
 
-            if not is_budget_dynamic_placement:
-                flight["pacing"] = self.get_pacing_from_flights(f_data)
-                flight["margin"] = self.get_margin_from_flights(
-                    f_data, flight["cost"], flight["plan_cost"])
+            flight["pacing"] = self.get_pacing_from_flights(f_data)
+            flight["margin"] = self.get_margin_from_flights(f_data,
+                                                            flight["cost"],
+                                                            flight["plan_cost"])
 
             # chart data
             before_yesterday_stats = all_aw_before_yesterday_stats.get(f['id'],

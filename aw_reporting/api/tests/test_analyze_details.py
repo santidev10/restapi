@@ -47,9 +47,13 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         )
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         date = datetime.now().date() - timedelta(days=1)
-        AdGroupStatistic.objects.create(ad_group=ad_group, date=date, average_position=1, ad_network="123", **stats)
-        target, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name=""))
-        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target, **stats)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=date,
+                                        average_position=1, ad_network="123",
+                                        **stats)
+        target, _ = GeoTarget.objects.get_or_create(id=1,
+                                                    defaults=dict(name=""))
+        CityStatistic.objects.create(ad_group=ad_group, date=date, city=target,
+                                     **stats)
 
         url = reverse("aw_reporting_urls:analyze_details",
                       args=(account.id,))
@@ -135,7 +139,8 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
             set(data["overview"].keys()),
             self.overview_keys,
         )
-        self.assertEqual(data["details"]['delivery_trend'][0]['label'], "Impressions")
+        self.assertEqual(data["details"]['delivery_trend'][0]['label'],
+                         "Impressions")
         self.assertEqual(data["details"]['delivery_trend'][1]['label'], "Views")
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
@@ -168,4 +173,3 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
             data['overview']['impressions'],
             IMPRESSIONS / TOTAL_DEMO_AD_GROUPS_COUNT * len(ad_groups),
         )
-

@@ -1,3 +1,5 @@
+from .visible_accounts_api_view import VisibleAccountsApiView
+from .visible_accounts_api_view import UserAWSettingsApiView
 from .analyze_account_campaigns import AnalyzeAccountCampaignsListApiView
 from .analyze_accounts_list import AnalyzeAccountsListApiView
 from .analyze_chart import AnalyzeChartApiView

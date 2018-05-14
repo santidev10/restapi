@@ -2894,8 +2894,11 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(data["items"][0]["id"], opportunity_1.id)
 
     def test_margin_hard_cost_zero_our_cost(self):
-        self._create_opportunity_campaign("1", SalesForceGoalType.HARD_COST,
-                                          generate_statistic=False)
+        _, campaign = self._create_opportunity_campaign(
+            "1", SalesForceGoalType.HARD_COST, generate_statistic=False)
+        placement = campaign.salesforce_placement
+        Flight.objects.create(placement=placement,
+                              total_cost=1)
         response = self.client.post(self.url, "{}",
                                     content_type='application/json')
 

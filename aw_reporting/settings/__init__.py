@@ -101,3 +101,20 @@ class InstanceSettings(YAMLSettings):
     }
 
     file_name = "instance"
+
+
+class AdwordsAccountSettings:
+    AVAILABLE_KEYS = (
+        'dashboard_campaigns_segmented',
+        'demo_account_visible',
+        'dashboard_ad_words_rates',
+        'dashboard_remarketing_tab_is_hidden',
+        'dashboard_costs_are_hidden',
+        'show_conversions',
+        'global_account_visibility',
+    )
+    CAMPAIGN_TYPES = ('display',
+                      'video',
+                      'search',
+                      'shopping',
+                      'multi_channel',)
