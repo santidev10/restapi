@@ -3147,6 +3147,28 @@ class PricingToolTestCase(APITestCase):
         opp_data = response.data["items"][0]
         self.assertAlmostEqual(opp_data["margin"], expected_margin)
 
+    def test_filtering_targeting_and(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2418
+        Summary: Pricing tool > Targeting Type filter incorrectly works
+        """
+        opportunity = Opportunity.objects.create(id=1)
+        opportunity.refresh_from_db()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Campaign.objects.create(id=1, salesforce_placement=placement,
+                                has_channels=True)
+        Campaign.objects.create(id=2, salesforce_placement=placement,
+                                has_interests=True)
+        filters = dict(
+            targeting_types=["interests", "channels"],
+            targeting_types_condition="and")
+        response = self.client.post(self.url,
+                                    json.dumps(filters),
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], opportunity.id)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):
