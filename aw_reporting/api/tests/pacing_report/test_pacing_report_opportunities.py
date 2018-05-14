@@ -489,7 +489,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]["cpv"]
+        chart_data = response.data["items"][0]["chart_data"]["budget"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
 
     def test_cpm_dynamic_placement_rate_and_tech_fee_today_goal(self):
@@ -533,7 +533,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]["cpm"]
+        chart_data = response.data["items"][0]["chart_data"]["budget"]
         self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
 
     def test_dynamic_placement_negative(self):
