@@ -960,7 +960,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                   start=start,
                                   end=end,
                                   total_cost=12)
-            return placement
+            return pl
 
         test_data = product(
             (
