@@ -668,3 +668,34 @@ class PacingReportPlacementsTestCase(APITestCase):
             self.assertIsNone(pl["plan_cpv"],
                               "plan_cpv, {}, {}".format(pl["goal_type"], pl[
                                   "dynamic_placement"]))
+
+    def test_dynamic_placement_budget_margin(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2435
+        Summary:
+        Pacing report > Margin should be 0% for Dynamic placement: Budget
+        if there was no over delivery
+        :return:
+        """
+        today = date(2018, 5, 14)
+        start, end = date(2018, 5, 10), date(2018, 6, 10)
+        total_cost = 6042.9
+        opportunity = Opportunity.objects.create(id=1, probability=100)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=total_cost,
+            start=start, end=end)
+        Flight.objects.create(id=1,
+                              placement=placement,
+                              start=start, end=end,
+                              total_cost=total_cost)
+        url = self._get_url(opportunity.id)
+        with patch_now(today):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        pl_data = response.data[0]
+        self.assertEqual(pl_data["margin"], 0)
