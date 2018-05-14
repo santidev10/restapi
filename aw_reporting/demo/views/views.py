@@ -4,8 +4,8 @@ from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 
 
@@ -62,14 +62,18 @@ class AnalyzeDetailsApiView:
 
                 account = DemoAccount()
                 data = account.account_details
-                data['details'] = account.details
+                data["details"] = account.details
 
-                account.set_period_proportion(filters['start_date'],
-                                              filters['end_date'])
+                account.set_period_proportion(filters["start_date"],
+                                              filters["end_date"])
                 account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
+                    filters["campaigns"], filters["ad_groups"],
                 )
-                data['overview'] = account.overview
+                data["overview"] = account.overview
+                for key in ("plan_video_views", "delivered_video_views",
+                            "plan_cost", "delivered_cost",
+                            "delivered_impressions", "plan_impressions"):
+                    del data["overview"][key]
                 return Response(status=HTTP_200_OK, data=data)
             else:
                 return original_method(view, request, pk=pk, **kwargs)

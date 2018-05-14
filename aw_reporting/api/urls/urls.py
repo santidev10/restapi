@@ -27,6 +27,13 @@ urlpatterns = [
         views.AnalyzeExportWeeklyReportApiView.as_view(),
         name="analyze_export_weekly_report"),
 
+    # Admin
+    url(r'^visible_accounts/$', views.VisibleAccountsApiView.as_view(),
+        name='visible_accounts'),
+    url(r'^aw_user_settings/$',
+        views.UserAWSettingsApiView.as_view(),
+        name='aw_user_settings'),
+
     # track
     url(r'^track_filters/$',
         views.TrackFiltersListApiView.as_view(),
@@ -66,7 +73,7 @@ urlpatterns = [
         name="pacing_report_filters"),
     url(r'^pacing_report_flights/(?P<pk>\w+)/$',
         views.PacingReportFlightsApiView.as_view(),
-        name="pacing_report_flights"),
+        name=Name.PacingReport.FLIGHTS),
     url(r'^pacing_report_placements/(?P<pk>\w+)/$',
         views.PacingReportPlacementsApiView.as_view(),
         name=Name.PacingReport.PLACEMENTS),

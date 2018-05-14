@@ -7,26 +7,32 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
     HTTP_404_NOT_FOUND
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
     SalesForceGoalType, Campaign, CampaignStatistic, goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
 class PacingReportFlightsTestCase(APITestCase):
+    @staticmethod
+    def _get_url(*args):
+        return reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.FLIGHTS,
+                       args=args)
 
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_forbidden_get(self):
         self.user.delete()
-        url = reverse("aw_reporting_urls:pacing_report_flights", args=(1,))
+        url = self._get_url(1)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_not_found_get(self):
-        url = reverse("aw_reporting_urls:pacing_report_flights", args=(1,))
+        url = self._get_url(1)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
@@ -45,8 +51,7 @@ class PacingReportFlightsTestCase(APITestCase):
             start="2017-01-01", end="2017-12-31", ordered_units=10,
         )
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -107,8 +112,7 @@ class PacingReportFlightsTestCase(APITestCase):
         CampaignStatistic.objects.create(date=date(2017, 1, 1),
                                          campaign=campaign,
                                          cost=amount_spend)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -140,8 +144,7 @@ class PacingReportFlightsTestCase(APITestCase):
         Campaign.objects.create(salesforce_placement=placement,
                                 cost=0)
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -164,8 +167,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          cost=1)
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -192,8 +194,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          cost=cost)
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -217,8 +218,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          cost=1)
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -234,8 +234,7 @@ class PacingReportFlightsTestCase(APITestCase):
         Flight.objects.create(
             placement=placement, ordered_units=1, total_cost=1,
             start=date(2017, 1, 1), end=date(2017, 2, 1))
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNone(response.data[0]["today_budget"])
@@ -259,8 +258,7 @@ class PacingReportFlightsTestCase(APITestCase):
             start=start, end=end, ordered_units=ordered_unit,
         )
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(now):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -322,8 +320,7 @@ class PacingReportFlightsTestCase(APITestCase):
                        impressions=Sum("impressions"), clicks=Sum("clicks"))
         cost = flight_1_statistic["cost"]
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(now):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -380,8 +377,7 @@ class PacingReportFlightsTestCase(APITestCase):
         impressions = flight_1_statistic["impressions"]
         clicks = flight_1_statistic["clicks"]
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(now):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -392,8 +388,12 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertAlmostEqual(flight["video_view_rate"],
                                views / impressions * 100)
         self.assertAlmostEqual(flight["ctr"], clicks / views * 100)
-        self.assertIsNone(flight["pacing"])
-        self.assertIsNone(flight["margin"])
+
+        self.assertTrue(cost > flight_1.total_cost)
+        expected_margin = (1 - cost / flight_1.total_cost) * 100.
+        expected_pacing = cost / flight_1.total_cost * 100.
+        self.assertEqual(flight["margin"], expected_margin)
+        self.assertEqual(flight["pacing"], expected_pacing)
 
     def test_pacing_report_dynamic_placement_daily_statistic(self):
         now = timezone.now()
@@ -426,8 +426,7 @@ class PacingReportFlightsTestCase(APITestCase):
             .filter(campaign__salesforce_placement=placement) \
             .aggregate(cost=Sum("cost"))["cost"]
 
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(opportunity.id,))
+        url = self._get_url(placement.id)
         response = self.client.get(url)
 
         placement_data = response.data[0]
@@ -465,8 +464,7 @@ class PacingReportFlightsTestCase(APITestCase):
         campaign = Campaign.objects.create(salesforce_placement=placement)
         CampaignStatistic.objects.create(campaign=campaign, date=start, cost=4,
                                          video_views=8888)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -511,8 +509,7 @@ class PacingReportFlightsTestCase(APITestCase):
                               start=start,
                               end=end,
                               total_cost=total_cost)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -560,8 +557,7 @@ class PacingReportFlightsTestCase(APITestCase):
         campaign = Campaign.objects.create(salesforce_placement=placement)
         CampaignStatistic.objects.create(campaign=campaign, date=start, cost=4,
                                          video_views=8888)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -588,55 +584,6 @@ class PacingReportFlightsTestCase(APITestCase):
 
         expected_ideal_pacing = [
             dict(value=4, label=start),  # yesterday
-            dict(value=8, label=today),  # today
-            dict(value=12, label=end),  # tomorrow
-        ]
-        opportunity = Opportunity.objects.create(
-            id="1", name="1", start=start, end=end
-        )
-        placement = OpPlacement.objects.create(
-            id="1", name="BBB", opportunity=opportunity,
-            start=start - timedelta(days=1), end=end,
-            goal_type_id=SalesForceGoalType.CPV,
-            ordered_units=9999,
-            dynamic_placement=DynamicPlacementType.SERVICE_FEE,
-            total_cost=total_cost,
-        )
-        Flight.objects.create(id="1", placement=placement,
-                              ordered_units=9999,
-                              start=start,
-                              end=end,
-                              total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(campaign=campaign, date=start, cost=4,
-                                         video_views=8888)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
-        with patch_now(today):
-            response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        flight_data = response.data[0]
-        self.assertEqual(flight_data["plan_cost"], total_cost)
-        self.assertIsNotNone(flight_data["charts"])
-        charts = dict((c["id"], c["data"]) for c in flight_data["charts"])
-        ideal_pacing = charts.get(PacingReportChartId.IDEAL_PACING, [])
-        charts_zipped = zip(ideal_pacing, expected_ideal_pacing)
-        for actual, expected in charts_zipped:
-            label = expected["label"]
-            self.assertEqual(actual["label"], label)
-            self.assertAlmostEqual(actual["value"], expected["value"],
-                                   msg=label)
-
-    def test_dynamic_placement_service_fee_charts_ideal_pacing_no_delivery(self):
-        today = date(2017, 1, 15)
-        start = today - timedelta(days=1)
-        end = today + timedelta(days=1)
-        total_cost = 12
-
-        expected_ideal_pacing = [
-            dict(value=4, label=start),  # yesterday
             dict(value=6, label=today),  # today
             dict(value=12, label=end),  # tomorrow
         ]
@@ -651,13 +598,11 @@ class PacingReportFlightsTestCase(APITestCase):
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
-        Flight.objects.create(id="1", placement=placement,
-                              ordered_units=9999,
+        Flight.objects.create(id="1", placement=placement,ordered_units=9999,
                               start=start,
                               end=end,
                               total_cost=total_cost)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -707,8 +652,7 @@ class PacingReportFlightsTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=start,
                                          cost=6,
                                          video_views=8888)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -726,7 +670,8 @@ class PacingReportFlightsTestCase(APITestCase):
             self.assertAlmostEqual(actual["value"], expected["value"],
                                    msg=label)
 
-    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(self):
+    def test_dynamic_placement_rate_and_tech_fee_charts_ideal_pacing_no_delivery(
+            self):
         today = date(2017, 1, 15)
         start = today - timedelta(days=1)
         end = today + timedelta(days=1)
@@ -752,8 +697,7 @@ class PacingReportFlightsTestCase(APITestCase):
                               ordered_units=9999, start=start,
                               end=end,
                               total_cost=total_cost)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -797,8 +741,7 @@ class PacingReportFlightsTestCase(APITestCase):
         CampaignStatistic.objects.create(date=yesterday,
                                          campaign=campaign,
                                          cost=yesterday_spend)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
 
@@ -832,8 +775,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -881,8 +823,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          clicks=clicks,
                                          video_views=views,
                                          impressions=impressions)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -914,9 +855,7 @@ class PacingReportFlightsTestCase(APITestCase):
         yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
         end = today + timedelta(days=5)
-        days_total = (end - start).days + 1
         days_left = (end - today).days + 1
-        days_passed = (yesterday - start).days + 1
         tech_fee = 0.12
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=start, end=end
@@ -947,8 +886,7 @@ class PacingReportFlightsTestCase(APITestCase):
                                          clicks=clicks,
                                          video_views=views,
                                          impressions=impressions)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -984,8 +922,7 @@ class PacingReportFlightsTestCase(APITestCase):
                               total_cost=total_cost)
         Campaign.objects.create(salesforce_placement=placement,
                                 video_views=1)
-        url = reverse("aw_reporting_urls:pacing_report_flights",
-                      args=(placement.id,))
+        url = self._get_url(placement.id)
         with patch_now(today):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1017,19 +954,20 @@ class PacingReportFlightsTestCase(APITestCase):
             id="1", name="1", start=start, end=end
         )
 
-        def create_placement_and_flight(uid, dynamic_placement, goal_type_id):
-            placement = OpPlacement.objects.create(
+        def create_placement_and_flight(uid, dynamic_placement, gt_id):
+            pl = OpPlacement.objects.create(
                 id=uid, opportunity=opportunity,
                 start=start, end=end, total_cost=12,
-                goal_type_id=goal_type_id,
+                goal_type_id=gt_id,
                 ordered_rate=2.1,
                 dynamic_placement=dynamic_placement,
                 tech_fee=0.02
             )
-            Flight.objects.create(id=uid, placement=placement, start=start,
+            Flight.objects.create(id=uid, placement=pl,
+                                  start=start,
                                   end=end,
                                   total_cost=12)
-            return placement
+            return pl
 
         test_data = product(
             (
@@ -1048,8 +986,7 @@ class PacingReportFlightsTestCase(APITestCase):
             placement = create_placement_and_flight(i, dynamic_type,
                                                     goal_type_id)
 
-            url = reverse("aw_reporting_urls:pacing_report_flights",
-                          args=(placement.id,))
+            url = self._get_url(placement.id)
             with patch_now(today):
                 response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1063,3 +1000,35 @@ class PacingReportFlightsTestCase(APITestCase):
                               "plan_cpv, {}, {}".format(
                                   goal_type_str(goal_type_id),
                                   dynamic_type))
+
+    def test_dynamic_placement_budget_margin_pacing(self):
+        today = date(2017, 1, 15)
+        yesterday = today - timedelta(days=1)
+        start, end = today - timedelta(days=10), today + timedelta(days=15)
+        total_cost = 4322
+        total_days = (end - start).days + 1
+        days_left = (yesterday - start).days + 1
+        aw_cost = 1234
+        expected_pacing = aw_cost / (total_cost / total_days * days_left) * 100.
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(
+            id="1",
+            opportunity=opportunity,
+            total_cost=total_cost,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        Flight.objects.create(placement=placement,
+                              total_cost=total_cost,
+                              start=start, end=end)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=start,
+                                         cost=aw_cost)
+
+        url = self._get_url(placement.id)
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        fl_data = response.data[0]
+        self.assertEqual(fl_data["margin"], 0)
+        self.assertAlmostEqual(fl_data["pacing"], expected_pacing)

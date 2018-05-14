@@ -43,6 +43,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         "ctr_v_top", "cost_last_week", "average_cpv_top",
         "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
         "average_cpv_bottom", "ctr_top", "impressions_last_week",
+
+        "plan_video_views", "delivered_impressions", "plan_impressions",
+        "delivered_cost", "delivered_video_views", "plan_cost"
     }
 
     detail_keys = {

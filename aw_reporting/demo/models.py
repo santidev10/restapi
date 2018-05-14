@@ -1,5 +1,4 @@
-import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from aw_reporting.models import *
 # pylint: disable=import-error
@@ -90,7 +89,9 @@ class BaseDemo:
             connector = SingleDatabaseApiConnector()
             try:
                 fields = ("channel_id", "title", "thumbnail_image_url")
-                query_params = dict(fields=",".join(fields), sort="subscribers:desc", **self.common_media_filters)
+                query_params = dict(fields=",".join(fields),
+                                    sort="subscribers:desc",
+                                    **self.common_media_filters)
                 response_data = connector.get_channel_list(query_params)
                 items = response_data["items"][:12]
                 for i in items:
@@ -107,8 +108,10 @@ class BaseDemo:
         if self._videos is None:
             connector = SingleDatabaseApiConnector()
             try:
-                fields = ("video_id", "title", "thumbnail_image_url", "duration")
-                query_params = dict(fields=",".join(fields), sort="views:desc", **self.common_media_filters)
+                fields = (
+                "video_id", "title", "thumbnail_image_url", "duration")
+                query_params = dict(fields=",".join(fields), sort="views:desc",
+                                    **self.common_media_filters)
                 response_data = connector.get_video_list(query_params)
                 items = response_data["items"][:12]
                 for i in items:
@@ -459,7 +462,8 @@ class DemoAdGroup(BaseDemo):
 
     @property
     def impressions_last_week(self):
-        return int(IMPRESSIONS * self.items_proportion * self.last_week_proportions)
+        return int(
+            IMPRESSIONS * self.items_proportion * self.last_week_proportions)
 
     @property
     def video_views(self):
@@ -471,7 +475,8 @@ class DemoAdGroup(BaseDemo):
 
     @property
     def video_views_last_week(self):
-        return int(VIDEO_VIEWS * self.items_proportion * self.last_week_proportions)
+        return int(
+            VIDEO_VIEWS * self.items_proportion * self.last_week_proportions)
 
     @property
     def clicks(self):
@@ -499,7 +504,8 @@ class DemoAdGroup(BaseDemo):
 
     @property
     def all_conversions(self):
-        return int(ALL_CONVERSIONS * self.items_proportion * self.period_proportion)
+        return int(
+            ALL_CONVERSIONS * self.items_proportion * self.period_proportion)
 
     @property
     def conversions(self):
@@ -507,7 +513,8 @@ class DemoAdGroup(BaseDemo):
 
     @property
     def view_through(self):
-        return int(VIEW_THROUGH * self.items_proportion * self.period_proportion)
+        return int(
+            VIEW_THROUGH * self.items_proportion * self.period_proportion)
 
     def get_targeting_list(self, list_type, sub_list_type=None):
         from aw_creation.models import TargetingItem
@@ -568,7 +575,8 @@ class DemoAdGroup(BaseDemo):
             ]
         if sub_list_type:
             is_negative = sub_list_type == "negative"
-            items = list(filter(lambda i: i["is_negative"] == is_negative, items))
+            items = list(
+                filter(lambda i: i["is_negative"] == is_negative, items))
         return items
 
     @property
@@ -752,6 +760,10 @@ class DemoAccount(BaseDemo):
         return self
 
     @property
+    def visible(self):
+        return InstanceSettings().get("demo_account_visible")
+
+    @property
     def details(self):
         from aw_reporting.demo.charts import DemoChart
 
@@ -770,8 +782,9 @@ class DemoAccount(BaseDemo):
             conversions=self.conversions,
             all_conversions=self.all_conversions,
             view_through=self.view_through,
-            creative=[dict(id=i['id'], name=i['label'], thumbnail=i['thumbnail'])
-                      for i in self.creative],
+            creative=[
+                dict(id=i['id'], name=i['label'], thumbnail=i['thumbnail'])
+                for i in self.creative],
 
             delivery_trend=[],
             ad_network=self.ad_network
@@ -833,6 +846,13 @@ class DemoAccount(BaseDemo):
             conversions=self.conversions,
             all_conversions=self.all_conversions,
             view_through=self.view_through,
+            delivered_video_views=None,
+            delivered_impressions=None,
+            plan_video_views=None,
+            plan_cost=None,
+            delivered_cost=None,
+            plan_impressions=None,
+
         )
         return data
 
@@ -883,7 +903,8 @@ class DemoAccount(BaseDemo):
         return data
 
     @property
-    def account_details(self):  # TODO: remove this after we get rid of Track page
+    def account_details(
+            self):  # TODO: remove this after we get rid of Track page
         from aw_reporting.demo.charts import DemoChart
         filters = dict(
             start_date=self.today - timedelta(days=7),
@@ -989,11 +1010,13 @@ class DemoAccount(BaseDemo):
             return
 
         min_campaigns_count = filters.get('min_campaigns_count')
-        if min_campaigns_count and int(min_campaigns_count) > DEMO_CAMPAIGNS_COUNT:
+        if min_campaigns_count and int(
+                min_campaigns_count) > DEMO_CAMPAIGNS_COUNT:
             return
 
         max_campaigns_count = filters.get('max_campaigns_count')
-        if max_campaigns_count and int(max_campaigns_count) < DEMO_CAMPAIGNS_COUNT:
+        if max_campaigns_count and int(
+                max_campaigns_count) < DEMO_CAMPAIGNS_COUNT:
             return
 
         min_start = filters.get('min_start')
@@ -1017,7 +1040,9 @@ class DemoAccount(BaseDemo):
             if int(is_changed):
                 return
 
-        for metric in ("impressions", "video_views", "clicks", "cost", "video_view_rate", "ctr_v"):
+        for metric in (
+        "impressions", "video_views", "clicks", "cost", "video_view_rate",
+        "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
