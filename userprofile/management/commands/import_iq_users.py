@@ -86,3 +86,4 @@ class Command(BaseCommand):
 
             if not user.aw_settings:
                 user.aw_settings = self.DEFAULT_AW_SETTINGS
+                user.save()
