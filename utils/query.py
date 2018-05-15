@@ -1,6 +1,6 @@
 from functools import reduce
 
-from django.db.models import Q, When, Count
+from django.db.models import Q, When, Count, QuerySet
 
 
 class Operator:
@@ -42,7 +42,7 @@ def AND(*args):
     return reduce(lambda r, f: r & Q(**f), args, Q())
 
 
-def split_request(initial_queryset, filters, chunk_size):
+def split_request(initial_queryset: QuerySet, filters, chunk_size):
     chunks = [filters[i:i + chunk_size]
               for i in range(0, len(filters), chunk_size)]
     queryset = initial_queryset

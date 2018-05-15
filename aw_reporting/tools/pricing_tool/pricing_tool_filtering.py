@@ -1,10 +1,11 @@
 from collections import defaultdict
 from functools import reduce
 
-from django.db.models import Count, FloatField, CharField
+from django.db.models import Count, FloatField, CharField, BooleanField, \
+    QuerySet
 from django.db.models import Q, F, Min, When, Case, Max, \
     Sum, IntegerField
-from django.db.models.expressions import CombinedExpression
+from django.db.models.expressions import CombinedExpression, Value
 
 from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
     TopicStatistic, Topic, Audience, Campaign, Opportunity, AgeRanges, \
@@ -195,15 +196,25 @@ class PricingToolFiltering:
                 queryset)
         return queryset, True
 
-    def _filter_by_targeting_types(self, queryset):
+    def _filter_by_targeting_types(self, queryset: QuerySet):
         targeting_types = self.kwargs.get("targeting_types")
         if targeting_types is None:
             return queryset, False
         condition = self.kwargs.get("targeting_types_condition",
                                     self.default_condition)
-        fields = ["placements__adwords_campaigns__has_{}".format(t)
-                  for t in targeting_types]
-        return queryset.filter(build_query_bool(fields, condition)), True
+        true_value = Value(1)
+        annotation ={"has_" + t: Max(Case(When(
+                **{"placements__adwords_campaigns__has_" + t: Value(True),
+                   "then": true_value}),
+                output_field=BooleanField(),
+                default=Value(0)))
+                for t in TARGETING_TYPES}
+        queryset = queryset.annotate(**annotation)
+
+        fields = ["has_{}".format(t) for t in targeting_types]
+
+        return queryset.filter(
+            build_query_bool(fields, condition, true_value)), True
 
     def _filter_by_demographic(self):
         return [
