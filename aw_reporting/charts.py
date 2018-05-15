@@ -184,13 +184,12 @@ class DeliveryChart:
     def _plan_value_for_date(self, placements, date):
         values = [self._plan_placement_value_for_date(p, date) for p in
                   placements]
-        values = [
-            val if len(val) > 0
-            else (val[0], 1) if len(val)>0
+        values_groups = [
+            val if len(val) > 1
+            else (val[0], 1) if len(val) > 0
             else (0, 1)
             for val in values
         ]
-        values_groups = list(zip(*values))
         numerator = sum(values_groups[0]) if len(values_groups) > 0 else 0
         denominator = sum(values_groups[1]) if len(values_groups) > 1 else 1
 
