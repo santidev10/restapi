@@ -185,10 +185,12 @@ class DeliveryChart:
         values = [self._plan_placement_value_for_date(p, date) for p in
                   placements]
         numerators = [val[0] for val in values]
-        denominator = [val[1] if len(val) > 1 else 0 for val in values]
+        denominators = [val[1] if len(val) > 1 else 0 for val in values]
+
         numerator = sum(numerators) if numerators else 0
-        denominator = sum(denominator) if denominator else 1
-        return dict(value=numerator / max(denominator,1),
+        denominator = sum(denominators) if denominators else 1
+
+        return dict(value=numerator / denominator,
                     label=date)
 
     def _extend_to_day(self, item):

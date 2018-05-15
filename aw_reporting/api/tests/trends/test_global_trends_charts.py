@@ -546,10 +546,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         placement_2.save()
         expected_planned_trend = [
             dict(label=any_date,
-                 value=sum([total_cost_1, total_cost_2]) * 1000.
-                       / sum([ordered_units_1, ordered_units_2])),
+                 value=sum([total_cost_1, total_cost_2])
+                 / sum([ordered_units_1/1000., ordered_units_2/1000.])),
         ]
-
         filters = dict(
             start_date=start,
             end_date=end,
