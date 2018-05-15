@@ -61,7 +61,6 @@ class PricingToolEstimate:
         compare_yoy = self.kwargs.get("compare_yoy")
 
         queryset = self._get_ad_group_statistic_queryset()
-
         queryset = queryset.filter(cost__gt=0)
 
         data = queryset.values('date').order_by('date').annotate(
@@ -129,16 +128,25 @@ class PricingToolEstimate:
 
         if len(periods) == 0:
             return [], []
-        date_filter = reduce(lambda r, p: r | Q(start__lte=p[1], end__gte=p[0]),
-                             periods,
-                             Q())
-        placements_data = OpPlacement.objects \
-            .filter(date_filter,
-                    opportunity__in=self.opportunities) \
+        placements_data = self._get_placements_queryset() \
             .values("start", "end", "total_cost", "ordered_units",
                     "goal_type_id")
 
         return _planned_stats(placements_data, periods, compare_yoy)
+
+    def _get_placements_queryset(self):
+        periods = self.kwargs["periods"]
+        date_filter = reduce(lambda r, p: r | Q(start__lte=p[1], end__gte=p[0]),
+                             periods,
+                             Q())
+        queryset = OpPlacement.objects \
+            .filter(date_filter,
+                    opportunity__in=self.opportunities)
+
+        exclude_opportunities = self.kwargs.get("exclude_opportunities")
+        if exclude_opportunities:
+            queryset = queryset.exclude(opportunity_id__in=exclude_opportunities)
+        return queryset
 
     def _filter_specified_date_range(self, queryset):
         periods = self.kwargs["periods"]

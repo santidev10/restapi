@@ -968,3 +968,34 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                cpv_cost * 1. / cpv_units)
         self.assertAlmostEqual(planned_cpv_current[0]["value"],
                                cpv_cost * 1. / cpv_units)
+
+    def test_exclude_opportunities_applied_to_planned_chart(self):
+        today = date(2017, 1, 1)
+        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        opportunity = Opportunity.objects.create(id=1)
+        opportunity.refresh_from_db()
+
+        common_data = dict(start=start, end=start)
+        placement_data = dict(total_cost=123, ordered_units=9999, **common_data)
+
+        placement_1 = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            **placement_data)
+        placement_2 = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            **placement_data)
+        Campaign.objects.create(id=1, salesforce_placement=placement_1,
+                                **common_data)
+        Campaign.objects.create(id=2, salesforce_placement=placement_2,
+                                **common_data)
+
+        with patch_now(today):
+            response = self._request(
+                quarters=["Q1"],
+                exclude_opportunities=[opportunity.id]
+            )
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        charts = response.data["charts"]
+        self.assertIsNone(charts["cpm"])
+        self.assertIsNone(charts["cpv"])
