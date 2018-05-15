@@ -6,23 +6,30 @@ from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK, \
     HTTP_401_UNAUTHORIZED
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
     Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
 from aw_reporting.tasks import recalculate_de_norm_fields
+from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase, patch_now, \
     patch_instance_settings
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):
+    _url = reverse(Namespace.AW_REPORTING + ":" + Name.PricingTool.ESTIMATE)
+
+    def _request(self, **kwargs):
+        return self.client.post(self._url, json.dumps(kwargs),
+                                content_type="application/json")
+
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_failed_access(self):
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         self.user.delete()
 
-        response = self.client.get(url)
+        response = self._request()
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_pricing_tool_estimate(self):
@@ -43,12 +50,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             cost=2, average_position=1,
         )
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-
-        response = self.client.post(
-            url, json.dumps(dict()),
-            content_type='application/json'
-        )
+        response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -82,16 +84,12 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             cost=2, average_position=1,
         )
 
-        request_data = json.dumps(dict(
+        request_data = dict(
             product_types=["Bumper", "Display"],
             product_types_condition="and",
-        ))
-
-        estimate_url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            estimate_url, request_data,
-            content_type='application/json'
         )
+
+        response = self._request(**request_data)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNone(response.data["average_cpm"])
         self.assertIsNone(response.data["average_cpv"])
@@ -113,14 +111,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             ad_group=ad_group, date=today, impressions=10, video_views=4,
             cost=2, average_position=1,
         )
-        estimate_url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            estimate_url,
-            json.dumps(dict(
-                {"creative_lengths": [5]}
-            )),
-            content_type='application/json'
-        )
+
+        response = self._request(creative_lengths=[5])
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_estimate_compare_yoy(self):
@@ -163,14 +155,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(now):
-            response = self.client.post(
-                url,
-                json.dumps(dict(quarters=["Q1", "Q4"],
-                                compare_yoy=True)),
-                content_type='application/json'
-            )
+            response = self._request(quarters=["Q1", "Q4"],
+                                     compare_yoy=True)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
 
@@ -233,12 +220,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(today):
-            response = self.client.post(
-                url, json.dumps(dict(quarters=["Q1", "Q3"], margin=50)),
-                content_type='application/json'
-            )
+            response = self._request(quarters=["Q1", "Q3"],
+                                     margin=50)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -310,12 +294,11 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             date=today + timedelta(days=2), **common)
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(
-                dict(max_ctr=3., min_ctr=1.5,
-                     start=str(today), end=str(today + timedelta(days=30)))),
-            content_type="application/json"
+        response = self._request(
+            max_ctr=3.,
+            min_ctr=1.5,
+            start=str(today),
+            end=str(today + timedelta(days=30))
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -380,13 +363,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             date=today + timedelta(days=2), **common)
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                max_ctr_v=3., min_ctr_v=1.5,
-                start=str(start), end=str(end))),
-            content_type="application/json"
+        response = self._request(
+            max_ctr_v=3., min_ctr_v=1.5,
+            start=str(start), end=str(end)
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -451,13 +430,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             date=today + timedelta(days=2), cost=700, **common)
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(
-                max_video_view_rate=30, min_video_view_rate=10,
-                margin=50, start=str(today),
-                end=str(today + timedelta(days=30)))),
-            content_type="application/json"
+        response = self._request(
+            max_video_view_rate=30, min_video_view_rate=10,
+            margin=50, start=str(today),
+            end=str(today + timedelta(days=30))
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -514,12 +490,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(
-                max_video100rate=30, mix_video100rate=10,
-                margin=50, start=str(today), end=str(today))),
-            content_type="application/json"
+        response = self._request(
+            max_video100rate=30, mix_video100rate=10,
+            margin=50, start=str(today), end=str(today)
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -572,13 +545,11 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(start=str(today), end=str(today),
-                                 exclude_campaigns=[campaign_excluded.id],
-                                 exclude_ad_groups=[ag_1_excluded.id,
-                                                    ag_2_excluded.id])),
-            content_type='application/json'
+        response = self._request(
+            start=str(today), end=str(today),
+            exclude_campaigns=[campaign_excluded.id],
+            exclude_ad_groups=[ag_1_excluded.id,
+                               ag_2_excluded.id]
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["average_cpm"], 15)
@@ -617,12 +588,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url,
-            json.dumps(dict(exclude_opportunities=[opportunity_exclude.id])),
-            content_type='application/json'
-        )
+        response = self._request(exclude_opportunities=[opportunity_exclude.id])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["average_cpm"], 15)
 
@@ -646,11 +612,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(start=str(today), end=str(today),
-                                 product_types=["Bumper Ad"])),
-            content_type='application/json'
+        response = self._request(
+            start=str(today), end=str(today),
+            product_types=["Bumper Ad"]
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["average_cpm"], (15 + 50) / 2.)
@@ -673,10 +637,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                          video_views=1)
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(start=str(today), end=str(today))),
-            content_type='application/json')
+        response = self._request(start=str(today), end=str(today))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
 
@@ -694,10 +655,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                          video_views=2)
         recalculate_de_norm_fields()
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
-        response = self.client.post(
-            url, json.dumps(dict(start=str(today), end=str(today))),
-            content_type='application/json')
+        response = self._request(start=str(today), end=str(today))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data, data)
 
@@ -737,12 +695,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(ad_group=ad_group_2, date=stats_date,
                                         cost=1, impressions=1,
                                         average_position=1)
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
+
         with patch_now(stats_date):
-            response = self.client.post(
-                url, json.dumps(dict(product_types=[type_1, type_2],
-                                     product_types_condition="and")),
-                content_type='application/json')
+            response = self._request(product_types=[type_1, type_2],
+                                     product_types_condition="and")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNotNone(response.data["charts"]["cpm"])
@@ -779,11 +735,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(ad_group=ad_group_2, date=stats_date,
                                         cost=1, impressions=1,
                                         average_position=1)
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
+
         with patch_now(stats_date), \
              patch_instance_settings(visible_accounts=[]):
-            response = self.client.post(url, "{}",
-                                        content_type="application/json")
+            response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNone(response.data["average_cpm"])
@@ -821,11 +776,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(ad_group=ad_group_2, date=stats_date,
                                         cost=1, impressions=1,
                                         average_position=1)
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
+
         with patch_now(stats_date), \
              patch_instance_settings(visible_accounts=[]):
-            response = self.client.post(url, "{}",
-                                        content_type="application/json")
+            response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["average_cpm"], 2000.)
@@ -864,12 +818,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 salesforce_placement=placement_2,
                                 start_date=start_2, end_date=end_2)
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(now):
-            response = self.client.post(
-                url,
-                json.dumps(dict(start=str(start_1), end=str(end_1))),
-                content_type="application/json")
+            response = self._request(start=str(start_1), end=str(end_1))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         planned_cpm_trends = [c for c in response.data["charts"]["cpm"]["data"]
@@ -909,12 +859,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 salesforce_placement=placement_2,
                                 start_date=start_2, end_date=end_2)
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(now):
-            response = self.client.post(
-                url,
-                json.dumps(dict(start=str(start_1), end=str(end_1))),
-                content_type="application/json")
+            response = self._request(start=str(start_1), end=str(end_1))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIsNone(response.data["charts"]["cpm"])
@@ -965,12 +911,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 salesforce_placement=placement_4,
                                 start_date=start, end_date=end)
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(now), patch_instance_settings(visible_accounts=[]):
-            response = self.client.post(
-                url,
-                json.dumps(dict(start=str(start), end=str(end))),
-                content_type="application/json")
+            response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         planned_cpm = [c for c in response.data["charts"]["cpm"]["data"]
@@ -1005,13 +947,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 salesforce_placement=placement_2,
                                 start_date=start, end_date=end)
 
-        url = reverse("aw_reporting_urls:pricing_tool_estimate")
         with patch_now(now):
-            response = self.client.post(
-                url,
-                json.dumps(dict(start=str(start), end=str(end),
-                                compare_yoy=True)),
-                content_type="application/json")
+            response = self._request(start=str(start), end=str(end),
+                                     compare_yoy=True)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         planned_cpm_last = [c for c in response.data["charts"]["cpm"]["data"]
