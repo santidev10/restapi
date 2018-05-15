@@ -513,7 +513,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         total_cost = 123
         rate = 2.3
         goal = DefaultRate.CPV / (DefaultRate.CPV + tech_fee) * total_cost
-        daily_goal = goal / duration
+        today_goal = goal / duration
+        daily_goal = total_cost / duration
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=total_cost,
@@ -541,7 +542,7 @@ class PacingReportPlacementsTestCase(APITestCase):
                          DynamicPlacementType.RATE_AND_TECH_FEE)
         self.assertIsNone(pl["plan_video_views"])
         self.assertIsNone(pl["plan_impressions"])
-        self.assertEqual(pl["today_budget"], daily_goal)
+        self.assertEqual(pl["today_budget"], today_goal)
 
         self.assertIsNotNone(pl["charts"])
         charts = dict((c["id"], c["data"]) for c in pl["charts"])

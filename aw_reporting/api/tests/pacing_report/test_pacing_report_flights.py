@@ -598,7 +598,7 @@ class PacingReportFlightsTestCase(APITestCase):
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
-        Flight.objects.create(id="1", placement=placement,ordered_units=9999,
+        Flight.objects.create(id="1", placement=placement, ordered_units=9999,
                               start=start,
                               end=end,
                               total_cost=total_cost)
@@ -909,7 +909,8 @@ class PacingReportFlightsTestCase(APITestCase):
         total_cost = 123
         rate = 2.3
         goal = DefaultRate.CPV / (DefaultRate.CPV + tech_fee) * total_cost
-        daily_goal = goal / duration
+        today_goal = goal / duration
+        daily_goal = total_cost / duration
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start, end=end, total_cost=total_cost,
@@ -936,7 +937,7 @@ class PacingReportFlightsTestCase(APITestCase):
         self.assertEqual(fl["dynamic_placement"],
                          DynamicPlacementType.RATE_AND_TECH_FEE)
         self.assertIsNone(fl["plan_video_views"])
-        self.assertEqual(fl["today_budget"], daily_goal)
+        self.assertEqual(fl["today_budget"], today_goal)
 
         self.assertIsNotNone(fl["charts"])
         charts = dict((c["id"], c["data"]) for c in fl["charts"])
