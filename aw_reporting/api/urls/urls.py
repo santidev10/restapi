@@ -109,7 +109,7 @@ urlpatterns = [
         name="pricing_tool_filters"),
     url(r'^pricing_tool/estimate/$',
         views.PricingToolEstimateView.as_view(),
-        name="pricing_tool_estimate"),
+        name=Name.PricingTool.ESTIMATE),
     url(r'^pricing_tool/opportunity/$',
         views.PricingToolOpportunityView.as_view(),
         name=Name.PricingTool.OPPORTUNITIES),

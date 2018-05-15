@@ -36,8 +36,7 @@ class PricingToolTestCase(ExtendedAPITestCase):
 
                 "devices", "devices_condition",
 
-                "exclude_ad_groups", "exclude_campaigns",
-                "exclude_opportunities",
+                "exclude_campaigns", "exclude_opportunities",
 
                 "ctr", "ctr_v", "video_view_rate", "video100rate"
             }
