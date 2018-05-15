@@ -74,12 +74,15 @@ class Command(BaseCommand):
                         user.save()
 
     def update_chf_users_permissions(self):
-        for user in UserProfile.objects\
-                               .filter(email__icontains='@channelfactory.com'):
-            user.is_verified = True
-            user.is_influencer = True
-            user.is_tos_signed = True
-            user.is_comparison_tool_available = True
-            user.is_subscribed_to_campaign_notifications = True
-            user.aw_settings = self.CHF_AW_SETTINGS
-            user.save()
+        for user in UserProfile.objects.all():
+            if user.email.lower().endswith('@channelfactory.com')
+                user.is_verified = True
+                user.is_influencer = True
+                user.is_tos_signed = True
+                user.is_comparison_tool_available = True
+                user.is_subscribed_to_campaign_notifications = True
+                user.aw_settings = self.CHF_AW_SETTINGS
+                user.save()
+
+            if not user.aw_settings:
+                user.aw_settings = self.DEFAULT_AW_SETTINGS
