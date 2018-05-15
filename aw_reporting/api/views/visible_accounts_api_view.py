@@ -25,9 +25,13 @@ class VisibleAccountsApiView(APIView):
     serializer_class = AdWordsTopManagerSerializer
 
     def get(self, request):
-
         data = self.serializer_class(self.queryset.all(), many=True).data
         settings = request.user.aw_settings
+
+        if not settings:
+            # empty user aw settings
+            return Response(data=[])
+
         visible_ids = settings.get('visible_accounts')
         types_settings = settings.get('hidden_campaign_types')
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
