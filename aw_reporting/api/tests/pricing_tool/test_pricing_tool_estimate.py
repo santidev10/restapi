@@ -523,24 +523,16 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(campaign=campaign_excluded,
                                          date=today)
 
-        ag_1_included = AdGroup.objects.create(id="1", name="",
-                                               campaign=campaign_included)
-        ag_1_excluded = AdGroup.objects.create(id="2", name="",
-                                               campaign=campaign_included)
-        ag_2_included = AdGroup.objects.create(id="3", name="",
-                                               campaign=campaign_excluded)
-        ag_2_excluded = AdGroup.objects.create(id="4", name="",
-                                               campaign=campaign_excluded)
+        ag_1 = AdGroup.objects.create(id="1", name="",
+                                      campaign=campaign_included)
+        ag_2 = AdGroup.objects.create(id="2", name="",
+                                      campaign=campaign_excluded)
 
         common = dict(average_position=1, impressions=1000, date=today)
 
-        AdGroupStatistic.objects.create(ad_group=ag_1_included, cost=15,
+        AdGroupStatistic.objects.create(ad_group=ag_1, cost=15,
                                         **common)
-        AdGroupStatistic.objects.create(ad_group=ag_1_excluded, cost=50,
-                                        **common)
-        AdGroupStatistic.objects.create(ad_group=ag_2_included, cost=75,
-                                        **common)
-        AdGroupStatistic.objects.create(ad_group=ag_2_excluded, cost=100,
+        AdGroupStatistic.objects.create(ad_group=ag_2, cost=75,
                                         **common)
 
         recalculate_de_norm_fields()
@@ -548,8 +540,6 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         response = self._request(
             start=str(today), end=str(today),
             exclude_campaigns=[campaign_excluded.id],
-            exclude_ad_groups=[ag_1_excluded.id,
-                               ag_2_excluded.id]
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["average_cpm"], 15)

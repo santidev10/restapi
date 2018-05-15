@@ -185,10 +185,6 @@ class PricingToolEstimate:
             queryset = queryset.exclude(
                 ad_group__campaign_id__in=exclude_campaigns)
 
-        exclude_ad_groups = self.kwargs.get("exclude_ad_groups")
-        if exclude_ad_groups:
-            queryset = queryset.exclude(ad_group_id__in=exclude_ad_groups)
-
         exclude_opportunities = self.kwargs.get("exclude_opportunities")
         if exclude_opportunities:
             opportunity_id_ref = "ad_group__campaign__salesforce_placement" \

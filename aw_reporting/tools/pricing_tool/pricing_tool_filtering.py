@@ -113,7 +113,6 @@ class PricingToolFiltering:
 
             exclude_campaigns="list of campaign ids is expected",
             exclude_opportunities="list of opportunity ids is expected",
-            exclude_ad_groups="list of ad-group ids is expected",
             ctr=dict(min=0, max=None),
             ctr_v=dict(min=0, max=None),
             video_view_rate=dict(min=0, max=100),
