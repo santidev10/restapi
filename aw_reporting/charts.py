@@ -168,13 +168,13 @@ class DeliveryChart:
 
     def _plan_placement_value_for_date(self, placement, date) -> tuple:
         if placement["start"] > date or placement["end"] < date:
-            return 0,
+            return 0, None
         indicator = self.params.get("indicator")
         total_days = (placement["end"] - placement["start"]).days + 1
         if indicator in (Indicator.IMPRESSIONS, Indicator.VIEWS):
-            return placement["ordered_units"] / total_days,
+            return placement["ordered_units"] / total_days, None
         if indicator == Indicator.COSTS:
-            return placement["total_cost"] / total_days,
+            return placement["total_cost"] / total_days, None
         if indicator == Indicator.CPV:
             return placement["total_cost"], placement["ordered_units"]
         if indicator == Indicator.CPM:
@@ -184,12 +184,10 @@ class DeliveryChart:
     def _plan_value_for_date(self, placements, date):
         values = [self._plan_placement_value_for_date(p, date) for p in
                   placements]
-        values_groups = list(zip(*values))
-        numerator = sum(values_groups[0]) if len(values_groups) > 0 else 0
-        denominator = sum(values_groups[1]) if len(values_groups) > 1 else 1
-
-        return dict(value=numerator / denominator,
-                    label=date)
+        result = 0
+        for numerator, denominator in values:
+            result += (numerator or 0) / (denominator or 1)
+        return dict(value=result, label=date)
 
     def _extend_to_day(self, item):
         divider = 1 \
