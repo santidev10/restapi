@@ -12,6 +12,8 @@ from django.db.models import Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_reports import geo_location_report
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -1005,6 +1007,52 @@ def get_cities(client, account, today):
         if bulk_data:
             CityStatistic.objects.bulk_create(bulk_data)
 
+
+def get_geo_targeting(ad_client, account, *_):
+    from aw_reporting.models import GeoTargeting, Campaign
+
+    saved_targeting = set(
+        GeoTargeting.objects.filter(campaign__account=account) \
+            .values_list("campaign_id", "geo_target_id")
+    )
+
+    _, max_acc_date = get_account_border_dates(account)
+    yesterday = now_in_default_tz().date() - timedelta(days=1)
+    week_ago = yesterday - timedelta(days=7)
+    if saved_targeting and (max_acc_date is None or max_acc_date < week_ago):
+        # don't update if there is no data or the data is old, just optimization
+        return
+
+    campaign_ids = set(Campaign.objects.filter(account=account)\
+                       .values_list("id", flat=True))
+
+    report = geo_location_report(ad_client)
+
+    bulk_create = []
+    with transaction.atomic():
+        for row_obj in report:
+            if row_obj.CampaignId not in campaign_ids \
+                    or not row_obj.Id.isnumeric():
+                continue
+            uid = (row_obj.CampaignId, int(row_obj.Id))
+            stats = dict(
+                is_negative=row_obj.IsNegative == "true",
+                **get_base_stats(row_obj)
+            )
+            if len(row_obj.Id) > 7:  # this is a custom location
+                continue
+
+            if uid in saved_targeting:
+                GeoTargeting.objects.filter(campaign_id=row_obj.CampaignId,
+                                            geo_target_id=row_obj.Id)\
+                    .update(**stats)
+            else:
+                bulk_create.append(
+                    GeoTargeting(campaign_id=row_obj.CampaignId,
+                                 geo_target_id=row_obj.Id, **stats))
+
+        if bulk_create:
+            GeoTargeting.objects.safe_bulk_create(bulk_create)
 
 ##
 # statistics
