@@ -190,6 +190,9 @@ class DeliveryChart:
         numerator = sum(numerators) if numerators else 0
         denominator = sum(denominators) if denominators else 1
 
+        if denominator == 0:
+            denominator = 1
+
         return dict(value=numerator / denominator,
                     label=date)
 
