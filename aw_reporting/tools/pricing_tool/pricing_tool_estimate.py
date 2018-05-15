@@ -3,7 +3,7 @@ from datetime import timedelta
 from functools import reduce
 from operator import itemgetter
 
-from django.db.models import FloatField
+from django.db.models import FloatField, Max, Value, BooleanField
 from django.db.models import Q, When, Case, Sum
 
 from aw_reporting.models import Campaign, SalesForceGoalType, OpPlacement, \
@@ -145,11 +145,17 @@ class PricingToolEstimate:
 
         exclude_campaigns = self.kwargs.get("exclude_campaigns")
         if exclude_campaigns is not None:
-            queryset = queryset.exclude(adwords_campaigns__id__in=exclude_campaigns)
+            queryset = queryset.annotate(campaign_count=Max(
+                Case(When(~Q(adwords_campaigns__id__in=exclude_campaigns),
+                          then=Value(1)),
+                     output_field=BooleanField(),
+                     default=Value(0))))
+            queryset = queryset.filter(campaign_count=Value(1))
 
         exclude_opportunities = self.kwargs.get("exclude_opportunities")
         if exclude_opportunities is not None:
-            queryset = queryset.exclude(opportunity_id__in=exclude_opportunities)
+            queryset = queryset.exclude(
+                opportunity_id__in=exclude_opportunities)
         return queryset
 
     def _filter_specified_date_range(self, queryset):
