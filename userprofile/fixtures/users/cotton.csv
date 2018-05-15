@@ -1,0 +1,2 @@
+id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
+95,pbkdf2_sha256$24000$1hElEME9UGfF$4rD52uqqYZfBBrW+LWMIWLyhw/uAnKdAtO6wCMGso48=,2017-03-29 18:48:10.20795+00,f,,Jamie,Wilde,f,t,2016-10-26 16:52:35.929938+00,jamie.wilde@mindshareworld.com,,0,t,,,f,,,,,,t,f,f,,t

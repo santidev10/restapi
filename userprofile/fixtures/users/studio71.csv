@@ -1,0 +1,2 @@
+id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
+219,pbkdf2_sha256$24000$RQumFqINkmSO$EPGw0TZa4V77Fe2oirYXAUPQsiRzjgRF4NaoCEdN8fo=,2017-06-26 21:37:49.759693+00,f,,Studio,71,f,t,2017-06-13 18:41:19.406126+00,studio71@channelfactory.com,,0,t,,,f,,,,,,t,f,f,,t

@@ -1,0 +1,10 @@
+dashboard_ad_words_rates: false
+dashboard_campaigns_segmented: true
+dashboard_remarketing_tab_is_hidden: false
+demo_account_visible: false
+global_account_visibility: false
+show_conversions: false
+visible_accounts:
+- '3183765861'
+- '5890141115'
+- '7544126854'
