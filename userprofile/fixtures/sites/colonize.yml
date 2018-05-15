@@ -1,0 +1,7 @@
+dashboard_ad_words_rates: false
+dashboard_campaigns_segmented: true
+dashboard_remarketing_tab_is_hidden: false
+demo_account_visible: true
+global_account_visibility: false
+show_conversions: true
+visible_accounts: []

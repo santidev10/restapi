@@ -53,7 +53,25 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    paypal_email = models.EmailField(null=True, blank=True)
+    facebook_id = models.CharField(max_length=255, null=True, blank=True)
+    is_password_generated = models.BooleanField(default=False)
 
+    # professional info
+    vertical = models.CharField(max_length=200, null=True, blank=True)
+    worked_with = models.TextField(null=True, blank=True)
+    price_range = models.TextField(null=True, blank=True)
+    strong_beliefs = models.TextField(null=True, blank=True)
+
+    # permission fields
+    features_available = models.CharField(max_length=100, default="",
+                                          blank=True)
+    is_verified = models.BooleanField(default=False)
+    is_influencer = models.BooleanField(default=False)
+    is_tos_signed = models.BooleanField(default=True)
+    is_comparison_tool_available = models.BooleanField(default=False)
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
