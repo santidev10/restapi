@@ -57,7 +57,18 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default=dict())
+    aw_settings = JSONField(default={
+        'dashboard_campaigns_segmented': False,
+        'dashboard_ad_words_rates': False,
+        'demo_account_visible': False,
+        'dashboard_remarketing_tab_is_hidden': False,
+        'dashboard_costs_are_hidden': False,
+        'show_conversions': False,
+        'visible_accounts': [],
+        'hidden_campaign_types': {},
+        'global_account_visibility': False,
+        'global_trends_accounts': [],
+    })
 
     objects = UserManager()
 
