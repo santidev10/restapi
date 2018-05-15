@@ -143,8 +143,12 @@ class PricingToolEstimate:
             .filter(date_filter,
                     opportunity__in=self.opportunities)
 
+        exclude_campaigns = self.kwargs.get("exclude_campaigns")
+        if exclude_campaigns is not None:
+            queryset = queryset.exclude(adwords_campaigns__id__in=exclude_campaigns)
+
         exclude_opportunities = self.kwargs.get("exclude_opportunities")
-        if exclude_opportunities:
+        if exclude_opportunities is not None:
             queryset = queryset.exclude(opportunity_id__in=exclude_opportunities)
         return queryset
 
