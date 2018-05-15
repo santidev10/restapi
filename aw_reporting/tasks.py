@@ -12,7 +12,6 @@ from django.db.models import Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
-from aw_reporting.adwords_reports import geo_location_report
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -1010,6 +1009,7 @@ def get_cities(client, account, today):
 
 def get_geo_targeting(ad_client, account, *_):
     from aw_reporting.models import GeoTargeting, Campaign
+    from aw_reporting.adwords_reports import geo_location_report
 
     saved_targeting = set(
         GeoTargeting.objects.filter(campaign__account=account) \
