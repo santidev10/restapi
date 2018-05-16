@@ -119,7 +119,7 @@ class BaseSegment(Timestampable):
         self.adw_data.update(adwords_statistics)
 
     def duplicate(self, owner):
-        exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related']
+        exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related', 'shared_with']
         segment_data = {f:getattr(self, f) for f in self._meta.get_all_field_names() if f not in exclude_fields}
         segment_data['title'] = '{} (copy)'.format(self.title)
         segment_data['owner'] = owner
