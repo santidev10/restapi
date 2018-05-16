@@ -399,6 +399,11 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                  value=daily_plan_1 + daily_plan_2),
             dict(label=start + timedelta(days=2), value=daily_plan_2),
         ]
+        expected_planned_value = sum([
+            r.get('value') for r in expected_planned_trend
+        ])
+        expected_planned_average = expected_planned_value \
+            / len(expected_planned_trend)
 
         filters = dict(
             start_date=start,
@@ -413,8 +418,13 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        planned_trend = get_trend(response.data, TrendId.PLANNED)[0]["trend"]
+        trend_info = get_trend(response.data, TrendId.PLANNED)[0]
+        planned_trend = trend_info["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
+        planned_value = trend_info["value"]
+        self.assertEqual(planned_value, expected_planned_value)
+        planned_average = trend_info["average"]
+        self.assertEqual(planned_average, expected_planned_average)
 
     def test_planned_hourly(self):
         account = self.account
@@ -446,6 +456,11 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                  value=daily_plan_1 + daily_plan_2),
             dict(label=start + timedelta(days=2), value=daily_plan_2),
         ]
+        expected_planned_value = sum([
+            r.get('value') for r in expected_daily_planned_trend
+        ])
+        expected_planned_average = expected_planned_value \
+            / len(expected_daily_planned_trend)
 
         def expand(item):
             label, value = item["label"], item["value"]
@@ -469,8 +484,13 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         with patch_instance_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        planned_trend = get_trend(response.data, TrendId.PLANNED)[0]["trend"]
+        trend_info = get_trend(response.data, TrendId.PLANNED)[0]
+        planned_trend = trend_info["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
+        planned_value = trend_info["value"]
+        self.assertEqual(planned_value, expected_planned_value)
+        planned_average = trend_info["average"]
+        self.assertEqual(planned_average, expected_planned_average)
 
     def test_planned_cpv(self):
         account = self.account
@@ -501,6 +521,11 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                                        / sum(
                 [ordered_units_1, ordered_units_2])),
         ]
+        expected_planned_value = sum([
+            r.get('value') for r in expected_planned_trend
+        ])
+        expected_planned_average = expected_planned_value \
+            / len(expected_planned_trend)
 
         filters = dict(
             start_date=start,
@@ -519,6 +544,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertIsNotNone(trend)
         planned_trend = trend[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
+        planned_value = trend[0]["value"]
+        self.assertEqual(planned_value, expected_planned_value)
+        planned_average = trend[0]["average"]
+        self.assertEqual(planned_average, expected_planned_average)
 
     def test_planned_cpm(self):
         account = self.account
@@ -549,6 +578,11 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                  value=sum([total_cost_1, total_cost_2])
                  / sum([ordered_units_1/1000., ordered_units_2/1000.])),
         ]
+        expected_planned_value = sum([
+            r.get('value') for r in expected_planned_trend
+        ])
+        expected_planned_average = expected_planned_value \
+            / len(expected_planned_trend)
         filters = dict(
             start_date=start,
             end_date=end,
@@ -566,6 +600,10 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertIsNotNone(trend)
         planned_trend = trend[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
+        planned_value = trend[0]["value"]
+        self.assertEqual(planned_value, expected_planned_value)
+        planned_average = trend[0]["average"]
+        self.assertEqual(planned_average, expected_planned_average)
 
     def test_planned_cpv_hourly(self):
         account = self.account
@@ -616,7 +654,6 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertIsNotNone(trend)
         planned_trend = trend[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
-
 
 def get_trend(data, uid):
     trends = dict(((t["id"], t["data"])

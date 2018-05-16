@@ -217,10 +217,14 @@ class DeliveryChart:
             self._plan_value_for_date(placements, start + timedelta(days=i))
             for i in range(total_days)
         ]
+        value = sum([r.get('value') for r in trend]) if trend else None
+        average = value / total_days if value is not None and total_days else 0
         breakdown = self.params['breakdown']
         if breakdown == Breakdown.HOURLY:
             trend = flatten([self._extend_to_day(i) for i in trend])
         return dict(
+            value=value,
+            average=average,
             trend=trend,
             label="Planned"
         )
