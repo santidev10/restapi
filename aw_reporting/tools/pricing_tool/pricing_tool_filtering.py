@@ -613,7 +613,7 @@ class PricingToolFiltering:
 
         # annotate and filter
         def get_topics_annotation(t_ids):
-            ann = Count(
+            ann = Max(
                 Case(
                     When(
                         then='{}topics__id'.format(ad_group_link),
@@ -628,11 +628,11 @@ class PricingToolFiltering:
             return ann
 
         topics_condition = self.kwargs.get("topics_condition",
-                                           self.default_condition)
-        if topics_condition == "or":
-            operator = "|"
-        else:
-            operator = "&"
+                                           self.default_condition).upper()
+        operator = {
+                       Operator.OR: Combinable.BITOR,
+                       Operator.AND: Combinable.BITAND
+                   }.get(topics_condition) or Combinable.BITAND
 
         top_topics_annotate = get_topics_annotation(topic_groups[0])
         for topic_ids in topic_groups[1:]:
@@ -698,9 +698,9 @@ class PricingToolFiltering:
         interests_condition = self.kwargs.get("interests_condition",
                                               self.default_condition).upper()
         operator = {
-            Operator.OR: Combinable.BITOR,
-            Operator.AND: Combinable.BITAND
-        }.get(interests_condition) or Combinable.BITAND
+                       Operator.OR: Combinable.BITOR,
+                       Operator.AND: Combinable.BITAND
+                   }.get(interests_condition) or Combinable.BITAND
 
         top_interests_annotate = get_interests_annotation(item_groups[0])
         for item_ids in item_groups[1:]:
