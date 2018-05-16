@@ -5,7 +5,7 @@ from django.db.models import Count, FloatField, CharField, BooleanField, \
     QuerySet
 from django.db.models import Q, F, Min, When, Case, Max, \
     Sum, IntegerField
-from django.db.models.expressions import CombinedExpression, Value
+from django.db.models.expressions import CombinedExpression, Value, Combinable
 
 from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
     TopicStatistic, Topic, Audience, Campaign, Opportunity, AgeRanges, \
@@ -13,7 +13,7 @@ from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
 from utils.datetime import now_in_default_tz, quarter_days
-from utils.query import build_query_bool, split_request, merge_when
+from utils.query import build_query_bool, split_request, merge_when, Operator
 
 
 class PricingToolFiltering:
@@ -680,26 +680,27 @@ class PricingToolFiltering:
 
         # annotate and filter
         def get_interests_annotation(i_ids):
-            ann = Count(
+            ann = Max(
                 Case(
                     When(
-                        then='{}audiences__id'.format(ad_group_link),
                         **{
                             "{}audiences__audience_id__in".format(
                                 ad_group_link): i_ids,
-                        }
+                        },
+                        then=Value(1),
                     ),
                     output_field=IntegerField(),
+                    default=Value(0)
                 ),
             )
             return ann
 
         interests_condition = self.kwargs.get("interests_condition",
-                                              self.default_condition)
-        if interests_condition == "or":
-            operator = "|"
-        else:
-            operator = "&"
+                                              self.default_condition).upper()
+        operator = {
+            Operator.OR: Combinable.BITOR,
+            Operator.AND: Combinable.BITAND
+        }.get(interests_condition) or Combinable.BITAND
 
         top_interests_annotate = get_interests_annotation(item_groups[0])
         for item_ids in item_groups[1:]:
@@ -709,7 +710,10 @@ class PricingToolFiltering:
                 output_field=IntegerField()
             )
 
+        # print(top_interests_annotate)
+
         qs = queryset.annotate(top_interests_annotate=top_interests_annotate)
+        print(qs.query)
         qs = qs.filter(top_interests_annotate__gt=0)
         item_ids = set(qs.values_list("id", flat=True))
 
