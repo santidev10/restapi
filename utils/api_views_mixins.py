@@ -21,7 +21,9 @@ class SegmentFilterMixin(object):
                 else:
                     segment = model.objects.filter(
                         Q(owner=self.request.user) |
-                        ~Q(category="private")).get(id=segment_id)
+                        ~Q(category="private") |
+                        Q(shared_with__contains=[self.request.user.email])
+                    ).get(id=segment_id)
             except model.DoesNotExist:
                 return None
             else:
