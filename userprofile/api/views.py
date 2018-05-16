@@ -26,6 +26,7 @@ from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
 from userprofile.api.serializers import UserChangePasswordSerializer
 from userprofile.models import UserProfile
+from userprofile.permissions import PermissionGroupNames
 
 
 class UserCreateApiView(APIView):
@@ -45,9 +46,16 @@ class UserCreateApiView(APIView):
             data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        self.check_user_segment_access(user)
         response_data = self.retrieve_serializer_class(user).data
         return Response(response_data, status=HTTP_201_CREATED)
 
+    def check_user_segment_access(self, user):
+        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+            user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
 
 class UserAuthApiView(APIView):
     """
