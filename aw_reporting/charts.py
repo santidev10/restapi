@@ -208,10 +208,21 @@ class DeliveryChart:
     def _get_planned_data(self):
         if self.params.get("indicator") not in INDICATORS_HAVE_PLANNED:
             return
-        placements = self.get_placements() \
-            .values("start", "end", "total_cost", "ordered_units")
 
-        start, end = self.params.get("start"), self.params.get("end")
+        placements = self.get_placements()
+        placements_start = placements.aggregate(Min("start"))['start__min']
+
+        if placements_start is None:
+            return
+
+        placements = placements.values("start",
+                                       "end",
+                                       "total_cost",
+                                       "ordered_units")
+
+        start = max(placements_start, self.params.get("start"))
+        end = self.params.get("end")
+
         total_days = (end - start).days + 1
         trend = [
             self._plan_value_for_date(placements, start + timedelta(days=i))
