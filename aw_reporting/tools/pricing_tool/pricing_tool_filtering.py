@@ -616,13 +616,14 @@ class PricingToolFiltering:
             ann = Max(
                 Case(
                     When(
-                        then='{}topics__id'.format(ad_group_link),
                         **{
                             "{}topics__topic_id__in".format(
                                 ad_group_link): t_ids,
-                        }
+                        },
+                        then=Value(1),
                     ),
                     output_field=IntegerField(),
+                    default=Value(0)
                 ),
             )
             return ann
@@ -643,7 +644,6 @@ class PricingToolFiltering:
             )
         qs = queryset.annotate(top_topics_annotate=top_topics_annotate)
         qs = qs.filter(top_topics_annotate__gt=0)
-
         item_ids = set(qs.values_list("id", flat=True))
         self.filter_item_ids = self._merge_item_ids(self.filter_item_ids,
                                                     item_ids)
