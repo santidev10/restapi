@@ -98,14 +98,16 @@ class Command(BaseCommand):
     @staticmethod
     def match_using_placement_numbers():
         c_count = 0
+
         placements = OpPlacement.objects.all() \
             .values("id", "opportunity_id", "number")
+
         for pl in placements:
             placement_code = pl.get("number")
             if not placement_code:
                 continue
             campaigns = Campaign.objects \
-                .filter(name__regex=placement_code + "(?:\D|$)") \
+                .filter(placement_code=placement_code) \
                 .exclude(salesforce_placement_id=pl['id'])
 
             campaigns.update(salesforce_placement_id=pl['id'])

@@ -1,6 +1,7 @@
 import csv
 import heapq
 import logging
+import re
 from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -43,6 +44,13 @@ def get_base_stats(row, quartiles=False):
             video_views_100_quartile=quart_views(row, 100),
         )
     return stats
+
+
+def extract_placement_code(name):
+    try:
+        return re.search(r'(PL\d+)', name).group(1)
+    except AttributeError:
+        return None
 
 
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
@@ -252,15 +260,19 @@ def get_campaigns(client, account, today=None):
             status = row_obj.CampaignStatus \
                 if row_obj.CampaignStatus in ACTION_STATUSES \
                 else row_obj.ServingStatus
+
+            name = row_obj.CampaignName
+            placement_code = extract_placement_code(name)
             stats = {
                 'de_norm_fields_are_recalculated': False,
-                'name': row_obj.CampaignName,
+                'name': name,
                 'account': account,
                 'type': row_obj.AdvertisingChannelType,
                 'start_date': datetime.strptime(row_obj.StartDate, GET_DF),
                 'end_date': end_date,
                 'budget': float(row_obj.Amount) / 1000000,
                 'status': status,
+                'placement_code': placement_code
             }
 
             statistic_data = {
@@ -1023,7 +1035,7 @@ def get_geo_targeting(ad_client, account, *_):
         # don't update if there is no data or the data is old, just optimization
         return
 
-    campaign_ids = set(Campaign.objects.filter(account=account)\
+    campaign_ids = set(Campaign.objects.filter(account=account) \
                        .values_list("id", flat=True))
 
     report = geo_location_report(ad_client)
@@ -1044,7 +1056,7 @@ def get_geo_targeting(ad_client, account, *_):
 
             if uid in saved_targeting:
                 GeoTargeting.objects.filter(campaign_id=row_obj.CampaignId,
-                                            geo_target_id=row_obj.Id)\
+                                            geo_target_id=row_obj.Id) \
                     .update(**stats)
             else:
                 bulk_create.append(
@@ -1053,6 +1065,7 @@ def get_geo_targeting(ad_client, account, *_):
 
         if bulk_create:
             GeoTargeting.objects.safe_bulk_create(bulk_create)
+
 
 ##
 # statistics

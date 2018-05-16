@@ -15,13 +15,11 @@ from utils.utils_tests import patch_now
 
 
 class PullAWDataTestCase(APITestCase):
-    def test_update_campaign_aggregated_stats(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
-        today = now.date()
+    def _create_account(self, update_time):
         connection = AWConnection.objects.create()
         mcc_account = Account.objects.create(id=1, timezone="UTC",
                                              can_manage_clients=True,
-                                             update_time=now)
+                                             update_time=update_time)
         permission = AWAccountPermission.objects.create(account=mcc_account,
                                                         aw_connection=connection,
                                                         can_read=True)
@@ -30,6 +28,13 @@ class PullAWDataTestCase(APITestCase):
 
         account = Account.objects.create(id=2, timezone="UTC")
         account.managers.add(mcc_account)
+        account.save()
+        return account
+
+    def test_update_campaign_aggregated_stats(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
         campaign = Campaign.objects.create(id=1,
                                            account=account,
                                            de_norm_fields_are_recalculated=True,
@@ -92,18 +97,7 @@ class PullAWDataTestCase(APITestCase):
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        connection = AWConnection.objects.create()
-        mcc_account = Account.objects.create(id=1, timezone="UTC",
-                                             can_manage_clients=True,
-                                             update_time=now)
-        permission = AWAccountPermission.objects.create(account=mcc_account,
-                                                        aw_connection=connection,
-                                                        can_read=True)
-        mcc_account.mcc_permissions.add(permission)
-        mcc_account.save()
-
-        account = Account.objects.create(id=2, timezone="UTC")
-        account.managers.add(mcc_account)
+        account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         ad_group = AdGroup.objects.create(id=1,
                                           campaign=campaign,
@@ -176,18 +170,7 @@ class PullAWDataTestCase(APITestCase):
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)
-        connection = AWConnection.objects.create()
-        mcc_account = Account.objects.create(id=1, timezone="UTC",
-                                             can_manage_clients=True,
-                                             update_time=now)
-        permission = AWAccountPermission.objects.create(account=mcc_account,
-                                                        aw_connection=connection,
-                                                        can_read=True)
-        mcc_account.mcc_permissions.add(permission)
-        mcc_account.save()
-
-        account = Account.objects.create(id=2, timezone="UTC")
-        account.managers.add(mcc_account)
+        account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         geo_target = GeoTarget.objects.create(id=123, name="test name")
         geo_target.refresh_from_db()
@@ -224,6 +207,51 @@ class PullAWDataTestCase(APITestCase):
         campaign_geo_targets = campaign.geo_performance.all() \
             .values_list("geo_target_id", flat=True)
         self.assertEqual(list(campaign_geo_targets), [geo_target.id])
+
+    def test_fulfil_placement_code_on_campaign(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1,
+                                           account=account,
+                                           placement_code=None)
+
+        test_code = "PL1234567"
+        test_report_data = [
+            dict(
+                CampaignId=campaign.id,
+                CampaignName="Campaign Name #{}, some other".format(test_code),
+                Cost=0,
+                Date=str(today),
+                StartDate=str(today),
+                EndDate=str(today),
+                Amount=0,
+                Impressions=0,
+                VideoViews=0,
+                Clicks=0,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=Devices[0],
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+
+        fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", end="get_campaigns")
+
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.placement_code, test_code)
 
 
 def build_csv_byte_stream(headers, rows):
