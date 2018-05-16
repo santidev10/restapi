@@ -5,8 +5,10 @@ from aw_reporting.settings import InstanceSettings, InstanceSettingsKey
 def get_account_queryset():
     global_trends_accounts_id = InstanceSettings() \
         .get(InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS)
-    return Account.objects \
-        .filter(managers__id__in=global_trends_accounts_id)
+    queryset = Account.objects\
+        .filter(managers__id__in=global_trends_accounts_id)\
+        .order_by("name")
+    return queryset
 
 
 def get_filters(request):
