@@ -80,3 +80,18 @@ class BrowseSalesforceDataTestCase(APITestCase):
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Delivered_Ad_Ops__c=delivered_units,
                             Total_Flight_Cost__c=cost))
+
+    def test_links_placements_by_code_on_campaign(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity,
+                                               number="PL12345")
+        campaign = Campaign.objects.create(placement_code=placement.number)
+        campaign.refresh_from_db()
+
+        self.assertIsNone(campaign.salesforce_placement)
+
+        call_command("browse_salesforce_data", no_get="1", no_update="1")
+        campaign.refresh_from_db()
+
+        self.assertIsNotNone(campaign.salesforce_placement)
+        self.assertEqual(campaign.salesforce_placement, placement)
