@@ -13,6 +13,7 @@ from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     Flight, GeoTargeting
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
+from utils.query import Operator
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
     patch_instance_settings
 
@@ -2854,6 +2855,74 @@ class PricingToolTestCase(APITestCase):
                                 has_interests=True)
         response = self._request(targeting_types=["interests", "channels"],
                                  targeting_types_condition="and")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], opportunity.id)
+
+    def test_filtering_by_interests(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2426
+        Summary: Some of the opportunities absent in result set after filtration
+              by Interests,  despite of the fact they include selected interests
+
+        Root cause:
+        SQL calculates count of related interests (regarding hierarchy)
+        by each group and set `top_count` by &(count1, count2, ...),
+        then filters opportunities with `top_count` > 0.
+            ! It's wrong because &(1, 2) == 0
+        """
+        opportunity = Opportunity.objects.create(id=1)
+        opportunity.refresh_from_db()
+        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        campaign = Campaign.objects.create(id=1, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        a_1 = Audience.objects.create(id=1, name="/A 1")
+        a_2 = Audience.objects.create(id=2, name="/A 2")
+        a_2_1 = Audience.objects.create(id=21, name="/A 2/1", parent=a_2)
+        statistic_common = dict(date=date(2017, 1, 1), ad_group=ad_group)
+        AudienceStatistic.objects.create(audience=a_1, **statistic_common)
+        AudienceStatistic.objects.create(audience=a_2, **statistic_common)
+        AudienceStatistic.objects.create(audience=a_2_1, **statistic_common)
+
+        response = self._request(
+            interests=[a_1.id, a_2.id],
+            interests_condition=Operator.AND
+        )
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], opportunity.id)
+
+    def test_filtering_by_topics(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2426
+        Summary: Some of the opportunities absent in result set after filtration
+              by Interests,  despite of the fact they include selected interests
+
+        Root cause:
+        SQL calculates count of related topics (regarding hierarchy)
+        by each group and set `top_count` by &(count1, count2, ...),
+        then filters opportunities with `top_count` > 0.
+            ! It's wrong because &(1, 2) == 0
+        """
+        opportunity = Opportunity.objects.create(id=1)
+        opportunity.refresh_from_db()
+        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        campaign = Campaign.objects.create(id=1, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        t_1 = Topic.objects.create(id=1, name="/A 1")
+        t_2 = Topic.objects.create(id=2, name="/A 2")
+        t_2_1 = Topic.objects.create(id=21, name="/A 2/1", parent=t_2)
+        statistic_common = dict(date=date(2017, 1, 1), ad_group=ad_group)
+        TopicStatistic.objects.create(topic=t_1, **statistic_common)
+        TopicStatistic.objects.create(topic=t_2, **statistic_common)
+        TopicStatistic.objects.create(topic=t_2_1, **statistic_common)
+
+        response = self._request(
+            topics=[t_1.id, t_2.id],
+            topics_condition=Operator.AND
+        )
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
