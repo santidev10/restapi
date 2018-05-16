@@ -6,7 +6,8 @@ def get_account_queryset():
     global_trends_accounts_id = InstanceSettings() \
         .get(InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS)
     queryset = Account.objects\
-        .filter(managers__id__in=global_trends_accounts_id)\
+        .filter(managers__id__in=global_trends_accounts_id,
+                can_manage_clients=False)\
         .order_by("name")
     return queryset
 
