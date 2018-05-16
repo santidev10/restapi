@@ -51,7 +51,9 @@ class KeywordListApiView(APIView,
             else:
                 segment = SegmentKeyword.objects.filter(
                     Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
+                    ~Q(category="private") |
+                    Q(shared_with__contains=[self.request.user.email])
+                ).get(id=segment_id)
         except SegmentKeyword.DoesNotExist:
             return None
         return segment
