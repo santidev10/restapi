@@ -28,6 +28,8 @@ class PricingTool:
         self.kwargs = kwargs
         self.filter = PricingToolFiltering(kwargs)
         self.serializer = PricingToolSerializer(kwargs)
+        self._opportunities_qs = self.filter.apply(
+            self._get_opportunity_queryset())
         self.estimate_tool = PricingToolEstimate(
             kwargs, self.get_opportunities_queryset())
 
@@ -64,5 +66,4 @@ class PricingTool:
             .order_by("-aw_budget")
 
     def get_opportunities_queryset(self):
-        queryset = self._get_opportunity_queryset()
-        return self.filter.apply(queryset)
+        return self._opportunities_qs

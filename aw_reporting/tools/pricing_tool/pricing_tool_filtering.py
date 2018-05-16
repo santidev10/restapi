@@ -710,10 +710,7 @@ class PricingToolFiltering:
                 output_field=IntegerField()
             )
 
-        # print(top_interests_annotate)
-
         qs = queryset.annotate(top_interests_annotate=top_interests_annotate)
-        print(qs.query)
         qs = qs.filter(top_interests_annotate__gt=0)
         item_ids = set(qs.values_list("id", flat=True))
 
