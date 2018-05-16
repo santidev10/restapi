@@ -34,6 +34,8 @@ AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "AveragePosition",
                                          "ActiveViewImpressions", "Engagements"
                                      ) + main_statistics + completed_fields
+GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",
+                              "IsNegative") + main_statistics
 
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
@@ -218,6 +220,20 @@ def geo_performance_report(client, dates=None, additional_fields=None):
     result = _get_report(
         client, "GEO_PERFORMANCE_REPORT", selector,
         date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
+    )
+    return _output_to_rows(result, fields)
+
+
+def geo_location_report(client):
+    fields = GEO_LOCATION_REPORT_FIELDS
+    selector = {
+        "fields": fields,
+        "predicates": [],
+    }
+    result = _get_report(
+        client, "CAMPAIGN_LOCATION_TARGET_REPORT", selector,
+        date_range_type="ALL_TIME",
+        include_zero_impressions=True,
     )
     return _output_to_rows(result, fields)
 

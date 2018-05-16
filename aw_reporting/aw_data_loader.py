@@ -29,6 +29,7 @@ class AWDataLoader:
         aw_tasks.get_interests,
         #
         aw_tasks.get_cities,
+        aw_tasks.get_geo_targeting
     )
 
     def __init__(self, today, start=None, end=None):

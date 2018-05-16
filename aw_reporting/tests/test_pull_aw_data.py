@@ -8,9 +8,9 @@ from pytz import utc
 from rest_framework.test import APITestCase
 
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
-    AD_GROUP_PERFORMANCE_REPORT_FIELDS
+    AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
-    AWAccountPermission, Devices, AdGroup
+    AWAccountPermission, Devices, AdGroup, GeoTarget
 from utils.utils_tests import patch_now
 
 
@@ -173,6 +173,57 @@ class PullAWDataTestCase(APITestCase):
         self.assertEqual(ad_group.engagements, sum(engagements))
         self.assertEqual(ad_group.active_view_impressions,
                          sum(active_view_impressions))
+
+    def test_pull_geo_targeting(self):
+        now = datetime(2018, 1, 15, 15, tzinfo=utc)
+        connection = AWConnection.objects.create()
+        mcc_account = Account.objects.create(id=1, timezone="UTC",
+                                             can_manage_clients=True,
+                                             update_time=now)
+        permission = AWAccountPermission.objects.create(account=mcc_account,
+                                                        aw_connection=connection,
+                                                        can_read=True)
+        mcc_account.mcc_permissions.add(permission)
+        mcc_account.save()
+
+        account = Account.objects.create(id=2, timezone="UTC")
+        account.managers.add(mcc_account)
+        campaign = Campaign.objects.create(id=1, account=account)
+        geo_target = GeoTarget.objects.create(id=123, name="test name")
+        geo_target.refresh_from_db()
+
+        test_report_data = [
+            dict(
+                Id=geo_target.id,
+                CampaignId=campaign.id,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Cost=1 * 10 ** 6,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+        fields = GEO_LOCATION_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_geo_targeting",
+                         end="get_geo_targeting")
+
+        campaign.refresh_from_db()
+        campaign_geo_targets = campaign.geo_performance.all() \
+            .values_list("geo_target_id", flat=True)
+        self.assertEqual(list(campaign_geo_targets), [geo_target.id])
 
 
 def build_csv_byte_stream(headers, rows):

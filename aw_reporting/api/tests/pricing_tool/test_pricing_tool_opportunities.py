@@ -18,7 +18,13 @@ from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
 
 
 class PricingToolTestCase(APITestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.PricingTool.OPPORTUNITIES)
+    _url = reverse(
+        Namespace.AW_REPORTING + ":" + Name.PricingTool.OPPORTUNITIES)
+
+    def _request(self, **kwargs):
+        return self.client.post(self._url,
+                                json.dumps(kwargs),
+                                content_type="application/json")
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -67,10 +73,7 @@ class PricingToolTestCase(APITestCase):
         )
         generate_campaign_statistic(campaign_1, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict()),
-            content_type='application/json'
-        )
+        response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data['items']
         self.assertGreater(len(items), 0)
@@ -111,10 +114,7 @@ class PricingToolTestCase(APITestCase):
         )
         generate_campaign_statistic(campaign_1, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(quarters=["Q1"])),
-            content_type='application/json'
-        )
+        response = self._request(quarters=["Q1"])
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_pricing_tool_opportunity_filters_by_product_type_single(self):
@@ -147,10 +147,7 @@ class PricingToolTestCase(APITestCase):
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(product_types=[type_1])),
-            content_type='application/json'
-        )
+        response = self._request(product_types=[type_1])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -184,11 +181,8 @@ class PricingToolTestCase(APITestCase):
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(product_types=[type_1, type_2],
-                                      product_types_condition="or")),
-            content_type='application/json'
-        )
+        response = self._request(product_types=[type_1, type_2],
+                                 product_types_condition="or")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_product_type_and(self):
@@ -222,11 +216,8 @@ class PricingToolTestCase(APITestCase):
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(product_types=[type_1, type_2],
-                                      product_types_condition="and")),
-            content_type='application/json'
-        )
+        response = self._request(product_types=[type_1, type_2],
+                                 product_types_condition="and")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -255,10 +246,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(targeting_types=["interests"])),
-            content_type='application/json'
-        )
+        response = self._request(targeting_types=["interests"])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -292,11 +280,8 @@ class PricingToolTestCase(APITestCase):
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(targeting_types=["interests", "keywords"],
-                                      targeting_types_condition="OR")),
-            content_type='application/json'
-        )
+        response = self._request(targeting_types=["interests", "keywords"],
+                                 targeting_types_condition="OR")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_targeting_type_and(self):
@@ -330,11 +315,8 @@ class PricingToolTestCase(APITestCase):
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(targeting_types=["interests", "keywords"],
-                                      targeting_types_condition="AND")),
-            content_type='application/json'
-        )
+        response = self._request(targeting_types=["interests", "keywords"],
+                                 targeting_types_condition="AND")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -361,10 +343,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(genders=[0])),
-            content_type='application/json'
-        )
+        response = self._request(genders=[0])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -390,11 +369,7 @@ class PricingToolTestCase(APITestCase):
             gender_female=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(genders=[0, 1], demographic_condition="OR")),
-            content_type='application/json'
-        )
+        response = self._request(genders=[0, 1], demographic_condition="OR")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_gender_and(self):
@@ -420,11 +395,7 @@ class PricingToolTestCase(APITestCase):
             gender_female=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(genders=[0, 1], demographic_condition="AND")),
-            content_type='application/json'
-        )
+        response = self._request(genders=[0, 1], demographic_condition="AND")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -450,10 +421,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(ages=[0])),
-            content_type='application/json'
-        )
+        response = self._request(ages=[0])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -479,10 +447,7 @@ class PricingToolTestCase(APITestCase):
             age_18_24=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(ages=[0, 1], demographic_condition="OR")),
-            content_type='application/json'
-        )
+        response = self._request(ages=[0, 1], demographic_condition="OR")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_age_and(self):
@@ -508,11 +473,7 @@ class PricingToolTestCase(APITestCase):
             age_18_24=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(ages=[0, 1], demographic_condition="AND")),
-            content_type='application/json'
-        )
+        response = self._request(ages=[0, 1], demographic_condition="AND")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -538,10 +499,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(parents=[0])),
-            content_type='application/json'
-        )
+        response = self._request(parents=[0])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -567,11 +525,7 @@ class PricingToolTestCase(APITestCase):
             parent_not_parent=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(parents=[0, 1], demographic_condition="OR")),
-            content_type='application/json'
-        )
+        response = self._request(parents=[0, 1], demographic_condition="OR")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_parental_status_and(self):
@@ -597,11 +551,7 @@ class PricingToolTestCase(APITestCase):
             parent_not_parent=True, salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(parents=[0, 1], demographic_condition="AND")),
-            content_type='application/json'
-        )
+        response = self._request(parents=[0, 1], demographic_condition="AND")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -640,10 +590,7 @@ class PricingToolTestCase(APITestCase):
         GeoTargeting.objects.create(campaign=campaign_2,
                                     geo_target=geo_target_2)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(geo_locations=[geo_target_1.id])),
-            content_type='application/json'
-        )
+        response = self._request(geo_locations=[geo_target_1.id])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -682,12 +629,9 @@ class PricingToolTestCase(APITestCase):
         GeoTargeting.objects.create(campaign=campaign_2,
                                     geo_target=geo_target_2)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(geo_locations=[geo_target_1.id, geo_target_2.id],
-                            geo_locations_condition="or")),
-            content_type='application/json'
-        )
+        response = self._request(
+            geo_locations=[geo_target_1.id, geo_target_2.id],
+            geo_locations_condition="or")
         self.assertEqual(len(response.data["items"]), 2)
 
     def test_pricing_tool_opportunity_filters_by_geo_target_and(self):
@@ -727,12 +671,9 @@ class PricingToolTestCase(APITestCase):
         GeoTargeting.objects.create(campaign=campaign_2,
                                     geo_target=geo_target_2)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(geo_locations=[geo_target_1.id, geo_target_2.id],
-                            geo_locations_condition="and")),
-            content_type='application/json'
-        )
+        response = self._request(
+            geo_locations=[geo_target_1.id, geo_target_2.id],
+            geo_locations_condition="and")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -759,10 +700,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(brands=[brand])),
-            content_type='application/json'
-        )
+        response = self._request(brands=[brand])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -790,10 +728,7 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_2,
         )
 
-        response = self.client.post(
-            self.url, json.dumps(dict(categories=[category.id])),
-            content_type='application/json'
-        )
+        response = self._request(categories=[category.id])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
@@ -848,26 +783,14 @@ class PricingToolTestCase(APITestCase):
                                       date=today)
 
         # test OR
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                topics=[top_topic_1.id, top_topic_2.id],
-                topics_condition="or",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(topics=[top_topic_1.id, top_topic_2.id],
+                                 topics_condition="or")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
 
         # test AND
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                topics=[top_topic_1.id, top_topic_2.id],
-                topics_condition="and",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(topics=[top_topic_1.id, top_topic_2.id],
+                                 topics_condition="and")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
@@ -940,28 +863,18 @@ class PricingToolTestCase(APITestCase):
                                          audience=child_interest_2, date=today)
 
         # test OR
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                interests=[top_interest_1.id, top_interest_2.id],
-                interests_condition="or",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(
+            interests=[top_interest_1.id, top_interest_2.id],
+            interests_condition="or")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
         self.assertEqual(set(c["id"] for c in opportunities),
                          {opportunity_1.id, opportunity_2.id})
 
         # test AND
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                interests=[top_interest_1.id, top_interest_2.id],
-                interests_condition="and",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(
+            interests=[top_interest_1.id, top_interest_2.id],
+            interests_condition="and")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
         self.assertEqual(len(opportunities), 1)
@@ -1003,10 +916,7 @@ class PricingToolTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(creative_lengths=[0])),
-            content_type='application/json'
-        )
+        response = self._request(creative_lengths=[0])
         self.assertEqual(len(response.data["items"]), 2)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),
                          {opportunity_1.id, opportunity_2.id})
@@ -1050,11 +960,8 @@ class PricingToolTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
 
-        response = self.client.post(
-            self.url, json.dumps(
-                dict(creative_lengths=[0, 4], creative_lengths_condition="or")),
-            content_type='application/json'
-        )
+        response = self._request(creative_lengths=[0, 4],
+                                 creative_lengths_condition="or")
         self.assertEqual(len(response.data["items"]), 2)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),
                          {opportunity_1.id, opportunity_2.id})
@@ -1098,12 +1005,8 @@ class PricingToolTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
 
-        response = self.client.post(
-            self.url, json.dumps(
-                dict(creative_lengths=[0, 4],
-                     creative_lengths_condition="and")),
-            content_type='application/json'
-        )
+        response = self._request(creative_lengths=[0, 4],
+                                 creative_lengths_condition="and")
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
 
@@ -1116,28 +1019,16 @@ class PricingToolTestCase(APITestCase):
             "3", camp_data=dict(device_other=True))
 
         # test OR
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                devices=[1, 2],
-                devices_condition="or",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(devices=[1, 2],
+                                 devices_condition="or")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
         self.assertEqual(set(c["id"] for c in opportunities),
                          {opportunity_1.id, opportunity_2.id})
 
         # test AND
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(
-                devices=[0, 1],
-                devices_condition="and",
-            )),
-            content_type='application/json'
-        )
+        response = self._request(devices=[0, 1],
+                                 devices_condition="and")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
         self.assertEqual(len(opportunities), 1)
@@ -1148,10 +1039,7 @@ class PricingToolTestCase(APITestCase):
             "1", opp_data=dict(apex_deal=True))
         self._create_opportunity_campaign("2")
 
-        response = self.client.post(
-            self.url, json.dumps(dict(apex_deal="1")),
-            content_type='application/json'
-        )
+        response = self._request(apex_deal="1")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1172,10 +1060,7 @@ class PricingToolTestCase(APITestCase):
                                          clicks=40,
                                          impressions=1000)
 
-        response = self.client.post(
-            self.url, json.dumps(dict(max_ctr=3., min_ctr=1.5)),
-            content_type='application/json'
-        )
+        response = self._request(max_ctr=3., min_ctr=1.5)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data["items"]), 1)
@@ -1195,10 +1080,7 @@ class PricingToolTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          clicks=40,
                                          video_views=1000)
-        response = self.client.post(
-            self.url, json.dumps(dict(max_ctr_v=3., min_ctr_v=1.5)),
-            content_type='application/json'
-        )
+        response = self._request(max_ctr_v=3., min_ctr_v=1.5)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1221,12 +1103,8 @@ class PricingToolTestCase(APITestCase):
                                          video_views=400,
                                          impressions=1000)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(min_video_view_rate=10,
-                            max_video_view_rate=30)),
-            content_type='application/json'
-        )
+        response = self._request(min_video_view_rate=10,
+                                 max_video_view_rate=30)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1247,12 +1125,8 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          video_views_100_quartile=40,
                                          impressions=100)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(min_video100rate=10,
-                            max_video100rate=30)),
-            content_type='application/json'
-        )
+        response = self._request(min_video100rate=10,
+                                 max_video100rate=30)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1271,14 +1145,10 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign,
                                          video_views_100_quartile=999,
                                          impressions=999)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(date_filter),
-                            end=str(date_filter),
-                            min_video100rate=10,
-                            max_video100rate=10)),
-            content_type='application/json'
-        )
+        response = self._request(start=str(date_filter),
+                                 end=str(date_filter),
+                                 min_video100rate=10,
+                                 max_video100rate=10)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1293,11 +1163,7 @@ class PricingToolTestCase(APITestCase):
         campaign.save()
         expected_devices = {Devices[0], Devices[2]}
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1316,11 +1182,7 @@ class PricingToolTestCase(APITestCase):
         AdGroup.objects.create(id="1", campaign=campaign, type=test_type_1)
         AdGroup.objects.create(id="2", campaign=campaign, type=test_type_2)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1339,11 +1201,7 @@ class PricingToolTestCase(APITestCase):
         campaign.save()
         expected_targeting = {"interests", "videos"}
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1362,11 +1220,7 @@ class PricingToolTestCase(APITestCase):
         campaign.save()
         expected_demographic = {"18-24", "Female"}
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1379,9 +1233,7 @@ class PricingToolTestCase(APITestCase):
         opportunity = Opportunity.objects.create(id="AAA")
         placement = OpPlacement.objects.create(opportunity=opportunity)
         Campaign.objects.create(salesforce_placement=placement)
-        response = self.client.post(
-            self.url, json.dumps(dict()),
-            content_type='application/json')
+        response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
@@ -1397,11 +1249,7 @@ class PricingToolTestCase(APITestCase):
                                               creative=creative,
                                               date=start_date)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1454,11 +1302,7 @@ class PricingToolTestCase(APITestCase):
         expected_cpv = sum(views_costs) / sum(views)
         expected_cpm = sum(impressions_costs) / sum(impressions) * 1000
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -1489,11 +1333,7 @@ class PricingToolTestCase(APITestCase):
                                    ordered_units=cpm_units,
                                    total_cost=cpm_cost)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         opportunity_data = response.data["items"][0]
@@ -1510,11 +1350,7 @@ class PricingToolTestCase(APITestCase):
                          start=start_date, end=end_date),
             goal_type=SalesForceGoalType.CPV)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -1530,11 +1366,7 @@ class PricingToolTestCase(APITestCase):
             pl_data=dict(ordered_rate=pl_rate),
             goal_type=SalesForceGoalType.CPM)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         placement_data = response.data["items"][0]["campaigns"][0]
@@ -1547,10 +1379,7 @@ class PricingToolTestCase(APITestCase):
         start, end = today - timedelta(days=period_days), today
         Opportunity.objects.create(id="opportunity",
                                    name="", brand="Test")
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 0)
@@ -1565,10 +1394,7 @@ class PricingToolTestCase(APITestCase):
         OpPlacement.objects.create(
             id="op_placement", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 0)
@@ -1591,10 +1417,7 @@ class PricingToolTestCase(APITestCase):
         test_ad_group_type = "Video discovery"
         AdGroup.objects.create(id="1", campaign=c1, type=test_ad_group_type)
         AdGroup.objects.create(id="2", campaign=c2, type=test_ad_group_type)
-        response = self.client.post(
-            self.url, json.dumps(dict(product_types=[test_ad_group_type])),
-            content_type='application/json'
-        )
+        response = self._request(product_types=[test_ad_group_type])
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1618,9 +1441,7 @@ class PricingToolTestCase(APITestCase):
         Campaign.objects \
             .create(id="2", salesforce_placement=placement,
                     start_date=start_2, end_date=end_2)
-        response = self.client.post(
-            self.url, json.dumps(dict()), content_type='application/json'
-        )
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1646,9 +1467,7 @@ class PricingToolTestCase(APITestCase):
         campaign_2 = Campaign.objects \
             .create(id="2", salesforce_placement=placement,
                     start_date=start_2, end_date=end_2)
-        response = self.client.post(
-            self.url, json.dumps(dict()), content_type='application/json'
-        )
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1672,11 +1491,7 @@ class PricingToolTestCase(APITestCase):
             .create(id="1", salesforce_placement=placement,
                     start_date=start, end_date=end)
 
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(request_start), end=str(request_end))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(request_start), end=str(request_end))
         self.assertEqual(response.data["items"][0]["relevant_date_range"],
                          dict(start=request_start, end=request_end))
 
@@ -1694,11 +1509,7 @@ class PricingToolTestCase(APITestCase):
                     start_date=start, end_date=end)
 
         with patch_now(now):
-            response = self.client.post(
-                self.url,
-                json.dumps(dict(quarters=["Q1"])),
-                content_type='application/json'
-            )
+            response = self._request(quarters=["Q1"])
         self.assertEqual(response.data["items"][0]["relevant_date_range"],
                          dict(start=start_of_the_year, end=end.date()))
 
@@ -1719,9 +1530,7 @@ class PricingToolTestCase(APITestCase):
             .create(id="1", salesforce_placement=placement, cost=budget_1)
         campaign_2 = Campaign.objects \
             .create(id="2", salesforce_placement=placement, cost=budget_2)
-        response = self.client.post(
-            self.url, json.dumps(dict()), content_type='application/json'
-        )
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1754,9 +1563,7 @@ class PricingToolTestCase(APITestCase):
         CampaignStatistic.objects.create(date=date(2017, 1, 1),
                                          campaign=campaign_2,
                                          cost=budget_2)
-        response = self.client.post(
-            self.url, json.dumps(dict()), content_type='application/json'
-        )
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1804,9 +1611,7 @@ class PricingToolTestCase(APITestCase):
                                     geo_target=geo_target_1)
         GeoTargeting.objects.create(campaign=campaign_2,
                                     geo_target=geo_target_2)
-        response = self.client.post(
-            self.url, json.dumps(dict()), content_type='application/json'
-        )
+        response = self._request()
         self.assertEqual(len(response.data["items"]), 1)
         opp_data = response.data["items"][0]
         actual_geo = opp_data["geographic"]
@@ -1826,8 +1631,7 @@ class PricingToolTestCase(APITestCase):
             "1", camp_data=dict(cost=123, impressions=2234, video_views=432))
         expected_cpm = campaign.cost / campaign.impressions * 1000
         expected_cpv = campaign.cost / campaign.video_views
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1848,11 +1652,7 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign,
                                          video_views_100_quartile=1947483646,
                                          impressions=2147483646)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(min_video100rate=75)),
-            content_type='application/json'
-        )
+        response = self._request(min_video100rate=75)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1863,11 +1663,7 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign,
                                          video_views=1147483646,
                                          impressions=2147483646)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(max_video_view_rate=75)),
-            content_type='application/json'
-        )
+        response = self._request(max_video_view_rate=75)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -1901,10 +1697,7 @@ class PricingToolTestCase(APITestCase):
                                               ad_group=ad_group_1, **common)
         VideoCreativeStatistic.objects.create(creative=creative_2,
                                               ad_group=ad_group_2, **common)
-        response = self.client.post(
-            self.url, json.dumps(dict(creative_lengths=[0])),
-            content_type='application/json'
-        )
+        response = self._request(creative_lengths=[0])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),
                          {opportunity_1.id})
@@ -1917,10 +1710,7 @@ class PricingToolTestCase(APITestCase):
         Root cause: multiplying by zero
         """
         self._create_opportunity_campaign("1", camp_data=dict(impressions=0))
-        response = self.client.post(
-            self.url, json.dumps(dict(min_ctr=1)),
-            content_type='application/json'
-        )
+        response = self._request(min_ctr=1)
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_by_ctr_v_hides_opportunities_without_ctr_views(self):
@@ -1931,35 +1721,25 @@ class PricingToolTestCase(APITestCase):
         Root cause: multiplying by zero
         """
         self._create_opportunity_campaign("1", camp_data=dict(video_views=0))
-        response = self.client.post(
-            self.url, json.dumps(dict(min_ctr_v=1)),
-            content_type='application/json'
-        )
+        response = self._request(min_ctr_v=1)
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_by_video_rate_hides_opportunities_without_impressions(self):
         self._create_opportunity_campaign("1", generate_statistic=False)
-        response = self.client.post(
-            self.url, json.dumps(dict(min_video_view_rate=1)),
-            content_type='application/json'
-        )
+        response = self._request(min_video_view_rate=1)
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_by_video100rate_hides_opportunities_without_impressions(
             self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(impressions=0, video_views_100_quartile=0))
-        response = self.client.post(
-            self.url, json.dumps(dict(min_video100rate=1)),
-            content_type='application/json'
-        )
+        response = self._request(min_video100rate=1)
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_campaign_name(self):
         test_name = "Campaign Name"
         self._create_opportunity_campaign("1", camp_data=dict(name=test_name))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -1967,8 +1747,7 @@ class PricingToolTestCase(APITestCase):
 
     def test_campaign_apex_deal_true(self):
         self._create_opportunity_campaign("1", opp_data=dict(apex_deal=True))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -1976,8 +1755,7 @@ class PricingToolTestCase(APITestCase):
 
     def test_campaign_apex_deal_false(self):
         self._create_opportunity_campaign("1", opp_data=dict(apex_deal=False))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -1986,8 +1764,7 @@ class PricingToolTestCase(APITestCase):
     def test_campaign_brand(self):
         test_brand = "Test brand 1123"
         self._create_opportunity_campaign("1", opp_data=dict(brand=test_brand))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -1996,8 +1773,7 @@ class PricingToolTestCase(APITestCase):
     def test_campaign_devices(self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(device_computers=True, device_tablets=True))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2012,8 +1788,7 @@ class PricingToolTestCase(APITestCase):
         expected_products = {test_type_1, test_type_2}
         AdGroup.objects.create(id="1", campaign=campaign, type=test_type_1)
         AdGroup.objects.create(id="2", campaign=campaign, type=test_type_2)
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2022,8 +1797,7 @@ class PricingToolTestCase(APITestCase):
     def test_campaign_targeting(self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(has_interests=True, has_remarketing=True))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2033,8 +1807,7 @@ class PricingToolTestCase(APITestCase):
     def test_campaign_demographic(self):
         self._create_opportunity_campaign(
             "1", camp_data=dict(age_18_24=True, gender_female=True))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2059,11 +1832,7 @@ class PricingToolTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(ad_group=ad_group,
                                               creative=creative_2,
                                               date=start_date)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_date), end=str(end_date))),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start_date), end=str(end_date))
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2082,8 +1851,7 @@ class PricingToolTestCase(APITestCase):
                                               creative=creative,
                                               cost=999,
                                               date=datetime(2017, 1, 1))
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
@@ -2101,9 +1869,7 @@ class PricingToolTestCase(APITestCase):
             "3", camp_data=dict(start_date=datetime(2017, 1, 1),
                                 end_date=datetime(2017, 2, 1)))
         with patch_now(now):
-            response = self.client.post(
-                self.url, json.dumps(dict(compare_yoy=True)),
-                content_type='application/json')
+            response = self._request(compare_yoy=True)
 
         opportunities = response.data["items"]
         self.assertEqual(len(opportunities), 2)
@@ -2142,10 +1908,7 @@ class PricingToolTestCase(APITestCase):
                                              campaign=campaign,
                                              impressions=impressions,
                                              video_views=video_views)
-        response = self.client.post(
-            self.url, json.dumps(dict(min_video_view_rate=50)),
-            content_type='application/json'
-        )
+        response = self._request(min_video_view_rate=50)
 
         self.assertEqual(len(response.data["items"]), 0)
 
@@ -2174,11 +1937,8 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          clicks=29,
                                          video_views=1000)  # 3%
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end),
-                                      min_ctr_v=3.)),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start), end=str(end),
+                                 min_ctr_v=3.)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
 
@@ -2207,11 +1967,8 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          clicks=29,
                                          impressions=1000)  # 3%
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end),
-                                      min_ctr=3.)),
-            content_type='application/json'
-        )
+        response = self._request(start=str(start), end=str(end),
+                                 min_ctr=3.)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
 
@@ -2235,9 +1992,7 @@ class PricingToolTestCase(APITestCase):
                 _id=_id, camp_data=camp_data)
             if date_range[2]:
                 expected_ids.add(opportunity.id)
-        response = self.client.post(
-            self.url, json.dumps({"start": "2018-01-01", "end": "2018-03-31"}),
-            content_type="application/json")
+        response = self._request(start="2018-01-01", end="2018-03-31")
         self.assertEqual(
             response.data.get("items_count"), expected_opportunities_count)
         self.assertEqual(
@@ -2270,9 +2025,7 @@ class PricingToolTestCase(APITestCase):
             if date_range[2]:
                 expected_ids.add(opportunity.id)
         with patch_now(now):
-            response = self.client.post(
-                self.url, json.dumps({"quarters": ["Q1", "Q3"]}),
-                content_type="application/json")
+            response = self._request(quarters=["Q1", "Q3"])
         self.assertEqual(
             response.data.get("items_count"), expected_opportunities_count)
         self.assertEqual(
@@ -2294,9 +2047,7 @@ class PricingToolTestCase(APITestCase):
         CampaignStatistic.objects.create(date=start + timedelta(days=1),
                                          campaign=campaign,
                                          cost=extra_cost)
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end))),
-            content_type="application/json")
+        response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["budget"], expected_cost)
@@ -2321,8 +2072,7 @@ class PricingToolTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.CPV,
             total_cost=444, ordered_units=555)
         Campaign.objects.create(id=_id, salesforce_placement=placement)
-        response = self.client.post(self.url, "{}",
-                                    content_type="application/json")
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["sf_cpm"], expected_cpm)
@@ -2353,9 +2103,7 @@ class PricingToolTestCase(APITestCase):
                 start=p_start, end=p_end,
                 total_cost=cost, ordered_units=ordered_units)
             Campaign.objects.create(id=i, salesforce_placement=placement)
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(start), end=str(end))),
-            content_type="application/json")
+        response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertAlmostEqual(response.data["items"][0]["sf_cpm"],
@@ -2381,8 +2129,7 @@ class PricingToolTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.CPM,
             total_cost=444, ordered_units=555)
         Campaign.objects.create(id=_id, salesforce_placement=placement)
-        response = self.client.post(self.url, "{}",
-                                    content_type="application/json")
+        response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["sf_cpv"], expected_cpm)
@@ -2414,9 +2161,7 @@ class PricingToolTestCase(APITestCase):
                 start=start, end=end,
                 total_cost=cost, ordered_units=ordered_units)
             Campaign.objects.create(id=i, salesforce_placement=placement)
-        response = self.client.post(
-            self.url, json.dumps(dict(start=request_start, end=request_end)),
-            content_type="application/json")
+        response = self._request(start=request_start, end=request_end)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["sf_cpv"], expected_cpm)
 
@@ -2435,10 +2180,7 @@ class PricingToolTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=start_end + timedelta(days=1),
                                          video_views=9999, cost=9999)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_end), end=str(start_end))),
-            content_type="application/json")
+        response = self._request(start=str(start_end), end=str(start_end))
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["average_cpv"], average_cpv)
@@ -2458,10 +2200,7 @@ class PricingToolTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=start_end + timedelta(days=1),
                                          impressions=9999, cost=9999)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_end), end=str(start_end))),
-            content_type="application/json")
+        response = self._request(start=str(start_end), end=str(start_end))
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["average_cpm"], average_cpm)
@@ -2518,10 +2257,7 @@ class PricingToolTestCase(APITestCase):
         sf_cpv = cpv_placement.ordered_rate
         expected_margin = (1 - (cpm_cost + cpv_cost) / (
                 cpm_impressions * sf_cpm + cpv_views * sf_cpv)) * 100
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(start_end), end=str(start_end))),
-            content_type="application/json")
+        response = self._request(start=str(start_end), end=str(start_end))
 
         self.assertAlmostEqual(response.data["items"][0]["margin"],
                                expected_margin)
@@ -2531,8 +2267,7 @@ class PricingToolTestCase(APITestCase):
         campaign.account = Account.objects.create(id="1")
         campaign.save()
         with patch_instance_settings(visible_accounts=[]):
-            response = self.client.post(self.url, "{}",
-                                        content_type='application/json')
+            response = self._request()
 
         self.assertEqual(len(response.data["items"]), 0)
 
@@ -2542,8 +2277,7 @@ class PricingToolTestCase(APITestCase):
         campaign = Campaign.objects.create(
             id="1", salesforce_placement=placement, account=None)
         with patch_instance_settings(visible_accounts=[]):
-            response = self.client.post(self.url, "{}",
-                                        content_type='application/json')
+            response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
@@ -2561,8 +2295,7 @@ class PricingToolTestCase(APITestCase):
         Campaign.objects.create(
             id="2", account=account_2, salesforce_placement=placement)
         with patch_instance_settings(visible_accounts=[account_1.id]):
-            response = self.client.post(self.url, "{}",
-                                        content_type='application/json')
+            response = self._request()
 
         campaign_ids = [c["id"] for c in response.data["items"][0]["campaigns"]]
         self.assertEqual(campaign_ids, [campaign_1.id])
@@ -2587,11 +2320,8 @@ class PricingToolTestCase(APITestCase):
                                          video_views_100_quartile=20,
                                          impressions=100)
         with patch_instance_settings(visible_accounts=[account_1.id]):
-            response = self.client.post(
-                self.url,
-                json.dumps(dict(min_video100rate=10,
-                                max_video100rate=30)),
-                content_type='application/json')
+            response = self._request(min_video100rate=10,
+                                     max_video100rate=30)
 
         self.assertEqual(len(response.data["items"]), 0)
 
@@ -2611,11 +2341,8 @@ class PricingToolTestCase(APITestCase):
                                          video_views=2,
                                          impressions=10)
         with patch_instance_settings(visible_accounts=[account_1.id]):
-            response = self.client.post(
-                self.url,
-                json.dumps(dict(min_video_view_rate=10,
-                                max_video_view_rate=30)),
-                content_type='application/json')
+            response = self._request(min_video_view_rate=10,
+                                     max_video_view_rate=30)
 
         self.assertEqual(len(response.data["items"]), 0)
 
@@ -2673,9 +2400,7 @@ class PricingToolTestCase(APITestCase):
                                        predefined_cpv_statistics["impressions"],
                                        predefined_cpm_statistics[
                                            "impressions"])) * 100
-        response = self.client.post(
-            self.url, json.dumps(dict()),
-            content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -2725,10 +2450,7 @@ class PricingToolTestCase(APITestCase):
                                          impressions=999999)
         expected_opportunity_view_rate = sum(video_views) * 100. \
                                          / sum(impressions)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(date_filter), end=str(date_filter))),
-            content_type='application/json')
+        response = self._request(start=str(date_filter), end=str(date_filter))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -2756,8 +2478,7 @@ class PricingToolTestCase(APITestCase):
             ordered_units=ordered_units[1]
         )
 
-        response = self.client.post(self.url, "{}",
-                                    content_type="application/json")
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -2784,10 +2505,7 @@ class PricingToolTestCase(APITestCase):
             video_views_100_quartile=1000,
             impressions=1000)
         expected_video100rate = video_views_100_quartile * 100. / impressions
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(start=str(date_filter), end=str(date_filter))),
-            content_type='application/json')
+        response = self._request(start=str(date_filter), end=str(date_filter))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(len(response.data["items"][0]["campaigns"]), 1)
@@ -2809,10 +2527,7 @@ class PricingToolTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          clicks=40,
                                          impressions=1000)
-        response = self.client.post(
-            self.url, json.dumps(dict(min_ctr=0, max_ctr=0)),
-            content_type='application/json'
-        )
+        response = self._request(min_ctr=0, max_ctr=0)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data["items"]), 1)
@@ -2832,10 +2547,7 @@ class PricingToolTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          clicks=40,
                                          video_views=1000)
-        response = self.client.post(
-            self.url, json.dumps(dict(max_ctr_v=0, min_ctr_v=0)),
-            content_type='application/json'
-        )
+        response = self._request(max_ctr_v=0, min_ctr_v=0)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -2855,12 +2567,8 @@ class PricingToolTestCase(APITestCase):
                                          date=date(2017, 1, 1),
                                          video_views=400,
                                          impressions=1000)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(min_video_view_rate=0,
-                            max_video_view_rate=0)),
-            content_type='application/json'
-        )
+        response = self._request(min_video_view_rate=0,
+                                 max_video_view_rate=0)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -2881,12 +2589,8 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          video_views_100_quartile=40,
                                          impressions=100)
-        response = self.client.post(
-            self.url,
-            json.dumps(dict(min_video100rate=0,
-                            max_video100rate=0)),
-            content_type='application/json'
-        )
+        response = self._request(min_video100rate=0,
+                                 max_video100rate=0)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -2899,8 +2603,7 @@ class PricingToolTestCase(APITestCase):
         placement = campaign.salesforce_placement
         Flight.objects.create(placement=placement,
                               total_cost=1)
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -2912,8 +2615,7 @@ class PricingToolTestCase(APITestCase):
             "1", SalesForceGoalType.HARD_COST)
         Flight.objects.create(placement=campaign.salesforce_placement,
                               cost=1)
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -2949,8 +2651,7 @@ class PricingToolTestCase(APITestCase):
                                          campaign=cpv_campaign,
                                          video_views=delivered_units,
                                          cost=aw_cpv_cost)
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -2970,8 +2671,7 @@ class PricingToolTestCase(APITestCase):
         Flight.objects.create(placement=placement,
                               cost=cost,
                               total_cost=client_cost)
-        response = self.client.post(self.url, "{}",
-                                    content_type='application/json')
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -3001,10 +2701,8 @@ class PricingToolTestCase(APITestCase):
                               placement=placement,
                               cost=999999,
                               total_cost=999999)
-        response = self.client.post(
-            self.url, json.dumps(dict(start=str(today),
-                                      end=str(today))),
-            content_type='application/json')
+        response = self._request(start=str(today),
+                                 end=str(today))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -3069,8 +2767,7 @@ class PricingToolTestCase(APITestCase):
 
         margin = (1 - cost / client_cost) * 100.
 
-        response = self.client.post(self.url,
-                                    content_type="application/json")
+        response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         opp_data = response.data["items"][0]
@@ -3122,9 +2819,7 @@ class PricingToolTestCase(APITestCase):
         expected_margin = (1 - cost / client_cost) * 100
 
         with patch_now(today):
-            response = self.client.post(self.url,
-                                        json.dumps(dict(quarters=["Q1"])),
-                                        content_type='application/json')
+            response = self._request(quarters=["Q1"])
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -3138,9 +2833,7 @@ class PricingToolTestCase(APITestCase):
         expected_margin = (1 - cost / client_cost) * 100
 
         with patch_now(end_2):
-            response = self.client.post(self.url,
-                                        json.dumps(dict(quarters=["Q1"])),
-                                        content_type='application/json')
+            response = self._request(quarters=["Q1"])
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
@@ -3159,12 +2852,8 @@ class PricingToolTestCase(APITestCase):
                                 has_channels=True)
         Campaign.objects.create(id=2, salesforce_placement=placement,
                                 has_interests=True)
-        filters = dict(
-            targeting_types=["interests", "channels"],
-            targeting_types_condition="and")
-        response = self.client.post(self.url,
-                                    json.dumps(filters),
-                                    content_type='application/json')
+        response = self._request(targeting_types=["interests", "channels"],
+                                 targeting_types_condition="and")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
