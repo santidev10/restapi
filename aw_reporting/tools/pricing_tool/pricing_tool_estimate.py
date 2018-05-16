@@ -145,8 +145,9 @@ class PricingToolEstimate:
 
         exclude_campaigns = self.kwargs.get("exclude_campaigns")
         if exclude_campaigns is not None:
+            safe_exclude = exclude_campaigns or [-1]
             queryset = queryset.annotate(campaign_count=Max(
-                Case(When(~Q(adwords_campaigns__id__in=exclude_campaigns),
+                Case(When(~Q(adwords_campaigns__id__in=safe_exclude),
                           then=Value(1)),
                      output_field=BooleanField(),
                      default=Value(0))))

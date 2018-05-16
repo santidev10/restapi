@@ -1088,3 +1088,33 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         charts = response.data["charts"]
         self.assertIsNone(charts["cpm"])
         self.assertIsNone(charts["cpv"])
+
+    def test_success_on_empty_exclude_filters(self):
+        today = date(2017, 1, 1)
+        start, end = date(2017, 1, 1), date(2017, 3, 31)
+        opportunity = Opportunity.objects.create(id=1)
+        opportunity.refresh_from_db()
+
+        placement_data = dict(total_cost=123, ordered_units=9999,
+                              start=start, end=start)
+
+        placement_1 = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            **placement_data)
+        placement_2 = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            **placement_data)
+        Campaign.objects.create(id=1, salesforce_placement=placement_1)
+        Campaign.objects.create(id=2, salesforce_placement=placement_2)
+
+        with patch_now(today):
+            try:
+                response = self._request(
+                    quarters=["Q1"],
+                    exclude_opportunities=[],
+                    exclude_campaigns=[]
+                )
+            except Exception as ex:
+                self.fail("Server error due to {}".format(ex))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
