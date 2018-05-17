@@ -6,6 +6,7 @@ celery-with-redis==3.0
 celery==3.1.23
 colorama==0.3.9
 django-celery==3.1.17
+django-subquery==1.0.4
 Django==1.9.9
 djangorestframework==3.2.4
 et-xmlfile==1.0.1
