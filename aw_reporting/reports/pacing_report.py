@@ -338,14 +338,14 @@ class PacingReport:
             clicks += stats["clicks"] or 0
             cost += stats["sum_cost"] or 0
 
-        if 1 in goal_type_ids:
+        if SalesForceGoalType.CPV in goal_type_ids:
             ctr = get_ctr_v(video_clicks, video_views)
         else:
             ctr = get_ctr(clicks, impressions)
 
         goal_type_id = SalesForceGoalType.CPV
-        if 0 in goal_type_ids:
-            if 1 in goal_type_ids:
+        if SalesForceGoalType.CPM in goal_type_ids:
+            if SalesForceGoalType.CPV in goal_type_ids:
                 goal_type_id = SalesForceGoalType.CPM_AND_CPV
             else:
                 goal_type_id = SalesForceGoalType.CPM
