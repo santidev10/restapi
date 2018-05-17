@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, F
+from django_subquery.expressions import OuterRef, Subquery
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \
@@ -97,24 +98,13 @@ class Command(BaseCommand):
 
     @staticmethod
     def match_using_placement_numbers():
-        c_count = 0
-
-        placements = OpPlacement.objects.all() \
-            .values("id", "opportunity_id", "number")
-
-        for pl in placements:
-            placement_code = pl.get("number")
-            if not placement_code:
-                continue
-            campaigns = Campaign.objects \
-                .filter(placement_code=placement_code) \
-                .exclude(salesforce_placement_id=pl['id'])
-
-            campaigns.update(salesforce_placement_id=pl['id'])
-
-            c_count += campaigns.count()
+        placements = OpPlacement.objects.filter(
+            number=OuterRef("placement_code")).values("pk")[:1]
+        campaigns = Campaign.objects.all().annotate(
+            placement_id=Subquery(placements))
+        count = campaigns.update(salesforce_placement_id=F("placement_id"))
         if not settings.IS_TEST:
-            logger.info("Matched %d Campaigns" % c_count)
+            logger.info("Matched %d Campaigns" % count)
 
     def update(self, sc):
 
