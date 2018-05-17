@@ -373,7 +373,7 @@ class OpPlacement(BaseModel):
     total_cost = models.FloatField(null=True)
     start = models.DateField(null=True)
     end = models.DateField(null=True)
-    number = models.CharField(max_length=10, null=True)
+    number = models.CharField(max_length=10, null=True, db_index=True)
     ad_words_placement = models.CharField(max_length=255, null=True)
 
     placement_type = models.CharField(max_length=25, null=True)
