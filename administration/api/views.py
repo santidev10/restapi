@@ -86,9 +86,9 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         """
-        Exclude requested user from queryset
+        All users queryset
         """
-        return get_user_model().objects.exclude(id=self.request.user.id)
+        return get_user_model().objects.all()
 
     def put(self, request, *args, **kwargs):
         """
