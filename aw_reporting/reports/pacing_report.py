@@ -988,14 +988,14 @@ def get_today_goal(goal_items, delivered_items, end, today):
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
                    allocation_ko=1, campaign_id=None):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
-    if not flights:
-        goal_type_id = None
-    else:
-        goal_types = list(
-            set(f["placement__goal_type_id"] for f in flights))
-        assert len(
-            goal_types) == 1, "We must have a chart set for every goal type"
-        goal_type_id = goal_types[0]
+    # if not flights:
+    #     goal_type_id = None
+    # else:
+    #     goal_types = list(
+    #         set(f["placement__goal_type_id"] for f in flights))
+    #     assert len(
+    #         goal_types) == 1, "We must have a chart set for every goal type"
+    #     goal_type_id = goal_types[0]
 
     #
     sum_today_budget = yesterday_cost = 0
@@ -1005,6 +1005,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     yesterday_views = yesterday_impressions = 0
     today_goal_views = today_goal_impressions = 0
     for f in flights:
+        goal_type_id = f["placement__goal_type_id"]
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
 
@@ -1036,10 +1037,16 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     dict_calculate_stats(targeting)
     del targeting['average_cpv'], targeting['average_cpm']
 
-    if goal_type_id == SalesForceGoalType.HARD_COST:
+    goal_types = set(f["placement__goal_type_id"] for f in flights)
+    hard_cost_only = goal_types == {SalesForceGoalType.HARD_COST}
+    charts = None
+    if hard_cost_only:
         sum_today_budget = None
         sum_today_units = None
         yesterday_units = None
+    else:
+        charts = get_flight_charts(flights, today, allocation_ko,
+                                   campaign_id=campaign_id)
 
     data = dict(
         today_goal=sum_today_units,
@@ -1050,9 +1057,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         yesterday_delivered=yesterday_units,
         yesterday_delivered_views=yesterday_views,
         yesterday_delivered_impressions=yesterday_impressions,
-        charts=get_flight_charts(flights, today, allocation_ko,
-                                 goal_type_id=goal_type_id,
-                                 campaign_id=campaign_id),
+        charts=charts,
         targeting=targeting,
 
     )
@@ -1178,10 +1183,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None,
-                      goal_type_id=None):
-    if goal_type_id == SalesForceGoalType.HARD_COST:
-        return None
+def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     charts = []
     if not flights:
         return charts

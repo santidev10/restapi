@@ -956,3 +956,37 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 msg=dt)
 
         self.assertAlmostEqual(ideal_pacing[-1]["value"], placement.total_cost)
+
+    def test_success_on_cpm_and_cpv(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2514
+        Summary: Pacing report > 500 error occurs
+                 when a user filters by CPV&CPM goal type
+        """
+        today = date(2017, 1, 1)
+        opportunity = Opportunity.objects.create(
+            probability=100, goal_type_id=SalesForceGoalType.CPM_AND_CPV)
+        common_data = dict(start=today, end=today, total_cost=123)
+        placement_data = dict(opportunity=opportunity,
+                              dynamic_placement=DynamicPlacementType.BUDGET,
+                              **common_data)
+        placement_1 = OpPlacement.objects.create(
+            id=1, goal_type_id=SalesForceGoalType.CPM, **placement_data)
+        placement_2 = OpPlacement.objects.create(
+            id=2, goal_type_id=SalesForceGoalType.CPV, **placement_data)
+        Flight.objects.create(id=1, placement=placement_1, **common_data)
+        Flight.objects.create(id=2, placement=placement_2, **common_data)
+
+        filters = dict(
+            goal_type=SalesForceGoalType.CPM_AND_CPV
+        )
+        with patch_now(today):
+            response = self.client.get("{}?{}".format(
+                self.url,
+                urlencode(filters)
+            ))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(set(response.data["items"][0]["chart_data"].keys()),
+                         {"budget"})
