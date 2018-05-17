@@ -1017,3 +1017,45 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
+
+    def test_ctr_multiply_by_100(self):
+        any_date = date(2018, 1, 1)
+        clicks, views, impressions = 234, 542, 654
+        expected_ctr = clicks / impressions * 100
+        expected_ctr_v = clicks / views * 100
+
+        def create_opportunity(uid, goal_type_id, create_statistic=True):
+            opportunity = Opportunity.objects.create(id=uid, probability=100)
+            placement = OpPlacement.objects.create(id=uid,
+                                                   opportunity=opportunity,
+                                                   goal_type_id=goal_type_id)
+            Flight.objects.create(id=uid, placement=placement, start=any_date,
+                                  end=any_date)
+            campaign = Campaign.objects.create(id=uid,
+                                               salesforce_placement=placement,
+                                               video_views=1)
+            if create_statistic:
+                CampaignStatistic.objects.create(date=any_date,
+                                                 campaign=campaign,
+                                                 clicks=clicks,
+                                                 video_views=views,
+                                                 impressions=impressions)
+            opportunity.refresh_from_db()
+            return opportunity
+
+        cpv_opportunity = create_opportunity(1, SalesForceGoalType.CPV)
+        cpm_opportunity = create_opportunity(2, SalesForceGoalType.CPM)
+        cpv_opportunity_no_statistic = create_opportunity(
+            3, SalesForceGoalType.CPV, False)
+        cpm_opportunity_no_statistic = create_opportunity(
+            4, SalesForceGoalType.CPM, False)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 4)
+        ctr_by_id = {o["id"]: o["ctr"] for o in response.data["items"]}
+        self.assertAlmostEqual(ctr_by_id[cpv_opportunity.id], expected_ctr_v)
+        self.assertAlmostEqual(ctr_by_id[cpm_opportunity.id], expected_ctr)
+        self.assertIsNone(ctr_by_id[cpv_opportunity_no_statistic.id])
+        self.assertIsNone(ctr_by_id[cpm_opportunity_no_statistic.id])
