@@ -20,8 +20,6 @@ class AdWordsTopManagerSerializer(ModelSerializer):
 
 class GetUserMixin:
     def get_user_by_id(self, user_id):
-        user_id = self.request.query_params.get('user_id')
-
         try:
             user = UserProfile.objects.get(id=user_id)
         except UserProfile.DoesNotExist:
