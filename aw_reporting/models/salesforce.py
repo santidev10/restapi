@@ -128,6 +128,7 @@ class Opportunity(BaseModel):
     end = models.DateField(null=True)  # MAX_Placement_End_Date__c
     proposal_date = models.DateField(null=True)
 
+    # todo: remove from opportunity level
     goal_type_id = models.SmallIntegerField(default=0)
     units = models.IntegerField(default=0)
 
