@@ -990,3 +990,30 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(set(response.data["items"][0]["chart_data"].keys()),
                          {"budget"})
+
+    def test_custom_date_range_filter(self):
+        search_date = date(2018, 5, 22)
+        Opportunity.objects.create(id=1, probability=100)
+        Opportunity.objects.create(id=2, probability=100,
+                                   start=search_date - timedelta(days=1),
+                                   end=search_date - timedelta(days=1))
+        Opportunity.objects.create(id=3, probability=100,
+                                   start=search_date + timedelta(days=1),
+                                   end=search_date + timedelta(days=1))
+        opportunity = Opportunity.objects.create(
+            id=4, probability=100,
+            start=search_date - timedelta(days=1),
+            end=search_date + timedelta(days=1))
+        opportunity.refresh_from_db()
+
+        filters = dict(
+            start=str(search_date),
+            end=str(search_date),
+        )
+        response = self.client.get("{}?{}".format(
+            self.url,
+            urlencode(filters)
+        ))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], opportunity.id)
