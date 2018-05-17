@@ -496,8 +496,7 @@ class Campaign(ModelPlusDeNormFields):
 
     _start = models.DateField(null=True)
     _end = models.DateField(null=True)
-    placement_code = models.CharField(max_length=10, null=True, default=None,
-                                      db_index=True)
+    placement_code = models.CharField(max_length=10, null=True, default=None)
 
     SERVING_STATUSES = ("eligible", "pending", "suspended", "ended", "none")
 
