@@ -189,6 +189,8 @@ class PricingToolSerializer:
         else:
             client_cost = 0
         margin = get_margin(cost=cost, client_cost=client_cost, plan_cost=None)
+        if margin is not None:
+            margin *= 100
 
         devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
                        if campaign[d]])

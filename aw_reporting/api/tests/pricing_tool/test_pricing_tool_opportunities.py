@@ -2927,6 +2927,54 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
+    def test_margin_on_campaign_level(self):
+        start_end = date(2017, 1, 1)
+        opportunity = Opportunity.objects.create(id="1",
+                                                 start=start_end, end=start_end)
+
+        cpm_placement = OpPlacement.objects.create(
+            id="1", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            start=start_end, end=start_end,
+            ordered_rate=12., total_cost=99999
+        )
+        cpv_placement = OpPlacement.objects.create(
+            id="2", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            start=start_end, end=start_end,
+            ordered_rate=0.5, total_cost=99999
+        )
+
+        cpm_cost, cpv_cost = 245, 543
+        cpm_impressions, cpv_views = 4567, 432
+        cpm_campaign = Campaign.objects.create(
+            id="1", salesforce_placement=cpm_placement,
+            impressions=cpm_impressions,
+            video_views=999999,
+            cost=cpm_cost
+        )
+        cpv_campaign = Campaign.objects.create(
+            id="2", salesforce_placement=cpv_placement,
+            impressions=999999,
+            video_views=cpv_views,
+            cost=cpv_cost
+        )
+
+        sf_cpm = cpm_placement.ordered_rate / 1000
+        sf_cpv = cpv_placement.ordered_rate
+
+        cpm_margin = (1 - cpm_cost / (cpm_impressions * sf_cpm)) * 100
+        cpv_margin = (1 - cpv_cost / (cpv_views * sf_cpv)) * 100
+
+        response = self._request(start=str(start_end), end=str(start_end))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        margin_by_campaign = {c["id"]: c["margin"]
+                              for c in response.data["items"][0]["campaigns"]}
+        self.assertAlmostEqual(margin_by_campaign[cpm_campaign.id], cpm_margin)
+        self.assertAlmostEqual(margin_by_campaign[cpv_campaign.id], cpv_margin)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):
