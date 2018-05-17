@@ -684,16 +684,12 @@ class PacingReport:
         return queryset.order_by("name", "id").distinct()
 
     def get_period_dates(self, period, custom_start, custom_end):
-        if period is None:
-            return None, None
+        if period is None or period == "custom":
+            return custom_start, custom_end
 
         class PeriodError(ValueError):
             def __init__(self, p):
                 super().__init__("Unknown period: {}".format(p))
-
-        if period == "custom":
-            assert custom_start and custom_end, "Start and end dates of a custom period must be provided"
-            return custom_start, custom_end
 
         if period.endswith("month"):
             this_start = self.today.replace(day=1)
