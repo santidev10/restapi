@@ -13,6 +13,7 @@ from aw_reporting.models import Opportunity, OpPlacement, Flight, \
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from saas.urls.namespaces import Namespace
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -192,7 +193,7 @@ class PacingReportPlacementsTestCase(APITestCase):
                          DynamicPlacementType.SERVICE_FEE)
 
     def test_dynamic_placement_bar_chart(self):
-        now = timezone.now()
+        now = now_in_default_tz()
         today = now.date()
         yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
