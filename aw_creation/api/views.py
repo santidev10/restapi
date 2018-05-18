@@ -1694,7 +1694,7 @@ class PerformanceAccountDetailsApiView(APIView):
         return filters
 
     def __obtain_account(self, request, pk):
-        if request.data.get("chf") == 1:
+        if request.data.get("is_chf") == 1:
             managed_accounts_ids = Account.objects.get(
                 id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
                 .managers.values_list("id", flat=True)
