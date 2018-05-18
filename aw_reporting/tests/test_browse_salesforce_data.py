@@ -95,3 +95,12 @@ class BrowseSalesforceDataTestCase(APITestCase):
 
         self.assertIsNotNone(campaign.salesforce_placement)
         self.assertEqual(campaign.salesforce_placement, placement)
+
+    def test_does_not_brake_links(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Campaign.objects.create(salesforce_placement=placement)
+
+        call_command("browse_salesforce_data", no_get="1", no_update="1")
+
+        self.assertEqual(placement.adwords_campaigns.count(), 1)

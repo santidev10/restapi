@@ -100,8 +100,9 @@ class Command(BaseCommand):
     def match_using_placement_numbers():
         placements = OpPlacement.objects.filter(
             number=OuterRef("placement_code")).values("pk")[:1]
-        campaigns = Campaign.objects.all().annotate(
-            placement_id=Subquery(placements))
+        campaigns = Campaign.objects \
+            .filter(placement_code__isnull=False) \
+            .annotate(placement_id=Subquery(placements))
         count = campaigns.update(salesforce_placement_id=F("placement_id"))
         if not settings.IS_TEST:
             logger.info("Matched %d Campaigns" % count)
