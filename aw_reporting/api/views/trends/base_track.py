@@ -38,7 +38,7 @@ class TrackApiBase(APIView):
         start_date = data.get("start_date")
         end_date = data.get("end_date")
         accounts = data.get("accounts")
-        accounts.split("-") if accounts else None
+        accounts = accounts.split("-") if accounts else None
         filters = dict(
             account=data.get("account"),
             accounts=accounts,
