@@ -2978,7 +2978,7 @@ class PricingToolTestCase(APITestCase):
     def test_margin_on_over_delivery(self):
         """
         Bug: because of wrong JOIN total_cost calculates
-            as total_cost * flights count.
+            as total_cost * flights count * campaign.
             So if there is more then one flight margin may be be wrong
         """
         budget = 5000
@@ -2994,12 +2994,15 @@ class PricingToolTestCase(APITestCase):
         for i in range(2):
             Flight.objects.create(id=i, placement=placement)
         campaign = Campaign.objects.create(salesforce_placement=placement)
+        for i in range(1, 2):
+            Campaign.objects.create(id=i, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=any_date,
                                          campaign=campaign,
                                          video_views=views,
                                          cost=cost)
         # assert bug conditions
         self.assertGreater(placement.flights.count(), 1)
+        self.assertGreater(placement.adwords_campaigns.count(), 1)
         self.assertGreater(views * placement.ordered_rate, budget)
 
         response = self._request()
