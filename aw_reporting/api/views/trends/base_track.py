@@ -37,10 +37,11 @@ class TrackApiBase(APIView):
         data = self.request.query_params
         start_date = data.get("start_date")
         end_date = data.get("end_date")
-        accounts = data.get("accounts", "").split("-")
+        accounts = data.get("accounts")
+        accounts.split("-") if accounts else None
         filters = dict(
             account=data.get("account"),
-            accounts=accounts if accounts else None,
+            accounts=accounts,
             campaign=data.get("campaign"),
             indicator=data.get("indicator", self.indicators[0][0]),
             breakdown=data.get("breakdown"),
