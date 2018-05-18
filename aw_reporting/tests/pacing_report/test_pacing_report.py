@@ -170,7 +170,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(opportunity_data['id'], opportunity1.id)
 
     def test_flight_delivered_all(self):
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=today,
