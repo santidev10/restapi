@@ -2975,6 +2975,40 @@ class PricingToolTestCase(APITestCase):
         self.assertAlmostEqual(margin_by_campaign[cpm_campaign.id], cpm_margin)
         self.assertAlmostEqual(margin_by_campaign[cpv_campaign.id], cpv_margin)
 
+    def test_margin_on_over_delivery(self):
+        """
+        Bug: because of wrong JOIN total_cost calculates
+            as total_cost * flights count.
+            So if there is more then one flight margin may be be wrong
+        """
+        budget = 5000
+        views = 100000
+        cost = 2000
+        any_date = date(2018, 1, 1)
+        client_cost = budget
+        expected_margin = (1 - cost / client_cost) * 100
+        opportunity = Opportunity.objects.create(budget=budget)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=6, total_cost=opportunity.budget)
+        for i in range(2):
+            Flight.objects.create(id=i, placement=placement)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=any_date,
+                                         campaign=campaign,
+                                         video_views=views,
+                                         cost=cost)
+        # assert bug conditions
+        self.assertGreater(placement.flights.count(), 1)
+        self.assertGreater(views * placement.ordered_rate, budget)
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        opp_data = response.data["items"][0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):

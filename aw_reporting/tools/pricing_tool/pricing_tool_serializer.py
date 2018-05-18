@@ -11,7 +11,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
 from utils.datetime import as_date, now_in_default_tz
-from utils.query import merge_when
+from utils.query import merge_when, OR
 
 
 class PricingToolSerializer:
@@ -24,14 +24,17 @@ class PricingToolSerializer:
         campaign_thumbs = self._get_campaign_thumbnails(ids)
 
         campaign_groups = self._prepare_campaigns(ids)
+        hard_cost_stats = self._prepare_hard_cost_flights(ids)
         opportunities_annotated = Opportunity.objects.filter(id__in=ids) \
             .annotate(**self._opportunity_annotation())
         return [
             self._get_opportunity_data(opp, campaign_groups[opp.id],
+                                       hard_cost_stats[opp.id],
                                        campaign_thumbs)
             for opp in opportunities_annotated]
 
-    def _get_opportunity_data(self, opportunity, campaigns, campaign_thumbs):
+    def _get_opportunity_data(self, opportunity, campaigns, hard_cost_data,
+                              campaign_thumbs):
         periods = self.kwargs.get("periods", [])
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
@@ -68,8 +71,8 @@ class PricingToolSerializer:
         aw_cpm_cost = cpm_stats["aw_cpm_cost"] or 0
         sf_cpv_cost = opportunity.sf_cpv_cost or 0
         sf_cpm_cost = opportunity.sf_cpm_cost or 0
-        sf_hard_cost_total_cost = opportunity.sf_hard_cost_total_cost or 0
-        sf_hard_cost_our_cost = opportunity.sf_hard_cost_our_cost or 0
+        sf_hard_cost_total_cost = hard_cost_data["sf_hard_cost_total_cost"] or 0
+        sf_hard_cost_our_cost = hard_cost_data["sf_hard_cost_our_cost"] or 0
         sf_cpv_units = opportunity.sf_cpv_units or 0
         sf_cpm_units = opportunity.sf_cpm_units or 0
         sf_cpm = sf_cpm_cost / sf_cpm_units * 1000 if sf_cpm_units > 0 else None
@@ -288,7 +291,6 @@ class PricingToolSerializer:
                     for c in creatives)
 
     def _opportunity_annotation(self):
-        today = now_in_default_tz().date()
         targeting_aggregate = dict(
             ("has_" + t, Max(Case(When(
                 **{"placements__adwords_campaigns__has_" + t: True,
@@ -318,7 +320,7 @@ class PricingToolSerializer:
             for a in DEVICE_FIELDS)
         periods = self.kwargs.get("periods", [])
         placements_date_filter = placement_date_filter(periods)
-        flights_date_filter = flight_date_filter(periods, today)
+
         return dict(
             start_date=Min("placements__adwords_campaigns__start_date"),
             end_date=Max("placements__adwords_campaigns__end_date"),
@@ -333,20 +335,6 @@ class PricingToolSerializer:
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPV,
                             then="placements__total_cost"),
-                output_field=FloatField(),
-                default=0
-            )),
-            sf_hard_cost_total_cost=Sum(Case(
-                *merge_when(flights_date_filter,
-                            placements__goal_type_id=SalesForceGoalType.HARD_COST,
-                            then="placements__flights__total_cost"),
-                output_field=FloatField(),
-                default=0
-            )),
-            sf_hard_cost_our_cost=Sum(Case(
-                *merge_when(flights_date_filter,
-                            placements__goal_type_id=SalesForceGoalType.HARD_COST,
-                            then="placements__flights__cost"),
                 output_field=FloatField(),
                 default=0
             )),
@@ -369,6 +357,25 @@ class PricingToolSerializer:
             **genders_aggregate,
             **devices_aggregate,
         )
+
+    def _prepare_hard_cost_flights(self, opportunity_ids):
+        annotation = dict(
+            sf_hard_cost_total_cost=Sum("placements__flights__total_cost"),
+            sf_hard_cost_our_cost=Sum("placements__flights__cost")
+        )
+        today = now_in_default_tz().date()
+        periods = self.kwargs.get("periods", [])
+        data_filter = OR(*flight_date_filter(periods, today))
+        general_filters = Q(id__in=opportunity_ids,
+                            placements__goal_type_id=SalesForceGoalType.HARD_COST)
+        opportunities = Opportunity.objects \
+            .filter(data_filter & general_filters) \
+            .annotate(**annotation) \
+            .values("id", *annotation.keys())
+        hard_cost_dict = {o["id"]: o for o in opportunities}
+        empty_stats = {k: 0 for k in annotation.keys()}
+        return {uid: hard_cost_dict.get(uid, empty_stats)
+                for uid in opportunity_ids}
 
     def _prepare_campaigns(self, opportunity_ids):
         opp_id_key = "salesforce_placement__opportunity_id"
