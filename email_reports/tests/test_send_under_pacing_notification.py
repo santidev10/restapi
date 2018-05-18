@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from aw_reporting.models import User, Opportunity, OpPlacement, \
     SalesForceGoalType, Flight, Account, Campaign, CampaignStatistic
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 
@@ -19,7 +20,7 @@ class SendDailyEmailsTestCase(APITestCase):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
         sales = User.objects.create(id="2", name="Dave", email="2@mail.cz")
         acc_mng = User.objects.create(id="3", name="John", email="3@mail.cz")
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
         start, end = today - timedelta(days=2), today + timedelta(days=2)
 
         opportunity = Opportunity.objects.create(

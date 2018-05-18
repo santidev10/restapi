@@ -5,6 +5,7 @@ from django.utils import timezone
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Account, Campaign, CampaignStatistic
 from aw_reporting.reports.pacing_report import PacingReport
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
 
 
@@ -319,7 +320,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(first_chart['data'][-1]['value'], 770)
 
     def test_cary_over_enabled(self):
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
         start = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=today,
