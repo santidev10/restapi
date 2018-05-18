@@ -53,7 +53,7 @@ class UserRole(BaseModel):
 class User(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=60, db_index=True)  # Name
-    photo_id = models.CharField(max_length=50, null=True)
+    photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
     is_active = models.BooleanField(default=False)
     role = models.ForeignKey(UserRole, null=True, related_name="users")
@@ -89,8 +89,8 @@ class User(BaseModel):
 
 class Contact(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    first_name = models.CharField(max_length=50, null=True)
-    last_name = models.CharField(max_length=50, null=True)
+    first_name = models.CharField(max_length=255, null=True)
+    last_name = models.CharField(max_length=255, null=True)
 
     @property
     def name(self):
@@ -175,7 +175,7 @@ class Opportunity(BaseModel):
 
     notes = models.TextField(null=True, blank=True)
 
-    brand = models.CharField(max_length=50, null=True)
+    brand = models.CharField(max_length=255, null=True)
     agency = models.ForeignKey(Contact, null=True)
     account = models.ForeignKey(SFAccount, null=True)
 
