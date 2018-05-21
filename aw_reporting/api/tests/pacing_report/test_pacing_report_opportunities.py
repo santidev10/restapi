@@ -1059,3 +1059,22 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertAlmostEqual(ctr_by_id[cpm_opportunity.id], expected_ctr)
         self.assertIsNone(ctr_by_id[cpv_opportunity_no_statistic.id])
         self.assertIsNone(ctr_by_id[cpm_opportunity_no_statistic.id])
+
+    def test_dynamic_placements_types_does_not_contain_nones(self):
+        opportunity = Opportunity.objects.create(probability=100)
+        OpPlacement.objects.create(id=1, opportunity=opportunity,
+                                   dynamic_placement=None)
+        OpPlacement.objects.create(
+            id=2, opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+        OpPlacement.objects.create(
+            id=3, opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertTrue(response.data["items"][0]["has_dynamic_placements"])
+        self.assertEqual(response.data["items"][0]["dynamic_placements_types"],
+                         [DynamicPlacementType.BUDGET])
