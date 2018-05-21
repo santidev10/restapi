@@ -106,7 +106,7 @@ urlpatterns = [
     # Pricing tool
     url(r'^pricing_tool/filters/$',
         views.PricingToolFiltersView.as_view(),
-        name="pricing_tool_filters"),
+        name=Name.PricingTool.FILTERS),
     url(r'^pricing_tool/estimate/$',
         views.PricingToolEstimateView.as_view(),
         name=Name.PricingTool.ESTIMATE),
