@@ -843,10 +843,10 @@ class PricingToolTestCase(APITestCase):
                                                    parent=top_interest_1,
                                                    type=Audience.AFFINITY_TYPE)
         top_interest_2 = Audience.objects.create(name="Plants",
-                                                 type=Audience.AFFINITY_TYPE)
+                                                 type=Audience.IN_MARKET_TYPE)
         child_interest_2 = Audience.objects.create(name="Vegetables",
                                                    parent=top_interest_2,
-                                                   type=Audience.AFFINITY_TYPE)
+                                                   type=Audience.IN_MARKET_TYPE)
         grand_interest_topic_2 = Audience.objects.create(
             name="Lol",
             parent=child_interest_2,
@@ -865,7 +865,8 @@ class PricingToolTestCase(APITestCase):
 
         # test OR
         response = self._request(
-            interests=[top_interest_1.id, top_interest_2.id],
+            interests_affinity=[top_interest_1.id],
+            interests_in_marketing=[top_interest_2.id],
             interests_condition="or")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
@@ -874,7 +875,8 @@ class PricingToolTestCase(APITestCase):
 
         # test AND
         response = self._request(
-            interests=[top_interest_1.id, top_interest_2.id],
+            interests_affinity=[top_interest_1.id],
+            interests_in_marketing=[top_interest_2.id],
             interests_condition="and")
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
