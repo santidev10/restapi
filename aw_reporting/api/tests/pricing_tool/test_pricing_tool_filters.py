@@ -1,12 +1,18 @@
+from datetime import date
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
-    Campaign
+    Campaign, Audience, AudienceStatistic
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase, patch_instance_settings
 
 
 class PricingToolTestCase(ExtendedAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.PricingTool.FILTERS)
+
     def setUp(self):
         self.user = self.create_test_user()
 
@@ -65,9 +71,8 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id="2", campaign=campaign_hidden, type="type2")
 
-        url = reverse("aw_reporting_urls:pricing_tool_filters")
         with patch_instance_settings(visible_accounts=[account_visible.id]):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         filters = response.data
@@ -81,3 +86,29 @@ class PricingToolTestCase(ExtendedAPITestCase):
                          id_name_list(opportunity_visible.brand))
         self.assertEqual(filters["categories"],
                          id_name_list(opportunity_visible.category_id))
+
+    def test_interests_contains_type(self):
+        any_date = date(2018, 1, 1)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        a_1 = Audience.objects.create(id=1, name="A1",
+                                      type=Audience.IN_MARKET_TYPE)
+        a_2 = Audience.objects.create(id=2, name="A2",
+                                      type=Audience.AFFINITY_TYPE)
+        a_3 = Audience.objects.create(id=3, name="A3",
+                                      type=Audience.CUSTOM_AFFINITY_TYPE)
+        expected_interests = sorted(
+            Audience.objects.all().values("id", "name", "type"),
+            key=lambda i: i["name"])
+
+        common = dict(ad_group=ad_group, date=any_date)
+        AudienceStatistic.objects.create(audience=a_1, **common)
+        AudienceStatistic.objects.create(audience=a_2, **common)
+        AudienceStatistic.objects.create(audience=a_3, **common)
+
+        resonse = self.client.get(self.url)
+
+        self.assertEqual(resonse.status_code, HTTP_200_OK)
+        self.assertEqual(resonse.data["interests"], expected_interests)
