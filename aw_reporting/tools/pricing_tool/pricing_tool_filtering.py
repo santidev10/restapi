@@ -13,16 +13,7 @@ from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
 from utils.datetime import now_in_default_tz, quarter_days
-from utils.lang import groupby_dict
 from utils.query import build_query_bool, split_request, merge_when, Operator
-
-INTERESTS_MAP = {"audience_id": "id",
-                 "audience__name": "name"}
-
-CONDITIONS = [
-    dict(id="or", name="Or"),
-    dict(id="and", name="And"),
-]
 
 
 class PricingToolFiltering:
@@ -36,7 +27,10 @@ class PricingToolFiltering:
 
     @classmethod
     def get_filters(cls):
-
+        condition = [
+            dict(id="or", name="Or"),
+            dict(id="and", name="And"),
+        ]
         start, end = cls._get_default_dates()
 
         brands = Opportunity.objects.filter(
@@ -62,28 +56,28 @@ class PricingToolFiltering:
             # timing
             quarters=[dict(id=c, name=c)
                       for c in list(sorted(quarter_days.keys()))],
-            quarters_condition=CONDITIONS,
+            quarters_condition=condition,
             start=start, end=end,
             compare_yoy=False,
 
             product_types=product_types,
-            product_types_condition=CONDITIONS,
+            product_types_condition=condition,
 
             targeting_types=[
                 dict(id=i, name=i.capitalize()) for i in TARGETING_TYPES
             ],
-            targeting_types_condition=CONDITIONS,
+            targeting_types_condition=condition,
 
             brands=[dict(id=b, name=b) for b in brands],
             categories=[dict(id=c, name=c) for c in categories],
 
             geo_locations="Use /geo_target_list?search= endpoint to get locations and sent their ids back",
-            geo_locations_condition=CONDITIONS,
+            geo_locations_condition=condition,
 
             ages=list_to_filter(AgeRanges),
             genders=list_to_filter(Genders),
             parents=list_to_filter(ParentStatuses),
-            demographic_condition=CONDITIONS,
+            demographic_condition=condition,
 
             topics=[
                 dict(id=i['topic_id'], name=i['topic__name'])
@@ -92,10 +86,19 @@ class PricingToolFiltering:
                 ).values('topic_id', 'topic__name').order_by('topic__name',
                                                              'topic_id').distinct()
             ],
-            topics_condition=CONDITIONS,
+            topics_condition=condition,
+
+            interests=[
+                dict(id=i['audience_id'], name=i['audience__name'].lstrip('/'))
+                for i in AudienceStatistic.objects.filter(
+                    audience__parent__isnull=True,
+                ).values('audience_id', 'audience__name').order_by(
+                    'audience__name', 'audience_id').distinct()
+            ],
+            interests_condition=condition,
 
             devices=list_to_filter(Devices),
-            devices_condition=CONDITIONS,
+            devices_condition=condition,
 
             creative_lengths=[
                 dict(
@@ -106,7 +109,7 @@ class PricingToolFiltering:
                 )
                 for uid, (f, t) in enumerate(VIDEO_LENGTHS)
             ],
-            creative_lengths_condition=CONDITIONS,
+            creative_lengths_condition=condition,
 
             exclude_campaigns="list of campaign ids is expected",
             exclude_opportunities="list of opportunity ids is expected",
@@ -114,7 +117,6 @@ class PricingToolFiltering:
             ctr_v=dict(min=0, max=None),
             video_view_rate=dict(min=0, max=100),
             video100rate=dict(min=0, max=100),
-            **_get_interests_filters()
         )
         return filters
 
@@ -200,12 +202,12 @@ class PricingToolFiltering:
         condition = self.kwargs.get("targeting_types_condition",
                                     self.default_condition)
         true_value = Value(1)
-        annotation = {"has_" + t: Max(Case(When(
-            **{"placements__adwords_campaigns__has_" + t: Value(True),
-               "then": true_value}),
-            output_field=BooleanField(),
-            default=Value(0)))
-            for t in TARGETING_TYPES}
+        annotation ={"has_" + t: Max(Case(When(
+                **{"placements__adwords_campaigns__has_" + t: Value(True),
+                   "then": true_value}),
+                output_field=BooleanField(),
+                default=Value(0)))
+                for t in TARGETING_TYPES}
         queryset = queryset.annotate(**annotation)
 
         fields = ["has_{}".format(t) for t in targeting_types]
@@ -744,24 +746,6 @@ class PricingToolFiltering:
         return self.interest_child_cache[key]
 
 
-def _get_interests_filters():
-    interests = AudienceStatistic.objects \
-        .filter(audience__parent__isnull=True, ) \
-        .values("audience_id", "audience__name", "audience__type") \
-        .order_by("audience__name", "audience_id") \
-        .distinct()
-
-    interests_grouped = groupby_dict(interests, key="audience__type")
-    interests_affinity = map_items(
-        interests_grouped.get(Audience.AFFINITY_TYPE, []), INTERESTS_MAP)
-    interests_in_marketing = map_items(
-        interests_grouped.get(Audience.IN_MARKET_TYPE, []), INTERESTS_MAP)
-
-    return dict(interests_affinity=interests_affinity,
-                interests_in_marketing=interests_in_marketing,
-                interests_condition=CONDITIONS)
-
-
 def opportunity_statistic_date_filter(periods):
     return [dict(
         placements__adwords_campaigns__statistics__date__gte=start,
@@ -772,13 +756,3 @@ def opportunity_statistic_date_filter(periods):
 
 def list_to_filter(items):
     return [dict(id=i, name=n) for i, n in enumerate(items)]
-
-
-def map_items(items, key_map):
-    return [map_item(item, key_map) for item in items]
-
-
-def map_item(item, key_map):
-    return {key_map[key]: value
-            for key, value in item.items()
-            if key in key_map}
