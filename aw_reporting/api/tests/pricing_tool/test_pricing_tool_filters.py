@@ -1,18 +1,23 @@
+from datetime import date
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
-    Campaign
+    Campaign, Audience, AudienceStatistic
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase, patch_instance_settings
 
 
 class PricingToolTestCase(ExtendedAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.PricingTool.FILTERS)
+
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_pricing_tool_filters(self):
-        url = reverse("aw_reporting_urls:pricing_tool_filters")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -31,7 +36,10 @@ class PricingToolTestCase(ExtendedAPITestCase):
                 "geo_locations", "geo_locations_condition",
 
                 "topics", "topics_condition",
-                "interests", "interests_condition",
+
+                "interests_affinity", "interests_in_marketing",
+                "interests_condition",
+
                 "brands", "categories",
 
                 "devices", "devices_condition",
@@ -65,9 +73,8 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id="2", campaign=campaign_hidden, type="type2")
 
-        url = reverse("aw_reporting_urls:pricing_tool_filters")
         with patch_instance_settings(visible_accounts=[account_visible.id]):
-            response = self.client.get(url)
+            response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         filters = response.data
@@ -81,3 +88,35 @@ class PricingToolTestCase(ExtendedAPITestCase):
                          id_name_list(opportunity_visible.brand))
         self.assertEqual(filters["categories"],
                          id_name_list(opportunity_visible.category_id))
+
+    def test_interests_grouped(self):
+        any_date = date(2018, 1, 1)
+        campaign = Campaign.objects.create()
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        affinity_audience_1 = Audience.objects.create(
+            id=1, name="Test 1 affinity", type=Audience.AFFINITY_TYPE)
+        in_marketing_audience = Audience.objects.create(
+            id=2, name="Test In-Marketing", type=Audience.IN_MARKET_TYPE)
+        affinity_audience_2 = Audience.objects.create(
+            id=3, name="Test 2 affinity", type=Audience.AFFINITY_TYPE)
+
+        common = dict(date=any_date, ad_group=ad_group)
+        AudienceStatistic.objects.create(audience=affinity_audience_1, **common)
+        AudienceStatistic.objects.create(audience=affinity_audience_2, **common)
+        AudienceStatistic.objects.create(audience=in_marketing_audience,
+                                         **common)
+        affinity_audiences = sorted(
+            [
+                dict(id=affinity_audience_1.id, name=affinity_audience_1.name),
+                dict(id=affinity_audience_2.id, name=affinity_audience_2.name),
+            ],
+            key=lambda i: i["name"])
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["interests_affinity"],
+                         affinity_audiences)
+        self.assertEqual(response.data["interests_in_marketing"],
+                         [dict(id=in_marketing_audience.id,
+                               name=in_marketing_audience.name)])
