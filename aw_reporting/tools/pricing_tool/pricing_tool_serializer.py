@@ -11,7 +11,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
 from utils.datetime import as_date, now_in_default_tz
-from utils.query import merge_when
+from utils.query import merge_when, OR
 
 
 class PricingToolSerializer:
@@ -24,14 +24,19 @@ class PricingToolSerializer:
         campaign_thumbs = self._get_campaign_thumbnails(ids)
 
         campaign_groups = self._prepare_campaigns(ids)
+        hard_cost_stats = self._prepare_hard_cost_flights(ids)
+        campaigns_data = self._prepare_campaign_data(ids)
         opportunities_annotated = Opportunity.objects.filter(id__in=ids) \
             .annotate(**self._opportunity_annotation())
         return [
             self._get_opportunity_data(opp, campaign_groups[opp.id],
+                                       hard_cost_stats[opp.id],
+                                       campaigns_data[opp.id],
                                        campaign_thumbs)
             for opp in opportunities_annotated]
 
-    def _get_opportunity_data(self, opportunity, campaigns, campaign_thumbs):
+    def _get_opportunity_data(self, opportunity, campaigns, hard_cost_data,
+                              campaigns_data, campaign_thumbs):
         periods = self.kwargs.get("periods", [])
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
@@ -68,8 +73,8 @@ class PricingToolSerializer:
         aw_cpm_cost = cpm_stats["aw_cpm_cost"] or 0
         sf_cpv_cost = opportunity.sf_cpv_cost or 0
         sf_cpm_cost = opportunity.sf_cpm_cost or 0
-        sf_hard_cost_total_cost = opportunity.sf_hard_cost_total_cost or 0
-        sf_hard_cost_our_cost = opportunity.sf_hard_cost_our_cost or 0
+        sf_hard_cost_total_cost = hard_cost_data["sf_hard_cost_total_cost"] or 0
+        sf_hard_cost_our_cost = hard_cost_data["sf_hard_cost_our_cost"] or 0
         sf_cpv_units = opportunity.sf_cpv_units or 0
         sf_cpm_units = opportunity.sf_cpm_units or 0
         sf_cpm = sf_cpm_cost / sf_cpm_units * 1000 if sf_cpm_units > 0 else None
@@ -96,21 +101,21 @@ class PricingToolSerializer:
         average_cpv = aw_cpv_cost / cpv_video_views \
             if cpv_video_views != 0 else 0
         targeting = [t for t in TARGETING_TYPES
-                     if getattr(opportunity, "has_" + t)]
+                     if campaigns_data.get("has_" + t)]
         ages = set([AgeRanges[i] for i, a in enumerate(AGE_FIELDS) if
-                    getattr(opportunity, a)])
-        genders = set([Genders[i] for i, a in enumerate(GENDER_FIELDS) if
-                       getattr(opportunity, a)])
+                    campaigns_data.get(a)])
+        genders = set([Genders[i] for i, g in enumerate(GENDER_FIELDS) if
+                       campaigns_data.get(g)])
         devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
-                       if getattr(opportunity, d)])
+                       if campaigns_data.get(d)])
         margin = get_margin(plan_cost=total_cost, cost=aw_cost,
                             client_cost=client_cost)
 
         if margin is not None:
             margin *= 100
 
-        start_date = opportunity.start_date
-        end_date = opportunity.end_date
+        start_date = campaigns_data.get("start_date")
+        end_date = campaigns_data.get("end_date")
         relevant_date_range = self._get_relevant_date_range(start_date,
                                                             end_date)
 
@@ -288,40 +293,10 @@ class PricingToolSerializer:
                     for c in creatives)
 
     def _opportunity_annotation(self):
-        today = now_in_default_tz().date()
-        targeting_aggregate = dict(
-            ("has_" + t, Max(Case(When(
-                **{"placements__adwords_campaigns__has_" + t: True,
-                   "then": Value(1)}),
-                output_field=BooleanField(),
-                default=Value(0))))
-            for t in TARGETING_TYPES)
-        ages_aggregate = dict(
-            (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                                 "then": Value(1)}),
-                         output_field=BooleanField(),
-                         default=Value(0))))
-            for a in AGE_FIELDS)
-
-        genders_aggregate = dict(
-            (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                                 "then": Value(1)}),
-                         output_field=BooleanField(),
-                         default=Value(0))))
-            for a in GENDER_FIELDS)
-
-        devices_aggregate = dict(
-            (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                                 "then": Value(1)}),
-                         output_field=BooleanField(),
-                         default=Value(0))))
-            for a in DEVICE_FIELDS)
         periods = self.kwargs.get("periods", [])
         placements_date_filter = placement_date_filter(periods)
-        flights_date_filter = flight_date_filter(periods, today)
+
         return dict(
-            start_date=Min("placements__adwords_campaigns__start_date"),
-            end_date=Max("placements__adwords_campaigns__end_date"),
             sf_cpm_cost=Sum(Case(
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPM,
@@ -333,20 +308,6 @@ class PricingToolSerializer:
                 *merge_when(placements_date_filter,
                             placements__goal_type_id=SalesForceGoalType.CPV,
                             then="placements__total_cost"),
-                output_field=FloatField(),
-                default=0
-            )),
-            sf_hard_cost_total_cost=Sum(Case(
-                *merge_when(flights_date_filter,
-                            placements__goal_type_id=SalesForceGoalType.HARD_COST,
-                            then="placements__flights__total_cost"),
-                output_field=FloatField(),
-                default=0
-            )),
-            sf_hard_cost_our_cost=Sum(Case(
-                *merge_when(flights_date_filter,
-                            placements__goal_type_id=SalesForceGoalType.HARD_COST,
-                            then="placements__flights__cost"),
                 output_field=FloatField(),
                 default=0
             )),
@@ -364,11 +325,43 @@ class PricingToolSerializer:
                 output_field=IntegerField(),
                 default=0
             )),
-            **targeting_aggregate,
-            **ages_aggregate,
-            **genders_aggregate,
-            **devices_aggregate,
         )
+
+    def _prepare_hard_cost_flights(self, opportunity_ids):
+        annotation = dict(
+            sf_hard_cost_total_cost=Sum("placements__flights__total_cost"),
+            sf_hard_cost_our_cost=Sum("placements__flights__cost")
+        )
+        today = now_in_default_tz().date()
+        periods = self.kwargs.get("periods", [])
+        data_filter = OR(*flight_date_filter(periods, today))
+        general_filters = Q(id__in=opportunity_ids,
+                            placements__goal_type_id=SalesForceGoalType.HARD_COST)
+        opportunities = Opportunity.objects \
+            .filter(data_filter & general_filters) \
+            .annotate(**annotation) \
+            .values("id", *annotation.keys())
+        hard_cost_dict = {o["id"]: o for o in opportunities}
+        empty_stats = {k: 0 for k in annotation.keys()}
+        return {uid: hard_cost_dict.get(uid, empty_stats)
+                for uid in opportunity_ids}
+
+    def _prepare_campaign_data(self, opportunity_ids):
+        annotation = dict(
+            start_date=Min("placements__adwords_campaigns__start_date"),
+            end_date=Max("placements__adwords_campaigns__end_date"),
+            **Aggregation.TARGETING,
+            **Aggregation.AGES,
+            **Aggregation.GENDERS,
+            **Aggregation.DEVICES,
+        )
+        opportunities = Opportunity.objects \
+            .filter(Q(id__in=opportunity_ids)) \
+            .annotate(**annotation) \
+            .values("id", *annotation.keys())
+        campaign_map = {o["id"]: o for o in opportunities}
+        return {uid: campaign_map.get(uid, dict()) for uid in opportunity_ids}
+
 
     def _prepare_campaigns(self, opportunity_ids):
         opp_id_key = "salesforce_placement__opportunity_id"
@@ -436,3 +429,33 @@ def flight_date_filter(periods, max_start_date=None):
         placements__flights__end__gte=start)
                for start, end in periods
            ] or [dict()]
+
+
+class Aggregation:
+    TARGETING = dict(
+        ("has_" + t, Max(Case(When(
+            **{"placements__adwords_campaigns__has_" + t: True,
+               "then": Value(1)}),
+            output_field=BooleanField(),
+            default=Value(0))))
+        for t in TARGETING_TYPES)
+    AGES = dict(
+        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
+                             "then": Value(1)}),
+                     output_field=BooleanField(),
+                     default=Value(0))))
+        for a in AGE_FIELDS)
+
+    GENDERS = dict(
+        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
+                             "then": Value(1)}),
+                     output_field=BooleanField(),
+                     default=Value(0))))
+        for a in GENDER_FIELDS)
+
+    DEVICES = dict(
+        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
+                             "then": Value(1)}),
+                     output_field=BooleanField(),
+                     default=Value(0))))
+        for a in DEVICE_FIELDS)
