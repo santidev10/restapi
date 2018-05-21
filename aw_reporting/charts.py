@@ -484,7 +484,7 @@ class DeliveryChart:
         if filters:
             queryset = queryset.filter(**filters)
 
-        return queryset
+        return queryset.distinct()
 
     def filter_queryset(self, queryset):
         camp_link = self.get_camp_link(queryset)
