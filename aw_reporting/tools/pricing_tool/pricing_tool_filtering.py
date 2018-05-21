@@ -291,8 +291,7 @@ class PricingToolFiltering:
                                    "placements__adwords_campaigns__ad_groups__"), True
 
     def _filter_by_interests(self, queryset):
-        interests = self.kwargs.get("interests_affinity", []) \
-                    + self.kwargs.get("interests_in_marketing", [])
+        interests = self.kwargs.get("interests", [])
         if len(interests) == 0:
             return queryset, False
         return self._filter_interests(queryset, interests,
