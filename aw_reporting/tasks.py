@@ -13,6 +13,8 @@ from django.db.models import Min, Max, Count, Case, When, Sum
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_reports import parent_performance_report
+from aw_reporting.models import AdGroup, Campaign
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -83,7 +85,7 @@ def load_hourly_stats(client, account, *_):
     from aw_reporting.models import CampaignHourlyStatistic, Campaign, \
         ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report, \
-        main_statistics
+        MAIN_STATISTICS_FILEDS
 
     queryset = CampaignHourlyStatistic.objects.filter(
         campaign__account=account)
@@ -109,7 +111,7 @@ def load_hourly_stats(client, account, *_):
             fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
                     "AdvertisingChannelType", "Amount", "CampaignStatus",
                     "ServingStatus", "Date", "HourOfDay"
-                    ] + list(main_statistics[:4]),
+                    ] + list(MAIN_STATISTICS_FILEDS[:4]),
             include_zero_impressions=False)
         if report:
             campaign_ids = list(
@@ -575,6 +577,56 @@ def get_genders(client, account, today):
                 GenderStatistic.objects.safe_bulk_create(bulk_data)
 
 
+def get_parents(client, account, today):
+    from aw_reporting.models import ParentStatistic, ParentStatuses
+
+    stats_queryset = ParentStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(stats_queryset, today)
+
+    min_acc_date, max_acc_date = get_account_border_dates(account)
+    if max_acc_date is None:
+        return
+
+    saved_max_date = stats_queryset.aggregate(
+        max_date=Max('date'),
+    ).get('max_date')
+
+    ad_group_ids = set()
+
+    if saved_max_date is None or saved_max_date < max_acc_date:
+        min_date = saved_max_date + timedelta(
+            days=1) if saved_max_date else min_acc_date
+        max_date = max_acc_date
+
+        report = parent_performance_report(
+            client, dates=(min_date, max_date),
+        )
+        with transaction.atomic():
+            bulk_data = []
+            for row_obj in report:
+                stats = {
+                    'parent_status_id': ParentStatuses.index(row_obj.Criteria),
+                    'date': row_obj.Date,
+                    'ad_group_id': row_obj.AdGroupId,
+
+                    'video_views_25_quartile': quart_views(row_obj, 25),
+                    'video_views_50_quartile': quart_views(row_obj, 50),
+                    'video_views_75_quartile': quart_views(row_obj, 75),
+                    'video_views_100_quartile': quart_views(row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_data.append(ParentStatistic(**stats))
+
+                ad_group_ids.add(row_obj.AdGroupId)
+
+            if bulk_data:
+                ParentStatistic.objects.safe_bulk_create(bulk_data)
+
+    _reset_denorm_flag(ad_group_ids=ad_group_ids)
+
+
 def get_age_ranges(client, account, today):
     from aw_reporting.models import AgeRangeStatistic, AgeRanges
     from aw_reporting.adwords_reports import age_range_performance_report
@@ -932,7 +984,7 @@ def get_top_cities(report):
 def get_cities(client, account, today):
     from aw_reporting.models import CityStatistic, GeoTarget
     from aw_reporting.adwords_reports import geo_performance_report, \
-        main_statistics
+        MAIN_STATISTICS_FILEDS
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
@@ -994,7 +1046,7 @@ def get_cities(client, account, today):
 
         report = geo_performance_report(
             client, dates=(min_date, max_date),
-            additional_fields=tuple(main_statistics) +
+            additional_fields=tuple(MAIN_STATISTICS_FILEDS) +
                               ('Date', 'AdGroupId')
         )
 
@@ -1466,3 +1518,14 @@ def recalculate_de_norm_fields(*args, **kwargs):
 
             for uid, updates in update.items():
                 model.objects.filter(id=uid).update(**updates)
+
+
+def _reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
+    if ad_group_ids:
+        AdGroup.objects.filter(id__in=ad_group_ids) \
+            .update(de_norm_fields_are_recalculated=False)
+    if campaign_ids is None:
+        campaign_ids = AdGroup.objects.filter(id__in=ad_group_ids) \
+            .values_list("campaign_id", flat=True).distinct()
+    Campaign.objects.filter(id__in=campaign_ids) \
+        .update(de_norm_fields_are_recalculated=False)

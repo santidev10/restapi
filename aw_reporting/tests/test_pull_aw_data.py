@@ -8,9 +8,11 @@ from pytz import utc
 from rest_framework.test import APITestCase
 
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
-    AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS
+    AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS, \
+    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
-    AWAccountPermission, Devices, AdGroup, GeoTarget
+    AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
+    AdGroupStatistic
 from utils.utils_tests import patch_now
 
 
@@ -252,6 +254,70 @@ class PullAWDataTestCase(APITestCase):
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.placement_code, test_code)
+
+    def test_pull_parent_statuses(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account,
+                                           parent_parent=False,
+                                           parent_not_parent=False,
+                                           parent_undetermined=False,
+                                           de_norm_fields_are_recalculated=True)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign,
+                                          parent_parent=False,
+                                          parent_not_parent=False,
+                                          parent_undetermined=False,
+                                          de_norm_fields_are_recalculated=True)
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        self.assertFalse(ad_group.parent_parent)
+        self.assertFalse(ad_group.parent_not_parent)
+        self.assertFalse(ad_group.parent_undetermined)
+        self.assertFalse(campaign.parent_parent)
+        self.assertFalse(campaign.parent_not_parent)
+        self.assertFalse(campaign.parent_undetermined)
+        AdGroupStatistic.objects.create(date=today,
+                                        ad_group=ad_group,
+                                        average_position=1)
+
+        test_report_data = [
+            dict(
+                AdGroupId=ad_group.id,
+                Criteria=criteria,
+                Date=str(today),
+                Cost=0,
+                Impressions=0,
+                VideoViews=0,
+                Clicks=0,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            ) for criteria in ParentStatuses
+        ]
+
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_parents", end="get_parents")
+
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        self.assertTrue(ad_group.parent_parent)
+        self.assertTrue(ad_group.parent_not_parent)
+        self.assertTrue(ad_group.parent_undetermined)
+        self.assertTrue(campaign.parent_parent)
+        self.assertTrue(campaign.parent_not_parent)
+        self.assertTrue(campaign.parent_undetermined)
 
 
 def build_csv_byte_stream(headers, rows):

@@ -612,13 +612,7 @@ class PacingReport:
                 if category_id is not None else None
 
             self.add_calculated_fields(o)
-
-            dynamic_placements_types = set(p["dynamic_placement"]
-                                           for p in placements)
-            o["has_dynamic_placements"] = any([dp in DYNAMIC_PLACEMENT_TYPES
-                                               for dp in
-                                               dynamic_placements_types])
-            o["dynamic_placements_types"] = dynamic_placements_types
+            o.update(_get_dynamic_placements_summary(placements))
 
         return opportunities
 
@@ -1370,3 +1364,16 @@ def get_flight_delivery_annotate(fields=None):
     if fields:
         annotate = {k: v for k, v in annotate.items() if k in fields}
     return annotate
+
+
+def _get_dynamic_placements_summary(placements):
+    dynamic_placements_types = set(p["dynamic_placement"]
+                                   for p in placements
+                                   if p["dynamic_placement"] is not None)
+    has_dynamic_placements = any([dp in DYNAMIC_PLACEMENT_TYPES
+                                  for dp in dynamic_placements_types])
+
+    return dict(
+        has_dynamic_placements=has_dynamic_placements,
+        dynamic_placements_types=list(dynamic_placements_types)
+    )

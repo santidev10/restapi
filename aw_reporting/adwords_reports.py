@@ -9,15 +9,15 @@ from aw_reporting.adwords_api import API_VERSION
 
 logger = logging.getLogger(__name__)
 
-main_statistics = (
+MAIN_STATISTICS_FILEDS = (
     "VideoViews", "Cost", "Clicks", "Impressions",
     "Conversions", "AllConversions", "ViewThroughConversions",
 )
 
 statistics_fields = ("VideoViewRate", "Ctr",
-                     "AverageCpv", "AverageCpm") + main_statistics
+                     "AverageCpv", "AverageCpm") + MAIN_STATISTICS_FILEDS
 
-completed_fields = ("VideoQuartile25Rate", "VideoQuartile50Rate",
+COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate",
                     "VideoQuartile75Rate", "VideoQuartile100Rate")
 
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
@@ -25,7 +25,8 @@ CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
                                          "ServingStatus", "CampaignStatus",
                                          "StartDate", "EndDate", "Amount",
                                          "AdvertisingChannelType",
-                                     ) + completed_fields + main_statistics
+                                     ) + COMPLETED_FIELDS \
+                                     + MAIN_STATISTICS_FILEDS
 AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "CampaignId",
                                          "AdGroupId", "AdGroupName",
@@ -33,9 +34,14 @@ AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "Date", "Device", "AdNetworkType1",
                                          "AveragePosition",
                                          "ActiveViewImpressions", "Engagements"
-                                     ) + main_statistics + completed_fields
+                                     ) + MAIN_STATISTICS_FILEDS \
+                                     + COMPLETED_FIELDS
 GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",
-                              "IsNegative") + main_statistics
+                              "IsNegative") + MAIN_STATISTICS_FILEDS
+
+DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId", "Date") \
+                                            + MAIN_STATISTICS_FILEDS \
+                                            + COMPLETED_FIELDS
 
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
@@ -129,7 +135,7 @@ def account_performance_report(client):
                  "AccountTimeZone", "CanManageClients",
                  "CustomerDescriptiveName",
                  "ExternalCustomerId", "IsTestAccount",
-             ) + main_statistics
+             ) + MAIN_STATISTICS_FILEDS
 
     result = _get_report(
         client,
@@ -152,7 +158,7 @@ def placement_performance_report(client, dates=None):
     :return:
     """
     fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName") + \
-             main_statistics + completed_fields
+             MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
 
     predicates = [
         {
@@ -240,8 +246,7 @@ def geo_location_report(client):
 
 def _daily_statistic_performance_report(client, name, dates=None,
                                         additional_fields=None):
-    fields = ("Criteria", "AdGroupId", "Date") + main_statistics + \
-             completed_fields
+    fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 
     if additional_fields:
         fields += additional_fields
@@ -265,6 +270,12 @@ def _daily_statistic_performance_report(client, name, dates=None,
 def gender_performance_report(client, dates):
     return _daily_statistic_performance_report(
         client, "GENDER_PERFORMANCE_REPORT", dates
+    )
+
+
+def parent_performance_report(client, dates):
+    return _daily_statistic_performance_report(
+        client, 'PARENTAL_STATUS_PERFORMANCE_REPORT', dates
     )
 
 
@@ -298,7 +309,7 @@ def ad_performance_report(client, dates=None):
                  "AdGroupId", "Headline", "Id", "ImageCreativeName",
                  "DisplayUrl",
                  "Status", "Date", "AveragePosition", "CombinedApprovalStatus"
-             ) + completed_fields + main_statistics
+             ) + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
     selector = {
         "fields": fields,
@@ -370,9 +381,9 @@ def ad_group_performance_report(client, dates=None):
 
 
 def video_performance_report(client, dates=None):
-    main_stats = tuple(set(main_statistics) - {"AllConversions"})
+    main_stats = tuple(set(MAIN_STATISTICS_FILEDS) - {"AllConversions"})
     fields = ("VideoChannelId", "VideoDuration", "VideoId", "AdGroupId",
-              "Date") + main_stats + completed_fields
+              "Date") + main_stats + COMPLETED_FIELDS
 
     selector = {
         "fields": fields,

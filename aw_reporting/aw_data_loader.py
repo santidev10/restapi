@@ -11,6 +11,7 @@ from utils.lang import safe_index
 
 logger = logging.getLogger(__name__)
 
+
 class AWDataLoader:
     advertising_update_tasks = (
         # get campaigns, ad-groups and ad-group daily stats
@@ -21,6 +22,7 @@ class AWDataLoader:
         aw_tasks.get_ads,
         #
         aw_tasks.get_genders,
+        aw_tasks.get_parents,
         aw_tasks.get_age_ranges,
         #
         aw_tasks.get_placements,
