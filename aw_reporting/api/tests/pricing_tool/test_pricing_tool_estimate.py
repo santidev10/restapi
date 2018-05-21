@@ -8,7 +8,8 @@ from rest_framework.status import HTTP_200_OK, \
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
-    Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
+    Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType, Audience, \
+    AudienceStatistic
 from aw_reporting.tasks import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
@@ -1118,3 +1119,50 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                 self.fail("Server error due to {}".format(ex))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_filter_by_interests(self):
+        any_date = date(2018, 1, 1)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity,
+                                               goal_type_id=SalesForceGoalType.CPV,
+                                               start=any_date, end=any_date,
+                                               total_cost=123,
+                                               ordered_units=9999)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           start_date=any_date,
+                                           end_date=any_date)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        AdGroupStatistic.objects.create(date=any_date,
+                                        ad_group=ad_group,
+                                        cost=1,
+                                        video_views=1, impressions=1,
+                                        average_position=1)
+        audience_1 = Audience.objects.create(id=1)
+        audience_2 = Audience.objects.create(id=2)
+        AudienceStatistic.objects.create(date=any_date,
+                                         ad_group=ad_group,
+                                         audience=audience_1)
+
+        def is_empty(response):
+            charts = response.data["charts"]
+            return response.status_code == HTTP_200_OK \
+                   and charts["cpm"] is None \
+                   and charts["cpm"] is None
+
+        with patch_now(any_date):
+            self.assertFalse(is_empty(self._request()))
+            self.assertFalse(is_empty(self._request(
+                interests_affinity=[audience_1.id],
+                interests_in_marketing=[audience_2.id],
+                interests_condition="or"
+            )))
+
+            self.assertTrue(is_empty(self._request(
+                interests_affinity=[audience_1.id],
+                interests_in_marketing=[audience_2.id],
+                interests_condition="and"
+            )))
+            self.assertFalse(is_empty(self._request(
+                interests_in_marketing=[audience_1.id],
+                interests_condition="and"
+            )))
