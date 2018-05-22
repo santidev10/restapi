@@ -162,6 +162,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
     def test_get_chf_account_creation_list_queryset(self):
+        self.user.is_staff = True
+        self.user.save()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         expected_account_id = "1"
