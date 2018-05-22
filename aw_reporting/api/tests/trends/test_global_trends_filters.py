@@ -39,6 +39,13 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         child_account.save()
         child_account.refresh_from_db()
 
+        campaign = Campaign.objects.create(
+            name="",
+            account=child_account
+        )
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=now_in_default_tz())
+
         instance_settings = {
             InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
         }
@@ -55,8 +62,14 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         account = self.create_account(user)
         manager = account.managers.first()
         for i in range(1, 3):
-            Campaign.objects.create(
-                id=i, name="", account=account, impressions=1)
+            campaign = Campaign.objects.create(
+                id=i,
+                name="",
+                account=account,
+                impressions=1
+            )
+            CampaignStatistic.objects.create(campaign=campaign,
+                                             date=now_in_default_tz())
 
         instance_settings = {
             InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
