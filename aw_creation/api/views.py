@@ -619,10 +619,15 @@ class AccountCreationListApiView(ListAPIView):
     def get_queryset(self, **filters):
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
-            managed_accounts_ids = Account.objects.get(
-                id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                .managers.values_list("id", flat=True)
-            filters["account__id__in"] = managed_accounts_ids
+            if self.request.user.is_staff:
+                managed_accounts_ids = Account.objects.get(
+                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+                    .managers.values_list("id", flat=True)
+                filters["account__id__in"] = managed_accounts_ids
+        elif self.request.user.has_perm("userprofile.view_dashboard"):
+            user_settings = self.request.user.aw_settings
+            if user_settings.get('global_account_visibility'):
+                filters["account__id__in"] = user_settings.get('visible_accounts')
         else:
             filters["owner"] = self.request.user
         queryset = AccountCreation.objects.filter(**filters)
