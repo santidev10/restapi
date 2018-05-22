@@ -455,7 +455,7 @@ class AnalyzeWeeklyReport:
         # Write content
         rows = [
             (obj["name"], obj["impressions"], obj["video_views"],
-             obj["video_view_rate"])
+             div_by_100(obj["video_view_rate"]))
             for obj in self.get_interest_data()
         ]
         start_row = self.write_rows(rows, start_row)
