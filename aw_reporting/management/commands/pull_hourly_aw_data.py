@@ -27,10 +27,11 @@ class Command(BaseCommand):
             min_cc_start=Min("account_creations__campaign_creations__start"),
             min_c_start=Min("campaigns__start_date"),
             max_cc_end=Max("account_creations__campaign_creations__end"),
-            max_c_end=Min("campaigns__end_date")) \
+            max_c_end=Max("campaigns__end_date")) \
             .annotate(max_end=Greatest("max_cc_end", "max_c_end"),
                       min_start=Least("min_cc_start", "min_c_start")) \
             .filter(ongoing_filter)
+
         total_accounts = accounts.count()
         logger.info('Total accounts: {}'.format(total_accounts))
         progress = 0
