@@ -30,8 +30,9 @@ class BaseTrackFiltersListApiView(TrackApiBase):
     def _get_accounts(self, request):
         raise NotImplemented
 
-    def _get_filters(self, request):
-        accounts = self._get_accounts(request)
+    def _get_filters(self, request, accounts=None):
+        if accounts is None:
+            accounts = self._get_accounts(request)
 
         return dict(
             accounts=[
