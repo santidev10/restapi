@@ -1,6 +1,7 @@
 from django.conf.urls import url
 
 from aw_creation.api import views
+from aw_creation.api.urls.names import Name
 
 urlpatterns = [
     url(r'^geo_target_list/$',
@@ -133,7 +134,7 @@ urlpatterns = [
         name="setup_topic_tool_export"),
     url(r'^topic_list/$',
         views.TopicToolFlatListApiView.as_view(),
-        name="topic_list"),
+        name=Name.TOPIC_LIST),
 
     url(r'^setup_audience_tool/$',
         views.AudienceToolListApiView.as_view(),

@@ -26,7 +26,7 @@ urlpatterns = [
 
     # AdWords creation api urls
     url(r'^api/v1/', include(aw_creation_urls,
-                             namespace='aw_creation_urls')),
+                             namespace=Namespace.AW_CREATION)),
 
     # AdWords reporting api urls
     url(r'^api/v1/', include(aw_reporting_urls,
