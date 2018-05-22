@@ -30,6 +30,9 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
         base_filters = super(GlobalTrendsFiltersApiView, self) \
             ._get_filters(request)
         accounts = self._get_accounts(request)
+        accounts = accounts.filter(campaigns__statistics__isnull=False)\
+                           .distinct()
+
         am_data = _users_data(
             managed_opportunities__placements__adwords_campaigns__account__in=accounts
         )
