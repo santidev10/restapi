@@ -68,7 +68,7 @@ class Command(BaseCommand):
 
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
-            timezone__in=timezones,
+            # timezone__in=timezones,
             can_manage_clients=True
         )
         if not options.get('forced'):
@@ -82,7 +82,7 @@ class Command(BaseCommand):
 
         # 2) update all the advertising accounts
         accounts_to_update = Account.objects.filter(
-            timezone__in=timezones,
+            # timezone__in=timezones,
             can_manage_clients=False
         )
         if not options.get('forced'):
