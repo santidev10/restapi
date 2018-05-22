@@ -86,6 +86,7 @@ class PermissionGroupNames:
     SEGMENTS_PRE_BAKES = 'Segments - pre-baked segments'
     MEDIA_BUYING = 'Media buying'
     AUTH_CHANNELS = 'Auth channels and audience data'
+    TOOLS = 'Tools'
 
 
 class Permissions:
@@ -119,11 +120,17 @@ class Permissions:
                                               "video_audience",
                                               "video_aw_performance",
                                               )),
+        (PermissionGroupNames.TOOLS, ("view_pacing_report",
+                                      "view_pricing_tool",
+                                      "view_health_check",
+                                      "view_trends",
+                                      "view_health_check",
+                                      "view_dashboard",
+                                      )),
     )
 
     PERM_LIST = (
         # view section
-        "view_trends",
         "view_benchmarks",
         "view_highlights",
         "view_performance",
@@ -153,6 +160,13 @@ class Permissions:
         "segment_channel_private",
         "segment_keyword_all",
         "segment_keyword_private",
+        # tools section
+        "view_pacing_report",
+        "view_pricing_tool",
+        "view_health_check",
+        "view_trends",
+        "view_health_check",
+        "view_dashboard",
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
