@@ -8,6 +8,10 @@ from django.db.models import Sum, Value
 from aw_reporting.models import *
 
 
+def div_by_100(value):
+    return value / 100. if value is not None else ""
+
+
 class AnalyzeWeeklyReport:
 
     def _set_format_options(self):
@@ -64,7 +68,7 @@ class AnalyzeWeeklyReport:
         first_column_cell_format = self.workbook.add_format(
             first_column_cell_options)
 
-        # 2-6, 11 column cell
+        # 2-3,5-6, 11 column cell
         middle_columns_cell_options = {
             "border": True,
             "align": "right"
@@ -72,10 +76,29 @@ class AnalyzeWeeklyReport:
         middle_columns_cell_format = self.workbook.add_format(
             middle_columns_cell_options)
 
-        # 7-10, 12 column cell options
+        # 4 column cell
+        middle_columns_percentage_cell_options = {
+            "border": True,
+            "align": "right",
+            "num_format": "0.00%",
+        }
+        middle_columns_percentage_cell_format = self.workbook.add_format(
+            middle_columns_percentage_cell_options)
+
+        # 7-10 column cell options
+        last_columns_percentage_cell_options = {
+            "border": True,
+            "align": "center",
+            "num_format": "0.00%",
+        }
+        last_columns_percentage_cell_format = self.workbook.add_format(
+            last_columns_percentage_cell_options
+        )
+
+        # 12 column cell options
         last_columns_cell_options = {
             "border": True,
-            "align": "center"
+            "align": "center",
         }
         last_columns_cell_format = self.workbook.add_format(
             last_columns_cell_options
@@ -85,13 +108,13 @@ class AnalyzeWeeklyReport:
             1: first_column_cell_format,
             2: middle_columns_cell_format,
             3: middle_columns_cell_format,
-            4: middle_columns_cell_format,
+            4: middle_columns_percentage_cell_format,
             5: middle_columns_cell_format,
-            6: middle_columns_cell_format,
-            7: last_columns_cell_format,
-            8: last_columns_cell_format,
-            9: last_columns_cell_format,
-            10: last_columns_cell_format,
+            6: middle_columns_percentage_cell_format,
+            7: last_columns_percentage_cell_format,
+            8: last_columns_percentage_cell_format,
+            9: last_columns_percentage_cell_format,
+            10: last_columns_percentage_cell_format,
             # TODO We don't collect the statistic for those two columns yet
             11: middle_columns_cell_format,
             12: last_columns_cell_format,
@@ -317,12 +340,13 @@ class AnalyzeWeeklyReport:
             rows.append((
                 # placement
                 obj["name"], obj["impressions"], obj["video_views"],
-                "{}%".format(obj["video_view_rate"]),
-                obj["clicks"], obj["ctr"],
-                "{}%".format(obj["video25rate"]),
-                "{}%".format(obj["video50rate"]),
-                "{}%".format(obj["video75rate"]),
-                "{}%".format(obj["video100rate"]),
+                div_by_100(obj["video_view_rate"]),
+                obj["clicks"],
+                div_by_100(obj["ctr"]),
+                div_by_100(obj["video25rate"]),
+                div_by_100(obj["video50rate"]),
+                div_by_100(obj["video75rate"]),
+                div_by_100(obj["video100rate"]),
                 # TODO We don't collect the statistic for those two columns yet
                 # viewable impressions
                 "",
@@ -336,12 +360,12 @@ class AnalyzeWeeklyReport:
         total_row = [(
             "Total",
             total_data["impressions"], total_data["video_views"],
-            "{}%".format(total_data["video_view_rate"]),
+            total_data["video_view_rate"],
             total_data["clicks"], total_data["ctr"],
-            "{}%".format(total_data["video25rate"]),
-            "{}%".format(total_data["video50rate"]),
-            "{}%".format(total_data["video75rate"]),
-            "{}%".format(total_data["video100rate"]),
+            total_data["video25rate"],
+            total_data["video50rate"],
+            total_data["video75rate"],
+            total_data["video100rate"],
             # TODO We don't collect the statistic for those two columns yet
             # viewable impressions
             "",
@@ -388,9 +412,14 @@ class AnalyzeWeeklyReport:
         # TODO We don't collect this statistic yet.
         ad_group_info = [
             (
-                obj["name"], obj["impressions"], obj["video_views"],
-                "{}%".format(obj["video_view_rate"]), obj["clicks"],
-                obj["ctr"], "{}%".format(obj["video100rate"]), "", "",
+                obj["name"],
+                obj["impressions"],
+                obj["video_views"],
+                div_by_100(obj["video_view_rate"]),
+                obj["clicks"],
+                div_by_100(obj["ctr"]),
+                div_by_100(obj["video100rate"]),
+                "", "",
             )
             for obj in self.get_ad_group_data()
         ]
@@ -462,7 +491,7 @@ class AnalyzeWeeklyReport:
 
         rows = [
             (obj["name"], obj["impressions"], obj["video_views"],
-             "{}%".format(obj["video_view_rate"]))
+             div_by_100(obj["video_view_rate"]))
             for obj in self.get_topic_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -497,7 +526,7 @@ class AnalyzeWeeklyReport:
         # Write content
         rows = [
             (obj['name'], obj['impressions'], obj['video_views'],
-             "{}%".format(obj['video_view_rate']))
+             div_by_100(obj['video_view_rate']))
             for obj in self.get_keyword_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -541,9 +570,9 @@ class AnalyzeWeeklyReport:
                 device = "Other*"
             rows.append(
                 (device, obj['impressions'], obj['video_views'],
-                 "{}%".format(obj['video_view_rate']), obj['clicks'],
-                 "{}%".format(obj['ctr']),
-                 "{}%".format(obj['video100rate']))
+                 div_by_100(obj['video_view_rate']), obj['clicks'],
+                 div_by_100(obj['ctr']),
+                 div_by_100(obj['video100rate']))
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation
