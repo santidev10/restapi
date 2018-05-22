@@ -144,7 +144,7 @@ urlpatterns = [
         name="setup_audience_tool_export"),
     url(r'^audience_list/$',
         views.AudienceFlatListApiView.as_view(),
-        name="flat_audience_list"),
+        name=Name.AUDIENCE_LIST_FLAT),
 
     # aws script endpoints
     url(r'^aw_creation_changed_accounts_list/(?P<manager_id>\d+)/$',

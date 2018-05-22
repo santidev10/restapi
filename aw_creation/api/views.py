@@ -2712,12 +2712,9 @@ class AudienceFlatListApiView(ListAPIView):
 
     def get_queryset(self):
         queryset = Audience.objects.all()
-        if 'ids' in self.request.query_params:
-            queryset = queryset.filter(
-                id__in=self.request.query_params['ids'].split(','))
-        if 'titles' in self.request.query_params:
-            queryset = queryset.filter(
-                name__in=self.request.query_params['titles'].split(','))
+        if "title" in self.request.query_params:
+            titles = self.request.query_params.getlist("title")
+            queryset = queryset.filter(name__in=titles)
         return queryset
 
 
