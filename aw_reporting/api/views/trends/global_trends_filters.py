@@ -27,9 +27,9 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
         )
 
     def _get_filters(self, request):
-        base_filters = super(GlobalTrendsFiltersApiView, self) \
-            ._get_filters(request)
         accounts = self._get_accounts(request)
+        base_filters = super(GlobalTrendsFiltersApiView, self) \
+            ._get_filters(request, accounts)
         accounts = accounts.filter(campaigns__statistics__isnull=False)\
                            .distinct()
 
