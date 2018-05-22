@@ -862,6 +862,12 @@ def get_topics(client, account, today):
                 TopicStatistic.objects.safe_bulk_create(bulk_data)
 
 
+class AudienceAWType:
+    REMARK = "boomuserlist"
+    USER_VERTICAL = "uservertical"
+    CUSTOM_AFFINITY = "customaffinity"
+
+
 def get_interests(client, account, today):
     from aw_reporting.models import AudienceStatistic, RemarkStatistic, \
         RemarkList, Audience
@@ -903,6 +909,7 @@ def get_interests(client, account, today):
         bulk_aud_stats = []
         bulk_remarks = []
         bulk_rem_stats = []
+        bulk_custom_audiences = []
         with transaction.atomic():
             for row_obj in report:
                 stats = dict(
@@ -915,7 +922,7 @@ def get_interests(client, account, today):
                     **get_base_stats(row_obj)
                 )
                 au_type, au_id, *_ = row_obj.Criteria.split('::')
-                if au_type == 'boomuserlist':
+                if au_type == AudienceAWType.REMARK:
                     stats.update(remark_id=au_id)
                     bulk_rem_stats.append(RemarkStatistic(**stats))
                     if au_id not in remark_ids:
@@ -924,7 +931,7 @@ def get_interests(client, account, today):
                             RemarkList(id=au_id, name=row_obj.UserListName)
                         )
 
-                elif au_type == 'uservertical':
+                elif au_type == AudienceAWType.USER_VERTICAL:
                     if int(au_id) not in interest_ids:
                         logger.warning("Audience %s not found" % au_id)
                         continue
@@ -932,9 +939,16 @@ def get_interests(client, account, today):
                     stats.update(audience_id=au_id)
                     bulk_aud_stats.append(AudienceStatistic(**stats))
 
-                elif au_type == 'customaffinity':
-                    # custom audiences ara not yet supported
-                    continue
+                elif au_type == AudienceAWType.CUSTOM_AFFINITY:
+                    if int(au_id) not in interest_ids:
+                        interest_ids |= {int(au_id)}
+                        bulk_custom_audiences.append(Audience(
+                            id=au_id, name=row_obj.Criteria,
+                            type=Audience.CUSTOM_AFFINITY_TYPE
+                        ))
+
+                    stats.update(audience_id=au_id)
+                    bulk_aud_stats.append(AudienceStatistic(**stats))
                 else:
                     logger.warning(
                         'Undefined criteria = %s' % row_obj.Criteria)
@@ -945,6 +959,9 @@ def get_interests(client, account, today):
             if bulk_rem_stats:
                 RemarkStatistic.objects.safe_bulk_create(
                     bulk_rem_stats)
+
+            if bulk_custom_audiences:
+                Audience.objects.safe_bulk_create(bulk_custom_audiences)
 
             if bulk_aud_stats:
                 AudienceStatistic.objects.safe_bulk_create(

@@ -13,16 +13,18 @@ from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
 from utils.datetime import now_in_default_tz, quarter_days
-from utils.lang import groupby_dict
 from utils.query import build_query_bool, split_request, merge_when, Operator
-
-INTERESTS_MAP = {"audience_id": "id",
-                 "audience__name": "name"}
 
 CONDITIONS = [
     dict(id="or", name="Or"),
     dict(id="and", name="And"),
 ]
+
+INTERESTS_MAP = {
+    "audience_id": "id",
+    "audience__name": "name",
+    "audience__type": "type"
+}
 
 
 class PricingToolFiltering:
@@ -289,8 +291,7 @@ class PricingToolFiltering:
                                    "placements__adwords_campaigns__ad_groups__"), True
 
     def _filter_by_interests(self, queryset):
-        interests = self.kwargs.get("interests_affinity", []) \
-                    + self.kwargs.get("interests_in_marketing", [])
+        interests = self.kwargs.get("interests", [])
         if len(interests) == 0:
             return queryset, False
         return self._filter_interests(queryset, interests,
@@ -751,14 +752,7 @@ def _get_interests_filters():
         .order_by("audience__name", "audience_id") \
         .distinct()
 
-    interests_grouped = groupby_dict(interests, key="audience__type")
-    interests_affinity = map_items(
-        interests_grouped.get(Audience.AFFINITY_TYPE, []), INTERESTS_MAP)
-    interests_in_marketing = map_items(
-        interests_grouped.get(Audience.IN_MARKET_TYPE, []), INTERESTS_MAP)
-
-    return dict(interests_affinity=interests_affinity,
-                interests_in_marketing=interests_in_marketing,
+    return dict(interests=map_items(interests, INTERESTS_MAP),
                 interests_condition=CONDITIONS)
 
 
