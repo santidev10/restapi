@@ -16,6 +16,7 @@ from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
 from aw_reporting.utils import safe_max
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -602,8 +603,15 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         )
 
     def validate_start(self, value):
-        if value and value < self.instance.account_creation.get_today_date() and value != self.instance.start:
-            raise ValidationError("This date is in the past")
+        today = self.instance.account_creation.get_today_date()
+        if value:
+            if value < today and value != self.instance.start:
+                raise ValidationError("This date is in the past")
+            if self.instance.start \
+                    and self.instance.start <= today \
+                    and self.instance.is_pulled_to_aw:
+                raise ValidationError(
+                    "Start date may not be edited for active campaign")
         return value
 
     def validate_end(self, value):
@@ -629,6 +637,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
 
         # if one of the following fields is provided
         if {"start", "end"} & set(data.keys()):
+            today = now_in_default_tz().date()
             start, end = None, None
             if self.instance:
                 start, end = self.instance.start, self.instance.end

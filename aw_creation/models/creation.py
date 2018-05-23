@@ -3,16 +3,17 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime
 from decimal import Decimal
 
-import pytz
 from PIL import Image
-from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, \
+    RegexValidator
 from django.db import models
 from django.db.models import Q, F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class AccountCreation(UniqueCreationItem):
             return settings.DEFAULT_TIMEZONE
 
     def get_today_date(self):
-        return datetime.now(tz=pytz.timezone(self.timezone)).date()
+        return now_in_default_tz(tz_str=self.timezone).date()
 
     def get_aws_code(self, request):
         if self.account_id:
@@ -351,7 +352,7 @@ class CampaignCreation(UniqueCreationItem):
     def get_creation_dates(self):
         start, end = self.start, self.end
         timezone = self.account_creation.timezone
-        today = datetime.now(tz=pytz.timezone(timezone)).date()
+        today = now_in_default_tz(tz_str=timezone).date()
 
         if start and start > today or (end and end < today):
             start_for_creation = start

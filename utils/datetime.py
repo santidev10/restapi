@@ -4,8 +4,8 @@ import pytz
 from django.conf import settings
 
 
-def now_in_default_tz(tz=None):
-    return time_instance.now(tz)
+def now_in_default_tz(tz=None, tz_str=None):
+    return time_instance.now(tz=tz, tz_str=tz_str)
 
 
 def as_date(dt):
@@ -32,8 +32,8 @@ def as_datetime(dt):
 
 
 class Time:
-    def now(self, tz=None):
-        tz = tz or pytz.timezone(settings.DEFAULT_TIMEZONE)
+    def now(self, tz=None, tz_str=None):
+        tz = tz or pytz.timezone(tz_str or settings.DEFAULT_TIMEZONE)
         return datetime.now(tz=tz)
 
 

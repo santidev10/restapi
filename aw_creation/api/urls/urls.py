@@ -37,7 +37,7 @@ urlpatterns = [
         name="campaign_creation_list_setup"),
     url(r'^campaign_creation_setup/(?P<pk>\w+)/$',
         views.CampaignCreationSetupApiView.as_view(),
-        name="campaign_creation_setup"),
+        name=Name.CreationSetup.CAMPAIGN),
     url(r'^ad_group_creation_list_setup/(?P<pk>\w+)/$',
         views.AdGroupCreationListSetupApiView.as_view(),
         name="ad_group_creation_list_setup"),
