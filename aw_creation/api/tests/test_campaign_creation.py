@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta, date
 from unittest.mock import patch
 
@@ -7,10 +8,12 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 
 from aw_creation.api.urls.names import Name
-from aw_creation.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, Language, \
+    LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import *
+from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher, patch_now
 
@@ -63,7 +66,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
     def test_success_fail_has_no_permission(self):
         self.user.remove_custom_user_permission("view_media_buying")
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -77,7 +80,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -142,7 +145,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -240,7 +243,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             start=str(today + timedelta(days=1)),
             end=str(today),
@@ -261,7 +264,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             start=str(today - timedelta(days=2)),
         )
@@ -307,7 +310,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             end=str(today - timedelta(days=2)),
         )
@@ -321,7 +324,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today - timedelta(days=10),
@@ -342,7 +345,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today - timedelta(days=10),
