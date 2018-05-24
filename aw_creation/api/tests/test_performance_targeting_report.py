@@ -77,9 +77,6 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(report_data['label'], "All campaigns")
         self.assertEqual(len(report_data["items"]), 5)
 
-        for n, item in enumerate(report_data['items']):
-            self.assertEqual(set(item.keys()), self.item_keys)
-
     def test_targeting_status(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
