@@ -68,7 +68,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             dict(
                 id=demo.id,
                 name=demo.name,
-                visible=demo.visible,
+                visible=demo.is_visible_for_user(request.user),
                 campaign_types_visibility=[
                     dict(
                         id=ct,

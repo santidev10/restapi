@@ -7,8 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
 
 from aw_reporting.models import Opportunity, OpPlacement, Campaign, Account, \
     Category, User
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, \
-    patch_instance_settings
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportTestCase(APITestCase):
@@ -55,7 +54,7 @@ class PacingReportTestCase(APITestCase):
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
-        with patch_instance_settings(global_account_visibility=False):
+        with self.patch_user_settings(global_account_visibility=False):
             response = self.client.put(url, json.dumps(update),
                                        content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -74,12 +73,12 @@ class PacingReportTestCase(APITestCase):
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
-        with patch_instance_settings(global_account_visibility=True,
-                                     visible_accounts=[]):
+        with self.patch_user_settings(global_account_visibility=True,
+                                      visible_accounts=[]):
             response = self.client.put(url, dict(region=1))
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
-        with patch_instance_settings(global_account_visibility=True,
-                                     visible_accounts=["11"]):
+        with self.patch_user_settings(global_account_visibility=True,
+                                      visible_accounts=[account.id]):
             response = self.client.patch(url, dict(region=1))
         self.assertEqual(response.status_code, HTTP_200_OK)

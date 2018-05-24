@@ -12,7 +12,7 @@ from aw_reporting.models.salesforce_constants import ALL_SALESFORCE_REGIONS, \
 @demo_view_decorator
 class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
     def _get_accounts(self, request):
-        return get_account_queryset()
+        return get_account_queryset(request.user)
 
     def _get_static_filters(self):
         static_filters = super(GlobalTrendsFiltersApiView,

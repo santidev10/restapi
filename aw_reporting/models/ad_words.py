@@ -11,7 +11,7 @@ from django.db.models.query import QuerySet as DBQuerySet
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
-from aw_reporting.settings import InstanceSettings
+from userprofile.models import UserProfile, UserSettingsKey
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -147,6 +147,7 @@ def multiply_percent(fn):
         if isinstance(value, (int, float)):
             value *= 100
         return value
+
     return wrapper
 
 
@@ -454,8 +455,17 @@ class CampaignQuerySetManager(models.Manager):
     def get_queryset(self):
         return CampaignQueryset(self.model, using=self._db)
 
-    def visible_campaigns(self):
-        visible_accounts = InstanceSettings().get("visible_accounts")
+    def visible_campaigns(self, user: UserProfile):
+        if user is None:
+            return self.model.objects.none()
+        aw_settings = user.aw_settings
+
+        global_visibility = aw_settings.get(
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY)
+        if not global_visibility:
+            return self.get_queryset()
+
+        visible_accounts = aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         return self.get_queryset().filter(Q(account__in=visible_accounts)
                                           | Q(account__isnull=True))
 

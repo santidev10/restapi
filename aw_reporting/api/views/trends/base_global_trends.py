@@ -1,10 +1,13 @@
-from aw_reporting.models import Account
-from aw_reporting.settings import InstanceSettings, InstanceSettingsKey
+from aw_reporting.models import Account, UserSettingsKey
+from userprofile.models import UserProfile
 
 
-def get_account_queryset():
-    global_trends_accounts_id = InstanceSettings() \
-        .get(InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS)
+def get_account_queryset(user:UserProfile):
+    if user is None :
+        return Account.objects.none()
+    user_settings = user.aw_settings
+    global_trends_accounts_id = user_settings \
+        .get(UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS)
     queryset = Account.objects\
         .filter(managers__id__in=global_trends_accounts_id,
                 can_manage_clients=False)\

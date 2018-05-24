@@ -9,10 +9,9 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement, \
     SalesForceGoalType
-from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import patch_instance_settings
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
@@ -54,9 +53,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
         }
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -102,9 +101,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
         }
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -134,9 +133,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
         }
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -171,9 +170,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self._create_ad_group_statistic(2)
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
         }
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -200,12 +199,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_2 = account_2.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(am=am_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -224,12 +223,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_2 = account_2.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(ad_ops=ad_ops_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -248,12 +247,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_2 = account_2.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(sales=sales_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -272,12 +271,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_2 = account_2.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(brands=brand_1)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -296,12 +295,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         campaign_2.salesforce_placement.save()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(goal_type=SalesForceGoalType.CPV)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -320,12 +319,12 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_2 = account_2.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id]
         }
         filters = dict(category=category_1)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -343,13 +342,13 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         manager_3 = account_3.managers.first()
 
         instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
+            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager_1.id,
                                                          manager_2.id,
                                                          manager_3.id]
         }
         filters = dict(region="0,1")
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_instance_settings(**instance_settings):
+        with self.patch_user_settings(**instance_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)

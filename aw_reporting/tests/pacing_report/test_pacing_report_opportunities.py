@@ -11,6 +11,8 @@ from utils.utils_tests import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
+    def setUp(self):
+        self.user = self.create_test_user()
 
     def test_get_opportunities(self):
         today = timezone.now().date()
@@ -57,7 +59,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
                                          **campaign_2_delivery)
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, self.user)
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
@@ -97,7 +99,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, self.user)
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
@@ -146,7 +148,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, self.user)
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
@@ -199,7 +201,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, self.user)
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
@@ -242,7 +244,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, self.user)
         self.assertEqual(len(opportunities), 1)
 
         opportunity_data = opportunities[0]

@@ -9,7 +9,6 @@ from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
-from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.permissions import Permissions
 from utils.datetime import Time
@@ -57,10 +56,14 @@ class ExtendedAPITestCase(APITestCase, TestUserMixin):
     def create_test_user(self, auth=True):
         user = super(ExtendedAPITestCase, self).create_test_user(auth)
         if Token.objects.filter(user=user).exists():
+            self.request_user = user
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
         return user
+
+    def patch_user_settings(self, **kwargs):
+        return patch_user_settings(self.request_user, **kwargs)
 
 
 class SingleDatabaseApiConnectorPatcher:
@@ -161,10 +164,13 @@ def test_instance_settings(**kwargs):
 
 
 @contextmanager
-def patch_instance_settings(**kwargs):
-    with patch.object(InstanceSettings, "get",
-                      side_effect=test_instance_settings(**kwargs)) as mock_get:
-        yield mock_get
+def patch_user_settings(user, **kwargs):
+    user_settings_backup = user.aw_settings
+    user.aw_settings = {**user_settings_backup, **kwargs}
+    user.save()
+    yield
+    user.aw_settings = user_settings_backup
+    user.save()
 
 
 @contextmanager
