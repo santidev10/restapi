@@ -195,28 +195,52 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
     def proceed_emails(self, segment, emails):
         sender = settings.SENDER_EMAIL_ADDRESS
         exist_emails = segment.shared_with
-
+        host = self.request.get_host()
+        segment_url = "https://{host}/segments/{segment_type}s/{segment_id}".format(
+            host=host,
+            segment_type=segment.segment_type,
+            segment_id=segment.id
+        )
         # collect only new emails for current segment
         emails_to_iterate = [e for e in emails if e not in exist_emails]
 
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
-                user.email_user('ViewIQ > You have been added as collaborator',
-                                '{}\n\n'
-                                'Please do not respond to this email.'
-                                .format('Fill me with data please'),
-                                from_email=sender)
+                user.email_user(
+                    subject="Enterprise > You have been added as collaborator",
+                    message="""
+                            Hello {name},
+
+                            {sender} has invited you to collaborate on a segment in Enterprise:
+
+                            {segment_url}
+
+                            Kind Regards,
+
+                            Channel Factory Team
+                            """.format(name=user.first_name, sender=sender, segment_url=segment_url),
+                    from_email=sender)
 
                 # provide access to segments for collaborator
                 user.add_custom_user_group('Segments')
-
             except UserProfile.DoesNotExist:
+
                 subject = "ViewIQ"
                 to = email
-                text = "You have been added as collaborator\n" \
-                       "You can register on ViewIQ to work with shared segment\n\n" \
-                       "Please do not respond to this email.\n"
+                text = """
+                       Hello,
+
+                       {sender} has invited you to collaborate on a segment in Enterprise:
+
+                       {segment_url}
+
+                       To view/edit this segment, please register your FREE account at {host}
+
+                       Kind Regards,
+
+                       Channel Factory Team
+                       """.format(sender=sender, segment_url=segment_url, host=host)
                 send_mail(subject, text, sender, (to,), fail_silently=True)
 
         # update collaborators list
