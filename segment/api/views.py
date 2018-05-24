@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import Q
+from django.template.loader import render_to_string
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -196,10 +197,16 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         sender = settings.SENDER_EMAIL_ADDRESS
         exist_emails = segment.shared_with
         host = self.request.get_host()
+        subject = "Enterprise > You have been added as collaborator"
         segment_url = "https://{host}/segments/{segment_type}s/{segment_id}".format(
             host=host,
             segment_type=segment.segment_type,
             segment_id=segment.id
+        )
+        context = dict(
+            host=host,
+            sender=sender,
+            segment_url=segment_url,
         )
         # collect only new emails for current segment
         emails_to_iterate = [e for e in emails if e not in exist_emails]
@@ -207,40 +214,19 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
+                context['name'] = user.first_name
+                message = render_to_string("new_enterprise_collaborator.txt", context)
                 user.email_user(
-                    subject="Enterprise > You have been added as collaborator",
-                    message="""
-                            Hello {name},
-
-                            {sender} has invited you to collaborate on a segment in Enterprise:
-
-                            {segment_url}
-
-                            Kind Regards,
-
-                            Channel Factory Team
-                            """.format(name=user.first_name, sender=sender, segment_url=segment_url),
+                    subject=subject,
+                    message=message,
                     from_email=sender)
 
                 # provide access to segments for collaborator
                 user.add_custom_user_group('Segments')
+
             except UserProfile.DoesNotExist:
-
-                subject = "ViewIQ"
                 to = email
-                text = """
-                       Hello,
-
-                       {sender} has invited you to collaborate on a segment in Enterprise:
-
-                       {segment_url}
-
-                       To view/edit this segment, please register your FREE account at {host}
-
-                       Kind Regards,
-
-                       Channel Factory Team
-                       """.format(sender=sender, segment_url=segment_url, host=host)
+                text = render_to_string("new_collaborator.txt", context)
                 send_mail(subject, text, sender, (to,), fail_silently=True)
 
         # update collaborators list

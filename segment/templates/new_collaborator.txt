@@ -1,0 +1,11 @@
+Hello,
+
+{{sender}} has invited you to collaborate on a segment in Enterprise:
+
+{{segment_url}}
+
+To view/edit this segment, please register your FREE account at {{host}}
+
+Kind Regards,
+
+Channel Factory Team
