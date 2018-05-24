@@ -1,13 +1,15 @@
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 
-from aw_creation.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation
 from aw_reporting.demo.models import DemoAccount
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
@@ -37,7 +39,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
     def test_success_fail_has_no_permission(self):
         self.user.remove_custom_user_permission("view_media_buying")
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -51,7 +53,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -112,7 +114,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -188,7 +190,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_put(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -218,7 +220,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_fail_put_too_many_targeting_items(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -291,7 +293,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
     def test_enterprise_user_can_edit_ad_group(self):
         user = self.user
         self.fill_all_groups(user)
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,

@@ -1,10 +1,13 @@
+import json
+import re
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_creation.models import *
-from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    default_languages, AdGroupCreation, AdCreation
+from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
 
 
 class CreationCodeAPITestCase(AwReportingAPITestCase):
@@ -19,8 +22,6 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             id=1,
             name="Sm name", account_creation=account_creation,
             budget="333.333",
-            # start="2017-05-10",
-            # end="2018-03-04",
             is_deleted=True,
             content_exclusions_raw=json.dumps(
                 [i[0] for i in CampaignCreation.CONTENT_LABELS]

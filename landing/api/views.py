@@ -13,7 +13,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
 
 
-class ContanctMessageSendApiView(APIView):
+class ContactMessageSendApiView(APIView):
     """
     Send feedback endpoint
     """
