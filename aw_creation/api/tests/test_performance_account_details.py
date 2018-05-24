@@ -118,10 +118,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['details']['video75rate'], 50)
         self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(data['details']['ad_network'], ad_network)
+        expected_overview_keys = self.overview_keys.copy()
+        expected_overview_keys.add("video_clicks")
         self.assertEqual(
             set(data["overview"].keys()),
-            self.overview_keys,
-        )
+            expected_overview_keys)
 
     def test_success_get_chf_account(self):
         chf_account = Account.objects.create(
@@ -183,10 +184,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             set(data["details"].keys()),
             self.detail_keys,
         )
+        expected_overview_keys = self.overview_keys.copy()
+        expected_overview_keys.add("video_clicks")
         self.assertEqual(
             set(data["overview"].keys()),
-            self.overview_keys,
-        )
+            expected_overview_keys)
         self.assertIs(data['impressions'], None)
         self.assertIs(data['overview']['impressions'], None)
 

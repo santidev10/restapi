@@ -613,8 +613,9 @@ class AccountCreationListApiView(ListAPIView):
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
 
-        return super(AccountCreationListApiView, self).get(request, *args,
-                                                           **kwargs)
+        response = super(AccountCreationListApiView, self).get(
+            request, *args, **kwargs)
+        return response
 
     def get_queryset(self, **filters):
         filters["is_deleted"] = False
@@ -742,8 +743,9 @@ class AccountCreationListApiView(ListAPIView):
                         annotate_key = "sum_{}".format(metric)
                         annotates[annotate_key] = Sum(
                             "account__campaigns__{}".format(metric))
-                        having["{}__{}".format(annotate_key,
-                                               "lte" if is_max else "gte")] = filter_value
+                        having["{}__{}".format(
+                            annotate_key, "lte" if is_max else "gte")
+                        ] = filter_value
                     elif metric == "video_view_rate":
                         annotates['video_impressions'] = Sum(
                             Case(
@@ -765,8 +767,8 @@ class AccountCreationListApiView(ListAPIView):
                             ),
                             output_field=AggrFloatField()
                         )
-                        having["{}__{}".format(metric,
-                                               "lte" if is_max else "gte")] = filter_value
+                        having["{}__{}".format(
+                            metric, "lte" if is_max else "gte")] = filter_value
                     elif metric == "ctr_v":
                         annotates['video_clicks'] = Sum(
                             Case(
@@ -788,8 +790,8 @@ class AccountCreationListApiView(ListAPIView):
                             ),
                             output_field=AggrFloatField()
                         )
-                        having["{}__{}".format(metric,
-                                               "lte" if is_max else "gte")] = filter_value
+                        having["{}__{}".format(
+                            metric, "lte" if is_max else "gte")] = filter_value
         if annotates:
             queryset = queryset.annotate(**annotates)
         if second_annotates:
@@ -2397,7 +2399,6 @@ class PerformanceTargetingReportAPIView(APIView):
                 sorted(items_by_campaign, key=lambda el: el["label"]))
         else:
             reports.append(dict(label="All campaigns", items=items, id=None))
-
         for report in reports:
             # get calculated fields
             stat_fields = BASE_STATS + ("video_impressions",)
@@ -2467,6 +2468,15 @@ class PerformanceTargetingReportAPIView(APIView):
                 When(
                     ad_group__video_views__gt=0,
                     then="impressions",
+                ),
+                output_field=AggrIntegerField()
+            )
+        ),
+        video_clicks=Sum(
+            Case(
+                When(
+                    ad_group__video_views__gt=0,
+                    then="clicks",
                 ),
                 output_field=AggrIntegerField()
             )

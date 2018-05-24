@@ -1,14 +1,18 @@
+import json
+from datetime import datetime
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
+
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, Audience, Topic, \
+from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, \
+    Audience, Topic, \
     YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from datetime import datetime
-import json
 
 
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
@@ -202,14 +206,10 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(data[0].keys()), self.data_keys)
         self.assertEqual(data[0]['label'], "A campaign")
         self.assertEqual(len(data[0]["items"]), 2)
-        for item in data[0]['items']:
-            self.assertEqual(set(item.keys()), self.item_keys)
 
         self.assertEqual(set(data[0].keys()), self.data_keys)
         self.assertEqual(data[1]['label'], "B campaign")
         self.assertEqual(len(data[1]["items"]), 3)
-        for item in data[0]['items']:
-            self.assertEqual(set(item.keys()), self.item_keys)
 
     def test_success_min_max_kpi(self):
         user = self.create_test_user()
@@ -218,8 +218,10 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
-        campaign = Campaign.objects.create(id="1", name="A campaign", status="eligible",
-                                           account=account, start_date=start, end_date=end)
+        campaign = Campaign.objects.create(
+            id="1", name="A campaign", status="eligible",
+            account=account, start_date=start, end_date=end,
+            clicks=1, video_views=1)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign, video_views=1)
 
         YTChannelStatistic.objects.create(
@@ -268,7 +270,6 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(kpi["ctr"]["min"], 12.5)
         self.assertEqual(kpi["ctr"]["max"], 25)
-
         self.assertAlmostEqual(kpi["ctr_v"]["min"], 1/6 * 100, places=10)
         self.assertEqual(kpi["ctr_v"]["max"], 100)
 

@@ -111,12 +111,11 @@ def get_ctr(*args, **kwargs):
 def get_ctr_v(*args, **kwargs):
     if len(args) == 2:
         clicks, video_views = args
-    elif 'clicks' in kwargs and 'video_views' in kwargs:
-        clicks = kwargs['clicks']
-        video_views = kwargs['video_views']
+    elif "video_clicks" in kwargs and "video_views" in kwargs:
+        clicks = kwargs["video_clicks"]
+        video_views = kwargs["video_views"]
     else:
         return
-
     if video_views:
         return clicks / video_views
 
@@ -206,9 +205,18 @@ base_stats_aggregate = dict(
             output_field=IntegerField()
         )
     ),
+    video_clicks=Sum(
+        Case(
+            When(
+                video_views__gt=0,
+                then="clicks",
+            ),
+            output_field=IntegerField()
+        )
+    ),
     sum_video_views=Sum("video_views"),
     sum_clicks=Sum("clicks"),
-    sum_cost=Sum("cost"),
+    sum_cost=Sum("cost")
 )
 
 all_stats_aggregate = {"sum_{}".format(s): Sum(s)

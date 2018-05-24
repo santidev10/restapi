@@ -1,13 +1,16 @@
+import itertools
+
+from django.db.models import QuerySet
 from rest_framework.serializers import ModelSerializer, ValidationError
 from rest_framework.serializers import SerializerMethodField
-from aw_reporting.models import Account, dict_calculate_stats, dict_norm_base_stats
+
 from aw_reporting.adwords_api import load_web_app_settings
-from keyword_tool.models import KeyWord, Interest, KeywordsList, AVAILABLE_KEYWORD_LIST_CATEGORIES
+from aw_reporting.models import Account, dict_calculate_stats, \
+    dict_norm_base_stats
 from keyword_tool.api.utils import get_keywords_aw_stats
+from keyword_tool.models import KeyWord, Interest, KeywordsList, \
+    AVAILABLE_KEYWORD_LIST_CATEGORIES
 from userprofile.models import UserProfile
-from django.db.models import QuerySet
-import itertools
-from collections import defaultdict
 
 
 class InterestsSerializer(ModelSerializer):
@@ -106,7 +109,7 @@ class SavedListNameSerializer(SavedListCreateSerializer):
                 all_keywords = set(e["text"] for e in keywords_rows)
                 accounts = set(Account.user_objects(self.request.user).values_list("id", flat=True))
 
-                fields = ("sum_clicks", "sum_video_views", "sum_cost", "video_impressions")
+                fields = ("sum_clicks", "sum_video_views", "sum_cost", "video_impressions", "video_clicks")
                 stats = get_keywords_aw_stats(accounts, all_keywords, fields)
                 kw_without_stats = all_keywords - set(stats.keys())
                 if kw_without_stats:  # add CF account stats for keywords without stats

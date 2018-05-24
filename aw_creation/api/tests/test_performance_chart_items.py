@@ -7,9 +7,12 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, GenderStatistic, AgeRangeStatistic, \
-    AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
+from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
+    GenderStatistic, AgeRangeStatistic, \
+    AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, \
+    YTChannelStatistic, TopicStatistic, \
+    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
+    Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
@@ -98,6 +101,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
+                "video_clicks"
             }
         )
 
@@ -148,6 +152,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
+                "video_clicks"
             }
         )
 
