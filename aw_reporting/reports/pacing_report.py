@@ -221,6 +221,7 @@ class PacingReport:
         relevant_flights = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
+            start__lte=self.today,
             **filters
         ).values(
             *flight_fields)

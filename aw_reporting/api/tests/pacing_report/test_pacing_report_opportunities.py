@@ -1078,3 +1078,35 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertTrue(response.data["items"][0]["has_dynamic_placements"])
         self.assertEqual(response.data["items"][0]["dynamic_placements_types"],
                          [DynamicPlacementType.BUDGET])
+
+    def test_not_started_placement_should_not_affect_margin(self):
+        today = date(2018, 1, 1)
+        tomorrow = today + timedelta(days=1)
+        opportunity = Opportunity.objects.create(probability=100)
+        total_costs = (500, 600)
+        aw_cost = sum(total_costs)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=sum(total_costs))
+        flight_include = Flight.objects.create(id=1, placement=placement,
+                                               start=today, end=today,
+                                               total_cost=total_costs[0])
+        flight_exclude = Flight.objects.create(id=2, placement=placement,
+                                               start=tomorrow, end=tomorrow,
+                                               total_cost=total_costs[1])
+        self.assertGreater(flight_exclude.start, today)
+        self.assertGreater(aw_cost, flight_include.total_cost)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=today,
+                                         campaign=campaign,
+                                         cost=aw_cost)
+        expected_margin = (1 - aw_cost / flight_include.total_cost) * 100
+
+        with patch_now(today):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertAlmostEqual(response.data["items"][0]["margin"],
+                               expected_margin)
