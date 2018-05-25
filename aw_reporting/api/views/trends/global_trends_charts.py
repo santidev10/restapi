@@ -5,7 +5,7 @@ from aw_reporting.api.views.trends.base_track_chart import BaseTrackChartApiView
 
 class GlobalTrendsChartsApiView(BaseTrackChartApiView):
     def _get_accounts(self, request):
-        return get_account_queryset(request.user)
+        return get_account_queryset()
 
     def get_filters(self):
         filters = super(GlobalTrendsChartsApiView, self).get_filters()
