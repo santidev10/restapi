@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import Q
+from django.template.loader import render_to_string
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -195,28 +196,37 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
     def proceed_emails(self, segment, emails):
         sender = settings.SENDER_EMAIL_ADDRESS
         exist_emails = segment.shared_with
-
+        host = self.request.get_host()
+        subject = "Enterprise > You have been added as collaborator"
+        segment_url = "https://{host}/segments/{segment_type}s/{segment_id}".format(
+            host=host,
+            segment_type=segment.segment_type,
+            segment_id=segment.id
+        )
+        context = dict(
+            host=host,
+            sender=sender,
+            segment_url=segment_url,
+        )
         # collect only new emails for current segment
         emails_to_iterate = [e for e in emails if e not in exist_emails]
 
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
-                user.email_user('ViewIQ > You have been added as collaborator',
-                                '{}\n\n'
-                                'Please do not respond to this email.'
-                                .format('Fill me with data please'),
-                                from_email=sender)
+                context['name'] = user.first_name
+                message = render_to_string("new_enterprise_collaborator.txt", context)
+                user.email_user(
+                    subject=subject,
+                    message=message,
+                    from_email=sender)
 
                 # provide access to segments for collaborator
                 user.add_custom_user_group('Segments')
 
             except UserProfile.DoesNotExist:
-                subject = "ViewIQ"
                 to = email
-                text = "You have been added as collaborator\n" \
-                       "You can register on ViewIQ to work with shared segment\n\n" \
-                       "Please do not respond to this email.\n"
+                text = render_to_string("new_collaborator.txt", context)
                 send_mail(subject, text, sender, (to,), fail_silently=True)
 
         # update collaborators list
