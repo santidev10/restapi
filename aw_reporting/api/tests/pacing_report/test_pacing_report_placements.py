@@ -75,7 +75,8 @@ class PacingReportPlacementsTestCase(APITestCase):
                 "targeting", "yesterday_budget", "today_goal", "today_budget",
                 "yesterday_delivered", "charts",
                 "today_goal_views", "yesterday_delivered_impressions",
-                "today_goal_impressions", "yesterday_delivered_views"
+                "today_goal_impressions", "yesterday_delivered_views",
+                "current_cost_limit"
             }
         )
 
@@ -139,9 +140,9 @@ class PacingReportPlacementsTestCase(APITestCase):
             start=today - timedelta(days=2), end=today + timedelta(days=2),
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
-            placement=hard_cost_placement, cost=0, total_cost=10)
+            placement=hard_cost_placement, cost=0, total_cost=10, start=today)
         Flight.objects.create(
-            id="2", placement=hard_cost_placement, cost=0, total_cost=30)
+            id="2", placement=hard_cost_placement, cost=0, total_cost=30, start=today)
         url = self._get_url(opportunity.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

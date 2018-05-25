@@ -221,7 +221,6 @@ class PacingReport:
         relevant_flights = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
-            start__lte=self.today,
             **filters
         ).values(
             *flight_fields)
@@ -367,6 +366,7 @@ class PacingReport:
         plan_impressions = plan_video_views = None
         impressions = video_views = cpm_cost = cpv_cost = 0
         sum_total_cost = sum_delivery = sum_spent_cost = 0
+        current_cost_limit = 0
 
         for f in flights:
             goal_type_id = f["placement__goal_type_id"]
@@ -409,6 +409,8 @@ class PacingReport:
             elif goal_type_id == SalesForceGoalType.HARD_COST:
                 sum_spent_cost += aw_cost
             sum_total_cost += total_cost
+            if f["start"] <= self.today:
+                current_cost_limit += total_cost
         result = dict(
             plan_impressions=plan_impressions,
             plan_video_views=plan_video_views,
@@ -416,6 +418,7 @@ class PacingReport:
             plan_cpm=cpm_cost / impressions * 1000 if impressions else None,
             cost=sum_spent_cost,
             plan_cost=sum_total_cost,
+            current_cost_limit=current_cost_limit
         )
         return result
 
@@ -588,7 +591,7 @@ class PacingReport:
 
             o["pacing"] = self.get_pacing_from_flights(flights)
             o["margin"] = self.get_margin_from_flights(flights, o["cost"],
-                                                       o["plan_cost"])
+                                                       o["current_cost_limit"])
 
             o['thumbnail'] = thumbnails.get(o['ad_ops_manager__email'])
 
@@ -762,12 +765,17 @@ class PacingReport:
             placement_id=placement_dict_data["id"])
         flights_cost_data = hardcost_placement_flights.aggregate(
             total_client_cost=Sum("total_cost"),
+            current_cost_limit=Sum(Case(When(start__lte=self.today,
+                                             then="total_cost"),
+                                        output_field=FloatField(),
+                                        default=0)),
             our_cost=Sum("cost"))
         our_cost = flights_cost_data["our_cost"]
-        total_client_cost = flights_cost_data["total_client_cost"]
+        total_client_cost = flights_cost_data["total_client_cost"] or 0
+        current_cost_limit = flights_cost_data["current_cost_limit"] or 0
         placement_dict_data.update(cost=our_cost, plan_cost=total_client_cost)
         border = self.borders["margin"]
-        margin = get_margin(plan_cost=total_client_cost, cost=our_cost,
+        margin = get_margin(plan_cost=current_cost_limit, cost=our_cost,
                             client_cost=total_client_cost)
         if margin >= border[0]:
             margin_quality = 2
@@ -822,7 +830,7 @@ class PacingReport:
 
             p["pacing"] = self.get_pacing_from_flights(flights)
             p["margin"] = self.get_margin_from_flights(flights, p["cost"],
-                                                       p["plan_cost"])
+                                                       p["current_cost_limit"])
 
             self.add_calculated_fields(p)
             del p["ordered_units"]
@@ -876,7 +884,7 @@ class PacingReport:
             flight["pacing"] = self.get_pacing_from_flights(f_data)
             flight["margin"] = self.get_margin_from_flights(f_data,
                                                             flight["cost"],
-                                                            flight["plan_cost"])
+                                                            flight["current_cost_limit"])
 
             # chart data
             before_yesterday_stats = all_aw_before_yesterday_stats.get(f['id'],
@@ -931,7 +939,7 @@ class PacingReport:
 
             c["pacing"] = self.get_pacing_from_flights(flights_data, **kwargs)
             c["margin"] = self.get_margin_from_flights(flights_data, c["cost"],
-                                                       c["plan_cost"],
+                                                       c["current_cost_limit"],
                                                        **kwargs)
 
             chart_data = get_chart_data(flights=flights_data, today=self.today,

@@ -81,7 +81,8 @@ class PacingReportTestCase(APITestCase):
                 "goal_allocation",
 
                 "yesterday_delivered_views", "today_goal_impressions",
-                "today_goal_views", "yesterday_delivered_impressions"
+                "today_goal_views", "yesterday_delivered_impressions",
+                "current_cost_limit"
             }
         )
         campaign.refresh_from_db()

@@ -704,7 +704,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Today budget: 102 * 0.5
         :return:
         """
-        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 8).date()
+        start, end = date(2017, 1, 1), date(2017, 1, 8)
         today = datetime(2017, 1, 4).date()
         opportunity = Opportunity.objects.create(
             id="1", name="1", probability=100, budget=100, start=start, end=end,
