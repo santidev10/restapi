@@ -85,7 +85,8 @@ class PacingReportFlightsTestCase(APITestCase):
                 "today_goal_impressions",
                 "before_yesterday_delivered_impressions",
                 "yesterday_delivered_impressions",
-                "tech_fee", "goal_type_id", "dynamic_placement"
+                "tech_fee", "goal_type_id", "dynamic_placement",
+                "current_cost_limit"
             }
         )
         flight.refresh_from_db()
