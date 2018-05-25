@@ -15,6 +15,33 @@ from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 
+class UserSettingsKey:
+    DASHBOARD_CAMPAIGNS_SEGMENTED = "dashboard_campaigns_segmented"
+    DASHBOARD_AD_WORDS_RATES = "dashboard_ad_words_rates"
+    DEMO_ACCOUNT_VISIBLE = "demo_account_visible"
+    HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
+    DASHBOARD_COSTS_ARE_HIDDEN = "dashboard_costs_are_hidden"
+    SHOW_CONVERSIONS = "show_conversions"
+    VISIBLE_ACCOUNTS = "visible_accounts"
+    HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
+    GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
+    GLOBAL_TRENDS_ACCOUNTS = "global_trends_accounts"
+
+
+DEFAULT_SETTINGS = {
+    UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
+    UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+    UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+    UserSettingsKey.HIDE_REMARKETING: False,
+    UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+    UserSettingsKey.SHOW_CONVERSIONS: False,
+    UserSettingsKey.VISIBLE_ACCOUNTS: [],
+    UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
+    UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+    UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [],
+}
+
+
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
@@ -75,18 +102,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default={
-        'dashboard_campaigns_segmented': False,
-        'dashboard_ad_words_rates': False,
-        'demo_account_visible': False,
-        'dashboard_remarketing_tab_is_hidden': False,
-        'dashboard_costs_are_hidden': False,
-        'show_conversions': False,
-        'visible_accounts': [],
-        'hidden_campaign_types': {},
-        'global_account_visibility': False,
-        'global_trends_accounts': [],
-    })
+    aw_settings = JSONField(default=DEFAULT_SETTINGS)
 
     objects = UserManager()
 

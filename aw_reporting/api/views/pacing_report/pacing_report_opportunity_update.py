@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.serializers.pacing_report_opportunity_update_serializer import \
     PacingReportOpportunityUpdateSerializer
 from aw_reporting.models import Opportunity
-from aw_reporting.settings import InstanceSettings
+from userprofile.models import UserSettingsKey
 
 
 class PacingReportOpportunityUpdateApiView(UpdateAPIView):
@@ -13,9 +13,10 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
 
     def get_queryset(self):
         queryset = Opportunity.objects.all()
-        instance_settings = InstanceSettings()
-        if instance_settings.get('global_account_visibility'):
-            visible_ids = instance_settings.get('visible_accounts')
+        user = self.request.user
+        user_settings = user.aw_settings
+        if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+            visible_ids = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = queryset.filter(
                 placements__adwords_campaigns__account_id__in=visible_ids
             ).distinct()

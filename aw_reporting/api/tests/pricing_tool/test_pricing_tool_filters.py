@@ -7,7 +7,8 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
     Campaign, Audience, AudienceStatistic
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase, patch_instance_settings
+from userprofile.models import UserSettingsKey
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class PricingToolTestCase(ExtendedAPITestCase):
@@ -71,7 +72,11 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id="2", campaign=campaign_hidden, type="type2")
 
-        with patch_instance_settings(visible_accounts=[account_visible.id]):
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_visible.id]
+        }
+        with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

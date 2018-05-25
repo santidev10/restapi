@@ -10,6 +10,6 @@ class PricingToolFiltersView(RetrieveAPIView):
 
     @cached_view
     def get(self, request, *args, **kwargs):
-        response = PricingTool.get_filters()
+        response = PricingTool.get_filters(request.user)
 
         return Response(data=response, status=HTTP_200_OK)
