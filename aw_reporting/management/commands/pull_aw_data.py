@@ -51,10 +51,12 @@ class Command(BaseCommand):
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()
         add_relation_between_report_and_creation_ads()
+        recalculate_de_norm_fields()
 
     @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
         from aw_reporting.models import Account
+        self.pre_process()
         timezones = Account.objects.filter(timezone__isnull=False).values_list(
             "timezone", flat=True).order_by("timezone").distinct()
 
@@ -68,7 +70,7 @@ class Command(BaseCommand):
 
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
-            # timezone__in=timezones,
+            timezone__in=timezones,
             can_manage_clients=True
         )
         if not options.get('forced'):
@@ -82,7 +84,7 @@ class Command(BaseCommand):
 
         # 2) update all the advertising accounts
         accounts_to_update = Account.objects.filter(
-            # timezone__in=timezones,
+            timezone__in=timezones,
             can_manage_clients=False
         )
         if not options.get('forced'):
@@ -93,7 +95,8 @@ class Command(BaseCommand):
             logger.info("Customer account update: {}".format(account))
             updater.full_update(account)
 
-        recalculate_de_norm_fields()
+        self.post_process()
+
 
     @staticmethod
     def create_cf_account_connection():
