@@ -24,6 +24,7 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         "ctr_v_top", "cost_last_week", "average_cpv_top",
         "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
         "average_cpv_bottom", "ctr_top", "impressions_last_week",
+        "video_clicks"
     }
 
     detail_keys = {
@@ -84,24 +85,7 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['details']['video75rate'], 50)
         self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(
-            set(data["overview"].keys()),
-            {
-                "age", "gender", "device", "location",
-                "clicks", "cost", "impressions", "video_views",
-                "ctr", "ctr_v", "average_cpm", "average_cpv",
-                "all_conversions", "conversions", "view_through",
-                "video_view_rate",
-                "video100rate", "video25rate", "video50rate",
-                "video75rate", "video_views_this_week",
-                "video_view_rate_top", "impressions_this_week",
-                "video_views_last_week", "cost_this_week",
-                "video_view_rate_bottom", "clicks_this_week",
-                "ctr_v_top", "cost_last_week", "average_cpv_top",
-                "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
-                "average_cpv_bottom", "ctr_top", "impressions_last_week",
-                "video_clicks"
-            },
-        )
+            set(data["overview"].keys()), self.overview_keys)
 
     def test_success_get_two_connections(self):
         account = self.create_account(self.user)

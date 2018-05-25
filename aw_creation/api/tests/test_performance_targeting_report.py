@@ -28,6 +28,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         "item", "campaign", "ad_group", "targeting", "is_negative",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
+        "video_clicks"
     }
 
     def test_success_post(self):
@@ -76,6 +77,9 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         )
         self.assertEqual(report_data['label'], "All campaigns")
         self.assertEqual(len(report_data["items"]), 5)
+
+        for n, item in enumerate(report_data['items']):
+            self.assertEqual(set(item.keys()), self.item_keys)
 
     def test_targeting_status(self):
         user = self.create_test_user()
@@ -203,23 +207,28 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(data[0].keys()), self.data_keys)
         self.assertEqual(data[0]['label'], "A campaign")
         self.assertEqual(len(data[0]["items"]), 2)
+        for item in data[0]['items']:
+            self.assertEqual(set(item.keys()), self.item_keys)
 
         self.assertEqual(set(data[0].keys()), self.data_keys)
         self.assertEqual(data[1]['label'], "B campaign")
         self.assertEqual(len(data[1]["items"]), 3)
+        for item in data[0]['items']:
+            self.assertEqual(set(item.keys()), self.item_keys)
 
     def test_success_min_max_kpi(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        account_creation = AccountCreation.objects.create(
+            name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
         campaign = Campaign.objects.create(
             id="1", name="A campaign", status="eligible",
-            account=account, start_date=start, end_date=end,
-            clicks=1, video_views=1)
-        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign, video_views=1)
+            account=account, start_date=start, end_date=end)
+        ad_group = AdGroup.objects.create(
+            id=1, name="", campaign=campaign, video_views=1)
 
         YTChannelStatistic.objects.create(
             date=start, yt_id="AAA", ad_group=ad_group,
@@ -229,7 +238,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             date=start, yt_id="AAA", ad_group=ad_group,
             video_views=2, impressions=8, clicks=1, cost=2,
         )
-        audience, _ = Audience.objects.get_or_create(id=1, name="Auto", type=Audience.CUSTOM_AFFINITY_TYPE)
+        audience, _ = Audience.objects.get_or_create(
+            id=1, name="Auto", type=Audience.CUSTOM_AFFINITY_TYPE)
         AudienceStatistic.objects.create(
             date=start, audience=audience, ad_group=ad_group,
             video_views=2, impressions=8, clicks=1, cost=2,
@@ -246,7 +256,9 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             video_views=6, impressions=8, clicks=1, cost=2,
         )
 
-        url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
+        url = reverse(
+            "aw_creation_urls:performance_targeting_report",
+            args=(account_creation.id,))
 
         with patch("aw_creation.api.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -255,7 +267,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     start_date=str(start),
                     end_date=str(start),
                     group_by="campaign",
-                    targeting=["topic", "interest", "keyword", "channel", "video"],
+                    targeting=[
+                        "topic", "interest", "keyword", "channel", "video"],
                 )),
                 content_type='application/json',
             )
