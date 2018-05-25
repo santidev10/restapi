@@ -77,7 +77,7 @@ class PacingReportFlightsTestCase(APITestCase):
 
                 "targeting", "yesterday_budget", "today_goal",
                 "yesterday_delivered", "today_budget",
-                "before_yesterday_delivered", "before_yesterday_budget",
+                "before_yesterday_budget",
                 "charts",
                 "today_goal_views",
                 "before_yesterday_delivered_views",
