@@ -50,7 +50,8 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement
+    TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
+    base_stats_aggregator
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
@@ -2461,30 +2462,7 @@ class PerformanceTargetingReportAPIView(APIView):
             qs = qs.filter(date__lte=data["end_date"])
         return qs
 
-    _annotate = dict(
-        sum_impressions=Sum("impressions"),
-        video_impressions=Sum(
-            Case(
-                When(
-                    ad_group__video_views__gt=0,
-                    then="impressions",
-                ),
-                output_field=AggrIntegerField()
-            )
-        ),
-        video_clicks=Sum(
-            Case(
-                When(
-                    ad_group__video_views__gt=0,
-                    then="clicks",
-                ),
-                output_field=AggrIntegerField()
-            )
-        ),
-        sum_video_views=Sum("video_views"),
-        sum_clicks=Sum("clicks"),
-        sum_cost=Sum("cost"),
-    )
+    _annotate = base_stats_aggregator("ad_group__")
     _values = ("ad_group__id", "ad_group__name", "ad_group__campaign__id",
                "ad_group__campaign__name",
                "ad_group__campaign__status")

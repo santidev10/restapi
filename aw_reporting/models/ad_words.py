@@ -194,30 +194,35 @@ def dict_quartiles_to_rates(data):
             del data[qf]
 
 
-base_stats_aggregate = dict(
-    sum_impressions=Sum("impressions"),
-    video_impressions=Sum(
-        Case(
-            When(
-                video_views__gt=0,
-                then="impressions",
-            ),
-            output_field=IntegerField()
-        )
-    ),
-    video_clicks=Sum(
-        Case(
-            When(
-                video_views__gt=0,
-                then="clicks",
-            ),
-            output_field=IntegerField()
-        )
-    ),
-    sum_video_views=Sum("video_views"),
-    sum_clicks=Sum("clicks"),
-    sum_cost=Sum("cost")
-)
+def base_stats_aggregator(prefix=None):
+    prefix = prefix or ""
+    return dict(
+        sum_impressions=Sum("impressions"),
+        video_impressions=Sum(
+            Case(
+                When(**{
+                    "{}video_views__gt".format(prefix): 0,
+                    "then": "impressions",
+                }),
+                output_field=IntegerField()
+            )
+        ),
+        video_clicks=Sum(
+            Case(
+                When(**{
+                    "{}video_views__gt".format(prefix): 0,
+                    "then": "clicks",
+                }),
+                output_field=IntegerField()
+            )
+        ),
+        sum_video_views=Sum("video_views"),
+        sum_clicks=Sum("clicks"),
+        sum_cost=Sum("cost")
+    )
+
+# fixme: deprecated
+base_stats_aggregate = base_stats_aggregator()
 
 all_stats_aggregate = {"sum_{}".format(s): Sum(s)
                        for s in QUARTILE_STATS + CONVERSIONS}
