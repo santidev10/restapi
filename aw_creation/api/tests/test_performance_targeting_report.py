@@ -1,14 +1,18 @@
+import json
+from datetime import datetime
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
+
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, Audience, Topic, \
+from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, \
+    Audience, Topic, \
     YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
-from datetime import datetime
-import json
 
 
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
@@ -24,6 +28,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         "item", "campaign", "ad_group", "targeting", "is_negative",
         "impressions", "video_views", "clicks", "cost",
         "average_cpv", "average_cpm", "ctr", "ctr_v", "video_view_rate",
+        "video_clicks"
     }
 
     def test_success_post(self):
@@ -214,13 +219,16 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
     def test_success_min_max_kpi(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
+        account_creation = AccountCreation.objects.create(
+            name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
-        campaign = Campaign.objects.create(id="1", name="A campaign", status="eligible",
-                                           account=account, start_date=start, end_date=end)
-        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign, video_views=1)
+        campaign = Campaign.objects.create(
+            id="1", name="A campaign", status="eligible",
+            account=account, start_date=start, end_date=end)
+        ad_group = AdGroup.objects.create(
+            id=1, name="", campaign=campaign, video_views=1)
 
         YTChannelStatistic.objects.create(
             date=start, yt_id="AAA", ad_group=ad_group,
@@ -230,7 +238,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             date=start, yt_id="AAA", ad_group=ad_group,
             video_views=2, impressions=8, clicks=1, cost=2,
         )
-        audience, _ = Audience.objects.get_or_create(id=1, name="Auto", type=Audience.CUSTOM_AFFINITY_TYPE)
+        audience, _ = Audience.objects.get_or_create(
+            id=1, name="Auto", type=Audience.CUSTOM_AFFINITY_TYPE)
         AudienceStatistic.objects.create(
             date=start, audience=audience, ad_group=ad_group,
             video_views=2, impressions=8, clicks=1, cost=2,
@@ -247,7 +256,9 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             video_views=6, impressions=8, clicks=1, cost=2,
         )
 
-        url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
+        url = reverse(
+            "aw_creation_urls:performance_targeting_report",
+            args=(account_creation.id,))
 
         with patch("aw_creation.api.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -256,7 +267,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
                     start_date=str(start),
                     end_date=str(start),
                     group_by="campaign",
-                    targeting=["topic", "interest", "keyword", "channel", "video"],
+                    targeting=[
+                        "topic", "interest", "keyword", "channel", "video"],
                 )),
                 content_type='application/json',
             )
@@ -268,7 +280,6 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(kpi["ctr"]["min"], 12.5)
         self.assertEqual(kpi["ctr"]["max"], 25)
-
         self.assertAlmostEqual(kpi["ctr_v"]["min"], 1/6 * 100, places=10)
         self.assertEqual(kpi["ctr_v"]["max"], 100)
 

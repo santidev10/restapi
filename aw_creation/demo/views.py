@@ -641,6 +641,7 @@ class PerformanceTargetingReportAPIView:
                                 i["targeting"] = "{}s".format(dimension.capitalize())
                                 i["campaign"] = dict(id=campaign.id, name=campaign.name, status=campaign.status)
                                 i["ad_group"] = dict(id=ad_group.id, name=ad_group.name)
+                                i["video_clicks"] = 100
                             result.extend(items)
 
                 return result

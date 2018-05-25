@@ -1,7 +1,9 @@
 import json
 from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from .base import AwReportingAPITestCase
@@ -22,6 +24,7 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         "ctr_v_top", "cost_last_week", "average_cpv_top",
         "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
         "average_cpv_bottom", "ctr_top", "impressions_last_week",
+        "video_clicks"
     }
 
     detail_keys = {
@@ -82,9 +85,7 @@ class AccountDetailsAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['details']['video75rate'], 50)
         self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(
-            set(data["overview"].keys()),
-            self.overview_keys,
-        )
+            set(data["overview"].keys()), self.overview_keys)
 
     def test_success_get_two_connections(self):
         account = self.create_account(self.user)
