@@ -25,7 +25,6 @@ class UserSettingsKey:
     VISIBLE_ACCOUNTS = "visible_accounts"
     HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
-    GLOBAL_TRENDS_ACCOUNTS = "global_trends_accounts"
 
 
 DEFAULT_SETTINGS = {
@@ -38,7 +37,6 @@ DEFAULT_SETTINGS = {
     UserSettingsKey.VISIBLE_ACCOUNTS: [],
     UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
-    UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [],
 }
 
 

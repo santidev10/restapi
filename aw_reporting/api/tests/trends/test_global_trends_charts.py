@@ -13,10 +13,9 @@ from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
     Opportunity, OpPlacement, SalesForceGoalType
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher, patch_settings
 
 
 class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
@@ -65,10 +64,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -91,10 +87,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -122,10 +115,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -150,10 +140,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -179,10 +166,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -212,10 +196,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -248,10 +229,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -287,12 +265,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**instance_settings):
+             patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -325,12 +300,9 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(base_url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**instance_settings):
+             patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -358,10 +330,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -411,10 +380,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend_info = get_trend(response.data, TrendId.PLANNED)[0]
@@ -477,10 +443,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend_info = get_trend(response.data, TrendId.PLANNED)[0]
@@ -533,10 +496,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
@@ -590,10 +550,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
@@ -644,10 +601,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        instance_settings = {
-            UserSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with self.patch_user_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
