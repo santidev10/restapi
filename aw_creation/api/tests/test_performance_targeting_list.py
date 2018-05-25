@@ -6,16 +6,19 @@ from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
     details_keys = {
-        'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
-        'is_changed', 'weekly_chart', 'thumbnail',
-        'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
-        "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "id", "name", "account", "status", "start", "end", "is_managed",
+        "is_changed", "weekly_chart", "thumbnail",
+        "video_views", "cost", "video_view_rate", "ctr_v", "impressions",
+        "clicks",
+        "ad_count", "channel_count", "video_count", "interest_count",
+        "topic_count", "keyword_count",
+        "is_disapproved", "from_aw", "updated_at",
+        "cost_method", "agency", "brand"
     }
 
     def setUp(self):

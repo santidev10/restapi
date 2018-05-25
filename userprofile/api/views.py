@@ -1,23 +1,32 @@
 """
 Userprofile api views module
 """
-import requests
+from itertools import chain
 
+import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
-    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, HTTP_200_OK
+    HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN, \
+    HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_406_NOT_ACCEPTABLE
 from rest_framework.views import APIView
 
-from userprofile.api.serializers import ContactFormSerializer
+from administration.notifications import send_html_email
+from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
+from userprofile.api.serializers import ContactFormSerializer, \
+    ErrorReportSerializer
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
+from userprofile.api.serializers import UserChangePasswordSerializer
+from userprofile.models import UserProfile
+from userprofile.permissions import PermissionGroupNames
 
 
 class UserCreateApiView(APIView):
@@ -37,9 +46,16 @@ class UserCreateApiView(APIView):
             data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        self.check_user_segment_access(user)
         response_data = self.retrieve_serializer_class(user).data
         return Response(response_data, status=HTTP_201_CREATED)
 
+    def check_user_segment_access(self, user):
+        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+            user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
 
 class UserAuthApiView(APIView):
     """
@@ -135,6 +151,43 @@ class UserProfileApiView(APIView):
         return Response(serializer.data)
 
 
+class UserProfileSharedListApiView(APIView):
+    def get(self, request):
+        user = request.user
+        response = []
+
+        # filter all user segments
+        channel_segment_email_lists = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
+        video_segment_email_lists = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
+
+        # build unique emails set
+        unique_emails = set()
+        for item in [channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]:
+            unique_emails |= set(chain.from_iterable(item))
+
+        # collect required user data for each email
+        for email in unique_emails:
+            user_data = {}
+            try:
+                user = UserProfile.objects.get(email=email)
+                user_data['email'] = user.email
+                user_data['username'] = "{} {}".format(user.first_name, user.last_name)
+                user_data['first_name'] = user.last_name
+                user_data['last_name'] = user.first_name
+                user_data['registered'] = True
+                user_data['date_joined'] = user.date_joined
+                user_data['last_login'] = user.last_login
+
+            except UserProfile.DoesNotExist:
+                user_data['email'] = email
+                user_data['registered'] = False
+
+            response.append(user_data)
+
+        return Response(data=response)
+
+
 class UserPasswordResetApiView(APIView):
     """
     Password reset api view
@@ -145,33 +198,28 @@ class UserPasswordResetApiView(APIView):
         """
         Send email notification
         """
-        email = request.data.get('email')
-
+        email = request.data.get("email")
         try:
             user = get_user_model().objects.get(email=email)
         except get_user_model().DoesNotExist:
-            return Response({'email': email}, HTTP_404_NOT_FOUND)
-
+            return Response(status=HTTP_404_NOT_FOUND)
         if user.is_superuser:
-            return Response({'email': email}, HTTP_403_FORBIDDEN)
-
-        token = default_token_generator.make_token(user)
-        host = request.build_absolute_uri('/')
-
-        reset_uri = '{host}password_reset?email={email}&token={token}'.format(
+            return Response(status=HTTP_403_FORBIDDEN)
+        token = PasswordResetTokenGenerator().make_token(user)
+        host = request.build_absolute_uri("/")
+        reset_uri = "{host}password_reset/?email={email}&token={token}".format(
             host=host,
             email=email,
             token=token)
-
-        user.email_user('SaaS > Password reset notification',
-                        'SaaS system has received password reset request.\n'
-                        'Click the link below to reset your password\n\n'
-                        '{}\n\n'
-                        'Please do not respond to this email.'
-                        .format(reset_uri),
-                        from_email=settings.SENDER_EMAIL_ADDRESS)
-
-        return Response({'email': email}, HTTP_200_OK)
+        subject = "SaaS > Password reset notification"
+        text_header = "Dear {} \n".format(user.get_full_name())
+        message = "Click the link below to reset your password.\n" \
+                  "{}\n\n" \
+                  "Please do not respond to this email.\n\n" \
+                  "Kind regards, Channel Factory Team".format(reset_uri)
+        send_html_email(
+            subject, email, text_header, message, request.get_host())
+        return Response(status=HTTP_202_ACCEPTED)
 
 
 class UserPasswordSetApiView(APIView):
@@ -186,23 +234,48 @@ class UserPasswordSetApiView(APIView):
         Update user password
         """
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            email = serializer.data.get('email')
-            token = serializer.data.get('token')
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        email = serializer.data.get("email")
+        token = serializer.data.get("token")
+        try:
+            user = get_user_model().objects.get(email=email)
+        except get_user_model().DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND)
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            return Response({"error": "Invalid link"}, HTTP_400_BAD_REQUEST)
+        if user.is_superuser:
+            return Response(status=HTTP_406_NOT_ACCEPTABLE)
+        user.set_password(serializer.data.get("new_password"))
+        user.save()
+        return Response(status=HTTP_202_ACCEPTED)
 
-            try:
-                user = get_user_model().objects.get(email=email)
-            except get_user_model().DoesNotExist:
-                return Response({'email': email}, HTTP_404_NOT_FOUND)
 
-            if not default_token_generator.check_token(user, token):
-                return Response({'token': 'Your link has expired. '
-                                          'Please reset your password again.'},
-                                HTTP_403_FORBIDDEN)
-            user.set_password(serializer.data.get('new_password'))
-            user.save()
-            return Response(UserSerializer(user).data)
-        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+class UserPasswordChangeApiView(APIView):
+    """
+    Endpoint for changing user's password
+    """
+    serializer_class = UserChangePasswordSerializer
+
+    def post(self, request):
+        """
+        Update user password
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        user = request.user
+        if user.is_superuser:
+            return Response(status=HTTP_406_NOT_ACCEPTABLE)
+        old_password = serializer.data.get("old_password")
+        new_password = serializer.data.get("new_password")
+
+        if not user.check_password(old_password):
+            return Response(status=HTTP_403_FORBIDDEN)
+
+        user.set_password(new_password)
+        user.save()
+        return Response(status=HTTP_202_ACCEPTED)
 
 
 class ContactFormApiView(APIView):
@@ -244,3 +317,26 @@ class VendorDetailsApiView(APIView):
         Get procedure
         """
         return Response(data={"vendor": settings.VENDOR})
+
+
+class ErrorReportApiView(APIView):
+    """
+    Endpoint for sending error reports from UI
+    """
+    serializer_class = ErrorReportSerializer
+    permission_classes = tuple()
+
+    def post(self, request):
+        """
+        Send email procedure
+        """
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        to = settings.CONTACT_FORM_EMAIL_ADDRESSES
+        sender = settings.SENDER_EMAIL_ADDRESS
+        host = request.get_host()
+        subject = "UI Error Report from: {}".format(host)
+        message = "User {email} has experienced an error on {host}: \n\n" \
+                  "{message}".format(host=host, **serializer.data)
+        send_mail(subject, message, sender, to, fail_silently=True)
+        return Response(status=HTTP_201_CREATED)

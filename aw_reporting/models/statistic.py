@@ -1,4 +1,11 @@
-from .base import *
+from django.db import models
+
+from aw_reporting.models.ad_words import BaseStatisticModel, Devices, AdGroup, \
+    Ad, Topic, RemarkList, Genders, GeoTarget, VideoCreative, Campaign, \
+    AgeRanges, Audience
+
+ParentStatuses = ('Parent', 'Not a parent', 'Undetermined')
+
 
 
 class DailyStatisticModel(BaseStatisticModel):
@@ -162,3 +169,46 @@ class CampaignHourlyStatistic(models.Model):
     class Meta:
         unique_together = (("campaign", "date", "hour"),)
         ordering = ["campaign", "date", "hour"]
+
+
+class CampaignStatistic(DeviceDailyStatisticModel):
+    campaign = models.ForeignKey(Campaign, related_name='statistics')
+
+    class Meta:
+        unique_together = (("campaign", "date", "device_id"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.campaign.name, self.date)
+
+
+class ParentStatistic(DailyStatisticModel):
+    parent_status_id = models.SmallIntegerField(default=0, db_index=True)
+    ad_group = models.ForeignKey(AdGroup, related_name='parent_statistics')
+
+    class Meta:
+        unique_together = (("parent_status_id", "ad_group", "date"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.parent_status, self.date)
+
+    @property
+    def parent_status(self):
+        return ParentStatuses[int(self.parent_status_id)]
+
+
+class GeoTargeting(BaseStatisticModel):
+    """
+    A model for geo targeting settings at the campaign level
+    """
+    campaign = models.ForeignKey(Campaign, related_name='geo_performance')
+    geo_target = models.ForeignKey(GeoTarget, related_name='geo_performance')
+    is_negative = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (("campaign", "geo_target"),)
+        ordering = ["campaign", "geo_target"]
+
+    def __str__(self):
+        return "%s %s" % (self.campaign, self.geo_target)

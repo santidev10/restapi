@@ -3,7 +3,6 @@ Channel api views module
 """
 import hashlib
 import re
-import time
 from copy import deepcopy
 from datetime import datetime
 
@@ -12,7 +11,6 @@ from dateutil import parser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db.models import Q
 from django.http import QueryDict
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -28,12 +26,15 @@ from administration.notifications import send_welcome_email, \
 from channel.api.mixins import ChannelYoutubeSearchMixin, \
     ChannelYoutubeStatisticsMixin
 from segment.models import SegmentChannel
+from segment.models import SegmentKeyword
+from segment.models import SegmentVideo
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from userprofile.models import Plan, Subscription
 from userprofile.models import UserChannel
+from userprofile.permissions import PermissionGroupNames
+from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
     or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
@@ -43,10 +44,11 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
 
 
 class ChannelListApiView(
-    APIView,
-    PermissionRequiredMixin,
-    CassandraExportMixin,
-    ChannelYoutubeSearchMixin):
+        APIView,
+        PermissionRequiredMixin,
+        CassandraExportMixin,
+        ChannelYoutubeSearchMixin,
+        SegmentFilterMixin):
     """
     Proxy view for channel list
     """
@@ -54,7 +56,6 @@ class ChannelListApiView(
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-
     fields_to_export = [
         "title",
         "url",
@@ -72,83 +73,92 @@ class ChannelListApiView(
     ]
     export_file_title = "channel"
 
-    def obtain_segment(self, segment_id):
-        """
-        Try to get segment from db
-        """
-        try:
-            if self.request.user.is_staff:
-                segment = SegmentChannel.objects.get(id=segment_id)
-            else:
-                segment = SegmentChannel.objects.filter(
-                    Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
-        except SegmentChannel.DoesNotExist:
-            return None
-        return segment
-
     def get(self, request):
         """
         Get procedure
         """
+        # search procedure
+        if request.user.is_staff and any((
+                request.query_params.get("youtube_link"),
+                request.query_params.get("youtube_keyword"))):
+            return self.search_channels()
+        # query params validation
+        is_query_params_valid, error = self._validate_query_params()
+        if not is_query_params_valid:
+            return Response({"error": error}, HTTP_400_BAD_REQUEST)
+        # init procedures
         empty_response = {
             "max_page": 1,
             "items_count": 0,
             "items": [],
             "current_page": 1,
         }
-        if request.user.is_staff and any((
-                request.query_params.get("youtube_link"),
-                request.query_params.get("youtube_keyword"))):
-            return self.search_channels()
-
-        connector = Connector()
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
-
-        # segment
-        segment = query_params.get("segment")
-        if segment is not None:
-            # obtain segment
-            segment = self.obtain_segment(segment)
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            # obtain channels ids
-            channels_ids = list(segment.get_related_ids())
+        channels_ids = []
+        connector = Connector()
+        # own channels
+        user = request.user
+        own_channels = query_params.get("own_channels", "0")
+        user_can_see_own_channels = user.has_perm(
+            "userprofile.settings_my_yt_channels")
+        if own_channels == "1" and user_can_see_own_channels:
+            channels_ids = list(
+                user.channels.values_list("channel_id", flat=True))
             if not channels_ids:
                 return Response(empty_response)
-            query_params.pop("segment")
             try:
-                ids_hash = connector.store_ids(channels_ids)
+                ids_hash = connector.store_ids(list(channels_ids))
+            except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+            query_params.update(ids_hash=ids_hash)
+        channel_segment_id = self.request.query_params.get("channel_segment")
+        video_segment_id = self.request.query_params.get("video_segment")
+        if any((channel_segment_id, video_segment_id)):
+            segment = self._obtain_segment()
+            if segment is None:
+                return Response(status=HTTP_404_NOT_FOUND)
+            if isinstance(segment, SegmentVideo):
+                segment_videos_ids = segment.get_related_ids()
+                try:
+                    ids_hash = connector.store_ids(list(segment_videos_ids))
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                request_params = {
+                    "ids_hash": ids_hash,
+                    "fields": "channel_id",
+                    "size": 10000}
+                try:
+                    videos_data = connector.get_video_list(request_params)
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                segment_channels_ids = {
+                    obj.get("channel_id") for obj in videos_data.get("items")}
+                query_params.pop("video_segment")
+            else:
+                segment_channels_ids = segment.get_related_ids()
+                query_params.pop("channel_segment")
+            if channels_ids:
+                channels_ids = [
+                    channel_id
+                    for channel_id in channels_ids
+                    if channel_id in segment_channels_ids]
+            else:
+                channels_ids = segment_channels_ids
+            if not channels_ids:
+                return Response(empty_response)
+            try:
+                ids_hash = connector.store_ids(list(channels_ids))
             except SingleDatabaseApiConnectorException as e:
                 return Response(data={"error": " ".join(e.args)},
                                 status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
-
-        # own_channels
-        if not request.user.has_perm("userprofile.channel_list") and \
-                request.user.has_perm("userprofile.settings_my_yt_channels"):
-            own_channels = "1"
-        else:
-            own_channels = query_params.get("own_channels", "0")
-
-        if query_params.get("own_channels") is not None:
-            query_params.pop("own_channels")
-
-        if own_channels == "1":
-            user = self.request.user
-            if not user or not user.is_authenticated():
-                return Response(status=HTTP_412_PRECONDITION_FAILED)
-            channels_ids = user.channels.values_list("channel_id", flat=True)
-            if not channels_ids:
-                return Response(empty_response)
-            query_params.update(ids=",".join(channels_ids))
-            query_params.update(timestamp=str(time.time()))
-
         # adapt the request params
         self.adapt_query_params(query_params)
-
         # make call
         try:
             response_data = connector.get_channel_list(query_params)
@@ -156,10 +166,8 @@ class ChannelListApiView(
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-
         # adapt the response data
         self.adapt_response_data(response_data, request.user)
-
         return Response(response_data)
 
     @staticmethod
@@ -232,12 +240,6 @@ class ChannelListApiView(
             regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
             query_params.update(category__regexp=regexp)
 
-        # verified
-        verified = query_params.pop("verified", [None])[0]
-        if verified is not None:
-            query_params.update(
-                has_audience__term="false" if verified == "0" else "true")
-
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
@@ -268,14 +270,17 @@ class ChannelListApiView(
             is_own = item.get("is_owner", False)
             if user.has_perm('userprofile.channel_audience') \
                     or is_own:
-                if "has_audience" in item:
-                    item["verified"] = item["has_audience"]
+                pass
             else:
                 item['has_audience'] = False
+                item["verified"] = False
                 item.pop('audience', None)
                 item['brand_safety'] = None
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
+
+            if not user.is_staff:
+                item.pop("cms__title", None)
 
             if not user.has_perm('userprofile.channel_aw_performance') \
                     and not is_own:
@@ -386,6 +391,8 @@ class ChannelRetrieveUpdateDeleteApiView(
         UserChannel.objects \
             .filter(channel_id=pk, user=self.request.user) \
             .delete()
+        if not UserChannel.objects.filter(channel_id=pk).exists():
+            Connector().unauthorize_channel(pk)
         return Response()
 
 
@@ -473,15 +480,23 @@ class ChannelAuthenticationApiView(APIView):
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
             user.set_password(user.password)
-            plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-            subscription = Subscription.objects.create(user=user, plan=plan)
-            user.update_permissions_from_subscription(subscription)
-            user.save()
+
+            # new default access implementation
+            user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)
             created = True
             send_welcome_email(user, self.request)
+            self.check_user_segment_access(user)
         return user, created
+
+    def check_user_segment_access(self, user):
+        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+            user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
 
     @staticmethod
     def obtain_extra_user_data(token, user_id):

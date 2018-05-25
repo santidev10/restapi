@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
-from saas.utils_tests import ExtendedAPITestCase
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
-from aw_reporting.models import DEFAULT_TIMEZONE
+from datetime import timedelta
 from time import sleep
-import pytz
+
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, AdCreation
+from utils.datetime import now_in_default_tz
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class CampaignCreationTestCase(ExtendedAPITestCase):
@@ -14,13 +15,13 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
             name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
         )
         creation_start, start, end = campaign.get_creation_dates()
-        self.assertEqual(creation_start, datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date())
+        self.assertEqual(creation_start, now_in_default_tz().date())
         self.assertIsNone(start)
         self.assertIsNone(end)
 
     def test_creation_dates_start_in_past(self):
         user = self.create_test_user()
-        today = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date()
+        today = now_in_default_tz().date()
         campaign = CampaignCreation.objects.create(
             name="",  account_creation=AccountCreation.objects.create(name="", owner=user),
             start=today - timedelta(days=1),
@@ -33,7 +34,7 @@ class CampaignCreationTestCase(ExtendedAPITestCase):
 
     def test_creation_dates_both_in_past(self):
         user = self.create_test_user()
-        today = datetime.now(tz=pytz.timezone(DEFAULT_TIMEZONE)).date()
+        today = now_in_default_tz().date()
         start = today - timedelta(days=2)
         end = today - timedelta(days=1)
         campaign = CampaignCreation.objects.create(

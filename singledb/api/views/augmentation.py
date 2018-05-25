@@ -13,6 +13,8 @@ from singledb.connector import SingleDatabaseApiConnector as Connector, SingleDa
 
 
 class AugmentationChannelListApiView(APIView):
+    permission_classes = tuple()
+
     connector = Connector()
     values_to_keys = defaultdict(set)
 
@@ -92,6 +94,7 @@ class AugmentationChannelListApiView(APIView):
 
 
 class AugmentationChannelSegmentListApiView(APIView):
+    permission_classes = tuple()
 
     def __init__(self):
         self.segments = list(SegmentRelatedChannel.objects.values('segment_id', 'related_id'))
@@ -113,7 +116,14 @@ class AugmentationChannelSegmentListApiView(APIView):
             return data
 
         def data():
-            for row in self.get_segment_from():
+            # for row in self.get_segment_from():
+            #     csvwriter.writerow(row)
+            from segment.models.channel import SegmentChannel
+            for segment in SegmentChannel.objects.all():
+                row = (segment.id,
+                       ','.join(
+                           [d for d in segment.related.all().values_list('related_id', flat=True)])
+                       )
                 csvwriter.writerow(row)
             data = read_and_flush()
             yield data

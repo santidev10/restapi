@@ -1,16 +1,20 @@
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
-from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
-from aw_reporting.demo.charts import DemoChart
-from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem, AdCreation, AccountOptimizationSetting
-from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+import json
+from datetime import datetime
+
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from datetime import datetime
-import json
+from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
+    HTTP_404_NOT_FOUND
+
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
+    Language, TargetingItem, AdCreation
+from aw_reporting.demo.charts import DemoChart
+from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
+from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
+from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
+
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
 
@@ -417,7 +421,8 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if request.data.get("is_chf") != 1\
+                    and (pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk)):
                 filters = view.get_filters()
 
                 account = DemoAccount()
@@ -436,9 +441,7 @@ class PerformanceAccountDetailsApiView:
                     for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
+            return original_method(view, request, pk=pk, **kwargs)
         return method
 
 

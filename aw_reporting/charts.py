@@ -1,28 +1,57 @@
+from collections import defaultdict
+from datetime import timedelta
+
+from django.db.models import FloatField, Avg, F
+from django.db.models.sql.query import get_field_names_from_opts
+
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
-from django.db.models import Sum, Max, When, Case, IntegerField, \
-    FloatField, Value, Avg, F
-from django.db.models.sql.query import get_field_names_from_opts
-from collections import defaultdict
-from datetime import datetime, timedelta
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-import pytz
-import logging
+from utils.datetime import now_in_default_tz, as_datetime
+from utils.lang import flatten
 
 logger = logging.getLogger(__name__)
-
 
 TOP_LIMIT = 10
 
 
+class TrendId:
+    HISTORICAL = "historical"
+    PLANNED = "planned"
+
+
+class Indicator:
+    CPV = "average_cpv"
+    CPM = "average_cpm"
+    VIEW_RATE = "video_view_rate"
+    CTR = "ctr"
+    CTR_V = "ctr_v"
+    IMPRESSIONS = "impressions"
+    VIEWS = "video_views"
+    CLICKS = "clicks"
+    COSTS = "cost"
+
+
+class Breakdown:
+    HOURLY = "hourly"
+    DAILY = "daily"
+
+
+INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
+                           Indicator.VIEWS, Indicator.COSTS)
+
+
 class DeliveryChart:
 
-    def __init__(self, accounts, account=None, campaigns=None, campaign=None, ad_groups=None,
-                 indicator=None, dimension=None, breakdown="daily",
+    def __init__(self, accounts, account=None, campaigns=None, campaign=None,
+                 ad_groups=None,
+                 indicator=None, dimension=None, breakdown=Breakdown.DAILY,
                  start_date=None, end_date=None,
                  additional_chart=None, segmented_by=None,
-                 date=True, **_):
+                 date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
+                 goal_type_ids=None, brands=None, category_ids=None,
+                 region_ids=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -45,13 +74,23 @@ class DeliveryChart:
             end=end_date,
             segmented_by=segmented_by,
             date=date,
+            am_ids=am_ids,
+            ad_ops_ids=ad_ops_ids,
+            sales_ids=sales_ids,
+            goal_type_ids=goal_type_ids,
+            brands=brands,
+            category_ids=category_ids,
+            region_ids=region_ids,
         )
 
         if additional_chart is None:
             additional_chart = bool(dimension)
         self.additional_chart = additional_chart
         self.additional_chart_type = 'pie' if indicator in SUM_STATS and \
-            dimension in ('ad', 'age', 'gender', 'creative', 'device') \
+                                              dimension in (
+                                                  'ad', 'age', 'gender',
+                                                  'creative',
+                                                  'device') \
             else 'bar'
 
     # chart data ---------------
@@ -68,11 +107,22 @@ class DeliveryChart:
         else:
             charts = [
                 dict(
+                    id=TrendId.HISTORICAL,
                     title="",
                     data=self.get_chart_data(),
                     **chart_type_kwargs
                 )
             ]
+            planned_data = self._get_planned_data()
+            if planned_data is not None:
+                charts.append(dict(
+                    id=TrendId.PLANNED,
+                    title="",
+                    data=[planned_data],
+                    additional_chart=False,
+                    additional_chart_type="bar"
+                ))
+
         return charts
 
     def get_segmented_data(self, method, segmented_by, **kwargs):
@@ -116,15 +166,90 @@ class DeliveryChart:
             )
         return result
 
+    def _plan_placement_value_for_date(self, placement, date) -> tuple:
+        if placement["start"] > date or placement["end"] < date:
+            return 0,
+        indicator = self.params.get("indicator")
+        total_days = (placement["end"] - placement["start"]).days + 1
+        if indicator in (Indicator.IMPRESSIONS, Indicator.VIEWS):
+            return placement["ordered_units"] / total_days,
+        if indicator == Indicator.COSTS:
+            return placement["total_cost"] / total_days,
+        if indicator == Indicator.CPV:
+            return placement["total_cost"], placement["ordered_units"]
+        if indicator == Indicator.CPM:
+            return placement["total_cost"], placement["ordered_units"] / 1000.
+        return 0,
+
+    def _plan_value_for_date(self, placements, date):
+        values = [self._plan_placement_value_for_date(p, date) for p in
+                  placements]
+        numerators = [val[0] for val in values]
+        denominators = [val[1] if len(val) > 1 else 0 for val in values]
+
+        numerator = sum(numerators) if numerators else 0
+        denominator = sum(denominators) if denominators else 1
+
+        if denominator == 0:
+            denominator = 1
+
+        return dict(value=numerator / denominator,
+                    label=date)
+
+    def _extend_to_day(self, item):
+        divider = 1 \
+            if self.params["indicator"] in (Indicator.CPV, Indicator.CPM) \
+            else 24
+        value = item["value"] * 1. / divider
+        start_of_day = as_datetime(item["label"])
+        return [dict(value=value, label=start_of_day + timedelta(hours=i))
+                for i in range(24)]
+
+    def _get_planned_data(self):
+        if self.params.get("indicator") not in INDICATORS_HAVE_PLANNED:
+            return
+
+        placements = self.get_placements()
+        placements_start = placements.aggregate(Min("start"))['start__min']
+
+        if placements_start is None:
+            return
+
+        placements = placements.values("start",
+                                       "end",
+                                       "total_cost",
+                                       "ordered_units")
+
+        start = max(placements_start, self.params.get("start"))
+        end = self.params.get("end")
+
+        total_days = (end - start).days + 1
+        trend = [
+            self._plan_value_for_date(placements, start + timedelta(days=i))
+            for i in range(total_days)
+        ]
+        value = sum([r.get('value') for r in trend]) if trend else None
+        average = value / total_days if value is not None and total_days else 0
+        breakdown = self.params['breakdown']
+        if breakdown == Breakdown.HOURLY:
+            trend = flatten([self._extend_to_day(i) for i in trend])
+        return dict(
+            value=value,
+            average=average,
+            trend=trend,
+            label="Planned"
+        )
+
     def get_chart_data(self):
         params = self.params
 
         dimension = self.params['dimension']
         method = getattr(self, "_get_%s_data" % dimension, None)
+        breakdown = self.params['breakdown']
 
         if method:
             items_by_label = method()
-        elif self.params['breakdown'] == "hourly":
+        elif breakdown == Breakdown.HOURLY:
             group_by = ('date', 'hour')
             data = self.get_raw_stats(
                 CampaignHourlyStatistic.objects.all(), group_by, False
@@ -140,6 +265,7 @@ class DeliveryChart:
         fields = self.get_fields()
         values_func = self.get_values_func()
         chart_items = []
+
         #
         for label, items in items_by_label.items():
             results = []
@@ -183,8 +309,8 @@ class DeliveryChart:
                     value=values_func(summaries),
                     trend=results,
                     average=average,
+                    label=label
                 )
-                chart_item['label'] = label
                 chart_items.append(
                     chart_item
                 )
@@ -268,7 +394,8 @@ class DeliveryChart:
         if 'video_impressions' in response['summary']:
             del response['summary']['video_impressions']
         if average_positions:
-            response['summary']['average_position'] = sum(average_positions) / len(average_positions)
+            response['summary']['average_position'] = sum(
+                average_positions) / len(average_positions)
         dict_quartiles_to_rates(response['summary'])
 
         top_by = self.get_top_by()
@@ -315,8 +442,53 @@ class DeliveryChart:
         else:
             return "ad_group"
 
+    def get_placements(self):
+        queryset = OpPlacement.objects.all()
+        filters = {"adwords_campaigns__account_id__in": self.params['accounts']}
+        if self.params['start']:
+            filters['end__gte'] = self.params['start']
+        if self.params['end']:
+            filters['start__lte'] = self.params['end']
+
+        if self.params["am_ids"] is not None:
+            filters["opportunity__account_manager_id__in"] = self.params[
+                "am_ids"]
+
+        if self.params["ad_ops_ids"] is not None:
+            filters["opportunity__ad_ops_manager_id__in"] = self.params[
+                "ad_ops_ids"]
+
+        if self.params["sales_ids"] is not None:
+            filters["opportunity__sales_manager_id__in"] = self.params[
+                "sales_ids"]
+
+        if self.params["brands"] is not None:
+            filters["opportunity__brand__in"] = self.params["brands"]
+
+        if self.params["goal_type_ids"] is not None:
+            filters["goal_type_id__in"] = self.params["goal_type_ids"]
+
+        if self.params["category_ids"] is not None:
+            filters["opportunity__category_id__in"] = self.params[
+                "category_ids"]
+
+        if self.params["region_ids"] is not None:
+            filters["opportunity__region_id__in"] = self.params["region_ids"]
+
+        indicator = self.params["indicator"]
+        if indicator in (Indicator.CPM, Indicator.IMPRESSIONS):
+            filters["goal_type_id"] = SalesForceGoalType.CPM
+        if indicator in (Indicator.CPV, Indicator.VIEWS):
+            filters["goal_type_id"] = SalesForceGoalType.CPV
+
+        if filters:
+            queryset = queryset.filter(**filters)
+
+        return queryset.distinct()
+
     def filter_queryset(self, queryset):
         camp_link = self.get_camp_link(queryset)
+        opp_link = "%s__salesforce_placement__opportunity" % camp_link
         filters = {"%s__account_id__in" % camp_link: self.params['accounts']}
         if self.params['start']:
             filters['date__gte'] = self.params['start']
@@ -330,12 +502,36 @@ class DeliveryChart:
         if self.params['campaigns']:
             filters["%s_id__in" % camp_link] = self.params['campaigns']
 
-        if self.params['indicator'] in ('average_cpv', 'ctr_v',
-                                        'video_view_rate'):
+        if self.params['indicator'] in (Indicator.CPV, Indicator.CTR_V,
+                                        Indicator.VIEW_RATE):
             filters['video_views__gt'] = 0
+
+        if self.params["am_ids"] is not None:
+            filters["%s__account_manager_id__in" % opp_link] = self.params["am_ids"]
+
+        if self.params["ad_ops_ids"] is not None:
+            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params["ad_ops_ids"]
+
+        if self.params["sales_ids"] is not None:
+            filters["%s__sales_manager_id__in" % opp_link] = self.params["sales_ids"]
+
+        if self.params["brands"] is not None:
+            filters["%s__brand__in" % opp_link] = self.params["brands"]
+
+        if self.params["goal_type_ids"] is not None:
+            filters[
+                "%s__salesforce_placement__goal_type_id__in" % camp_link] = \
+                self.params["goal_type_ids"]
+
+        if self.params["category_ids"] is not None:
+            filters["%s__category_id__in" % opp_link] = self.params["category_ids"]
+
+        if self.params["region_ids"] is not None:
+            filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
 
         if filters:
             queryset = queryset.filter(**filters)
+
         return queryset
 
     def add_annotate(self, queryset):
@@ -405,7 +601,7 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == 'cost':
+        if self.params['indicator'] == Indicator.COSTS:
             return 'cost'
         return 'impressions'
 
@@ -527,7 +723,7 @@ class DeliveryChart:
     def _get_gender_data(self):
         group_by = ['gender_id']
         raw_stats = self.get_raw_stats(
-            GenderStatistic.objects.all(),  group_by,
+            GenderStatistic.objects.all(), group_by,
         )
         result = defaultdict(list)
         for item in raw_stats:
@@ -602,7 +798,7 @@ class DeliveryChart:
         labels = {
             c['id']: c['name']
             for c in Audience.objects.filter(
-                pk__in=ids).values('id', 'name')
+            pk__in=ids).values('id', 'name')
         }
         result = defaultdict(list)
         for item in raw_stats:
@@ -687,13 +883,12 @@ class DeliveryChart:
 
     def get_account_segmented_data(self):
 
-        yesterday = datetime.now(
-            tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        yesterday = now_in_default_tz().date() - timedelta(days=1)
         four_days_ago = yesterday - timedelta(days=4)
 
         values_func = self.get_values_func()
 
-        if self.params['breakdown'] == "hourly":
+        if self.params['breakdown'] == Breakdown.HOURLY:
             queryset = CampaignHourlyStatistic.objects.all()
             account_id_field = "campaign__account_id"
             account_name_field = "campaign__account__name"

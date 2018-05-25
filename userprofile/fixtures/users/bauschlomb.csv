@@ -1,0 +1,3 @@
+id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
+42,pbkdf2_sha256$20000$QWCSmYaTB6vI$NV7Zqk1h50xPmW0qyYSTH0iq0m3pdYNAdLPiIwyvZw4=,2017-01-17 17:58:15.070116+00,f,,Dave,Lutz,f,t,2016-02-15 16:58:45.984206+00,david.lutz@channelfactory.com,,0123456789a,t,,,f,,,,,,t,f,f,,t
+103,be3819180fa4e820b6a3da3c9bf4980e7e160d22,2017-01-19 00:09:22.051616+00,f,,Julie,Lee,f,t,2016-07-29 23:55:49.516211+00,julie.lee@channelfactory.com,,0123456789ab,t,,,f,,,,,,t,f,f,,t

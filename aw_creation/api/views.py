@@ -2,13 +2,13 @@
 import calendar
 import csv
 import itertools
+import re
 from collections import OrderedDict
 from datetime import timedelta, datetime
 from decimal import Decimal
 from io import StringIO
 
 import isodate
-import pytz
 from apiclient.discovery import build
 from django.conf import settings
 # pylint: enable=import-error
@@ -38,20 +38,21 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     TargetingItem, default_languages
 from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
-from aw_reporting.api.serializers import CampaignListSerializer
-from aw_reporting.api.views import DATE_FORMAT
+from aw_reporting.api.serializers.campaign_list_serializer import \
+    CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
-from aw_reporting.demo import demo_view_decorator
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
     AgeRanges, Devices, \
-    CityStatistic, DEFAULT_TIMEZONE, BASE_STATS, GeoTarget, Topic, Audience, \
+    CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic
+    TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
 
@@ -102,7 +103,8 @@ class DocumentImportBaseAPIView(GenericAPIView):
 
 
 DOCUMENT_LOAD_ERROR_TEXT = "Only Microsoft Excel(.xlsx) and CSV(.csv) files are allowed. " \
-                           "Also please use the UTF-8 encoding."
+                           "Also please use the UTF-8 encoding. It is expected that item ID " \
+                           "placed in one of first two columns."
 
 
 class DocumentToChangesApiView(DocumentImportBaseAPIView):
@@ -324,11 +326,11 @@ class ItemsFromSegmentIdsApiView(APIView):
 
     @staticmethod
     def get_keyword_item_ids(ids):
-        from keyword_tool.models import KeyWord
-        ids = KeyWord.objects.filter(
-            text__isnull=False,
-            lists__in=ids,
-        ).values_list("text", flat=True).order_by("text").distinct()
+        from segment.models import SegmentRelatedKeyword
+        ids = SegmentRelatedKeyword.objects.filter(
+            segment_id__in=ids
+        ).values_list("related_id", flat=True).order_by(
+            "related_id").distinct()
         return ids
 
 
@@ -615,41 +617,49 @@ class AccountCreationListApiView(ListAPIView):
                                                            **kwargs)
 
     def get_queryset(self, **filters):
-        queryset = AccountCreation.objects.filter(
-            is_deleted=False,
-            owner=self.request.user, **filters
-        )
-        sort_by = self.request.query_params.get('sort_by')
+        filters["is_deleted"] = False
+        if self.request.query_params.get("is_chf") == "1":
 
+            if self.request.user.is_staff:
+                managed_accounts_ids = Account.objects.get(
+                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+                    .managers.values_list("id", flat=True)
+                filters["account__id__in"] = managed_accounts_ids
+
+            elif self.request.user.has_perm("userprofile.view_dashboard"):
+                user_settings = self.request.user.aw_settings
+                if user_settings.get('global_account_visibility'):
+                    filters["account__id__in"] = user_settings.get('visible_accounts')
+        else:
+            filters["owner"] = self.request.user
+        queryset = AccountCreation.objects.filter(**filters)
+        sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]
             if dependencies:
                 queryset = queryset.annotate(
                     **{d: self.annotate_sorts[d][1] for d in dependencies})
-
             if sort_by == "name":
                 sort_by = "sort_by"
             else:
                 annotate = Coalesce(annotate, 0)
                 sort_by = "-sort_by"
-
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-
-        return queryset.order_by('is_ended', sort_by)
+        return queryset.order_by("is_ended", sort_by)
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
 
-        search = filters.get('search')
+        search = filters.get("search")
         if search:
             queryset = queryset.filter(Q(name__icontains=search) |
                                        (Q(is_managed=False) & Q(
                                            account__name__icontains=search)))
 
-        min_campaigns_count = filters.get('min_campaigns_count')
-        max_campaigns_count = filters.get('max_campaigns_count')
+        min_campaigns_count = filters.get("min_campaigns_count")
+        max_campaigns_count = filters.get("max_campaigns_count")
         if min_campaigns_count or max_campaigns_count:
             queryset = queryset.annotate(
                 campaign_creations_count=Count("campaign_creations",
@@ -672,8 +682,8 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(
                     campaigns_count__lte=max_campaigns_count)
 
-        min_start = filters.get('min_start')
-        max_start = filters.get('max_start')
+        min_start = filters.get("min_start")
+        max_start = filters.get("max_start")
         if min_start or max_start:
             queryset = queryset.annotate(
                 start=Coalesce(Min("campaign_creations__start"),
@@ -683,8 +693,8 @@ class AccountCreationListApiView(ListAPIView):
             if max_start:
                 queryset = queryset.filter(start__lte=max_start)
 
-        min_end = filters.get('min_end')
-        max_end = filters.get('max_end')
+        min_end = filters.get("min_end")
+        max_end = filters.get("max_end")
         if min_end or max_end:
             queryset = queryset.annotate(
                 end=Coalesce(Max("campaign_creations__end"),
@@ -693,7 +703,7 @@ class AccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
-        status = filters.get('status')
+        status = filters.get("status")
         if status:
             if status == "Ended":
                 queryset = queryset.filter(is_ended=True, is_managed=True)
@@ -714,7 +724,7 @@ class AccountCreationListApiView(ListAPIView):
                                            sync_at__isnull=True,
                                            is_paused=False, is_ended=False)
 
-        if 'from_aw' in filters:
+        if "from_aw" in filters:
             from_aw = filters.get('from_aw') == '1'
             queryset = queryset.filter(is_managed=not from_aw)
 
@@ -1687,22 +1697,31 @@ class PerformanceAccountDetailsApiView(APIView):
             end_date=datetime.strptime(end_date, DATE_FORMAT).date()
             if end_date else None,
             campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"),
-        )
+            ad_groups=data.get("ad_groups"))
         return filters
 
-    def post(self, request, pk, **_):
+    def __obtain_account(self, request, pk):
+        if request.data.get("is_chf") == 1:
+            managed_accounts_ids = Account.objects.get(
+                id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+                .managers.values_list("id", flat=True)
+            filters = {"account__id__in": managed_accounts_ids}
+        else:
+            filters = {"owner": self.request.user}
         try:
-            account_creation = AccountCreation.objects.filter(
-                owner=self.request.user
-            ).get(pk=pk)
+            self.account_creation = AccountCreation.objects.filter(
+                **filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
+            self.account_creation = None
 
+    def post(self, request, pk, **_):
+        self.__obtain_account(request, pk)
+        if self.account_creation is None:
+            return Response(status=HTTP_404_NOT_FOUND)
         data = AccountCreationListSerializer(
-            account_creation).data  # header data
-        data['details'] = self.get_details_data(account_creation)
-        data['overview'] = self.get_overview_data(account_creation)
+            self.account_creation, context={"request": request}).data
+        data["overview"] = self.get_overview_data(self.account_creation)
+        data["details"] = self.get_details_data(self.account_creation)
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
@@ -1716,45 +1735,78 @@ class PerformanceAccountDetailsApiView(APIView):
             fs["date__gte"] = filters['start_date']
         if filters['end_date']:
             fs["date__lte"] = filters['end_date']
-
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
-        )
+            **all_stats_aggregate)
         dict_norm_base_stats(data)
         dict_calculate_stats(data)
         dict_quartiles_to_rates(data)
         del data['video_impressions']
-
         # 'age', 'gender', 'device', 'location'
         annotate = dict(v=Sum('cost'))
         gender = GenderStatistic.objects.filter(**fs).values(
             'gender_id').order_by('gender_id').annotate(**annotate)
         gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
                   gender]
-
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
         age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
                age]
-
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
         device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
                   device]
-
         location = CityStatistic.objects.filter(**fs).values(
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
         location = [dict(name=i['city__name'], value=i['v']) for i in location]
-
         data.update(gender=gender, age=age, device=device, location=location)
+        if self.request.data.get("is_chf") == 1:
+            self.add_chf_performance_data(data)
+        else:
+            self.add_standard_performance_data(data, fs)
+        return data
 
+    def add_chf_performance_data(self, data):
+        null_fields = (
+            "impressions_this_week", "cost_last_week", "impressions_last_week",
+            "cost_this_week", "video_views_this_week", "clicks_this_week",
+            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
+            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
+            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
+        for field in null_fields:
+            data[field] = None
+        placements_queryset = OpPlacement.objects.filter(
+            adwords_campaigns__id__in=
+            self.account_creation.account.campaigns.values("id")).distinct()
+        data.update(
+            placements_queryset.aggregate(
+                delivered_cost=Sum("adwords_campaigns__cost"),
+                delivered_impressions=Sum("adwords_campaigns__impressions"),
+                delivered_video_views=Sum("adwords_campaigns__video_views")))
+        plan_cost = 0
+        plan_impressions = 0
+        plan_video_views = 0
+        for placement in placements_queryset:
+            plan_cost += placement.total_cost
+            plan_impressions += placement.ordered_units\
+                if placement.goal_type_id == SalesForceGoalType.CPM else 0
+            plan_video_views += placement.ordered_units\
+                if placement.goal_type_id == SalesForceGoalType.CPV else 0
+        data.update(
+            {"plan_cost": plan_cost,
+             "plan_impressions": plan_impressions,
+             "plan_video_views": plan_video_views})
+
+    def add_standard_performance_data(self, data, filters):
+        null_fields = (
+            "delivered_cost", "plan_cost", "delivered_impressions",
+            "plan_impressions", "delivered_video_views", "plan_video_views")
+        for field in null_fields:
+            data[field] = None
         # this and last week base stats
-        week_end = datetime.now(
-            tz=pytz.timezone(DEFAULT_TIMEZONE)).date() - timedelta(days=1)
+        week_end = now_in_default_tz().date() - timedelta(days=1)
         week_start = week_end - timedelta(days=6)
         prev_week_end = week_start - timedelta(days=1)
         prev_week_start = prev_week_end - timedelta(days=6)
-
         annotate = {
             "{}_{}_week".format(s, k): Sum(
                 Case(
@@ -1768,12 +1820,10 @@ class PerformanceAccountDetailsApiView(APIView):
             )
             for k, sd, ed in (("this", week_start, week_end),
                               ("last", prev_week_start, prev_week_end))
-            for s in BASE_STATS
-        }
-        weeks_stats = AdGroupStatistic.objects.filter(**fs).aggregate(
+            for s in BASE_STATS}
+        weeks_stats = AdGroupStatistic.objects.filter(**filters).aggregate(
             **annotate)
         data.update(weeks_stats)
-
         # top and bottom rates
         annotate = dict(
             average_cpv=ExpressionWrapper(
@@ -1825,16 +1875,14 @@ class PerformanceAccountDetailsApiView(APIView):
             ),
         )
         fields = tuple(annotate.keys())
-        top_bottom_stats = AdGroupStatistic.objects.filter(**fs).values(
+        top_bottom_stats = AdGroupStatistic.objects.filter(**filters).values(
             "date").order_by("date").annotate(
             *[Sum(s) for s in BASE_STATS]
         ).annotate(**annotate).aggregate(
             **{"{}_{}".format(s, n): a(s)
                for s in fields
-               for n, a in (("top", Max), ("bottom", Min))}
-        )
+               for n, a in (("top", Max), ("bottom", Min))})
         data.update(top_bottom_stats)
-        return data
 
     @staticmethod
     def get_details_data(account_creation):
@@ -2568,7 +2616,7 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
 class UserListsImportMixin:
     @staticmethod
     def get_lists_items_ids(ids, list_type):
-        from segment.models import get_segment_model_by_type
+        from segment.utils import get_segment_model_by_type
         from keyword_tool.models import KeywordsList
 
         if list_type == "keyword":
@@ -2607,12 +2655,10 @@ class TopicToolFlatListApiView(ListAPIView):
 
     def get_queryset(self):
         queryset = Topic.objects.all()
-        if 'ids' in self.request.query_params:
+        if 'title' in self.request.query_params:
+            titles = self.request.query_params.getlist("title")
             queryset = queryset.filter(
-                id__in=self.request.query_params['ids'].split(','))
-        if 'titles' in self.request.query_params:
-            queryset = queryset.filter(
-                name__in=self.request.query_params['titles'].split(','))
+                name__in=titles)
         return queryset
 
 
@@ -2673,12 +2719,9 @@ class AudienceFlatListApiView(ListAPIView):
 
     def get_queryset(self):
         queryset = Audience.objects.all()
-        if 'ids' in self.request.query_params:
-            queryset = queryset.filter(
-                id__in=self.request.query_params['ids'].split(','))
-        if 'titles' in self.request.query_params:
-            queryset = queryset.filter(
-                name__in=self.request.query_params['titles'].split(','))
+        if "title" in self.request.query_params:
+            titles = self.request.query_params.getlist("title")
+            queryset = queryset.filter(name__in=titles)
         return queryset
 
 
@@ -2782,21 +2825,35 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
         criteria_list = []
         for _, file_obj in request.data.items():
+            if not hasattr(file_obj, 'content_type'):
+                # skip empty items
+                continue
+
             fct = file_obj.content_type
-            if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                data = self.get_xlsx_contents(file_obj, return_lines=True)
-            elif fct in ("text/csv", "application/vnd.ms-excel"):
-                data = self.get_csv_contents(file_obj, return_lines=True)
-            else:
+            try:
+                if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    data = self.get_xlsx_contents(file_obj, return_lines=True)
+                elif fct in ("text/csv", "application/vnd.ms-excel"):
+                    data = self.get_csv_contents(file_obj, return_lines=True)
+                else:
+                    return Response(status=HTTP_400_BAD_REQUEST,
+                                    data={
+                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+            except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                                 'Stage: Load File Data. Cause: {}'.format(
+                                                     e)]})
+
             try:
                 criteria_list.extend(getattr(self, method)(data))
-            except UnicodeDecodeError:
+            except Exception as e:
                 return Response(
                     status=HTTP_400_BAD_REQUEST,
                     data={
-                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                        "errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                   'Stage: Data Extraction. Cause: {}'.format(
+                                       e)]
                     },
                 )
 

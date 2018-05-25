@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
+from teamcity import is_running_under_teamcity
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -44,7 +46,8 @@ PROJECT_APPS = (
     "landing",
     "administration",
     "payments",
-    "channel"
+    "channel",
+    "email_reports"
 )
 
 THIRD_PARTY_APPS = (
@@ -62,6 +65,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'utils.index_middleware.IndexMiddleware',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -138,6 +142,8 @@ USE_L10N = True
 
 USE_TZ = True
 
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
@@ -183,11 +189,6 @@ LOGGING = {
         }
     },
     'loggers': {
-        'segment_creating': {
-            'handlers': ['console', 'file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-            'propagate': False
-        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
@@ -208,6 +209,10 @@ LOGGING = {
         'require_debug_false': {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: not DEBUG,
+        },
+        "disable_in_tests": {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda r: None,
         }
     }
 }
@@ -216,6 +221,8 @@ SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+PASSWORD_RESET_TIMEOUT_DAYS = 1
 
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
@@ -239,6 +246,8 @@ CELERY_REDIS_DB = 0
 CELERY_ACKS_LATE = True
 CELERYD_PREFETCH_MULTIPLIER = 1
 
+CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+
 BROKER_URL = "redis://localhost:6379/0"
 
 KW_TOOL_KEY = "Qi3mxPnm"
@@ -257,118 +266,63 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    "yuriy.matso@channelfactory.com",
-    "aleksandr.yakovenko@sigma.software",
+#    "yuriy.matso@channelfactory.com",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "alexander.dobrzhansky@sigma.software",
-    "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    # "yuriy.matso@channelfactory.com",
-    "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software"
+    "maria.konareva@sigma.software",
+    "yulia.prokudina@sigma.software",
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
-ACCESS_PLANS = {
-    'free': {
-        'hidden': False,
-        'permissions': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False,'details': False},
-            'video': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False, 'details': False},
-            'keyword': {'list': False, 'details': False, },
-            'segment': {
-                'channel': {'all': False, 'private': False},
-                'video': {'all': False, 'private': False},
-                'keyword': {'all': False, 'private': False},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-                'pre_baked_segments': False,
-                'media_buying': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-            },
-        },
-    },
-    'professional': {
-        'hidden': False,
-        'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
-            'keyword': {'list': True, 'details': True, },
-            'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-                'pre_baked_segments': False,
-                'media_buying': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-            },
-        },
-    },
-    'enterprise': {
-        'hidden': True,
-        'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
-            'keyword': {'list': True, 'details': True},
-            'segment': {
-                'channel': {'all': True, 'private': True},
-                'video': {'all': True, 'private': True},
-                'keyword': {'all': True, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': True,
-                'performance': True,
-                'trends': True,
-                'benchmarks': True,
-                'highlights': True,
-                'pre_baked_segments': True,
-                'media_buying': True,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': True,
-            }
-        },
-    },
-}
-
+DEFAULT_PERMISSIONS_GROUP_NAME = 'Highlights'
 DEFAULT_ACCESS_PLAN_NAME = 'free'
+CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
 VENDOR = 'viewiq'
+
+TESTIMONIALS = {
+    "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
+    "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
+}
+
+IS_TEST = False
+
+CACHE_ENABLED = False
+CACHE_MAIN_KEY = 'http_cache_requests_history'
+CACHE_KEY_PREFIX = 'http_cache_path_'
+CACHE_TIMEOUT = 1800
+CACHE_HISTORY_LIMIT = 5000
+CACHE_PAGES_LIMIT = 500
+CACHE_BASE_URL = 'http://localhost:8000'
+CACHE_AUTH_TOKEN = 'put_auth_token_here'
+
+HOST = "https://viewiq.com"
+
+CF_AD_OPS_DIRECTORS = [
+    ('Kim, John', "john.kim@channelfactory.com"),
+]
+
+if is_running_under_teamcity():
+    TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
 try:
     from .local_settings import *

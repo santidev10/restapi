@@ -1,9 +1,8 @@
 """
 Userprofile models module
 """
-from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
-    UserManager, Permission
+    UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.core import validators
@@ -12,10 +11,11 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 
-class UserProfile(AbstractBaseUser, PermissionsMixin):
+class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
     admin-compliant permissions.
@@ -53,9 +53,40 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    paypal_email = models.EmailField(null=True, blank=True)
+    facebook_id = models.CharField(max_length=255, null=True, blank=True)
+    is_password_generated = models.BooleanField(default=False)
 
-    plan = models.ForeignKey('userprofile.Plan', null=True,
-                             on_delete=models.SET_NULL)
+    # professional info
+    vertical = models.CharField(max_length=200, null=True, blank=True)
+    worked_with = models.TextField(null=True, blank=True)
+    price_range = models.TextField(null=True, blank=True)
+    strong_beliefs = models.TextField(null=True, blank=True)
+
+    # permission fields
+    features_available = models.CharField(max_length=100, default="",
+                                          blank=True)
+    is_verified = models.BooleanField(default=False)
+    is_influencer = models.BooleanField(default=False)
+    is_tos_signed = models.BooleanField(default=True)
+    is_comparison_tool_available = models.BooleanField(default=False)
+
+    is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
+
+    aw_settings = JSONField(default={
+        'dashboard_campaigns_segmented': False,
+        'dashboard_ad_words_rates': False,
+        'demo_account_visible': False,
+        'dashboard_remarketing_tab_is_hidden': False,
+        'dashboard_costs_are_hidden': False,
+        'show_conversions': False,
+        'visible_accounts': [],
+        'hidden_campaign_types': {},
+        'global_account_visibility': False,
+        'global_trends_accounts': [],
+    })
 
     objects = UserManager()
 
@@ -102,134 +133,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         """
         return self.auth_token.key
 
-    def set_permissions_from_plan(self, plan_name):
-        """
-        Convert plan to django permissions
-        """
-        try:
-            plan = Plan.objects.get(name=plan_name)
-        except Plan.DoesNotExist:
-            plan, created = Plan.objects.get_or_create(
-                name=settings.DEFAULT_ACCESS_PLAN_NAME,
-                defaults=settings.ACCESS_PLANS[
-                    settings.DEFAULT_ACCESS_PLAN_NAME])
-
-        self.set_permissions_from_node(plan.permissions)
-
-    def set_permissions_from_node(self, node, path=''):
-        self.content_type = ContentType.objects.get_for_model(Plan)
-        for key, value in node.items():
-            if len(path) > 0:
-                new_path = path + '_' + key
-            else:
-                new_path = key
-
-            if type(value) == dict:
-                self.set_permissions_from_node(value, new_path)
-            else:
-                permission, created = Permission.objects.get_or_create(
-                    codename=new_path,
-                    defaults=dict(content_type=self.content_type))
-                if value:
-                    self.user_permissions.add(permission)
-                else:
-                    self.user_permissions.remove(permission)
-
-    def update_permissions_from_subscription(self, subscription):
-        self.plan = subscription.plan
-        self.set_permissions_from_plan(self.plan.name)
-        self.save()
-
-    def add_custom_user_permission(self, perm: str):
-        permission = get_custom_permission(perm)
-        self.user_permissions.add(permission)
-
-    def remove_custom_user_permission(self, perm: str):
-        permission = get_custom_permission(perm)
-        self.user_permissions.remove(permission)
-
-
-def get_custom_permission(codename: str):
-    content_type = ContentType.objects.get_for_model(Plan)
-    permission, _ = Permission.objects.get_or_create(
-        content_type=content_type,
-        codename=codename)
-    return permission
-
-
-class Plan(models.Model):
-    """
-    Default plan
-    """
-
-    name = models.CharField(max_length=255, primary_key=True)
-    description = models.TextField(blank=True)
-    permissions = JSONField(default=dict())
-    features = JSONField(default=list())
-    payments_plan = models.ForeignKey('payments.Plan', null=True,
-                                      on_delete=models.SET_NULL)
-    hidden = models.BooleanField(default=False)
-
-    @staticmethod
-    def update_defaults():
-        plan_preset = settings.ACCESS_PLANS
-        for key, value in plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key,
-                                                       defaults=value)
-            # update permissions and features
-            if not created:
-                plan.permissions = value['permissions']
-                plan.hidden = value['hidden']
-                plan.save()
-
-        # set admin plans
-        plan = Plan.objects.get(name='enterprise')
-        users = UserProfile.objects.filter(is_staff=True)
-        for user in users:
-            user.plan = plan
-            user.set_permissions_from_plan(plan.name)
-            user.save()
-
-        # set default plan for non-admin users
-        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-        users = UserProfile.objects.filter(plan__isnull=True)
-        for user in users:
-            user.plan = plan
-            user.set_permissions_from_plan(plan.name)
-            user.save()
-
-        # tie with the payments
-        # from payments.models import Plan as PaymentPlan
-        # plan = Plan.objects.get(name='professional')
-        # try:
-        #     plan.payments_plan = PaymentPlan.objects.get(stripe_id="Professional")
-        # except PaymentPlan.DoesNotExist:
-        #     pass
-        # plan.save()
-
-        for key, value in plan_preset.items():
-            plan, created = Plan.objects.get_or_create(name=key,
-                                                       defaults=value)
-            if created:
-                continue
-            plan.permissions = value['permissions']
-            plan.hidden = value['hidden']
-            plan.save()
-
-            users = UserProfile.objects.filter(plan=plan)
-            for user in users:
-                Subscription.objects.filter(user=user).delete()
-                subscription = Subscription.objects.create(user=user, plan=plan)
-                user.update_permissions_from_subscription(subscription)
-                user.save()
-
-
-class Subscription(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
-    payments_subscription = models.ForeignKey(
-        'payments.Subscription', default=None, null=True,
-        on_delete=models.CASCADE)
+    @property
+    def access(self):
+        return self.groups.values('name')
 
 
 class UserChannel(Timestampable):

@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.core.urlresolvers import reverse
@@ -14,10 +15,10 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,

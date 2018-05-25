@@ -4,7 +4,7 @@ BaseSegment models module
 import logging
 
 from celery import task
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
 from django.db.models import CharField
 from django.db.models import ForeignKey
@@ -12,6 +12,7 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
+from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 
@@ -41,7 +42,9 @@ class BaseSegment(Timestampable):
     """
     title = CharField(max_length=255, null=True, blank=True)
     mini_dash_data = JSONField(default=dict())
+    adw_data = JSONField(default=dict())
     owner = ForeignKey('userprofile.userprofile', null=True, blank=True, on_delete=SET_NULL)
+    shared_with = ArrayField(CharField(max_length=200), blank=True, default=list)
 
     class Meta:
         abstract = True
@@ -101,11 +104,22 @@ class BaseSegment(Timestampable):
             return
         # populate statistics fields
         self.populate_statistics_fields(data)
+        self.get_adw_statistics()
         self.save()
         return "Done"
 
+    def get_adw_statistics(self):
+        """
+        Prepare segment adwords statistics
+        """
+        # prepare adwords statistics
+        adwords_statistics = count_segment_adwords_statistics(self)
+
+        # finalize data
+        self.adw_data.update(adwords_statistics)
+
     def duplicate(self, owner):
-        exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related']
+        exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id', 'related', 'shared_with']
         segment_data = {f:getattr(self, f) for f in self._meta.get_all_field_names() if f not in exclude_fields}
         segment_data['title'] = '{} (copy)'.format(self.title)
         segment_data['owner'] = owner
@@ -130,7 +144,7 @@ class BaseSegment(Timestampable):
 class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
-    related_id = CharField(max_length=30)
+    related_id = CharField(max_length=100)
 
     class Meta:
         abstract = True

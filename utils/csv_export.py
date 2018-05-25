@@ -3,6 +3,7 @@ CSV export mechanism module for objects list
 """
 import csv
 from io import StringIO
+from urllib.parse import unquote
 
 from django.http import StreamingHttpResponse
 from django.utils import timezone
@@ -78,10 +79,15 @@ class CassandraExportMixin(object):
         assert self.fields_to_export and self.export_file_title
         # max export size limit
         max_export_size = 10000
+
         ids = request.data.pop("ids", None)
         if ids:
+            ids = ids.split(",")
+            if self.export_file_title == "keyword":
+                ids = [unquote(i) for i in ids]
             connector = Connector()
-            request.data["ids_hash"] = connector.store_ids(ids.split(","))
+            request.data["ids_hash"] = connector.store_ids(ids)
+
         request.query_params._mutable = True
         request.query_params["size"] = max_export_size
         request.query_params["fields"] = ",".join(self.fields_to_export)

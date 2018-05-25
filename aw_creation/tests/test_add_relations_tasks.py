@@ -1,4 +1,4 @@
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta

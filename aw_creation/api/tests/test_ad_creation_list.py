@@ -1,12 +1,15 @@
-from datetime import datetime, timedelta
+import json
+from datetime import timedelta
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
     HTTP_403_FORBIDDEN
 
-from aw_creation.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DemoAccount
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.datetime import now_in_default_tz
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 
@@ -32,12 +35,12 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
@@ -62,7 +65,7 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
@@ -120,7 +123,7 @@ class AdCreationListAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today, end=today + timedelta(days=20),

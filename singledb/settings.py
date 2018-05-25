@@ -30,16 +30,26 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "video_safety_status",
     "is_content_safe",
     "is_monetizable",
+    "is_flagged",
+    "is_brand_safety_status",
+    "is_streaming",
+    "flags",
     "description",
     "youtube_published_at",
     "duration",
     "has_audience",
+    "verified",
     "transcript",
     "bad_words",
     "url",
     "ptk",
     "license",
-    "channel__channel_id"
+    "channel__channel_id",
+    "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -65,6 +75,10 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "language",
     "is_content_safe",
     "is_monetizable",
+    "is_flagged",
+    "is_brand_safety_status",
+    "is_streaming",
+    "flags",
     "audience",
     "traffic_sources",
     "duration",
@@ -73,6 +87,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "bad_words",
     "ptk",
     "has_audience",
+    "verified",
     "channel__category",
     "channel__channel_group",
     "channel__country",
@@ -86,11 +101,17 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__thumbnail_image_url",
     "channel__title",
     "channel__has_audience",
+    "channel__verified",
     "channel__views_per_video",
     "aw_data",
     "license",
     "weekly_views",
-    "daily_views"
+    "daily_views",
+    "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "engage_rate",
@@ -134,6 +155,10 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "views_per_video_history",
     "channel_group",
     "has_audience",
+    "verified",
+    "bad_percents",
+    "bad_statuses",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
@@ -146,6 +171,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "channel_id",
     "title",
     "ptk_value",
+    "daily_views",
     "thumbnail_image_url",
     "subscribers",
     "thirty_days_subscribers",
@@ -175,9 +201,12 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "has_audience",
+    "verified",
     "aw_data",
     "weekly_views",
-    "daily_views"
+    "bad_percents",
+    "bad_statuses",
+    "cms__title",
     # --> disabled SAAS-1584
     # "sentiment",
     # "score",
@@ -189,9 +218,10 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
 DEFAULT_KEYWORD_LIST_FIELDS = (
     "keyword",
     "updated_at",
-    "category_daily_views",
-    "category_weekly_views",
-    "category_thirty_days_views",
+    "daily_views",
+    "weekly_views",
+    "thirty_days_views",
+    "views",
     "monthly_searches",
     "video_count",
     "search_volume",
@@ -199,14 +229,16 @@ DEFAULT_KEYWORD_LIST_FIELDS = (
     "average_cpc",
     "interests",
     "is_viral",
+    "category",
 )
 
 DEFAULT_KEYWORD_DETAILS_FIELDS = (
     "keyword",
     "updated_at",
-    "category_daily_views",
-    "category_weekly_views",
-    "category_thirty_days_views",
+    "daily_views",
+    "weekly_views",
+    "thirty_days_views",
+    "views",
     "monthly_searches",
     "video_count",
     "search_volume",
@@ -214,4 +246,42 @@ DEFAULT_KEYWORD_DETAILS_FIELDS = (
     "average_cpc",
     "interests",
     "is_viral",
+    "category",
 )
+
+DEFAULT_VIDEO_LIST_SOURCES = (
+)
+
+DEFAULT_VIDEO_DETAILS_SOURCES = (
+)
+
+DEFAULT_CHANNEL_LIST_SOURCES = (
+    "subscribers",
+    "thirty_days_subscribers",
+    "views_per_video",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+)
+
+DEFAULT_CHANNEL_DETAILS_SOURCES = (
+    "subscribers",
+    "thirty_days_subscribers",
+    "views_per_video",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+    "audience",
+    "traffic_sources",
+    "gender",
+    "age_group",
+    "views_history",
+    "subscribers_history",
+)
+
+DEFAULT_KEYWORD_LIST_SOURCES = (
+)
+
+DEFAULT_KEYWORD_DETAILS_SOURCES = (
+)
+

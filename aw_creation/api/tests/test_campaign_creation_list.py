@@ -1,18 +1,19 @@
-from datetime import datetime, timedelta
+import json
+from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
     HTTP_403_FORBIDDEN
 
-from aw_creation.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, Language
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.datetime import now_in_default_tz
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class CampaignListAPITestCase(ExtendedAPITestCase):
-
     detail_keys = {
         'id', 'name', 'start', 'end', 'updated_at',
         'budget', 'languages',
@@ -24,10 +25,10 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
@@ -39,7 +40,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
@@ -105,7 +106,3 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             url, json.dumps(dict()), content_type='application/json',
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-
-
-

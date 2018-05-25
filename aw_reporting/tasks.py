@@ -1,6 +1,7 @@
 import csv
 import heapq
 import logging
+import re
 from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -8,9 +9,13 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Max, Min, Sum
+from django.db.models import Min, Max, Count, Case, When, Sum
+from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_reports import parent_performance_report
+from aw_reporting.models import AdGroup, Campaign
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +48,13 @@ def get_base_stats(row, quartiles=False):
     return stats
 
 
+def extract_placement_code(name):
+    try:
+        return re.search(r'(PL\d+)', name).group(1)
+    except AttributeError:
+        return None
+
+
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
 
 
@@ -70,9 +82,10 @@ GET_DF = '%Y-%m-%d'
 
 
 def load_hourly_stats(client, account, *_):
-    from aw_reporting.models import CampaignHourlyStatistic, Campaign, ACTION_STATUSES
+    from aw_reporting.models import CampaignHourlyStatistic, Campaign, \
+        ACTION_STATUSES
     from aw_reporting.adwords_reports import campaign_performance_report, \
-        main_statistics
+        MAIN_STATISTICS_FILEDS
 
     queryset = CampaignHourlyStatistic.objects.filter(
         campaign__account=account)
@@ -95,13 +108,11 @@ def load_hourly_stats(client, account, *_):
         report = campaign_performance_report(
             client,
             dates=(date, today),
-            fields=[
-                       'CampaignId', 'CampaignName', 'StartDate', 'EndDate',
-                       'AdvertisingChannelType', 'Amount', 'CampaignStatus', 'ServingStatus',
-                       'Date', 'HourOfDay',
-                   ] + main_statistics[:4],
-            include_zero_impressions=False,
-        )
+            fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
+                    "AdvertisingChannelType", "Amount", "CampaignStatus",
+                    "ServingStatus", "Date", "HourOfDay"
+                    ] + list(MAIN_STATISTICS_FILEDS[:4]),
+            include_zero_impressions=False)
         if report:
             campaign_ids = list(
                 account.campaigns.values_list('id', flat=True)
@@ -126,7 +137,8 @@ def load_hourly_stats(client, account, *_):
                             end_date=end_date,
                             budget=float(row.Amount) / 1000000,
                             status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
-                            impressions=1,  # to show this item on the accounts lists Track/Filters
+                            impressions=1,
+                            # to show this item on the accounts lists Track/Filters
                         )
                     )
 
@@ -209,48 +221,94 @@ def detect_success_aw_read_permissions():
                 permission.save()
 
 
-def get_campaigns(client, account, today):
-    from aw_reporting.models import Campaign, ACTION_STATUSES
+def get_campaigns(client, account, today=None):
     from aw_reporting.adwords_reports import campaign_performance_report
+    from aw_reporting.models import ACTION_STATUSES
+    from aw_reporting.models import Campaign
+    from aw_reporting.models import CampaignStatistic
+    from aw_reporting.models import Devices
+    from django.conf import settings
 
-    campaign_ids = set(
-        Campaign.objects.filter(
-            account=account).values_list('id', flat=True)
+    min_fetch_date = datetime(2012, 1, 1).date()
+    tz = pytz.timezone(account.timezone or settings.DEFAULT_TIMEZONE)
+    today = datetime.now(tz=tz).date()
+
+    stats_queryset = CampaignStatistic.objects.filter(
+        campaign__account=account
     )
-    report = campaign_performance_report(client)
+    drop_latest_stats(stats_queryset, today)
+
+    # lets find min and max dates for the report request
+    dates = stats_queryset.aggregate(max_date=Max('date'))
+    min_date = dates['max_date'] + timedelta(days=1) \
+        if dates['max_date'] \
+        else min_fetch_date
+    max_date = today - timedelta(1)
+
+    report = campaign_performance_report(client,
+                                         dates=(min_date, max_date),
+                                         include_zero_impressions=False,
+                                         additional_fields=('Device', 'Date')
+                                         )
     with transaction.atomic():
-        insert_campaign = []
+        insert_stat = []
         for row_obj in report:
             campaign_id = row_obj.CampaignId
             try:
                 end_date = datetime.strptime(row_obj.EndDate, GET_DF)
             except ValueError:
                 end_date = None
+
+            status = row_obj.CampaignStatus \
+                if row_obj.CampaignStatus in ACTION_STATUSES \
+                else row_obj.ServingStatus
+
+            name = row_obj.CampaignName
+            placement_code = extract_placement_code(name)
             stats = {
-                'name': row_obj.CampaignName,
+                'de_norm_fields_are_recalculated': False,
+                'name': name,
                 'account': account,
                 'type': row_obj.AdvertisingChannelType,
-                'start_date': datetime.strptime(row_obj.StartDate,
-                                                GET_DF),
+                'start_date': datetime.strptime(row_obj.StartDate, GET_DF),
                 'end_date': end_date,
                 'budget': float(row_obj.Amount) / 1000000,
-                'status': row_obj.CampaignStatus if row_obj.CampaignStatus in ACTION_STATUSES else row_obj.ServingStatus,
+                'status': status,
+                'placement_code': placement_code
             }
-            stats.update(get_base_stats(row_obj))
 
-            if campaign_id not in campaign_ids:
+            statistic_data = {
+                'date': row_obj.Date,
+                'campaign_id': row_obj.CampaignId,
+                'device_id': Devices.index(row_obj.Device),
+
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            statistic_data.update(get_base_stats(row_obj))
+
+            insert_stat.append(CampaignStatistic(**statistic_data))
+
+            try:
+                campaign = Campaign.objects.get(pk=campaign_id)
+                for field, value in stats.items():
+                    setattr(campaign, field, value)
+                campaign.save()
+            except Campaign.DoesNotExist:
                 stats['id'] = campaign_id
-                insert_campaign.append(Campaign(**stats))
-            else:
-                Campaign.objects.filter(pk=campaign_id).update(**stats)
+                Campaign.objects.create(**stats)
 
-        if insert_campaign:
-            Campaign.objects.bulk_create(insert_campaign)
+        if insert_stat:
+            CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
 
-def get_ad_groups_and_stats(client, account, today):
-    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, SUM_STATS
+def get_ad_groups_and_stats(client, account, today=None):
+    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
+        SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
+    today = today or timezone.now().date()
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -281,11 +339,13 @@ def get_ad_groups_and_stats(client, account, today):
                     updated_ad_groups.append(ad_group_id)
 
                     stats = {
+                        'de_norm_fields_are_recalculated': False,
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
                         'type': row_obj.AdGroupType,
                         'campaign_id': row_obj.CampaignId,
                     }
+
                     if ad_group_id in ad_group_ids:
                         AdGroup.objects.filter(
                             pk=ad_group_id).update(**stats)
@@ -318,7 +378,8 @@ def get_ad_groups_and_stats(client, account, today):
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
         SUM_STATS += ('engagements', 'active_view_impressions')
-        stats = stats_queryset.values("ad_group_id").order_by("ad_group_id").annotate(
+        stats = stats_queryset.values("ad_group_id").order_by(
+            "ad_group_id").annotate(
             **{s: Sum(s) for s in SUM_STATS}
         )
         for ag_stats in stats:
@@ -514,6 +575,56 @@ def get_genders(client, account, today):
 
             if bulk_data:
                 GenderStatistic.objects.safe_bulk_create(bulk_data)
+
+
+def get_parents(client, account, today):
+    from aw_reporting.models import ParentStatistic, ParentStatuses
+
+    stats_queryset = ParentStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(stats_queryset, today)
+
+    min_acc_date, max_acc_date = get_account_border_dates(account)
+    if max_acc_date is None:
+        return
+
+    saved_max_date = stats_queryset.aggregate(
+        max_date=Max('date'),
+    ).get('max_date')
+
+    ad_group_ids = set()
+
+    if saved_max_date is None or saved_max_date < max_acc_date:
+        min_date = saved_max_date + timedelta(
+            days=1) if saved_max_date else min_acc_date
+        max_date = max_acc_date
+
+        report = parent_performance_report(
+            client, dates=(min_date, max_date),
+        )
+        with transaction.atomic():
+            bulk_data = []
+            for row_obj in report:
+                stats = {
+                    'parent_status_id': ParentStatuses.index(row_obj.Criteria),
+                    'date': row_obj.Date,
+                    'ad_group_id': row_obj.AdGroupId,
+
+                    'video_views_25_quartile': quart_views(row_obj, 25),
+                    'video_views_50_quartile': quart_views(row_obj, 50),
+                    'video_views_75_quartile': quart_views(row_obj, 75),
+                    'video_views_100_quartile': quart_views(row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_data.append(ParentStatistic(**stats))
+
+                ad_group_ids.add(row_obj.AdGroupId)
+
+            if bulk_data:
+                ParentStatistic.objects.safe_bulk_create(bulk_data)
+
+    _reset_denorm_flag(ad_group_ids=ad_group_ids)
 
 
 def get_age_ranges(client, account, today):
@@ -751,6 +862,12 @@ def get_topics(client, account, today):
                 TopicStatistic.objects.safe_bulk_create(bulk_data)
 
 
+class AudienceAWType:
+    REMARK = "boomuserlist"
+    USER_VERTICAL = "uservertical"
+    CUSTOM_AFFINITY = "customaffinity"
+
+
 def get_interests(client, account, today):
     from aw_reporting.models import AudienceStatistic, RemarkStatistic, \
         RemarkList, Audience
@@ -792,6 +909,7 @@ def get_interests(client, account, today):
         bulk_aud_stats = []
         bulk_remarks = []
         bulk_rem_stats = []
+        bulk_custom_audiences = []
         with transaction.atomic():
             for row_obj in report:
                 stats = dict(
@@ -804,7 +922,7 @@ def get_interests(client, account, today):
                     **get_base_stats(row_obj)
                 )
                 au_type, au_id, *_ = row_obj.Criteria.split('::')
-                if au_type == 'boomuserlist':
+                if au_type == AudienceAWType.REMARK:
                     stats.update(remark_id=au_id)
                     bulk_rem_stats.append(RemarkStatistic(**stats))
                     if au_id not in remark_ids:
@@ -813,7 +931,7 @@ def get_interests(client, account, today):
                             RemarkList(id=au_id, name=row_obj.UserListName)
                         )
 
-                elif au_type == 'uservertical':
+                elif au_type == AudienceAWType.USER_VERTICAL:
                     if int(au_id) not in interest_ids:
                         logger.warning("Audience %s not found" % au_id)
                         continue
@@ -821,9 +939,16 @@ def get_interests(client, account, today):
                     stats.update(audience_id=au_id)
                     bulk_aud_stats.append(AudienceStatistic(**stats))
 
-                elif au_type == 'customaffinity':
-                    # custom audiences ara not yet supported
-                    continue
+                elif au_type == AudienceAWType.CUSTOM_AFFINITY:
+                    if int(au_id) not in interest_ids:
+                        interest_ids |= {int(au_id)}
+                        bulk_custom_audiences.append(Audience(
+                            id=au_id, name=row_obj.Criteria,
+                            type=Audience.CUSTOM_AFFINITY_TYPE
+                        ))
+
+                    stats.update(audience_id=au_id)
+                    bulk_aud_stats.append(AudienceStatistic(**stats))
                 else:
                     logger.warning(
                         'Undefined criteria = %s' % row_obj.Criteria)
@@ -834,6 +959,9 @@ def get_interests(client, account, today):
             if bulk_rem_stats:
                 RemarkStatistic.objects.safe_bulk_create(
                     bulk_rem_stats)
+
+            if bulk_custom_audiences:
+                Audience.objects.safe_bulk_create(bulk_custom_audiences)
 
             if bulk_aud_stats:
                 AudienceStatistic.objects.safe_bulk_create(
@@ -873,7 +1001,7 @@ def get_top_cities(report):
 def get_cities(client, account, today):
     from aw_reporting.models import CityStatistic, GeoTarget
     from aw_reporting.adwords_reports import geo_performance_report, \
-        main_statistics
+        MAIN_STATISTICS_FILEDS
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
@@ -935,14 +1063,14 @@ def get_cities(client, account, today):
 
         report = geo_performance_report(
             client, dates=(min_date, max_date),
-            additional_fields=tuple(main_statistics) +
+            additional_fields=tuple(MAIN_STATISTICS_FILEDS) +
                               ('Date', 'AdGroupId')
         )
 
         bulk_data = []
         for row_obj in filter(
                 lambda i: i.CityCriteriaId.isnumeric()
-                and int(i.CityCriteriaId) in top_cities, report):
+                          and int(i.CityCriteriaId) in top_cities, report):
 
             city_id = int(row_obj.CityCriteriaId)
             date = latest_dates.get((city_id, row_obj.CampaignId))
@@ -958,6 +1086,54 @@ def get_cities(client, account, today):
             bulk_data.append(CityStatistic(**stats))
         if bulk_data:
             CityStatistic.objects.bulk_create(bulk_data)
+
+
+def get_geo_targeting(ad_client, account, *_):
+    from aw_reporting.models import GeoTargeting, Campaign
+    from aw_reporting.adwords_reports import geo_location_report
+
+    saved_targeting = set(
+        GeoTargeting.objects.filter(campaign__account=account) \
+            .values_list("campaign_id", "geo_target_id")
+    )
+
+    _, max_acc_date = get_account_border_dates(account)
+    yesterday = now_in_default_tz().date() - timedelta(days=1)
+    week_ago = yesterday - timedelta(days=7)
+    if saved_targeting and (max_acc_date is None or max_acc_date < week_ago):
+        # don't update if there is no data or the data is old, just optimization
+        return
+
+    campaign_ids = set(Campaign.objects.filter(account=account) \
+                       .values_list("id", flat=True))
+
+    report = geo_location_report(ad_client)
+
+    bulk_create = []
+    with transaction.atomic():
+        for row_obj in report:
+            if row_obj.CampaignId not in campaign_ids \
+                    or not row_obj.Id.isnumeric():
+                continue
+            uid = (row_obj.CampaignId, int(row_obj.Id))
+            stats = dict(
+                is_negative=row_obj.IsNegative == "true",
+                **get_base_stats(row_obj)
+            )
+            if len(row_obj.Id) > 7:  # this is a custom location
+                continue
+
+            if uid in saved_targeting:
+                GeoTargeting.objects.filter(campaign_id=row_obj.CampaignId,
+                                            geo_target_id=row_obj.Id) \
+                    .update(**stats)
+            else:
+                bulk_create.append(
+                    GeoTargeting(campaign_id=row_obj.CampaignId,
+                                 geo_target_id=row_obj.Id, **stats))
+
+        if bulk_create:
+            GeoTargeting.objects.safe_bulk_create(bulk_create)
 
 
 ##
@@ -1081,3 +1257,292 @@ def load_google_geo_targets():
     if bulk_data:
         logger.info('Saving %d new geo targets...' % len(bulk_data))
         GeoTarget.objects.bulk_create(bulk_data)
+
+
+def recalculate_de_norm_fields(*args, **kwargs):
+    from aw_reporting.models import Campaign, AdGroup
+    from math import ceil
+    from django.conf import settings
+
+    batch_size = 100
+
+    for model in (Campaign, AdGroup):
+        queryset = model.objects.filter(
+            de_norm_fields_are_recalculated=False).order_by("id")
+        iterations = ceil(queryset.count() / batch_size)
+        if not settings.IS_TEST:
+            logger.info(
+                "Calculating de-norm fields: {} {}".format(queryset.model,
+                                                           iterations))
+
+        ag_link = "ad_groups__" if model is Campaign else ""
+        for i in range(iterations):
+            if not settings.IS_TEST:
+                logger.info("Iteration: {}".format(i + 1))
+            queryset = queryset[:batch_size]
+            items = queryset.values("id")
+
+            data = items.annotate(
+                min_date=Min("statistics__date"),
+                max_date=Max("statistics__date"),
+                device_computers=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 0}
+                        ),
+                    ),
+                ),
+                device_mobile=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 1}
+                        ),
+                    ),
+                ),
+                device_tablets=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 2}
+                        ),
+                    ),
+                ),
+                device_other=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"statistics__device_id".format(ag_link): 3}
+                        ),
+                    ),
+                ),
+            )
+            sum_statistic = items.annotate(
+                sum_cost=Sum("statistics__cost"),
+                sum_impressions=Sum("statistics__impressions"),
+                sum_video_views=Sum("statistics__video_views"),
+                sum_clicks=Sum("statistics__clicks"),
+            )
+            sum_statistic_map = {s["id"]: s for s in sum_statistic}
+            gender_data = items.annotate(
+                gender_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 0}
+                        ),
+                    ),
+                ),
+                gender_female=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 1}
+                        ),
+                    ),
+                ),
+                gender_male=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}gender_statistics__gender_id".format(
+                                ag_link): 2}
+                        ),
+                    ),
+                ),
+            )
+            gender_data = {e["id"]: e for e in gender_data}
+
+            age_data = items.annotate(
+                age_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 0}
+                        ),
+                    ),
+                ),
+                age_18_24=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 1}
+                        ),
+                    ),
+                ),
+                age_25_34=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 2}
+                        ),
+                    ),
+                ),
+                age_35_44=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 3}
+                        ),
+                    ),
+                ),
+                age_45_54=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 4}
+                        ),
+                    ),
+                ),
+                age_55_64=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 5}
+                        ),
+                    ),
+                ),
+                age_65=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}age_statistics__age_range_id".format(
+                                ag_link): 6}
+                        ),
+                    ),
+                ),
+            )
+            age_data = {e["id"]: e for e in age_data}
+
+            parent_data = items.annotate(
+                parent_parent=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 0}
+                        ),
+                    ),
+                ),
+                parent_not_parent=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 1}
+                        ),
+                    ),
+                ),
+                parent_undetermined=Count(
+                    Case(
+                        When(
+                            then="id",
+                            **{"{}parent_statistics__parent_status_id".format(
+                                ag_link): 2}
+                        ),
+                    ),
+                ),
+            )
+            parent_data = {e["id"]: e for e in parent_data}
+
+            audience_data = items.annotate(
+                count=Count("{}audiences__audience_id".format(ag_link)),
+            )
+            audience_data = {e["id"]: e["count"] for e in audience_data}
+
+            keyword_data = items.annotate(
+                count=Count("{}keywords__keyword".format(ag_link)),
+            )
+            keyword_data = {e["id"]: e["count"] for e in keyword_data}
+
+            channel_data = items.annotate(
+                count=Count("{}channel_statistics__id".format(ag_link)),
+            )
+            channel_data = {e["id"]: e["count"] for e in channel_data}
+
+            video_data = items.annotate(
+                count=Count("{}managed_video_statistics__id".format(ag_link)),
+            )
+            video_data = {e["id"]: e["count"] for e in video_data}
+
+            rem_data = items.annotate(
+                count=Count("{}remark_statistic__remark_id".format(ag_link)),
+            )
+            rem_data = {e["id"]: e["count"] for e in rem_data}
+
+            topic_data = items.annotate(
+                count=Count("{}topics__topic_id".format(ag_link)),
+            )
+            topic_data = {e["id"]: e["count"] for e in topic_data}
+
+            update = {}
+            for i in data:
+                uid = i["id"]
+                genders = gender_data.get(uid, {})
+                ages = age_data.get(uid, {})
+                parents = parent_data.get(uid, {})
+                sum_stats = sum_statistic_map.get(uid, {})
+                update[uid] = dict(
+                    de_norm_fields_are_recalculated=True,
+
+                    min_stat_date=i["min_date"],
+                    max_stat_date=i["max_date"],
+
+                    cost=sum_stats.get("sum_cost") or 0,
+                    impressions=sum_stats.get("sum_impressions") or 0,
+                    video_views=sum_stats.get("sum_video_views") or 0,
+                    clicks=sum_stats.get("sum_clicks") or 0,
+
+                    device_computers=i["device_computers"],
+                    device_mobile=i["device_mobile"],
+                    device_tablets=i["device_tablets"],
+                    device_other=i["device_other"],
+
+                    gender_male=genders.get("gender_male", False),
+                    gender_female=genders.get("gender_female", False),
+                    gender_undetermined=genders.get("gender_undetermined",
+                                                    False),
+
+                    age_undetermined=ages.get("age_undetermined", False),
+                    age_18_24=ages.get("age_18_24", False),
+                    age_25_34=ages.get("age_25_34", False),
+                    age_35_44=ages.get("age_35_44", False),
+                    age_45_54=ages.get("age_45_54", False),
+                    age_55_64=ages.get("age_55_64", False),
+                    age_65=ages.get("age_65", False),
+
+                    parent_parent=parents.get("parent_parent", False),
+                    parent_not_parent=parents.get("parent_not_parent", False),
+                    parent_undetermined=parents.get("parent_undetermined",
+                                                    False),
+
+                    has_interests=audience_data.get(uid, False),
+                    has_keywords=keyword_data.get(uid, False),
+                    has_channels=channel_data.get(uid, False),
+                    has_videos=video_data.get(uid, False),
+                    has_remarketing=rem_data.get(uid, False),
+                    has_topics=topic_data.get(uid, False),
+                )
+
+            for uid, updates in update.items():
+                model.objects.filter(id=uid).update(**updates)
+
+
+def _reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
+    if ad_group_ids:
+        AdGroup.objects.filter(id__in=ad_group_ids) \
+            .update(de_norm_fields_are_recalculated=False)
+    if campaign_ids is None:
+        campaign_ids = AdGroup.objects.filter(id__in=ad_group_ids) \
+            .values_list("campaign_id", flat=True).distinct()
+    Campaign.objects.filter(id__in=campaign_ids) \
+        .update(de_norm_fields_are_recalculated=False)

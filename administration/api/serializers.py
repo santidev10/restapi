@@ -1,15 +1,12 @@
 """
 Administration api serializers module
 """
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
-from administration.notifications import send_plan_changed_email
-from userprofile.models import Subscription, Plan
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -88,7 +85,6 @@ class UserUpdateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "plan",
             "can_access_media_buying",
         )
 
@@ -96,27 +92,21 @@ class UserUpdateSerializer(ModelSerializer):
         """
         Make 'post-save' actions
         """
+
         user = super(UserUpdateSerializer, self).save(**kwargs)
-        Subscription.objects.filter(user=user).delete()
-        if user.plan_id is None:
-            user.plan_id = settings.DEFAULT_ACCESS_PLAN_NAME
-        plan = Plan.objects.get(name=user.plan_id)
-        subscription = Subscription.objects.create(user=user, plan=plan)
-        user.update_permissions_from_subscription(subscription)
-        user.save()
-        send_plan_changed_email(user, self.context.get("request"))
+
+        # turned off according to SAAS-1895
+        # send_plan_changed_email(user, self.context.get("request"))
         return user
 
     def get_can_access_media_buying(self, obj):
-        return obj.has_perm("view_media_buying")
+        return obj.has_perm("userprofile.view_media_buying")
 
 
 class UserSerializer(ModelSerializer):
     """
     Retrieve user serializer
     """
-    is_user_paid_for_subscription = SerializerMethodField()
-    current_period_end = SerializerMethodField()
     can_access_media_buying = SerializerMethodField()
 
     class Meta:
@@ -135,27 +125,9 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
-            "plan",
+            "access",
             "can_access_media_buying",
-            "is_user_paid_for_subscription",
-            "current_period_end",
         )
-
-    def get_is_user_paid_for_subscription(self, obj):
-        try:
-            current_subscription = Subscription.objects.get(user=obj)
-            return True if current_subscription.payments_subscription else False
-        except Subscription.DoesNotExist:
-            return False
-
-    def get_current_period_end(self, obj):
-        try:
-            current_subscription = Subscription.objects.get(user=obj)
-            if current_subscription.payments_subscription:
-                return current_subscription.payments_subscription.current_period_end
-            return False
-        except Subscription.DoesNotExist:
-            return False
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")

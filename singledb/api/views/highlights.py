@@ -28,6 +28,7 @@ class HighlightChannelsListApiView(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         ChannelListApiView.adapt_response_data(response_data, request.user)
+        response_data = HighlightsQuery.adapt_language_aggregation(response_data)
         return Response(response_data)
 
 
@@ -47,6 +48,7 @@ class HighlightVideosListApiView(SingledbApiView):
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
         VideoListApiView.adapt_response_data(response_data, request.user)
+        response_data = HighlightsQuery.adapt_language_aggregation(response_data)
         return Response(response_data)
 
 
@@ -71,14 +73,12 @@ class HighlightKeywordsListApiView(SingledbApiView):
 
 
 class HighlightsQuery:
-    allowed_filters = ('category__terms',)
+    allowed_filters = ('category__terms', 'language__terms')
     allowed_sorts = ('thirty_days_subscribers', 'thirty_days_views', 'thirty_days_comments', 'thirty_days_likes',
                      'weekly_subscribers', 'weekly_views', 'weekly_comments', 'weekly_likes',
-                     'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes',
-                     'category_daily_views_total', 'category_weekly_views_total',
-                     'category_thirty_days_views_total')
+                     'daily_subscribers', 'daily_views', 'daily_comments', 'daily_likes')
     allowed_sorts_type = ('desc',)
-    allowed_aggregations = ('category',)
+    allowed_aggregations = ('category', 'language')
 
     def __init__(self, query_params):
         self.result_query_params = CustomQueryParamsDict()
@@ -86,8 +86,9 @@ class HighlightsQuery:
         self.request_query_params = query_params
 
     def prepare_query(self, mode=None):
-        self.result_query_params['updated_at__range'] = (datetime.now().date() - timedelta(days=3)).strftime(
-            '%Y-%m-%d') + ','
+        self.result_query_params['updated_at__days_range'] = 3
+
+        self.result_query_params["engage_rate__range"] = "1,"
 
         page = self.request_query_params.get('page')
         if page and int(page) <= 5:
@@ -110,14 +111,24 @@ class HighlightsQuery:
                 filter_cat = self.request_query_params.get(allowed_filter)
                 self.result_query_params[allowed_filter] = filter_cat.split(',')[0]
 
-        if self.request_query_params.get('aggregations') in self.allowed_aggregations:
-            self.result_query_params['aggregations'] = self.request_query_params.get('aggregations')
+        aggregations = self.request_query_params.get('aggregations', "").split(',')
+        if set(aggregations).issubset(set(self.allowed_aggregations)):
+            self.result_query_params['aggregations'] = ",".join(aggregations)
 
         if mode is not None:
-            if mode == 'video' or mode == 'channel':
-                self.result_query_params['language__terms'] = 'English'
+            pass
+            # Disabled due to SAAS-1932
+            # if mode == 'video' or mode == 'channel':
+            #     self.result_query_params['language__terms'] = 'English'
 
         return self.result_query_params
+
+    @staticmethod
+    def adapt_language_aggregation(response_data):
+        language_aggregation = response_data.get('aggregations', {}).get('language:count', [])
+        if language_aggregation:
+            response_data['aggregations']['language:count'] = language_aggregation[:10]
+        return response_data
 
 
 class CustomQueryParamsDict(dict):

@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytz
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -12,42 +14,46 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
-from saas.utils_tests import ExtendedAPITestCase
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
     account_list_header_fields = {
-        'id', 'name', 'end', 'account', 'start', 'status', 'weekly_chart',
-        'thumbnail', 'is_changed',
-        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate',
-        'ctr_v', 'is_managed',
+        "id", "name", "end", "account", "start", "status", "weekly_chart",
+        "thumbnail", "is_changed",
+        "clicks", "cost", "impressions", "video_views", "video_view_rate",
+        "ctr_v", "is_managed",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "is_disapproved", "from_aw", "updated_at",
+        "cost_method", "agency", "brand"
     }
     overview_keys = {
-        'age', 'gender', 'device', 'location',
-        'clicks', 'cost', 'impressions', 'video_views',
-        'ctr', 'ctr_v', 'average_cpm', 'average_cpv',
+        "age", "gender", "device", "location",
+        "clicks", "cost", "impressions", "video_views",
+        "ctr", "ctr_v", "average_cpm", "average_cpv",
         "all_conversions", "conversions", "view_through",
-        'video_view_rate',
-        'video100rate', 'video25rate', 'video50rate',
-        'video75rate', 'video_views_this_week',
-        'video_view_rate_top', 'impressions_this_week',
-        'video_views_last_week', 'cost_this_week',
-        'video_view_rate_bottom', 'clicks_this_week',
-        'ctr_v_top', 'cost_last_week', 'average_cpv_top',
-        'ctr_v_bottom', 'ctr_bottom', 'clicks_last_week',
-        'average_cpv_bottom', 'ctr_top', 'impressions_last_week',
+        "video_view_rate",
+        "video100rate", "video25rate", "video50rate",
+        "video75rate", "video_views_this_week",
+        "video_view_rate_top", "impressions_this_week",
+        "video_views_last_week", "cost_this_week",
+        "video_view_rate_bottom", "clicks_this_week",
+        "ctr_v_top", "cost_last_week", "average_cpv_top",
+        "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
+        "average_cpv_bottom", "ctr_top", "impressions_last_week",
+
+        "plan_video_views", "delivered_impressions", "plan_impressions",
+        "delivered_cost", "delivered_video_views", "plan_cost"
     }
 
     detail_keys = {
-        'creative',
-        'age', 'gender', 'device',
-        "all_conversions", "conversions", "view_through", 'average_position',
-        'video100rate', 'video25rate', 'video50rate', 'video75rate',
-        'delivery_trend', "ad_network"
+        "creative",
+        "age", "gender", "device",
+        "all_conversions", "conversions", "view_through", "average_position",
+        "video100rate", "video25rate", "video50rate", "video75rate",
+        "delivery_trend", "ad_network"
     }
 
     def setUp(self):
@@ -116,6 +122,28 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             set(data["overview"].keys()),
             self.overview_keys,
         )
+
+    def test_success_get_chf_account(self):
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="Test", owner=self.user, account=managed_account)
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, data=json.dumps({"is_chf": 1}),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        expected_fields = (
+            "delivered_cost", "plan_cost", "delivered_impressions",
+            "plan_impressions", "delivered_video_views", "plan_video_views")
+        self.assertTrue(
+            all([field in response.data["overview"]
+                 for field in expected_fields]))
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
@@ -252,3 +280,35 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         self.assertIsNotNone(data['impressions'])
         self.assertIsNotNone(data['overview']['impressions'])
+
+    def test_updated_at(self):
+        test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.user,
+        )
+        account = Account.objects.create(update_time=test_time)
+        account_creation = AccountCreation.objects.create(name="Name 123",
+                                                          account=account,
+                                                          is_approved=True,
+                                                          owner=self.user)
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(account_creation.id,))
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], test_time)
+
+    def test_created_at_demo(self):
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], None)

@@ -5,12 +5,10 @@ import tempfile
 
 import paramiko
 from django.core.management import BaseCommand
+from django.conf import settings
 
 from segment.models import SegmentChannel
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level='INFO')
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,10 +21,11 @@ class Command(BaseCommand):
     host = 'ec2-52-90-28-112.compute-1.amazonaws.com'
     username = 'ubuntu'
     auth_key = os.path.expanduser('~/.ssh/id_rsa')
-    remote_dir = '/mnt/augmentation'
+    # remote_dir = '/mnt/augmentation'
     paramiko.util.log_to_file('/tmp/paramiko.log')
 
     def handle(self, *args, **options):
+        self.remote_dir = os.path.join('/mnt/augmentation', settings.VENDOR)
         # setup connection to host machine
         k = paramiko.RSAKey.from_private_key_file(self.auth_key)
         c = paramiko.SSHClient()
@@ -42,7 +41,8 @@ class Command(BaseCommand):
                     remote_path = os.path.join(self.remote_dir, item.filename)
                     local_path = os.path.join(tmpdirname, item.filename)
                     sftp.get(remote_path, local_path)
-                    sftp.remove(remote_path)
+                    # file remove turned off
+                    # sftp.remove(remote_path)
 
             sftp.close()
             c.close()
@@ -56,6 +56,7 @@ class Command(BaseCommand):
         segment_id, channels_list = data
         try:
             segment = SegmentChannel.objects.get(id=segment_id)
+            logger.info('Updating {}'.format(segment.title))
             segment.top_recommend_channels = channels_list
             segment.save()
         except SegmentChannel.DoesNotExist:

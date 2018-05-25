@@ -28,8 +28,17 @@ class KeywordListApiView(APIView,
     permission_required = (
         "userprofile.keyword_list",
     )
-    fields_to_export = DEFAULT_KEYWORD_LIST_FIELDS
     export_file_title = "keyword"
+
+    fields_to_export = [
+        "keyword",
+        "search_volume",
+        "average_cpc",
+        "competition",
+        "video_count",
+        "views",
+    ]
+
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
     def obtain_segment(self, segment_id):
@@ -42,7 +51,9 @@ class KeywordListApiView(APIView,
             else:
                 segment = SegmentKeyword.objects.filter(
                     Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
+                    ~Q(category="private") |
+                    Q(shared_with__contains=[self.request.user.email])
+                ).get(id=segment_id)
         except SegmentKeyword.DoesNotExist:
             return None
         return segment
@@ -59,6 +70,14 @@ class KeywordListApiView(APIView,
             "items": [],
             "current_page": 1,
         }
+
+        if query_params.get("from_channel"):
+            channel = query_params.get("from_channel")
+            channel_data = connector.get_channel(query_params=EmptyQueryDict(), pk=channel)
+            if channel_data.get('tags'):
+                keyword_ids = channel_data.get('tags').split(',')
+                ids_hash = connector.store_ids(keyword_ids)
+                query_params.update(ids_hash=ids_hash)
 
         # segment
         segment = query_params.get("segment")
@@ -77,6 +96,9 @@ class KeywordListApiView(APIView,
             except SingleDatabaseApiConnectorException as e:
                 return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
+
+        if not request.user.has_perm("userprofile.keyword_list"):
+            return Response(empty_response)
 
         # adapt the request params
         self.adapt_query_params(query_params)
@@ -97,6 +119,10 @@ class KeywordListApiView(APIView,
         """
         Adapt SDB request format
         """
+        # adapt keyword_text for terms search
+        keyword_text = query_params.pop('keyword_text', [None])[0]
+        if keyword_text:
+            query_params.update(**{"keyword_text": keyword_text.replace(' ', ',')})
 
         # filters --->
         def make_range(name, name_min=None, name_max=None):
@@ -140,6 +166,10 @@ class KeywordListApiView(APIView,
         if is_viral is not None:
             query_params.update(
                 is_viral__term="false" if is_viral == "0" else "true")
+
+        # category
+        make("terms", "category")
+
         # <--- filters
 
     @staticmethod
@@ -190,3 +220,7 @@ class KeywordRetrieveUpdateApiView(SingledbApiView):
         if not response.data.get('error'):
             KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
         return response
+
+
+class EmptyQueryDict(dict):
+    pass

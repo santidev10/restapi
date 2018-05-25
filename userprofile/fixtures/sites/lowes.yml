@@ -1,0 +1,31 @@
+dashboard_ad_words_rates: false
+dashboard_campaigns_segmented: true
+dashboard_costs_are_hidden: false
+dashboard_remarketing_tab_is_hidden: false
+demo_account_visible: false
+global_account_visibility: false
+hidden_campaign_types:
+  '1967114397': []
+  '3389290964': []
+  '5219550543': []
+  '5249938742': []
+  '5350143276': []
+  '5381553768': []
+  '5823878699': []
+  '7802925343': []
+  '8221499947': []
+  '8753311793': []
+  '8926127207': []
+  '9144619966': []
+show_conversions: false
+visible_accounts:
+- '1967114397'
+- '3389290964'
+- '5219550543'
+- '5249938742'
+- '5381553768'
+- '5823878699'
+- '7802925343'
+- '8221499947'
+- '8753311793'
+- '8926127207'

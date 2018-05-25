@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
 from rest_framework.authtoken.models import Token
 from aw_creation.models import *
 from aw_reporting.models import Audience
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class InterestTargetingListTestCase(ExtendedAPITestCase):

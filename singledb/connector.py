@@ -2,7 +2,7 @@
 Single database API connector module
 """
 import json
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 import requests
 from django.conf import settings
@@ -11,6 +11,11 @@ from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
     DEFAULT_KEYWORD_LIST_FIELDS
+
+from singledb.settings import DEFAULT_VIDEO_DETAILS_SOURCES, \
+    DEFAULT_VIDEO_LIST_SOURCES, DEFAULT_CHANNEL_LIST_SOURCES, \
+    DEFAULT_CHANNEL_DETAILS_SOURCES, DEFAULT_KEYWORD_DETAILS_SOURCES, \
+    DEFAULT_KEYWORD_LIST_SOURCES
 
 
 class SingleDatabaseApiConnectorException(Exception):
@@ -30,6 +35,8 @@ class SingleDatabaseApiConnector(object):
     Connector class for IQ api
     """
     single_database_api_url = settings.SINGLE_DATABASE_API_URL
+    index_info = False
+    actual_index = None
 
     def execute_get_call(self, *args, **kwargs):
         return self.execute_call(requests.get, *args, **kwargs)
@@ -47,6 +54,16 @@ class SingleDatabaseApiConnector(object):
         """
         Make GET call to api
         """
+        if hasattr(query_params, "_mutable"):
+            query_params._mutable = True
+        if self.index_info:
+            query_params["index_info"] = 1
+        else:
+            query_params.pop("index_info", None)
+        if self.actual_index:
+            query_params["actual_index"] = self.actual_index
+        else:
+            query_params.pop("actual_index", None)
         # prepare header
         headers = {"Content-Type": "application/json"}
         # prepare query params
@@ -94,6 +111,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -105,6 +124,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + pk + "/"
         self.set_fields_query_param(query_params,
                                     DEFAULT_CHANNEL_DETAILS_FIELDS)
+        self.set_sources_query_param(query_params,
+                                     DEFAULT_CHANNEL_DETAILS_SOURCES)
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
@@ -115,6 +136,7 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
+        self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -150,7 +172,7 @@ class SingleDatabaseApiConnector(object):
         Delete channel
         :param pk: str Channel ID
         """
-        endpoint = "channel_test/" + pk
+        endpoint = "channels_test/" + pk
         response_data = self.execute_delete_call(endpoint, query_params=dict())
         return response_data
 
@@ -162,6 +184,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/" + pk
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -182,6 +206,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "videos/"
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -231,6 +257,19 @@ class SingleDatabaseApiConnector(object):
             query_params["fields"] = ",".join(default_fields)
         return query_params
 
+    @staticmethod
+    def set_sources_query_param(query_params, default_sources):
+        """
+        Add sources query param to query params if absent
+        """
+        if "sources" not in query_params:
+            try:
+                query_params._mutable = True
+            except AttributeError:
+                pass
+            query_params["sources"] = ",".join(default_sources)
+        return query_params
+
     def get_highlights_channels(self, query_params):
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
@@ -262,7 +301,7 @@ class SingleDatabaseApiConnector(object):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
         query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash)
+                            ids_hash=ids_hash, sources=DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.get_channel_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -274,7 +313,7 @@ class SingleDatabaseApiConnector(object):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
         query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash)
+                            ids_hash=ids_hash, sources=DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.get_video_list(query_params)
         items = response_data["items"]
         for i in items:
@@ -307,9 +346,11 @@ class SingleDatabaseApiConnector(object):
         :param query_params: dict
         :param pk: str
         """
-        endpoint = "keywords/" + pk + "/"
+        endpoint = "keywords/" + quote(pk) + "/"
         self.set_fields_query_param(
             query_params, DEFAULT_KEYWORD_DETAILS_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_DETAILS_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -321,7 +362,51 @@ class SingleDatabaseApiConnector(object):
         endpoint = "keywords/"
         self.set_fields_query_param(
             query_params, DEFAULT_KEYWORD_LIST_FIELDS)
+        self.set_sources_query_param(
+            query_params, DEFAULT_KEYWORD_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def unauthorize_channel(self, channel_id):
+        """
+        Remove access token for the channel
+        """
+        endpoint = "channels/" + channel_id + "/unauthorize"
+        return self.execute_put_call(endpoint, {})
+
+    def get_bad_words_list(self, query_params):
+        endpoint = "bad_words/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def get_bad_words_categories_list(self, query_params):
+        endpoint = "bad_words_categories/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def get_bad_words_history_list(self, query_params):
+        endpoint = "bad_words_history/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def post_bad_word(self, query_params, data):
+        endpoint = "bad_words/"
+        response_data = self.execute_post_call(endpoint, {}, data)
+        return response_data
+
+    def put_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_put_call(endpoint, query_params, data)
+        return response_data
+
+    def get_bad_word(self, query_params, pk):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    def delete_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
 
 

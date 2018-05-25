@@ -1,6 +1,7 @@
 """
 SegmentKeyword models module
 """
+import logging
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
 from django.db.models import CharField
@@ -13,13 +14,59 @@ from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
 
+logger = logging.getLogger(__name__)
+
+
+class SegmentKeywordManager(SegmentManager):
+    def update_youtube_segments(self, force_creation=False):
+        query_params = {
+            'size': 0,
+            'aggregations': 'category',
+            'fields': 'video_id',
+            'sources': (),
+        }
+        response = Connector().get_keyword_list(query_params=query_params)
+        filters_categories = dict(response['aggregations']['category:count'])
+        categories = [k for k, v in filters_categories.items()]
+        for category in categories:
+            logger.info('Updating youtube keyword segment by category: {}'.format(category))
+            try:
+                segment = self.get(title=category, category=self.model.CHF)
+            except SegmentKeyword.DoesNotExist:
+                if force_creation:
+                    logger.info("Creating new segment '{}'".format(category))
+                    segment = self.create(title=category, category=self.model.CHF)
+                else:
+                    logger.warning(
+                        "Skipped category '{}' - related segment not found".format(
+                            category)
+                    )
+                    continue
+
+            query_params = {
+                'sort': 'views:desc',
+                'fields': 'keyword',
+                'sources': (),
+                'category__terms': category,
+                'size': '1000',
+            }
+            result = Connector().get_keyword_list(query_params=query_params)
+            items = result.get('items', [])
+            ids = [i['keyword'] for i in items]
+
+            segment.replace_related_ids(ids)
+            segment.update_statistics(segment)
+            logger.info('   ... keywords: {}'.format(len(ids)))
+
 
 class SegmentKeyword(BaseSegment):
-    CHF = "channel_factory"
+    YOUTUBE = "youtube"
+    CHF = "chf"
     BLACKLIST = "blacklist"
     PRIVATE = "private"
 
     CATEGORIES = (
+        (YOUTUBE, YOUTUBE),
         (CHF, CHF),
         (BLACKLIST, BLACKLIST),
         (PRIVATE, PRIVATE),
@@ -37,7 +84,7 @@ class SegmentKeyword(BaseSegment):
 
     segment_type = 'keyword'
 
-    objects = SegmentManager()
+    objects = SegmentKeywordManager()
 
     def obtain_singledb_data(self, ids_hash):
         """
@@ -47,6 +94,7 @@ class SegmentKeyword(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "keyword",
+            "sources": (),
             "size": 0,
             "aggregations": "avg_search_volume,avg_average_cpc,avg_competition",
         }
@@ -55,6 +103,7 @@ class SegmentKeyword(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "keyword,search_volume",
+            "sources": (),
             "sort": "search_volume:desc",
             "size": 10,
         }

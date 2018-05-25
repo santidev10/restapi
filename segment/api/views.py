@@ -1,17 +1,22 @@
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import Q
+from django.template.loader import render_to_string
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import SegmentSerializer
-from segment.models import get_segment_model_by_type
+from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.models import UserProfile
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -36,10 +41,15 @@ class DynamicModelViewMixin(object):
             queryset = self.model.objects.all()
         elif self.request.user.has_perm('userprofile.view_pre_baked_segments'):
             queryset = self.model.objects.filter(
-                Q(owner=self.request.user) |
-                ~Q(category='private'))
+                Q(owner=self.request.user)
+                | ~Q(category='private')
+                | Q(shared_with__contains=[self.request.user.email])
+            )
         else:
-            queryset = self.model.objects.filter(owner=self.request.user)
+            queryset = self.model.objects.filter(
+                Q(owner=self.request.user)
+                | Q(shared_with__contains=[self.request.user.email])
+            )
         return queryset
 
 
@@ -49,6 +59,18 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
     """
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
+
+    default_allowed_sorts = {
+        "title",
+        "videos",
+        "engage_rate",
+        "sentiment",
+        "created_at",
+    }
+    allowed_sorts = {
+        "channel": default_allowed_sorts.union({"channels"}),
+        "keyword": {"competition", "average_cpc", "average_volume"}
+    }
 
     def do_filters(self, queryset):
         """
@@ -72,13 +94,9 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         """
         Sort queryset
         """
-        allowed_sorts = {
-            "title",
-            "videos",
-            "engage_rate",
-            "sentiment",
-            "created_at",
-        }
+        segment = self.model.segment_type
+        allowed_sorts = self.allowed_sorts.get(segment,
+                                               self.default_allowed_sorts)
 
         def get_sort_prefix():
             """
@@ -89,8 +107,7 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
             if ascending == "1":
                 reverse = ""
             return reverse
-        if self.model.segment_type == 'channel':
-            allowed_sorts.add('channels')
+
         sort = self.request.query_params.get("sort_by")
         if sort in allowed_sorts:
             queryset = queryset.order_by("{}{}".format(
@@ -116,7 +133,8 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         return super().paginate_queryset(queryset)
 
 
-class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
+class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,
+                                         RetrieveUpdateDestroyAPIView):
     serializer_class = SegmentSerializer
 
     def delete(self, request, *args, **kwargs):
@@ -152,6 +170,71 @@ class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin, RetrieveUpdateDe
         return Response(response_data)
 
 
+class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
+    serializer_class = SegmentSerializer
+
+    def put(self, request, *args, **kwargs):
+        segment = self.get_object()
+        user = request.user
+        shared_with = request.data.get('shared_with')
+
+        # reject if request user has no permissions
+        if not (user.is_staff or segment.owner == user):
+            return Response(status=HTTP_403_FORBIDDEN)
+
+        # send invitation email if user exists, else send registration email
+        self.proceed_emails(segment, shared_with)
+
+        # return saved segment
+        serializer_context = {"request": request}
+        response_data = self.serializer_class(
+            segment,
+            context=serializer_context
+        ).data
+        return Response(data=response_data, status=HTTP_200_OK)
+
+    def proceed_emails(self, segment, emails):
+        sender = settings.SENDER_EMAIL_ADDRESS
+        exist_emails = segment.shared_with
+        host = self.request.get_host()
+        subject = "Enterprise > You have been added as collaborator"
+        segment_url = "https://{host}/segments/{segment_type}s/{segment_id}".format(
+            host=host,
+            segment_type=segment.segment_type,
+            segment_id=segment.id
+        )
+        context = dict(
+            host=host,
+            sender=sender,
+            segment_url=segment_url,
+        )
+        # collect only new emails for current segment
+        emails_to_iterate = [e for e in emails if e not in exist_emails]
+
+        for email in emails_to_iterate:
+            try:
+                user = UserProfile.objects.get(email=email)
+                context['name'] = user.first_name
+                message = render_to_string("new_enterprise_collaborator.txt", context)
+                user.email_user(
+                    subject=subject,
+                    message=message,
+                    from_email=sender)
+
+                # provide access to segments for collaborator
+                user.add_custom_user_group('Segments')
+
+            except UserProfile.DoesNotExist:
+                to = email
+                text = render_to_string("new_collaborator.txt", context)
+                send_mail(subject, text, sender, (to,), fail_silently=True)
+
+        # update collaborators list
+        segment.shared_with = emails
+
+        segment.save()
+
+
 class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
     serializer_class = SegmentSerializer
 
@@ -182,7 +265,8 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
 
         if segment.top_recommend_channels:
             try:
-                query_params['ids'] = ','.join(segment.top_recommend_channels[:100])
+                query_params['ids'] = ','.join(
+                    segment.top_recommend_channels[:100])
                 response_data = self.connector.get_channel_list(query_params)
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)

@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -5,16 +6,18 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 
-from aw_creation.models import *
+from aw_creation.models import AccountCreation, CampaignCreation, \
+    AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DemoAccount
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.datetime import now_in_default_tz
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def create_ad(self, owner, start=None, end=None, account=None,
                   beacon_view_1=""):
@@ -39,9 +42,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -55,7 +58,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -77,20 +80,20 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 'video_url', 'display_url', 'tracking_template', 'final_url',
                 'video_ad_format', 'custom_params',
                 'companion_banner', 'video_id', 'video_title',
-            'video_description',
+                'video_description',
                 'video_thumbnail', 'video_channel_title', 'video_duration',
 
                 "beacon_impression_1", "beacon_impression_2",
-            "beacon_impression_3",
+                "beacon_impression_3",
                 "beacon_view_1", "beacon_view_2", "beacon_view_3",
                 "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
                 "beacon_first_quartile_1", "beacon_first_quartile_2",
-            "beacon_first_quartile_3",
+                "beacon_first_quartile_3",
                 "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
                 "beacon_third_quartile_1", "beacon_third_quartile_2",
-            "beacon_third_quartile_3",
+                "beacon_third_quartile_3",
                 "beacon_completed_1", "beacon_completed_2",
-            "beacon_completed_3",
+                "beacon_completed_3",
                 "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
                 "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
                 "is_disapproved",
@@ -131,7 +134,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -139,7 +142,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             beacon_view_1="http://www.test.ua",
         )
         ad = self.create_ad(**defaults)
-        account_creation = ad.ad_group_creation.campaign_creation.account_creation
+        campaign_creation = ad.ad_group_creation.campaign_creation
+        account_creation = campaign_creation.account_creation
         account_creation.is_deleted = True
         account_creation.save()
 
@@ -191,7 +195,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                          CampaignCreation.CPM_STRATEGY)
 
     def test_success_update_json(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -238,8 +242,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertIs(ad.is_deleted, True)
 
     def test_enterprise_user_can_edit_any_ad(self):
-        self.user.set_permissions_from_plan('enterprise')
-        today = datetime.now().date()
+        self.fill_all_groups(self.user)
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,

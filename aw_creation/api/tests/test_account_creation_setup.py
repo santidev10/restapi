@@ -1,6 +1,8 @@
+import json
 from datetime import timedelta
 from unittest.mock import patch, Mock
 
+from django.contrib.auth.models import Group
 from django.core import mail
 from django.core.urlresolvers import reverse
 from oauth2client.client import HttpAccessTokenRefreshError
@@ -12,13 +14,13 @@ from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     @staticmethod
     def create_account_creation(owner, start=None, end=None, is_managed=True):
@@ -70,7 +72,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         return account_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -659,9 +661,10 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_account_creation(self):
         user = self.user
-        self.remove_custom_user_permission(user, "view_media_buying")
-        user.set_permissions_from_plan('enterprise')
-        user.save()
+        user.remove_custom_user_permission("view_media_buying")
+
+        self.fill_all_groups(user)
+
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects \
             .create(name="", owner=user, account=account, )

@@ -3,7 +3,8 @@ Userprofile api serializers module
 """
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import update_last_login, PermissionsMixin
+from django.contrib.auth.models import update_last_login, PermissionsMixin, \
+    Group
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, RegexValidator, Serializer, \
@@ -13,11 +14,6 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email, \
     send_welcome_email
 from aw_reporting.models import Ad
-from payments.api.serializers import PlanSerializer as PaymentPlanSerializer
-from payments.api.serializers import \
-    SubscriptionSerializer as PaymentSubscriptionSerializer
-from payments.stripe_api.subscriptions import retrieve, is_valid
-from userprofile.models import Subscription, Plan
 
 PHONE_REGEX = RegexValidator(
     regex=r'^\+?1?\d{9,15}$',
@@ -80,11 +76,11 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
-        # create default subscription
-        plan = Plan.objects.get(name=settings.DEFAULT_ACCESS_PLAN_NAME)
-        subscription = Subscription.objects.create(user=user, plan=plan)
-        user.update_permissions_from_subscription(subscription)
-        user.save()
+        user.save(update_fields=["password"])
+
+        # new default access implementation
+        user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+
         # set token
         Token.objects.get_or_create(user=user)
         # update last login
@@ -114,8 +110,6 @@ class UserSerializer(ModelSerializer):
         max_length=15, required=True, validators=[PHONE_REGEX])
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
-    plan = SerializerMethodField()
-    has_paid_subscription_error = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
     vendor = SerializerMethodField()
     can_access_media_buying = SerializerMethodField()
@@ -136,11 +130,10 @@ class UserSerializer(ModelSerializer):
             "last_login",
             "date_joined",
             "token",
+            "access",
             "has_aw_accounts",
-            "plan",
             "profile_image_url",
             "can_access_media_buying",
-            "has_paid_subscription_error",
             "has_disapproved_ad",
             "vendor",
         )
@@ -175,20 +168,6 @@ class UserSerializer(ModelSerializer):
         except Token.DoesNotExist:
             return
 
-    def get_plan(self, obj):
-        if obj.plan is not None:
-            return PlanSerializer(obj.plan).data
-
-    def get_has_paid_subscription_error(self, obj):
-        try:
-            current_subscription = Subscription.objects.get(user=obj)
-        except Subscription.DoesNotExist:
-            return False
-        if current_subscription.payments_subscription:
-            sub = retrieve(obj.customer, current_subscription.payments_subscription.stripe_id)
-            return not is_valid(sub)
-        return False
-
     def get_vendor(self, obj):
         return settings.VENDOR
 
@@ -205,25 +184,22 @@ class UserSetPasswordSerializer(Serializer):
     token = CharField(required=True)
 
 
-class PlanSerializer(ModelSerializer):
-    payments_plan = SerializerMethodField()
+class UserChangePasswordSerializer(Serializer):
+    """
+    Serializer for changing user's password.
+    """
+    new_password = CharField(required=True)
+    old_password = CharField(required=True)
 
-    """
-    Permission plan serializer
-    """
+
+class GroupSerializer(Serializer):
+    name = CharField(read_only=True)
 
     class Meta:
-        model = Plan
+        model = Group
         fields = (
             'name',
-            'permissions',
-            'payments_plan',
         )
-
-    def get_payments_plan(self, obj):
-        if obj.payments_plan_id is None:
-            return {}
-        return PaymentPlanSerializer(obj.payments_plan).data
 
 
 class ContactFormSerializer(Serializer):
@@ -243,21 +219,6 @@ class ContactFormSerializer(Serializer):
     )
 
 
-class SubscriptionSerializer(Serializer):
-    plan = SerializerMethodField()
-    payments_subscription = SerializerMethodField()
-
-    class Meta:
-        model = Subscription
-        fields = (
-            "plan",
-            "payments_subscription",
-        )
-
-    def get_plan(self, obj):
-        return obj.plan.name
-
-    def get_payments_subscription(self, obj):
-        if obj.payments_subscription is None:
-            return dict()
-        return PaymentSubscriptionSerializer(obj.payments_subscription).data
+class ErrorReportSerializer(Serializer):
+    email = EmailField(max_length=255)
+    message = CharField(required=True)

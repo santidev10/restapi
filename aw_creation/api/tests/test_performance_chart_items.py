@@ -11,8 +11,8 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, Ge
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, YTChannelStatistic, TopicStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
-from saas.utils_tests import ExtendedAPITestCase
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):

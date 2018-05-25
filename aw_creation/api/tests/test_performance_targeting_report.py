@@ -3,9 +3,9 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, Audience, Topic, \
-    AWConnectionToUserRelation, AWConnection, YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
-from saas.utils_tests import ExtendedAPITestCase
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+    YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 from datetime import datetime
 import json
