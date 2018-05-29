@@ -8,7 +8,7 @@ from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.thread_local_middleware import current_user
+from utils.registry import current_user
 from utils.utils_tests import ExtendedAPITestCase
 
 
