@@ -14,7 +14,7 @@ class PacingReportOpportunitiesApiView(ListAPIView, PacingReportHelper):
 
     def get_queryset(self):
         report = PacingReport()
-        opportunities = report.get_opportunities(self.request.GET, self.request.user)
+        opportunities = report.get_opportunities(self.request.GET)
         sort_by = self.request.GET.get("sort_by")
         if sort_by is not None:
             reverse = False

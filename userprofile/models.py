@@ -174,7 +174,8 @@ class UserRelatedManager(Manager):
         return queryset.filter(**{self._account_id_ref + "__in": account_ids})
 
     def __is_account_filter_applicable(self, user: UserProfile):
-        user_settings = user.aw_settings
+        user_settings = user.aw_settings \
+            if hasattr(user, "aw_settings") else DEFAULT_SETTINGS
         global_visibility = user_settings.get(
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
         return global_visibility
