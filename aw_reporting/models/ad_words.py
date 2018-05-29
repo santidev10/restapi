@@ -11,7 +11,7 @@ from django.db.models.query import QuerySet as DBQuerySet
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
-from userprofile.models import UserProfile, UserSettingsKey
+from userprofile.models import UserRelatedManager
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
@@ -463,24 +463,8 @@ class CampaignQueryset(DBQuerySet):
                 raise ValueError("Unrecognized status '%s'" % status)
 
 
-class CampaignQuerySetManager(models.Manager):
-
-    def get_queryset(self):
-        return CampaignQueryset(self.model, using=self._db)
-
-    def visible_campaigns(self, user: UserProfile):
-        if user is None:
-            return self.model.objects.none()
-        aw_settings = user.aw_settings
-
-        global_visibility = aw_settings.get(
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY)
-        if not global_visibility:
-            return self.get_queryset()
-
-        visible_accounts = aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        return self.get_queryset().filter(Q(account__in=visible_accounts)
-                                          | Q(account__isnull=True))
+class CampaignQuerySetManager(UserRelatedManager):
+    _account_id_ref = "account_id"
 
 
 class Campaign(ModelPlusDeNormFields):
@@ -535,7 +519,12 @@ class Campaign(ModelPlusDeNormFields):
         return "%s" % self.name
 
 
+class AdGroupManager(UserRelatedManager):
+    _account_id_ref = "campaign__account_id"
+
+
 class AdGroup(ModelPlusDeNormFields):
+    objects = AdGroupManager()
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True)

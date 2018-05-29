@@ -74,8 +74,8 @@ class PacingReportTestCase(APITestCase):
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY:True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS:[]}
+        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+                         UserSettingsKey.VISIBLE_ACCOUNTS: []}
         with self.patch_user_settings(**user_settings):
             response = self.client.put(url, dict(region=1))
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

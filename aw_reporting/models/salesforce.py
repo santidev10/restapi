@@ -114,6 +114,10 @@ class Contact(BaseModel):
 class OpportunityManager(UserRelatedManager):
     _account_id_ref = "placements__adwords_campaigns__account_id"
 
+    def have_campaigns(self):
+        return self.get_queryset() \
+            .filter(placements__adwords_campaigns__isnull=False)
+
 
 class Opportunity(BaseModel):
     objects = OpportunityManager()
