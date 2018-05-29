@@ -34,7 +34,6 @@ def pacing_report(report, opportunities):
         v.update(global_f)
     fm = {n: workbook.add_format(v) for n, v in fm.items()}
 
-    # go go go
     row = 0
     col = 0
 
