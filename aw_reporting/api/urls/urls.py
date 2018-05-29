@@ -86,6 +86,9 @@ urlpatterns = [
     url(r'^pacing_report_update_opportunity/(?P<pk>\w+)/$',
         views.PacingReportOpportunityUpdateApiView.as_view(),
         name="pacing_report_update_opportunity"),
+    url(r'^pacing_report_export/$',
+        views.PacingReportExportView.as_view(),
+        name="pacing_report_export"),
 
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
