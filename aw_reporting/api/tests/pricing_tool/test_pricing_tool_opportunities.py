@@ -2298,7 +2298,7 @@ class PricingToolTestCase(APITestCase):
         Campaign.objects.create(
             id="2", account=account_2, salesforce_placement=placement)
         user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS:[account_1.id]}
+                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
         with self.patch_user_settings(**user_settings):
             response = self._request()
 

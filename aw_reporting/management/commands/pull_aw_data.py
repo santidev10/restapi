@@ -24,7 +24,7 @@ class Command(BaseCommand):
             '--forced',
             dest='forced',
             default=False,
-            type=bool,
+            action='store_true',
             help='Forced update of all accounts'
         )
 

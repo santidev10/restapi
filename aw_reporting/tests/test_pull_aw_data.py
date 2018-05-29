@@ -1,5 +1,3 @@
-import csv
-import io
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
@@ -14,7 +12,7 @@ from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
     AdGroupStatistic, Audience
 from aw_reporting.tasks import AudienceAWType
-from utils.utils_tests import patch_now
+from utils.utils_tests import patch_now, build_csv_byte_stream
 
 
 class PullAWDataTestCase(APITestCase):
@@ -365,13 +363,3 @@ class PullAWDataTestCase(APITestCase):
                          Audience.CUSTOM_AFFINITY_TYPE)
 
 
-def build_csv_byte_stream(headers, rows):
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=headers)
-    for row in rows:
-        clean_row = dict([(k, v) for k, v in row.items() if k in headers])
-        writer.writerow(clean_row)
-    output.seek(0)
-    text_csv = output.getvalue()
-    stream = io.BytesIO(text_csv.encode())
-    return stream
