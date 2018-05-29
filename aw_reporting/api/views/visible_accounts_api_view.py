@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile
+from userprofile.models import UserProfile, UserSettingsKey
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 
@@ -43,8 +43,8 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
         settings = user.aw_settings
-        visible_ids = settings.get('visible_accounts')
-        types_settings = settings.get('hidden_campaign_types')
+        visible_ids = settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        types_settings = settings.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
 
         for ac_info in data:
@@ -91,8 +91,8 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         if 'accounts' in request.data:
             accounts = request.data.get('accounts')
 
-            visible_accounts = set(settings_obj.get('visible_accounts'))
-            hidden_types = settings_obj.get('hidden_campaign_types')
+            visible_accounts = set(settings_obj.get(UserSettingsKey.VISIBLE_ACCOUNTS))
+            hidden_types = settings_obj.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
 
             for account in accounts:
                 # account visibility

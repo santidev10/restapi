@@ -22,7 +22,7 @@ class BaseHealthCheckTestCase(APITestCase):
         super(BaseHealthCheckTestCase, self).__init__(*args, **kwargs)
         self.user = None
 
-    def __create_not_auth_user(self):
+    def _create_not_auth_user(self):
         if self.user:
             self.user.delete()
         self.create_test_user(False)
@@ -35,7 +35,7 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
         self.user = self.create_test_user()
 
     def test_fail_get_filters(self):
-        self.__create_not_auth_user()
+        self._create_not_auth_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
@@ -152,7 +152,7 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
         self.user = self.create_test_user()
 
     def test_fail_get_list(self):
-        self.__create_not_auth_user()
+        self._create_not_auth_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 

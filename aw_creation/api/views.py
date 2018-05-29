@@ -52,6 +52,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
     TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
     base_stats_aggregator
+from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
@@ -631,7 +632,7 @@ class AccountCreationListApiView(ListAPIView):
             elif self.request.user.has_perm("userprofile.view_dashboard"):
                 user_settings = self.request.user.aw_settings
                 if user_settings.get('global_account_visibility'):
-                    filters["account__id__in"] = user_settings.get('visible_accounts')
+                    filters["account__id__in"] = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         queryset = AccountCreation.objects.filter(**filters)
