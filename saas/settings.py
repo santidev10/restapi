@@ -66,6 +66,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
+    'utils.thread_local_middleware.ThreadLocalMiddleware',
 ]
 
 ROOT_URLCONF = 'saas.urls'

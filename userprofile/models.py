@@ -1,6 +1,8 @@
 """
 Userprofile models module
 """
+from typing import List
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
@@ -8,11 +10,14 @@ from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
+from django.db.models import QuerySet
+from django.db.models.manager import Manager
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
+from utils.thread_local_middleware import get_current_user
 
 
 class UserSettingsKey:
@@ -158,3 +163,32 @@ class UserChannel(Timestampable):
 
     class Meta:
         unique_together = ("channel_id", "user")
+
+
+class UserRelatedManager(Manager):
+    _account_id_ref = None
+
+    def __filter_by_account_ids(self, queryset, account_ids: List[str]):
+        if self._account_id_ref is None:
+            raise NotImplementedError("_account_id_ref should be defined")
+        return queryset.filter(**{self._account_id_ref + "__in": account_ids})
+
+    def __is_account_filter_applicable(self, user: UserProfile):
+        user_settings = user.aw_settings
+        global_visibility = user_settings.get(
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
+        return global_visibility
+
+    def __filter_by_user(self, queryset: QuerySet, user: UserProfile):
+        if self.__is_account_filter_applicable(user):
+            account_ids = user.aw_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS, [])
+            queryset = self.__filter_by_account_ids(queryset, account_ids)
+        return queryset
+
+    def get_queryset(self, ignore_user=False):
+        queryset = super(UserRelatedManager, self).get_queryset()
+        user = get_current_user()
+        if not ignore_user and user is not None:
+            queryset = self.__filter_by_user(queryset, user)
+        return queryset
