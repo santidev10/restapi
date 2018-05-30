@@ -160,7 +160,7 @@ CALCULATED_STATS = {
         'receipt': multiply_percent(get_ctr),
     },
     'ctr_v': {
-        'dependencies': ('clicks', 'video_views'),
+        'dependencies': ("video_clicks", "video_views"),
         'receipt': multiply_percent(get_ctr_v),
     },
     'average_cpv': {
@@ -221,6 +221,7 @@ def base_stats_aggregator(prefix=None):
         sum_clicks=Sum("clicks"),
         sum_cost=Sum("cost")
     )
+
 
 # fixme: deprecated
 base_stats_aggregate = base_stats_aggregator()
