@@ -3,10 +3,9 @@ from datetime import date, datetime
 from django.test import TestCase
 
 from aw_reporting.models import Opportunity, Campaign, AdGroup, \
-    CampaignStatistic, AdGroupStatistic, OpPlacement, Category
+    CampaignStatistic, AdGroupStatistic, OpPlacement, Category, UserProfile
 from aw_reporting.tasks import recalculate_de_norm_fields
 from aw_reporting.tools.pricing_tool import PricingTool
-from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 
 
@@ -17,7 +16,7 @@ class PricingToolTestCase(TestCase):
     def test_quarts_to_dates_1(self):
         today = datetime(2017, 4, 1)
         year = today.year
-        p_tool = PricingTool(today=today, quarters=['Q1', 'Q2'])
+        p_tool = PricingTool(self.user, today=today, quarters=['Q1', 'Q2'])
         periods = p_tool.kwargs['periods']
         self.assertEqual(
             periods,
@@ -27,7 +26,7 @@ class PricingToolTestCase(TestCase):
     def test_quarts_to_dates_2(self):
         today = datetime(2017, 7, 1)
         year = today.year
-        p_tool = PricingTool(today=today, quarters=['Q2', 'Q3'])
+        p_tool = PricingTool(self.user, today=today, quarters=['Q2', 'Q3'])
         periods = p_tool.kwargs['periods']
         self.assertEqual(
             periods,
@@ -38,7 +37,7 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=7)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q3'], today=today)
+        p_tool = PricingTool(self.user, quarters=['Q1', 'Q3'], today=today)
         periods = p_tool.kwargs['periods']
         self.assertEqual(
             periods,
@@ -52,7 +51,7 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=10)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q4'], today=today)
+        p_tool = PricingTool(self.user, quarters=['Q1', 'Q4'], today=today)
         periods = p_tool.kwargs['periods']
         self.assertEqual(
             periods,
@@ -66,7 +65,7 @@ class PricingToolTestCase(TestCase):
         today = now_in_default_tz().date()
         today = today.replace(day=1, month=10)
         year = today.year
-        p_tool = PricingTool(quarters=['Q1', 'Q2', 'Q4'], today=today)
+        p_tool = PricingTool(self.user, quarters=['Q1', 'Q2', 'Q4'], today=today)
         periods = p_tool.kwargs['periods']
         self.assertEqual(
             periods,
@@ -112,7 +111,7 @@ class PricingToolTestCase(TestCase):
 
         recalculate_de_norm_fields()
 
-        p_tool = PricingTool(quarters=['Q1', 'Q2'], today=today,
+        p_tool = PricingTool(self.user, quarters=['Q1', 'Q2'], today=today,
                              compare_yoy=True)
         data = p_tool.estimate
 
@@ -137,7 +136,7 @@ class PricingToolTestCase(TestCase):
             AdGroup.objects.create(id=n, name="", campaign=campaign,
                                    type=product_type)
 
-        filters = PricingTool.get_filters()
+        filters = PricingTool.get_filters(self.user)
         self.assertEqual(set(e["name"] for e in filters["product_types"]),
                          set(expected_types))
 
@@ -172,7 +171,7 @@ class PricingToolTestCase(TestCase):
 
         recalculate_de_norm_fields()
 
-        filters = PricingTool.get_filters()
+        filters = PricingTool.get_filters(self.user)
         self.assertEqual(len(filters["brands"]), 1)
         self.assertEqual(filters["brands"][0]["id"], opportunity_1.brand)
 
@@ -202,6 +201,6 @@ class PricingToolTestCase(TestCase):
 
         recalculate_de_norm_fields()
 
-        filters = PricingTool.get_filters()
+        filters = PricingTool.get_filters(self.user)
         self.assertEqual(len(filters["categories"]), 1)
         self.assertEqual(filters["categories"][0]["id"], category_1.id)

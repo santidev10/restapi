@@ -15,6 +15,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import get_dates_range
+from userprofile.models import UserSettingsKey, DEFAULT_SETTINGS
 from utils.datetime import now_in_default_tz
 
 
@@ -510,8 +511,8 @@ class PacingReport:
         )
 
     # ## OPPORTUNITIES ## #
-    def get_opportunities(self, get):
-        queryset = self.get_opportunities_queryset(get)
+    def get_opportunities(self, get, user):
+        queryset = self.get_opportunities_queryset(get, user)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -619,7 +620,7 @@ class PacingReport:
 
         return opportunities
 
-    def get_opportunities_queryset(self, get):
+    def get_opportunities_queryset(self, get, user):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -673,6 +674,12 @@ class PacingReport:
         if apex_deal is not None and apex_deal.isdigit():
             queryset = queryset.filter(apex_deal=bool(int(apex_deal)))
 
+        user_settings = user.aw_settings if user is not None else DEFAULT_SETTINGS
+        if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            queryset = queryset.filter(
+                placements__adwords_campaigns__id__in=visible_accounts
+            )
         return queryset.order_by("name", "id").distinct()
 
     def get_period_dates(self, period, custom_start, custom_end):

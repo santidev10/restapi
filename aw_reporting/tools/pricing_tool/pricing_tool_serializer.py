@@ -10,6 +10,7 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     CampaignStatistic, AdGroup
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
+from userprofile.models import UserProfile
 from utils.datetime import as_date, now_in_default_tz
 from utils.query import merge_when, OR
 
@@ -18,12 +19,12 @@ class PricingToolSerializer:
     def __init__(self, kwargs):
         self.kwargs = kwargs
 
-    def get_opportunities_data(self, opportunities: list):
+    def get_opportunities_data(self, opportunities: list, user: UserProfile):
         ids = [opp.id for opp in opportunities]
 
         campaign_thumbs = self._get_campaign_thumbnails(ids)
 
-        campaign_groups = self._prepare_campaigns(ids)
+        campaign_groups = self._prepare_campaigns(ids, user)
         hard_cost_stats = self._prepare_hard_cost_flights(ids)
         campaigns_data = self._prepare_campaign_data(ids)
         opportunities_annotated = Opportunity.objects.filter(id__in=ids) \
@@ -363,9 +364,9 @@ class PricingToolSerializer:
         return {uid: campaign_map.get(uid, dict()) for uid in opportunity_ids}
 
 
-    def _prepare_campaigns(self, opportunity_ids):
+    def _prepare_campaigns(self, opportunity_ids, user):
         opp_id_key = "salesforce_placement__opportunity_id"
-        campaigns = Campaign.objects.all() \
+        campaigns = Campaign.objects.visible_campaigns(user) \
             .filter(**{opp_id_key + "__in": opportunity_ids}) \
             .values("id", opp_id_key, "cost", "impressions", "video_views",
                     "start_date", "end_date", "name",
