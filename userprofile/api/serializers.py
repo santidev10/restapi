@@ -131,6 +131,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "access",
+            "aw_settings",
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",
