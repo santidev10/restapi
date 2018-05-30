@@ -42,7 +42,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings = user.aw_settings
+        settings = user.get_aw_settings()
         visible_ids = settings.get('visible_accounts')
         types_settings = settings.get('hidden_campaign_types')
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
