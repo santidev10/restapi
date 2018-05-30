@@ -1,6 +1,7 @@
 """
 Userprofile models module
 """
+import logging
 from typing import List
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
@@ -16,6 +17,8 @@ from django.utils.translation import ugettext_lazy as _
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 from utils.registry import Registry
+
+logger = logging.getLogger(__name__)
 
 
 class UserSettingsKey:
@@ -188,6 +191,9 @@ class UserRelatedManager(models.Manager):
     def get_queryset(self, ignore_user=False):
         queryset = super(UserRelatedManager, self).get_queryset()
         user = Registry.get_user()
-        if not ignore_user and user is not None:
+        if user is None:
+            logger.warning("{} is used with no user in context".format(
+                type(self).__name__))
+        elif not ignore_user:
             queryset = self.__filter_by_user(queryset, user)
         return queryset
