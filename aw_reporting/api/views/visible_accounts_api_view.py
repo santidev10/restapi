@@ -87,7 +87,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings_obj = user.aw_settings
+        settings_obj = user.get_aw_settings()
         if 'accounts' in request.data:
             accounts = request.data.get('accounts')
 
@@ -117,6 +117,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             update = dict(visible_accounts=list(sorted(visible_accounts)),
                           hidden_campaign_types=hidden_types)
             settings_obj.update(update)
+            user.aw_settings = settings_obj
             user.save()
 
         cache_reset()
@@ -144,7 +145,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        user_aw_settings = user.aw_settings
+        user_aw_settings = user.get_aw_settings()
 
         # check for valid data in request body
         keys_to_update = request.data.keys() & set(AdwordsAccountSettings.AVAILABLE_KEYS)
@@ -153,6 +154,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         for key in keys_to_update:
             user_aw_settings[key] = request.data[key]
 
+        user.aw_settings = user_aw_settings
         user.save()
         return Response(data=user_aw_settings,
                         status=HTTP_202_ACCEPTED)
