@@ -30,9 +30,8 @@ class GetUserMixin:
     def check_default_aw_settings(self, user):
         settings = user.aw_settings
         for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
-            if settings.get(default_settings_key) is None:
+            if default_settings_key not in settings:
                 settings[default_settings_key] = default_settings_value
-        user.save()
 
 
 class VisibleAccountsApiView(APIView, GetUserMixin):
