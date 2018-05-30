@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile, DEFAULT_SETTINGS
+from userprofile.models import UserProfile
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 
@@ -27,12 +27,6 @@ class GetUserMixin:
 
         return user
 
-    def check_default_aw_settings(self, user):
-        settings = user.aw_settings
-        for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
-            if default_settings_key not in settings:
-                settings[default_settings_key] = default_settings_value
-
 
 class VisibleAccountsApiView(APIView, GetUserMixin):
     """
@@ -46,10 +40,9 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         data = self.serializer_class(self.queryset.all().distinct(), many=True).data
         user_id = self.request.query_params.get('user_id')
         user = self.get_user_by_id(user_id)
-        self.check_default_aw_settings(user)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings = user.aw_settings
+        settings = user.get_default_aw_settings()
         visible_ids = settings.get('visible_accounts')
         types_settings = settings.get('hidden_campaign_types')
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
@@ -94,7 +87,6 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        self.check_default_aw_settings(user)
         settings_obj = user.aw_settings
         if 'accounts' in request.data:
             accounts = request.data.get('accounts')
@@ -152,7 +144,6 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        self.check_default_aw_settings(user)
         user_aw_settings = user.aw_settings
 
         # check for valid data in request body
