@@ -1,13 +1,10 @@
 import re
-from datetime import datetime
 from functools import wraps
 
-import pytz
 from django.conf import settings
 from django.db import models
-from django.db.models import Min, Sum, Case, When, IntegerField, Q
+from django.db.models import Min, Sum, Case, When, IntegerField
 from django.db.models.aggregates import Aggregate
-from django.db.models.query import QuerySet as DBQuerySet
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce import OpPlacement
@@ -436,40 +433,12 @@ class ModelPlusDeNormFields(BaseStatisticModel):
 DEFAULT_TIMEZONE = settings.DEFAULT_TIMEZONE
 
 
-class CampaignQueryset(DBQuerySet):
-    def status(self, status, *args, tz=None, **kwargs):
-        if status == 'paused':
-            return self.filter(_status=status, *args, **kwargs)
-        else:
-            tz = tz or DEFAULT_TIMEZONE
-            if type(tz) is str:
-                tz = pytz.timezone(tz)
-            today = datetime.now(tz=tz).date()
-            if status == 'ended':
-                return self.filter(
-                    _status='enabled',
-                    end_date__lt=today, *args, **kwargs
-                )
-            elif status == 'not_ended':
-                return self.filter(
-                    Q(end_date__gte=today) | Q(end_date__isnull=True),
-                    *args, **kwargs
-                )
-            elif status == 'enabled':
-                return self.filter(_status='enabled').filter(
-                    Q(end_date__gte=today) | Q(end_date__isnull=True),
-                    *args, **kwargs
-                )
-            else:
-                raise ValueError("Unrecognized status '%s'" % status)
-
-
-class CampaignQuerySetManager(UserRelatedManager):
+class CampaignManager(UserRelatedManager):
     _account_id_ref = "account_id"
 
 
 class Campaign(ModelPlusDeNormFields):
-    objects = CampaignQuerySetManager()
+    objects = CampaignManager()
 
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)

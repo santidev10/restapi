@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db.models import Sum
 
-from aw_reporting.models import Opportunity, Campaign
+from aw_reporting.models import Opportunity
 from aw_reporting.tools.pricing_tool.pricing_tool_estimate import \
     PricingToolEstimate
 from aw_reporting.tools.pricing_tool.pricing_tool_filtering import \
@@ -59,14 +59,9 @@ class PricingTool:
         )
 
     def _get_opportunity_queryset(self):
-        queryset = Opportunity.objects.have_campaigns() \
+        return Opportunity.objects.have_campaigns() \
             .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
             .order_by("-aw_budget")
-
-        # todo: get rid of implicit filtering related items
-        queryset = queryset \
-            .filter(placements__adwords_campaigns__in=Campaign.objects.all())
-        return queryset
 
     def get_opportunities_queryset(self):
         return self._opportunities_qs
