@@ -5,38 +5,22 @@ from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
-from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SFAccount, Opportunity, User, OpPlacement, \
     Campaign, CampaignAgeRangeTargeting, CampaignGenderTargeting, \
     GeoTarget, CampaignLocationTargeting, AdGroup, VideoCreative, \
-    VideoCreativeStatistic, Account
+    VideoCreativeStatistic
 from aw_reporting.tools.health_check_tool import GENDERS, AGE_RANGES
-from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, \
-    patch_user_settings
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
 
 
-class BaseHealthCheckTestCase(APITestCase):
-    def __init__(self, *args, **kwargs):
-        super(BaseHealthCheckTestCase, self).__init__(*args, **kwargs)
-        self.user = None
-
-    def _create_not_auth_user(self):
-        if self.user:
-            self.user.delete()
-        self.create_test_user(False)
-
-
-class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.HealthCheck.FILTERS)
-
+class AWSetupHealthCheckTestCase(APITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_fail_get_filters(self):
-        self._create_not_auth_user()
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        self.__create_not_auth_user()
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_get_filters(self):
@@ -51,7 +35,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
         Opportunity.objects.create(
             id="BBB", name="", account_manager=user_2,
             ad_ops_manager=user_1, sales_manager=user_4)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         expected_keys = {"period", "am", "account", "ad_ops", "date_range",
                          "sales_rep", "brands"}
@@ -75,7 +60,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
             id="BBB", name="", start=op2_start, end=op2_end)
         Opportunity.objects.create(
             id="CCC", name="", start=None, end=None)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("date_range", set(response.data.keys()))
         self.assertEqual(
@@ -83,7 +69,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
 
     def test_get_filters_data_range_is_empty_if_no_data(self):
         Opportunity.objects.create(id="CCC", name="", start=None, end=None)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("date_range", set(response.data.keys()))
         self.assertEqual(response.data["date_range"], dict(min=None, max=None))
@@ -95,7 +82,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
         Opportunity.objects.create(id="2", name="", brand=brand_2)
         Opportunity.objects.create(id="3", name="", brand=brand_1)
         Opportunity.objects.create(id="4", name="", brand=None)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("brands", set(response.data.keys()))
         brands = response.data["brands"]
@@ -109,7 +97,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
             id="2", name="Jay", email="2@mail.go", is_active=True)
         Opportunity.objects.create(id="1", name="", ad_ops_manager=user_1)
         Opportunity.objects.create(id="2", name="", ad_ops_manager=user_2)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("ad_ops", set(response.data.keys()))
         self.assertEqual(len(response.data["ad_ops"]), 1)
@@ -123,7 +112,8 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
             id="2", name="Jay", email="2@mail.go", is_active=True)
         Opportunity.objects.create(id="1", name="", account_manager=user_1)
         Opportunity.objects.create(id="2", name="", account_manager=user_2)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("am", set(response.data.keys()))
         self.assertEqual(len(response.data["am"]), 1)
@@ -137,23 +127,18 @@ class AWSetupHealthCheckFiltersTestCase(BaseHealthCheckTestCase):
             id="2", name="Jay", email="2@mail.go", is_active=True)
         Opportunity.objects.create(id="1", name="", sales_manager=user_1)
         Opportunity.objects.create(id="2", name="", sales_manager=user_2)
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool_filters")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("sales_rep", set(response.data.keys()))
         self.assertEqual(len(response.data["sales_rep"]), 1)
         item = response.data["sales_rep"][0]
         self.assertEqual(item["id"], user_2.id)
 
-
-class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.HealthCheck.LIST)
-
-    def setUp(self):
-        self.user = self.create_test_user()
-
     def test_fail_get_list(self):
-        self._create_not_auth_user()
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool")
+        self.__create_not_auth_user()
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_get_list(self):
@@ -227,7 +212,8 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
         Opportunity.objects.create(
             id="B", name="Second campaign", probability=100,
             start="2016-01-20", end="2016-01-30")
-        response = self.client.get(self.url)
+        url = reverse("aw_reporting_urls:health_check_tool")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
         item = response.data["items"][0]
@@ -287,7 +273,9 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
             op.id for op in opportunities[:relevant_count]}
         query_params = QueryDict("", mutable=True)
         query_params.update(dict(start=date_range_start, end=date_range_end))
-        url = "?".join([self.url, query_params.urlencode()])
+        url = "?".join([
+            reverse("aw_reporting_urls:health_check_tool"),
+            query_params.urlencode()])
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], relevant_count)
@@ -304,9 +292,9 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
             id="2", name="", probability=100, brand=brand_2)
         Opportunity.objects.create(
             id="3", name="", probability=100, brand=brand_3)
-        query_params = QueryDict(mutable=True)
-        query_params.update(brands=",".join([brand_1, brand_2]))
-        url = "{}?{}".format(self.url, query_params.urlencode())
+        query_params = "brands={}".format(",".join([brand_1, brand_2]))
+        url = "{}?{}".format(
+            reverse("aw_reporting_urls:health_check_tool"), query_params)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
@@ -326,9 +314,9 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
             id="BBB", name="", probability=100, sales_manager=user_2)
         Opportunity.objects.create(
             id="CCC", name="", probability=100, sales_manager=user_3)
-        query_params = QueryDict(mutable=True)
-        query_params.update(sales_rep=",".join([user_1.id, user_2.id]))
-        url = "{}?{}".format(self.url, query_params.urlencode())
+        query_params = "sales_rep={}".format(",".join([user_1.id, user_2.id]))
+        url = "{}?{}".format(
+            reverse("aw_reporting_urls:health_check_tool"), query_params)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
@@ -357,7 +345,9 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
         query_params.update(
             dict(campaign_start=left_date_border,
                  campaign_end=right_date_border))
-        url = "?".join([self.url, query_params.urlencode()])
+        url = "?".join([
+            reverse("aw_reporting_urls:health_check_tool"),
+            query_params.urlencode()])
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -366,27 +356,6 @@ class AWSetupHealthCheckListTestCase(BaseHealthCheckTestCase):
             expected_opportunities_ids,
             {obj["id"] for obj in response.data["items"]})
 
-    def test_influence_account_visibility(self):
-        def create_opportunity_with_account(uid):
-            opportunity = Opportunity.objects.create(id=uid, probability=100)
-            placement = OpPlacement.objects.create(id=uid,
-                                                   opportunity=opportunity)
-            account = Account.objects.create(id=uid)
-            Campaign.objects.create(id=uid,
-                                    salesforce_placement=placement,
-                                    account=account)
-            return opportunity, account
-
-        opportunity_1, account_1 = create_opportunity_with_account("1")
-        create_opportunity_with_account("2")
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id],
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True
-        }
-        with patch_user_settings(self.user, **user_settings):
-            response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
+    def __create_not_auth_user(self):
+        self.user.delete()
+        self.create_test_user(False)

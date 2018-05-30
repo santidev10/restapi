@@ -120,7 +120,6 @@ class OpportunityManager(UserRelatedManager):
 
 
 class Opportunity(BaseModel):
-    objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True)
     number = models.CharField(max_length=10, null=True)

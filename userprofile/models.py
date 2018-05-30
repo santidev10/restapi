@@ -10,8 +10,6 @@ from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import QuerySet
-from django.db.models.manager import Manager
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -165,7 +163,7 @@ class UserChannel(Timestampable):
         unique_together = ("channel_id", "user")
 
 
-class UserRelatedManager(Manager):
+class UserRelatedManager(models.Manager):
     _account_id_ref = None
 
     def __filter_by_account_ids(self, queryset, account_ids: List[str]):
@@ -180,7 +178,7 @@ class UserRelatedManager(Manager):
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
         return global_visibility
 
-    def __filter_by_user(self, queryset: QuerySet, user: UserProfile):
+    def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
         if self.__is_account_filter_applicable(user):
             account_ids = user.aw_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS, [])

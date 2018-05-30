@@ -558,6 +558,13 @@ class AccountCreationListApiView(ListAPIView):
             ),
             output_field=AggrIntegerField()
         ))),
+        video_clicks=(None, Sum(Case(
+            When(
+                account__campaigns__video_views__gt=0,
+                then="account__campaigns__clicks",
+            ),
+            output_field=AggrIntegerField()
+        ))),
         clicks=(None, Sum("account__campaigns__clicks")),
         cost=(None, Sum("account__campaigns__cost")),
         video_view_rate=(
@@ -572,12 +579,12 @@ class AccountCreationListApiView(ListAPIView):
                 ),
                 output_field=AggrFloatField()
             )),
-        ctr_v=(('clicks', 'video_views'), ExpressionWrapper(
+        ctr_v=(("video_clicks", "video_views"), ExpressionWrapper(
             Case(
                 When(
-                    clicks__isnull=False,
+                    video_clicks__isnull=False,
                     video_views__gt=0,
-                    then=F("clicks") * 1.0 / F("video_views"),
+                    then=F("video_clicks") * 1.0 / F("video_views"),
                 ),
                 output_field=AggrFloatField()
             ),
@@ -622,17 +629,16 @@ class AccountCreationListApiView(ListAPIView):
     def get_queryset(self, **filters):
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
-
             if self.request.user.is_staff:
                 managed_accounts_ids = Account.objects.get(
                     id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
                     .managers.values_list("id", flat=True)
                 filters["account__id__in"] = managed_accounts_ids
-
             elif self.request.user.has_perm("userprofile.view_dashboard"):
                 user_settings = self.request.user.aw_settings
-                if user_settings.get('global_account_visibility'):
-                    filters["account__id__in"] = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+                if user_settings.get("global_account_visibility"):
+                    filters["account__id__in"] = user_settings.get(
+                        UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         queryset = AccountCreation.objects.filter(**filters)
@@ -1705,13 +1711,20 @@ class PerformanceAccountDetailsApiView(APIView):
         return filters
 
     def __obtain_account(self, request, pk):
+        filters = {}
         if request.data.get("is_chf") == 1:
-            managed_accounts_ids = Account.objects.get(
-                id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                .managers.values_list("id", flat=True)
-            filters = {"account__id__in": managed_accounts_ids}
+            if self.request.user.is_staff:
+                managed_accounts_ids = Account.objects.get(
+                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
+                    .managers.values_list("id", flat=True)
+                filters["account__id__in"] = managed_accounts_ids
+            elif self.request.user.has_perm("userprofile.view_dashboard"):
+                user_settings = self.request.user.aw_settings
+                if user_settings.get("global_account_visibility"):
+                    filters["account__id__in"] =\
+                        user_settings.get("visible_accounts")
         else:
-            filters = {"owner": self.request.user}
+            filters["owner"] = self.request.user
         try:
             self.account_creation = AccountCreation.objects.filter(
                 **filters).get(pk=pk)
