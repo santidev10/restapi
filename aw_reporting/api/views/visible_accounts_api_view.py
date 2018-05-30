@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile
+from userprofile.models import UserProfile, DEFAULT_SETTINGS
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 
@@ -27,6 +27,13 @@ class GetUserMixin:
 
         return user
 
+    def check_default_aw_settings(self, user):
+        settings = user.aw_settings
+        for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
+            if settings.get(default_settings_key) is None:
+                settings[default_settings_key] = default_settings_value
+        user.save()
+
 
 class VisibleAccountsApiView(APIView, GetUserMixin):
     """
@@ -40,6 +47,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         data = self.serializer_class(self.queryset.all().distinct(), many=True).data
         user_id = self.request.query_params.get('user_id')
         user = self.get_user_by_id(user_id)
+        self.check_default_aw_settings(user)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
         settings = user.aw_settings
@@ -87,6 +95,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
+        self.check_default_aw_settings(user)
         settings_obj = user.aw_settings
         if 'accounts' in request.data:
             accounts = request.data.get('accounts')
@@ -144,6 +153,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
+        self.check_default_aw_settings(user)
         user_aw_settings = user.aw_settings
 
         # check for valid data in request body
