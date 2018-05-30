@@ -16,7 +16,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
-from utils.registry import Registry
+from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ class UserRelatedManager(models.Manager):
 
     def get_queryset(self, ignore_user=False):
         queryset = super(UserRelatedManager, self).get_queryset()
-        user = Registry.get_user()
+        user = registry.user
         if user is None:
             logger.warning("{} is used with no user in context".format(
                 type(self).__name__))

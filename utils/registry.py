@@ -9,42 +9,26 @@ class _Keys:
     REQUEST = "request"
 
 
-class Registry:
-    _registry = local()
+class _Registry(local):
+    def __init__(self):
+        super(_Registry, self).__init__()
+        self._user = None
+        self.request = None
 
-    @classmethod
-    def _set_property(cls, name, value):
-        if value is None:
-            if hasattr(cls._registry, name):
-                delattr(cls._registry, name)
-        else:
-            setattr(cls._registry, name, value)
+    @property
+    def user(self):
+        if self._user is not None:
+            return self._user
+        if self.request is not None:
+            return self.request.user
+        return None
 
-    @classmethod
-    def get_request(cls):
-        """ returns the request object """
-        if cls._registry is not None:
-            return getattr(cls._registry, _Keys.REQUEST, None)
+    @user.setter
+    def user(self, value):
+        self._user = value
 
-    @classmethod
-    def set_request(cls, request):
-        """ save the request object """
-        cls._set_property(_Keys.REQUEST, request)
 
-    @classmethod
-    def get_user(cls):
-        """ returns the current user, if exist, otherwise returns None """
-        if cls._registry is not None and hasattr(cls._registry, _Keys.USER):
-            return getattr(cls._registry, _Keys.USER)
-
-        request = cls.get_request()
-        if request:
-            return request.user
-
-    @classmethod
-    def set_user(cls, user):
-        """ save a user as current """
-        cls._set_property(_Keys.USER, user)
+registry = _Registry()
 
 
 class RegistryMiddleware:
@@ -53,16 +37,16 @@ class RegistryMiddleware:
     """
 
     def process_request(self, request):
-        Registry.set_request(request)
+        registry.request = request
 
     def process_response(self, request, response):
-        Registry.set_request(None)
+        registry.request = None
         return response
 
 
 @contextmanager
 def current_user(user):
-    user_backup = Registry.get_user()
-    Registry.set_user(user)
+    user_backup = registry.user
+    registry.user = user
     yield
-    Registry.set_user(user_backup)
+    registry.user = user_backup
