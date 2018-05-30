@@ -8,7 +8,7 @@ from django.db.models import Q, F, Min, When, Case, Max, \
 from django.db.models.expressions import CombinedExpression, Value, Combinable
 
 from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
-    TopicStatistic, Topic, Audience, Opportunity, AgeRanges, \
+    TopicStatistic, Topic, Audience, Campaign, Opportunity, AgeRanges, \
     Genders, SalesForceGoalType, Devices
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
@@ -37,23 +37,23 @@ class PricingToolFiltering:
         self.filter_item_ids = None
 
     @classmethod
-    def get_filters(cls):
+    def get_filters(cls, user):
 
         start, end = cls._get_default_dates()
 
-        opportunities = Opportunity.objects.have_campaigns()
+        brands = Opportunity.objects.filter(
+            placements__adwords_campaigns__in=Campaign.objects.visible_campaigns(user),
+            brand__isnull=False,
+        ).values_list("brand", flat=True).order_by("brand").distinct()
 
-        brands = opportunities \
-            .filter(brand__isnull=False,) \
-            .values_list("brand", flat=True) \
-            .order_by("brand").distinct()
+        categories = Opportunity.objects.filter(
+            placements__adwords_campaigns__in=Campaign.objects.visible_campaigns(user),
+            category__isnull=False,
+        ).values_list("category_id", flat=True).order_by(
+            "category_id").distinct()
 
-        categories = opportunities \
-            .filter(category__isnull=False,) \
-            .values_list("category_id", flat=True) \
-            .order_by("category_id").distinct()
-
-        product_types = AdGroup.objects.all() \
+        product_types = AdGroup.objects \
+            .filter(campaign__in=Campaign.objects.visible_campaigns(user)) \
             .values_list("type", flat=True) \
             .order_by("type") \
             .distinct()
