@@ -134,7 +134,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         """
         return self.first_name
 
-    def get_default_aw_settings(self):
+    def get_aw_settings(self):
         settings = self.aw_settings
         for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
             if default_settings_key not in settings:
