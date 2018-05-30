@@ -7,7 +7,7 @@ from aw_reporting.tools.pricing_tool import PricingTool
 class PricingToolOpportunityView(APIView):
     @staticmethod
     def post(request):
-        toll_obj = PricingTool(request.user, **request.data)
+        toll_obj = PricingTool(**request.data)
         paginator = PricingToolCampaignsPagination()
         queryset = toll_obj.get_opportunities_queryset()
         page_campaigns = paginator.paginate_queryset(

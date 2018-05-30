@@ -16,3 +16,7 @@ class Name:
         OPPORTUNITIES = "pricing_tool_opportunities"
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
+
+    class HealthCheck:
+        LIST = "health_check_tool"
+        FILTERS = "health_check_tool_filters"

@@ -58,9 +58,13 @@ def extract_placement_code(name):
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
 
 
+def date_to_refresh_statistic(today):
+    return today - timedelta(AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+
+
 def drop_latest_stats(queryset, today):
     # delete stats for ten days
-    date_delete = today - timedelta(AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+    date_delete = date_to_refresh_statistic(today)
     queryset.filter(date__gte=date_delete).delete()
 
 
@@ -87,78 +91,81 @@ def load_hourly_stats(client, account, *_):
     from aw_reporting.adwords_reports import campaign_performance_report, \
         MAIN_STATISTICS_FILEDS
 
-    queryset = CampaignHourlyStatistic.objects.filter(
+    statistic_queryset = CampaignHourlyStatistic.objects.filter(
         campaign__account=account)
 
     today = datetime.now(tz=pytz.timezone(account.timezone)).date()
     min_date = today - timedelta(days=10)
 
-    # delete very old stats
-    queryset.filter(date__lt=min_date).delete()
-    last_entry = queryset.order_by('-date').first()
+    last_entry = statistic_queryset.filter(date__lt=min_date) \
+        .order_by('-date').first()
+
+    start_date = min_date
+    if last_entry:
+        start_date = last_entry.date
+
+    statistic_to_drop = statistic_queryset.filter(date__gte=start_date)
+
+    report = campaign_performance_report(
+        client,
+        dates=(start_date, today),
+        fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
+                "AdvertisingChannelType", "Amount", "CampaignStatus",
+                "ServingStatus", "Date", "HourOfDay"
+                ] + list(MAIN_STATISTICS_FILEDS[:4]),
+        include_zero_impressions=False)
+
+    if not report:
+        return
+
+    campaign_ids = list(
+        account.campaigns.values_list('id', flat=True)
+    )
+    create_campaign = []
+    create_stat = []
+    for row in report:
+        campaign_id = row.CampaignId
+        if campaign_id not in campaign_ids:
+            campaign_ids.append(campaign_id)
+            try:
+                end_date = datetime.strptime(row.EndDate, GET_DF)
+            except ValueError:
+                end_date = None
+            create_campaign.append(
+                Campaign(
+                    id=campaign_id,
+                    name=row.CampaignName,
+                    account=account,
+                    type=row.AdvertisingChannelType,
+                    start_date=datetime.strptime(row.StartDate, GET_DF),
+                    end_date=end_date,
+                    budget=float(row.Amount) / 1000000,
+                    status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
+                    impressions=1,
+                    # to show this item on the accounts lists Track/Filters
+                )
+            )
+
+        create_stat.append(
+            CampaignHourlyStatistic(
+                date=row.Date,
+                hour=row.HourOfDay,
+                campaign_id=row.CampaignId,
+                video_views=row.VideoViews,
+                impressions=row.Impressions,
+                clicks=row.Clicks,
+                cost=float(row.Cost) / 1000000,
+            )
+        )
 
     with transaction.atomic():
-        # delete last day saved data
-        date = min_date  # default dummy data
-        if last_entry:
-            date = last_entry.date
-            queryset.filter(date__gte=date).delete()
+        if create_campaign:
+            Campaign.objects.bulk_create(create_campaign)
 
-        # get report
-        report = campaign_performance_report(
-            client,
-            dates=(date, today),
-            fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
-                    "AdvertisingChannelType", "Amount", "CampaignStatus",
-                    "ServingStatus", "Date", "HourOfDay"
-                    ] + list(MAIN_STATISTICS_FILEDS[:4]),
-            include_zero_impressions=False)
-        if report:
-            campaign_ids = list(
-                account.campaigns.values_list('id', flat=True)
-            )
-            create_campaign = []
-            create_stat = []
-            for row in report:
-                campaign_id = row.CampaignId
-                if campaign_id not in campaign_ids:
-                    campaign_ids.append(campaign_id)
-                    try:
-                        end_date = datetime.strptime(row.EndDate, GET_DF)
-                    except ValueError:
-                        end_date = None
-                    create_campaign.append(
-                        Campaign(
-                            id=campaign_id,
-                            name=row.CampaignName,
-                            account=account,
-                            type=row.AdvertisingChannelType,
-                            start_date=datetime.strptime(row.StartDate, GET_DF),
-                            end_date=end_date,
-                            budget=float(row.Amount) / 1000000,
-                            status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
-                            impressions=1,
-                            # to show this item on the accounts lists Track/Filters
-                        )
-                    )
+        statistic_to_drop.delete()
 
-                create_stat.append(
-                    CampaignHourlyStatistic(
-                        date=row.Date,
-                        hour=row.HourOfDay,
-                        campaign_id=row.CampaignId,
-                        video_views=row.VideoViews,
-                        impressions=row.Impressions,
-                        clicks=row.Clicks,
-                        cost=float(row.Cost) / 1000000,
-                    )
-                )
-
-            if create_campaign:
-                Campaign.objects.bulk_create(create_campaign)
-
-            if create_stat:
-                CampaignHourlyStatistic.objects.bulk_create(create_stat)
+        if create_stat:
+            CampaignHourlyStatistic.objects.bulk_create(create_stat)
 
 
 def is_ad_disapproved(campaign_row):
@@ -818,48 +825,61 @@ def get_topics(client, account, today):
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
+        logger.debug("Max Account date is None. Breaking")
         return
 
     stats_queryset = TopicStatistic.objects.filter(
         ad_group__campaign__account=account)
-    drop_latest_stats(stats_queryset, today)
 
-    saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date')).get('max_date')
+    logger.debug("Get topics for {}".format(account.id))
 
-    if saved_max_date is None or saved_max_date < max_acc_date:
-        min_date = saved_max_date + timedelta(days=1) \
-            if saved_max_date else min_acc_date
-        max_date = max_acc_date
+    start_date = date_to_refresh_statistic(today)
 
-        topics = dict(Topic.objects.values_list('name', 'id'))
-        report = topics_performance_report(
-            client, dates=(min_date, max_date),
-        )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                topic_name = row_obj.Criteria
-                if topic_name not in topics:
-                    logger.warning("topic not found: {}")
-                    continue
+    saved_max_date = stats_queryset.filter(date__lt=start_date) \
+        .aggregate(max_date=Max('date')) \
+        .get('max_date')
 
-                stats = {
-                    'topic_id': topics[topic_name],
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(
-                    get_base_stats(row_obj)
-                )
-                bulk_data.append(TopicStatistic(**stats))
+    min_date = saved_max_date + timedelta(days=1) \
+        if saved_max_date else start_date
+    max_date = max_acc_date
+    if min_date >= max_date:
+        logger.debug(
+            "Start date to load is greater then max Account date: {} >= {}"
+                .format(min_date, max_date))
+        return
+    statistic_to_delete = stats_queryset.filter(date__gte=start_date)
 
-            if bulk_data:
-                TopicStatistic.objects.safe_bulk_create(bulk_data)
+    topics = dict(Topic.objects.values_list('name', 'id'))
+    logger.debug("Loading report")
+    report = topics_performance_report(
+        client, dates=(min_date, max_date),
+    )
+    logger.debug("Report loaded")
+    bulk_data = []
+    for row_obj in report:
+        topic_name = row_obj.Criteria
+        if topic_name not in topics:
+            logger.warning("topic not found: {}")
+            continue
+
+        stats = {
+            'topic_id': topics[topic_name],
+            'date': row_obj.Date,
+            'ad_group_id': row_obj.AdGroupId,
+            'video_views_25_quartile': quart_views(row_obj, 25),
+            'video_views_50_quartile': quart_views(row_obj, 50),
+            'video_views_75_quartile': quart_views(row_obj, 75),
+            'video_views_100_quartile': quart_views(row_obj, 100),
+        }
+        stats.update(get_base_stats(row_obj))
+        bulk_data.append(TopicStatistic(**stats))
+
+    with transaction.atomic():
+        statistic_to_delete.delete()
+        if bulk_data:
+            TopicStatistic.objects.safe_bulk_create(bulk_data)
+
+    logger.debug("Topic report process finished")
 
 
 class AudienceAWType:
@@ -1271,14 +1291,16 @@ def recalculate_de_norm_fields(*args, **kwargs):
             de_norm_fields_are_recalculated=False).order_by("id")
         iterations = ceil(queryset.count() / batch_size)
         if not settings.IS_TEST:
+            model = queryset.model
             logger.info(
-                "Calculating de-norm fields: {} {}".format(queryset.model,
-                                                           iterations))
+                "Calculating de-norm fields: {}.{} {}".format(model.__module__,
+                                                              model.__name__,
+                                                              iterations))
 
         ag_link = "ad_groups__" if model is Campaign else ""
         for i in range(iterations):
             if not settings.IS_TEST:
-                logger.info("Iteration: {}".format(i + 1))
+                logger.info("./Iteration: {}".format(i + 1))
             queryset = queryset[:batch_size]
             items = queryset.values("id")
 

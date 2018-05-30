@@ -8,6 +8,7 @@ from django.db import models
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     goal_type_str, SalesForceRegions, SalesForceGoalTypes
+from userprofile.models import UserRelatedManager
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,16 @@ class Contact(BaseModel):
         )
 
 
+class OpportunityManager(UserRelatedManager):
+    _account_id_ref = "placements__adwords_campaigns__account_id"
+
+    def have_campaigns(self):
+        return self.get_queryset() \
+            .filter(placements__adwords_campaigns__isnull=False)
+
+
 class Opportunity(BaseModel):
+    objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True)
     number = models.CharField(max_length=10, null=True)
