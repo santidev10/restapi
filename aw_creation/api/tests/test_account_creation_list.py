@@ -629,7 +629,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
         placement = OpPlacement.objects.create(opportunity=opportunity)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
+        campaign = Campaign.objects.create(
+            salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=campaign)
         url = reverse("aw_creation_urls:account_creation_list")
@@ -646,10 +647,11 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         agency = Contact.objects.create(first_name="first", last_name="last")
         opportunity = Opportunity.objects.create(agency=agency)
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
+        campaign = Campaign.objects.create(
+            salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
@@ -700,16 +702,16 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         placement3 = OpPlacement.objects.create(
             id=3, opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST)
-        campaign1 = Campaign.objects.create(
-            id="1", salesforce_placement=placement1)
-        campaign2 = Campaign.objects.create(
-            id="2", salesforce_placement=placement2)
-        campaign3 = Campaign.objects.create(
-            id="3", salesforce_placement=placement3)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
         managed_account.managers.add(chf_account)
+        campaign1 = Campaign.objects.create(
+            id="1", salesforce_placement=placement1, account=managed_account)
+        campaign2 = Campaign.objects.create(
+            id="2", salesforce_placement=placement2, account=managed_account)
+        campaign3 = Campaign.objects.create(
+            id="3", salesforce_placement=placement3, account=managed_account)
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(

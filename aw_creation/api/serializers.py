@@ -557,8 +557,17 @@ class AccountCreationListSerializer(ModelSerializer):
         return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
-        return Opportunity.objects.filter(
-            placements__adwords_campaigns__campaign_creation__account_creation=obj).first()
+
+        if not obj.account:
+            return None
+        opportunity_id = obj.account.campaigns.filter(
+            salesforce_placement__opportunity__id__isnull=False).values(
+            "salesforce_placement__opportunity__id").distinct().first()
+        if not opportunity_id:
+            return None
+        opportunity_id = opportunity_id.get(
+            "salesforce_placement__opportunity__id")
+        return Opportunity.objects.get(id=opportunity_id)
 
 
 class AccountCreationSetupSerializer(ModelSerializer):
