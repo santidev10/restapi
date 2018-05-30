@@ -8,6 +8,7 @@ from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.thread_local_middleware import current_user
 from utils.utils_tests import ExtendedAPITestCase
 
 
@@ -76,7 +77,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=102)
 
         report = PacingReport()
-        opportunities = report.get_opportunities(dict(period="custom", start=start, end=end), user)
+        opportunities = report.get_opportunities(dict(period="custom", start=start, end=end))
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
         self.assertEqual(opportunity_data['pacing'], 1)  # 100%
@@ -120,7 +121,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=start, video_views=204, cost=10.2, )
 
         report = PacingReport()
-        opportunities = report.get_opportunities(dict(period="custom", start=start, end=end), user)
+        opportunities = report.get_opportunities(dict(period="custom", start=start, end=end))
         self.assertEqual(len(opportunities), 1)
 
         opportunity_data = opportunities[0]
@@ -167,10 +168,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account1.id]
         }
-        self.create_test_user()
-        with self.patch_user_settings(**user_settings):
+        user = self.create_test_user()
+        user.aw_settings.update(**user_settings)
+        with current_user(user):
             report = PacingReport()
-            opportunities = report.get_opportunities(dict(), self.request_user)
+            opportunities = report.get_opportunities(dict())
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
         self.assertEqual(opportunity_data['id'], opportunity1.id)
@@ -309,7 +311,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
 
         report = PacingReport()
-        opportunities = report.get_opportunities({}, user)
+        opportunities = report.get_opportunities({})
         self.assertEqual(len(opportunities), 1)
         opportunity = opportunities[0]
 
