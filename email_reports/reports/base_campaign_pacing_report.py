@@ -16,22 +16,21 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         super(BaseCampaignPacingEmailReport, self).__init__(*args, **kwargs)
         self.pacing_bound = kwargs.get("pacing_bound", .1)
         self.days_to_end = kwargs.get("pacing_bound", 3)
+        self.today = now_in_default_tz().date()
+        self.date_end = self.today + timedelta(days=self.days_to_end)
 
     def _is_risky_pacing(self, pacing):
         raise NotImplementedError
 
     def send(self):
-        today = now_in_default_tz().date()
-        date_end = today + timedelta(days=self.days_to_end - 1)
         opportunities = Opportunity.objects.filter(
             probability=100,
-            end__gte=today,
-            end__lte=date_end,
+            end__gte=self.date_end,
         )
 
         for opp in opportunities:
             risky_flights = self._get_risky_flights(opp)
-            self._send_for_flights(opp, risky_flights, date_end)
+            self._send_for_flights(opp, risky_flights, self.date_end)
 
     def _send_for_flights(self, opportunity, flights_with_pacing, date_end):
         if len(flights_with_pacing) == 0:
@@ -57,12 +56,17 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
     def _get_risky_flights(self, opportunity):
         pacing_report = PacingReport()
         flights_data = pacing_report.get_flights_data(
-            placement__opportunity_id=opportunity.id)
+            placement__opportunity_id=opportunity.id,
+            end=self.date_end,
+        )
         flights_with_pacing = [
             dict(
                 pacing=pacing_report.get_pacing_from_flights([flight]),
-                flight=flight)
-            for flight in flights_data
+                flight=flight
+            ) for flight in flights_data
+        ]
+        flights_with_pacing = [
+            r for r in flights_with_pacing if r.get('pacing')
         ]
         attention_flights = filter(
             lambda item: self._is_risky_pacing(item["pacing"]),
