@@ -195,6 +195,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
 
     def proceed_emails(self, segment, emails):
         sender = settings.SENDER_EMAIL_ADDRESS
+        message_from = "{} {}".format(self.request.user.first_name, self.request.user.first_name)
         exist_emails = segment.shared_with
         host = self.request.get_host()
         subject = "Enterprise > You have been added as collaborator"
@@ -205,7 +206,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         )
         context = dict(
             host=host,
-            sender=sender,
+            message_from=message_from,
             segment_url=segment_url,
         )
         # collect only new emails for current segment
@@ -214,7 +215,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
-                context['name'] = user.first_name
+                context['name'] = "{} {}".format(user.first_name, user.last_name)
                 message = render_to_string("new_enterprise_collaborator.txt", context)
                 user.email_user(
                     subject=subject,
