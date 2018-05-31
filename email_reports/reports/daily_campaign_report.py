@@ -1,5 +1,5 @@
+from datetime import date
 from datetime import timedelta
-
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
@@ -95,6 +95,10 @@ class DailyCampaignReport(BaseEmailReport):
         opportunities = report.get_opportunities({})
 
         for opportunity in opportunities:
+            if (opportunity.get('start') or date.min) > self.today \
+                   or (opportunity.get('end') or date.max) < self.today:
+                continue
+
             opportunity['type'] = "opportunity"
             PacingReportHelper.multiply_percents([opportunity])
 
