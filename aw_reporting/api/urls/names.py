@@ -16,3 +16,6 @@ class Name:
         OPPORTUNITIES = "pricing_tool_opportunities"
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
+
+    class Admin:
+        VISIBLE_ACCOUNTS = "visible_accounts"
