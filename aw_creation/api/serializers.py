@@ -377,6 +377,9 @@ class AccountCreationListSerializer(ModelSerializer):
     brand = SerializerMethodField()
     agency = SerializerMethodField()
 
+    average_cpv = StatField()
+    average_cpm = StatField()
+
     class Meta:
         model = AccountCreation
         fields = (
@@ -386,7 +389,8 @@ class AccountCreationListSerializer(ModelSerializer):
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
             "ctr_v", "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
-            "updated_at", "brand", "agency", "from_aw", "cost_method")
+            "updated_at", "brand", "agency", "from_aw", "cost_method",
+            "average_cpv", "average_cpm")
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
@@ -539,7 +543,7 @@ class AccountCreationListSerializer(ModelSerializer):
 
     def get_brand(self, obj: AccountCreation):
         opportunity = self._get_opportunity(obj)
-        return opportunity.brand\
+        return opportunity.brand \
             if opportunity is not None and self.is_chf else None
 
     def get_agency(self, obj):

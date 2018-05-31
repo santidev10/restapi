@@ -898,7 +898,9 @@ class DemoAccount(BaseDemo):
             updated_at=None,
             brand=DEMO_BRAND,
             cost_method=DEMO_COST_METHOD,
-            agency=DEMO_AGENCY
+            agency=DEMO_AGENCY,
+            average_cpm=10,
+            average_cpv=.10782609
         )
         return data
 
