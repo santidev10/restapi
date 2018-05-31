@@ -1,6 +1,9 @@
 """
 Userprofile models module
 """
+import logging
+from typing import List
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager, Permission, Group
 from django.contrib.contenttypes.models import ContentType
@@ -13,6 +16,9 @@ from django.utils.translation import ugettext_lazy as _
 
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
+from utils.registry import registry
+
+logger = logging.getLogger(__name__)
 
 
 class UserSettingsKey:
@@ -165,3 +171,36 @@ class UserChannel(Timestampable):
 
     class Meta:
         unique_together = ("channel_id", "user")
+
+
+class UserRelatedManager(models.Manager):
+    _account_id_ref = None
+
+    def __filter_by_account_ids(self, queryset, account_ids: List[str]):
+        if self._account_id_ref is None:
+            raise NotImplementedError("_account_id_ref should be defined")
+        return queryset.filter(**{self._account_id_ref + "__in": account_ids})
+
+    def __is_account_filter_applicable(self, user: UserProfile):
+        user_settings = user.aw_settings \
+            if hasattr(user, "aw_settings") else DEFAULT_SETTINGS
+        global_visibility = user_settings.get(
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
+        return global_visibility
+
+    def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
+        if self.__is_account_filter_applicable(user):
+            account_ids = user.aw_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS, [])
+            queryset = self.__filter_by_account_ids(queryset, account_ids)
+        return queryset
+
+    def get_queryset(self, ignore_user=False):
+        queryset = super(UserRelatedManager, self).get_queryset()
+        user = registry.user
+        if user is None:
+            logger.warning("{} is used with no user in context".format(
+                type(self).__name__))
+        elif not ignore_user:
+            queryset = self.__filter_by_user(queryset, user)
+        return queryset

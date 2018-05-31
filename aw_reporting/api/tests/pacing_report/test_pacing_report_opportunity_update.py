@@ -73,6 +73,7 @@ class PacingReportTestCase(APITestCase):
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
                       args=(opportunity.id,))
+
         with self.patch_user_settings(global_account_visibility=True,
                                       visible_accounts=[]):
             response = self.client.put(url, dict(region=1))

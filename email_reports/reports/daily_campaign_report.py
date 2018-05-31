@@ -92,7 +92,7 @@ class DailyCampaignReport(BaseEmailReport):
         html = get_template('daily_campaign_report.html')
 
         report = PacingReport()
-        opportunities = report.get_opportunities({}, user=None)
+        opportunities = report.get_opportunities({})
 
         for opportunity in opportunities:
             opportunity['type'] = "opportunity"

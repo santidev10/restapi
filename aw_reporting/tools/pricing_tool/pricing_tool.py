@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db.models import Sum
 
-from aw_reporting.models import Campaign, Opportunity
+from aw_reporting.models import Opportunity
 from aw_reporting.tools.pricing_tool.pricing_tool_estimate import \
     PricingToolEstimate
 from aw_reporting.tools.pricing_tool.pricing_tool_filtering import \
@@ -21,9 +21,8 @@ DATE_FORMAT = "%Y-%m-%d"
 
 
 class PricingTool:
-    def __init__(self, user, today=None, **kwargs):
+    def __init__(self, today=None, **kwargs):
         self.today = today or now_in_default_tz().date()
-        self.user=user
         kwargs.update(self._get_date_kwargs(kwargs))
         kwargs['margin'] = kwargs.get('margin') or 30
         self.kwargs = kwargs
@@ -35,15 +34,15 @@ class PricingTool:
             kwargs, self.get_opportunities_queryset())
 
     @classmethod
-    def get_filters(cls, user):
-        return PricingToolFiltering.get_filters(user)
+    def get_filters(cls):
+        return PricingToolFiltering.get_filters()
 
     @property
     def estimate(self):
         return self.estimate_tool.estimate()
 
     def get_opportunities_data(self, opportunities):
-        return self.serializer.get_opportunities_data(opportunities, self.user)
+        return self.serializer.get_opportunities_data(opportunities)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')
@@ -60,9 +59,7 @@ class PricingTool:
         )
 
     def _get_opportunity_queryset(self):
-        return Opportunity.objects \
-            .filter(
-            placements__adwords_campaigns__in=Campaign.objects.visible_campaigns(self.user)) \
+        return Opportunity.objects.have_campaigns() \
             .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
             .order_by("-aw_budget")
 
