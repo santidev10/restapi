@@ -23,7 +23,7 @@ urlpatterns = [
         name="creation_options"),
     url(r'^account_creation_list/$',
         views.AccountCreationListApiView.as_view(),
-        name="account_creation_list"),
+        name=Name.AccountCreation.LIST),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),

@@ -4,3 +4,6 @@ class Name:
 
     class CreationSetup:
         CAMPAIGN = "campaign_creation_setup"
+
+    class AccountCreation:
+        LIST = "account_creation_list"
