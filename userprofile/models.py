@@ -1,6 +1,7 @@
 """
 Userprofile models module
 """
+import logging
 from typing import List
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
@@ -10,14 +11,14 @@ from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import QuerySet
-from django.db.models.manager import Manager
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
-from utils.thread_local_middleware import get_current_user
+from utils.registry import registry
+
+logger = logging.getLogger(__name__)
 
 
 class UserSettingsKey:
@@ -139,6 +140,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         """
         return self.first_name
 
+    def get_aw_settings(self):
+        settings = self.aw_settings
+        for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
+            if default_settings_key not in settings:
+                settings[default_settings_key] = default_settings_value
+        return self.aw_settings
+
     def email_user(self, subject, message, from_email=None, **kwargs):
         """
         Sends an email to this User.
@@ -165,7 +173,7 @@ class UserChannel(Timestampable):
         unique_together = ("channel_id", "user")
 
 
-class UserRelatedManager(Manager):
+class UserRelatedManager(models.Manager):
     _account_id_ref = None
 
     def __filter_by_account_ids(self, queryset, account_ids: List[str]):
@@ -180,7 +188,7 @@ class UserRelatedManager(Manager):
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
         return global_visibility
 
-    def __filter_by_user(self, queryset: QuerySet, user: UserProfile):
+    def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
         if self.__is_account_filter_applicable(user):
             account_ids = user.aw_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS, [])
@@ -189,7 +197,10 @@ class UserRelatedManager(Manager):
 
     def get_queryset(self, ignore_user=False):
         queryset = super(UserRelatedManager, self).get_queryset()
-        user = get_current_user()
-        if not ignore_user and user is not None:
+        user = registry.user
+        if user is None:
+            logger.warning("{} is used with no user in context".format(
+                type(self).__name__))
+        elif not ignore_user:
             queryset = self.__filter_by_user(queryset, user)
         return queryset

@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile, UserSettingsKey
+from userprofile.models import UserProfile
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 
@@ -42,9 +42,9 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings = user.aw_settings
-        visible_ids = settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        types_settings = settings.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
+        settings = user.get_aw_settings()
+        visible_ids = settings.get('visible_accounts')
+        types_settings = settings.get('hidden_campaign_types')
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
 
         for ac_info in data:
@@ -87,12 +87,12 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings_obj = user.aw_settings
+        settings_obj = user.get_aw_settings()
         if 'accounts' in request.data:
             accounts = request.data.get('accounts')
 
-            visible_accounts = set(settings_obj.get(UserSettingsKey.VISIBLE_ACCOUNTS))
-            hidden_types = settings_obj.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
+            visible_accounts = set(settings_obj.get('visible_accounts'))
+            hidden_types = settings_obj.get('hidden_campaign_types')
 
             for account in accounts:
                 # account visibility
@@ -117,6 +117,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             update = dict(visible_accounts=list(sorted(visible_accounts)),
                           hidden_campaign_types=hidden_types)
             settings_obj.update(update)
+            user.aw_settings = settings_obj
             user.save()
 
         cache_reset()
@@ -144,7 +145,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        user_aw_settings = user.aw_settings
+        user_aw_settings = user.get_aw_settings()
 
         # check for valid data in request body
         keys_to_update = request.data.keys() & set(AdwordsAccountSettings.AVAILABLE_KEYS)
@@ -153,6 +154,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         for key in keys_to_update:
             user_aw_settings[key] = request.data[key]
 
+        user.aw_settings = user_aw_settings
         user.save()
         return Response(data=user_aw_settings,
                         status=HTTP_202_ACCEPTED)

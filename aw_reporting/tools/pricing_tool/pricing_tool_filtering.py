@@ -544,49 +544,6 @@ class PricingToolFiltering:
         queryset = queryset.filter(creative_length_annotate__gt=0)
         return queryset
 
-    def _filter_product_types(self, queryset, product_types, *_):
-        queryset = queryset.annotate(ag_types_count=Count(
-            Case(
-                When(
-                    adgroup__type__in=product_types,
-                    then="adgroup__type",
-                ),
-                output_field=CharField(),
-            ),
-            distinct=True
-        ))
-        product_types_condition = self.kwargs.get("product_types_condition",
-                                                  self.default_condition)
-        if product_types_condition == "or":
-            queryset = queryset.filter(ag_types_count__gt=0)
-
-        elif product_types_condition == "and":
-            queryset = queryset.filter(ag_types_count=len(product_types))
-        return queryset
-
-    def _filter_locations(self, queryset, geo_locations):
-        qs = queryset.annotate(geo_locations_annotate=Count(
-            Case(
-                When(
-                    geo_performance__geo_target_id__in=geo_locations,
-                    geo_performance__is_negative=False,
-                    then='geo_performance__geo_target_id',
-                ),
-                output_field=IntegerField(),
-            ),
-            distinct=True
-        ))
-        geo_locations_condition = self.kwargs.get("geo_locations_condition",
-                                                  self.default_condition)
-        number = 0 if geo_locations_condition == "or" else len(
-            geo_locations) - 1
-        qs = qs.filter(geo_locations_annotate__gt=number)
-
-        item_ids = set(qs.values_list("id", flat=True))
-        self.filter_item_ids = self._merge_item_ids(self.filter_item_ids,
-                                                    item_ids)
-        return queryset
-
     def _filter_demo_fields(self, queryset, items, fields):
         demographic_condition = self.kwargs.get("demographic_condition",
                                                 self.default_condition)

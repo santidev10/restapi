@@ -17,6 +17,5 @@ class Name:
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
 
-    class HealthCheck:
-        LIST = "health_check_tool"
-        FILTERS = "health_check_tool_filters"
+    class Admin:
+        VISIBLE_ACCOUNTS = "visible_accounts"

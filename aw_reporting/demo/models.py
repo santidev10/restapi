@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from aw_reporting.models import *
 # pylint: disable=import-error
@@ -6,6 +6,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 
 # pylint: enable=import-error
+from userprofile.models import UserSettingsKey
 
 logger = logging.getLogger(__name__)
 

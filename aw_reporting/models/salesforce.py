@@ -4,6 +4,7 @@ import os
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
+from django.db.models import Count
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
@@ -116,7 +117,8 @@ class OpportunityManager(UserRelatedManager):
 
     def have_campaigns(self):
         return self.get_queryset() \
-            .filter(placements__adwords_campaigns__isnull=False)
+            .annotate(campaign_count=Count("placements__adwords_campaigns")) \
+            .filter(campaign_count__gt=0)
 
 
 class Opportunity(BaseModel):

@@ -28,8 +28,9 @@ urlpatterns = [
         name="analyze_export_weekly_report"),
 
     # Admin
-    url(r'^visible_accounts/$', views.VisibleAccountsApiView.as_view(),
-        name='visible_accounts'),
+    url(r'^visible_accounts/$',
+        views.VisibleAccountsApiView.as_view(),
+        name=Name.Admin.VISIBLE_ACCOUNTS),
     url(r'^aw_user_settings/$',
         views.UserAWSettingsApiView.as_view(),
         name='aw_user_settings'),
@@ -101,10 +102,10 @@ urlpatterns = [
     # Health check tool
     url(r'^setup_health_check_list/$',
         views.HealthCheckApiView.as_view(),
-        name=Name.HealthCheck.LIST),
+        name="health_check_tool"),
     url(r'^setup_health_check_filters/$',
         views.HealthCheckFiltersApiView.as_view(),
-        name=Name.HealthCheck.FILTERS),
+        name="health_check_tool_filters"),
 
     # Pricing tool
     url(r'^pricing_tool/filters/$',

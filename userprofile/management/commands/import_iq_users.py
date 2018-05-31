@@ -8,25 +8,35 @@ from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from userprofile.models import UserProfile, DEFAULT_SETTINGS, UserSettingsKey
+from userprofile.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
 
-    DEFAULT_AW_SETTINGS = DEFAULT_SETTINGS
+    DEFAULT_AW_SETTINGS = {
+        'dashboard_campaigns_segmented': False,
+        'dashboard_ad_words_rates': False,
+        'demo_account_visible': False,
+        'dashboard_remarketing_tab_is_hidden': False,
+        'dashboard_costs_are_hidden': False,
+        'show_conversions': False,
+        'visible_accounts': [],
+        'hidden_campaign_types': {},
+        'global_account_visibility': False,
+    }
 
     CHF_AW_SETTINGS = {
-        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
-        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
-        UserSettingsKey.HIDE_REMARKETING: False,
-        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-        UserSettingsKey.SHOW_CONVERSIONS: True,
-        UserSettingsKey.VISIBLE_ACCOUNTS: [],
-        UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+        'dashboard_campaigns_segmented': True,
+        'dashboard_ad_words_rates': True,
+        'demo_account_visible': True,
+        'dashboard_remarketing_tab_is_hidden': False,
+        'dashboard_costs_are_hidden': False,
+        'show_conversions': True,
+        'visible_accounts': [],
+        'hidden_campaign_types': {},
+        'global_account_visibility': True,
     }
 
     def handle(self, *args, **options):

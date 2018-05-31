@@ -45,6 +45,7 @@ class TestUserMixin:
         user.is_staff = True
         user.is_superuser = True
         user.save()
+        return user
 
     def fill_all_groups(self, user):
         all_perm_groups = Group.objects.values_list('name', flat=True)
