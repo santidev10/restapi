@@ -7,3 +7,6 @@ class Name:
 
     class AccountCreation:
         LIST = "account_creation_list"
+
+    class Dashboard:
+        PERFORMANCE_ACCOUNT_DETAILS = "performance_account_details"

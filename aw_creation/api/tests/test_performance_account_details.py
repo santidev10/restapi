@@ -8,17 +8,24 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
+from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
+    def _get_url(self, account_creation_id):
+        return reverse(
+            Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_ACCOUNT_DETAILS,
+            args=(account_creation_id,))
+
     account_list_header_fields = {
         "id", "name", "end", "account", "start", "status", "weekly_chart",
         "thumbnail", "is_changed",
@@ -92,8 +99,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         CityStatistic.objects.create(ad_group=ad_group, date=date, city=target,
                                      **stats)
 
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -128,8 +134,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
@@ -186,8 +191,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIs(data['overview']['impressions'], None)
 
     def test_success_get_filter_dates_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         today = datetime.now().date()
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -219,8 +223,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         ad_groups = ["demo11", "demo22"]
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -258,8 +261,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         ad_creation = AdCreation.objects.create(name="",
                                                 ad_group_creation=ad_group_creation,
                                                 video_thumbnail="https://f.i/123.jpeg")
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -288,8 +290,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                                                           account=account,
                                                           is_approved=True,
                                                           owner=self.user)
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(url)
@@ -300,8 +301,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], test_time)
 
     def test_created_at_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data

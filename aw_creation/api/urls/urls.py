@@ -94,7 +94,7 @@ urlpatterns = [
         name="performance_account_campaigns"),
     url(r'^performance_account_details/(?P<pk>\w+)/$',
         views.PerformanceAccountDetailsApiView.as_view(),
-        name="performance_account_details"),
+        name=Name.Dashboard.PERFORMANCE_ACCOUNT_DETAILS),
     url(r'^performance_chart/(?P<pk>\w+)/',
         views.PerformanceChartApiView.as_view(),
         name="performance_chart"),
