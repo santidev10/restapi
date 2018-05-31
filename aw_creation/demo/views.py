@@ -421,8 +421,7 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if request.data.get("is_chf") != 1\
-                    and (pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk)):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
 
                 account = DemoAccount()
