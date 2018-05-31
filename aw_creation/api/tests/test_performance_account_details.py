@@ -317,3 +317,31 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertIn("updated_at", data)
         self.assertEqual(data["updated_at"], None)
+
+    def test_average_cpm_and_cpv(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        impressions, views, cost = 1, 2, 3
+        Campaign.objects.create(account=account,
+                                impressions=impressions,
+                                video_views=views,
+                                cost=cost)
+        average_cpm = cost / impressions * 1000
+        average_cpv = cost / views
+
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
+        self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
