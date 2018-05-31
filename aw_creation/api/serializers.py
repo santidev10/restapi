@@ -557,8 +557,13 @@ class AccountCreationListSerializer(ModelSerializer):
         return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
-        return Opportunity.objects.filter(
-            placements__adwords_campaigns__campaign_creation__account_creation=obj).first()
+        opportunities = Opportunity.objects.filter(
+            placements__adwords_campaigns__account__account_creations=obj)
+        if opportunities.count() > 1:
+            logger.warning(
+                "AccountCreation (id: ) has more then one opportunity".format(
+                    obj.id))
+        return opportunities.first()
 
 
 class AccountCreationSetupSerializer(ModelSerializer):
