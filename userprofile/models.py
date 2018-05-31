@@ -179,7 +179,9 @@ class UserRelatedManager(models.Manager):
     def __filter_by_account_ids(self, queryset, account_ids: List[str]):
         if self._account_id_ref is None:
             raise NotImplementedError("_account_id_ref should be defined")
-        return queryset.filter(**{self._account_id_ref + "__in": account_ids})
+        return queryset \
+            .filter(**{self._account_id_ref + "__in": account_ids}) \
+            .distinct()
 
     def __is_account_filter_applicable(self, user: UserProfile):
         user_settings = user.aw_settings \
