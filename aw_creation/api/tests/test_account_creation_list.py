@@ -632,7 +632,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         campaign = Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
-                                        campaign=campaign)
+                                        campaign=None)
         url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
@@ -656,7 +656,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
-                                        campaign=campaign)
+                                        campaign=None)
         url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
@@ -715,11 +715,11 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(
-            account_creation=account_creation, campaign=campaign1)
+            account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
-            account_creation=account_creation, campaign=campaign2)
+            account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
-            account_creation=account_creation, campaign=campaign3)
+            account_creation=account_creation, campaign=None)
         url = reverse("aw_creation_urls:account_creation_list")
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
