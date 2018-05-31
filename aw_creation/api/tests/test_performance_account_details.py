@@ -307,3 +307,13 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertIn("updated_at", data)
         self.assertEqual(data["updated_at"], None)
+
+    def test_details_for_chf_acc(self):
+        url = reverse("aw_creation_urls:performance_account_details",
+                      args=(DEMO_ACCOUNT_ID,))
+        response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], None)
