@@ -21,7 +21,7 @@ class SendDailyEmailsTestCase(APITestCase):
         sales = User.objects.create(id="2", name="Dave", email="2@mail.cz")
         acc_mng = User.objects.create(id="3", name="John", email="3@mail.cz")
         today = now_in_default_tz().date()
-        start, end = today - timedelta(days=2), today + timedelta(days=2)
+        start, end = today - timedelta(days=2), today + timedelta(days=3)
 
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
