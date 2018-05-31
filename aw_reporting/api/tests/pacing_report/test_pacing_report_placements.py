@@ -9,10 +9,12 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes
+    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
+    Account
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
@@ -142,7 +144,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         Flight.objects.create(
             placement=hard_cost_placement, cost=0, total_cost=10, start=today)
         Flight.objects.create(
-            id="2", placement=hard_cost_placement, cost=0, total_cost=30, start=today)
+            id="2", placement=hard_cost_placement, cost=0, total_cost=30,
+            start=today)
         url = self._get_url(opportunity.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -702,3 +705,25 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         pl_data = response.data[0]
         self.assertEqual(pl_data["margin"], 0)
+
+    def test_fix_distinct(self):
+        opportunity = Opportunity.objects.create(id=1)
+        placement_1 = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        placement_2 = OpPlacement.objects.create(id=2, opportunity=opportunity)
+        account_1 = Account.objects.create(id=1)
+        account_2 = Account.objects.create(id=2)
+        Campaign.objects.create(id=1, salesforce_placement=placement_1,
+                                account=account_1)
+        Campaign.objects.create(id=2, salesforce_placement=placement_2,
+                                account=account_2)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id, account_2.id]
+        }
+        url = self._get_url(opportunity.id)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
