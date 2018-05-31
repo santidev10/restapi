@@ -6,6 +6,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 
 # pylint: enable=import-error
+from userprofile.models import UserSettingsKey
 
 logger = logging.getLogger(__name__)
 
