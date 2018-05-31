@@ -1,5 +1,4 @@
 from datetime import timedelta, datetime
-from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from aw_creation.models import *
@@ -20,7 +19,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv"
     }
 
     def setUp(self):

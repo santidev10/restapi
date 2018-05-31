@@ -27,7 +27,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv"
     }
     overview_keys = {
         "age", "gender", "device", "location",
