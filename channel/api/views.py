@@ -114,6 +114,8 @@ class ChannelListApiView(
                     return Response(data={"error": " ".join(e.args)},
                                     status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
+        elif own_channels == "1" and not user_can_see_own_channels:
+            return Response(empty_response)
         channel_segment_id = self.request.query_params.get("channel_segment")
         video_segment_id = self.request.query_params.get("video_segment")
         if any((channel_segment_id, video_segment_id)):

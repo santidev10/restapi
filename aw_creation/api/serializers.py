@@ -16,7 +16,10 @@ from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
 from aw_reporting.utils import safe_max
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.registry import registry
+from utils.serializers import ExcludeFieldsMixin
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +350,7 @@ class StruckField(SerializerMethodField):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
 
 
-class AccountCreationListSerializer(ModelSerializer):
+class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     is_changed = BooleanField()
     name = SerializerMethodField()
     thumbnail = SerializerMethodField()
@@ -365,7 +368,6 @@ class AccountCreationListSerializer(ModelSerializer):
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
-    ctr_v = StatField()
     # structural data
     ad_count = StruckField()
     channel_count = StruckField()
@@ -377,6 +379,12 @@ class AccountCreationListSerializer(ModelSerializer):
     brand = SerializerMethodField()
     agency = SerializerMethodField()
 
+    average_cpv = StatField()
+    average_cpm = StatField()
+
+    ctr = StatField()
+    ctr_v = StatField()
+
     class Meta:
         model = AccountCreation
         fields = (
@@ -384,12 +392,14 @@ class AccountCreationListSerializer(ModelSerializer):
             "thumbnail", "is_changed", "weekly_chart",
             # delivered stats
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
-            "ctr_v", "ad_count", "channel_count", "video_count",
+            "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
-            "updated_at", "brand", "agency", "from_aw", "cost_method")
+            "updated_at", "brand", "agency", "from_aw", "cost_method",
+            "average_cpv", "average_cpm", "ctr", "ctr_v")
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
+        self._filter_fields_()
         self.is_chf = self.context.get(
             "request").query_params.get("is_chf") == "1"
         self.settings = {}
@@ -477,6 +487,12 @@ class AccountCreationListSerializer(ModelSerializer):
                 self.video_ads_data[v[group_key]].append(
                     (v['impressions'], v['creative_id']))
 
+    def _fields_to_exclude(self):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            return "average_cpv", "average_cpm"
+        return tuple()
+
     def get_from_aw(self, obj):
         return obj.from_aw if not self.is_chf else None
 
@@ -539,7 +555,7 @@ class AccountCreationListSerializer(ModelSerializer):
 
     def get_brand(self, obj: AccountCreation):
         opportunity = self._get_opportunity(obj)
-        return opportunity.brand\
+        return opportunity.brand \
             if opportunity is not None and self.is_chf else None
 
     def get_agency(self, obj):

@@ -8,26 +8,35 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
+from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
+from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
+    def _get_url(self, account_creation_id):
+        return reverse(
+            Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_ACCOUNT_DETAILS,
+            args=(account_creation_id,))
+
     account_list_header_fields = {
         "id", "name", "end", "account", "start", "status", "weekly_chart",
         "thumbnail", "is_changed",
         "clicks", "cost", "impressions", "video_views", "video_view_rate",
-        "ctr_v", "is_managed",
+        "is_managed",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
+        "ctr", "ctr_v"
     }
     overview_keys = {
         "age", "gender", "device", "location",
@@ -92,8 +101,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         CityStatistic.objects.create(ad_group=ad_group, date=date, city=target,
                                      **stats)
 
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -128,8 +136,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         user = self.create_test_user()
         user.is_staff = True
         user.aw_settings["visible_accounts"] = [managed_account.id]
@@ -169,8 +176,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             average_position=1, impressions=100,
         )
 
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
@@ -191,8 +197,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIs(data['overview']['impressions'], None)
 
     def test_success_get_filter_dates_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         today = datetime.now().date()
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -224,8 +229,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         ad_groups = ["demo11", "demo22"]
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -263,8 +267,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         ad_creation = AdCreation.objects.create(name="",
                                                 ad_group_creation=ad_group_creation,
                                                 video_thumbnail="https://f.i/123.jpeg")
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -293,8 +296,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                                                           account=account,
                                                           is_approved=True,
                                                           owner=self.user)
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(url)
@@ -305,8 +307,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], test_time)
 
     def test_created_at_demo(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -314,8 +315,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], None)
 
     def test_details_for_chf_acc(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         user = self.create_test_user()
         user.is_staff = True
         user.save()
@@ -325,3 +325,99 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertIn("updated_at", data)
         self.assertEqual(data["updated_at"], None)
+
+    def test_average_cpm_and_cpv(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        impressions, views, cost = 1, 2, 3
+        Campaign.objects.create(account=account,
+                                impressions=impressions,
+                                video_views=views,
+                                cost=cost)
+        average_cpm = cost / impressions * 1000
+        average_cpv = cost / views
+
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
+        self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
+
+    def test_average_cpm_and_cpm_reflects_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+
+        url = self._get_url(account_creation.id)
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertNotIn("average_cpm", response.data)
+        self.assertNotIn("average_cpv", response.data)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertIn("average_cpm", response.data)
+        self.assertIn("average_cpv", response.data)
+
+    def test_ctr_and_ctr_v(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        impressions, views, clicks = 1, 2, 3
+        Campaign.objects.create(account=account,
+                                impressions=impressions,
+                                video_views=views,
+                                clicks=clicks)
+        ctr = clicks / impressions * 100
+        ctr_v = clicks / views * 100
+
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertAlmostEqual(response.data["ctr"], ctr)
+        self.assertAlmostEqual(response.data["ctr_v"], ctr_v)

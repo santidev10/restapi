@@ -886,6 +886,7 @@ class DemoAccount(BaseDemo):
             video_views=self.video_views,
             cost=self.cost,
             clicks=self.clicks,
+            ctr=self.ctr,
             ctr_v=self.ctr_v,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
             channel_count=12,
@@ -898,7 +899,9 @@ class DemoAccount(BaseDemo):
             updated_at=None,
             brand=DEMO_BRAND,
             cost_method=DEMO_COST_METHOD,
-            agency=DEMO_AGENCY
+            agency=DEMO_AGENCY,
+            average_cpm=10,
+            average_cpv=.10782609
         )
         return data
 
