@@ -1665,6 +1665,8 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = Campaign.objects.filter(
@@ -1674,22 +1676,28 @@ class PerformanceAccountCampaignsListApiView(APIView):
         return queryset
 
     def get(self, request, pk, **kwargs):
+        filters = {"is_deleted": False}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            account_creation = AccountCreation.objects.get(pk=pk,
-                                                           is_deleted=False,
-                                                           owner=self.request.user)
+            account_creation = AccountCreation.objects.filter(
+                **filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             campaign_creation_ids = set()
         else:
             campaign_creation_ids = set(
                 account_creation.campaign_creations.filter(
                     is_deleted=False
-                ).values_list("id", flat=True)
-            )
-
+                ).values_list("id", flat=True))
         queryset = self.get_queryset()
-        serializer = CampaignListSerializer(queryset, many=True,
-                                            campaign_creation_ids=campaign_creation_ids)
+        serializer = CampaignListSerializer(
+            queryset, many=True, campaign_creation_ids=campaign_creation_ids)
         return Response(serializer.data)
 
 
