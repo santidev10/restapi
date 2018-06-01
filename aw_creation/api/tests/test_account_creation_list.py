@@ -24,7 +24,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "brand", "cost_method", "agency", "average_cpm", "average_cpv"
+        "brand", "cost_method", "agency", "average_cpm", "average_cpv",
+        "ctr", "ctr_v"
     }
 
     url = reverse(Namespace.AW_CREATION + ":" + Name.AccountCreation.LIST)
@@ -786,3 +787,23 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertIn("average_cpv", acc_data)
         self.assertIn("average_cpm", acc_data)
 
+    def test_ctr_and_ctr_v(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+        impressions, views, clicks = 1, 2, 3
+        Campaign.objects.create(account=account,
+                                impressions=impressions,
+                                video_views=views,
+                                clicks=clicks)
+        ctr = clicks / impressions * 100
+        ctr_v = clicks / views * 100
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertAlmostEqual(acc_data["ctr"], ctr)
+        self.assertAlmostEqual(acc_data["ctr_v"], ctr_v)

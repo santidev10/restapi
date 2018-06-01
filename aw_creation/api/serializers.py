@@ -368,7 +368,6 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
-    ctr_v = StatField()
     # structural data
     ad_count = StruckField()
     channel_count = StruckField()
@@ -383,6 +382,9 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     average_cpv = StatField()
     average_cpm = StatField()
 
+    ctr = StatField()
+    ctr_v = StatField()
+
     class Meta:
         model = AccountCreation
         fields = (
@@ -390,10 +392,10 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             "thumbnail", "is_changed", "weekly_chart",
             # delivered stats
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
-            "ctr_v", "ad_count", "channel_count", "video_count",
+            "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
             "updated_at", "brand", "agency", "from_aw", "cost_method",
-            "average_cpv", "average_cpm")
+            "average_cpv", "average_cpm", "ctr", "ctr_v")
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)

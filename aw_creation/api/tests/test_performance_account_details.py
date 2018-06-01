@@ -31,11 +31,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         "id", "name", "end", "account", "start", "status", "weekly_chart",
         "thumbnail", "is_changed",
         "clicks", "cost", "impressions", "video_views", "video_view_rate",
-        "ctr_v", "is_managed",
+        "is_managed",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand", "average_cpm", "average_cpv"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
+        "ctr", "ctr_v"
     }
     overview_keys = {
         "age", "gender", "device", "location",
@@ -384,3 +385,31 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertIn("average_cpm", response.data)
         self.assertIn("average_cpv", response.data)
+
+    def test_ctr_and_ctr_v(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        impressions, views, clicks = 1, 2, 3
+        Campaign.objects.create(account=account,
+                                impressions=impressions,
+                                video_views=views,
+                                clicks=clicks)
+        ctr = clicks / impressions * 100
+        ctr_v = clicks / views * 100
+
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertAlmostEqual(response.data["ctr"], ctr)
+        self.assertAlmostEqual(response.data["ctr_v"], ctr_v)
