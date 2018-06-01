@@ -16,7 +16,7 @@ from utils.utils_tests import ExtendedAPITestCase
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_id):
-        return reverse(Namespace.AW_CREATION + ":" + Name.Performance.CAMPAIGNS,
+        return reverse(Namespace.AW_CREATION + ":" + Name.Dashboard.CAMPAIGNS,
                        args=(account_id,))
 
     campaign_keys = {

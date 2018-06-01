@@ -1,14 +1,17 @@
-from utils.utils_tests import ExtendedAPITestCase
-from aw_reporting.models import *
 from datetime import datetime
+
 import pytz
+
+from aw_reporting.models import *
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AwReportingAPITestCase(ExtendedAPITestCase):
-
     account_list_header_fields = {
-        'id', 'name', 'account_creation', 'end', 'start', 'status', 'weekly_chart',
-        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate', 'ctr_v',
+        'id', 'name', 'account_creation', 'end', 'start', 'status',
+        'weekly_chart',
+        'clicks', 'cost', 'impressions', 'video_views', 'video_view_rate',
+        'ctr_v',
     }
 
     def create_account(self, user, prefix="", manager=None):
@@ -34,5 +37,3 @@ class AwReportingAPITestCase(ExtendedAPITestCase):
             account=manager,
         )
         return account
-
-

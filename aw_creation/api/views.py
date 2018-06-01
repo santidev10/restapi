@@ -628,6 +628,7 @@ class AccountCreationListApiView(ListAPIView):
         return response
 
     def get_queryset(self, **filters):
+        filters["owner"] = self.request.user
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
             if self.request.user.is_staff:
@@ -640,8 +641,6 @@ class AccountCreationListApiView(ListAPIView):
                 if user_settings.get("global_account_visibility"):
                     filters["account__id__in"] = user_settings.get(
                         UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
@@ -845,12 +844,13 @@ class AccountCreationListApiView(ListAPIView):
 class AccountCreationDetailsApiView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
+        show_conversions = self.request.user.aw_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
         queryset = AccountCreation.objects.filter(owner=self.request.user)
         try:
             item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-        data = PerformanceAccountDetailsApiView.get_details_data(item)
+        data = PerformanceAccountDetailsApiView.get_details_data(item, show_conversions)
         return Response(data=data)
 
 
@@ -1744,8 +1744,9 @@ class PerformanceAccountDetailsApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         data = AccountCreationListSerializer(
             self.account_creation, context={"request": request}).data
+        show_conversions = self.request.user.aw_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
         data["overview"] = self.get_overview_data(self.account_creation)
-        data["details"] = self.get_details_data(self.account_creation)
+        data["details"] = self.get_details_data(self.account_creation, show_conversions)
         return Response(data=data)
 
     def get_overview_data(self, account_creation):
@@ -1909,7 +1910,12 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(top_bottom_stats)
 
     @staticmethod
-    def get_details_data(account_creation):
+    def get_details_data(account_creation, show_conversions):
+        if show_conversions:
+            ads_and_placements_stats = {s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
+        else:
+            ads_and_placements_stats = {s: Sum(s) for s in QUARTILE_STATS}
+
         fs = dict(ad_group__campaign__account=account_creation.account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
             ad_network=ConcatAggregate('ad_network', distinct=True),
@@ -1923,7 +1929,7 @@ class PerformanceAccountDetailsApiView(APIView):
                 )
             ),
             impressions=Sum("impressions"),
-            **{s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
+            **ads_and_placements_stats
         )
         dict_quartiles_to_rates(data)
         del data['impressions']

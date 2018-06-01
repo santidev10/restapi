@@ -5,5 +5,9 @@ class Name:
     class CreationSetup:
         CAMPAIGN = "campaign_creation_setup"
 
-    class Performance:
+    class AccountCreation:
+        LIST = "account_creation_list"
+
+    class Dashboard:
+        ACCOUNT_DETAILS = "performance_account_details"
         CAMPAIGNS = "performance_account_campaigns"
