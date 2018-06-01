@@ -11,6 +11,7 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DEMO_BRAND, DEMO_COST_METHOD, DEMO_AGENCY
 from aw_reporting.models import *
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
@@ -749,3 +750,39 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertIsNotNone(acc_data)
         self.assertAlmostEqual(acc_data["average_cpv"], average_cpv)
         self.assertAlmostEqual(acc_data["average_cpm"], average_cpm)
+
+    def test_average_cpm_and_cpv_is_reflect_to_user_settings(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertNotIn("average_cpv", acc_data)
+        self.assertNotIn("average_cpm", acc_data)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertIn("average_cpv", acc_data)
+        self.assertIn("average_cpm", acc_data)
+

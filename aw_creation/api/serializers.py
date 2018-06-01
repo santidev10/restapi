@@ -16,7 +16,10 @@ from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
 from aw_reporting.utils import safe_max
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.registry import registry
+from utils.serializers import ExcludeFieldsMixin
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +350,7 @@ class StruckField(SerializerMethodField):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
 
 
-class AccountCreationListSerializer(ModelSerializer):
+class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     is_changed = BooleanField()
     name = SerializerMethodField()
     thumbnail = SerializerMethodField()
@@ -480,6 +483,18 @@ class AccountCreationListSerializer(ModelSerializer):
             for v in video_ads_data:
                 self.video_ads_data[v[group_key]].append(
                     (v['impressions'], v['creative_id']))
+
+    def to_representation(self, instance):
+        representation = super(AccountCreationListSerializer, self) \
+            .to_representation(instance)
+        representation = self._filter_fields(representation)
+        return representation
+
+    def _fields_to_exclude(self):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            return "average_cpv", "average_cpm"
+        return tuple()
 
     def get_from_aw(self, obj):
         return obj.from_aw if not self.is_chf else None
