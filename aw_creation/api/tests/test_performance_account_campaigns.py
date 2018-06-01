@@ -7,8 +7,10 @@ from aw_creation.models import AccountCreation, CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, \
     DEMO_AD_GROUPS
 from aw_reporting.models import Account, Campaign, AdGroup, \
-    AWConnectionToUserRelation, AWConnection
+    AWConnectionToUserRelation, AWConnection, campaign_type_str
+from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 
 
@@ -33,14 +35,19 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         'status',
     }
 
+    def create_test_user(self, auth=True, connected=True):
+        user = super(AccountNamesAPITestCase, self).create_test_user(auth)
+        if connected:
+            AWConnectionToUserRelation.objects.create(
+                # user must have a connected account not to see demo data
+                connection=AWConnection.objects.create(email="me@mail.kz",
+                                                       refresh_token=""),
+                user=user,
+            )
+        return user
+
     def test_success_get(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           account=account,
@@ -76,12 +83,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_managed_campaign(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           account=account,
@@ -158,3 +159,59 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(ad_group.keys()),
             self.ad_group_keys,
         )
+
+    def test_filters_by_campaign_types(self):
+        user = self.create_test_user()
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            name="", owner=user, account=account, is_managed=True,
+            sync_at=timezone.now())
+        all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
+
+        for index, campaign_type in enumerate(all_types):
+            Campaign.objects.create(id=index,
+                                    type=campaign_type_str(campaign_type),
+                                    account=account)
+        hidden_types = all_types[::2]
+        expected_types = set(all_types) - set(hidden_types)
+        expected_types_str = set(campaign_type_str(t) for t in expected_types)
+
+        url = self._get_url(account_creation.id)
+
+        user_settings = {
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: hidden_types
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        ids = [c["id"] for c in response.data]
+        types = Campaign.objects.filter(id__in=ids) \
+            .values_list("type", flat=True)
+        self.assertEqual(len(types), len(expected_types))
+        self.assertEqual(set(types), expected_types_str)
+
+    def test_campaign_without_type_are_visible(self):
+        user = self.create_test_user()
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            name="", owner=user, account=account, is_managed=True,
+            sync_at=timezone.now())
+        all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
+
+        campaign = Campaign.objects.create(id=1,
+                                           type=None,
+                                           account=account)
+        campaign.refresh_from_db()
+
+        url = self._get_url(account_creation.id)
+
+        user_settings = {
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: all_types
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], campaign.id)
