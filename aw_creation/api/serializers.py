@@ -399,6 +399,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
+        self._filter_fields_()
         self.is_chf = self.context.get(
             "request").query_params.get("is_chf") == "1"
         self.settings = {}
@@ -485,12 +486,6 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             for v in video_ads_data:
                 self.video_ads_data[v[group_key]].append(
                     (v['impressions'], v['creative_id']))
-
-    def to_representation(self, instance):
-        representation = super(AccountCreationListSerializer, self) \
-            .to_representation(instance)
-        representation = self._filter_fields(representation)
-        return representation
 
     def _fields_to_exclude(self):
         user = registry.user
