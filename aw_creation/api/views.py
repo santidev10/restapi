@@ -1763,7 +1763,7 @@ class PerformanceAccountDetailsApiView(APIView):
         data = AdGroupStatistic.objects.filter(**fs).aggregate(
             **all_stats_aggregate)
         dict_norm_base_stats(data)
-        dict_calculate_stats(data)
+        dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
         del data['video_impressions']
         # 'age', 'gender', 'device', 'location'
@@ -2192,7 +2192,7 @@ class PerformanceExportApiView(APIView):
         )
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)
-        dict_calculate_stats(stats)
+        dict_add_calculated_stats(stats)
         data.update(stats)
 
         yield self.column_names
@@ -2436,7 +2436,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 for k, v in i.items():
                     if k in stat_fields and v:
                         summary[k] += v
-                dict_calculate_stats(i)
+                dict_add_calculated_stats(i)
                 del i['video_impressions']
 
                 # add status field
@@ -2445,7 +2445,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 i["is_negative"] = str(i["item"]["id"]) in \
                                    negative_items[targeting_type][ad_group_id]
 
-            dict_calculate_stats(summary)
+            dict_add_calculated_stats(summary)
             del summary['video_impressions']
             report.update(summary)
 

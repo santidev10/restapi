@@ -9,10 +9,12 @@ from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdCreation
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import GeoTarget, Topic, Audience, AdGroupStatistic, \
-    Campaign, base_stats_aggregate, dict_norm_base_stats, \
-    dict_calculate_stats, ConcatAggregate, VideoCreativeStatistic, Ad, \
-    Opportunity
+    Campaign, dict_norm_base_stats, \
+    ConcatAggregate, VideoCreativeStatistic, Ad, \
+    Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
+    client_cost_required_annotation, F
 from aw_reporting.utils import safe_max
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
@@ -350,6 +352,20 @@ class StruckField(SerializerMethodField):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
 
 
+def add(d1, d2, key):
+    v1 = d1.get(key, 0)
+    v2 = d2.get(key, 0)
+    print(v1, v2)
+    return v1 + v2
+
+
+def sum_dicts(d1, d2):
+    keys = list(d1.keys()) + list(d2.keys())
+    return dict((
+        (key, add(d1, d2, key)) for key in keys
+    ))
+
+
 class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     is_changed = BooleanField()
     name = SerializerMethodField()
@@ -424,18 +440,45 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
                     distinct=True)
             )
             self.settings = {s['account_creation_id']: s for s in settings}
-            data = Campaign.objects.filter(
-                account__account_creations__id__in=ids
-            ).values('account__account_creations__id').order_by(
-                'account__account_creations__id').annotate(
-                start=Min("start_date"),
-                end=Max("end_date"),
-                **base_stats_aggregate
-            )
-            for i in data:
-                dict_norm_base_stats(i)
-                dict_calculate_stats(i)
-                self.stats[i['account__account_creations__id']] = i
+
+            show_client_cost = not registry.user.aw_settings.get(
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+
+            account_id_key = "account__account_creations__id"
+            campaign_filter = {account_id_key + "__in": ids}
+            account_client_cost = defaultdict(float)
+            if show_client_cost:
+                campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
+                    .values(account_id_key, "impressions", "video_views") \
+                    .annotate(aw_cost=F("cost"),
+                              **client_cost_required_annotation)
+
+                for campaign_data in campaigns_with_cost:
+                    account_id = campaign_data[account_id_key]
+                    kwargs = {key: campaign_data.get(key)
+                              for key in ("goal_type_id", "total_cost",
+                                          "ordered_rate", "aw_cost",
+                                          "dynamic_placement",
+                                          "placement_type", "tech_fee",
+                                          "impressions", "video_views")}
+                    client_cost = get_client_cost(**kwargs)
+                    account_client_cost[account_id] = account_client_cost[
+                                                          account_id] + client_cost
+
+            data = Campaign.objects.filter(**campaign_filter) \
+                .values(account_id_key) \
+                .order_by(account_id_key) \
+                .annotate(start=Min("start_date"),
+                          end=Max("end_date"),
+                          **base_stats_aggregator())
+            for account_data in data:
+                account_id = account_data[account_id_key]
+                dict_norm_base_stats(account_data)
+                dict_add_calculated_stats(account_data)
+
+                if show_client_cost:
+                    account_data["cost"] = account_client_cost[account_id]
+                self.stats[account_id] = account_data
             annotates = dict(
                 ad_count=Count("account__campaigns__ad_groups__ads",
                                distinct=True),

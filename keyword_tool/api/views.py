@@ -225,7 +225,7 @@ class OptimizeQueryApiView(ListAPIView):
     @staticmethod
     def add_ad_words_data(request, items):
         from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
-            dict_norm_base_stats, dict_calculate_stats
+            dict_norm_base_stats, dict_add_calculated_stats
 
         accounts = Account.user_objects(request.user)
         cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
@@ -245,7 +245,7 @@ class OptimizeQueryApiView(ListAPIView):
             item_stats = stats.get(item['keyword_text'])
             if item_stats:
                 dict_norm_base_stats(item_stats)
-                dict_calculate_stats(item_stats)
+                dict_add_calculated_stats(item_stats)
                 del item_stats['keyword']
                 item.update(item_stats)
 

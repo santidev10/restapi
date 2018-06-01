@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from aw_reporting.api.serializers import AccountsListSerializer
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT, Account, AdGroupStatistic, \
-    all_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
+    all_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, Genders, AgeRangeStatistic, \
     AgeRanges, Devices, CityStatistic, BASE_STATS, ConcatAggregate, \
     CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
@@ -77,7 +77,7 @@ class AnalyzeDetailsApiView(APIView):
             **all_stats_aggregate
         )
         dict_norm_base_stats(data)
-        dict_calculate_stats(data)
+        dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
         del data["video_impressions"]
 

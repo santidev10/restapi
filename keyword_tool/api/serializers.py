@@ -5,7 +5,7 @@ from rest_framework.serializers import ModelSerializer, ValidationError
 from rest_framework.serializers import SerializerMethodField
 
 from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.models import Account, dict_calculate_stats, \
+from aw_reporting.models import Account, dict_add_calculated_stats, \
     dict_norm_base_stats
 from keyword_tool.api.utils import get_keywords_aw_stats
 from keyword_tool.models import KeyWord, Interest, KeywordsList, \
@@ -127,7 +127,7 @@ class SavedListNameSerializer(SavedListCreateSerializer):
                                     continue
                                 list_stats[f] += kw_stats[f]
                     dict_norm_base_stats(list_stats)
-                    dict_calculate_stats(list_stats)
+                    dict_add_calculated_stats(list_stats)
                     self.aw_stats[list_id] = list_stats
 
     @staticmethod

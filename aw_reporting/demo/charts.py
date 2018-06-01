@@ -70,7 +70,7 @@ class DemoChart:
         res_items = []
         for name, stats in items.items():
             stats['name'] = name
-            dict_calculate_stats(stats)
+            dict_add_calculated_stats(stats)
             del stats['label'], stats['video_impressions']
             res_items.append(stats)
 
