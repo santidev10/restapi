@@ -550,6 +550,7 @@ class CreationOptionsApiView(APIView):
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),
@@ -632,16 +633,11 @@ class AccountCreationListApiView(ListAPIView):
         filters["owner"] = self.request.user
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
-            if self.request.user.is_staff:
-                managed_accounts_ids = Account.objects.get(
-                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                    .managers.values_list("id", flat=True)
-                filters["account__id__in"] = managed_accounts_ids
-            elif self.request.user.has_perm("userprofile.view_dashboard"):
-                user_settings = self.request.user.aw_settings
-                if user_settings.get("global_account_visibility"):
-                    filters["account__id__in"] = user_settings.get(
-                        UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

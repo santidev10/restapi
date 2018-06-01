@@ -81,7 +81,7 @@ class UserHasCHFPermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
         is_chf = None
         if request.method == "GET":
-            is_chf = request.queryparams.get("is_chf")
+            is_chf = request.query_params.get("is_chf")
         if request.method == "POST":
             is_chf = request.data.get("is_chf")
         if str(is_chf) == "1":
