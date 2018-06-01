@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
@@ -19,6 +20,8 @@ class AccountCreationDetailsAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.aw_settings[UserSettingsKey.SHOW_CONVERSIONS] = True
+        self.user.save()
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
