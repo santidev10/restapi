@@ -13,12 +13,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
     details_keys = {
         "id", "name", "account", "status", "start", "end", "is_managed",
         "is_changed", "weekly_chart", "thumbnail",
-        "video_views", "cost", "video_view_rate", "ctr_v", "impressions",
+        "video_views", "cost", "video_view_rate", "impressions",
         "clicks",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
+        "ctr", "ctr_v"
     }
 
     def setUp(self):
