@@ -51,12 +51,13 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     Account, AWConnection, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
     TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
-    base_stats_aggregator
+    base_stats_aggregator, campaign_type_str
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
+from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -1669,10 +1670,16 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 class PerformanceAccountCampaignsListApiView(APIView):
     def get_queryset(self):
         pk = self.kwargs.get("pk")
-        queryset = Campaign.objects.filter(
+        user = registry.user
+        types_hidden = user.aw_settings.get(
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES, {}).get(pk, [])
+        types_to_exclude = [campaign_type_str(t) for t in types_hidden]
+        queryset = Campaign.objects \
+            .filter(
             account__account_creations__id=pk,
-            account__account_creations__owner=self.request.user,
-        ).order_by("name", "id").distinct()
+            account__account_creations__owner=self.request.user) \
+            .exclude(type__in=types_to_exclude) \
+            .order_by("name", "id").distinct()
         return queryset
 
     def get(self, request, pk, **kwargs):
@@ -1721,7 +1728,7 @@ class PerformanceAccountDetailsApiView(APIView):
             elif self.request.user.has_perm("userprofile.view_dashboard"):
                 user_settings = self.request.user.aw_settings
                 if user_settings.get("global_account_visibility"):
-                    filters["account__id__in"] =\
+                    filters["account__id__in"] = \
                         user_settings.get("visible_accounts")
         else:
             filters["owner"] = self.request.user
@@ -1805,9 +1812,9 @@ class PerformanceAccountDetailsApiView(APIView):
         plan_video_views = 0
         for placement in placements_queryset:
             plan_cost += placement.total_cost
-            plan_impressions += placement.ordered_units\
+            plan_impressions += placement.ordered_units \
                 if placement.goal_type_id == SalesForceGoalType.CPM else 0
-            plan_video_views += placement.ordered_units\
+            plan_video_views += placement.ordered_units \
                 if placement.goal_type_id == SalesForceGoalType.CPV else 0
         data.update(
             {"plan_cost": plan_cost,

@@ -4,6 +4,8 @@ import os
 import yaml
 from django.conf import settings
 
+from aw_reporting.models import CampaignTypeId
+
 logger = logging.getLogger(__name__)
 
 
@@ -90,8 +92,8 @@ class AdwordsAccountSettings:
         'show_conversions',
         'global_account_visibility',
     )
-    CAMPAIGN_TYPES = ('display',
-                      'video',
-                      'search',
-                      'shopping',
-                      'multi_channel',)
+    CAMPAIGN_TYPES = (CampaignTypeId.DISPLAY,
+                      CampaignTypeId.MULTI_CHANNEL,
+                      CampaignTypeId.SEARCH,
+                      CampaignTypeId.SHOPPING,
+                      CampaignTypeId.VIDEO)

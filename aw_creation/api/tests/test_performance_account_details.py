@@ -24,7 +24,7 @@ from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 class AccountDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
-            Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_ACCOUNT_DETAILS,
+            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
             args=(account_creation_id,))
 
     account_list_header_fields = {
