@@ -9,4 +9,5 @@ class Name:
         LIST = "account_creation_list"
 
     class Dashboard:
-        PERFORMANCE_ACCOUNT_DETAILS = "performance_account_details"
+        ACCOUNT_DETAILS = "performance_account_details"
+        CAMPAIGNS = "performance_account_campaigns"
