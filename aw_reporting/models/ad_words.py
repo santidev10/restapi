@@ -433,6 +433,27 @@ class ModelPlusDeNormFields(BaseStatisticModel):
 DEFAULT_TIMEZONE = settings.DEFAULT_TIMEZONE
 
 
+class CampaignTypeId:
+    DISPLAY = "display"
+    MULTI_CHANNEL = "multi_channel"
+    SEARCH = "search"
+    SHOPPING = "shopping"
+    VIDEO = "video"
+
+
+_campaign_type_map = dict((
+    (CampaignTypeId.DISPLAY, "Display"),
+    (CampaignTypeId.MULTI_CHANNEL, "Multi Channel"),
+    (CampaignTypeId.SEARCH, "Search"),
+    (CampaignTypeId.SHOPPING, "Shopping"),
+    (CampaignTypeId.VIDEO, "Video"),
+))
+
+
+def campaign_type_str(campaign_type_id):
+    return _campaign_type_map.get(campaign_type_id, "Unknown type")
+
+
 class CampaignManager(UserRelatedManager):
     _account_id_ref = "account_id"
 

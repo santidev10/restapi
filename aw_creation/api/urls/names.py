@@ -4,3 +4,6 @@ class Name:
 
     class CreationSetup:
         CAMPAIGN = "campaign_creation_setup"
+
+    class Performance:
+        CAMPAIGNS = "performance_account_campaigns"
