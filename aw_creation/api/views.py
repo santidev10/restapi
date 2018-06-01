@@ -2064,6 +2064,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
 
     def get_filters(self):
         data = self.request.data
@@ -2076,18 +2077,24 @@ class PerformanceChartItemsApiView(APIView):
             if end_date else None,
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
-            segmented_by=data.get("segmented"),
-        )
+            segmented_by=data.get("segmented"))
         return filters
 
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get('dimension')
+        filters = {}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-
         filters = self.get_filters()
         accounts = []
         if item.account:
@@ -2095,8 +2102,7 @@ class PerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
-            **filters
-        )
+            **filters)
         items = chart.get_items()
         return Response(data=items)
 
