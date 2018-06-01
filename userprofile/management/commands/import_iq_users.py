@@ -1,9 +1,9 @@
 import csv
-from dateutil.parser import parse as datetime_parse
 import glob
 import logging
-import yaml
 
+import yaml
+from dateutil.parser import parse as datetime_parse
 from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-
     DEFAULT_AW_SETTINGS = DEFAULT_SETTINGS
 
     CHF_AW_SETTINGS = {
@@ -25,7 +24,7 @@ class Command(BaseCommand):
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: True,
         UserSettingsKey.VISIBLE_ACCOUNTS: [],
-        UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: [],
+        UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
     }
 
@@ -91,7 +90,7 @@ class Command(BaseCommand):
                     try:
                         UserProfile.objects.get(email=user.email)
                     except UserProfile.DoesNotExist:
-                        logger.info("New account [{}]:  {}"\
+                        logger.info("New account [{}]:  {}" \
                                     .format(name, user.email))
                         user.save()
 

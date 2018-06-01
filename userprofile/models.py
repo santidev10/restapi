@@ -41,7 +41,7 @@ DEFAULT_SETTINGS = {
     UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
     UserSettingsKey.SHOW_CONVERSIONS: False,
     UserSettingsKey.VISIBLE_ACCOUNTS: [],
-    UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: [],
+    UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
     UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
 }
 

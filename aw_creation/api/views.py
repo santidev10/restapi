@@ -1672,7 +1672,7 @@ class PerformanceAccountCampaignsListApiView(APIView):
         pk = self.kwargs.get("pk")
         user = registry.user
         types_hidden = user.aw_settings.get(
-            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES, [])
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES, {}).get(pk, [])
         types_to_exclude = [campaign_type_str(t) for t in types_hidden]
         queryset = Campaign.objects \
             .filter(

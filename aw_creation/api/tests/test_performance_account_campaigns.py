@@ -179,7 +179,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         url = self._get_url(account_creation.id)
 
         user_settings = {
-            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: hidden_types
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
+                account_creation.id: hidden_types}
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
@@ -207,7 +208,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         url = self._get_url(account_creation.id)
 
         user_settings = {
-            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: all_types
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
+                account_creation.id: all_types}
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
