@@ -1,7 +1,12 @@
+import os
+from email.mime.image import MIMEImage
+
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -216,24 +221,32 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
             try:
                 user = UserProfile.objects.get(email=email)
                 context['name'] = "{} {}".format(user.first_name, user.last_name)
-                message = render_to_string("new_enterprise_collaborator.txt", context)
-                user.email_user(
-                    subject=subject,
-                    message=message,
-                    from_email=sender)
-
+                to = user.email
+                html_content = render_to_string("new_enterprise_collaborator.html", context)
+                self.send_email(html_content, subject, sender, to)
                 # provide access to segments for collaborator
                 user.add_custom_user_group('Segments')
 
             except UserProfile.DoesNotExist:
                 to = email
-                text = render_to_string("new_collaborator.txt", context)
-                send_mail(subject, text, sender, (to,), fail_silently=True)
+                html_content = render_to_string("new_collaborator.html", context)
+                self.send_email(html_content, subject, sender, to)
 
         # update collaborators list
         segment.shared_with = emails
-
         segment.save()
+
+    def send_email(self, html_content, subject, sender, to):
+        text = strip_tags(html_content)
+        msg = EmailMultiAlternatives(subject, text, sender, [to])
+        msg.attach_alternative(html_content, "text/html")
+        for f in ['bg.png', 'cf_logo_wt_big.png', 'img.png', 'logo.gif']:
+            fp = open(os.path.join('segment/templates/', f), 'rb')
+            msg_img = MIMEImage(fp.read())
+            fp.close()
+            msg_img.add_header('Content-ID', '<{}>'.format(f))
+            msg.attach(msg_img)
+        msg.send()
 
 
 class SegmentDuplicateApiView(DynamicModelViewMixin, GenericAPIView):
