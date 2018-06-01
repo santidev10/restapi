@@ -201,7 +201,7 @@ class UserRelatedManager(models.Manager):
         queryset = super(UserRelatedManager, self).get_queryset()
         user = registry.user
         if user is None:
-            logger.warning("{} is used with no user in context".format(
+            logger.debug("{} is used with no user in context".format(
                 type(self).__name__))
         elif not ignore_user:
             queryset = self.__filter_by_user(queryset, user)

@@ -24,6 +24,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
 from rest_framework.parsers import FileUploadParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
     HTTP_202_ACCEPTED, \
@@ -56,7 +57,8 @@ from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
-    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
+    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
+    UserHasCHFPermission
 
 logger = logging.getLogger(__name__)
 
@@ -1697,6 +1699,8 @@ class PerformanceAccountCampaignsListApiView(APIView):
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+
     def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
@@ -1713,16 +1717,11 @@ class PerformanceAccountDetailsApiView(APIView):
     def __obtain_account(self, request, pk):
         filters = {}
         if request.data.get("is_chf") == 1:
-            if self.request.user.is_staff:
-                managed_accounts_ids = Account.objects.get(
-                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                    .managers.values_list("id", flat=True)
-                filters["account__id__in"] = managed_accounts_ids
-            elif self.request.user.has_perm("userprofile.view_dashboard"):
-                user_settings = self.request.user.aw_settings
-                if user_settings.get("global_account_visibility"):
-                    filters["account__id__in"] =\
-                        user_settings.get("visible_accounts")
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:

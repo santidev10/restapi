@@ -74,6 +74,22 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
         return request.user.has_perm(self.permission)
 
 
+class UserHasCHFPermission(permissions.IsAuthenticated):
+    """
+    Allow user to use CHF dashboard data
+    """
+    def has_permission(self, request, view):
+        is_chf = None
+        if request.method == "GET":
+            is_chf = request.queryparams.get("is_chf")
+        if request.method == "POST":
+            is_chf = request.data.get("is_chf")
+        if str(is_chf) == "1":
+            return request.user.is_staff or request.user.has_perm(
+                "userprofile.view_dashboard")
+        return True
+
+
 def user_has_permission(perm):
     """
     Create class inherited from UserHasPermissionBase
