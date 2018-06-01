@@ -627,6 +627,7 @@ class AccountCreationListApiView(ListAPIView):
         return response
 
     def get_queryset(self, **filters):
+        filters["owner"] = self.request.user
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
             if self.request.user.is_staff:
@@ -639,8 +640,6 @@ class AccountCreationListApiView(ListAPIView):
                 if user_settings.get("global_account_visibility"):
                     filters["account__id__in"] = user_settings.get(
                         UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
