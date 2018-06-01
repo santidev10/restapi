@@ -2015,6 +2015,7 @@ class PerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
 
     def get_filters(self):
         data = self.request.data
@@ -2028,17 +2029,23 @@ class PerformanceChartApiView(APIView):
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
             indicator=data.get("indicator", "average_cpv"),
-            dimension=data.get("dimension"),
-        )
+            dimension=data.get("dimension"))
         return filters
 
     def post(self, request, pk, **_):
+        filters = {}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-
         filters = self.get_filters()
         account_ids = []
         if item.account:
