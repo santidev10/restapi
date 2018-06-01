@@ -16,6 +16,7 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -169,8 +170,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             average_position=1, impressions=100,
         )
 
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
@@ -309,8 +309,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], None)
 
     def test_details_for_chf_acc(self):
-        url = reverse("aw_creation_urls:performance_account_details",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url, json.dumps(dict(is_chf=1)),
                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -345,3 +344,43 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
         self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
+
+    def test_average_cpm_and_cpm_reflects_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+
+        url = self._get_url(account_creation.id)
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertNotIn("average_cpm", response.data)
+        self.assertNotIn("average_cpv", response.data)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertIn("average_cpm", response.data)
+        self.assertIn("average_cpv", response.data)
