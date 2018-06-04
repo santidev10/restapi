@@ -137,6 +137,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
         url = self._get_url(account_creation.id)
+        user = self.create_test_user()
+        user.is_staff = True
+        user.aw_settings["visible_accounts"] = [managed_account.id]
+        user.aw_settings["global_account_visibility"] = True
+        user.save()
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
@@ -311,6 +316,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_details_for_chf_acc(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
         response = self.client.post(url, json.dumps(dict(is_chf=1)),
                                     content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
