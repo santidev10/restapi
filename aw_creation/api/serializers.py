@@ -352,21 +352,8 @@ class StruckField(SerializerMethodField):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
 
 
-def add(d1, d2, key):
-    v1 = d1.get(key, 0)
-    v2 = d2.get(key, 0)
-    print(v1, v2)
-    return v1 + v2
-
-
-def sum_dicts(d1, d2):
-    keys = list(d1.keys()) + list(d2.keys())
-    return dict((
-        (key, add(d1, d2, key)) for key in keys
-    ))
-
-
 class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
+    ACCOUNT_ID_KEY = "account__account_creations__id"
     is_changed = BooleanField()
     name = SerializerMethodField()
     thumbnail = SerializerMethodField()
@@ -444,35 +431,20 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             show_client_cost = not registry.user.aw_settings.get(
                 UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
 
-            account_id_key = "account__account_creations__id"
-            campaign_filter = {account_id_key + "__in": ids}
-            account_client_cost = defaultdict(float)
+            campaign_filter = {self.ACCOUNT_ID_KEY + "__in": ids}
+            account_client_cost = dict()
             if show_client_cost:
-                campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
-                    .values(account_id_key, "impressions", "video_views") \
-                    .annotate(aw_cost=F("cost"),
-                              **client_cost_required_annotation)
-
-                for campaign_data in campaigns_with_cost:
-                    account_id = campaign_data[account_id_key]
-                    kwargs = {key: campaign_data.get(key)
-                              for key in ("goal_type_id", "total_cost",
-                                          "ordered_rate", "aw_cost",
-                                          "dynamic_placement",
-                                          "placement_type", "tech_fee",
-                                          "impressions", "video_views")}
-                    client_cost = get_client_cost(**kwargs)
-                    account_client_cost[account_id] = account_client_cost[
-                                                          account_id] + client_cost
+                account_client_cost = self._get_client_cost_by_account(
+                    campaign_filter)
 
             data = Campaign.objects.filter(**campaign_filter) \
-                .values(account_id_key) \
-                .order_by(account_id_key) \
+                .values(self.ACCOUNT_ID_KEY) \
+                .order_by(self.ACCOUNT_ID_KEY) \
                 .annotate(start=Min("start_date"),
                           end=Max("end_date"),
                           **base_stats_aggregator())
             for account_data in data:
-                account_id = account_data[account_id_key]
+                account_id = account_data[self.ACCOUNT_ID_KEY]
                 dict_norm_base_stats(account_data)
                 dict_add_calculated_stats(account_data)
 
@@ -529,6 +501,25 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             for v in video_ads_data:
                 self.video_ads_data[v[group_key]].append(
                     (v['impressions'], v['creative_id']))
+
+    def _get_client_cost_by_account(self, campaign_filter):
+        account_client_cost = defaultdict(float)
+        campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
+            .values(self.ACCOUNT_ID_KEY, "impressions", "video_views") \
+            .annotate(aw_cost=F("cost"),
+                      **client_cost_required_annotation)
+
+        keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
+                           "aw_cost", "dynamic_placement", "placement_type",
+                           "tech_fee", "impressions", "video_views")
+
+        for campaign_data in campaigns_with_cost:
+            account_id = campaign_data[self.ACCOUNT_ID_KEY]
+            kwargs = {key: campaign_data.get(key) for key in keys_to_extract}
+            client_cost = get_client_cost(**kwargs)
+            account_client_cost[account_id] = account_client_cost[account_id] \
+                                              + client_cost
+        return dict(account_client_cost)
 
     def _fields_to_exclude(self):
         user = registry.user

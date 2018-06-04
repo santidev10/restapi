@@ -821,11 +821,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         costs = (123, 234)
-        opp = Opportunity.objects.create()
-        pl1=OpPlacement.objects.create(id=1, goal_type_id=SalesForceGoalType.CPV,opportunity=opp)
-        pl2=OpPlacement.objects.create(id=2, goal_type_id=SalesForceGoalType.CPM,opportunity=opp)
-        Campaign.objects.create(id=1, account=account, cost=costs[0], salesforce_placement=pl1)
-        Campaign.objects.create(id=2, account=account, cost=costs[1], salesforce_placement=pl2)
+        Campaign.objects.create(id=1, account=account, cost=costs[0])
+        Campaign.objects.create(id=2, account=account, cost=costs[1])
 
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
