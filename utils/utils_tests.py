@@ -29,10 +29,11 @@ class TestUserMixin:
         """
         Make test user
         """
+        get_user_model().objects.filter(email=self.test_user_data["email"]) \
+            .delete()
         Permissions.sync_groups()
-        user, created = get_user_model().objects.get_or_create(
-            email=self.test_user_data["email"],
-            defaults=self.test_user_data,
+        user = get_user_model().objects.create(
+            **self.test_user_data,
         )
         user.set_password(user.password)
 
