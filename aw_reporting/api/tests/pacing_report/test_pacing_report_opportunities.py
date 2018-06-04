@@ -19,6 +19,7 @@ from aw_reporting.models.salesforce_constants import \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
+from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 logger = logging.getLogger(__name__)
@@ -372,7 +373,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def test_opportunity_margin_zero_cost(self):
         expected_margin = 100
-        today = timezone.now()
+        now = now_in_default_tz()
+        today = now.date()
         opportunity = Opportunity.objects.create(
             id="1", name="A", start=today - timedelta(days=1),
             end=today + timedelta(days=1), probability=100
@@ -410,7 +412,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(opp_data["margin"], -100)
 
     def test_opportunity_margin(self):
-        today = timezone.now()
+        now = now_in_default_tz()
+        today = now.date()
         campaign_1_cost = 10
         campaign_2_cost = 20
         placement_cpv_ordered_rate = 50
