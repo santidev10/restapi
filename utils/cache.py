@@ -44,7 +44,6 @@ def cached_view_decorator(method):
 
         path = request.get_full_path()
         if request.user and request.user.is_authenticated() \
-                and request.user.is_influencer \
                 and not request.user.is_superuser:
             path = "{}{}".format(path, "influencer")
         key = settings.CACHE_KEY_PREFIX + md5(path.encode()).hexdigest()
