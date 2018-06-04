@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     dict_quartiles_to_rates, all_stats_aggregate, \
@@ -18,10 +19,12 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, \
     OpPlacement, \
     AdGroupStatistic, \
-    dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats
+    dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats, \
+    client_cost_ad_group_statistic_required_annotation
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.permissions import UserHasCHFPermission
+from utils.registry import registry
 
 
 @demo_view_decorator
@@ -44,7 +47,6 @@ class PerformanceAccountDetailsApiView(APIView):
     def __obtain_account(self, request, pk):
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
                 filters["account__id__in"] = \
@@ -107,9 +109,28 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         if self.request.data.get("is_chf") == 1:
             self.add_chf_performance_data(data)
+            show_client_cost = not registry.user.aw_settings.get(
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+            if show_client_cost:
+                data["delivered_cost"] = self._get_client_cost(fs)
+
         else:
             self.add_standard_performance_data(data, fs)
         return data
+
+    def _get_client_cost(self, filters):
+        keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
+                           "aw_cost", "dynamic_placement", "placement_type",
+                           "tech_fee", "impressions", "video_views")
+        statistics = AdGroupStatistic.objects.filter(**filters) \
+            .annotate(aw_cost=Sum("cost"),
+                      **client_cost_ad_group_statistic_required_annotation) \
+            .values(*keys_to_extract)
+
+        def map_data(statistic_data):
+            return {key: statistic_data[key] for key in keys_to_extract}
+
+        return sum([get_client_cost(**map_data(data)) for data in statistics])
 
     def add_chf_performance_data(self, data):
         null_fields = (
@@ -132,10 +153,10 @@ class PerformanceAccountDetailsApiView(APIView):
         plan_impressions = 0
         plan_video_views = 0
         for placement in placements_queryset:
-            plan_cost += placement.total_cost
-            plan_impressions += placement.ordered_units \
+            plan_cost += placement.total_cost or 0
+            plan_impressions += (placement.ordered_units or 0) \
                 if placement.goal_type_id == SalesForceGoalType.CPM else 0
-            plan_video_views += placement.ordered_units \
+            plan_video_views += (placement.ordered_units or 0) \
                 if placement.goal_type_id == SalesForceGoalType.CPV else 0
         data.update(
             {"plan_cost": plan_cost,

@@ -135,6 +135,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(data["overview"].keys()), self.overview_keys)
 
     def test_success_get_chf_account(self):
+        user = self.create_test_user()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
@@ -142,13 +143,15 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Test", owner=self.user, account=managed_account)
         url = self._get_url(account_creation.id)
-        user = self.create_test_user()
         user.is_staff = True
-        user.aw_settings["visible_accounts"] = [managed_account.id]
-        user.aw_settings["global_account_visibility"] = True
         user.save()
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]
+        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.post(
                 url, data=json.dumps({"is_chf": 1}),
                 content_type="application/json")
@@ -428,6 +431,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["ctr_v"], ctr_v)
 
     def test_aw_cost(self):
+        self.user.is_staff = True
+        self.user.save()
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz",
@@ -475,6 +480,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                                expected_cost)
 
     def test_cost_client_cost(self):
+        self.user.is_staff = True
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz",

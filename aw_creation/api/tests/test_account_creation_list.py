@@ -36,10 +36,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.user = self.create_test_user()
 
     def __set_user_with_account(self, account_id):
-        user = self.create_test_user()
+        user = self.user
         user.is_staff = True
-        user.aw_settings["visible_accounts"] = [account_id]
-        user.aw_settings["global_account_visibility"] = True
+        user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
+        user.aw_settings[UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY] = True
         user.save()
 
     def test_success_post(self):
