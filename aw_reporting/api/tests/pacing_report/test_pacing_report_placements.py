@@ -133,7 +133,8 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.data[0]["margin"], -100)
 
     def test_hard_cost_placement_margin_zero_cost(self):
-        today = timezone.now()
+        now = now_in_default_tz()
+        today = now.date()
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today - timedelta(days=3),
             end=today + timedelta(days=3))
