@@ -9,7 +9,7 @@ from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from .base import AwReportingAPITestCase
 
 
-class AccountDetailsAPITestCase(AwReportingAPITestCase):
+class AnalyzeDetailsAPITestCase(AwReportingAPITestCase):
     overview_keys = {
         "age", "gender", "device", "location",
         "clicks", "cost", "impressions", "video_views",
