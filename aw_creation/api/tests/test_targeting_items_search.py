@@ -4,7 +4,7 @@ from utils.utils_tests import ExtendedAPITestCase, SingleDatabaseApiConnectorPat
 from unittest.mock import patch
 
 
-class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
+class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
