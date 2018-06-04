@@ -220,9 +220,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
-                context['name'] = "{} {}"\
-                                  .format(user.first_name,
-                                          user.last_name)
+                context['name'] = user.get_full_name()
                 to = user.email
                 html_content = render_to_string(
                     "new_enterprise_collaborator.html",
