@@ -51,7 +51,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, **_):
+                 region_ids=None, with_plan=False, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -83,6 +83,8 @@ class DeliveryChart:
             region_ids=region_ids,
         )
 
+        self.with_plan = with_plan
+
         if additional_chart is None:
             additional_chart = bool(dimension)
         self.additional_chart = additional_chart
@@ -113,15 +115,17 @@ class DeliveryChart:
                     **chart_type_kwargs
                 )
             ]
-            planned_data = self._get_planned_data()
-            if planned_data is not None:
-                charts.append(dict(
-                    id=TrendId.PLANNED,
-                    title="",
-                    data=[planned_data],
-                    additional_chart=False,
-                    additional_chart_type="bar"
-                ))
+
+            if self.with_plan:
+                planned_data = self._get_planned_data()
+                if planned_data is not None:
+                    charts.append(dict(
+                        id=TrendId.PLANNED,
+                        title="",
+                        data=[planned_data],
+                        additional_chart=False,
+                        additional_chart_type="bar"
+                    ))
 
         return charts
 
