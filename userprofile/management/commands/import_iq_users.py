@@ -66,8 +66,6 @@ class Command(BaseCommand):
                     for field in ["is_superuser",
                                   "is_staff",
                                   "is_active",
-                                  "is_verified",
-                                  "is_influencer",
                                   "is_tos_signed",
                                   "is_comparison_tool_available",
                                   "is_password_generated",
@@ -98,8 +96,6 @@ class Command(BaseCommand):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
                 logger.info("CHF account found:" + user.email)
-                user.is_verified = True
-                user.is_influencer = True
                 user.is_tos_signed = True
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True

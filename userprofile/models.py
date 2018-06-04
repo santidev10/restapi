@@ -99,8 +99,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     # permission fields
     features_available = models.CharField(max_length=100, default="",
                                           blank=True)
-    is_verified = models.BooleanField(default=False)
-    is_influencer = models.BooleanField(default=False)
     is_tos_signed = models.BooleanField(default=True)
     is_comparison_tool_available = models.BooleanField(default=False)
 
