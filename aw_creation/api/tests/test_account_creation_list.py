@@ -30,7 +30,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "ctr", "ctr_v"
     }
 
-    url = reverse(Namespace.AW_CREATION + ":" + Name.AccountCreation.LIST)
+    url = reverse(Namespace.AW_CREATION + ":" + Name.CreationSetup.ACCOUNT_LIST)
 
     def setUp(self):
         self.user = self.create_test_user()

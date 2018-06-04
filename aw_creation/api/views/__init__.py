@@ -1,1 +1,4 @@
+from .account_creation_details import AccountCreationDetailsApiView
+from .account_creation_setup import AccountCreationSetupApiView
+from .performance_account_details import PerformanceAccountDetailsApiView
 from .views import *

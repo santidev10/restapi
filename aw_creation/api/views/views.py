@@ -33,14 +33,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
-from aw_creation.api.views.performance_account_details import \
-    PerformanceAccountDetailsApiView
-from aw_creation.email_messages import send_tracking_tags_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, \
     TargetingItem, default_languages
-from aw_reporting.adwords_api import create_customer_account, \
-    update_customer_account, handle_aw_api_errors
 from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
@@ -48,7 +43,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     BASE_STATS, GeoTarget, Topic, Audience, \
-    Account, AWConnection, AdGroup, \
+    Account, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
     TopicStatistic, DATE_FORMAT, base_stats_aggregator, campaign_type_str, \
     Campaign, AdGroupStatistic, \
@@ -838,132 +833,6 @@ class AccountCreationListApiView(ListAPIView):
 
         data = AccountCreationSetupSerializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)
-
-
-@demo_view_decorator
-class AccountCreationDetailsApiView(RetrieveAPIView):
-    def get(self, request, *args, **kwargs):
-        pk = kwargs.get("pk")
-        show_conversions = self.request.user.aw_settings.get(
-            UserSettingsKey.SHOW_CONVERSIONS)
-        queryset = AccountCreation.objects.filter(owner=self.request.user)
-        try:
-            item = queryset.get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        data = PerformanceAccountDetailsApiView.get_details_data(item,
-                                                                 show_conversions)
-        return Response(data=data)
-
-
-@demo_view_decorator
-class AccountCreationSetupApiView(RetrieveUpdateAPIView):
-    serializer_class = AccountCreationSetupSerializer
-    permission_classes = (or_permission_classes(
-        user_has_permission("userprofile.settings_my_aw_accounts"),
-        MediaBuyingAddOnPermission),
-    )
-
-    def get_queryset(self):
-        queryset = AccountCreation.objects.filter(owner=self.request.user,
-                                                  is_managed=True)
-        return queryset
-
-    @staticmethod
-    def account_creation(account_creation, mcc_account, connection):
-
-        aw_id = create_customer_account(
-            mcc_account.id, connection.refresh_token,
-            account_creation.name, mcc_account.currency_code,
-            mcc_account.timezone,
-        )
-        # save to db
-        customer = Account.objects.create(
-            id=aw_id,
-            name=account_creation.name,
-            currency_code=mcc_account.currency_code,
-            timezone=mcc_account.timezone,
-        )
-        customer.managers.add(mcc_account)
-        account_creation.account = customer
-        account_creation.save()
-
-        return customer
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        data = request.data
-        # approve rules
-        if "is_approved" in data:
-            if data["is_approved"]:
-                if not instance.account:  # create account
-                    # check dates
-                    today = instance.get_today_date()
-                    for c in instance.campaign_creations.all():
-                        if c.start and c.start < today or c.end and c.end < today:
-                            return Response(status=HTTP_400_BAD_REQUEST,
-                                            data=dict(
-                                                error="The dates cannot be in the past: {}".format(
-                                                    c.name)))
-
-                    mcc_account = Account.user_mcc_objects(
-                        request.user).first()
-                    if mcc_account:
-                        connection = AWConnection.objects.filter(
-                            mcc_permissions__account=mcc_account,
-                            user_relations__user=request.user,
-                        ).first()
-                        _, error = handle_aw_api_errors(self.account_creation,
-                                                        instance, mcc_account,
-                                                        connection)
-                        if error:
-                            return Response(status=HTTP_400_BAD_REQUEST,
-                                            data=dict(error=error))
-                    else:
-                        return Response(status=HTTP_400_BAD_REQUEST,
-                                        data=dict(
-                                            error="You have no connected MCC account"))
-
-                send_tracking_tags_request(request.user, instance)
-
-            elif instance.account:
-                return Response(status=HTTP_400_BAD_REQUEST, data=dict(
-                    error="You cannot disapprove a running account"))
-
-        if "name" in data and data[
-            'name'] != instance.name and instance.account:
-            connections = AWConnection.objects.filter(
-                mcc_permissions__account=instance.account.managers.all(),
-                user_relations__user=request.user,
-            ).values("mcc_permissions__account_id", "refresh_token")
-            if connections:
-                connection = connections[0]
-                _, error = handle_aw_api_errors(
-                    update_customer_account,
-                    connection['mcc_permissions__account_id'],
-                    connection['refresh_token'],
-                    instance.account.id, data['name'],
-                )
-                if error:
-                    return Response(status=HTTP_400_BAD_REQUEST,
-                                    data=dict(error=error))
-
-        serializer = AccountCreationUpdateSerializer(
-            instance, data=request.data, partial=partial
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return self.retrieve(self, request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(
-                                error="You cannot delete approved setups"))
-        AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
-        return Response(status=HTTP_204_NO_CONTENT)
 
 
 @demo_view_decorator
