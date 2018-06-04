@@ -245,15 +245,22 @@ def base_stats_aggregator(prefix=None):
     )
 
 
-def campaign_placement_annotation(*keys):
+def aw_placement_annotation(*keys, prefix=""):
     return dict((
-        (key, F("salesforce_placement__" + key)) for key in keys
+        (key, F(prefix + "salesforce_placement__" + key)) for key in keys
     ))
 
 
-client_cost_required_annotation = campaign_placement_annotation(
-    "goal_type_id", "total_cost", "ordered_rate", "dynamic_placement",
-    "placement_type", "tech_fee"
+CLIENT_COST_REQUIRED_FIELDS = ("goal_type_id", "total_cost", "ordered_rate",
+                               "dynamic_placement", "placement_type",
+                               "tech_fee")
+
+client_cost_campaign_required_annotation = aw_placement_annotation(
+    *CLIENT_COST_REQUIRED_FIELDS, prefix=""
+)
+
+client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
+    *CLIENT_COST_REQUIRED_FIELDS, prefix="ad_group__campaign__"
 )
 
 # fixme: deprecated

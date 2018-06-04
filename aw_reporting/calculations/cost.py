@@ -25,3 +25,4 @@ def get_client_cost(goal_type_id, dynamic_placement, placement_type,
     norm_rate = ordered_rate / 1000. if goal_type_id == SalesForceGoalType.CPM \
         else ordered_rate
     return norm_rate * units
+

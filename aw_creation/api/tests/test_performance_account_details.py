@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from unittest.mock import patch
 
 import pytz
@@ -11,10 +11,13 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
-    GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation
+    GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation, \
+    SalesForceGoalType, OpPlacement, Opportunity
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
@@ -68,6 +71,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.aw_settings[UserSettingsKey.SHOW_CONVERSIONS] = True
+        self.user.save()
 
     def test_success_get(self):
         AWConnectionToUserRelation.objects.create(
@@ -413,3 +418,153 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["ctr"], ctr)
         self.assertAlmostEqual(response.data["ctr_v"], ctr_v)
+
+    def test_aw_cost(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        costs = (123, 234)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign_1 = Campaign.objects.create(id=1, account=account,
+                                             cost=costs[0],
+                                             salesforce_placement=placement)
+        campaign_2 = Campaign.objects.create(id=2, account=account,
+                                             cost=costs[1],
+                                             salesforce_placement=placement)
+        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign_1,
+                                            cost=costs[0])
+        ad_group_2 = AdGroup.objects.create(id=2, campaign=campaign_2,
+                                            cost=costs[1])
+        AdGroupStatistic.objects.create(date=date(2018, 1, 1),
+                                        ad_group=ad_group_1,
+                                        cost=costs[0],
+                                        average_position=1)
+        AdGroupStatistic.objects.create(date=date(2018, 1, 1),
+                                        ad_group=ad_group_2,
+                                        cost=costs[1],
+                                        average_position=1)
+        expected_cost = sum(costs)
+
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertAlmostEqual(response.data["cost"], expected_cost)
+        self.assertAlmostEqual(response.data["overview"]["delivered_cost"],
+                               expected_cost)
+
+    def test_cost_client_cost(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        opportunity = Opportunity.objects.create()
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_rate=2.)
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_rate=2.)
+        placement_outgoing_fee = OpPlacement.objects.create(
+            id=3, opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE)
+        placement_hard_cost = OpPlacement.objects.create(
+            id=4, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=523)
+        placement_dynamic_budget = OpPlacement.objects.create(
+            id=5, opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+        placement_cpv_rate_and_tech_fee = OpPlacement.objects.create(
+            id=6, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=.2)
+        placement_cpm_rate_and_tech_fee = OpPlacement.objects.create(
+            id=7, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=.3)
+
+        campaigns = (
+            Campaign.objects.create(
+                id=1, account=account,
+                salesforce_placement=placement_cpm, impressions=2323),
+            Campaign.objects.create(
+                id=2, account=account,
+                salesforce_placement=placement_cpv, video_views=321),
+            Campaign.objects.create(
+                id=3, account=account,
+                salesforce_placement=placement_outgoing_fee),
+            Campaign.objects.create(
+                id=4, account=account,
+                salesforce_placement=placement_hard_cost),
+            Campaign.objects.create(
+                id=5, account=account,
+                salesforce_placement=placement_dynamic_budget, cost=412),
+            Campaign.objects.create(
+                id=6, account=account,
+                salesforce_placement=placement_cpv_rate_and_tech_fee,
+                video_views=245, cost=32),
+            Campaign.objects.create(
+                id=7, account=account,
+                salesforce_placement=placement_cpm_rate_and_tech_fee,
+                impressions=632, cost=241)
+        )
+
+        for index, campaign in enumerate(campaigns):
+            ad_group = AdGroup.objects.create(id=index, campaign=campaign)
+            AdGroupStatistic.objects.create(date=date(2018, 1, 1),
+                                            ad_group=ad_group,
+                                            average_position=1,
+                                            cost=campaign.cost,
+                                            impressions=campaign.impressions,
+                                            video_views=campaign.video_views)
+
+        expected_cost = sum(
+            [get_client_cost(
+                goal_type_id=c.salesforce_placement.goal_type_id,
+                dynamic_placement=c.salesforce_placement.dynamic_placement,
+                placement_type=c.salesforce_placement.placement_type,
+                ordered_rate=c.salesforce_placement.ordered_rate,
+                impressions=c.impressions,
+                video_views=c.video_views,
+                aw_cost=c.cost,
+                total_cost=c.salesforce_placement.total_cost,
+                tech_fee=c.salesforce_placement.tech_fee
+            )
+                for c in campaigns]
+        )
+
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertAlmostEqual(response.data["cost"], expected_cost)
+        self.assertAlmostEqual(response.data["overview"]["delivered_cost"],
+                               expected_cost)
