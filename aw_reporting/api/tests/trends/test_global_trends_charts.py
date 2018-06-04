@@ -372,6 +372,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_planned_trend)
+        expected_planned_value = expected_planned_average
 
         filters = dict(
             start_date=start,
@@ -426,6 +427,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         ])
         expected_planned_average = expected_planned_value \
                                    / len(expected_daily_planned_trend)
+        expected_planned_value = expected_planned_average
 
         def expand(item):
             label, value = item["label"], item["value"]
