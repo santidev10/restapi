@@ -200,19 +200,19 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
 
     def proceed_emails(self, segment, emails):
         sender = settings.SENDER_EMAIL_ADDRESS
-        message_from = "{} {}".format(self.request.user.first_name, self.request.user.first_name)
+        message_from = self.request.user.get_full_name()
         exist_emails = segment.shared_with
         host = self.request.get_host()
         subject = "Enterprise > You have been added as collaborator"
-        segment_url = "https://{host}/segments/{segment_type}s/{segment_id}".format(
-            host=host,
-            segment_type=segment.segment_type,
-            segment_id=segment.id
-        )
+        segment_url = "https://{host}/segments/{segment_type}s/{segment_id}"\
+                      .format(host=host,
+                              segment_type=segment.segment_type,
+                              segment_id=segment.id)
         context = dict(
             host=host,
             message_from=message_from,
             segment_url=segment_url,
+            segment_title=segment.title,
         )
         # collect only new emails for current segment
         emails_to_iterate = [e for e in emails if e not in exist_emails]
@@ -220,16 +220,21 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         for email in emails_to_iterate:
             try:
                 user = UserProfile.objects.get(email=email)
-                context['name'] = "{} {}".format(user.first_name, user.last_name)
+                context['name'] = user.get_full_name()
                 to = user.email
-                html_content = render_to_string("new_enterprise_collaborator.html", context)
+                html_content = render_to_string(
+                    "new_enterprise_collaborator.html",
+                    context
+                )
                 self.send_email(html_content, subject, sender, to)
                 # provide access to segments for collaborator
                 user.add_custom_user_group('Segments')
 
             except UserProfile.DoesNotExist:
                 to = email
-                html_content = render_to_string("new_collaborator.html", context)
+                html_content = render_to_string(
+                    "new_collaborator.html",
+                    context)
                 self.send_email(html_content, subject, sender, to)
 
         # update collaborators list
