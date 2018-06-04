@@ -421,6 +421,8 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
 
@@ -434,7 +436,6 @@ class PerformanceAccountDetailsApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 data['overview'] = account.overview
-
                 if pk != DEMO_ACCOUNT_ID:
                     original_data = original_method(view, request, pk=pk, **kwargs).data
                     for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):

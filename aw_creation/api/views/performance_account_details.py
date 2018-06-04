@@ -1,33 +1,33 @@
 from datetime import timedelta, datetime
 
-from django.conf import settings
 from django.db.models import Avg, Value, Case, When, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Min, \
     Max
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     dict_quartiles_to_rates, all_stats_aggregate, \
     VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
     AgeRanges, Devices, \
-    CityStatistic, BASE_STATS, Account, DATE_FORMAT, SalesForceGoalType, \
+    CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, \
     OpPlacement, \
     AdGroupStatistic, \
-    dict_norm_base_stats, dict_add_calculated_stats, ConcatAggregate, \
-    client_cost_ad_group_statistic_required_annotation
+    dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.registry import registry
+from utils.permissions import UserHasCHFPermission
 
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+
     def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
@@ -44,16 +44,11 @@ class PerformanceAccountDetailsApiView(APIView):
     def __obtain_account(self, request, pk):
         filters = {}
         if request.data.get("is_chf") == 1:
-            if self.request.user.is_staff:
-                managed_accounts_ids = Account.objects.get(
-                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                    .managers.values_list("id", flat=True)
-                filters["account__id__in"] = managed_accounts_ids
-            elif self.request.user.has_perm("userprofile.view_dashboard"):
-                user_settings = self.request.user.aw_settings
-                if user_settings.get("global_account_visibility"):
-                    filters["account__id__in"] = \
-                        user_settings.get("visible_accounts")
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -112,27 +107,9 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         if self.request.data.get("is_chf") == 1:
             self.add_chf_performance_data(data)
-            show_client_cost = not registry.user.aw_settings.get(
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-            if show_client_cost:
-                data["delivered_cost"] = self._get_client_cost(fs)
         else:
             self.add_standard_performance_data(data, fs)
         return data
-
-    def _get_client_cost(self, filters):
-        keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
-                           "aw_cost", "dynamic_placement", "placement_type",
-                           "tech_fee", "impressions", "video_views")
-        statistics = AdGroupStatistic.objects.filter(**filters) \
-            .annotate(aw_cost=Sum("cost"),
-                      **client_cost_ad_group_statistic_required_annotation) \
-            .values(*keys_to_extract)
-
-        def map_data(statistic_data):
-            return {key: statistic_data[key] for key in keys_to_extract}
-
-        return sum([get_client_cost(**map_data(data)) for data in statistics])
 
     def add_chf_performance_data(self, data):
         null_fields = (
@@ -145,7 +122,7 @@ class PerformanceAccountDetailsApiView(APIView):
             data[field] = None
         placements_queryset = OpPlacement.objects.filter(
             adwords_campaigns__id__in=
-            self.account_creation.account.campaigns.values_list("id", flat=True)).distinct()
+            self.account_creation.account.campaigns.values("id")).distinct()
         data.update(
             placements_queryset.aggregate(
                 delivered_cost=Sum("adwords_campaigns__cost"),
@@ -155,10 +132,10 @@ class PerformanceAccountDetailsApiView(APIView):
         plan_impressions = 0
         plan_video_views = 0
         for placement in placements_queryset:
-            plan_cost += placement.total_cost or 0
-            plan_impressions += (placement.ordered_units or 0) \
+            plan_cost += placement.total_cost
+            plan_impressions += placement.ordered_units \
                 if placement.goal_type_id == SalesForceGoalType.CPM else 0
-            plan_video_views += (placement.ordered_units or 0) \
+            plan_video_views += placement.ordered_units \
                 if placement.goal_type_id == SalesForceGoalType.CPV else 0
         data.update(
             {"plan_cost": plan_cost,

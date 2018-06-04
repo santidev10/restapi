@@ -25,6 +25,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
 from rest_framework.parsers import FileUploadParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
     HTTP_202_ACCEPTED, \
@@ -51,7 +52,8 @@ from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import IsAuthQueryTokenPermission, \
-    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
+    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
+    UserHasCHFPermission
 from utils.registry import registry
 
 logger = logging.getLogger(__name__)
@@ -544,6 +546,7 @@ class CreationOptionsApiView(APIView):
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),
@@ -626,16 +629,11 @@ class AccountCreationListApiView(ListAPIView):
         filters["owner"] = self.request.user
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
-            if self.request.user.is_staff:
-                managed_accounts_ids = Account.objects.get(
-                    id=settings.CHANNEL_FACTORY_ACCOUNT_ID) \
-                    .managers.values_list("id", flat=True)
-                filters["account__id__in"] = managed_accounts_ids
-            elif self.request.user.has_perm("userprofile.view_dashboard"):
-                user_settings = self.request.user.aw_settings
-                if user_settings.get("global_account_visibility"):
-                    filters["account__id__in"] = user_settings.get(
-                        UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
@@ -1539,6 +1537,8 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         user = registry.user
@@ -1554,22 +1554,28 @@ class PerformanceAccountCampaignsListApiView(APIView):
         return queryset
 
     def get(self, request, pk, **kwargs):
+        filters = {"is_deleted": False}
+        if request.query_params.get("is_chf") == "1":
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            account_creation = AccountCreation.objects.get(pk=pk,
-                                                           is_deleted=False,
-                                                           owner=self.request.user)
+            account_creation = AccountCreation.objects.filter(
+                **filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             campaign_creation_ids = set()
         else:
             campaign_creation_ids = set(
                 account_creation.campaign_creations.filter(
                     is_deleted=False
-                ).values_list("id", flat=True)
-            )
-
+                ).values_list("id", flat=True))
         queryset = self.get_queryset()
-        serializer = CampaignListSerializer(queryset, many=True,
-                                            campaign_creation_ids=campaign_creation_ids)
+        serializer = CampaignListSerializer(
+            queryset, many=True, campaign_creation_ids=campaign_creation_ids)
         return Response(serializer.data)
 
 
@@ -1582,6 +1588,7 @@ class PerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
 
     def get_filters(self):
         data = self.request.data
@@ -1595,17 +1602,23 @@ class PerformanceChartApiView(APIView):
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
             indicator=data.get("indicator", "average_cpv"),
-            dimension=data.get("dimension"),
-        )
+            dimension=data.get("dimension"))
         return filters
 
     def post(self, request, pk, **_):
+        filters = {}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-
         filters = self.get_filters()
         account_ids = []
         if item.account:
@@ -1624,6 +1637,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
 
     def get_filters(self):
         data = self.request.data
@@ -1636,18 +1650,24 @@ class PerformanceChartItemsApiView(APIView):
             if end_date else None,
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"),
-            segmented_by=data.get("segmented"),
-        )
+            segmented_by=data.get("segmented"))
         return filters
 
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get('dimension')
+        filters = {}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-
         filters = self.get_filters()
         accounts = []
         if item.account:
@@ -1655,8 +1675,7 @@ class PerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
-            **filters
-        )
+            **filters)
         items = chart.get_items()
         return Response(data=items)
 
@@ -1670,17 +1689,25 @@ class PerformanceExportApiView(APIView):
 
     {"campaigns": ["1", "2"]}
     """
+    permission_classes = (IsAuthenticated, UserHasCHFPermission)
 
     def post(self, request, pk, **_):
+        filters = {}
+        if request.data.get("is_chf") == 1:
+            filters["account__id__in"] = []
+            user_settings = self.request.user.aw_settings
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+                filters["account__id__in"] =\
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        else:
+            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
         def data_generator():
             return self.get_export_data(item)
-
         return self.stream_response(item.name, data_generator)
 
     file_name = "{title}-analyze-{timestamp}.csv"

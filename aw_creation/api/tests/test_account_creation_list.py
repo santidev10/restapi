@@ -35,6 +35,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
+    def __set_user_with_account(self, account_id):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.aw_settings["visible_accounts"] = [account_id]
+        user.aw_settings["global_account_visibility"] = True
+        user.save()
+
     def test_success_post(self):
         for uid, name in ((1000, "English"), (1003, "Spanish")):
             Language.objects.get_or_create(id=uid, name=name)
@@ -186,6 +193,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account3 = Account.objects.create(id="4", name="")
         AccountCreation.objects.create(
             name="Test", owner=self.user, account=account3)
+        self.__set_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -629,6 +637,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
+        self.__set_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -652,6 +661,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
+        self.__set_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -676,6 +686,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user,
             account=managed_account, is_managed=True)
+        self.__set_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -712,6 +723,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
+        self.__set_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",

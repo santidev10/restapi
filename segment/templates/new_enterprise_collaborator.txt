@@ -1,9 +1,0 @@
-Hello {{name}},
-
-{{message_from}} has invited you to collaborate on a segment in Enterprise:
-
-{{segment_url}}
-
-Kind Regards,
-
-Channel Factory Team
