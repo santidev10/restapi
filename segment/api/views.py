@@ -200,8 +200,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
 
     def proceed_emails(self, segment, emails):
         sender = settings.SENDER_EMAIL_ADDRESS
-        message_from = "{} {}".format(self.request.user.first_name,
-                                      self.request.user.last_name)
+        message_from = self.request.user.get_full_name()
         exist_emails = segment.shared_with
         host = self.request.get_host()
         subject = "Enterprise > You have been added as collaborator"
