@@ -837,8 +837,6 @@ class DemoAccount(BaseDemo):
             ctr_v_bottom=self.ctr_v_bottom,
             average_cpm=self.average_cpm,
             average_cpv=self.average_cpv,
-            plan_cpm=self.plan_cpm,
-            plan_cpv=self.plan_cpv,
             average_cpv_top=self.average_cpv_top,
             average_cpv_bottom=self.average_cpv_bottom,
             video_view_rate=self.video_view_rate,
