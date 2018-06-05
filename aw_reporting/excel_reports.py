@@ -295,7 +295,7 @@ class AnalyzeWeeklyReport:
         for i in campaign_data:
             i['name'] = i['ad_group__campaign__name']
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return campaign_data
 
@@ -305,7 +305,7 @@ class AnalyzeWeeklyReport:
             **all_stats_aggregate
         )
         dict_norm_base_stats(total_data)
-        dict_calculate_stats(total_data)
+        dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
         return total_data
 
@@ -385,7 +385,7 @@ class AnalyzeWeeklyReport:
         for i in campaign_data:
             i['name'] = i['ad_group__name']
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return campaign_data
 
@@ -434,7 +434,7 @@ class AnalyzeWeeklyReport:
         for i in interest_data:
             i['name'] = i['audience__name']
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return interest_data
 
@@ -469,7 +469,7 @@ class AnalyzeWeeklyReport:
         for i in topic_data:
             i['name'] = i['topic__name']
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return topic_data
 
@@ -505,7 +505,7 @@ class AnalyzeWeeklyReport:
         for i in keyword_data:
             i['name'] = i['keyword']
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return keyword_data
 
@@ -540,7 +540,7 @@ class AnalyzeWeeklyReport:
         for i in device_data:
             i['name'] = Devices[i['device_id']]
             dict_norm_base_stats(i)
-            dict_calculate_stats(i)
+            dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)
         return device_data
 

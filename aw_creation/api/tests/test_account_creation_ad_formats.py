@@ -11,7 +11,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
 
 
-class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
+class AdCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()

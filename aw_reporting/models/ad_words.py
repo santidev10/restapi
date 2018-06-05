@@ -3,7 +3,7 @@ from functools import wraps
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Min, Sum, Case, When, IntegerField
+from django.db.models import Min, Sum, Case, When, IntegerField, F
 from django.db.models.aggregates import Aggregate
 
 from aw_reporting.models.base import BaseModel
@@ -148,35 +148,60 @@ def multiply_percent(fn):
 
 
 CALCULATED_STATS = {
-    'video_view_rate': {
-        'dependencies': ('video_views', 'video_impressions'),
-        'receipt': multiply_percent(get_video_view_rate),
+    "video_view_rate": {
+        "args": ("video_views", "video_impressions"),
+        "receipt": multiply_percent(get_video_view_rate),
     },
-    'ctr': {
-        'dependencies': ('clicks', 'impressions'),
-        'receipt': multiply_percent(get_ctr),
+    "ctr": {
+        "args": ("clicks", "impressions"),
+        "receipt": multiply_percent(get_ctr),
     },
-    'ctr_v': {
-        'dependencies': ("video_clicks", "video_views"),
-        'receipt': multiply_percent(get_ctr_v),
+    "ctr_v": {
+        "args": ("video_clicks", "video_views"),
+        "receipt": multiply_percent(get_ctr_v),
     },
-    'average_cpv': {
-        'dependencies': ('cost', 'video_views'),
-        'receipt': get_average_cpv,
+    "average_cpv": {
+        "args": ("cost", "video_views"),
+        "receipt": get_average_cpv,
     },
-    'average_cpm': {
-        'dependencies': ('cost', 'impressions'),
-        'receipt': get_average_cpm,
+    "average_cpm": {
+        "args": ("cost", "impressions"),
+        "receipt": get_average_cpm,
     },
+    # "client_cost": {
+    #     "kwargs": ("impressions", "video_views", "goal_type_id",
+    #                "placement_type", "ordered_rate", "total_cost", "tech_fee",
+    #                "dynamic_placement"),
+    #     "kwargs_map": (
+    #         ("cost", "aw_cost"),
+    #     ),
+    #     "receipt": get_client_cost,
+    # }
 }
 
 
 def dict_add_calculated_stats(data):
     for n, i in CALCULATED_STATS.items():
-        dep = i['dependencies']
+        args_names = i.get('args', tuple())
+        args = [data.get(d) for d in args_names]
+
+        kwargs_names = i.get('kwargs', tuple())
+        kwargs_map = i.get('kwargs_map', tuple())
         rec = i['receipt']
-        args = [data.get(d) for d in dep]
-        data[n] = None if None in args else rec(*args)
+
+        kwargs = dict(
+            tuple((
+                (key, data.get(key)) for key in kwargs_names
+            ))
+            + tuple((
+                (fn_key, data.get(data_key))
+                for data_key, fn_key in kwargs_map
+            ))
+        )
+        # kwargs = dict(((fn_key, data.get(data_key))
+        #                for data_key, fn_key in kwargs_map))
+
+        data[n] = None if None in args else rec(*args, **kwargs)
 
 
 def dict_quartiles_to_rates(data):
@@ -220,6 +245,24 @@ def base_stats_aggregator(prefix=None):
     )
 
 
+def aw_placement_annotation(*keys, prefix=""):
+    return dict((
+        (key, F(prefix + "salesforce_placement__" + key)) for key in keys
+    ))
+
+
+CLIENT_COST_REQUIRED_FIELDS = ("goal_type_id", "total_cost", "ordered_rate",
+                               "dynamic_placement", "placement_type",
+                               "tech_fee")
+
+client_cost_campaign_required_annotation = aw_placement_annotation(
+    *CLIENT_COST_REQUIRED_FIELDS, prefix=""
+)
+
+client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
+    *CLIENT_COST_REQUIRED_FIELDS, prefix="ad_group__campaign__"
+)
+
 # fixme: deprecated
 base_stats_aggregate = base_stats_aggregator()
 
@@ -233,12 +276,6 @@ def dict_norm_base_stats(data):
         if k.startswith("sum_"):
             data[k[4:]] = v
             del data[k]
-
-
-def dict_calculate_stats(data):
-    for n, i in CALCULATED_STATS.items():
-        rec = i['receipt']
-        data[n] = rec(**data)
 
 
 class ConcatAggregate(Aggregate):
@@ -376,7 +413,7 @@ class BaseStatisticModel(BaseModel):
     def __getattr__(self, name):
         if name in CALCULATED_STATS:
             data = CALCULATED_STATS[name]
-            dependencies = data['dependencies']
+            dependencies = data['args']
             receipt = data['receipt']
             return receipt(
                 *[getattr(self, stat_name)

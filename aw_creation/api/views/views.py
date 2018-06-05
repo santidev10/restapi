@@ -3,8 +3,8 @@ import calendar
 import csv
 import itertools
 import re
-from collections import OrderedDict
-from datetime import timedelta, datetime
+from collections import OrderedDict, defaultdict
+from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 
@@ -14,8 +14,9 @@ from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Avg, Value, Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, FloatField as AggrFloatField
+from django.db.models import Value, Case, When, Q, ExpressionWrapper, F, \
+    IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
+    Min, Max
 from django.db.models.functions import Coalesce
 from django.http import StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import get_object_or_404
@@ -33,29 +34,23 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
-from aw_creation.email_messages import send_tracking_tags_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, \
     TargetingItem, default_languages
-from aw_reporting.adwords_api import create_customer_account, \
-    update_customer_account, handle_aw_api_errors
 from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
-from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
-    dict_quartiles_to_rates, all_stats_aggregate, \
-    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
-    AgeRanges, Devices, \
-    CityStatistic, BASE_STATS, GeoTarget, Topic, Audience, \
-    Account, AWConnection, AdGroup, \
+from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
+    BASE_STATS, GeoTarget, Topic, Audience, \
+    Account, AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
-    base_stats_aggregator, campaign_type_str
+    TopicStatistic, DATE_FORMAT, base_stats_aggregator, campaign_type_str, \
+    Campaign, AdGroupStatistic, \
+    dict_norm_base_stats, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.datetime import now_in_default_tz
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
     UserHasCHFPermission
@@ -428,10 +423,6 @@ class TargetingItemsSearchApiView(APIView):
         return items
 
 
-class OptimizationAccountListPaginator(CustomPageNumberPaginator):
-    page_size = 20
-
-
 class CreationOptionsApiView(APIView):
     @staticmethod
     def get(request, **k):
@@ -545,421 +536,6 @@ class CreationOptionsApiView(APIView):
             ),
         )
         return Response(data=options)
-
-
-@demo_view_decorator
-class AccountCreationListApiView(ListAPIView):
-    serializer_class = AccountCreationListSerializer
-    pagination_class = OptimizationAccountListPaginator
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
-    annotate_sorts = dict(
-        impressions=(None, Sum("account__campaigns__impressions")),
-        video_views=(None, Sum("account__campaigns__video_views")),
-        video_impressions=(None, Sum(Case(
-            When(
-                account__campaigns__video_views__gt=0,
-                then="account__campaigns__impressions",
-            ),
-            output_field=AggrIntegerField()
-        ))),
-        video_clicks=(None, Sum(Case(
-            When(
-                account__campaigns__video_views__gt=0,
-                then="account__campaigns__clicks",
-            ),
-            output_field=AggrIntegerField()
-        ))),
-        clicks=(None, Sum("account__campaigns__clicks")),
-        cost=(None, Sum("account__campaigns__cost")),
-        video_view_rate=(
-            ('video_views', 'video_impressions'), ExpressionWrapper(
-                Case(
-                    When(
-                        video_views__isnull=False,
-                        video_impressions__gt=0,
-                        then=F("video_views") * 1.0 / F("video_impressions"),
-                    ),
-                    output_field=AggrFloatField()
-                ),
-                output_field=AggrFloatField()
-            )),
-        ctr_v=(("video_clicks", "video_views"), ExpressionWrapper(
-            Case(
-                When(
-                    video_clicks__isnull=False,
-                    video_views__gt=0,
-                    then=F("video_clicks") * 1.0 / F("video_views"),
-                ),
-                output_field=AggrFloatField()
-            ),
-            output_field=AggrFloatField()
-        )),
-        name=(
-            None,
-            Case(
-                When(
-                    is_managed=True,
-                    then=F("name")
-                ),
-                default=F("account__name"),
-            )
-        ),
-    )
-
-    def get(self, request, *args, **kwargs):
-        # import "read only" accounts:
-        # user has access to them, but they are not connected to his account creations
-        read_accounts = Account.user_objects(self.request.user).filter(
-            can_manage_clients=False,
-        ).exclude(
-            account_creations__owner=request.user
-        ).values("id", "name")
-        bulk_create = [
-            AccountCreation(
-                account_id=i['id'],
-                name="",
-                owner=request.user,
-                is_managed=False,
-            )
-            for i in read_accounts
-        ]
-        if bulk_create:
-            AccountCreation.objects.bulk_create(bulk_create)
-
-        response = super(AccountCreationListApiView, self).get(
-            request, *args, **kwargs)
-        return response
-
-    def get_queryset(self, **filters):
-        filters["owner"] = self.request.user
-        filters["is_deleted"] = False
-        if self.request.query_params.get("is_chf") == "1":
-            filters["account__id__in"] = []
-            user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] =\
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        queryset = AccountCreation.objects.filter(**filters)
-        sort_by = self.request.query_params.get("sort_by")
-        if sort_by in self.annotate_sorts:
-            dependencies, annotate = self.annotate_sorts[sort_by]
-            if dependencies:
-                queryset = queryset.annotate(
-                    **{d: self.annotate_sorts[d][1] for d in dependencies})
-            if sort_by == "name":
-                sort_by = "sort_by"
-            else:
-                annotate = Coalesce(annotate, 0)
-                sort_by = "-sort_by"
-            queryset = queryset.annotate(sort_by=annotate)
-        else:
-            sort_by = "-created_at"
-        return queryset.order_by("is_ended", sort_by)
-
-    def filter_queryset(self, queryset):
-        filters = self.request.query_params
-
-        search = filters.get("search")
-        if search:
-            queryset = queryset.filter(Q(name__icontains=search) |
-                                       (Q(is_managed=False) & Q(
-                                           account__name__icontains=search)))
-
-        min_campaigns_count = filters.get("min_campaigns_count")
-        max_campaigns_count = filters.get("max_campaigns_count")
-        if min_campaigns_count or max_campaigns_count:
-            queryset = queryset.annotate(
-                campaign_creations_count=Count("campaign_creations",
-                                               distinct=True))
-
-            queryset = queryset.annotate(campaigns_count=Case(
-                When(
-                    campaign_creations_count=0,
-                    then=Count("account__campaigns", distinct=True),
-                ),
-                default="campaign_creations_count",
-                output_field=AggrIntegerField(),
-            ),
-            )
-
-            if min_campaigns_count:
-                queryset = queryset.filter(
-                    campaigns_count__gte=min_campaigns_count)
-            if max_campaigns_count:
-                queryset = queryset.filter(
-                    campaigns_count__lte=max_campaigns_count)
-
-        min_start = filters.get("min_start")
-        max_start = filters.get("max_start")
-        if min_start or max_start:
-            queryset = queryset.annotate(
-                start=Coalesce(Min("campaign_creations__start"),
-                               Min("account__campaigns__start_date")))
-            if min_start:
-                queryset = queryset.filter(start__gte=min_start)
-            if max_start:
-                queryset = queryset.filter(start__lte=max_start)
-
-        min_end = filters.get("min_end")
-        max_end = filters.get("max_end")
-        if min_end or max_end:
-            queryset = queryset.annotate(
-                end=Coalesce(Max("campaign_creations__end"),
-                             Max("account__campaigns__end_date")))
-            if min_end:
-                queryset = queryset.filter(end__gte=min_end)
-            if max_end:
-                queryset = queryset.filter(end__lte=max_end)
-        status = filters.get("status")
-        if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True, is_managed=True)
-            elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_managed=True,
-                                           is_ended=False)
-            elif status == "Running":
-                running_filter = Q(sync_at__isnull=False, is_managed=True,
-                                   is_paused=False, is_ended=False) | \
-                                 Q(is_managed=False)
-                queryset = queryset.filter(running_filter)
-            elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
-            elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
-
-        if "from_aw" in filters:
-            from_aw = filters.get('from_aw') == '1'
-            queryset = queryset.filter(is_managed=not from_aw)
-
-        annotates = {}
-        second_annotates = {}
-        having = {}
-        for metric in (
-                "impressions", "video_views", "clicks", "cost",
-                "video_view_rate",
-                "ctr_v"):
-            for is_max, option in enumerate(("min", "max")):
-                filter_value = filters.get("{}_{}".format(option, metric))
-                if filter_value:
-                    if metric in BASE_STATS:
-                        annotate_key = "sum_{}".format(metric)
-                        annotates[annotate_key] = Sum(
-                            "account__campaigns__{}".format(metric))
-                        having["{}__{}".format(
-                            annotate_key, "lte" if is_max else "gte")
-                        ] = filter_value
-                    elif metric == "video_view_rate":
-                        annotates['video_impressions'] = Sum(
-                            Case(
-                                When(
-                                    account__campaigns__video_views__gt=0,
-                                    then="account__campaigns__impressions",
-                                ),
-                                output_field=AggrIntegerField()
-                            )
-                        )
-                        annotates['sum_video_views'] = Sum(
-                            "account__campaigns__video_views")
-                        second_annotates[metric] = Case(
-                            When(
-                                sum_video_views__isnull=False,
-                                video_impressions__gt=0,
-                                then=F("sum_video_views") * 100. / F(
-                                    "video_impressions"),
-                            ),
-                            output_field=AggrFloatField()
-                        )
-                        having["{}__{}".format(
-                            metric, "lte" if is_max else "gte")] = filter_value
-                    elif metric == "ctr_v":
-                        annotates['video_clicks'] = Sum(
-                            Case(
-                                When(
-                                    account__campaigns__video_views__gt=0,
-                                    then="account__campaigns__clicks",
-                                ),
-                                output_field=AggrIntegerField()
-                            )
-                        )
-                        annotates['sum_video_views'] = Sum(
-                            "account__campaigns__video_views")
-                        second_annotates[metric] = Case(
-                            When(
-                                video_clicks__isnull=False,
-                                sum_video_views__gt=0,
-                                then=F("video_clicks") * 100. / F(
-                                    "sum_video_views"),
-                            ),
-                            output_field=AggrFloatField()
-                        )
-                        having["{}__{}".format(
-                            metric, "lte" if is_max else "gte")] = filter_value
-        if annotates:
-            queryset = queryset.annotate(**annotates)
-        if second_annotates:
-            queryset = queryset.annotate(**second_annotates)
-        if having:
-            queryset = queryset.filter(**having)
-
-        return queryset
-
-    def post(self, *a, **_):
-        account_count = AccountCreation.objects.filter(
-            owner=self.request.user).count()
-
-        with transaction.atomic():
-            account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1),
-                owner=self.request.user,
-            )
-            campaign_creation = CampaignCreation.objects.create(
-                name="Campaign 1",
-                account_creation=account_creation,
-            )
-            ad_group_creation = AdGroupCreation.objects.create(
-                name="AdGroup 1",
-                campaign_creation=campaign_creation,
-            )
-            AdCreation.objects.create(
-                name="Ad 1",
-                ad_group_creation=ad_group_creation,
-            )
-            AccountCreation.objects.filter(id=account_creation.id).update(
-                is_deleted=True)  # do not show it in the list
-
-        for language in default_languages():
-            campaign_creation.languages.add(language)
-
-        data = AccountCreationSetupSerializer(account_creation).data
-        return Response(status=HTTP_202_ACCEPTED, data=data)
-
-
-@demo_view_decorator
-class AccountCreationDetailsApiView(RetrieveAPIView):
-    def get(self, request, *args, **kwargs):
-        pk = kwargs.get("pk")
-        show_conversions = self.request.user.aw_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
-        queryset = AccountCreation.objects.filter(owner=self.request.user)
-        try:
-            item = queryset.get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        data = PerformanceAccountDetailsApiView.get_details_data(item, show_conversions)
-        return Response(data=data)
-
-
-@demo_view_decorator
-class AccountCreationSetupApiView(RetrieveUpdateAPIView):
-    serializer_class = AccountCreationSetupSerializer
-    permission_classes = (or_permission_classes(
-        user_has_permission("userprofile.settings_my_aw_accounts"),
-        MediaBuyingAddOnPermission),
-    )
-
-    def get_queryset(self):
-        queryset = AccountCreation.objects.filter(owner=self.request.user,
-                                                  is_managed=True)
-        return queryset
-
-    @staticmethod
-    def account_creation(account_creation, mcc_account, connection):
-
-        aw_id = create_customer_account(
-            mcc_account.id, connection.refresh_token,
-            account_creation.name, mcc_account.currency_code,
-            mcc_account.timezone,
-        )
-        # save to db
-        customer = Account.objects.create(
-            id=aw_id,
-            name=account_creation.name,
-            currency_code=mcc_account.currency_code,
-            timezone=mcc_account.timezone,
-        )
-        customer.managers.add(mcc_account)
-        account_creation.account = customer
-        account_creation.save()
-
-        return customer
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        data = request.data
-        # approve rules
-        if "is_approved" in data:
-            if data["is_approved"]:
-                if not instance.account:  # create account
-                    # check dates
-                    today = instance.get_today_date()
-                    for c in instance.campaign_creations.all():
-                        if c.start and c.start < today or c.end and c.end < today:
-                            return Response(status=HTTP_400_BAD_REQUEST,
-                                            data=dict(
-                                                error="The dates cannot be in the past: {}".format(
-                                                    c.name)))
-
-                    mcc_account = Account.user_mcc_objects(
-                        request.user).first()
-                    if mcc_account:
-                        connection = AWConnection.objects.filter(
-                            mcc_permissions__account=mcc_account,
-                            user_relations__user=request.user,
-                        ).first()
-                        _, error = handle_aw_api_errors(self.account_creation,
-                                                        instance, mcc_account,
-                                                        connection)
-                        if error:
-                            return Response(status=HTTP_400_BAD_REQUEST,
-                                            data=dict(error=error))
-                    else:
-                        return Response(status=HTTP_400_BAD_REQUEST,
-                                        data=dict(
-                                            error="You have no connected MCC account"))
-
-                send_tracking_tags_request(request.user, instance)
-
-            elif instance.account:
-                return Response(status=HTTP_400_BAD_REQUEST, data=dict(
-                    error="You cannot disapprove a running account"))
-
-        if "name" in data and data[
-            'name'] != instance.name and instance.account:
-            connections = AWConnection.objects.filter(
-                mcc_permissions__account=instance.account.managers.all(),
-                user_relations__user=request.user,
-            ).values("mcc_permissions__account_id", "refresh_token")
-            if connections:
-                connection = connections[0]
-                _, error = handle_aw_api_errors(
-                    update_customer_account,
-                    connection['mcc_permissions__account_id'],
-                    connection['refresh_token'],
-                    instance.account.id, data['name'],
-                )
-                if error:
-                    return Response(status=HTTP_400_BAD_REQUEST,
-                                    data=dict(error=error))
-
-        serializer = AccountCreationUpdateSerializer(
-            instance, data=request.data, partial=partial
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return self.retrieve(self, request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.account is not None:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data=dict(
-                                error="You cannot delete approved setups"))
-        AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
-        return Response(status=HTTP_204_NO_CONTENT)
 
 
 @demo_view_decorator
@@ -1709,311 +1285,6 @@ class PerformanceAccountCampaignsListApiView(APIView):
 
 
 @demo_view_decorator
-class PerformanceAccountDetailsApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
-
-    def get_filters(self):
-        data = self.request.data
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        filters = dict(
-            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
-            if start_date else None,
-            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
-            if end_date else None,
-            campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"))
-        return filters
-
-    def __obtain_account(self, request, pk):
-        filters = {}
-        if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
-            user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
-        try:
-            self.account_creation = AccountCreation.objects.filter(
-                **filters).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            self.account_creation = None
-
-    def post(self, request, pk, **_):
-        self.__obtain_account(request, pk)
-        if self.account_creation is None:
-            return Response(status=HTTP_404_NOT_FOUND)
-        data = AccountCreationListSerializer(
-            self.account_creation, context={"request": request}).data
-        show_conversions = self.request.user.aw_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
-        data["overview"] = self.get_overview_data(self.account_creation)
-        data["details"] = self.get_details_data(self.account_creation, show_conversions)
-        return Response(data=data)
-
-    def get_overview_data(self, account_creation):
-        filters = self.get_filters()
-        fs = dict(ad_group__campaign__account=account_creation.account)
-        if filters['campaigns']:
-            fs["ad_group__campaign__id__in"] = filters['campaigns']
-        if filters['ad_groups']:
-            fs["ad_group__id__in"] = filters['ad_groups']
-        if filters['start_date']:
-            fs["date__gte"] = filters['start_date']
-        if filters['end_date']:
-            fs["date__lte"] = filters['end_date']
-        data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate)
-        dict_norm_base_stats(data)
-        dict_calculate_stats(data)
-        dict_quartiles_to_rates(data)
-        del data['video_impressions']
-        # 'age', 'gender', 'device', 'location'
-        annotate = dict(v=Sum('cost'))
-        gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
-                  gender]
-        age = AgeRangeStatistic.objects.filter(**fs).values(
-            "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
-               age]
-        device = AdGroupStatistic.objects.filter(**fs).values(
-            "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
-                  device]
-        location = CityStatistic.objects.filter(**fs).values(
-            "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
-        location = [dict(name=i['city__name'], value=i['v']) for i in location]
-        data.update(gender=gender, age=age, device=device, location=location)
-        if self.request.data.get("is_chf") == 1:
-            self.add_chf_performance_data(data)
-        else:
-            self.add_standard_performance_data(data, fs)
-        return data
-
-    def add_chf_performance_data(self, data):
-        null_fields = (
-            "impressions_this_week", "cost_last_week", "impressions_last_week",
-            "cost_this_week", "video_views_this_week", "clicks_this_week",
-            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
-            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
-            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
-        for field in null_fields:
-            data[field] = None
-        placements_queryset = OpPlacement.objects.filter(
-            adwords_campaigns__id__in=
-            self.account_creation.account.campaigns.values("id")).distinct()
-        data.update(
-            placements_queryset.aggregate(
-                delivered_cost=Sum("adwords_campaigns__cost"),
-                delivered_impressions=Sum("adwords_campaigns__impressions"),
-                delivered_video_views=Sum("adwords_campaigns__video_views")))
-        plan_cost = 0
-        plan_impressions = 0
-        plan_video_views = 0
-        for placement in placements_queryset:
-            plan_cost += placement.total_cost
-            plan_impressions += placement.ordered_units \
-                if placement.goal_type_id == SalesForceGoalType.CPM else 0
-            plan_video_views += placement.ordered_units \
-                if placement.goal_type_id == SalesForceGoalType.CPV else 0
-        data.update(
-            {"plan_cost": plan_cost,
-             "plan_impressions": plan_impressions,
-             "plan_video_views": plan_video_views})
-
-    def add_standard_performance_data(self, data, filters):
-        null_fields = (
-            "delivered_cost", "plan_cost", "delivered_impressions",
-            "plan_impressions", "delivered_video_views", "plan_video_views")
-        for field in null_fields:
-            data[field] = None
-        # this and last week base stats
-        week_end = now_in_default_tz().date() - timedelta(days=1)
-        week_start = week_end - timedelta(days=6)
-        prev_week_end = week_start - timedelta(days=1)
-        prev_week_start = prev_week_end - timedelta(days=6)
-        annotate = {
-            "{}_{}_week".format(s, k): Sum(
-                Case(
-                    When(
-                        date__gte=sd,
-                        date__lte=ed,
-                        then=s,
-                    ),
-                    output_field=AggrIntegerField()
-                )
-            )
-            for k, sd, ed in (("this", week_start, week_end),
-                              ("last", prev_week_start, prev_week_end))
-            for s in BASE_STATS}
-        weeks_stats = AdGroupStatistic.objects.filter(**filters).aggregate(
-            **annotate)
-        data.update(weeks_stats)
-        # top and bottom rates
-        annotate = dict(
-            average_cpv=ExpressionWrapper(
-                Case(
-                    When(
-                        cost__sum__isnull=False,
-                        video_views__sum__gt=0,
-                        then=F("cost__sum") / F("video_views__sum"),
-                    ),
-                    output_field=AggrFloatField()
-                ),
-                output_field=AggrFloatField()
-            ),
-            ctr=ExpressionWrapper(
-                Case(
-                    When(
-                        clicks__sum__isnull=False,
-                        impressions__sum__gt=0,
-                        then=F("clicks__sum") * Value(100.0) / F(
-                            "impressions__sum"),
-                    ),
-                    output_field=AggrFloatField()
-                ),
-                output_field=AggrFloatField()
-            ),
-            ctr_v=ExpressionWrapper(
-                Case(
-                    When(
-                        clicks__sum__isnull=False,
-                        video_views__sum__gt=0,
-                        then=F("clicks__sum") * Value(100.0) / F(
-                            "video_views__sum"),
-                    ),
-                    output_field=AggrFloatField()
-                ),
-                output_field=AggrFloatField()
-            ),
-            video_view_rate=ExpressionWrapper(
-                Case(
-                    When(
-                        video_views__sum__isnull=False,
-                        impressions__sum__gt=0,
-                        then=F("video_views__sum") * Value(100.0) / F(
-                            "impressions__sum"),
-                    ),
-                    output_field=AggrFloatField()
-                ),
-                output_field=AggrFloatField()
-            ),
-        )
-        fields = tuple(annotate.keys())
-        top_bottom_stats = AdGroupStatistic.objects.filter(**filters).values(
-            "date").order_by("date").annotate(
-            *[Sum(s) for s in BASE_STATS]
-        ).annotate(**annotate).aggregate(
-            **{"{}_{}".format(s, n): a(s)
-               for s in fields
-               for n, a in (("top", Max), ("bottom", Min))})
-        data.update(top_bottom_stats)
-
-    @staticmethod
-    def get_details_data(account_creation, show_conversions):
-        if show_conversions:
-            ads_and_placements_stats = {s: Sum(s) for s in CONVERSIONS + QUARTILE_STATS}
-        else:
-            ads_and_placements_stats = {s: Sum(s) for s in QUARTILE_STATS}
-
-        fs = dict(ad_group__campaign__account=account_creation.account)
-        data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            ad_network=ConcatAggregate('ad_network', distinct=True),
-            average_position=Avg(
-                Case(
-                    When(
-                        average_position__gt=0,
-                        then=F('average_position'),
-                    ),
-                    output_field=AggrFloatField(),
-                )
-            ),
-            impressions=Sum("impressions"),
-            **ads_and_placements_stats
-        )
-        dict_quartiles_to_rates(data)
-        del data['impressions']
-
-        annotate = dict(v=Sum('cost'))
-        creative = VideoCreativeStatistic.objects.filter(**fs).values(
-            "creative_id").annotate(**annotate).order_by('v')[:3]
-        if creative:
-            ids = [i['creative_id'] for i in creative]
-            creative = []
-            try:
-                channel_info = SingleDatabaseApiConnector().get_videos_base_info(
-                    ids)
-            except SingleDatabaseApiConnectorException as e:
-                logger.critical(e)
-            else:
-                video_info = {i['id']: i for i in channel_info}
-                for video_id in ids:
-                    info = video_info.get(video_id, {})
-                    creative.append(
-                        dict(
-                            id=video_id,
-                            name=info.get("title"),
-                            thumbnail=info.get('thumbnail_image_url'),
-                        )
-                    )
-        data.update(creative=creative)
-
-        # second section
-        gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
-                  gender]
-
-        age = AgeRangeStatistic.objects.filter(**fs).values(
-            "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
-               age]
-
-        device = AdGroupStatistic.objects.filter(**fs).values(
-            "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
-                  device]
-        data.update(gender=gender, age=age, device=device)
-
-        # third section
-        charts = []
-        stats = AdGroupStatistic.objects.filter(
-            **fs
-        ).values("date").order_by("date").annotate(
-            views=Sum("video_views"),
-            impressions=Sum("impressions"),
-        )
-        if stats:
-            if any(i['views'] for i in stats):
-                charts.append(
-                    dict(
-                        label='Views',
-                        trend=[
-                            dict(label=i['date'], value=i['views'])
-                            for i in stats
-                        ]
-                    )
-                )
-
-            if any(i['impressions'] for i in stats):
-                charts.append(
-                    dict(
-                        label='Impressions',
-                        trend=[
-                            dict(label=i['date'], value=i['impressions'])
-                            for i in stats
-                        ]
-                    )
-                )
-        data['delivery_trend'] = charts
-
-        return data
-
-
-@demo_view_decorator
 class PerformanceChartApiView(APIView):
     """
     Send filters to get data for charts
@@ -2216,7 +1487,7 @@ class PerformanceExportApiView(APIView):
         )
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)
-        dict_calculate_stats(stats)
+        dict_add_calculated_stats(stats)
         data.update(stats)
 
         yield self.column_names
@@ -2277,19 +1548,6 @@ class PerformanceExportWeeklyReport(APIView):
             datetime.now().date().strftime("%m.%d.%y")
         )
         return response
-
-
-class PerformanceTargetingListAPIView(AccountCreationListApiView):
-    def get_queryset(self, **filters):
-        queryset = super(PerformanceTargetingListAPIView, self).get_queryset(
-            **filters)
-        queryset = queryset.annotate(
-            sum_cost=Sum("account__campaigns__cost"),
-        ).filter(sum_cost__gt=0)
-        return queryset
-
-    def post(self, *a, **_):
-        return Response(status=HTTP_405_METHOD_NOT_ALLOWED)
 
 
 @demo_view_decorator
@@ -2460,7 +1718,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 for k, v in i.items():
                     if k in stat_fields and v:
                         summary[k] += v
-                dict_calculate_stats(i)
+                dict_add_calculated_stats(i)
                 del i['video_impressions']
 
                 # add status field
@@ -2469,7 +1727,7 @@ class PerformanceTargetingReportAPIView(APIView):
                 i["is_negative"] = str(i["item"]["id"]) in \
                                    negative_items[targeting_type][ad_group_id]
 
-            dict_calculate_stats(summary)
+            dict_add_calculated_stats(summary)
             del summary['video_impressions']
             report.update(summary)
 

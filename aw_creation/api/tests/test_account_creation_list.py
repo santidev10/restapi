@@ -7,9 +7,11 @@ from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 from aw_creation.api.urls.names import Name
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DEMO_BRAND, DEMO_COST_METHOD, DEMO_AGENCY
 from aw_reporting.models import *
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
@@ -28,10 +30,17 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "ctr", "ctr_v"
     }
 
-    url = reverse(Namespace.AW_CREATION + ":" + Name.AccountCreation.LIST)
+    url = reverse(Namespace.AW_CREATION + ":" + Name.CreationSetup.ACCOUNT_LIST)
 
     def setUp(self):
         self.user = self.create_test_user()
+
+    def __set_user_with_account(self, account_id):
+        user = self.user
+        user.is_staff = True
+        user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
+        user.aw_settings[UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY] = True
+        user.save()
 
     def test_success_post(self):
         for uid, name in ((1000, "English"), (1003, "Spanish")):
@@ -293,11 +302,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             ("ctr_v", 25, 50, 75, 100),
         )
 
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
         for metric, min1, max1, min2, max2 in test_filters:
             with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher):
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 self.patch_user_settings(**user_settings):
                 response = self.client.get(
                     "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
                         base_url=self.url, metric=metric, min=min1, max=max1)
@@ -311,7 +324,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher):
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 self.patch_user_settings(**user_settings):
                 response = self.client.get(
                     "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
                         base_url=self.url, metric=metric, min=min2, max=max2)
@@ -813,9 +827,108 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertAlmostEqual(acc_data["ctr"], ctr)
         self.assertAlmostEqual(acc_data["ctr_v"], ctr_v)
 
-    def __set_user_with_account(self, account_id):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.aw_settings["visible_accounts"] = [account_id]
-        user.aw_settings["global_account_visibility"] = True
-        user.save()
+    def test_cost_aw_cost(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+        costs = (123, 234)
+        Campaign.objects.create(id=1, account=account, cost=costs[0])
+        Campaign.objects.create(id=2, account=account, cost=costs[1])
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertAlmostEqual(acc_data["cost"], sum(costs))
+
+    def test_cost_client_cost(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+        opportunity = Opportunity.objects.create()
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_rate=2.)
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_rate=2.)
+        placement_outgoing_fee = OpPlacement.objects.create(
+            id=3, opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE)
+        placement_hard_cost = OpPlacement.objects.create(
+            id=4, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=523)
+        placement_dynamic_budget = OpPlacement.objects.create(
+            id=5, opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+        placement_cpv_rate_and_tech_fee = OpPlacement.objects.create(
+            id=6, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=.2)
+        placement_cpm_rate_and_tech_fee = OpPlacement.objects.create(
+            id=7, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=.3)
+
+        campaigns = (
+            Campaign.objects.create(
+                id=1, account=account,
+                salesforce_placement=placement_cpm, impressions=2323),
+            Campaign.objects.create(
+                id=2, account=account,
+                salesforce_placement=placement_cpv, video_views=321),
+            Campaign.objects.create(
+                id=3, account=account,
+                salesforce_placement=placement_outgoing_fee),
+            Campaign.objects.create(
+                id=4, account=account,
+                salesforce_placement=placement_hard_cost),
+            Campaign.objects.create(
+                id=5, account=account,
+                salesforce_placement=placement_dynamic_budget, cost=412),
+            Campaign.objects.create(
+                id=6, account=account,
+                salesforce_placement=placement_cpv_rate_and_tech_fee,
+                video_views=245, cost=32),
+            Campaign.objects.create(
+                id=7, account=account,
+                salesforce_placement=placement_cpm_rate_and_tech_fee,
+                impressions=632, cost=241)
+        )
+
+        client_cost = sum(
+            [get_client_cost(
+                goal_type_id=c.salesforce_placement.goal_type_id,
+                dynamic_placement=c.salesforce_placement.dynamic_placement,
+                placement_type=c.salesforce_placement.placement_type,
+                ordered_rate=c.salesforce_placement.ordered_rate,
+                impressions=c.impressions,
+                video_views=c.video_views,
+                aw_cost=c.cost,
+                total_cost=c.salesforce_placement.total_cost,
+                tech_fee=c.salesforce_placement.tech_fee
+            )
+             for c in campaigns]
+        )
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertAlmostEqual(acc_data["cost"], client_cost)

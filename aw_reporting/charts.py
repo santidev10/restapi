@@ -381,7 +381,7 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
-            dict_calculate_stats(stat)
+            dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
             del stat['video_impressions']
 
@@ -394,7 +394,7 @@ class DeliveryChart:
                 stat
             )
 
-        dict_calculate_stats(response['summary'])
+        dict_add_calculated_stats(response['summary'])
         if 'video_impressions' in response['summary']:
             del response['summary']['video_impressions']
         if average_positions:
@@ -595,7 +595,7 @@ class DeliveryChart:
 
         if indicator in CALCULATED_STATS:
             info = CALCULATED_STATS[indicator]
-            fields = info['dependencies']
+            fields = info['args']
 
         elif indicator in SUM_STATS:
             fields = (indicator,)

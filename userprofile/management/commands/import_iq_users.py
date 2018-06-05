@@ -8,13 +8,14 @@ from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from userprofile.models import UserProfile, DEFAULT_SETTINGS, UserSettingsKey
+from userprofile.models import UserProfile, UserSettingsKey, \
+    get_default_settings
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    DEFAULT_AW_SETTINGS = DEFAULT_SETTINGS
+    DEFAULT_AW_SETTINGS = get_default_settings()
 
     CHF_AW_SETTINGS = {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,

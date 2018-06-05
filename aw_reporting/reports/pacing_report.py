@@ -10,7 +10,7 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
+    dict_add_calculated_stats, Opportunity, Campaign, CampaignStatistic, get_margin
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
@@ -1017,7 +1017,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     yesterday_units = yesterday_views + yesterday_impressions
     sum_today_units = today_goal_views + today_goal_impressions
 
-    dict_calculate_stats(targeting)
+    dict_add_calculated_stats(targeting)
     del targeting['average_cpv'], targeting['average_cpm']
 
     goal_types = set(f["placement__goal_type_id"] for f in flights)

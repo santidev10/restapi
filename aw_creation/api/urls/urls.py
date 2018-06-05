@@ -23,7 +23,7 @@ urlpatterns = [
         name="creation_options"),
     url(r'^account_creation_list/$',
         views.AccountCreationListApiView.as_view(),
-        name=Name.AccountCreation.LIST),
+        name=Name.CreationSetup.ACCOUNT_LIST),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
@@ -31,7 +31,7 @@ urlpatterns = [
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
         views.AccountCreationSetupApiView.as_view(),
-        name="account_creation_setup"),
+        name=Name.CreationSetup.ACCOUNT),
     url(r'^campaign_creation_list_setup/(?P<pk>\w+)/$',
         views.CampaignCreationListSetupApiView.as_view(),
         name="campaign_creation_list_setup"),

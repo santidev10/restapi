@@ -34,17 +34,18 @@ class UserSettingsKey:
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
 
 
-DEFAULT_SETTINGS = {
-    UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-    UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-    UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
-    UserSettingsKey.HIDE_REMARKETING: False,
-    UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-    UserSettingsKey.SHOW_CONVERSIONS: False,
-    UserSettingsKey.VISIBLE_ACCOUNTS: [],
-    UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-    UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
-}
+def get_default_settings():
+    return {
+        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
+        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        UserSettingsKey.HIDE_REMARKETING: False,
+        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+        UserSettingsKey.SHOW_CONVERSIONS: False,
+        UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
+        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+    }
 
 
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
@@ -105,7 +106,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default=DEFAULT_SETTINGS)
+    aw_settings = JSONField(default=get_default_settings)
 
     objects = UserManager()
 
@@ -141,7 +142,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     def get_aw_settings(self):
         settings = self.aw_settings
-        for default_settings_key, default_settings_value in DEFAULT_SETTINGS.items():
+        for default_settings_key, default_settings_value in get_default_settings().items():
             if default_settings_key not in settings:
                 settings[default_settings_key] = default_settings_value
         return self.aw_settings
@@ -184,7 +185,7 @@ class UserRelatedManager(models.Manager.from_queryset(BaseQueryset)):
 
     def __is_account_filter_applicable(self, user: UserProfile):
         user_settings = user.aw_settings \
-            if hasattr(user, "aw_settings") else DEFAULT_SETTINGS
+            if hasattr(user, "aw_settings") else get_default_settings()
         global_visibility = user_settings.get(
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
         return global_visibility
