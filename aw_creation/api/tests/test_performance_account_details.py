@@ -479,6 +479,42 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["overview"]["delivered_cost"],
                                expected_cost)
 
+    def test_aw_cost_sf_linked_only(self):
+        self.user.is_staff = True
+        self.user.save()
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        costs = (123, 234)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Campaign.objects.create(id=1, account=account,
+                                cost=costs[0],
+                                salesforce_placement=placement)
+        Campaign.objects.create(id=2, account=account,
+                                cost=costs[1])
+        expected_cost = sum(costs)
+
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertAlmostEqual(response.data["cost"], expected_cost)
+        self.assertAlmostEqual(response.data["overview"]["delivered_cost"],
+                               expected_cost)
+
     def test_cost_client_cost(self):
         self.user.is_staff = True
         AWConnectionToUserRelation.objects.create(
