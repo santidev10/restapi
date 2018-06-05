@@ -121,7 +121,7 @@ class OpportunityManager(UserRelatedManager):
             .filter(campaign_count__gt=0)
 
 
-class Opportunity(BaseModel):
+class Opportunity(models.Model):
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True)

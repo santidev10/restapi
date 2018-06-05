@@ -14,6 +14,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from aw_reporting.models.base import BaseQueryset
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 from utils.registry import registry
@@ -171,7 +172,7 @@ class UserChannel(Timestampable):
         unique_together = ("channel_id", "user")
 
 
-class UserRelatedManager(models.Manager):
+class UserRelatedManager(models.Manager.from_queryset(BaseQueryset)):
     _account_id_ref = None
 
     def __filter_by_account_ids(self, queryset, account_ids: List[str]):

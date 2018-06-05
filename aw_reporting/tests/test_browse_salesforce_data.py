@@ -7,6 +7,7 @@ from aw_reporting.models import OpPlacement, Flight, Opportunity, Campaign, \
     CampaignStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
     SalesForceGoalType
+from aw_reporting.salesforce import Connection
 from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
@@ -104,3 +105,48 @@ class BrowseSalesforceDataTestCase(APITestCase):
         call_command("browse_salesforce_data", no_get="1", no_update="1")
 
         self.assertEqual(placement.adwords_campaigns.count(), 1)
+
+    def test_success_opportunity_create(self):
+        self.assertEqual(Opportunity.objects.all().count(), 0)
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("Opportunity", [
+            dict(
+                Id="123",
+                Name="",
+                DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c=False,
+                Probability=100,
+                CreatedDate=None,
+                CloseDate=None,
+                Renewal_Approved__c=False,
+                Reason_for_Close_Lost__c=None,
+                Demo_TEST__c=None,
+                Geo_Targeting_Country_State_City__c=None,
+                Targeting_Tactics__c=None,
+                Tags__c=None,
+                Types_of__c=None,
+                APEX_Deal__c=False,
+                Bill_off_3p_Numbers__c=False
+            )
+        ])
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection",
+                   return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        self.assertEqual(Opportunity.objects.all().count(), 1)
+
+
+class MockSalesforceConnection(Connection):
+    def __init__(self):
+        self._storage = dict()
+
+    def add_mocked_items(self, name, items):
+        self._storage[name] = self._storage.get(name, []) + items
+
+    def get_items(self, name, fields, where):
+        for item in self._storage.get(name, []):
+            yield item
+
+    def describe(self, *_):
+        return {
+            "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]}
