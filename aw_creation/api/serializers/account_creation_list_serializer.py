@@ -1,20 +1,23 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Min, Max, Sum, Count
+from django.db.models import Min, Max, Sum, Count, When, Case, FloatField
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
     BooleanField
 
 from aw_creation.models import CampaignCreation, AccountCreation
 from aw_reporting.api.serializers.fields import StatField
+from aw_reporting.api.serializers.fields.parent_dict_value_field import \
+    ParentDictValueField
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import AdGroupStatistic, \
     Campaign, dict_norm_base_stats, \
     ConcatAggregate, VideoCreativeStatistic, Ad, \
     Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, F
+    client_cost_campaign_required_annotation, F, SalesForceGoalType, OpPlacement
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
+from utils.lang import pick_dict
 from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
 
@@ -24,6 +27,25 @@ logger = logging.getLogger(__name__)
 class StruckField(SerializerMethodField):
     def to_representation(self, value):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
+
+
+PLAN_STATS_ANNOTATION = dict(
+    cpv_ordered_units=Sum(Case(
+        When(goal_type_id=SalesForceGoalType.CPV, then=F("ordered_units")),
+        output_field=FloatField())),
+    cpm_ordered_units=Sum(Case(
+        When(goal_type_id=SalesForceGoalType.CPM, then=F("ordered_units")),
+        output_field=FloatField())),
+    cpv_total_cost=Sum(
+        Case(When(goal_type_id=SalesForceGoalType.CPV, then=F("total_cost")))),
+    cpm_total_cost=Sum(
+        Case(When(goal_type_id=SalesForceGoalType.CPM, then=F("total_cost")))),
+)
+
+PLAN_RATES_ANNOTATION = dict(
+    plan_cpm=F("cpm_total_cost") / F("cpm_ordered_units") * 1000,
+    plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
+)
 
 
 class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
@@ -59,6 +81,9 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     average_cpv = StatField()
     average_cpm = StatField()
 
+    plan_cpv = ParentDictValueField("plan_rates")
+    plan_cpm = ParentDictValueField("plan_rates")
+
     ctr = StatField()
     ctr_v = StatField()
 
@@ -72,7 +97,8 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
             "updated_at", "brand", "agency", "from_aw", "cost_method",
-            "average_cpv", "average_cpm", "ctr", "ctr_v")
+            "average_cpv", "average_cpm", "ctr", "ctr_v", "plan_cpm", "plan_cpv"
+        )
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
@@ -81,6 +107,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             "request").query_params.get("is_chf") == "1"
         self.settings = {}
         self.stats = {}
+        self.plan_rates = {}
         self.struck = {}
         self.daily_chart = defaultdict(list)
         if args:
@@ -91,90 +118,13 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             else:
                 ids = [args[0].id]
 
-            settings = CampaignCreation.objects.filter(
-                account_creation_id__in=ids
-            ).values('account_creation_id').order_by(
-                'account_creation_id').annotate(
-                start=Min("start"), end=Max("end"),
-                video_thumbnail=ConcatAggregate(
-                    "ad_group_creations__ad_creations__video_thumbnail",
-                    distinct=True)
-            )
-            self.settings = {s['account_creation_id']: s for s in settings}
+            self.settings = self._get_settings(ids)
+            self.plan_rates = self._get_plan_rates(ids)
+            self.stats = self._get_stats(ids)
+            self.struck = self._get_struck(ids)
+            self.daily_chart = self._get_daily_chart(ids)
+            self.video_ads_data = self._get_video_ads_data(ids)
 
-            show_client_cost = not registry.user.aw_settings.get(
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-
-            campaign_filter = {self.ACCOUNT_ID_KEY + "__in": ids}
-            account_client_cost = dict()
-            if show_client_cost:
-                account_client_cost = self._get_client_cost_by_account(
-                    campaign_filter)
-
-            data = Campaign.objects.filter(**campaign_filter) \
-                .values(self.ACCOUNT_ID_KEY) \
-                .order_by(self.ACCOUNT_ID_KEY) \
-                .annotate(start=Min("start_date"),
-                          end=Max("end_date"),
-                          **base_stats_aggregator())
-            for account_data in data:
-                account_id = account_data[self.ACCOUNT_ID_KEY]
-                dict_norm_base_stats(account_data)
-                dict_add_calculated_stats(account_data)
-
-                if show_client_cost:
-                    account_data["cost"] = account_client_cost[account_id]
-                self.stats[account_id] = account_data
-            annotates = dict(
-                ad_count=Count("account__campaigns__ad_groups__ads",
-                               distinct=True),
-                channel_count=Count(
-                    "account__campaigns__ad_groups__channel_statistics__yt_id",
-                    distinct=True),
-                video_count=Count(
-                    "account__campaigns__ad_groups__managed_video_statistics__yt_id",
-                    distinct=True),
-                interest_count=Count(
-                    "account__campaigns__ad_groups__audiences__audience_id",
-                    distinct=True),
-                topic_count=Count(
-                    "account__campaigns__ad_groups__topics__topic_id",
-                    distinct=True),
-                keyword_count=Count(
-                    "account__campaigns__ad_groups__keywords__keyword",
-                    distinct=True),
-            )
-            self.struck = defaultdict(dict)
-            for annotate, aggr in annotates.items():
-                struck_data = AccountCreation.objects.filter(id__in=ids).values(
-                    "id").order_by("id").annotate(
-                    **{annotate: aggr}
-                )
-                for d in struck_data:
-                    self.struck[d['id']][annotate] = d[annotate]
-
-            # data for weekly charts
-            account_id_key = "ad_group__campaign__account__account_creations__id"
-            group_by = (account_id_key, "date")
-            daily_stats = AdGroupStatistic.objects.filter(
-                ad_group__campaign__account__account_creations__id__in=ids
-            ).values(*group_by).order_by(*group_by).annotate(
-                views=Sum("video_views")
-            )
-            for s in daily_stats:
-                self.daily_chart[s[account_id_key]].append(
-                    dict(label=s['date'], value=s['views']))
-            # thumbnails
-            group_key = "ad_group__campaign__account__account_creations__id"
-            video_ads_data = VideoCreativeStatistic.objects.filter(
-                ad_group__campaign__account__account_creations__id__in=ids
-            ).values(group_key, "creative_id").order_by(group_key,
-                                                        "creative_id").annotate(
-                impressions=Sum("impressions"))
-            self.video_ads_data = defaultdict(list)
-            for v in video_ads_data:
-                self.video_ads_data[v[group_key]].append(
-                    (v['impressions'], v['creative_id']))
 
     def _get_client_cost_by_account(self, campaign_filter):
         account_client_cost = defaultdict(float)
@@ -195,10 +145,120 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
                                               + client_cost
         return dict(account_client_cost)
 
+    def _get_stats(self, account_creation_ids):
+        stats = {}
+        show_client_cost = not registry.user.aw_settings.get(
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        campaign_filter = {self.ACCOUNT_ID_KEY + "__in": account_creation_ids}
+        account_client_cost = dict()
+        if show_client_cost:
+            account_client_cost = self._get_client_cost_by_account(
+                campaign_filter)
+
+        data = Campaign.objects.filter(**campaign_filter) \
+            .values(self.ACCOUNT_ID_KEY) \
+            .order_by(self.ACCOUNT_ID_KEY) \
+            .annotate(start=Min("start_date"),
+                      end=Max("end_date"),
+                      **base_stats_aggregator())
+        for account_data in data:
+            account_id = account_data[self.ACCOUNT_ID_KEY]
+            dict_norm_base_stats(account_data)
+            dict_add_calculated_stats(account_data)
+
+            if show_client_cost:
+                account_data["cost"] = account_client_cost[account_id]
+            stats[account_id] = account_data
+        return stats
+
+    def _get_plan_rates(self, account_creation_ids):
+        account_creation_ref = "adwords_campaigns__account__account_creations__id"
+        keys = list(PLAN_RATES_ANNOTATION.keys())
+        stats = OpPlacement.objects \
+            .filter(**{account_creation_ref + "__in": account_creation_ids}) \
+            .values(account_creation_ref) \
+            .order_by(account_creation_ref) \
+            .annotate(**PLAN_STATS_ANNOTATION) \
+            .annotate(**PLAN_RATES_ANNOTATION) \
+            .values(account_creation_ref, *keys)
+        return {s[account_creation_ref]: pick_dict(s, keys) for s in stats}
+
+    def _get_settings(self, account_creation_ids):
+        settings = CampaignCreation.objects.filter(
+            account_creation_id__in=account_creation_ids
+        ).values('account_creation_id').order_by(
+            'account_creation_id').annotate(
+            start=Min("start"), end=Max("end"),
+            video_thumbnail=ConcatAggregate(
+                "ad_group_creations__ad_creations__video_thumbnail",
+                distinct=True)
+        )
+        return {s['account_creation_id']: s for s in settings}
+
+    def _get_struck(self, account_creation_ids):
+        annotates = dict(
+            ad_count=Count("account__campaigns__ad_groups__ads",
+                           distinct=True),
+            channel_count=Count(
+                "account__campaigns__ad_groups__channel_statistics__yt_id",
+                distinct=True),
+            video_count=Count(
+                "account__campaigns__ad_groups__managed_video_statistics__yt_id",
+                distinct=True),
+            interest_count=Count(
+                "account__campaigns__ad_groups__audiences__audience_id",
+                distinct=True),
+            topic_count=Count(
+                "account__campaigns__ad_groups__topics__topic_id",
+                distinct=True),
+            keyword_count=Count(
+                "account__campaigns__ad_groups__keywords__keyword",
+                distinct=True),
+        )
+        struck = defaultdict(dict)
+        for annotate, aggr in annotates.items():
+            struck_data = AccountCreation.objects \
+                .filter(id__in=account_creation_ids) \
+                .values("id") \
+                .order_by("id") \
+                .annotate(**{annotate: aggr})
+            for d in struck_data:
+                struck[d['id']][annotate] = d[annotate]
+        return struck
+
+    def _get_daily_chart(self, account_creation_ids):
+        ids = account_creation_ids
+        daily_chart = defaultdict(list)
+        account_id_key = "ad_group__campaign__account__account_creations__id"
+        group_by = (account_id_key, "date")
+        daily_stats = AdGroupStatistic.objects.filter(
+            ad_group__campaign__account__account_creations__id__in=ids
+        ).values(*group_by).order_by(*group_by).annotate(
+            views=Sum("video_views")
+        )
+        for s in daily_stats:
+            daily_chart[s[account_id_key]].append(
+                dict(label=s['date'], value=s['views']))
+        return daily_chart
+
+    def _get_video_ads_data(self, account_creation_ids):
+        ids = account_creation_ids
+        group_key = "ad_group__campaign__account__account_creations__id"
+        video_creative_stats = VideoCreativeStatistic.objects.filter(
+            ad_group__campaign__account__account_creations__id__in=ids
+        ).values(group_key, "creative_id").order_by(group_key,
+                                                    "creative_id").annotate(
+            impressions=Sum("impressions"))
+        video_ads_data = defaultdict(list)
+        for v in video_creative_stats:
+            video_ads_data[v[group_key]].append(
+                (v['impressions'], v['creative_id']))
+        return video_ads_data
+
     def _fields_to_exclude(self):
         user = registry.user
         if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
-            return "average_cpv", "average_cpm"
+            return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
 
     def get_from_aw(self, obj):

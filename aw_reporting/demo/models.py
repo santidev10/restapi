@@ -58,6 +58,9 @@ class BaseDemo:
     optimization_conversions_value = 5
     optimization_view_through_value = 5
 
+    plan_cpm = 11
+    plan_cpv = .23
+
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -834,6 +837,8 @@ class DemoAccount(BaseDemo):
             ctr_v_bottom=self.ctr_v_bottom,
             average_cpm=self.average_cpm,
             average_cpv=self.average_cpv,
+            plan_cpm=self.plan_cpm,
+            plan_cpv=self.plan_cpv,
             average_cpv_top=self.average_cpv_top,
             average_cpv_bottom=self.average_cpv_bottom,
             video_view_rate=self.video_view_rate,
@@ -901,7 +906,9 @@ class DemoAccount(BaseDemo):
             cost_method=DEMO_COST_METHOD,
             agency=DEMO_AGENCY,
             average_cpm=10,
-            average_cpv=.10782609
+            average_cpv=.10782609,
+            plan_cpm=11,
+            plan_cpv=.3
         )
         return data
 

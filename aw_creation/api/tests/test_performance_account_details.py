@@ -39,7 +39,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
         "cost_method", "agency", "brand", "average_cpm", "average_cpv",
-        "ctr", "ctr_v"
+        "ctr", "ctr_v", "plan_cpm", "plan_cpv"
     }
     overview_keys = {
         "age", "gender", "device", "location",
@@ -58,7 +58,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         "plan_video_views", "delivered_impressions", "plan_impressions",
         "delivered_cost", "delivered_video_views", "plan_cost",
-        "video_clicks"
+        "video_clicks", "plan_cpm", "plan_cpv"
     }
 
     detail_keys = {
@@ -362,7 +362,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
         self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
 
-    def test_average_cpm_and_cpm_reflects_to_user_settings(self):
+    def test_average_cpm_and_cpv_reflects_to_user_settings(self):
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz",
@@ -401,6 +401,87 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertIn("average_cpm", response.data)
         self.assertIn("average_cpv", response.data)
+
+    def test_plan_cpm_and_cpv(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        opportunity = Opportunity.objects.create()
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM, ordered_units=123,
+            total_cost=345)
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, ordered_units=234,
+            total_cost=123)
+        expected_cpm = placement_cpm.total_cost / placement_cpm.ordered_units * 1000
+        expected_cpv = placement_cpv.total_cost / placement_cpv.ordered_units
+        Campaign.objects.create(id=1, account=account,
+                                salesforce_placement=placement_cpv)
+        Campaign.objects.create(id=2, account=account,
+                                salesforce_placement=placement_cpm)
+
+        url = self._get_url(account_creation.id)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertAlmostEqual(response.data["plan_cpm"], expected_cpm)
+        self.assertAlmostEqual(response.data["plan_cpv"], expected_cpv)
+
+    def test_plan_cpm_and_cpv_reflects_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user,
+        )
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+
+        url = self._get_url(account_creation.id)
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertNotIn("plan_cpm", response.data)
+        self.assertNotIn("plan_cpv", response.data)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertIn("plan_cpm", response.data)
+        self.assertIn("plan_cpv", response.data)
 
     def test_ctr_and_ctr_v(self):
         AWConnectionToUserRelation.objects.create(
