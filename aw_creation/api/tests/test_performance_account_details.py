@@ -743,6 +743,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIn("plan_cpv", acc_data)
         self.assertIn("average_cpm", acc_data)
         self.assertIn("average_cpv", acc_data)
+        self.assertIn("cost", acc_data["overview"])
+        self.assertIn("average_cpm", acc_data["overview"])
+        self.assertIn("average_cpv", acc_data["overview"])
 
         # hide
         user_settings = {
@@ -759,3 +762,6 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertNotIn("plan_cpv", acc_data)
         self.assertNotIn("average_cpm", acc_data)
         self.assertNotIn("average_cpv", acc_data)
+        self.assertNotIn("cost", acc_data["overview"])
+        self.assertNotIn("average_cpm", acc_data["overview"])
+        self.assertNotIn("average_cpv", acc_data["overview"])

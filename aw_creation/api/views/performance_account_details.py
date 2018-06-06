@@ -116,6 +116,15 @@ class PerformanceAccountDetailsApiView(APIView):
 
         else:
             self.add_standard_performance_data(data, fs)
+        self._filter_costs(data)
+        return data
+
+    def _filter_costs(self, data):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            hidden_values = "cost", "average_cpm", "average_cpv"
+            for key in hidden_values:
+                data.pop(key, None)
         return data
 
     def _get_client_cost(self, filters):
