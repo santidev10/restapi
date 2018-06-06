@@ -355,7 +355,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         average_cpv = cost / views
 
         url = self._get_url(account_creation.id)
-        response = self.client.post(url)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
