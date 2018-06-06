@@ -112,11 +112,9 @@ class AccountCreationListApiView(ListAPIView):
         filters["owner"] = self.request.user
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = user_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS)
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
