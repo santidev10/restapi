@@ -102,7 +102,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
-        self._filter_fields_()
+        self._filter_fields()
         self.is_chf = self.context.get(
             "request").query_params.get("is_chf") == "1"
         self.settings = {}
@@ -124,7 +124,6 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             self.struck = self._get_struck(ids)
             self.daily_chart = self._get_daily_chart(ids)
             self.video_ads_data = self._get_video_ads_data(ids)
-
 
     def _get_client_cost_by_account(self, campaign_filter):
         account_client_cost = defaultdict(float)

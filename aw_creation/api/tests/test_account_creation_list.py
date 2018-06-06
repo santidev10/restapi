@@ -918,7 +918,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 total_cost=c.salesforce_placement.total_cost,
                 tech_fee=c.salesforce_placement.tech_fee
             )
-             for c in campaigns]
+                for c in campaigns]
         )
 
         user_settings = {
@@ -932,3 +932,56 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         acc_data = accs.get(account_creation.id)
         self.assertIsNotNone(acc_data)
         self.assertAlmostEqual(acc_data["cost"], client_cost)
+
+    def test_hide_costs_according_to_user_settings(self):
+        opportunity = Opportunity.objects.create()
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            ordered_units=1, total_cost=1)
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=1, total_cost=1)
+
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+
+        Campaign.objects.create(id=1, salesforce_placement=placement_cpm,
+                                account=account, cost=1, impressions=1)
+        Campaign.objects.create(id=2, salesforce_placement=placement_cpv,
+                                account=account, cost=1, video_views=1)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertIn("cost", acc_data)
+        self.assertIn("plan_cpm", acc_data)
+        self.assertIn("plan_cpv", acc_data)
+        self.assertIn("average_cpm", acc_data)
+        self.assertIn("average_cpv", acc_data)
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accs = dict((acc["id"], acc) for acc in response.data["items"])
+        acc_data = accs.get(account_creation.id)
+        self.assertIsNotNone(acc_data)
+        self.assertNotIn("cost", acc_data)
+        self.assertNotIn("plan_cpm", acc_data)
+        self.assertNotIn("plan_cpv", acc_data)
+        self.assertNotIn("average_cpm", acc_data)
+        self.assertNotIn("average_cpv", acc_data)

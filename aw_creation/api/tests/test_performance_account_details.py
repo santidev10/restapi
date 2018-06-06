@@ -355,7 +355,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         average_cpv = cost / views
 
         url = self._get_url(account_creation.id)
-        response = self.client.post(url)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
@@ -699,3 +703,65 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["cost"], expected_cost)
         self.assertAlmostEqual(response.data["overview"]["delivered_cost"],
                                expected_cost)
+
+    def test_hide_costs_according_to_user_settings(self):
+        self.user.is_staff = True
+        opportunity = Opportunity.objects.create()
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            ordered_units=1, total_cost=1)
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=1, total_cost=1)
+
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=self.request_user, account=account)
+        account_creation.refresh_from_db()
+
+        Campaign.objects.create(id=1, salesforce_placement=placement_cpm,
+                                account=account, cost=1, impressions=1)
+        Campaign.objects.create(id=2, salesforce_placement=placement_cpv,
+                                account=account, cost=1, video_views=1)
+
+        url = self._get_url(account_creation.id)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        acc_data = response.data
+        self.assertIsNotNone(acc_data)
+        self.assertIn("cost", acc_data)
+        self.assertIn("plan_cpm", acc_data)
+        self.assertIn("plan_cpv", acc_data)
+        self.assertIn("average_cpm", acc_data)
+        self.assertIn("average_cpv", acc_data)
+        self.assertIn("cost", acc_data["overview"])
+        self.assertIn("average_cpm", acc_data["overview"])
+        self.assertIn("average_cpv", acc_data["overview"])
+
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        acc_data = response.data
+        self.assertIsNotNone(acc_data)
+        self.assertNotIn("cost", acc_data)
+        self.assertNotIn("plan_cpm", acc_data)
+        self.assertNotIn("plan_cpv", acc_data)
+        self.assertNotIn("average_cpm", acc_data)
+        self.assertNotIn("average_cpv", acc_data)
+        self.assertNotIn("cost", acc_data["overview"])
+        self.assertNotIn("average_cpm", acc_data["overview"])
+        self.assertNotIn("average_cpv", acc_data["overview"])
