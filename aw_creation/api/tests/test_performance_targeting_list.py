@@ -19,7 +19,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
         "cost_method", "agency", "brand", "average_cpm", "average_cpv",
-        "ctr", "ctr_v"
+        "ctr", "ctr_v", "plan_cpm", "plan_cpv"
     }
 
     def setUp(self):
