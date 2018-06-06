@@ -23,6 +23,7 @@ class TestUserMixin:
         "last_name": "TestUser",
         "email": "test@example.com",
         "password": "test",
+        "aw_settings": {"demo_account_visible": True},
     }
 
     def create_test_user(self, auth=True):
