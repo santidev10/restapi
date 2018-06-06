@@ -97,7 +97,7 @@ urlpatterns = [
         name=Name.Dashboard.ACCOUNT_DETAILS),
     url(r'^performance_chart/(?P<pk>\w+)/',
         views.PerformanceChartApiView.as_view(),
-        name="performance_chart"),
+        name=Name.Dashboard.PERFORMANCE_CHART),
     url(r'^performance_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
         views.PerformanceChartItemsApiView.as_view(),
         name="performance_chart_items"),

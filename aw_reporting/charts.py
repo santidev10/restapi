@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import timedelta, datetime
 
-from django.db.models import FloatField, Avg, F
+from django.db.models import FloatField, Avg
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.models import *
@@ -31,6 +31,24 @@ class Indicator:
     VIEWS = "video_views"
     CLICKS = "clicks"
     COSTS = "cost"
+
+
+class Dimension:
+    AD_GROUPS = "ad"
+    AGE = "age"
+    CHANNEL = "channel"
+    CREATIVE = "creative"
+    DEVICE = "device"
+    GENDER = "gender"
+    INTEREST = "interest"
+    KEYWORD = "keyword"
+    LOCATION = "location"
+    REMARKETING = "remarketing"
+    TOPIC = "topic"
+    VIDEO = "video"
+
+
+ALL_DIMENSIONS = [d for d in dir(Dimension) if not d.startswith("_")]
 
 
 class Breakdown:

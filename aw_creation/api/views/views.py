@@ -39,7 +39,7 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     TargetingItem, default_languages
 from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
-from aw_reporting.charts import DeliveryChart
+from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
@@ -1311,6 +1311,7 @@ class PerformanceChartApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
+        self.filter_hidden_sections()
         filters = {}
         if request.data.get("is_chf") == 1:
             filters["account__id__in"] = []
@@ -1331,6 +1332,14 @@ class PerformanceChartApiView(APIView):
         chart = DeliveryChart(account_ids, segmented_by="campaigns", **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
+
+    def filter_hidden_sections(self):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
+            if self.request.data.get("indicator") in hidden_indicators:
+                raise Http404
+
 
 
 @demo_view_decorator
