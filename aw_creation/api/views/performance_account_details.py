@@ -145,10 +145,10 @@ class PerformanceAccountDetailsApiView(APIView):
             adwords_campaigns__id__in=
             self.account_creation.account.campaigns.values("id")).distinct()
         data.update(
-            placements_queryset.aggregate(
-                delivered_cost=Sum("adwords_campaigns__cost"),
-                delivered_impressions=Sum("adwords_campaigns__impressions"),
-                delivered_video_views=Sum("adwords_campaigns__video_views")))
+            self.account_creation.account.campaigns.aggregate(
+                delivered_cost=Sum("cost"),
+                delivered_impressions=Sum("impressions"),
+                delivered_video_views=Sum("video_views")))
         plan_cost = 0
         plan_impressions = 0
         plan_video_views = 0
