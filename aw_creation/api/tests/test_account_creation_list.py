@@ -35,11 +35,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def __set_user_with_account(self, account_id):
+    def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = True
+        user.is_staff = False
+        user.is_superuser = False
+        user.update_access([{"name": "Tools", "value": True}])
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
-        user.aw_settings[UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY] = True
         user.save()
 
     def test_success_post(self):
@@ -174,8 +175,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
     def test_get_chf_account_creation_list_queryset(self):
-        self.user.is_staff = True
-        self.user.save()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         expected_account_id = "1"
@@ -193,14 +192,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account3 = Account.objects.create(id="4", name="")
         AccountCreation.objects.create(
             name="Test", owner=self.user, account=account3)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get("{}?is_chf=1".format(self.url))
-        accounts_ids = {a["account"] for a in response.data["items"]}
         self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts_ids = {a["account"] for a in response.data["items"]}
         self.assertEqual(accounts_ids, {"demo", expected_account_id})
 
     def test_success_sort_by(self):
@@ -637,7 +636,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -661,7 +660,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -686,7 +685,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user,
             account=managed_account, is_managed=True)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -723,14 +722,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get("{}?is_chf=1".format(self.url))
-        accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(
             set(accounts[account_creation.id]["cost_method"]),
             {p.goal_type for p in [placement1, placement2, placement3]})
