@@ -735,24 +735,6 @@ class AdCreation(UniqueCreationItem):
     class Meta:
         ordering = ['-id']
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        super(AdCreation, self).save(force_insert, force_update, using, update_fields)
-
-        if self.companion_banner:
-            image = Image.open(self.companion_banner)
-            if VIDEO_AD_THUMBNAIL_SIZE != image.size:
-                new_width = VIDEO_AD_THUMBNAIL_SIZE[0]
-                percent = new_width / image.size[0]
-                new_height = int(image.size[1] * percent)
-                if new_height < VIDEO_AD_THUMBNAIL_SIZE[1]:  # a wide image
-                    new_height = VIDEO_AD_THUMBNAIL_SIZE[1]
-                    percent = new_height / image.size[1]
-                    new_width = int(image.size[0] * percent)
-
-                image = image.resize((new_width, new_height), Image.ANTIALIAS)
-                image = image.crop((0, 0, VIDEO_AD_THUMBNAIL_SIZE[0], VIDEO_AD_THUMBNAIL_SIZE[1]))
-                image.save(self.companion_banner.path)
-
     def get_aws_code(self, request):
         code = "createOrUpdateVideoAd(ad_group, {});".format(
             json.dumps(

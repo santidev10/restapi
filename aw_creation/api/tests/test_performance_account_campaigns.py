@@ -162,8 +162,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_filters_by_campaign_types(self):
         user = self.create_test_user()
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
         account_creation = AccountCreation.objects.create(
+            id=2,
             name="", owner=user, account=account, is_managed=True,
             sync_at=timezone.now())
         all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
@@ -180,7 +181,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
-                account_creation.id: hidden_types}
+                account.id: hidden_types}
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
@@ -194,8 +195,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_campaign_without_type_are_visible(self):
         user = self.create_test_user()
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
         account_creation = AccountCreation.objects.create(
+            id=2,
             name="", owner=user, account=account, is_managed=True,
             sync_at=timezone.now())
         all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
@@ -209,7 +211,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
-                account_creation.id: all_types}
+                account.id: all_types}
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
