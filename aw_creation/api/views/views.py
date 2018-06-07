@@ -1315,11 +1315,9 @@ class PerformanceChartApiView(APIView):
         self.filter_hidden_sections()
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -1372,11 +1370,9 @@ class PerformanceChartItemsApiView(APIView):
         dimension = kwargs.get('dimension')
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:

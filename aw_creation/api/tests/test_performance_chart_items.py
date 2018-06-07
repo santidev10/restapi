@@ -14,6 +14,7 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
     Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -28,9 +29,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         date = datetime.now().date() - timedelta(days=1)
         base_stats = dict(date=date, impressions=100, video_views=10, cost=1)
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
-        audience, _ = Audience.objects.get_or_create(id=1, defaults=dict(name="boo", type="A"))
+        audience, _ = Audience.objects.get_or_create(id=1,
+                                                     defaults=dict(name="boo",
+                                                                   type="A"))
         creative, _ = VideoCreative.objects.get_or_create(id=1)
-        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="bobruisk"))
+        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
+            name="bobruisk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 
@@ -49,13 +53,17 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=user,
         )
 
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
                                                           is_approved=True)
         self.create_stats(account)
 
@@ -107,12 +115,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_video(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_approved=True, account=account)
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_approved=True,
+                                                          account=account)
         self.create_stats(account)
         url = reverse("aw_creation_urls:performance_chart_items",
                       args=(account_creation.id, 'video'))
@@ -248,12 +260,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_items(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
                                                           is_approved=True)
         self.create_stats(account)
 
@@ -284,12 +300,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_get_all_dimensions(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
                                                           is_approved=True)
         self.create_stats(account)
 
@@ -306,12 +326,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(  # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
             user=user,
         )
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user, is_managed=False, account=account,
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
                                                           is_approved=True)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group_cpv = AdGroup.objects.create(id=1, name="", campaign=campaign)
@@ -376,3 +400,34 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'ctr_v',
             }
         )
+
+    def test_success_regardless_global_account_visibility(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        self.create_stats(account)
+
+        url = reverse("aw_creation_urls:performance_chart_items",
+                      args=(account_creation.id, 'topic'))
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url,
+                json.dumps(dict(is_chf=1)),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
