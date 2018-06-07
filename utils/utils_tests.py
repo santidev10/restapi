@@ -13,7 +13,6 @@ from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.permissions import Permissions
-from userprofile.models import UserSettingsKey
 from utils.datetime import Time
 
 
@@ -24,17 +23,6 @@ class TestUserMixin:
         "last_name": "TestUser",
         "email": "test@example.com",
         "password": "test",
-        "aw_settings": {
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
-            UserSettingsKey.HIDE_REMARKETING: False,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.SHOW_CONVERSIONS: False,
-            UserSettingsKey.VISIBLE_ACCOUNTS: [],
-            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
-        }
     }
 
     def create_test_user(self, auth=True):
