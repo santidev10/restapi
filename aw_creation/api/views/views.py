@@ -14,10 +14,8 @@ from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Value, Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
-    Min, Max
-from django.db.models.functions import Coalesce
+from django.db.models import Value, Case, When, F, \
+    IntegerField as AggrIntegerField, Min, Max
 from django.http import StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
@@ -28,9 +26,7 @@ from rest_framework.parsers import FileUploadParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
-    HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, \
-    HTTP_405_METHOD_NOT_ALLOWED
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
@@ -43,14 +39,11 @@ from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
-    BASE_STATS, GeoTarget, Topic, Audience, \
-    Account, AdGroup, \
-    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT, base_stats_aggregator, campaign_type_str, \
-    Campaign, AdGroupStatistic, \
-    dict_norm_base_stats, dict_add_calculated_stats
+    BASE_STATS, GeoTarget, Topic, Audience, AdGroup, YTChannelStatistic, \
+    YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic, \
+    DATE_FORMAT, base_stats_aggregator, campaign_type_str, Campaign, \
+    AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
-from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
     UserHasCHFPermission
