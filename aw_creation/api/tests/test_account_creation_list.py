@@ -757,7 +757,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_demo_brand(self):
-        # hide
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
@@ -769,7 +768,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
 
     def test_demo_cost_type(self):
-        # hide
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
@@ -809,7 +807,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation.refresh_from_db()
         Campaign.objects.create(account=account)
 
-        # hide
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
