@@ -86,12 +86,18 @@ class AccountCreationListApiView(ListAPIView):
 
     def get(self, request, *args, **kwargs):
         # import "read only" accounts:
-        # user has access to them, but they are not connected to his account creations
-        read_accounts = Account.user_objects(self.request.user).filter(
-            can_manage_clients=False,
-        ).exclude(
-            account_creations__owner=request.user
-        ).values("id", "name")
+        # user has access to them,
+        # but they are not connected to his account creations
+        if request.query_params.get("is_chf") == "1":
+            visible_account_ids = self.request.user.aw_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS)
+            read_accounts = Account.objects.filter(
+                id__in=visible_account_ids).exclude(
+                account_creations__owner=request.user).values("id", "name")
+        else:
+            read_accounts = Account.user_objects(self.request.user).filter(
+                can_manage_clients=False).exclude(
+                account_creations__owner=request.user).values("id", "name")
         bulk_create = [
             AccountCreation(
                 account_id=i['id'],
@@ -103,7 +109,6 @@ class AccountCreationListApiView(ListAPIView):
         ]
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
-
         response = super(AccountCreationListApiView, self).get(
             request, *args, **kwargs)
         return response
