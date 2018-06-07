@@ -331,7 +331,6 @@ class CampaignCreationSetupSerializer(ModelSerializer):
         )
 
 
-
 class AccountCreationSetupSerializer(ModelSerializer):
     campaign_creations = SerializerMethodField()
 
@@ -374,15 +373,20 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
         )
 
     def validate_start(self, value):
+        if value == self.instance.start:
+            return value
+
         today = self.instance.account_creation.get_today_date()
-        if value:
-            if value < today and value != self.instance.start:
-                raise ValidationError("This date is in the past")
-            if self.instance.start \
-                    and self.instance.start <= today \
-                    and self.instance.is_pulled_to_aw:
-                raise ValidationError(
-                    "Start date may not be edited for active campaign")
+        is_running = self.instance.is_pulled_to_aw \
+                     and (self.instance.start is None
+                          or self.instance.start <= today)
+        if is_running:
+            raise ValidationError(
+                "Start date may not be edited for active campaign")
+
+        if value and value < today:
+            raise ValidationError("This date is in the past")
+
         return value
 
     def validate_end(self, value):
