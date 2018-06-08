@@ -427,3 +427,30 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_hide_costs(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        self.create_stats(account)
+
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            for dimension in ALL_DIMENSIONS:
+                url = self._get_url(account_creation.id, dimension)
+                response = self.client.post(url, dict())
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                items = response.data["items"]
+                self.assertGreater(len(items), 0)
+                for item in items:
+                    self.assertIsNone(item["cost"])
+                    self.assertIsNone(item["average_cpm"])
+                    self.assertIsNone(item["average_cpv"])
