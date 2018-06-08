@@ -98,6 +98,7 @@ class Command(BaseCommand):
     def update_users_permissions(self):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
+                logger.info("Updating CHF account:" + user.email)
                 user.is_tos_signed = True
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True
