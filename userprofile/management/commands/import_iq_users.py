@@ -8,8 +8,10 @@ from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from userprofile.models import UserProfile, UserSettingsKey, \
-    get_default_settings
+from userprofile.models import UserProfile
+from userprofile.models import UserSettingsKey
+from userprofile.models import get_default_settings
+from userprofile.permissions import PermissionGroupNames
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         with transaction.atomic():
             self.import_users()
-            self.update_chf_users_permissions()
+            self.update_users_permissions()
 
     def load_sites_info(self):
         mask = settings.BASE_DIR + "/userprofile/fixtures/sites/*.yml"
@@ -93,17 +95,21 @@ class Command(BaseCommand):
                                     .format(name, user.email))
                         user.save()
 
-    def update_chf_users_permissions(self):
+    def update_users_permissions(self):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
-                logger.info("CHF account found:" + user.email)
                 user.is_tos_signed = True
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True
                 user.aw_settings = self.CHF_AW_SETTINGS
                 user.save()
+                user.add_custom_user_group(PermissionGroupNames.TOOLS)
+            else:
+                logger.info("Updating account:" + user.email)
 
             if not user.aw_settings:
                 logger.info("Found account without aw_settings:" + user.email)
                 user.aw_settings = self.DEFAULT_AW_SETTINGS
                 user.save()
+
+            user.add_custom_user_group(PermissionGroupNames.HIGHLIGHTS)
