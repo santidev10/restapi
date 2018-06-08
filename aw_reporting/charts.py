@@ -48,7 +48,8 @@ class Dimension:
     VIDEO = "video"
 
 
-ALL_DIMENSIONS = [d for d in dir(Dimension) if not d.startswith("_")]
+ALL_DIMENSIONS = [value for name, value in Dimension.__dict__.items()
+                  if not name.startswith("_")]
 
 
 class Breakdown:

@@ -5,7 +5,9 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
+from aw_reporting.charts import Dimension, ALL_DIMENSIONS
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GenderStatistic, AgeRangeStatistic, \
@@ -14,12 +16,17 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
     Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
+from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
+    def _get_url(self, account_creation_id, dimension):
+        return reverse(Namespace.AW_CREATION + ":" + Name.Dashboard.CHART_ITEMS,
+                       args=(account_creation_id, dimension))
+
     @staticmethod
     def create_stats(account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -67,8 +74,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'ad'))
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
 
         today = datetime.now().date()
         response = self.client.post(
@@ -126,8 +132,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True,
                                                           account=account)
         self.create_stats(account)
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'video'))
+        url = self._get_url(account_creation.id, Dimension.VIDEO)
 
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -170,8 +175,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_demo(self):
         self.create_test_user()
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(DEMO_ACCOUNT_ID, 'ad'))
+        url = self._get_url(DEMO_ACCOUNT_ID, Dimension.AD_GROUPS)
 
         today = datetime.now().date()
         response = self.client.post(
@@ -217,8 +221,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_demo_video(self):
         self.create_test_user()
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(DEMO_ACCOUNT_ID, 'video'))
+        url = self._get_url(DEMO_ACCOUNT_ID, Dimension.VIDEO)
 
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -273,8 +276,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'ad'))
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
         today = datetime.now().date()
         start_date = str(today - timedelta(days=2))
         end_date = str(today - timedelta(days=1))
@@ -315,11 +317,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            for dimension in ('device', 'gender', 'age', 'topic',
-                              'interest', 'creative', 'channel', 'video',
-                              'keyword', 'location', 'ad'):
-                url = reverse("aw_creation_urls:performance_chart_items",
-                              args=(account_creation.id, dimension))
+            for dimension in ALL_DIMENSIONS:
+                url = self._get_url(account_creation.id, dimension)
                 response = self.client.post(url)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertGreater(len(response.data), 1)
@@ -350,8 +349,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 video_views=views,
             )
 
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'device'))
+        url = self._get_url(account_creation.id, Dimension.DEVICE)
 
         response = self.client.post(url)
 
@@ -363,8 +361,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_demo_data(self):
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user)
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'ad'))
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
 
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -417,8 +414,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = reverse("aw_creation_urls:performance_chart_items",
-                      args=(account_creation.id, 'topic'))
+        url = self._get_url(account_creation.id, Dimension.TOPIC)
 
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
