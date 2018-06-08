@@ -11,3 +11,4 @@ class Name:
         ACCOUNT_DETAILS = "performance_account_details"
         CAMPAIGNS = "performance_account_campaigns"
         PERFORMANCE_CHART = "performance_chart"
+        CHART_ITEMS = "performance_chart_items"

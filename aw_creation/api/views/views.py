@@ -14,10 +14,8 @@ from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Value, Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
-    Min, Max
-from django.db.models.functions import Coalesce
+from django.db.models import Value, Case, When, F, \
+    IntegerField as AggrIntegerField, Min, Max
 from django.http import StreamingHttpResponse, HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
@@ -28,9 +26,7 @@ from rest_framework.parsers import FileUploadParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
-    HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT, \
-    HTTP_405_METHOD_NOT_ALLOWED
+    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
@@ -44,13 +40,12 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyzeWeeklyReport
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     BASE_STATS, GeoTarget, Topic, Audience, \
-    Account, AdGroup, \
+    AdGroup, \
     YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
     TopicStatistic, DATE_FORMAT, base_stats_aggregator, campaign_type_str, \
     Campaign, AdGroupStatistic, \
     dict_norm_base_stats, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
-from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
     UserHasCHFPermission
@@ -1265,7 +1260,7 @@ class PerformanceAccountCampaignsListApiView(APIView):
             filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] =\
+                filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
@@ -1315,11 +1310,9 @@ class PerformanceChartApiView(APIView):
         self.filter_hidden_sections()
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -1340,7 +1333,6 @@ class PerformanceChartApiView(APIView):
             hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404
-
 
 
 @demo_view_decorator
@@ -1372,11 +1364,9 @@ class PerformanceChartItemsApiView(APIView):
         dimension = kwargs.get('dimension')
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -1391,8 +1381,17 @@ class PerformanceChartItemsApiView(APIView):
             accounts=accounts,
             dimension=dimension,
             **filters)
-        items = chart.get_items()
-        return Response(data=items)
+        data = chart.get_items()
+        data = self._filter_costs(data)
+        return Response(data=data)
+
+    def _filter_costs(self, data):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            for item in data["items"]:
+                item["average_cpm"] = item["average_cpv"] = item["cost"] = None
+
+        return data
 
 
 @demo_view_decorator
@@ -1412,7 +1411,7 @@ class PerformanceExportApiView(APIView):
             filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] =\
+                filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
@@ -1423,6 +1422,7 @@ class PerformanceExportApiView(APIView):
 
         def data_generator():
             return self.get_export_data(item)
+
         return self.stream_response(item.name, data_generator)
 
     file_name = "{title}-analyze-{timestamp}.csv"
