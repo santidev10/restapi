@@ -15,7 +15,7 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     YTChannelStatistic, TopicStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
     Audience, Topic, Ad, \
-    AWConnectionToUserRelation, AWConnection
+    AWConnectionToUserRelation, AWConnection, RemarkStatistic, RemarkList
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
@@ -39,6 +39,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
                                                                    type="A"))
+        remark_list = RemarkList.objects.create(name="Test remark")
         creative, _ = VideoCreative.objects.get_or_create(id=1)
         city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
             name="bobruisk"))
@@ -57,6 +58,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             YTVideoStatistic.objects.create(yt_id="123", **stats)
             KeywordStatistic.objects.create(keyword="123", **stats)
             CityStatistic.objects.create(city=city, **stats)
+            RemarkStatistic.objects.create(remark=remark_list, **stats)
 
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
@@ -442,8 +444,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             for dimension in ALL_DIMENSIONS:
                 url = self._get_url(account_creation.id, dimension)
                 response = self.client.post(url, dict())

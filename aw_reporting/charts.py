@@ -48,8 +48,8 @@ class Dimension:
     VIDEO = "video"
 
 
-ALL_DIMENSIONS = [value for name, value in Dimension.__dict__.items()
-                  if not name.startswith("_")]
+ALL_DIMENSIONS = sorted([value for name, value in Dimension.__dict__.items()
+                         if not name.startswith("_")])
 
 
 class Breakdown:
