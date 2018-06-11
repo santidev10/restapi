@@ -517,18 +517,16 @@ class PerformanceExportApiView:
 
                 def data_generator():
                     data = account.details
-                    yield view.column_names
-                    yield ['Summary'] + [data.get(n)
-                                         for n in view.column_keys]
+                    yield {**{"tab": "Summary"}, **data}
+
                     for dimension in view.tabs:
                         filters['dimension'] = dimension
                         charts_obj = DemoChart(account, filters)
-                        items = charts_obj.chart_items
-                        for data in items['items']:
-                            yield [dimension.capitalize()] + \
-                                  [data[n] for n in view.column_keys]
+                        items = charts_obj.chart_items["items"]
+                        for data in items:
+                            yield {**{"tab": dimension}, **data}
 
-                return view.stream_response(account.name, data_generator)
+                return view.build_response(account.name, data_generator)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 

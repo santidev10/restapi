@@ -1,9 +1,11 @@
+import io
 import json
 from datetime import datetime, timedelta
+from itertools import product
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
-from django.http import StreamingHttpResponse
+from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -85,8 +87,10 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                 url, json.dumps(filters), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(type(response), StreamingHttpResponse)
-            self.assertGreater(len(list(response)), 10)
+            f = io.BytesIO(response.content)
+            book = load_workbook(f)
+            sheet = book.worksheets[0]
+            self.assertGreater(sheet.max_row, 10)
 
     def test_success_demo(self):
         self.create_test_user()
@@ -103,8 +107,10 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                 url, json.dumps(filters), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(type(response), StreamingHttpResponse)
-            self.assertGreater(len(list(response)), 10)
+            f = io.BytesIO(response.content)
+            book = load_workbook(f)
+            sheet = book.worksheets[0]
+            self.assertGreater(sheet.max_row, 10)
 
     def test_success_demo_data(self):
         user = self.create_test_user()
@@ -121,8 +127,10 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                 url, json.dumps(filters), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(type(response), StreamingHttpResponse)
-            self.assertGreater(len(list(response)), 10)
+            f = io.BytesIO(response.content)
+            book = load_workbook(f)
+            sheet = book.worksheets[0]
+            self.assertGreater(sheet.max_row, 10)
 
     def test_success_for_chf_dashboard(self):
         user = self.create_test_user()
@@ -149,3 +157,65 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                 url, json.dumps(filters), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_report_is_xlsx_formatted(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        self.create_stats(account)
+
+        url = self._get_url(account_creation.id)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, "{}", content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            try:
+                f = io.BytesIO(response.content)
+                load_workbook(f)
+            except:
+                self.fail("Report is not an xls")
+
+    def test_report_percent_formatted(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        self.create_stats(account)
+
+        url = self._get_url(account_creation.id)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, "{}", content_type='application/json',
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            f = io.BytesIO(response.content)
+            book = load_workbook(f)
+            sheet = book.worksheets[0]
+            self.assertGreater(sheet.max_row, 10)
+            rows = range(2, sheet.max_row + 1)
+            cols = range(11, 15)
+            test_indexes = product(rows, cols)
+            for row, column in test_indexes:
+                cell = sheet[row][column]
+                self.assertEqual(cell.number_format, "0.00%",
+                                 "Cell[{}:{}]".format(row, column))

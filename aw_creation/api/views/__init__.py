@@ -3,4 +3,6 @@ from .account_creation_list import AccountCreationListApiView
 from .account_creation_setup import AccountCreationSetupApiView
 from .performance_account_details import PerformanceAccountDetailsApiView
 from .performance_targeting_list import PerformanceTargetingListAPIView
+from .performance_export import PerformanceExportApiView
+from .performance_export_weekly_report import PerformanceExportWeeklyReport
 from .views import *
