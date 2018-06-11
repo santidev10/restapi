@@ -95,8 +95,6 @@ class AccountCreationListApiView(ListAPIView):
             read_accounts = Account.objects.filter(
                 id__in=visible_account_ids).exclude(
                 account_creations__owner=request.user).values("id", "name")
-            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-            filters["account__managers__id"] = chf_account_id
         else:
             read_accounts = Account.user_objects(self.request.user).filter(
                 can_manage_clients=False).exclude(
@@ -123,6 +121,8 @@ class AccountCreationListApiView(ListAPIView):
             user_settings = self.request.user.aw_settings
             filters["account__id__in"] = user_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS)
+            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+            filters["account__managers__id"] = chf_account_id
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
