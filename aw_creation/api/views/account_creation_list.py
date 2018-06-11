@@ -1,6 +1,7 @@
 # pylint: disable=import-error
 
 # pylint: enable=import-error
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
@@ -94,6 +95,8 @@ class AccountCreationListApiView(ListAPIView):
             read_accounts = Account.objects.filter(
                 id__in=visible_account_ids).exclude(
                 account_creations__owner=request.user).values("id", "name")
+            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+            filters["account__managers__id"] = chf_account_id
         else:
             read_accounts = Account.user_objects(self.request.user).filter(
                 can_manage_clients=False).exclude(
