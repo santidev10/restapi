@@ -1,6 +1,7 @@
 # pylint: disable=import-error
 
 # pylint: enable=import-error
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
@@ -120,6 +121,8 @@ class AccountCreationListApiView(ListAPIView):
             user_settings = self.request.user.aw_settings
             filters["account__id__in"] = user_settings.get(
                 UserSettingsKey.VISIBLE_ACCOUNTS)
+            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+            filters["account__managers__id"] = chf_account_id
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
