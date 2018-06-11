@@ -1406,11 +1406,11 @@ class PerformanceExportApiView(APIView):
     def post(self, request, pk, **_):
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            visible_accounts = user_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS)
+            if visible_accounts:
+                filters["account__id__in"] = visible_accounts
         else:
             filters["owner"] = self.request.user
         try:

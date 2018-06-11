@@ -12,3 +12,4 @@ class Name:
         CAMPAIGNS = "performance_account_campaigns"
         PERFORMANCE_CHART = "performance_chart"
         CHART_ITEMS = "performance_chart_items"
+        PERFORMANCE_EXPORT = "performance_export"
