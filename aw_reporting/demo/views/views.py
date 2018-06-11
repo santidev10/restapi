@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
+from utils.views import xlsx_response
 
 
 class AnalyzeAccountsListApiView:
@@ -169,20 +169,11 @@ class AnalyzeExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-
-                response = HttpResponse(
-                    report.get_content(),
-                    content_type='application/vnd.openxmlformats-'
-                                 'officedocument.spreadsheetml.sheet'
-                )
-                response[
-                    'Content-Disposition'
-                ] = 'attachment; filename="Channel Factory {} Weekly ' \
-                    'Report {}.xlsx"'.format(
+                title = "Channel Factory {} Weekly Report {}".format(
                     account.name,
                     datetime.now().date().strftime("%m.%d.%y")
                 )
-                return response
+                return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 

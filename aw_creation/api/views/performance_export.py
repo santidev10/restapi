@@ -2,7 +2,6 @@ import re
 from datetime import datetime
 from functools import partial
 
-from django.http import HttpResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -17,8 +16,7 @@ from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
 from utils.permissions import UserHasCHFPermission
-
-XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+from utils.views import xlsx_response
 
 
 @demo_view_decorator
@@ -49,18 +47,12 @@ class PerformanceExportApiView(APIView):
     )
 
     def build_response(self, account_name, data_generator):
-        xls_report = PerformanceReport()
-        filename = "{title}-analyze-{timestamp}.xlsx".format(
+        title = "{title}-analyze-{timestamp}".format(
             title=re.sub(r"\W", account_name, "-"),
             timestamp=datetime.now().strftime("%Y%m%d"),
         )
-        response = HttpResponse(
-            xls_report.generate(data_generator),
-            content_type=XLSX_CONTENT_TYPE
-        )
-        content_disposiotion = "attachment; filename=\"{}\"".format(filename)
-        response["Content-Disposition"] = content_disposiotion
-        return response
+        xls_report = PerformanceReport()
+        return xlsx_response(title, xls_report.generate(data_generator))
 
     def get_filters(self):
         data = self.request.data

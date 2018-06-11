@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -8,9 +7,7 @@ from rest_framework.views import APIView
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import PerformanceWeeklyReport
 from aw_reporting.models import Account
-
-REPORT_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument" \
-                      ".spreadsheetml.sheet"
+from utils.views import xlsx_response
 
 
 @demo_view_decorator
@@ -40,14 +37,8 @@ class AnalyzeExportWeeklyReportApiView(APIView):
         filters = self.get_filters()
         report = PerformanceWeeklyReport(item, **filters)
 
-        response = HttpResponse(
-            report.get_content(),
-            content_type=REPORT_CONTENT_TYPE
-        )
-        response["Content-Disposition"] = "attachment; filename=\"" \
-                                          "Channel Factory {} Weekly Report" \
-                                          " {}.xlsx\"".format(
+        title = "Channel Factory {} Weekly Report {}".format(
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
-        return response
+        return xlsx_response(title, report.get_content())

@@ -47,6 +47,7 @@ from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
     UserHasCHFPermission
 from utils.registry import registry
+from utils.views import XLSX_CONTENT_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
     def post(self, request, content_type, **_):
         file_obj = request.data['file']
         fct = file_obj.content_type
-        if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        if fct == XLSX_CONTENT_TYPE:
             data = self.get_xlsx_contents(file_obj)
         elif fct in ("text/csv", "application/vnd.ms-excel"):
             data = self.get_csv_contents(file_obj)
@@ -1969,7 +1970,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
             fct = file_obj.content_type
             try:
-                if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                if fct == XLSX_CONTENT_TYPE:
                     data = self.get_xlsx_contents(file_obj, return_lines=True)
                 elif fct in ("text/csv", "application/vnd.ms-excel"):
                     data = self.get_csv_contents(file_obj, return_lines=True)
