@@ -239,7 +239,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         )
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)
-        self.assertNotEqual(account_creation.status, AccountCreation.STATUS_PENDING)
+        self.assertNotEqual(account_creation.status,
+                            AccountCreation.STATUS_PENDING)
 
         dimensions = ALL_DIMENSIONS
         cost_indicators = Indicator.CPM, Indicator.CPV, Indicator.COSTS
@@ -275,3 +276,34 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         }
         with self.patch_user_settings(**user_settings):
             test_availability(HTTP_404_NOT_FOUND)
+
+    def test_success_on_no_global_account_visibility(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(id=2,
+                                                          name="", owner=user,
+                                                          is_paused=True,
+                                                          account=account)
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url,
+                                        json.dumps({
+                                            "indicator": "average_cpv",
+                                            "is_chf": 1
+                                        }),
+                                        content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+

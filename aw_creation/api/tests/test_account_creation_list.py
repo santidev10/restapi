@@ -35,11 +35,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
 
-    def __set_user_with_account(self, account_id):
+    def __set_non_admin_user_with_account(self, account_id):
         user = self.user
-        user.is_staff = True
+        user.is_staff = False
+        user.is_superuser = False
+        user.update_access([{"name": "Tools", "value": True}])
         user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account_id]
-        user.aw_settings[UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY] = True
         user.save()
 
     def test_success_post(self):
@@ -96,8 +97,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="", owner=user,
         )
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -165,17 +170,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 2)
-        self.assertEqual(len(response.data["items"]), 2)
-        item = response.data["items"][1]
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
         )
 
     def test_get_chf_account_creation_list_queryset(self):
-        self.user.is_staff = True
-        self.user.save()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         expected_account_id = "1"
@@ -193,14 +196,18 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account3 = Account.objects.create(id="4", name="")
         AccountCreation.objects.create(
             name="Test", owner=self.user, account=account3)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get("{}?is_chf=1".format(self.url))
-        accounts_ids = {a["account"] for a in response.data["items"]}
         self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts_ids = {a["account"] for a in response.data["items"]}
         self.assertEqual(accounts_ids, {"demo", expected_account_id})
 
     def test_success_sort_by(self):
@@ -234,7 +241,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                     "{}?sort_by={}".format(self.url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
-            expected_top_account = items[1]
+            expected_top_account = items[0]
             self.assertEqual(top_account.name, expected_top_account["name"])
 
     def test_success_sort_by_name(self):
@@ -258,10 +265,14 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 "aw_creation.api.serializers.SingleDatabaseApiConnector",
                 new=SingleDatabaseApiConnectorPatcher
         ):
+            user_settings = {
+                UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            }
             with patch(
                     "aw_reporting.demo.models.SingleDatabaseApiConnector",
                     new=SingleDatabaseApiConnectorPatcher
-            ):
+            ), \
+            self.patch_user_settings(**user_settings):
                 response = self.client.get("{}?sort_by=name".format(self.url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -356,7 +367,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             ("Ended", 1),
             ("Paused", 1),
             ("Approved", 1),
-            ("Running", 2),  # +DemoAccount
+            ("Running", 1),
         )
 
         for status, count in expected:
@@ -445,13 +456,17 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data["items_count"], 2,
+            response.data["items_count"], 1,
             "The account has no end date that's why it's shown"
         )
 
     def test_success_get_demo(self):
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher),\
+                self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -484,8 +499,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         ):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items_count"], 0)
+        self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_campaigns_count(self):
         AccountCreation.objects.create(name="", owner=self.user)
@@ -613,9 +628,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 3)
-        self.assertEqual(len(response.data["items"]), 3)
-        item = response.data["items"][1]
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(len(response.data["items"]), 2)
+        item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -637,7 +652,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -661,7 +676,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -672,7 +687,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[account_creation.id]["agency"], agency.name)
 
     def test_demo_agency(self):
-        response = self.client.get(self.url)
+        # hide
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
@@ -686,7 +706,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="1", owner=self.user,
             account=managed_account, is_managed=True)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
@@ -723,27 +743,35 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
-        self.__set_user_with_account(managed_account.id)
+        self.__set_non_admin_user_with_account(managed_account.id)
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get("{}?is_chf=1".format(self.url))
-        accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(
             set(accounts[account_creation.id]["cost_method"]),
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_demo_brand(self):
-        response = self.client.get(self.url)
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
 
     def test_demo_cost_type(self):
-        response = self.client.get(self.url)
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
@@ -778,7 +806,6 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         account_creation.refresh_from_db()
         Campaign.objects.create(account=account)
 
-        # hide
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }

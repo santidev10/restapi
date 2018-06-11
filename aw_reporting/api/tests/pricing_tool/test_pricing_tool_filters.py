@@ -113,7 +113,7 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AudienceStatistic.objects.create(audience=a_2, **common)
         AudienceStatistic.objects.create(audience=a_3, **common)
 
-        resonse = self.client.get(self.url)
+        response = self.client.get(self.url)
 
-        self.assertEqual(resonse.status_code, HTTP_200_OK)
-        self.assertEqual(resonse.data["interests"], expected_interests)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["interests"], expected_interests)

@@ -8,7 +8,6 @@ from utils.cache import cached_view_decorator as cached_view
 
 class PricingToolFiltersView(RetrieveAPIView):
 
-    @cached_view
     def get(self, request, *args, **kwargs):
         response = PricingTool.get_filters()
 

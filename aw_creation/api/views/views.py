@@ -1258,7 +1258,7 @@ class PerformanceAccountCampaignsListApiView(APIView):
             filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] =\
+                filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
@@ -1308,11 +1308,9 @@ class PerformanceChartApiView(APIView):
         self.filter_hidden_sections()
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -1333,7 +1331,6 @@ class PerformanceChartApiView(APIView):
             hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404
-
 
 
 @demo_view_decorator
@@ -1365,11 +1362,9 @@ class PerformanceChartItemsApiView(APIView):
         dimension = kwargs.get('dimension')
         filters = {}
         if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = \
+                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
@@ -1384,8 +1379,17 @@ class PerformanceChartItemsApiView(APIView):
             accounts=accounts,
             dimension=dimension,
             **filters)
-        items = chart.get_items()
-        return Response(data=items)
+        data = chart.get_items()
+        data = self._filter_costs(data)
+        return Response(data=data)
+
+    def _filter_costs(self, data):
+        user = registry.user
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+            for item in data["items"]:
+                item["average_cpm"] = item["average_cpv"] = item["cost"] = None
+
+        return data
 
 
 @demo_view_decorator
@@ -1405,7 +1409,7 @@ class PerformanceExportApiView(APIView):
             filters["account__id__in"] = []
             user_settings = self.request.user.aw_settings
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] =\
+                filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
@@ -1416,6 +1420,7 @@ class PerformanceExportApiView(APIView):
 
         def data_generator():
             return self.get_export_data(item)
+
         return self.stream_response(item.name, data_generator)
 
     file_name = "{title}-analyze-{timestamp}.csv"
