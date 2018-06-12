@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
@@ -37,14 +38,18 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
     serializer_class = AdWordsTopManagerSerializer
 
     def get(self, request):
-        data = self.serializer_class(self.queryset.all().distinct(), many=True).data
+        chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+        data = self.serializer_class(
+            self.queryset.filter(managers__id=chf_account_id).distinct(),
+            many=True
+        ).data
         user_id = self.request.query_params.get('user_id')
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        settings = user.get_aw_settings()
-        visible_ids = settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        types_settings = settings.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
+        aw_settings = user.get_aw_settings()
+        visible_ids = aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        types_settings = aw_settings.get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES)
         campaign_types = AdwordsAccountSettings.CAMPAIGN_TYPES
 
         for ac_info in data:

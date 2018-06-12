@@ -16,7 +16,7 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID, IMPRESSIONS, \
     TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GeoTarget, CityStatistic, AWConnection, AWConnectionToUserRelation, \
-    SalesForceGoalType, OpPlacement, Opportunity
+    SalesForceGoalType, OpPlacement, Opportunity, Contact
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
@@ -765,3 +765,84 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertNotIn("cost", acc_data["overview"])
         self.assertNotIn("average_cpm", acc_data["overview"])
         self.assertNotIn("average_cpv", acc_data["overview"])
+
+    def test_brand(self):
+        self.user.is_staff = True
+        self.user.save()
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="2", name="")
+        account_creation = AccountCreation.objects.create(
+            name="Test", owner=self.user, account=managed_account)
+        managed_account.managers.add(chf_account)
+        test_brand = "Test Brand"
+        opportunity = Opportunity.objects.create(brand=test_brand)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Campaign.objects.create(
+            salesforce_placement=placement, account=managed_account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=None)
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["brand"], test_brand)
+
+    def test_agency(self):
+        self.user.is_staff = True
+        self.user.save()
+        agency = Contact.objects.create(first_name="first", last_name="last")
+        opportunity = Opportunity.objects.create(agency=agency)
+        placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        campaign = Campaign.objects.create(
+            salesforce_placement=placement, account=managed_account)
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=managed_account)
+        CampaignCreation.objects.create(account_creation=account_creation,
+                                        campaign=None)
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["agency"], agency.name)
+
+    def test_cost_method(self):
+        self.user.is_staff = True
+        self.user.save()
+        opportunity = Opportunity.objects.create()
+        placement1 = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
+        placement2 = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+        placement3 = OpPlacement.objects.create(
+            id=3, opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        campaign1 = Campaign.objects.create(
+            id="1", salesforce_placement=placement1, account=managed_account)
+        campaign2 = Campaign.objects.create(
+            id="2", salesforce_placement=placement2, account=managed_account)
+        campaign3 = Campaign.objects.create(
+            id="3", salesforce_placement=placement3, account=managed_account)
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user, account=managed_account)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=None)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=None)
+        CampaignCreation.objects.create(
+            account_creation=account_creation, campaign=None)
+        url = self._get_url(account_creation.id)
+        response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                    content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data["cost_method"]),
+            {p.goal_type for p in [placement1, placement2, placement3]})

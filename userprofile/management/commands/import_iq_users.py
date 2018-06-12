@@ -8,8 +8,10 @@ from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from userprofile.models import UserProfile, UserSettingsKey, \
-    get_default_settings
+from userprofile.models import UserProfile
+from userprofile.models import UserSettingsKey
+from userprofile.models import get_default_settings
+from userprofile.permissions import PermissionGroupNames
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +31,21 @@ class Command(BaseCommand):
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
     }
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--update_visible_accounts_only',
+            dest='update_visible_accounts_only',
+            help='Update visible accounts setting only',
+            type=bool,
+            default=False,
+        )
     def handle(self, *args, **options):
         with transaction.atomic():
-            self.import_users()
-            self.update_chf_users_permissions()
+            if options['update_visible_accounts_only']:
+                self.update_visible_accounts_only()
+            else:
+                self.import_users()
+                self.update_users_permissions()
 
     def load_sites_info(self):
         mask = settings.BASE_DIR + "/userprofile/fixtures/sites/*.yml"
@@ -46,6 +59,41 @@ class Command(BaseCommand):
         return result
 
     def import_users(self):
+        for name, user_info in self.get_users_info():
+            user = UserProfile(**user_info)
+            try:
+                UserProfile.objects.get(email=user.email)
+            except UserProfile.DoesNotExist:
+                logger.info("New account [{}]:  {}" \
+                            .format(name, user.email))
+                user.save()
+
+    def update_visible_accounts_only(self):
+        for name, user_info in self.get_users_info():
+            email = user_info["email"]
+            try:
+                user = UserProfile.objects.get(email=email)
+            except UserProfile.DoesNotExist:
+                logger.info("{} - does not exist\n".format(email))
+                continue
+
+            db_value = user.aw_settings["visible_accounts"]
+            import_value = user_info["aw_settings"][UserSettingsKey.VISIBLE_ACCOUNTS]
+
+            if db_value != import_value:
+                logger.info("{}  different set of visible accounts\n"
+                            "db    : {}\n"
+                            "import: {}\n"
+                            .format(
+                                email,
+                                ",".join(db_value),
+                                ",".join(import_value),
+                            )
+                )
+                user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = import_value
+                user.save()
+
+    def get_users_info(self):
         sites_info = self.load_sites_info()
 
         mask = settings.BASE_DIR + "/userprofile/fixtures/users/*.csv"
@@ -83,29 +131,28 @@ class Command(BaseCommand):
                         if user_info[field] == "":
                             del user_info[field]
 
-                    user = UserProfile(**user_info)
-                    user.aw_settings = sites_info.get(
+                    user_info["aw_settings"] = sites_info.get(
                         name,
                         self.DEFAULT_AW_SETTINGS,
                     )
-                    try:
-                        UserProfile.objects.get(email=user.email)
-                    except UserProfile.DoesNotExist:
-                        logger.info("New account [{}]:  {}" \
-                                    .format(name, user.email))
-                        user.save()
+                    yield name, user_info
 
-    def update_chf_users_permissions(self):
+    def update_users_permissions(self):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
-                logger.info("CHF account found:" + user.email)
+                logger.info("Updating CHF account:" + user.email)
                 user.is_tos_signed = True
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True
                 user.aw_settings = self.CHF_AW_SETTINGS
                 user.save()
+                user.add_custom_user_group(PermissionGroupNames.TOOLS)
+            else:
+                logger.info("Updating account:" + user.email)
 
             if not user.aw_settings:
                 logger.info("Found account without aw_settings:" + user.email)
                 user.aw_settings = self.DEFAULT_AW_SETTINGS
                 user.save()
+
+            user.add_custom_user_group(PermissionGroupNames.HIGHLIGHTS)

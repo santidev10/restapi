@@ -1,6 +1,7 @@
 # pylint: disable=import-error
 
 # pylint: enable=import-error
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
@@ -86,12 +87,18 @@ class AccountCreationListApiView(ListAPIView):
 
     def get(self, request, *args, **kwargs):
         # import "read only" accounts:
-        # user has access to them, but they are not connected to his account creations
-        read_accounts = Account.user_objects(self.request.user).filter(
-            can_manage_clients=False,
-        ).exclude(
-            account_creations__owner=request.user
-        ).values("id", "name")
+        # user has access to them,
+        # but they are not connected to his account creations
+        if request.query_params.get("is_chf") == "1":
+            visible_account_ids = self.request.user.aw_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS)
+            read_accounts = Account.objects.filter(
+                id__in=visible_account_ids).exclude(
+                account_creations__owner=request.user).values("id", "name")
+        else:
+            read_accounts = Account.user_objects(self.request.user).filter(
+                can_manage_clients=False).exclude(
+                account_creations__owner=request.user).values("id", "name")
         bulk_create = [
             AccountCreation(
                 account_id=i['id'],
@@ -103,7 +110,6 @@ class AccountCreationListApiView(ListAPIView):
         ]
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
-
         response = super(AccountCreationListApiView, self).get(
             request, *args, **kwargs)
         return response
@@ -116,6 +122,8 @@ class AccountCreationListApiView(ListAPIView):
             if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
                 filters["account__id__in"] = user_settings.get(
                     UserSettingsKey.VISIBLE_ACCOUNTS)
+            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+            filters["account__managers__id"] = chf_account_id
         queryset = AccountCreation.objects.filter(**filters)
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

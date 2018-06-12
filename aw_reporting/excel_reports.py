@@ -2,8 +2,6 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 import xlsxwriter
-from django.conf import settings
-from django.db.models import Sum, Value
 
 from aw_reporting.models import *
 
@@ -12,7 +10,7 @@ def div_by_100(value):
     return value / 100. if value is not None else ""
 
 
-class AnalyzeWeeklyReport:
+class PerformanceWeeklyReport:
 
     def _set_format_options(self):
         """
@@ -52,13 +50,33 @@ class AnalyzeWeeklyReport:
         self.header_format = self.workbook.add_format(header_format_options)
 
         # Footer style
-        footer_options = {
+        footer_text_format = self.workbook.add_format({
             "bold": True,
             "align": "center",
             "bg_color": "#808080",
             "border": True,
+        })
+        footer_percent_format = self.workbook.add_format({
+            "bold": True,
+            "align": "center",
+            "bg_color": "#808080",
+            "border": True,
+            "num_format": "0.00%",
+        })
+        self.footer_format = {
+            1: footer_text_format,
+            2: footer_text_format,
+            3: footer_text_format,
+            4: footer_percent_format,
+            5: footer_text_format,
+            6: footer_percent_format,
+            7: footer_percent_format,
+            8: footer_percent_format,
+            9: footer_percent_format,
+            10: footer_percent_format,
+            11: footer_text_format,
+            12: footer_text_format,
         }
-        self.footer_format = self.workbook.add_format(footer_options)
 
         # First column cell
         first_column_cell_options = {
@@ -199,7 +217,8 @@ class AnalyzeWeeklyReport:
         self.workbook.close()
         return self.output.getvalue()
 
-    def write_rows(self, data, start_row, default_format=None):
+    def write_rows(self, data, start_row, default_format=None,
+                   data_cell_options=None):
         """
         Writing document rows
         :param data: list of lists
@@ -207,13 +226,14 @@ class AnalyzeWeeklyReport:
         :param default_format: use default format for all cells
         :return: int
         """
+        data_cell_options = data_cell_options or self.data_cell_options
         for row in data:
             for column, value in enumerate(row):
                 current_column = self.start_column + column
                 if default_format is not None:
                     style = default_format
                 else:
-                    style = self.data_cell_options.get(
+                    style = data_cell_options.get(
                         self.start_column + column)
                 self.worksheet.write(
                     start_row,
@@ -235,12 +255,13 @@ class AnalyzeWeeklyReport:
         # TODO replace N/A
         # campaign
         campaign_title = "Campaign: "
-        campaign_data = "{}\n".format(self.account.name) if self.account else "N/A"
+        campaign_data = "{}\n".format(
+            self.account.name) if self.account else "N/A"
         # flight
         flight_title = "Flight: "
-        flight_start_date = self.account.start_date.strftime("%m/%d/%y")\
+        flight_start_date = self.account.start_date.strftime("%m/%d/%y") \
             if self.account and self.account.start_date is not None else "N/A"
-        flight_end_date = self.account.end_date.strftime("%m/%d/%y")\
+        flight_end_date = self.account.end_date.strftime("%m/%d/%y") \
             if self.account and self.account.end_date is not None else "N/A"
         flight_data = "{} - {}\n".format(flight_start_date, flight_end_date)
         # budget
@@ -359,13 +380,15 @@ class AnalyzeWeeklyReport:
         # Drop None values
         total_row = [(
             "Total",
-            total_data["impressions"], total_data["video_views"],
-            total_data["video_view_rate"],
-            total_data["clicks"], total_data["ctr"],
-            total_data["video25rate"],
-            total_data["video50rate"],
-            total_data["video75rate"],
-            total_data["video100rate"],
+            total_data["impressions"],
+            total_data["video_views"],
+            div_by_100(total_data["video_view_rate"]),
+            total_data["clicks"],
+            div_by_100(total_data["ctr"]),
+            div_by_100(total_data["video25rate"]),
+            div_by_100(total_data["video50rate"]),
+            div_by_100(total_data["video75rate"]),
+            div_by_100(total_data["video100rate"]),
             # TODO We don't collect the statistic for those two columns yet
             # viewable impressions
             "",
@@ -373,7 +396,7 @@ class AnalyzeWeeklyReport:
             ""
         )]
         start_row = self.write_rows(
-            total_row, start_row, self.footer_format)
+            total_row, start_row, data_cell_options=self.footer_format)
         return start_row + 1
 
     def get_ad_group_data(self):
@@ -463,7 +486,8 @@ class AnalyzeWeeklyReport:
 
     def get_topic_data(self):
         queryset = TopicStatistic.objects.filter(**self.get_filters())
-        topic_data = queryset.values("topic__name").order_by("topic__name").annotate(
+        topic_data = queryset.values("topic__name").order_by(
+            "topic__name").annotate(
             **all_stats_aggregate
         )
         for i in topic_data:
@@ -581,3 +605,78 @@ class AnalyzeWeeklyReport:
              " Connected TV Devices, Non-smart phones etc."]
         ]
         self.write_rows(annotation_row, start_row, self.annotation_format)
+
+
+class PerformanceReport:
+    columns = (
+        ("tab", ""),
+        ("name", "Name"),
+        ("impressions", "Impressions"),
+        ("video_views", "Views"),
+        ("cost", "Cost"),
+        ("average_cpm", "Average cpm"),
+        ("average_cpv", "Average cpv"),
+        ("clicks", "Clicks"),
+        ("ctr", "Ctr(i)"),
+        ("ctr_v", "Ctr(v)"),
+        ("video_view_rate", "View rate"),
+        ("video25rate", "25%"),
+        ("video50rate", "50%"),
+        ("video75rate", "75%"),
+        ("video100rate", "100%"),
+    )
+    column_names = dict(columns)
+
+    column_keys = tuple(key for key, _ in columns)
+
+    columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
+
+    def generate(self, data_generator):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet()
+        for index, width in enumerate(self.columns_width):
+            worksheet.set_column(index, index, width)
+
+        self._put_header(worksheet)
+
+        percent_format = workbook.add_format({
+            "num_format": "0.00%",
+        })
+        cell_formats = {
+            11: dict(format=percent_format, fn=div_by_100),
+            12: dict(format=percent_format, fn=div_by_100),
+            13: dict(format=percent_format, fn=div_by_100),
+            14: dict(format=percent_format, fn=div_by_100),
+        }
+
+        self._write_rows(worksheet, data_generator(), 1, 0, cell_formats)
+
+        workbook.close()
+
+        return output.getvalue()
+
+    def _put_header(self, worksheet):
+        self._write_row(worksheet, self.column_names, 0, 0)
+
+    def _write_rows(self, worksheet, data, start_row, start_column=0,
+                    cell_formats=None):
+        for index, row in enumerate(data):
+            self._write_row(worksheet, row, start_row + index, start_column,
+                            cell_formats)
+
+    def _write_row(self, worksheet, row, start_row, start_column=0,
+                   cell_formats=None):
+        cell_formats = cell_formats or {}
+        for index, key in enumerate(self.column_keys):
+            value = row.get(key)
+            current_column = start_column + index
+            formatting = cell_formats.get(index, {})
+            style = formatting.get("format")
+            fn = formatting.get("fn", lambda x: x)
+            worksheet.write(
+                start_row,
+                current_column,
+                fn(value),
+                style
+            )
