@@ -16,6 +16,9 @@ from utils.utils_tests import patch_now, build_csv_byte_stream
 
 
 class PullAWDataTestCase(APITestCase):
+    def _call_command(self, **kwargs):
+        call_command("pull_aw_data", **kwargs)
+
     def _create_account(self, update_time):
         connection = AWConnection.objects.create()
         mcc_account = Account.objects.create(id=1, timezone="UTC",
@@ -87,7 +90,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", end="get_campaigns")
+            self._call_command(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.cost, sum(costs))
@@ -157,8 +160,8 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_ad_groups_and_stats",
-                         end="get_ad_groups_and_stats")
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
 
         ad_group.refresh_from_db()
         self.assertEqual(ad_group.cost, sum(costs))
@@ -201,8 +204,8 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_geo_targeting",
-                         end="get_geo_targeting")
+            self._call_command(start="get_geo_targeting",
+                               end="get_geo_targeting")
 
         campaign.refresh_from_db()
         campaign_geo_targets = campaign.geo_performance.all() \
@@ -249,7 +252,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", end="get_campaigns")
+            self._call_command(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.placement_code, test_code)
@@ -307,7 +310,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_parents", end="get_parents")
+            self._call_command(start="get_parents", end="get_parents")
 
         campaign.refresh_from_db()
         ad_group.refresh_from_db()
@@ -330,7 +333,7 @@ class PullAWDataTestCase(APITestCase):
         test_report_data = [
             dict(
                 AdGroupId=ad_group.id,
-                Criteria=criteria+"::123",
+                Criteria=criteria + "::123",
                 Date=str(today),
                 Cost=0,
                 Impressions=0,
@@ -361,5 +364,3 @@ class PullAWDataTestCase(APITestCase):
         self.assertEqual(Audience.objects.all().count(), 1)
         self.assertEqual(Audience.objects.first().type,
                          Audience.CUSTOM_AFFINITY_TYPE)
-
-

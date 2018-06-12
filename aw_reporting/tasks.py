@@ -332,6 +332,8 @@ def get_ad_groups_and_stats(client, account, today=None):
     if report:
         ad_group_ids = list(AdGroup.objects.filter(
             campaign__account=account).values_list('id', flat=True))
+        campaign_ids = list(Campaign.objects.filter(
+            account=account).values_list("id", flat=True))
 
         with transaction.atomic():
             create_ad_groups = []
@@ -340,6 +342,15 @@ def get_ad_groups_and_stats(client, account, today=None):
 
             for row_obj in report:
                 ad_group_id = row_obj.AdGroupId
+                campaign_id = row_obj.CampaignId
+
+                if campaign_id not in campaign_ids:
+                    logger.warning("Campaign {campaign_id} is missed."
+                                   " Skipping AdGroup {ad_group_id}"
+                                   "".format(ad_group_id=ad_group_id,
+                                             campaign_id=campaign_id)
+                                   )
+                    continue
 
                 # update ad groups
                 if ad_group_id not in updated_ad_groups:
@@ -350,7 +361,7 @@ def get_ad_groups_and_stats(client, account, today=None):
                         'name': row_obj.AdGroupName,
                         'status': row_obj.AdGroupStatus,
                         'type': row_obj.AdGroupType,
-                        'campaign_id': row_obj.CampaignId,
+                        'campaign_id': campaign_id,
                     }
 
                     if ad_group_id in ad_group_ids:
