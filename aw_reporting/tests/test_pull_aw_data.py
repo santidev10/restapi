@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
 from django.core.management import call_command
+from django.test import TransactionTestCase
 from pytz import utc
-from rest_framework.test import APITestCase
 
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS, \
@@ -15,7 +15,7 @@ from aw_reporting.tasks import AudienceAWType
 from utils.utils_tests import patch_now, build_csv_byte_stream
 
 
-class PullAWDataTestCase(APITestCase):
+class PullAWDataTestCase(TransactionTestCase):
     def _call_command(self, **kwargs):
         call_command("pull_aw_data", **kwargs)
 

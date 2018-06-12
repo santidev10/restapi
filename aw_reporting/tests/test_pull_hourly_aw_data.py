@@ -2,15 +2,15 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from django.core.management import call_command
+from django.test import TransactionTestCase
 from pytz import utc
-from rest_framework.test import APITransactionTestCase
 
 from aw_reporting.models import AWConnection, Account, AWAccountPermission, \
     Campaign, Devices, AdGroup
 from utils.utils_tests import build_csv_byte_stream
 
 
-class PullHourlyAWDataTestCase(APITransactionTestCase):
+class PullHourlyAWDataTestCase(TransactionTestCase):
     def _call_command(self, **kwargs):
         call_command("pull_hourly_aw_data", **kwargs)
 
