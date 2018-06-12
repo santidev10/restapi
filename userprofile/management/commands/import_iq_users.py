@@ -26,7 +26,7 @@ class Command(BaseCommand):
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: True,
-        UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
     }
@@ -105,6 +105,8 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for user_info in reader:
                     del user_info["id"]
+                    del user_info["is_verified"]
+                    del user_info["is_influencer"]
 
                     for field in ["last_login", "date_joined", "date_of_birth"]:
                         if user_info[field]:

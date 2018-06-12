@@ -91,6 +91,7 @@ class AdwordsAccountSettings:
         'dashboard_costs_are_hidden',
         'show_conversions',
         'global_account_visibility',
+        'visible_all_accounts',
     )
     CAMPAIGN_TYPES = (CampaignTypeId.DISPLAY,
                       CampaignTypeId.MULTI_CHANNEL,

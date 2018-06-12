@@ -119,8 +119,9 @@ class AccountCreationListApiView(ListAPIView):
         filters["is_deleted"] = False
         if self.request.query_params.get("is_chf") == "1":
             user_settings = self.request.user.aw_settings
-            filters["account__id__in"] = user_settings.get(
-                UserSettingsKey.VISIBLE_ACCOUNTS)
+            if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
+                filters["account__id__in"] = user_settings.get(
+                    UserSettingsKey.VISIBLE_ACCOUNTS)
             chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
             filters["account__managers__id"] = chf_account_id
         queryset = AccountCreation.objects.filter(**filters)
