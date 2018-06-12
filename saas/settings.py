@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import socket
 
 from teamcity import is_running_under_teamcity
 
@@ -166,6 +167,8 @@ REST_FRAMEWORK = {
 LOGS_DIRECTORY = 'logs'
 
 DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+hostname = socket.gethostname()
+ip = socket.gethostbyname(hostname)
 
 LOGGING = {
     'version': 1,
@@ -184,7 +187,7 @@ LOGGING = {
             'formatter': 'main_formatter',
         },
         'mail_developers': {
-            'level': 'CRITICAL',
+            'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
@@ -202,8 +205,11 @@ LOGGING = {
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
         'detail_formatter': {
-            'format': '%(asctime)s %(levelname)s %(filename)s '
-                      'line %(lineno)d: %(message)s',
+            'format': 'HOST: {host}\nCWD: {cwd}\nIP: {ip}\n%(asctime)s '
+                      '%(levelname)s %(filename)s line %(lineno)d: %(message)s'
+                      ''.format(host=hostname,
+                                cwd=os.getcwd(),
+                                ip=ip),
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
     },
