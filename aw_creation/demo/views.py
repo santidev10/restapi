@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
@@ -17,6 +16,7 @@ from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
 
 from userprofile.models import get_default_settings
 from userprofile.models import UserSettingsKey
+from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
@@ -517,18 +517,16 @@ class PerformanceExportApiView:
 
                 def data_generator():
                     data = account.details
-                    yield view.column_names
-                    yield ['Summary'] + [data.get(n)
-                                         for n in view.column_keys]
+                    yield {**{"tab": "Summary"}, **data}
+
                     for dimension in view.tabs:
                         filters['dimension'] = dimension
                         charts_obj = DemoChart(account, filters)
-                        items = charts_obj.chart_items
-                        for data in items['items']:
-                            yield [dimension.capitalize()] + \
-                                  [data[n] for n in view.column_keys]
+                        items = charts_obj.chart_items["items"]
+                        for data in items:
+                            yield {**{"tab": dimension}, **data}
 
-                return view.stream_response(account.name, data_generator)
+                return view.build_response(account.name, data_generator)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
@@ -547,19 +545,11 @@ class PerformanceExportWeeklyReport:
                 )
                 report = DemoAnalyzeWeeklyReport(account)
 
-                response = HttpResponse(
-                    report.get_content(),
-                    content_type='application/vnd.openxmlformats-'
-                                 'officedocument.spreadsheetml.sheet'
+                title = "Channel Factory {} Weekly Report {}".format(
+                    account.name,
+                    datetime.now().date().strftime("%m.%d.%y")
                 )
-                response[
-                    'Content-Disposition'
-                ] = 'attachment; filename="Channel Factory {} Weekly ' \
-                    'Report {}.xlsx"'.format(
-                        account.name,
-                        datetime.now().date().strftime("%m.%d.%y")
-                )
-                return response
+                return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 

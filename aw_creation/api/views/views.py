@@ -16,7 +16,7 @@ from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
 from django.db.models import Value, Case, When, F, \
     IntegerField as AggrIntegerField, Min, Max
-from django.http import StreamingHttpResponse, HttpResponse, Http404
+from django.http import StreamingHttpResponse, Http404
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
@@ -37,19 +37,17 @@ from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import AnalyzeWeeklyReport
-from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
-    BASE_STATS, GeoTarget, Topic, Audience, \
-    AdGroup, \
-    YTChannelStatistic, YTVideoStatistic, KeywordStatistic, AudienceStatistic, \
-    TopicStatistic, DATE_FORMAT, base_stats_aggregator, campaign_type_str, \
-    Campaign, AdGroupStatistic, \
-    dict_norm_base_stats, dict_add_calculated_stats
+from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, AdGroup, \
+    YTChannelStatistic, \
+    YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic, \
+    DATE_FORMAT, base_stats_aggregator, campaign_type_str, Campaign, \
+    AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
     UserHasCHFPermission
 from utils.registry import registry
+from utils.views import XLSX_CONTENT_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +112,7 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
     def post(self, request, content_type, **_):
         file_obj = request.data['file']
         fct = file_obj.content_type
-        if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        if fct == XLSX_CONTENT_TYPE:
             data = self.get_xlsx_contents(file_obj)
         elif fct in ("text/csv", "application/vnd.ms-excel"):
             data = self.get_csv_contents(file_obj)
@@ -1395,172 +1393,6 @@ class PerformanceChartItemsApiView(APIView):
 
 
 @demo_view_decorator
-class PerformanceExportApiView(APIView):
-    """
-    Send filters to download a csv report
-
-    Body example:
-
-    {"campaigns": ["1", "2"]}
-    """
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
-
-    def post(self, request, pk, **_):
-        filters = {}
-        if request.data.get("is_chf") == 1:
-            filters["account__id__in"] = []
-            user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
-        try:
-            item = AccountCreation.objects.filter(**filters).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        def data_generator():
-            return self.get_export_data(item)
-
-        return self.stream_response(item.name, data_generator)
-
-    file_name = "{title}-analyze-{timestamp}.csv"
-
-    column_names = (
-        "", "Name", "Impressions", "Views", "Cost", "Average cpm",
-        "Average cpv", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
-        "25%", "50%", "75%", "100%",
-    )
-    column_keys = (
-        'name', 'impressions', 'video_views', 'cost', 'average_cpm',
-        'average_cpv', 'clicks', 'ctr', 'ctr_v', 'video_view_rate',
-        'video25rate', 'video50rate', 'video75rate', 'video100rate',
-    )
-    tabs = (
-        'device', 'gender', 'age', 'topic', 'interest', 'remarketing',
-        'keyword', 'location', 'creative', 'ad', 'channel', 'video',
-    )
-
-    def get_filters(self):
-        data = self.request.data
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        filters = dict(
-            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
-            if start_date else None,
-            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
-            if end_date else None,
-            campaigns=data.get('campaigns'),
-            ad_groups=data.get('ad_groups'),
-        )
-        return filters
-
-    @staticmethod
-    def stream_response_generator(data_generator):
-        for row in data_generator():
-            output = StringIO()
-            writer = csv.writer(output)
-            writer.writerow(row)
-            yield output.getvalue()
-
-    def stream_response(self, item_name, generator):
-        generator = self.stream_response_generator(generator)
-        response = StreamingHttpResponse(generator,
-                                         content_type='text/csv')
-        filename = self.file_name.format(
-            title=re.sub(r"\W", item_name, '-'),
-            timestamp=datetime.now().strftime("%Y%m%d"),
-        )
-        response['Content-Disposition'] = 'attachment; ' \
-                                          'filename="{}"'.format(filename)
-        return response
-
-    def get_export_data(self, item):
-        filters = self.get_filters()
-        data = dict(name=item.name)
-
-        account = item.account
-
-        fs = {'ad_group__campaign__account': account}
-        if filters['start_date']:
-            fs['date__gte'] = filters['start_date']
-        if filters['end_date']:
-            fs['date__lte'] = filters['end_date']
-        if filters['ad_groups']:
-            fs['ad_group_id__in'] = filters['ad_groups']
-        elif filters['campaigns']:
-            fs['ad_group__campaign_id__in'] = filters['campaigns']
-
-        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
-        )
-        dict_norm_base_stats(stats)
-        dict_quartiles_to_rates(stats)
-        dict_add_calculated_stats(stats)
-        data.update(stats)
-
-        yield self.column_names
-        yield ['Summary'] + [data.get(n) for n in self.column_keys]
-
-        accounts = []
-        if account:
-            accounts.append(account.id)
-
-        for dimension in self.tabs:
-            chart = DeliveryChart(
-                accounts=accounts,
-                dimension=dimension,
-                **filters
-            )
-            items = chart.get_items()
-            for data in items['items']:
-                yield [dimension.capitalize()] + [data[n] for n in
-                                                  self.column_keys]
-
-
-@demo_view_decorator
-class PerformanceExportWeeklyReport(APIView):
-    """
-    Send filters to download weekly report
-
-    Body example:
-
-    {"campaigns": ["1", "2"]}
-    """
-
-    def get_filters(self):
-        data = self.request.data
-        filters = dict(
-            campaigns=data.get('campaigns'),
-            ad_groups=data.get('ad_groups'),
-        )
-        return filters
-
-    def post(self, request, pk, **_):
-        try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
-        except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        filters = self.get_filters()
-        report = AnalyzeWeeklyReport(item.account, **filters)
-
-        response = HttpResponse(
-            report.get_content(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response[
-            'Content-Disposition'] = 'attachment; filename="Channel Factory {} Weekly ' \
-                                     'Report {}.xlsx"'.format(
-            item.name,
-            datetime.now().date().strftime("%m.%d.%y")
-        )
-        return response
-
-
-@demo_view_decorator
 class PerformanceTargetingDetailsAPIView(RetrieveAPIView):
     serializer_class = AccountCreationListSerializer
 
@@ -2138,7 +1970,7 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
 
             fct = file_obj.content_type
             try:
-                if fct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                if fct == XLSX_CONTENT_TYPE:
                     data = self.get_xlsx_contents(file_obj, return_lines=True)
                 elif fct in ("text/csv", "application/vnd.ms-excel"):
                     data = self.get_csv_contents(file_obj, return_lines=True)
