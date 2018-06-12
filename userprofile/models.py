@@ -35,7 +35,6 @@ class UserSettingsKey:
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
 
 
-
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
