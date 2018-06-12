@@ -18,6 +18,7 @@ from aw_reporting.models import AdGroupStatistic, \
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.lang import pick_dict
+from utils.permissions import is_chf_in_request
 from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
 
@@ -103,8 +104,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
         self._filter_fields()
-        self.is_chf = self.context.get(
-            "request").query_params.get("is_chf") == "1"
+        self.is_chf = is_chf_in_request(self.context.get("request"))
         self.settings = {}
         self.stats = {}
         self.plan_rates = {}

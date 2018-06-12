@@ -74,17 +74,22 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
         return request.user.has_perm(self.permission)
 
 
+def is_chf_in_request(request):
+    is_chf = None
+    if request.method == "GET":
+        is_chf = request.query_params.get("is_chf")
+    if request.method == "POST":
+        is_chf = request.data.get("is_chf")
+    return str(is_chf) == "1"
+
+
 class UserHasCHFPermission(permissions.IsAuthenticated):
     """
     Allow user to use CHF dashboard data
     """
+
     def has_permission(self, request, view):
-        is_chf = None
-        if request.method == "GET":
-            is_chf = request.query_params.get("is_chf")
-        if request.method == "POST":
-            is_chf = request.data.get("is_chf")
-        if str(is_chf) == "1":
+        if is_chf_in_request(request):
             return request.user.is_staff or request.user.has_perm(
                 "userprofile.view_dashboard")
         return True
