@@ -163,7 +163,9 @@ REST_FRAMEWORK = {
     )
 }
 
-LOGS_DIRECTORY = '.'
+LOGS_DIRECTORY = 'logs'
+
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
 
 LOGGING = {
     'version': 1,
@@ -174,8 +176,7 @@ LOGGING = {
             'formatter': 'main_formatter',
         },
         'file': {
-            'level': 'ERROR',
-            'filename': os.path.join(LOGS_DIRECTORY, 'iq_errors.log'),
+            'filename': os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'when': 'midnight',
             'interval': 1,
@@ -191,8 +192,8 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'handlers': ['console', 'file', 'mail_developers'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'handlers': ['file', 'mail_developers'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
     'formatters': {
