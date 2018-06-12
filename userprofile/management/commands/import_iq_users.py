@@ -24,7 +24,7 @@ class Command(BaseCommand):
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: True,
-        UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
     }

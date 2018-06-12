@@ -30,8 +30,10 @@ class UserSettingsKey:
     DASHBOARD_COSTS_ARE_HIDDEN = "dashboard_costs_are_hidden"
     SHOW_CONVERSIONS = "show_conversions"
     VISIBLE_ACCOUNTS = "visible_accounts"
+    VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
     HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
+
 
 
 def get_default_settings():
@@ -43,6 +45,7 @@ def get_default_settings():
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: False,
         UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
