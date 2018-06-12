@@ -140,7 +140,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user = self.get_user_by_id(user_id)
         if user is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        user_aw_settings = user.aw_settings
+        user_aw_settings = user.get_aw_settings()
         return Response(data=user_aw_settings)
 
     @cached_view
