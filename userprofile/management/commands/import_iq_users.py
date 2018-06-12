@@ -35,7 +35,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--update_visible_accounts_only',
             dest='update_visible_accounts_only',
-            help='Update visible accounts_setting only',
+            help='Update visible accounts setting only',
             type=bool,
             default=False,
         )
@@ -78,7 +78,7 @@ class Command(BaseCommand):
                 continue
 
             db_value = user.aw_settings["visible_accounts"]
-            import_value = user_info["aw_settings"]["visible_accounts"]
+            import_value = user_info["aw_settings"][UserSettingsKey.VISIBLE_ACCOUNTS]
 
             if db_value != import_value:
                 logger.info("{}  different set of visible accounts\n"
@@ -90,7 +90,7 @@ class Command(BaseCommand):
                                 ",".join(import_value),
                             )
                 )
-                user.aw_settings["visible_accounts"] = import_value
+                user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = import_value
                 user.save()
 
     def get_users_info(self):
