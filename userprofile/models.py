@@ -190,7 +190,10 @@ class UserRelatedManager(models.Manager.from_queryset(BaseQueryset)):
             if hasattr(user, "aw_settings") else get_default_settings()
         global_visibility = user_settings.get(
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
-        return global_visibility
+        visible_all_accounts = user_settings.get(
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS, False)
+
+        return global_visibility & (not visible_all_accounts)
 
     def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
         if self.__is_account_filter_applicable(user):

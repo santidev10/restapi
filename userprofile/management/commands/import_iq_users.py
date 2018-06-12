@@ -57,6 +57,8 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for user_info in reader:
                     del user_info["id"]
+                    del user_info["is_verified"]
+                    del user_info["is_influencer"]
 
                     for field in ["last_login", "date_joined", "date_of_birth"]:
                         if user_info[field]:
