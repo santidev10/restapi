@@ -764,7 +764,8 @@ class DemoAccount(BaseDemo):
         return self
 
     def is_visible_for_user(self, user):
-        return user.aw_settings.get(UserSettingsKey.DEMO_ACCOUNT_VISIBLE)
+        return user.get_aw_settings()\
+                   .get(UserSettingsKey.DEMO_ACCOUNT_VISIBLE)
 
     @property
     def details(self):

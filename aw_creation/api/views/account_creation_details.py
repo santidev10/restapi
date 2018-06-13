@@ -13,8 +13,8 @@ from userprofile.models import UserSettingsKey
 class AccountCreationDetailsApiView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        show_conversions = self.request.user.aw_settings.get(
-            UserSettingsKey.SHOW_CONVERSIONS)
+        show_conversions = self.request.user.get_aw_settings()\
+                                       .get(UserSettingsKey.SHOW_CONVERSIONS)
         queryset = AccountCreation.objects.filter(owner=self.request.user)
         try:
             item = queryset.get(pk=pk)

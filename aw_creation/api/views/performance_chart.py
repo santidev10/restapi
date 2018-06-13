@@ -65,7 +65,8 @@ class PerformanceChartApiView(APIView):
 
     def filter_hidden_sections(self):
         user = registry.user
-        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if user.get_aw_settings() \
+                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404
