@@ -146,7 +146,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        show_client_cost = not registry.user.aw_settings.get(
+        show_client_cost = not registry.user.get_aw_settings(
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         campaign_filter = {self.ACCOUNT_ID_KEY + "__in": account_creation_ids}
         account_client_cost = dict()
@@ -256,7 +256,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _fields_to_exclude(self):
         user = registry.user
-        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) \
+        if user.get_aw_settings(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) \
                 and self.is_chf:
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()

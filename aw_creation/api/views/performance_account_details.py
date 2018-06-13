@@ -65,7 +65,7 @@ class PerformanceAccountDetailsApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         data = AccountCreationListSerializer(
             self.account_creation, context={"request": request}).data
-        show_conversions = self.request.user.aw_settings.get(
+        show_conversions = self.request.user.get_aw_settings(
             UserSettingsKey.SHOW_CONVERSIONS)
         data["overview"] = self.get_overview_data(self.account_creation)
         data["details"] = self.get_details_data(self.account_creation,
@@ -109,7 +109,7 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         if self.request.data.get("is_chf") == 1:
             self.add_chf_performance_data(data)
-            show_client_cost = not registry.user.aw_settings.get(
+            show_client_cost = not registry.user.get_aw_settings(
                 UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
             if show_client_cost:
                 data["delivered_cost"] = self._get_client_cost(fs)
@@ -121,7 +121,7 @@ class PerformanceAccountDetailsApiView(APIView):
 
     def _filter_costs(self, data):
         user = registry.user
-        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if user.get_aw_settings(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             hidden_values = "cost", "average_cpm", "average_cpv"
             for key in hidden_values:
                 data.pop(key, None)

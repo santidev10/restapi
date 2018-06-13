@@ -13,7 +13,7 @@ from userprofile.models import UserSettingsKey
 class AccountCreationDetailsApiView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        show_conversions = self.request.user.aw_settings.get(
+        show_conversions = self.request.user.get_aw_settings(
             UserSettingsKey.SHOW_CONVERSIONS)
         queryset = AccountCreation.objects.filter(owner=self.request.user)
         try:

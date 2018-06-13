@@ -90,7 +90,7 @@ class AccountCreationListApiView(ListAPIView):
         # user has access to them,
         # but they are not connected to his account creations
         if request.query_params.get("is_chf") == "1":
-            visible_account_ids = self.request.user.aw_settings.get(
+            visible_account_ids = self.request.user.get_aw_settings(
                 UserSettingsKey.VISIBLE_ACCOUNTS)
             read_accounts = Account.objects.filter(
                 id__in=visible_account_ids).exclude(
