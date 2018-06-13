@@ -213,7 +213,7 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             sheet = book.worksheets[0]
             self.assertGreater(sheet.max_row, 10)
             rows = range(2, sheet.max_row + 1)
-            cols = range(11, 15)
+            cols = range(10, 15)
             test_indexes = product(rows, cols)
             for row, column in test_indexes:
                 cell = sheet[row][column]

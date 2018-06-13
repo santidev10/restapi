@@ -644,6 +644,7 @@ class PerformanceReport:
             "num_format": "0.00%",
         })
         cell_formats = {
+            10: dict(format=percent_format, fn=div_by_100),
             11: dict(format=percent_format, fn=div_by_100),
             12: dict(format=percent_format, fn=div_by_100),
             13: dict(format=percent_format, fn=div_by_100),
