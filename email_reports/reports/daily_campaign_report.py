@@ -145,7 +145,7 @@ class DailyCampaignReport(BaseEmailReport):
         account = Account.objects.filter(
             campaigns__salesforce_placement__opportunity_id=opportunity_id) \
             .first()
-        account_link = "{host}/account/{account_id}".format(
+        account_link = "{host}/chf_dashboard/{account_id}/?should_redirect=true".format(
             host=self.host,
             account_id=account.id) \
             if account is not None else None

@@ -172,7 +172,7 @@ class SendDailyEmailsTestCase(APITestCase):
         account = Account.objects.create(id="12341")
         Campaign.objects.create(salesforce_placement=placement, account=account)
         test_host = "https://host.test"
-        account_link = "{host}/account/{account_id}" \
+        expected_account_link = "{host}/chf_dashboard/{account_id}/?should_redirect=true" \
             .format(host=test_host, account_id=account.id)
 
         with patch_now(now), patch_settings(HOST=test_host):
@@ -194,7 +194,7 @@ class SendDailyEmailsTestCase(APITestCase):
         view_in_browser_link = view_in_browser_link_nodes[0].get("href")
         account_link = account_link_nodes[0].get("href")
         self.assertEqual(view_in_browser_link, browser_link)
-        self.assertEqual(account_link, account_link)
+        self.assertEqual(account_link, expected_account_link)
 
     def test_no_link_if_no_account(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -218,7 +218,6 @@ class SendDailyEmailsTestCase(APITestCase):
         email = mail.outbox[0]
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
-        print(html_body)
         account_link_nodes = tree.xpath("//a[@id='accountLink']")
         self.assertEqual(len(account_link_nodes), 0)
 
