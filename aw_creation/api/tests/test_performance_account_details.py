@@ -556,7 +556,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         url = self._get_url(account_creation.id)
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
@@ -592,7 +593,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         url = self._get_url(account_creation.id)
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
@@ -695,7 +697,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         url = self._get_url(account_creation.id)
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
@@ -732,7 +735,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         # show
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
@@ -751,7 +755,8 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
         # hide
         user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
@@ -785,8 +790,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
         url = self._get_url(account_creation.id)
-        response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                    content_type="application/json")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["brand"], test_brand)
 
@@ -807,8 +816,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         CampaignCreation.objects.create(account_creation=account_creation,
                                         campaign=None)
         url = self._get_url(account_creation.id)
-        response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                    content_type="application/json")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["agency"], agency.name)
 
@@ -842,8 +855,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
         url = self._get_url(account_creation.id)
-        response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                    content_type="application/json")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data["cost_method"]),
