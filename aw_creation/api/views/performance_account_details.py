@@ -48,7 +48,8 @@ class PerformanceAccountDetailsApiView(APIView):
         filters = {}
         if request.data.get("is_chf") == 1:
             user_settings = self.request.user.aw_settings
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY) and\
+                not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
                 filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
