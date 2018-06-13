@@ -386,8 +386,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
+        self.user.add_custom_user_permission("view_dashboard")
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
+            response = self.client.post(url, dict(is_chf=1))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
@@ -467,8 +468,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
+        self.user.add_custom_user_permission("view_dashboard")
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
+            response = self.client.post(url, dict(is_chf=1))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)

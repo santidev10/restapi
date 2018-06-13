@@ -1362,7 +1362,7 @@ class PerformanceChartItemsApiView(APIView):
         dimension = kwargs.get('dimension')
         filters = {}
         if request.data.get("is_chf") == 1:
-            user_settings = self.request.user.aw_settings
+            user_settings = self.request.user.get_aw_settings()
             filters["account__id__in"] = \
                 user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
@@ -1385,7 +1385,8 @@ class PerformanceChartItemsApiView(APIView):
 
     def _filter_costs(self, data):
         user = registry.user
-        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)\
+            and self.request.data.get("is_chf") != 1:
             for item in data["items"]:
                 item["average_cpm"] = item["average_cpv"] = item["cost"] = None
 

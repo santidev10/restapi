@@ -103,8 +103,8 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
-        self._filter_fields()
         self.is_chf = is_chf_in_request(self.context.get("request"))
+        self._filter_fields()
         self.settings = {}
         self.stats = {}
         self.plan_rates = {}
@@ -256,7 +256,8 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _fields_to_exclude(self):
         user = registry.user
-        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if user.aw_settings.get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) \
+                and self.is_chf:
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
 

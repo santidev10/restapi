@@ -816,8 +816,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         accs = dict((acc["id"], acc) for acc in response.data["items"])
         acc_data = accs.get(account_creation.id)
         self.assertIsNotNone(acc_data)
-        self.assertNotIn("average_cpv", acc_data)
-        self.assertNotIn("average_cpm", acc_data)
+        self.assertIn("average_cpv", acc_data)
+        self.assertIn("average_cpm", acc_data)
 
         # show
         user_settings = {
@@ -1007,8 +1007,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         accs = dict((acc["id"], acc) for acc in response.data["items"])
         acc_data = accs.get(account_creation.id)
         self.assertIsNotNone(acc_data)
-        self.assertNotIn("cost", acc_data)
-        self.assertNotIn("plan_cpm", acc_data)
-        self.assertNotIn("plan_cpv", acc_data)
-        self.assertNotIn("average_cpm", acc_data)
-        self.assertNotIn("average_cpv", acc_data)
+        self.assertIn("cost", acc_data)
+        self.assertIn("plan_cpm", acc_data)
+        self.assertIn("plan_cpv", acc_data)
+        self.assertIn("average_cpm", acc_data)
+        self.assertIn("average_cpv", acc_data)
