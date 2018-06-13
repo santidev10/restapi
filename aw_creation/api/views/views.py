@@ -1241,8 +1241,8 @@ class PerformanceAccountCampaignsListApiView(APIView):
         pk = self.kwargs.get("pk")
         user = registry.user
         account_id = AccountCreation.objects.get(id=pk).account_id
-        types_hidden = user.get_aw_settings(
-            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])
+        types_hidden = user.get_aw_settings()\
+            .get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])
         types_to_exclude = [campaign_type_str(t) for t in types_hidden]
         queryset = Campaign.objects \
             .filter(
@@ -1256,7 +1256,7 @@ class PerformanceAccountCampaignsListApiView(APIView):
         filters = {"is_deleted": False}
         if request.query_params.get("is_chf") == "1":
             filters["account__id__in"] = []
-            user_settings = self.request.user.aw_settings
+            user_settings = self.request.user.get_aw_settings()
             if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
                 filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
@@ -1327,7 +1327,8 @@ class PerformanceChartApiView(APIView):
 
     def filter_hidden_sections(self):
         user = registry.user
-        if user.get_aw_settings(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+        if user.get_aw_settings()\
+                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404
@@ -1385,7 +1386,8 @@ class PerformanceChartItemsApiView(APIView):
 
     def _filter_costs(self, data):
         user = registry.user
-        if user.get_aw_settings(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)\
+        if user.get_aw_settings()\
+               .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)\
             and self.request.data.get("is_chf") != 1:
             for item in data["items"]:
                 item["average_cpm"] = item["average_cpv"] = item["cost"] = None
