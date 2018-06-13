@@ -143,11 +143,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         return self.first_name
 
     def get_aw_settings(self):
-        settings = self.aw_settings
+        settings = dict(**self.aw_settings)
         for default_settings_key, default_settings_value in get_default_settings().items():
             if default_settings_key not in settings:
                 settings[default_settings_key] = default_settings_value
-        return self.aw_settings
+        return settings
 
     def email_user(self, subject, message, from_email=None, **kwargs):
         """
@@ -197,8 +197,8 @@ class UserRelatedManager(models.Manager.from_queryset(BaseQueryset)):
 
     def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
         if self.__is_account_filter_applicable(user):
-            account_ids = user.aw_settings.get(
-                UserSettingsKey.VISIBLE_ACCOUNTS, [])
+            account_ids = user.get_aw_settings()\
+                              .get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = self.__filter_by_account_ids(queryset, account_ids)
         return queryset
 
