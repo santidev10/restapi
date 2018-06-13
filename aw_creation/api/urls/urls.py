@@ -71,7 +71,6 @@ urlpatterns = [
         views.TargetingItemsImportApiView.as_view(),
         name="targeting_items_import"),
 
-
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
         name="account_creation_duplicate"),
@@ -120,7 +119,8 @@ urlpatterns = [
     url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
-    url(r'^performance_targeting_item/(?P<targeting>\w+)/(?P<ad_group_id>\w+)/(?P<criteria>[^/]+)/$',
+    url(
+        r'^performance_targeting_item/(?P<targeting>\w+)/(?P<ad_group_id>\w+)/(?P<criteria>[^/]+)/$',
         views.PerformanceTargetingItemAPIView.as_view(),
         name="performance_targeting_item"),
     # >>> Performance
@@ -156,4 +156,8 @@ urlpatterns = [
     url(r'^aw_creation_changes_status/(?P<account_id>\d+)/$',
         views.AwCreationChangeStatusAPIView.as_view(),
         name="aw_creation_change_status"),
+
+    url(r"^account/(?P<account_id>\w+)/account_creation/$",
+        views.AccountCreationByAccountAPIView.as_view(),
+        name=Name.Dashboard.ACCOUNT_CREATION_BY_ACCOUNT)
 ]
