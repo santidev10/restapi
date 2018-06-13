@@ -142,12 +142,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         """
         return self.first_name
 
-    def get_aw_settings(self):
-        settings = self.aw_settings
+    def get_aw_settings(self, key=None):
+        settings = dict(**self.aw_settings)
         for default_settings_key, default_settings_value in get_default_settings().items():
             if default_settings_key not in settings:
                 settings[default_settings_key] = default_settings_value
-        return self.aw_settings
+        if key is not None:
+            return settings.get(key)
+        return settings
 
     def email_user(self, subject, message, from_email=None, **kwargs):
         """
