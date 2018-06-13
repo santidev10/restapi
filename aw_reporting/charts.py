@@ -33,6 +33,10 @@ class Indicator:
     COSTS = "cost"
 
 
+ALL_INDICATORS = sorted([value for name, value in Indicator.__dict__.items()
+                         if not name.startswith("_")])
+
+
 class Dimension:
     AD_GROUPS = "ad"
     AGE = "age"
@@ -530,13 +534,16 @@ class DeliveryChart:
             filters['video_views__gt'] = 0
 
         if self.params["am_ids"] is not None:
-            filters["%s__account_manager_id__in" % opp_link] = self.params["am_ids"]
+            filters["%s__account_manager_id__in" % opp_link] = self.params[
+                "am_ids"]
 
         if self.params["ad_ops_ids"] is not None:
-            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params["ad_ops_ids"]
+            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params[
+                "ad_ops_ids"]
 
         if self.params["sales_ids"] is not None:
-            filters["%s__sales_manager_id__in" % opp_link] = self.params["sales_ids"]
+            filters["%s__sales_manager_id__in" % opp_link] = self.params[
+                "sales_ids"]
 
         if self.params["brands"] is not None:
             filters["%s__brand__in" % opp_link] = self.params["brands"]
@@ -547,7 +554,8 @@ class DeliveryChart:
                 self.params["goal_type_ids"]
 
         if self.params["category_ids"] is not None:
-            filters["%s__category_id__in" % opp_link] = self.params["category_ids"]
+            filters["%s__category_id__in" % opp_link] = self.params[
+                "category_ids"]
 
         if self.params["region_ids"] is not None:
             filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
