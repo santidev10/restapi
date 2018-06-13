@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import Indicator, ALL_DIMENSIONS
+from aw_reporting.charts import Indicator, ALL_DIMENSIONS, ALL_INDICATORS
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GenderStatistic, AgeRangeStatistic, AudienceStatistic, \
@@ -307,3 +307,46 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    def test_success_tabs(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_paused=True)
+        self.assertNotEqual(account_creation.status,
+                            AccountCreation.STATUS_PENDING)
+
+        dimensions = ALL_DIMENSIONS
+        indicators = ALL_INDICATORS
+        account_ids = account_creation.id, DEMO_ACCOUNT_ID
+
+        test_cases = list(product(dimensions, indicators, account_ids))
+
+        def test_availability():
+            for dimension, indicator, account_id in test_cases:
+                url = self._get_url(account_id)
+                response = self.client.post(url,
+                                            json.dumps(dict(
+                                                is_chf=1,
+                                                indicator=indicator,
+                                                dimention=dimension
+                                            )),
+                                            content_type='application/json')
+                is_demo = account_id == DEMO_ACCOUNT_ID
+                msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
+                    is_demo, dimension, indicator)
+                self.assertEqual(response.status_code, HTTP_200_OK,
+                                 msg)
+
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            test_availability()
