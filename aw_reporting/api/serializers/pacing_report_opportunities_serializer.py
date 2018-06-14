@@ -16,7 +16,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     ad_ops = SimpleField()
     am = SimpleField()
     apex_deal = BooleanField()
-    bill_of_third_party_numbers = CharField(max_length=200)
+    bill_of_third_party_numbers = BooleanField()
     cannot_roll_over = BooleanField()
     category = SerializerMethodField()
     chart_data = SerializerMethodField()
