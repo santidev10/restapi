@@ -1,3 +1,3 @@
-from .adwords import AdWords
-from .keywords import Keywords
-from .youtube import Youtube
+from audit_tool.adwords import AdWords
+from audit_tool.keywords import Keywords
+from audit_tool.youtube import Youtube

@@ -9,12 +9,10 @@ from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 import yaml
 
-from aw_reporting.models import Account
-from aw_reporting.models import AWConnection
 from utils.utils import safe_exception
 from utils.datetime import now_in_default_tz
 
-from .dmo import AccountDMO
+from audit_tool.dmo import AccountDMO
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +70,9 @@ class AdWords:
             self.client_options = yaml.load(f)
 
     def load_accounts(self) -> None:
+        from aw_reporting.models import Account
+        from aw_reporting.models import AWConnection
+
         logger.info("Loading accounts")
         self.accounts = []
 

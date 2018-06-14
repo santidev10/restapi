@@ -48,7 +48,8 @@ PROJECT_APPS = (
     "administration",
     "payments",
     "channel",
-    "email_reports"
+    "email_reports",
+    "audit_tool",
 )
 
 THIRD_PARTY_APPS = (
