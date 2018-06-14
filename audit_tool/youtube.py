@@ -52,5 +52,7 @@ class Youtube:
         if not self.chunks:
             return
         for chunk in self.chunks:
+            if chunk.items is None:
+                continue
             for item in chunk.items:
                 yield item

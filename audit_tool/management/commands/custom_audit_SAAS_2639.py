@@ -38,16 +38,20 @@ class Command(BaseCommand):
                 logger.info("  {}".format(n))
             item.found_tags = keywords.parse(item.get_text())
 
+        logger.info("Sorting results")
+        items = sorted(items, key=lambda x: len(x.found_tags))
+
         logger.info("Storing results")
         with open("custom_audit_SAAS_2639.csv", "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["Url", "Impressions", "Hits"])
+            writer.writerow(["Url", "ChannelId", "Impressions", "Hits"])
             for item in items:
                 data = videos[item.id]
                 writer.writerow([
                     data[0]["Url"],
+                    data[0]["ChannelId"],
                     sum([int(r.get("Impressions")) for r in data]),
-                    len(item.found_tags)
+                    len(item.found_tags),
                 ])
 
         logger.info("Done")
