@@ -49,7 +49,7 @@ class Command(BaseCommand):
                 data = videos[item.id]
                 writer.writerow([
                     data[0]["Url"],
-                    data[0]["ChannelId"],
+                    item.channel_id,
                     sum([int(r.get("Impressions")) for r in data]),
                     len(item.found_tags),
                 ])
