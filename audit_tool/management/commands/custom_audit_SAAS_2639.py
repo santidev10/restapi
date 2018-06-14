@@ -44,12 +44,15 @@ class Command(BaseCommand):
         logger.info("Storing results")
         with open("custom_audit_SAAS_2639.csv", "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["Url", "ChannelId", "Impressions", "Hits"])
+            writer.writerow(["Url", "Title", "ChannelId", "ChannelTitle",
+                             "Impressions", "Hits"])
             for item in items:
                 data = videos[item.id]
                 writer.writerow([
                     data[0]["Url"],
+                    item.title,
                     item.channel_id,
+                    item.channel_title,
                     sum([int(r.get("Impressions")) for r in data]),
                     len(item.found_tags),
                 ])
