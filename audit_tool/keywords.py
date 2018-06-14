@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 
 class Keywords:
     _regexp = None
-    _regexp_cleanup = re.compile(r'[\W_]+')
+    _regexp_cleanup = re.compile(r"[\W_]+")
 
     _keywords = None
 
@@ -59,7 +59,7 @@ class Keywords:
 
     def clean(self):
         assert self._keywords is not None
-        re_cleanup = re.compile("[\W_]+")
+        re_cleanup = re.compile(r"[\W_]+")
         keywords = tuple([
             re_cleanup.sub("", w).lower() for w in self._keywords
         ])
