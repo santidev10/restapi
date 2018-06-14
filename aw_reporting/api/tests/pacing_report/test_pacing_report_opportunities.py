@@ -3,7 +3,6 @@ from datetime import timedelta, date, datetime
 from itertools import product
 from urllib.parse import urlencode
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -28,12 +27,6 @@ logger = logging.getLogger(__name__)
 class PacingReportOpportunitiesTestCase(APITestCase):
     url = reverse(
         Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES)
-
-    @classmethod
-    def setUpClass(cls):
-        # The test runner sets DEBUG to False. Set to True to enable SQL logging.
-        settings.DEBUG = True
-        super(PacingReportOpportunitiesTestCase, cls).setUpClass()
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -1113,3 +1106,23 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertAlmostEqual(response.data["items"][0]["margin"],
                                expected_margin)
+
+    def test_bill_of_third_party_numbers_is_bool(self):
+        opportunity_1 = Opportunity.objects.create(
+            id=1, bill_of_third_party_numbers=False, probability=100)
+        opportunity_2 = Opportunity.objects.create(
+            id=2, bill_of_third_party_numbers=False, probability=100)
+        opportunity_1.refresh_from_db()
+        opportunity_2.refresh_from_db()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        opps_by_id = {o["id"]: o for o in response.data["items"]}
+        opp_1 = opps_by_id[opportunity_1.id]
+        opp_2 = opps_by_id[opportunity_2.id]
+        self.assertEqual(opp_1["bill_of_third_party_numbers"],
+                         opportunity_1.bill_of_third_party_numbers)
+        self.assertEqual(opp_2["bill_of_third_party_numbers"],
+                         opportunity_2.bill_of_third_party_numbers)
