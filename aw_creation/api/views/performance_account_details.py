@@ -131,9 +131,12 @@ class PerformanceAccountDetailsApiView(APIView):
     def _get_client_cost(self, filters):
         keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
                            "aw_cost", "dynamic_placement", "placement_type",
-                           "tech_fee", "impressions", "video_views")
+                           "tech_fee", "impressions", "video_views",
+                           "start", "end")
         statistics = AdGroupStatistic.objects.filter(**filters) \
             .annotate(aw_cost=Sum("cost"),
+                      start=Min("ad_group__campaign__start_date"),
+                      end=Max("ad_group__campaign__end_date"),
                       **client_cost_ad_group_statistic_required_annotation) \
             .values(*keys_to_extract)
 
