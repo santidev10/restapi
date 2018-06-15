@@ -1035,3 +1035,35 @@ class PacingReportFlightsTestCase(APITestCase):
         fl_data = response.data[0]
         self.assertEqual(fl_data["margin"], 0)
         self.assertAlmostEqual(fl_data["pacing"], expected_pacing)
+
+    def test_hard_cost_margin(self):
+        today = date(2018, 1, 1)
+        total_cost = 6543
+        our_cost = 1234
+        days_pass, days_left = 3, 6
+        total_days = days_pass + days_left
+        self.assertGreater(days_pass, 0)
+        self.assertGreater(days_left, 0)
+        start = today - timedelta(days=(days_pass - 1))
+        end = today + timedelta(days=days_left)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=today - timedelta(days=3),
+            end=today + timedelta(days=3))
+        hard_cost_placement = OpPlacement.objects.create(
+            id="2", name="Hard cost placement", opportunity=opportunity,
+            start=start, end=end,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        Flight.objects.create(
+            start=start, end=end, total_cost=total_cost,
+            placement=hard_cost_placement, cost=1)
+        campaign = Campaign.objects.create(
+            salesforce_placement=hard_cost_placement)
+        CampaignStatistic.objects.create(date=start, campaign=campaign,
+                                         cost=our_cost)
+        client_cost = total_cost / total_days * days_pass
+        expected_margin = (1 - our_cost / client_cost) * 100
+        url = self._get_url(hard_cost_placement.id)
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data[0]["margin"], expected_margin)
