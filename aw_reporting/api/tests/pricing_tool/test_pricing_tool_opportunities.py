@@ -3023,6 +3023,20 @@ class PricingToolTestCase(APITestCase):
         opp_data = response.data["items"][0]
         self.assertAlmostEqual(opp_data["margin"], expected_margin)
 
+    def test_empty_product(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        AdGroup.objects.create(id=1, campaign=campaign, type="")
+        test_type = "test-type"
+        AdGroup.objects.create(id=2, campaign=campaign, type=test_type)
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["products"], [test_type])
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):
