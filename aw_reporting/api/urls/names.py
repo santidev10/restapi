@@ -11,6 +11,7 @@ class Name:
         OPPORTUNITIES = "pacing_report_opportunities"
         PLACEMENTS = "pacing_report_placements"
         FLIGHTS = "pacing_report_flights"
+        EXPORT = "pacing_report_export"
 
     class PricingTool:
         OPPORTUNITIES = "pricing_tool_opportunities"
