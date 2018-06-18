@@ -943,7 +943,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 video_views=c.video_views,
                 aw_cost=c.cost,
                 total_cost=c.salesforce_placement.total_cost,
-                tech_fee=c.salesforce_placement.tech_fee
+                tech_fee=c.salesforce_placement.tech_fee,
+                start=c.start_date,
+                end=c.end_date
             )
                 for c in campaigns]
         )

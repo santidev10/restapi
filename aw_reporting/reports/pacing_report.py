@@ -10,7 +10,7 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_add_calculated_stats, Opportunity, Campaign, CampaignStatistic, get_margin
+    dict_add_calculated_stats, Opportunity, Campaign, CampaignStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
@@ -464,7 +464,6 @@ class PacingReport:
             margin_quality = 0
             margin_direction = 1
 
-        # pacing=((.8, .9), (1.1, 1.2)),
         low, high = self.borders['pacing']
         pacing = report["pacing"]
         if pacing is None or high[0] >= pacing >= low[1]:
@@ -496,7 +495,6 @@ class PacingReport:
                 ctr_quality = 1
 
         report.update(
-            margin=margin,
             margin_quality=margin_quality,
             margin_direction=margin_direction,
             pacing_quality=pacing_quality,
@@ -745,7 +743,7 @@ class PacingReport:
     # ## OPPORTUNITIES ## #
 
     # ## PLACEMENTS ## #
-    def prepare_hard_cost_placement_data(self, placement_dict_data):
+    def prepare_hard_cost_placement_data(self, placement_dict_data, flights):
         """
         :param placement_dict_data: dict
         """
@@ -766,11 +764,13 @@ class PacingReport:
             our_cost=Sum("cost"))
         our_cost = flights_cost_data["our_cost"]
         total_client_cost = flights_cost_data["total_client_cost"] or 0
-        current_cost_limit = flights_cost_data["current_cost_limit"] or 0
-        placement_dict_data.update(cost=our_cost, plan_cost=total_client_cost)
+        placement_dict_data.update()
         border = self.borders["margin"]
-        margin = get_margin(plan_cost=current_cost_limit, cost=our_cost,
-                            client_cost=total_client_cost)
+        current_cost_limit = flights_cost_data["current_cost_limit"]
+
+        margin = self.get_margin_from_flights(flights, our_cost,
+                                              current_cost_limit)
+
         if margin >= border[0]:
             margin_quality = 2
             margin_direction = 0
@@ -781,7 +781,10 @@ class PacingReport:
             margin_quality = 0
             margin_direction = 1
         placement_dict_data.update(
-            margin=margin, margin_quality=margin_quality,
+            cost=our_cost,
+            plan_cost=total_client_cost,
+            margin=margin,
+            margin_quality=margin_quality,
             margin_direction=margin_direction)
 
     def get_placements(self, opportunity):
@@ -810,11 +813,10 @@ class PacingReport:
                 is_upcoming=p["start"] > self.today if p["start"] else None,
                 tech_fee=float(p["tech_fee"]) if p["tech_fee"] else None
             )
-            if goal_type_id == SalesForceGoalType.HARD_COST:
-                self.prepare_hard_cost_placement_data(p)
-                continue
-
             flights = all_flights[p["id"]]
+            if goal_type_id == SalesForceGoalType.HARD_COST:
+                self.prepare_hard_cost_placement_data(p, flights)
+                continue
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             p.update(delivery_stats)
