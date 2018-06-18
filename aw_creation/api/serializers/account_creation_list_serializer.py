@@ -130,11 +130,13 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
         campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
             .values(self.ACCOUNT_ID_KEY, "impressions", "video_views") \
             .annotate(aw_cost=F("cost"),
+                      start=F("start_date"), end=F("end_date"),
                       **client_cost_campaign_required_annotation)
 
         keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
                            "aw_cost", "dynamic_placement", "placement_type",
-                           "tech_fee", "impressions", "video_views")
+                           "tech_fee", "impressions", "video_views",
+                           "start", "end")
 
         for campaign_data in campaigns_with_cost:
             account_id = campaign_data[self.ACCOUNT_ID_KEY]

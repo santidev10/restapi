@@ -33,7 +33,9 @@ def get_margin_from_flights(flights, cost, plan_cost,
                 video_views=stats.get("video_views") or 0,
                 aw_cost=stats.get("sum_cost") or 0,
                 total_cost=(f["total_cost"] or 0) * allocation_ko,
-                tech_fee=float(f["placement__tech_fee"] or 0)
+                tech_fee=float(f["placement__tech_fee"] or 0),
+                start=f["start"],
+                end=f["end"]
             )
 
         margin = get_margin(plan_cost=plan_cost, cost=cost,
