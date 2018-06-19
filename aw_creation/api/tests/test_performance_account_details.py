@@ -157,7 +157,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                 content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         expected_fields = (
-            "delivered_cost", "plan_cost", "deliquartersvered_impressions",
+            "delivered_cost", "plan_cost", "delivered_impressions",
             "plan_impressions", "delivered_video_views", "plan_video_views")
         self.assertTrue(
             all([field in response.data["overview"]
