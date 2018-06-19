@@ -157,7 +157,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                 content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
         expected_fields = (
-            "delivered_cost", "plan_cost", "delivered_impressions",
+            "delivered_cost", "plan_cost", "deliquartersvered_impressions",
             "plan_impressions", "delivered_video_views", "plan_video_views")
         self.assertTrue(
             all([field in response.data["overview"]
@@ -873,16 +873,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         user.is_staff = True
         user.save()
         account = Account.objects.create(id=1)
-        account_creation = AccountCreation.objects.create(id=1,
-                                                          owner=user,
-                                                          account=account)
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=user, account=account)
         opportunity = Opportunity.objects.create(id=1)
         placement_cpm = OpPlacement.objects.create(
-            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM
-        )
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
         placement_cpv = OpPlacement.objects.create(
-            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV
-        )
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+
         impressions_cpm, impressions_cpv = 2345, 2345
         Campaign.objects.create(
             id=1, salesforce_placement=placement_cpm, account=account,
@@ -890,11 +888,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         Campaign.objects.create(
             id=2, salesforce_placement=placement_cpv, account=account,
             impressions=impressions_cpv)
-
         self.assertGreater(impressions_cpv, 0)
 
         url = self._get_url(account_creation.id)
-
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
