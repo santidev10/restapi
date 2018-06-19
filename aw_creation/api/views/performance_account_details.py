@@ -160,7 +160,9 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(
             self.account_creation.account.campaigns.aggregate(
                 delivered_cost=Sum("cost"),
-                delivered_impressions=Sum("impressions"),
+                delivered_impressions=Sum(Case(When(
+                    salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                    then="impressions"))),
                 delivered_video_views=Sum("video_views")))
         plan_cost = 0
         plan_impressions = 0

@@ -867,3 +867,42 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(response.data["cost_method"]),
             {p.goal_type for p in [placement1, placement2, placement3]})
+
+    def test_delivered_impressions(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(id=1,
+                                                          owner=user,
+                                                          account=account)
+        opportunity = Opportunity.objects.create(id=1)
+        placement_cpm = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM
+        )
+        placement_cpv = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV
+        )
+        impressions_cpm, impressions_cpv = 2345, 2345
+        Campaign.objects.create(
+            id=1, salesforce_placement=placement_cpm, account=account,
+            impressions=impressions_cpm)
+        Campaign.objects.create(
+            id=2, salesforce_placement=placement_cpv, account=account,
+            impressions=impressions_cpv)
+
+        self.assertGreater(impressions_cpv, 0)
+
+        url = self._get_url(account_creation.id)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, json.dumps(dict(is_chf=1)),
+                                        content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        delivered_impressions = response.data["overview"][
+            "delivered_impressions"]
+        self.assertEqual(delivered_impressions, impressions_cpm)
