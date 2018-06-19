@@ -89,7 +89,7 @@ class PricingToolTestCase(TestCase):
 
         campaign = Campaign.objects.create(
             salesforce_placement=placement,
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
         )
         ad_group = AdGroup.objects.create(
             id="1", name="", campaign=campaign, video_views=1
@@ -157,7 +157,7 @@ class PricingToolTestCase(TestCase):
         Opportunity.objects.create(id="3", name="", brand=None)
 
         campaign = Campaign.objects.create(
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
             salesforce_placement=placement,
         )
         ad_group = AdGroup.objects.create(id="1", name="", campaign=campaign,
@@ -187,7 +187,7 @@ class PricingToolTestCase(TestCase):
         placement = OpPlacement.objects.create(id="1", name="",
                                                opportunity=opportunity)
         campaign = Campaign.objects.create(
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
             salesforce_placement=placement,
         )
         ad_group = AdGroup.objects.create(id="1", name="", campaign=campaign,

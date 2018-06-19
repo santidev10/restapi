@@ -3,6 +3,9 @@ try:
 except ImportError:
     pass
 
+
+print("TEST TEST TEST")
+
 IS_TEST = True
 
 MIGRATION_MODULES = {
