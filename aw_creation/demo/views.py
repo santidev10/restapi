@@ -13,9 +13,8 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
-
-from userprofile.models import get_default_settings
 from userprofile.models import UserSettingsKey
+from userprofile.models import get_default_settings
 from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
@@ -405,6 +404,9 @@ class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
+            if request.query_params.get("is_chf") == "1"\
+                    and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 account = DemoAccount()
                 campaigns = [
@@ -423,9 +425,7 @@ class PerformanceAccountCampaignsListApiView:
                     for c in account.children
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
+            return original_method(view, request, pk=pk, **kwargs)
         return method
 
 
