@@ -404,7 +404,8 @@ class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+            if request.query_params.get("is_chf") == "1"\
+                    and pk != DEMO_ACCOUNT_ID:
                 return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 account = DemoAccount()

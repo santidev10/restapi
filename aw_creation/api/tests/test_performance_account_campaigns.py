@@ -81,6 +81,32 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             self.ad_group_keys,
         )
 
+    def test_success_get_chf_account(self):
+        user = self.create_test_user()
+        account = Account.objects.create(id=1, name="")
+        user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account.id]
+        user.aw_settings[UserSettingsKey.HIDDEN_CAMPAIGN_TYPES] = {
+            "".format(account.id): []}
+        user.update_access([{"name": "Tools", "value": True}])
+        user.save()
+        account_creation = AccountCreation.objects.create(
+            name="", account=account, owner=user)
+        campaigns_count = 3
+        ad_groups_count = 2
+        for campaign_id in range(campaigns_count):
+            campaign = Campaign.objects.create(
+                id=campaign_id, name="", account=account)
+            for ad_group_id in range(ad_groups_count):
+                AdGroup.objects.create(
+                    id="{}{}".format(
+                        campaign_id, ad_group_id), name="", campaign=campaign)
+        url = self._get_url(account_creation.id)
+        response = self.client.get("{}{}".format(url, "?is_chf=1"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), campaigns_count)
+        campaign = response.data[0]
+        self.assertEqual(len(campaign['ad_groups']), ad_groups_count)
+
     def test_success_get_managed_campaign(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1, name="")
