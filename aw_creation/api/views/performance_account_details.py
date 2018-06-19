@@ -158,9 +158,13 @@ class PerformanceAccountDetailsApiView(APIView):
             adwords_campaigns__id__in=
             self.account_creation.account.campaigns.values("id")).distinct()
         data.update(
-            self.account_creation.account.campaigns.aggregate(
+            self.account_creation.account.campaigns.annotate(
+                cpm_impressions=Case(When(
+                    salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                    then="impressions"))
+            ).aggregate(
                 delivered_cost=Sum("cost"),
-                delivered_impressions=Sum("impressions"),
+                delivered_impressions=Sum("cpm_impressions"),
                 delivered_video_views=Sum("video_views")))
         plan_cost = 0
         plan_impressions = 0
