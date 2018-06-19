@@ -19,7 +19,8 @@ def count_segment_adwords_statistics(segment):
         return {}
 
     # obtain related to segments related ids
-    related_ids = segment.related.model.objects.filter(segment_id=segment.id).values_list("related_id", flat=True)
+    related_ids = segment.related.model.objects.filter(
+        segment_id=segment.id).values_list("related_id", flat=True)
     # obtain aw account
     accounts = Account.user_objects(user)
     # prepare queryset
@@ -43,6 +44,10 @@ def count_segment_adwords_statistics(segment):
     aggregated_data = queryset.aggregate(
         sum_cost=Sum("cost"), sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"), sum_impressions=Sum("impressions"),
+        sum_video_clicks=Sum(Case(When(
+            ad_group__video_views__gt=0,
+            then="clicks",
+        ), output_field=IntegerField())),
         sum_video_impressions=Sum(Case(When(
             ad_group__video_views__gt=0,
             then="impressions",

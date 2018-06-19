@@ -93,11 +93,17 @@ class SegmentVideo(BaseSegment):
     sentiment = models.FloatField(default=0.0, db_index=True)
     # ---> deprecated
 
-    singledb_method = Connector().get_video_list
+    _singledb_method = None
     segment_type = 'video'
 
     objects = SegmentVideoManager()
     related_aw_statistics_model = YTVideoStatistic
+
+    @property
+    def singledb_method(self):
+        if self._singledb_method is None:
+            type(self)._singledb_method = Connector().get_video_list
+        return self. _singledb_method
 
     def obtain_singledb_data(self, ids_hash):
         """

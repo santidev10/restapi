@@ -119,6 +119,9 @@ class SingleDatabaseApiConnectorPatcher:
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
 
+    def store_ids(self, query_params):
+        pass
+
 
 class MockResponse(object):
     def __init__(self, status_code=HTTP_200_OK, **kwargs):

@@ -168,15 +168,6 @@ CALCULATED_STATS = {
         "args": ("cost", "impressions"),
         "receipt": get_average_cpm,
     },
-    # "client_cost": {
-    #     "kwargs": ("impressions", "video_views", "goal_type_id",
-    #                "placement_type", "ordered_rate", "total_cost", "tech_fee",
-    #                "dynamic_placement"),
-    #     "kwargs_map": (
-    #         ("cost", "aw_cost"),
-    #     ),
-    #     "receipt": get_client_cost,
-    # }
 }
 
 
@@ -198,9 +189,6 @@ def dict_add_calculated_stats(data):
                 for data_key, fn_key in kwargs_map
             ))
         )
-        # kwargs = dict(((fn_key, data.get(data_key))
-        #                for data_key, fn_key in kwargs_map))
-
         data[n] = None if None in args else rec(*args, **kwargs)
 
 
