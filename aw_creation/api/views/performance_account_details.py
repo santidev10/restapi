@@ -20,7 +20,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     OpPlacement, \
     AdGroupStatistic, \
     dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats, \
-    client_cost_ad_group_statistic_required_annotation
+    client_cost_ad_group_statistic_required_annotation, AdGroup
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.permissions import UserHasCHFPermission
@@ -154,13 +154,30 @@ class PerformanceAccountDetailsApiView(APIView):
             "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
         for field in null_fields:
             data[field] = None
+        account_campaigns_ids = self.account_creation.account. \
+            campaigns.values_list("id", flat=True)
+        campaigns_ids = self.request.data.get("campaigns")
+        ad_groups_ids = self.request.data.get("ad_groups")
+        placements_filters = {}
+        ad_groups_filters = {}
+        if campaigns_ids is not None:
+            placements_filters["adwords_campaigns__id__in"] = campaigns_ids
+            ad_groups_filters["campaign__id__in"] = campaigns_ids
+        if ad_groups_ids is not None:
+            placements_filters[
+                "adwords_campaigns__ad_groups__id__in"] = ad_groups_ids
+            ad_groups_filters["id__in"] = ad_groups_ids
         placements_queryset = OpPlacement.objects.filter(
-            adwords_campaigns__id__in=
-            self.account_creation.account.campaigns.values("id")).distinct()
+            adwords_campaigns__id__in=account_campaigns_ids).filter(
+            **placements_filters).distinct()
+        ad_group_queryset = AdGroup.objects.filter(
+            campaign__id__in=account_campaigns_ids).filter(
+            **ad_groups_filters).distinct()
         data.update(
-            self.account_creation.account.campaigns.annotate(
+            ad_group_queryset.annotate(
                 cpm_impressions=Case(When(
-                    salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                    campaign__salesforce_placement__goal_type_id=
+                    SalesForceGoalType.CPM,
                     then="impressions"))
             ).aggregate(
                 delivered_cost=Sum("cost"),
