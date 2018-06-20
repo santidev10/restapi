@@ -1,7 +1,8 @@
 import json
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 from unittest.mock import patch
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
@@ -417,13 +418,14 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_update_rejected_if_campaign_started(self):
-        today = date(2018, 1, 1)
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
         tomorrow = today + timedelta(days=1)
         campaign_creation = self.create_campaign(self.user,
                                                  start=today,
                                                  end=today)
-        campaign_creation.sync_at = today
-        campaign_creation.created_at = today
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
         campaign_creation.save()
 
         self.assertTrue(campaign_creation.is_pulled_to_aw)
@@ -446,12 +448,13 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_update_success_if_start_not_changed(self):
-        today = date(2018, 1, 1)
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
         campaign_creation = self.create_campaign(self.user,
                                                  start=today,
                                                  end=today)
-        campaign_creation.sync_at = today
-        campaign_creation.created_at = today
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
         campaign_creation.save()
 
         self.assertTrue(campaign_creation.is_pulled_to_aw)
@@ -474,12 +477,13 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_update_reject_on_change_start_to_null(self):
-        today = date(2018, 1, 1)
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
         campaign_creation = self.create_campaign(self.user,
                                                  start=today,
                                                  end=today)
-        campaign_creation.sync_at = today
-        campaign_creation.created_at = today
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
         campaign_creation.save()
 
         self.assertTrue(campaign_creation.is_pulled_to_aw)
@@ -502,13 +506,14 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_update_reject_on_change_start_from_null(self):
-        today = date(2018, 1, 1)
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
         tomorrow = today + timedelta(days=1)
         campaign_creation = self.create_campaign(self.user,
                                                  start=None,
                                                  end=None)
-        campaign_creation.sync_at = today
-        campaign_creation.created_at = today
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
         campaign_creation.save()
 
         self.assertTrue(campaign_creation.is_pulled_to_aw)

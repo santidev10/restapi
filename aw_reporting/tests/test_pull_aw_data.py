@@ -368,7 +368,7 @@ class PullAWDataTestCase(TransactionTestCase):
     def test_get_ad_is_disapproved(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        account = self._create_account(today)
+        account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         ad_group = AdGroup.objects.create(id=1, campaign=campaign)
         AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
