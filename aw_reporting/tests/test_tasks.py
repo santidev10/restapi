@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytz
-from django.test import testcases, override_settings
+from django.test import testcases
 
 import aw_reporting.tasks as aw_tasks
 from aw_reporting.adwords_api import get_web_app_client
@@ -55,9 +55,8 @@ class GetAdsTestCase(testcases.TestCase):
                                         date=datetime(2018, 1, 1),
                                         average_position=1)
 
-    @override_settings(DEBUG=True)
     def test_is_disapproved_stored(self):
         aw_tasks.get_ads(self.aw_client, self.test_account, self.today)
         disapproved_ad = Ad.objects.filter(is_disapproved=True).first()
-        self.assertTrue(disapproved_ad is not None)
+        self.assertIsNotNone(disapproved_ad)
 

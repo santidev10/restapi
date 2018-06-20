@@ -529,7 +529,6 @@ def get_ads(client, account, today):
                     else:
                         ad_ids.append(ad_id)
                         stats.update(kwargs)
-                        print(stats["id"], stats["ad_group_id"])
                         create_ad.append(Ad(**stats))
                 # -- update ads
                 # insert stats
