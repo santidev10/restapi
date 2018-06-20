@@ -122,7 +122,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             self.account_list_header_fields | {"details", "overview"},
-        )
+            )
         self.assertEqual(
             set(data["details"].keys()),
             self.detail_keys,
@@ -195,7 +195,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             self.account_list_header_fields | {"details", "overview"},
-        )
+            )
         self.assertEqual(
             set(data["details"].keys()),
             self.detail_keys,
@@ -221,7 +221,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             self.account_list_header_fields | {"details", "overview"},
-        )
+            )
         self.assertEqual(
             set(data["details"].keys()),
             self.detail_keys,
@@ -251,7 +251,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             self.account_list_header_fields | {"details", "overview"},
-        )
+            )
         self.assertEqual(
             set(data["details"].keys()),
             self.detail_keys,
@@ -263,7 +263,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             data['overview']['impressions'],
             IMPRESSIONS / TOTAL_DEMO_AD_GROUPS_COUNT * len(ad_groups),
-        )
+            )
 
     def test_success_get_demo_data(self):
         account_creation = AccountCreation.objects.create(name="Name 123",
@@ -570,12 +570,6 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
     def test_aw_cost_sf_linked_only(self):
         self.user.is_staff = True
         self.user.save()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=self.request_user,
-        )
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
@@ -584,13 +578,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         costs = (123, 234)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
-        Campaign.objects.create(id=1, account=account,
-                                cost=costs[0],
-                                salesforce_placement=placement)
-        Campaign.objects.create(id=2, account=account,
-                                cost=costs[1])
+        campaign_one = Campaign.objects.create(
+            id=1, account=account,
+            salesforce_placement=placement, cost=costs[0])
+        campaign_two = Campaign.objects.create(
+            id=2, account=account, cost=costs[1])
+        AdGroup.objects.create(id=1, campaign=campaign_one, cost=costs[0])
+        AdGroup.objects.create(id=2, campaign=campaign_two, cost=costs[1])
         expected_cost = sum(costs)
-
         url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
@@ -880,25 +875,202 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
         placement_cpv = OpPlacement.objects.create(
             id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
-
         impressions_cpm, impressions_cpv = 2345, 2345
-        Campaign.objects.create(
+        campaign_one = Campaign.objects.create(
             id=1, salesforce_placement=placement_cpm, account=account,
             impressions=impressions_cpm)
-        Campaign.objects.create(
+        campaign_two = Campaign.objects.create(
             id=2, salesforce_placement=placement_cpv, account=account,
             impressions=impressions_cpv)
+        AdGroup.objects.create(
+            id=1, campaign=campaign_one, impressions=impressions_cpm)
+        AdGroup.objects.create(
+            id=2, campaign=campaign_two, impressions=impressions_cpv)
         self.assertGreater(impressions_cpv, 0)
-
         url = self._get_url(account_creation.id)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, json.dumps(dict(is_chf=1)),
                                         content_type="application/json")
-
         self.assertEqual(response.status_code, HTTP_200_OK)
         delivered_impressions = response.data["overview"][
             "delivered_impressions"]
         self.assertEqual(delivered_impressions, impressions_cpm)
+
+    def test_campaigns_filter_affect_performance_data(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=user, account=account)
+        opportunity = Opportunity.objects.create(id=1)
+        expected_plan_cost = 3
+        expected_plan_impressions = 3
+        expected_plan_video_views = 0
+        placement_one = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            total_cost=expected_plan_cost,
+            ordered_units=expected_plan_impressions)
+        placement_two = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            total_cost=5, ordered_units=5)
+        campaign_one_id, campaign_two_id = 1, 2
+        ad_group_one_id, ad_group_two_id = 3, 4
+        campaign_one = Campaign.objects.create(
+            id=campaign_one_id, salesforce_placement=placement_one,
+            account=account)
+        campaign_two = Campaign.objects.create(
+            id=campaign_two_id, salesforce_placement=placement_two,
+            account=account)
+        expected_delivered_cost = 100
+        expected_delivered_impressions = 50
+        expected_delivered_video_views = 100
+        AdGroup.objects.create(
+            id=ad_group_one_id, campaign=campaign_one,
+            cost=expected_delivered_cost,
+            video_views=expected_delivered_video_views,
+            impressions=expected_delivered_impressions)
+        AdGroup.objects.create(
+            id=ad_group_two_id, campaign=campaign_two, cost=1,
+            video_views=1, impressions=1)
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url, json.dumps(dict(is_chf=1, campaigns=[campaign_one_id])),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        overview_section = response.data["overview"]
+        self.assertEqual(overview_section["plan_cost"], expected_plan_cost)
+        self.assertEqual(overview_section["plan_impressions"],
+                         expected_plan_impressions)
+        self.assertEqual(overview_section["plan_video_views"],
+                         expected_plan_video_views)
+        self.assertEqual(overview_section["delivered_cost"],
+                         expected_delivered_cost)
+        self.assertEqual(overview_section["delivered_impressions"],
+                         expected_delivered_impressions)
+        self.assertEqual(overview_section["delivered_video_views"],
+                         expected_delivered_video_views)
+
+    def test_campaigns_filter_affect_performance_data(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=user, account=account)
+        opportunity = Opportunity.objects.create(id=1)
+        expected_plan_cost = 3
+        expected_plan_impressions = 3
+        expected_plan_video_views = 0
+        placement_one = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            total_cost=expected_plan_cost,
+            ordered_units=expected_plan_impressions)
+        placement_two = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            total_cost=5, ordered_units=5)
+        campaign_one_id, campaign_two_id = 1, 2
+        ad_group_one_id, ad_group_two_id = 3, 4
+        campaign_one = Campaign.objects.create(
+            id=campaign_one_id, salesforce_placement=placement_one,
+            account=account)
+        campaign_two = Campaign.objects.create(
+            id=campaign_two_id, salesforce_placement=placement_two,
+            account=account)
+        expected_delivered_cost = 100
+        expected_delivered_impressions = 50
+        expected_delivered_video_views = 100
+        AdGroup.objects.create(
+            id=ad_group_one_id, campaign=campaign_one,
+            cost=expected_delivered_cost,
+            video_views=expected_delivered_video_views,
+            impressions=expected_delivered_impressions)
+        AdGroup.objects.create(
+            id=ad_group_two_id, campaign=campaign_two, cost=1,
+            video_views=1, impressions=1)
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url, json.dumps(dict(is_chf=1, campaigns=[campaign_one_id])),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        overview_section = response.data["overview"]
+        self.assertEqual(overview_section["plan_cost"], expected_plan_cost)
+        self.assertEqual(overview_section["plan_impressions"],
+                         expected_plan_impressions)
+        self.assertEqual(overview_section["plan_video_views"],
+                         expected_plan_video_views)
+        self.assertEqual(overview_section["delivered_cost"],
+                         expected_delivered_cost)
+        self.assertEqual(overview_section["delivered_impressions"],
+                         expected_delivered_impressions)
+        self.assertEqual(overview_section["delivered_video_views"],
+                         expected_delivered_video_views)
+
+    def test_ad_groups_filter_affect_performance_data(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=user, account=account)
+        opportunity = Opportunity.objects.create(id=1)
+        expected_plan_cost = 3
+        expected_plan_impressions = 3
+        expected_plan_video_views = 0
+        placement_one = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            total_cost=expected_plan_cost,
+            ordered_units=expected_plan_impressions)
+        placement_two = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            total_cost=5, ordered_units=5)
+        campaign_one_id, campaign_two_id = 1, 2
+        ad_group_one_id, ad_group_two_id = 3, 4
+        campaign_one = Campaign.objects.create(
+            id=campaign_one_id, salesforce_placement=placement_one,
+            account=account)
+        campaign_two = Campaign.objects.create(
+            id=campaign_two_id, salesforce_placement=placement_two,
+            account=account)
+        expected_delivered_cost = 100
+        expected_delivered_impressions = 50
+        expected_delivered_video_views = 100
+        AdGroup.objects.create(
+            id=ad_group_one_id, campaign=campaign_one,
+            cost=expected_delivered_cost,
+            video_views=expected_delivered_video_views,
+            impressions=expected_delivered_impressions)
+        AdGroup.objects.create(
+            id=ad_group_two_id, campaign=campaign_two, cost=1,
+            video_views=1, impressions=1)
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url, json.dumps(dict(is_chf=1, ad_groups=[ad_group_one_id])),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        overview_section = response.data["overview"]
+        self.assertEqual(overview_section["plan_cost"], expected_plan_cost)
+        self.assertEqual(overview_section["plan_impressions"],
+                         expected_plan_impressions)
+        self.assertEqual(overview_section["plan_video_views"],
+                         expected_plan_video_views)
+        self.assertEqual(overview_section["delivered_cost"],
+                         expected_delivered_cost)
+        self.assertEqual(overview_section["delivered_impressions"],
+                         expected_delivered_impressions)
+        self.assertEqual(overview_section["delivered_video_views"],
+                         expected_delivered_video_views)
