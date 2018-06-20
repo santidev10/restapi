@@ -48,6 +48,7 @@ class BaseSegment(Timestampable):
 
     class Meta:
         abstract = True
+        ordering = ["pk"]
 
     def get_related_ids(self):
         return self.related.values_list("related_id", flat=True)

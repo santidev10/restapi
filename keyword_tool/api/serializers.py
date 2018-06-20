@@ -16,6 +16,7 @@ from userprofile.models import UserProfile
 class InterestsSerializer(ModelSerializer):
     class Meta:
         model = Interest
+        fields = "__all__"
 
 
 class KeywordSerializer(ModelSerializer):

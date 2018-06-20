@@ -1,5 +1,7 @@
 from datetime import timedelta, datetime
 
+from django.utils import timezone
+
 from aw_reporting.models import *
 # pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector, \
@@ -65,7 +67,7 @@ class BaseDemo:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-        self.now = datetime.now()
+        self.now = timezone.now()
         self.today = self.now.date()
         self.yesterday = datetime.now().date()
         self.start_date = self.today - timedelta(days=19)

@@ -3,8 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from django.db.models import F
-from django_subquery.expressions import OuterRef, Subquery
+from django.db.models import F, OuterRef, Subquery
 
 from aw_reporting.tasks import extract_placement_code
 

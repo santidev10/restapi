@@ -5,10 +5,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login, PermissionsMixin, \
     Group
+from django.core.validators import RegexValidator, EmailValidator, \
+    MaxLengthValidator
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField, RegexValidator, Serializer, \
-    EmailField, MaxLengthValidator, EmailValidator
+    ValidationError, SerializerMethodField, Serializer, EmailField
 from rest_framework.validators import UniqueValidator
 
 from administration.notifications import send_new_registration_email, \

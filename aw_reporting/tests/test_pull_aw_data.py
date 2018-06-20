@@ -7,10 +7,10 @@ from pytz import utc
 
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS, \
-    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS, AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience
+    AdGroupStatistic, Audience, Ad
 from aw_reporting.tasks import AudienceAWType
 from utils.utils_tests import patch_now, build_csv_byte_stream
 
@@ -364,3 +364,60 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(Audience.objects.all().count(), 1)
         self.assertEqual(Audience.objects.first().type,
                          Audience.CUSTOM_AFFINITY_TYPE)
+
+    def test_get_ad_is_disapproved(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
+                                        average_position=1)
+        approved_ad_1 = "approved_1"
+        approved_ad_2 = "approved_2"
+        approved_ad_3 = "approved_3"
+        disapproved_ad_1 = "disapproved_1"
+
+        common_data = dict(
+            AdGroupId=ad_group.id,
+            Date=str(today),
+            AveragePosition=1,
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+
+        test_report_data = [
+            dict(Id=approved_ad_1, **common_data),
+            dict(Id=approved_ad_2, CombinedApprovalStatus=None, **common_data),
+            dict(Id=approved_ad_3, CombinedApprovalStatus="any", **common_data),
+
+            dict(Id=disapproved_ad_1, CombinedApprovalStatus="disapproved",
+                 **common_data),
+        ]
+        fields = AD_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_ads", end="get_ads")
+
+        def is_dissapreved(ad_id):
+            return Ad.objects.get(id=ad_id).is_disapproved
+
+        self.assertFalse(is_dissapreved(approved_ad_1))
+        self.assertFalse(is_dissapreved(approved_ad_2))
+        self.assertFalse(is_dissapreved(approved_ad_3))
+        self.assertTrue(is_dissapreved(disapproved_ad_1))

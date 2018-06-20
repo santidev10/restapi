@@ -3,7 +3,7 @@ from functools import wraps
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Min, Sum, Case, When, IntegerField, F
+from django.db.models import Min, Sum, Case, When, IntegerField, F, CASCADE
 from django.db.models.aggregates import Aggregate
 
 from aw_reporting.models.base import BaseModel
@@ -570,7 +570,7 @@ class AdGroup(ModelPlusDeNormFields):
 
 class Ad(BaseStatisticModel):
     id = models.CharField(max_length=15, primary_key=True)
-    ad_group = models.ForeignKey(AdGroup, related_name='ads')
+    ad_group = models.ForeignKey(AdGroup, related_name='ads', on_delete=CASCADE)
 
     headline = models.TextField(null=True)
     creative_name = models.TextField(null=True)

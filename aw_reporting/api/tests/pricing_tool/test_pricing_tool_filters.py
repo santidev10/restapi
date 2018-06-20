@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
-    Campaign, Audience, AudienceStatistic
+    Campaign, Audience, AudienceStatistic, Category
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
@@ -50,10 +50,12 @@ class PricingToolTestCase(ExtendedAPITestCase):
         )
 
     def test_filters_hides_data_from_not_visible_accounts(self):
+        category_1 = Category.objects.create(id="category 1")
+        category_2 = Category.objects.create(id="category 2")
         opportunity_visible = Opportunity.objects.create(
-            id="1", brand="brand 1", category_id="category 1")
+            id="1", brand="brand 1", category=category_1)
         opportunity_hidden = Opportunity.objects.create(
-            id="2", brand="brand 2", category_id="category 2")
+            id="2", brand="brand 2", category=category_2)
         placement_visible = OpPlacement.objects.create(
             id="1", opportunity=opportunity_visible)
         placement_hidden = OpPlacement.objects.create(

@@ -71,8 +71,6 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.aw_settings[UserSettingsKey.SHOW_CONVERSIONS] = True
-        self.user.save()
 
     def test_success_get(self):
         AWConnectionToUserRelation.objects.create(
@@ -107,9 +105,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                                      **stats)
 
         url = self._get_url(account_creation.id)
-
+        user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.post(
                 url,
                 json.dumps(dict(start_date=str(date - timedelta(days=1)),
@@ -135,13 +134,13 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(data["overview"].keys()), self.overview_keys)
 
     def test_success_get_chf_account(self):
-        user = self.create_test_user()
+        user = self.user
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="1", name="")
         managed_account.managers.add(chf_account)
         account_creation = AccountCreation.objects.create(
-            name="Test", owner=self.user, account=managed_account)
+            name="Test", owner=user, account=managed_account)
         url = self._get_url(account_creation.id)
         user.is_staff = True
         user.save()
@@ -185,8 +184,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id)
+        user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.post(
                 url, content_type='application/json',
             )
