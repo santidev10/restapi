@@ -8,7 +8,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement, \
-    SalesForceGoalType
+    SalesForceGoalType, Category
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import patch_settings
@@ -274,16 +274,16 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_categories(self):
-        category_1 = "Test Category 1"
-        category_2 = "Test Category 2"
+        category_1 = Category.objects.create(id="Test Category 1")
+        category_2 = Category.objects.create(id="Test Category 2")
         account_1, campaign_1 = self._create_ad_group_statistic("rel")
         manager = account_1.managers.first()
         account_2, campaign_2 = self._create_ad_group_statistic("irr",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
-                                 category_id=category_1)
+                                 category=category_1)
         self._create_opportunity(uid=2, campaign=campaign_2,
-                                 category_id=category_2)
+                                 category=category_2)
         filters = dict(category=category_1)
         url = "{}?{}".format(self.url, urlencode(filters))
         with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
