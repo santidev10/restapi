@@ -90,6 +90,9 @@ urlpatterns = [
     url(r'^pacing_report_export/$',
         views.PacingReportExportView.as_view(),
         name=Name.PacingReport.EXPORT),
+    url(r'^flights_campaign_allocations/(?P<pk>\w+)/$',
+        views.PacingReportFlightsCampaignAllocationsView.as_view(),
+        name=Name.PacingReport.FLIGHTS_CAMPAIGN_ALLOCATIONS),
 
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
