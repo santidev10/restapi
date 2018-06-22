@@ -12,8 +12,8 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT, Account, AdGroupStatistic, \
     all_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, Genders, AgeRangeStatistic, \
-    AgeRanges, Devices, CityStatistic, BASE_STATS, ConcatAggregate, \
-    CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
+    AgeRanges, Devices, CityStatistic, BASE_STATS, CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
+from utils.db.aggregators import ConcatAggregate
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz

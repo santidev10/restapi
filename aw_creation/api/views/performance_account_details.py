@@ -19,8 +19,9 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, \
     OpPlacement, \
     AdGroupStatistic, \
-    dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats, \
+    dict_norm_base_stats, dict_add_calculated_stats, \
     client_cost_ad_group_statistic_required_annotation
+from utils.db.aggregators import ConcatAggregate
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.permissions import UserHasCHFPermission

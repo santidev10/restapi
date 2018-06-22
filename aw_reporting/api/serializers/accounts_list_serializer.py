@@ -6,9 +6,9 @@ from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.api.serializers.fields import StatField
-from aw_reporting.models import Campaign, Account, ConcatAggregate, \
-    base_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
+from aw_reporting.models import Campaign, Account, base_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
     AdGroupStatistic
+from utils.db.aggregators import ConcatAggregate
 
 
 class AccountsListSerializer(ModelSerializer):

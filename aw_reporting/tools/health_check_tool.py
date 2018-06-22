@@ -5,8 +5,9 @@ from itertools import zip_longest
 from django.contrib.auth import get_user_model
 from django.db.models import Min, Max, Count, Case, When, F, Sum, CharField
 
-from aw_reporting.models import Campaign, ConcatAggregate, GeoTarget, \
+from aw_reporting.models import Campaign, GeoTarget, \
     VideoCreativeStatistic
+from utils.db.aggregators import ConcatAggregate
 
 AW_TARGETING_FIELDS = (
     "targeting_interests", "targeting_topics", "targeting_keywords",

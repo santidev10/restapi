@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Min, Max, Sum, Count, When, Case, FloatField
+from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, F
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
     BooleanField
 
@@ -12,9 +12,10 @@ from aw_reporting.api.serializers.fields.parent_dict_value_field import \
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import AdGroupStatistic, \
     Campaign, dict_norm_base_stats, \
-    ConcatAggregate, VideoCreativeStatistic, Ad, \
+    VideoCreativeStatistic, Ad, \
     Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, F, SalesForceGoalType, OpPlacement
+    client_cost_campaign_required_annotation, SalesForceGoalType, OpPlacement
+from utils.db.aggregators import ConcatAggregate
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.lang import pick_dict

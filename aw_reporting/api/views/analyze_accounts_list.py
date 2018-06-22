@@ -4,7 +4,8 @@ from rest_framework.generics import ListAPIView
 from aw_reporting.api.serializers import AccountsListSerializer
 from aw_reporting.api.views.pagination import AccountsListPaginator
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account, ConcatAggregate
+from aw_reporting.models import Account
+from utils.db.aggregators import ConcatAggregate
 
 
 @demo_view_decorator
