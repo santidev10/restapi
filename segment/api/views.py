@@ -3,7 +3,6 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -17,6 +16,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from channel.api.views import ChannelListApiView
+from segment.api.permissions import SegmentOwnerPermission
 from segment.api.serializers import SegmentSerializer
 from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
@@ -64,6 +64,7 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
     """
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
+    permission_classes = (SegmentOwnerPermission, )
 
     default_allowed_sorts = {
         "title",
@@ -90,6 +91,9 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         category = self.request.query_params.get("category")
         if category:
             filters["category"] = category
+        owner_id = self.request.query_params.get("owner_id")
+        if owner_id:
+            filters["owner__id"] = owner_id
         # make filtering
         if filters:
             queryset = queryset.filter(**filters)
