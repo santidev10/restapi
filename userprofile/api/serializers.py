@@ -7,6 +7,7 @@ from django.contrib.auth.models import update_last_login, PermissionsMixin, \
     Group
 from django.core.validators import RegexValidator, EmailValidator, \
     MaxLengthValidator
+from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
     ValidationError, SerializerMethodField, Serializer, EmailField
@@ -138,6 +139,7 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "has_disapproved_ad",
             "vendor",
+            "historical_aw_account"
         )
         read_only_fields = (
             "is_staff",
@@ -175,6 +177,12 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+    def validate_historical_aw_account(self, connection):
+        if not self.instance.aw_connections.filter(id=connection.id).exists():
+            raise ValidationError(
+                _("Historical account should be listed in user connections"))
+        return connection
 
 
 class UserSetPasswordSerializer(Serializer):
