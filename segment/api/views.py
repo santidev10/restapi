@@ -10,13 +10,12 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from channel.api.views import ChannelListApiView
-from segment.api.permissions import SegmentOwnerPermission
 from segment.api.serializers import SegmentSerializer
 from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
@@ -64,7 +63,6 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
     """
     serializer_class = SegmentSerializer
     pagination_class = SegmentPaginator
-    permission_classes = (SegmentOwnerPermission, )
 
     default_allowed_sorts = {
         "title",
@@ -77,6 +75,13 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         "channel": default_allowed_sorts.union({"channels"}),
         "keyword": {"competition", "average_cpc", "average_volume"}
     }
+
+    def __validate_filters(self):
+        owner_id = self.request.query_params.get("owner_id")
+        if owner_id is not None:
+            return owner_id == str(self.request.user.id)\
+                   or self.request.user.is_staff
+        return True
 
     def do_filters(self, queryset):
         """
@@ -140,6 +145,14 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         if flat == "1":
             return None
         return super().paginate_queryset(queryset)
+
+    def get(self, request, *args, **kwargs):
+        if not self.__validate_filters():
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data={"error": "invalid filter(s)"})
+        return super(SegmentListCreateApiView, self).get(
+            request, *args, **kwargs)
 
 
 class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,
