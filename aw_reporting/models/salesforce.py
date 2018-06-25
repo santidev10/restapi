@@ -9,7 +9,7 @@ from django.db.models import Count
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     goal_type_str, SalesForceRegions, SalesForceGoalTypes
-from userprofile.models import UserRelatedManager
+from userprofile.managers import UserRelatedManager
 
 logger = logging.getLogger(__name__)
 

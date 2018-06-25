@@ -50,7 +50,7 @@ urlpatterns = [
 
     # Userprofile api urls
     url(r'^api/v1/', include(userprofile_api_urls,
-                             namespace="userprofile_api_urls")),
+                             namespace=Namespace.USER_PROFILE)),
 
     # Stripe api urls
     url(r'^api/v1/', include(stripe_api_urls,

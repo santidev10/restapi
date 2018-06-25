@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import timedelta, datetime
 
-from django.db.models import FloatField, Avg
+from django.db.models import FloatField, Avg, Min, Sum, Case, When, F
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.models import *
@@ -764,7 +764,7 @@ class DeliveryChart:
 
         return result
 
-    def _get_video_data(self, **kwargs):
+    def _get_video_data(self, **_):
         raw_stats = self.get_top_data(
             YTVideoStatistic.objects.all(),
             'yt_id'
@@ -828,8 +828,7 @@ class DeliveryChart:
         ids = set(s['audience_id'] for s in raw_stats)
         labels = {
             c['id']: c['name']
-            for c in Audience.objects.filter(
-            pk__in=ids).values('id', 'name')
+            for c in Audience.objects.filter(pk__in=ids).values('id', 'name')
         }
         result = defaultdict(list)
         for item in raw_stats:

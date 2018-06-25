@@ -12,6 +12,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
+from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
 
@@ -25,7 +26,7 @@ class TestUserMixin:
         "password": "test",
     }
 
-    def create_test_user(self, auth=True):
+    def create_test_user(self, auth=True) -> UserProfile:
         """
         Make test user
         """
