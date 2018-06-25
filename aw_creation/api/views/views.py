@@ -37,7 +37,8 @@ from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, AdGroup, \
+from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
+    AdGroup, \
     YTChannelStatistic, \
     YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic, \
     DATE_FORMAT, base_stats_aggregator, campaign_type_str, Campaign, \
@@ -1308,8 +1309,9 @@ class PerformanceChartItemsApiView(APIView):
         filters = {}
         if request.data.get("is_chf") == 1:
             user_settings = self.request.user.get_aw_settings()
-            filters["account__id__in"] = \
-                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:
