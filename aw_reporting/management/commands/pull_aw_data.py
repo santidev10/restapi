@@ -66,7 +66,7 @@ class Command(BaseCommand):
             t for t in timezones
             if now.astimezone(timezone(t)).hour > 5
         ]
-        logger.info("Timezones: {}".format(timezones))
+        logger.info("Timezones: %s", timezones)
 
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
@@ -77,9 +77,10 @@ class Command(BaseCommand):
             mcc_to_update = mcc_to_update.filter(
                 Q(update_time__date__lt=today) | Q(update_time__isnull=True)
             )
-        updater = AWDataLoader(today, start=options.get("start"), end=options.get("end"))
+        updater = AWDataLoader(today, start=options.get("start"),
+                               end=options.get("end"))
         for mcc in mcc_to_update:
-            logger.info("MCC update: {}".format(mcc))
+            logger.info("MCC update: %s", mcc)
             updater.full_update(mcc)
 
         # 2) update all the advertising accounts
@@ -92,11 +93,10 @@ class Command(BaseCommand):
                 Q(update_time__date__lt=today) | Q(update_time__isnull=True)
             )
         for account in accounts_to_update:
-            logger.info("Customer account update: {}".format(account))
+            logger.info("Customer account update: %s", account)
             updater.full_update(account)
 
         self.post_process()
-
 
     @staticmethod
     def create_cf_account_connection():
@@ -119,10 +119,8 @@ class Command(BaseCommand):
             except WebFault as e:
                 logger.critical(e)
             else:
-                mcc_accounts = list(filter(
-                    lambda i: i['canManageClients'] and not i['testAccount'],
-                    customers,
-                ))
+                mcc_accounts = [c for c in customers
+                                if c['canManageClients'] and not c['testAccount']]
                 for ac_data in mcc_accounts:
                     data = dict(
                         id=ac_data['customerId'],
