@@ -50,6 +50,19 @@ def get_default_settings():
     }
 
 
+class UserProfileManager(UserManager):
+    def get_by_natural_key(self, username):
+        case_insensitive_username_field = '{}__iexact'.format(
+            self.model.USERNAME_FIELD)
+        return self.get(**{case_insensitive_username_field: username})
+
+
+class LowercaseEmailField(models.EmailField):
+    def get_prep_value(self, value):
+        value = super(LowercaseEmailField, self).get_prep_value(value)
+        return value.lower()
+
+
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
@@ -84,7 +97,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
     # extra fields and updated fields
-    email = models.EmailField(_('email address'), unique=True)
+    email = LowercaseEmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
@@ -110,7 +123,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     aw_settings = JSONField(default=get_default_settings)
 
-    objects = UserManager()
+    objects = UserProfileManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -197,8 +210,8 @@ class UserRelatedManager(models.Manager.from_queryset(BaseQueryset)):
 
     def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
         if self.__is_account_filter_applicable(user):
-            account_ids = user.get_aw_settings()\
-                              .get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            account_ids = user.get_aw_settings() \
+                .get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = self.__filter_by_account_ids(queryset, account_ids)
         return queryset
 
