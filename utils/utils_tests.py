@@ -36,6 +36,7 @@ class TestUserMixin:
             **self.test_user_data,
         )
         user.set_password(user.password)
+        user.save()
 
         if auth:
             Token.objects.get_or_create(user=user)
