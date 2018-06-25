@@ -31,6 +31,7 @@ pyasn1-modules==0.0.10
 pyasn1==0.3.1
 pylint-django==0.7.1
 pylint-plugin-utils==0.2.3
+pylint-quotes==0.1.8
 pylint==1.5.4
 PySocks==1.6.7
 python-dateutil==2.6.0

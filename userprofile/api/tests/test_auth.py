@@ -19,17 +19,17 @@ class AuthAPITestCase(AwReportingAPITestCase):
         user = self.create_test_user()
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data),
             {
-                'id', 'profile_image_url', 'company', 'phone_number',
-                'is_staff', 'last_name', 'has_aw_accounts',
-                'date_joined', 'last_login', 'email', 'first_name', 'token',
-                'can_access_media_buying', 'has_disapproved_ad', 'vendor',
-                'access', 'aw_settings'
+                "id", "profile_image_url", "company", "phone_number",
+                "is_staff", "last_name", "has_aw_accounts",
+                "date_joined", "last_login", "email", "first_name", "token",
+                "can_access_media_buying", "has_disapproved_ad", "vendor",
+                "access", "aw_settings"
             }
         )
 
@@ -38,32 +38,32 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.create_account(user)
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIs(response.data['has_aw_accounts'], True)
+        self.assertIs(response.data["has_aw_accounts"], True)
 
     def test_success_has_no_connected_accounts(self):
         user = self.create_test_user()
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIs(response.data['has_aw_accounts'], False)
+        self.assertIs(response.data["has_aw_accounts"], False)
 
     def test_success_has_no_disapproved_ad(self):
         user = self.create_test_user()
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIs(response.data['has_disapproved_ad'], False)
+        self.assertIs(response.data["has_disapproved_ad"], False)
 
     def test_success_has_disapproved_ad(self):
         user = self.create_test_user()
-        account = Account.objects.create(id='1', name='',
+        account = Account.objects.create(id="1", name="",
                                          can_manage_clients=True)
         connection = AWConnection.objects.create()
         AWAccountPermission.objects.create(aw_connection=connection,
@@ -77,10 +77,10 @@ class AuthAPITestCase(AwReportingAPITestCase):
         Ad.objects.create(ad_group=ad_group, is_disapproved=True)
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-            content_type='application/json',
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIs(response.data['has_disapproved_ad'], True)
+        self.assertIs(response.data["has_disapproved_ad"], True)
 
     def test_case_insensitive(self):
         email = "MixedCase@Email.com"
