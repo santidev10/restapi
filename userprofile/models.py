@@ -60,7 +60,7 @@ class UserProfileManager(UserManager):
 class LowercaseEmailField(models.EmailField):
     def get_prep_value(self, value):
         value = super(LowercaseEmailField, self).get_prep_value(value)
-        return value.lower()
+        return value.lower() if isinstance(value, str) else value
 
 
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
