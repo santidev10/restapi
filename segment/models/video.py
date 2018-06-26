@@ -92,9 +92,13 @@ class SegmentVideo(BaseSegment):
     thirty_days_views = models.BigIntegerField(default=0, db_index=True)
     engage_rate = models.FloatField(default=0.0, db_index=True)
     sentiment = models.FloatField(default=0.0, db_index=True)
+
     # ---> deprecated
 
-    singledb_method = Connector().get_video_list
+    @property
+    def singledb_method(self):
+        return Connector().get_video_list
+
     segment_type = "video"
 
     objects = SegmentVideoManager()

@@ -8,11 +8,13 @@ from pytz import timezone
 
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import Account, AWConnectionToUserRelation, \
-    AWConnection, AWAccountPermission, Campaign, AdGroup, YTChannelStatistic
-from segment.models import SegmentChannel, SegmentRelatedChannel
+    AWConnection, AWAccountPermission, Campaign, AdGroup
+from segment.models import SegmentChannel, SegmentRelatedChannel, \
+    SegmentVideo, SegmentKeyword, SegmentRelatedVideo, SegmentRelatedKeyword
 from userprofile.models import UserProfile
 from utils.utils_tests import \
-    SingleDatabaseApiConnectorPatcher as ConnectionPatch, patch_now
+    SingleDatabaseApiConnectorPatcher as ConnectionPatch, patch_now, \
+    generic_test_method, generic_test_case
 
 
 @contextmanager
@@ -27,40 +29,62 @@ def patch_sdb():
 EMPTY_STATS = {key: None for key in
                ("average_cpv", "ctr", "ctr_v", "video_view_rate")}
 
+related_classes = {
+    SegmentChannel: SegmentRelatedChannel,
+    SegmentVideo: SegmentRelatedVideo,
+    SegmentKeyword: SegmentRelatedKeyword,
+}
 
+
+def get_related_ref(segment_class):
+    return "keyword" \
+        if segment_class is SegmentKeyword \
+        else "yt_id"
+
+
+@generic_test_case
 class UpdateSegmentsTestCase(TransactionTestCase):
+    generic_args_list = [
+        ("channel_segment", (SegmentChannel,), dict()),
+        ("video_segment", (SegmentVideo,), dict()),
+        ("keyword_segment", (SegmentKeyword,), dict()),
+    ]
+
     def setUp(self):
         chf_account_id = load_web_app_settings()["cf_account_id"]
         self.chf_mcc = Account.objects.create(id=chf_account_id, name="CHF MCC")
 
-    def test_update_channel_no_owner(self):
+    @generic_test_method()
+    def test_update_segment_no_owner_(self, segment_class):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
-        channel_segment = SegmentChannel.objects.create()
+        segment = segment_class.objects.create()
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
-        channel_segment.refresh_from_db()
-        aw_data = channel_segment.adw_data
+        segment.refresh_from_db()
+        aw_data = segment.adw_data
         self.assertIsNotNone(aw_data)
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=str(self.chf_mcc.id),
                                                account_name=self.chf_mcc.name,
                                                updated_at=str(test_now)))
 
-    def test_update_channel_no_account_selected(self):
+    @generic_test_method()
+    def test_update_segment_no_account_selected_(self, segment_class):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
         user = UserProfile.objects.create(id=1, historical_aw_account=None)
-        channel_segment = SegmentChannel.objects.create(owner=user)
+        segment = segment_class.objects.create(owner=user)
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
-        channel_segment.refresh_from_db()
-        aw_data = channel_segment.adw_data
+        segment.refresh_from_db()
+        aw_data = segment.adw_data
         self.assertIsNotNone(aw_data)
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=str(self.chf_mcc.id),
                                                account_name=self.chf_mcc.name,
                                                updated_at=str(test_now)))
 
-    def test_update_channel_account_selected(self):
+    @generic_test_method()
+    def test_update_segment_account_selected_(self, segment_class):
         user = UserProfile.objects.create(id=1)
         mcc_account = Account.objects.create(id="manager", name="Some MCC")
         aw_connection = AWConnection.objects.create()
@@ -71,23 +95,26 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         user.historical_aw_account = connection
         user.save()
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
-        channel_segment = SegmentChannel.objects.create(owner=user)
+        segment = segment_class.objects.create(owner=user)
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
-        channel_segment.refresh_from_db()
-        aw_data = channel_segment.adw_data
+        segment.refresh_from_db()
+        aw_data = segment.adw_data
         self.assertIsNotNone(aw_data)
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=mcc_account.id,
                                                account_name=mcc_account.name,
                                                updated_at=str(test_now)))
 
-    def test_update_channel_statistic(self):
+    @generic_test_method()
+    def test_update_segment_statistic_(self, segment_class):
         user = UserProfile.objects.create(id=1)
-        channel_segment = SegmentChannel.objects.create(id=1, owner=user)
+        segment = segment_class.objects.create(id=1, owner=user)
         related_id = "123"
-        SegmentRelatedChannel.objects.create(segment=channel_segment,
-                                             related_id=related_id)
+        statistic_class = segment_class.related_aw_statistics_model
+        related_class = related_classes[segment_class]
+        related_class.objects.create(segment=segment,
+                                     related_id=related_id)
 
         mcc_account = Account.objects.create(id="manager", name="Some MCC")
         aw_connection = AWConnection.objects.create()
@@ -105,12 +132,13 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(id=1, campaign=campaign,
                                           video_views=1)
         clicks, impressions, views, cost = 23, 34, 45, 56
-        YTChannelStatistic.objects.create(ad_group=ad_group,
-                                          date=date(2018, 1, 1),
-                                          yt_id=related_id,
-                                          impressions=impressions,
-                                          video_views=views,
-                                          clicks=clicks, cost=cost)
+        related_field = get_related_ref(segment_class)
+        statistic_class.objects.create(ad_group=ad_group,
+                                       date=date(2018, 1, 1),
+                                       impressions=impressions,
+                                       video_views=views,
+                                       clicks=clicks, cost=cost,
+                                       **{related_field: related_id})
         expected_stats = dict(
             average_cpv=cost / views,
             ctr=clicks / impressions * 100,
@@ -121,8 +149,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         test_now = datetime(2018, 1, 1)
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
-        channel_segment.refresh_from_db()
-        aw_data = channel_segment.adw_data
+        segment.refresh_from_db()
+        aw_data = segment.adw_data
         self.assertIsNotNone(aw_data)
         stats = aw_data["stats"]
         self.assertEqual(stats, expected_stats)
@@ -130,12 +158,15 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                account_name=mcc_account.name,
                                                updated_at=str(test_now)))
 
-    def test_update_aggregate_only_selected_account(self):
+    @generic_test_method()
+    def test_update_aggregate_only_selected_account_(self, segment_class):
         user = UserProfile.objects.create(id=1)
-        channel_segment = SegmentChannel.objects.create(id=1, owner=user)
+        segment = segment_class.objects.create(id=1, owner=user)
         related_id = "123"
-        SegmentRelatedChannel.objects.create(segment=channel_segment,
-                                             related_id=related_id)
+        related_class = related_classes[segment_class]
+        related_class.objects.create(segment=segment,
+                                     related_id=related_id)
+        statistic_class = segment_class.related_aw_statistics_model
         clicks, impressions, cost = 23, 34, 45
 
         def create_data(uid, views):
@@ -155,12 +186,13 @@ class UpdateSegmentsTestCase(TransactionTestCase):
             campaign = Campaign.objects.create(id=uid, account=account)
             ad_group = AdGroup.objects.create(id=uid, campaign=campaign,
                                               video_views=1)
-            YTChannelStatistic.objects.create(ad_group=ad_group,
-                                              date=date(2018, 1, 1),
-                                              yt_id=related_id,
-                                              impressions=impressions,
-                                              video_views=views,
-                                              clicks=clicks, cost=cost)
+            related_field = get_related_ref(segment_class)
+            statistic_class.objects.create(ad_group=ad_group,
+                                           date=date(2018, 1, 1),
+                                           impressions=impressions,
+                                           video_views=views,
+                                           clicks=clicks, cost=cost,
+                                           **{related_field: related_id})
             return user_connection, mcc_account
 
         views_1, views_2 = 67, 78
@@ -180,8 +212,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         test_now = datetime(2018, 1, 1)
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
-        channel_segment.refresh_from_db()
-        aw_data = channel_segment.adw_data
+        segment.refresh_from_db()
+        aw_data = segment.adw_data
         self.assertIsNotNone(aw_data)
         stats = aw_data["stats"]
         self.assertEqual(stats, expected_stats)

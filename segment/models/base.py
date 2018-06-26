@@ -13,7 +13,6 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
-from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 
@@ -50,6 +49,8 @@ class BaseSegment(Timestampable):
     shared_with = ArrayField(CharField(max_length=200), blank=True,
                              default=list)
     related = None
+    related_aw_statistics_model = None
+    segment_type = None
 
     class Meta:
         abstract = True
@@ -127,6 +128,7 @@ class BaseSegment(Timestampable):
         """
         Prepare segment adwords statistics
         """
+        from segment.models.utils import count_segment_adwords_statistics
         # prepare adwords statistics
         adwords_statistics = count_segment_adwords_statistics(self)
 

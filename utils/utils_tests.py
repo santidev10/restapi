@@ -3,6 +3,7 @@ import io
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
+from inspect import getmembers
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -96,7 +97,7 @@ class SingleDatabaseApiConnectorPatcher:
             data["max_page"] = None
         aggregations = query_params.get("aggregations", None)
         if aggregations is None:
-            del data["aggregation"]
+            del data["aggregations"]
         return data
 
     def get_keyword_list(*args, **kwargs):
@@ -231,3 +232,60 @@ def build_csv_byte_stream(headers, rows):
     text_csv = output.getvalue()
     stream = io.BytesIO(text_csv.encode())
     return stream
+
+
+class GenericTestMethodWrapper:
+    """
+    Wrapper to mark test method as generic.
+    Instance contains data to generate new test methods
+    """
+
+    def __init__(self, fn, args_list):
+        self.fn = fn
+        self.args_list = args_list
+
+
+def generic_test_method(args_list=None):
+    """
+    Mark a test method as generic
+    to define one test per each item in the args_list
+    :param args_list: (suffix: str, args: List, kwargs: Dict)[].
+        Provides info to generate new test methods.
+        - suffix for new test method name
+        - args to invoke method with
+        - kwargs to invoke method with
+    :return: GenericTestMethodWrapper
+    """
+
+    def wrapper(fn):
+        return GenericTestMethodWrapper(fn, args_list)
+
+    return wrapper
+
+
+def is_generic_method(item):
+    return isinstance(item, GenericTestMethodWrapper)
+
+
+def generic_test_case(test_case_class):
+    """
+    Replace all methods marked with `generic_test_method` decorator
+    with set of new methods based on generic_test_method's arguments.
+    If `generic_test_method` was invoked with no arguments,
+     class.generic_args_list will be taken instead
+    :param test_case_class: test case class to update
+    :return: decorated test case class
+    """
+    for method_name, wrapper in getmembers(test_case_class,
+                                           predicate=is_generic_method):
+        delattr(test_case_class, method_name)
+        fn = wrapper.fn
+        args_list = wrapper.args_list or getattr(test_case_class,
+                                                 "generic_args_list", [])
+        for suffix, args, kwargs in args_list:
+            def virtual_fn(self):
+                return fn(self, *args, **kwargs)
+
+            name = method_name + suffix
+            setattr(test_case_class, name, virtual_fn)
+    return test_case_class
