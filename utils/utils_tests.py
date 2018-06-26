@@ -90,6 +90,18 @@ class SingleDatabaseApiConnectorPatcher:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
+        query_params = kwargs.get("query_params", dict())
+        size = query_params.get("size", 1)
+        if size == 0:
+            data["max_page"] = None
+        aggregations = query_params.get("aggregations", None)
+        if aggregations is None:
+            del data["aggregation"]
+        return data
+
+    def get_keyword_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_keyword_list.json') as data_file:
+            data = json.load(data_file)
         return data
 
     def get_channels_base_info(self, *args, **kwargs):
@@ -119,6 +131,9 @@ class SingleDatabaseApiConnectorPatcher:
             videos = json.load(data_file)
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
+
+    def store_ids(self, ids):
+        pass
 
 
 class MockResponse(object):
