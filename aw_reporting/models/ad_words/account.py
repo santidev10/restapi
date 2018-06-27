@@ -20,22 +20,15 @@ class Account(models.Model):
 
     @classmethod
     def user_mcc_objects(cls, user):
-        qs = Account.objects.filter(
+        return Account.objects.filter(
             mcc_permissions__aw_connection__user_relations__user=user
         ).order_by('id').distinct()
-        return qs
 
     @classmethod
     def user_objects(cls, user):
-        manager_ids = set(
-            Account.objects.filter(
-                mcc_permissions__aw_connection__user_relations__user=user
-            ).values_list('id', flat=True)
+        return cls.objects.filter(
+            managers__id__in=cls.user_mcc_objects(user),
         )
-        qs = cls.objects.filter(
-            managers__id__in=manager_ids,
-        )
-        return qs
 
     @property
     def start_date(self):

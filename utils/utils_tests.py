@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -90,6 +91,18 @@ class SingleDatabaseApiConnectorPatcher:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
+        query_params = kwargs.get("query_params", dict())
+        size = query_params.get("size", 1)
+        if size == 0:
+            data["max_page"] = None
+        aggregations = query_params.get("aggregations", None)
+        if aggregations is None:
+            del data["aggregations"]
+        return data
+
+    def get_keyword_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_keyword_list.json') as data_file:
+            data = json.load(data_file)
         return data
 
     def get_channels_base_info(self, *args, **kwargs):
@@ -119,6 +132,9 @@ class SingleDatabaseApiConnectorPatcher:
             videos = json.load(data_file)
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
+
+    def store_ids(self, ids):
+        pass
 
 
 class MockResponse(object):
@@ -216,3 +232,22 @@ def build_csv_byte_stream(headers, rows):
     text_csv = output.getvalue()
     stream = io.BytesIO(text_csv.encode())
     return stream
+
+
+def generic_test(args_list):
+    """
+    Generates subtest per each item in the args_list
+    :param args_list: (msg: str, args: List, kwargs: Dict)
+    :return:
+    """
+    def wrapper(fn):
+        def wrapped_test_function(self):
+            for msg, args, kwargs in args_list:
+                with self.subTest(msg=msg, **kwargs), transaction.atomic():
+                    sid = transaction.savepoint()
+                    fn(self, *args, **kwargs)
+                    transaction.savepoint_rollback(sid)
+
+        return wrapped_test_function
+
+    return wrapper

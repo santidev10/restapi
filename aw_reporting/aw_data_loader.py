@@ -78,7 +78,7 @@ class AWDataLoader:
         accounts = get_all_customers(client)
         if accounts:
             for e in accounts:
-                a, created = Account.objects.update_or_create(
+                a, _ = Account.objects.update_or_create(
                     id=e['customerId'],
                     defaults=dict(
                         name=e['name'],
@@ -129,7 +129,7 @@ class AWDataLoader:
     def advertising_account_update(self, client, account):
         today = self.today
         for task in self.update_tasks:
-            logger.debug("Task: {}, account: {}".format(task.__name__, account))
+            logger.debug("Task: %s, account: %s", task.__name__, account)
             task(client, account, today)
 
         account.update_time = timezone.now()

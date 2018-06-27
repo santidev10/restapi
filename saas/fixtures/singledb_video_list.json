@@ -1143,5 +1143,81 @@
       "aw_data": {}
     }
   ],
-  "current_page": 1
+  "current_page": 1,
+  "aggregations": {
+    "category:count": [
+      [
+        "Entertainment",
+        4190246
+      ],
+      [
+        "News & Politics",
+        2979259
+      ],
+      [
+        "Music",
+        2615097
+      ],
+      [
+        "Gaming",
+        2346294
+      ],
+      [
+        "People & Blogs",
+        1672391
+      ],
+      [
+        "Sports",
+        1366122
+      ],
+      [
+        "Howto & Style",
+        1185144
+      ],
+      [
+        "Film & Animation",
+        727483
+      ],
+      [
+        "Education",
+        693941
+      ],
+      [
+        "Autos & Vehicles",
+        550189
+      ],
+      [
+        "Comedy",
+        470354
+      ],
+      [
+        "Science & Technology",
+        467483
+      ],
+      [
+        "Travel & Events",
+        267648
+      ],
+      [
+        "Nonprofits & Activism",
+        258753
+      ],
+      [
+        "Pets & Animals",
+        199487
+      ],
+      [
+        "Shows",
+        66464
+      ],
+      [
+        "Movies",
+        3973
+      ],
+      [
+        "Trailers",
+        2094
+      ]
+    ]
+  }
 }
