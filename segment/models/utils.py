@@ -27,7 +27,7 @@ def count_segment_adwords_statistics(segment: BaseSegment):
         .values_list("related_id", flat=True)
     # prepare queryset
 
-    mcc_acc = get_mcc_to_update(user)
+    mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
         "ad_group__campaign__account__managers": mcc_acc,
     }
@@ -73,12 +73,14 @@ def count_segment_adwords_statistics(segment: BaseSegment):
         meta=dict(
             account_id=mcc_acc.id,
             account_name=mcc_acc.name,
-            updated_at=str(now_in_default_tz())
+            updated_at=str(now_in_default_tz()),
+            is_chf=is_chf
         )
     )
 
 
 def get_mcc_to_update(user: UserProfile):
     if user is not None and user.historical_aw_account_id is not None:
-        return user.historical_aw_account.connection.mcc_permissions.first().account
-    return Account.objects.get(id=load_web_app_settings()["cf_account_id"])
+        return user.historical_aw_account.connection.mcc_permissions.first().account, False
+    return Account.objects.get(
+        id=load_web_app_settings()["cf_account_id"]), True

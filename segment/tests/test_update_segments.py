@@ -66,7 +66,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=str(self.chf_mcc.id),
                                                account_name=self.chf_mcc.name,
-                                               updated_at=str(test_now)))
+                                               updated_at=str(test_now),
+                                               is_chf=True))
 
     @generic_test_method()
     def test_update_segment_no_account_selected_(self, segment_class):
@@ -81,7 +82,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=str(self.chf_mcc.id),
                                                account_name=self.chf_mcc.name,
-                                               updated_at=str(test_now)))
+                                               updated_at=str(test_now),
+                                               is_chf=True))
 
     @generic_test_method()
     def test_update_segment_account_selected_(self, segment_class):
@@ -104,7 +106,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.assertEqual(aw_data["stats"], EMPTY_STATS)
         self.assertEqual(aw_data["meta"], dict(account_id=mcc_account.id,
                                                account_name=mcc_account.name,
-                                               updated_at=str(test_now)))
+                                               updated_at=str(test_now),
+                                               is_chf=False))
 
     @generic_test_method()
     def test_update_segment_statistic_(self, segment_class):
@@ -156,7 +159,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.assertEqual(stats, expected_stats)
         self.assertEqual(aw_data["meta"], dict(account_id=mcc_account.id,
                                                account_name=mcc_account.name,
-                                               updated_at=str(test_now)))
+                                               updated_at=str(test_now),
+                                               is_chf=False))
 
     @generic_test_method()
     def test_update_aggregate_only_selected_account_(self, segment_class):
@@ -219,4 +223,5 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.assertEqual(stats, expected_stats)
         self.assertEqual(aw_data["meta"], dict(account_id=mcc.id,
                                                account_name=mcc.name,
-                                               updated_at=str(test_now)))
+                                               updated_at=str(test_now),
+                                               is_chf=False))
