@@ -14,7 +14,7 @@ from segment.models import SegmentChannel, SegmentRelatedChannel, \
 from userprofile.models import UserProfile
 from utils.utils_tests import \
     SingleDatabaseApiConnectorPatcher as ConnectionPatch, patch_now, \
-    generic_test_method, generic_test_case
+    generic_test
 
 
 @contextmanager
@@ -42,20 +42,19 @@ def get_related_ref(segment_class):
         else "yt_id"
 
 
-@generic_test_case
 class UpdateSegmentsTestCase(TransactionTestCase):
     generic_args_list = [
-        ("channel_segment", (SegmentChannel,), dict()),
-        ("video_segment", (SegmentVideo,), dict()),
-        ("keyword_segment", (SegmentKeyword,), dict()),
+        ("Channel Segment", (SegmentChannel,), dict()),
+        ("Video Segment", (SegmentVideo,), dict()),
+        ("Keyword Segment", (SegmentKeyword,), dict()),
     ]
 
     def setUp(self):
         chf_account_id = load_web_app_settings()["cf_account_id"]
         self.chf_mcc = Account.objects.create(id=chf_account_id, name="CHF MCC")
 
-    @generic_test_method()
-    def test_update_segment_no_owner_(self, segment_class):
+    @generic_test(generic_args_list)
+    def test_update_segment_no_owner(self, segment_class):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
         segment = segment_class.objects.create()
         with patch_sdb(), patch_now(test_now):
@@ -69,8 +68,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                updated_at=str(test_now),
                                                is_chf=True))
 
-    @generic_test_method()
-    def test_update_segment_no_account_selected_(self, segment_class):
+    @generic_test(generic_args_list)
+    def test_update_segment_no_account_selected(self, segment_class):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
         user = UserProfile.objects.create(id=1, historical_aw_account=None)
         segment = segment_class.objects.create(owner=user)
@@ -85,8 +84,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                updated_at=str(test_now),
                                                is_chf=True))
 
-    @generic_test_method()
-    def test_update_segment_account_selected_(self, segment_class):
+    @generic_test(generic_args_list)
+    def test_update_segment_account_selected(self, segment_class):
         user = UserProfile.objects.create(id=1)
         mcc_account = Account.objects.create(id="manager", name="Some MCC")
         aw_connection = AWConnection.objects.create()
@@ -109,8 +108,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                updated_at=str(test_now),
                                                is_chf=False))
 
-    @generic_test_method()
-    def test_update_segment_statistic_(self, segment_class):
+    @generic_test(generic_args_list)
+    def test_update_segment_statistic(self, segment_class):
         user = UserProfile.objects.create(id=1)
         segment = segment_class.objects.create(id=1, owner=user)
         related_id = "123"
@@ -162,8 +161,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                updated_at=str(test_now),
                                                is_chf=False))
 
-    @generic_test_method()
-    def test_update_aggregate_only_selected_account_(self, segment_class):
+    @generic_test(generic_args_list)
+    def test_update_aggregate_only_selected_account(self, segment_class):
         user = UserProfile.objects.create(id=1)
         segment = segment_class.objects.create(id=1, owner=user)
         related_id = "123"

@@ -3,11 +3,11 @@ import io
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
-from inspect import getmembers
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -234,58 +234,20 @@ def build_csv_byte_stream(headers, rows):
     return stream
 
 
-class GenericTestMethodWrapper:
+def generic_test(args_list):
     """
-    Wrapper to mark test method as generic.
-    Instance contains data to generate new test methods
+    Generates subtest per each item in the args_list
+    :param args_list: (msg: str, args: List, kwargs: Dict)
+    :return:
     """
-
-    def __init__(self, fn, args_list):
-        self.fn = fn
-        self.args_list = args_list
-
-
-def generic_test_method(args_list=None):
-    """
-    Mark a test method as generic
-    to define one test per each item in the args_list
-    :param args_list: (suffix: str, args: List, kwargs: Dict)[].
-        Provides info to generate new test methods.
-        - suffix for new test method name
-        - args to invoke method with
-        - kwargs to invoke method with
-    :return: GenericTestMethodWrapper
-    """
-
     def wrapper(fn):
-        return GenericTestMethodWrapper(fn, args_list)
+        def wrapped_test_function(self):
+            for msg, args, kwargs in args_list:
+                with self.subTest(msg=msg, **kwargs), transaction.atomic():
+                    sid = transaction.savepoint()
+                    fn(self, *args, **kwargs)
+                    transaction.savepoint_rollback(sid)
+
+        return wrapped_test_function
 
     return wrapper
-
-
-def is_generic_method(item):
-    return isinstance(item, GenericTestMethodWrapper)
-
-
-def generic_test_case(test_case_class):
-    """
-    Replace all methods marked with `generic_test_method` decorator
-    with set of new methods based on generic_test_method's arguments.
-    If `generic_test_method` was invoked with no arguments,
-     class.generic_args_list will be taken instead
-    :param test_case_class: test case class to update
-    :return: decorated test case class
-    """
-    for method_name, wrapper in getmembers(test_case_class,
-                                           predicate=is_generic_method):
-        delattr(test_case_class, method_name)
-        fn = wrapper.fn
-        args_list = wrapper.args_list or getattr(test_case_class,
-                                                 "generic_args_list", [])
-        for suffix, args, kwargs in args_list:
-            def virtual_fn(self):
-                return fn(self, *args, **kwargs)
-
-            name = method_name + suffix
-            setattr(test_case_class, name, virtual_fn)
-    return test_case_class
