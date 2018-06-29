@@ -34,4 +34,4 @@ class AWAccountConnectionRelationsSerializer(ModelSerializer):
 
     class Meta:
         model = AWConnectionToUserRelation
-        fields = ("email", "mcc_accounts", "created", "update_time")
+        fields = ("id", "email", "mcc_accounts", "created", "update_time")
