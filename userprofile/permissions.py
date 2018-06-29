@@ -142,6 +142,7 @@ class Permissions:
         (PermissionGroupNames.ANALYTICS, (
             "account_creation_list",
             "account_creation_post",
+            "settings_my_aw_accounts",
         ))
     )
 
@@ -185,6 +186,7 @@ class Permissions:
         # analytics sectipn
         "account_creation_list",
         "account_creation_post",
+        "settings_my_aw_accounts",
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
