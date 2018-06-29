@@ -10,7 +10,7 @@ from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience
+    AdGroupStatistic, Audience, ParentStatistic
 from aw_reporting.tasks import AudienceAWType
 from utils.utils_tests import patch_now, build_csv_byte_stream
 
@@ -364,3 +364,51 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(Audience.objects.all().count(), 1)
         self.assertEqual(Audience.objects.first().type,
                          Audience.CUSTOM_AFFINITY_TYPE)
+
+    def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(date=today, ad_group=ad_group,
+                                        average_position=1)
+
+        common = dict(
+            Criteria=ParentStatuses[0],
+            Date=str(today),
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+        test_report_data = [
+            dict(AdGroupId="missing", **common),
+            dict(AdGroupId=ad_group.id, **common)
+        ]
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 0)
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            try:
+                call_command("pull_aw_data",
+                             start="get_parents",
+                             end="get_parents")
+            except Exception as ex:
+                self.fail(ex)
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 1)

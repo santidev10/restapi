@@ -621,26 +621,26 @@ def get_parents(client, account, today):
         report = parent_performance_report(
             client, dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                stats = {
-                    'parent_status_id': ParentStatuses.index(row_obj.Criteria),
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
+        bulk_data = []
+        for row_obj in report:
+            ad_group_id = row_obj.AdGroupId
+            stats = {
+                'parent_status_id': ParentStatuses.index(row_obj.Criteria),
+                'date': row_obj.Date,
+                'ad_group_id': ad_group_id,
 
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_data.append(ParentStatistic(**stats))
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            bulk_data.append(ParentStatistic(**stats))
 
-                ad_group_ids.add(row_obj.AdGroupId)
+            ad_group_ids.add(row_obj.AdGroupId)
 
-            if bulk_data:
-                ParentStatistic.objects.safe_bulk_create(bulk_data)
+        if bulk_data:
+            ParentStatistic.objects.safe_bulk_create(bulk_data)
 
     _reset_denorm_flag(ad_group_ids=ad_group_ids)
 
