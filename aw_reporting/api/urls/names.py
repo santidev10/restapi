@@ -19,3 +19,6 @@ class Name:
 
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
+
+    class AWAccounts:
+        LIST = "connect_aw_account_list"

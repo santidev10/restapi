@@ -15,10 +15,10 @@ class AWAccountConnectionRelationsSerializer(ModelSerializer):
 
     @staticmethod
     def get_update_time(obj):
-        data = Account.objects.filter(
-            managers__mcc_permissions__aw_connection=obj.connection).aggregate(
-            updated_at=Max("update_time"),
-            hourly_updated_at=Max("hourly_updated_at"))
+        data = Account.objects \
+            .filter(managers__mcc_permissions__aw_connection=obj.connection) \
+            .aggregate(updated_at=Max("update_time"),
+                       hourly_updated_at=Max("hourly_updated_at"))
         return safe_max((data["updated_at"], data["hourly_updated_at"]))
 
     @staticmethod
@@ -34,4 +34,4 @@ class AWAccountConnectionRelationsSerializer(ModelSerializer):
 
     class Meta:
         model = AWConnectionToUserRelation
-        fields = ("email", "mcc_accounts", "created", "update_time")
+        fields = ("id", "email", "mcc_accounts", "created", "update_time")
