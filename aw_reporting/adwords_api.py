@@ -5,7 +5,7 @@ import logging
 import yaml
 
 logger = logging.getLogger(__name__)
-API_VERSION = 'v201806'
+API_VERSION = 'v201710'
 
 
 def load_settings():
