@@ -55,17 +55,19 @@ class TestUserMixin:
             user.add_custom_user_group(perm_group)
 
 
-class ExtendedAPITestCase(APITestCase, TestUserMixin):
-    multi_db = True
-
+class APITestUserMixin(TestUserMixin):
     def create_test_user(self, auth=True):
-        user = super(ExtendedAPITestCase, self).create_test_user(auth)
+        user = super(APITestUserMixin, self).create_test_user(auth)
         if Token.objects.filter(user=user).exists():
             self.request_user = user
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
         return user
+
+
+class ExtendedAPITestCase(APITestCase, APITestUserMixin):
+    multi_db = True
 
     def patch_user_settings(self, **kwargs):
         return patch_user_settings(self.request_user, **kwargs)
