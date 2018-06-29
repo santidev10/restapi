@@ -52,10 +52,10 @@ urlpatterns = [
         name=Name.AWAccounts.LIST),
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
-        name="connect_aw_account"),
+        name=Name.AWAccounts.ACCOUNT),
     url(r'^connect_aw_account/(?P<email>[^/]+)/$',
         views.ConnectAWAccountApiView.as_view(),
-        name="aw_account_connection"),
+        name=Name.AWAccounts.CONNECTION),
 
     # benchmark
     url(r'^benchmarks/base_charts/$',
