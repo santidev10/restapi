@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    files_suffix = ""
+
     DEFAULT_AW_SETTINGS = get_default_settings()
 
     CHF_AW_SETTINGS = {
@@ -39,7 +41,17 @@ class Command(BaseCommand):
             type=bool,
             default=False,
         )
+        parser.add_argument(
+            "--fixtures_suffix",
+            dest="fixtures_suffix",
+            help="set fixtures suffix like '20180629'",
+            type=str,
+            default="",
+        )
+
     def handle(self, *args, **options):
+        self.files_suffix = options.get("fixtures_suffix")
+
         with transaction.atomic():
             if options['update_visible_accounts_only']:
                 self.update_visible_accounts_only()
@@ -48,7 +60,8 @@ class Command(BaseCommand):
                 self.update_users_permissions()
 
     def load_sites_info(self):
-        mask = settings.BASE_DIR + "/userprofile/fixtures/sites/*.yml"
+        mask = settings.BASE_DIR + \
+               "/userprofile/fixtures/sites/*" + self.files_suffix + ".yml"
         result = {}
         for filename in glob.glob(mask):
             name = filename.split('/')[-1]
@@ -96,7 +109,8 @@ class Command(BaseCommand):
     def get_users_info(self):
         sites_info = self.load_sites_info()
 
-        mask = settings.BASE_DIR + "/userprofile/fixtures/users/*.csv"
+        mask = settings.BASE_DIR + \
+               "/userprofile/fixtures/users/*" + self.files_suffix + ".csv"
         for filename in glob.glob(mask):
             name = filename.split("/")[-1]
             if name.endswith(".csv"):
