@@ -1,6 +1,6 @@
 import logging
 
-from django.db import models, transaction, IntegrityError
+from django.db import models, IntegrityError, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +14,16 @@ class BaseQueryset(models.QuerySet):
         :param batch_size:
         :return:
         """
+        if transaction.get_connection().in_atomic_block:
+            raise IntegrityError(
+                "`safe_bulk_create` is invoked inside a transaction")
         try:
-            with transaction.atomic():
-                self.bulk_create(objs, batch_size=batch_size)
+            self.bulk_create(objs, batch_size=batch_size)
         except IntegrityError as ex_1:
             logger.info(ex_1)
             for obj in objs:
                 try:
-                    with transaction.atomic():
-                        obj.save()
+                    obj.save()
                 except IntegrityError as ex_2:
                     logger.info(ex_2)
 

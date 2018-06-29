@@ -404,11 +404,8 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            try:
-                call_command("pull_aw_data",
-                             start="get_parents",
-                             end="get_parents")
-            except Exception as ex:
-                self.fail(ex)
+            call_command("pull_aw_data",
+                         start="get_parents",
+                         end="get_parents")
 
         self.assertEqual(ParentStatistic.objects.all().count(), 1)
