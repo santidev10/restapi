@@ -140,7 +140,8 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "has_disapproved_ad",
             "vendor",
-            "historical_aw_account"
+            "historical_aw_account",
+            "is_registered_via_google"
         )
         read_only_fields = (
             "is_staff",
@@ -151,6 +152,7 @@ class UserSerializer(ModelSerializer):
             "profile_image_url",
             "can_access_media_buying",
             "vendor",
+            "is_registered_via_google"
         )
 
     @staticmethod
