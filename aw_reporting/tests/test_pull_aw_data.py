@@ -483,7 +483,6 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(Ad.objects.all().count(), 0)
 
         common_data = dict(
-
             Date=str(today),
             AveragePosition=1,
             Cost=0,
