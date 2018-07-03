@@ -42,7 +42,8 @@ class PullAWDataTestCase(TransactionTestCase):
         campaign = Campaign.objects.create(id=1,
                                            account=account,
                                            de_norm_fields_are_recalculated=True,
-                                           start_date=today - timedelta(days=5),
+                                           start_date=today - timedelta(
+                                               days=5),
                                            end_date=today + timedelta(days=5),
                                            cost=1,
                                            budget=1,
@@ -443,7 +444,8 @@ class PullAWDataTestCase(TransactionTestCase):
         test_report_data = [
             dict(Id=approved_ad_1, **common_data),
             dict(Id=approved_ad_2, CombinedApprovalStatus=None, **common_data),
-            dict(Id=approved_ad_3, CombinedApprovalStatus="any", **common_data),
+            dict(Id=approved_ad_3, CombinedApprovalStatus="any",
+                 **common_data),
 
             dict(Id=disapproved_ad_1, CombinedApprovalStatus="disapproved",
                  **common_data),
@@ -459,11 +461,58 @@ class PullAWDataTestCase(TransactionTestCase):
                    return_value=aw_client_mock):
             call_command("pull_aw_data", start="get_ads", end="get_ads")
 
-        def is_dissapreved(ad_id):
+        def is_disapproved(ad_id):
             return Ad.objects.get(id=ad_id).is_disapproved
 
-        self.assertFalse(is_dissapreved(approved_ad_1))
-        self.assertFalse(is_dissapreved(approved_ad_2))
-        self.assertFalse(is_dissapreved(approved_ad_3))
-        self.assertTrue(is_dissapreved(disapproved_ad_1))
+        self.assertFalse(is_disapproved(approved_ad_1))
+        self.assertFalse(is_disapproved(approved_ad_2))
+        self.assertFalse(is_disapproved(approved_ad_3))
+        self.assertTrue(is_disapproved(disapproved_ad_1))
 
+    def test_get_ad_skip_missing_groups(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        valid_ad_group_id, invalid_ad_group_id = 1, 2
+        valid_ad_id, invalid_ad_id = 3, 4
+        ad_group = AdGroup.objects.create(id=valid_ad_group_id,
+                                          campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
+                                        average_position=1)
+        self.assertEqual(Ad.objects.all().count(), 0)
+
+        common_data = dict(
+            Date=str(today),
+            AveragePosition=1,
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+
+        test_report_data = [
+            dict(Id=valid_ad_id, AdGroupId=valid_ad_group_id, **common_data),
+            dict(Id=invalid_ad_id, AdGroupId=invalid_ad_group_id,
+                 **common_data)
+        ]
+        fields = AD_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_ads", end="get_ads")
+
+        self.assertEqual(Ad.objects.all().count(), 1)
+        self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
