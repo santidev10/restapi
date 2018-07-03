@@ -461,13 +461,13 @@ class PullAWDataTestCase(TransactionTestCase):
                    return_value=aw_client_mock):
             call_command("pull_aw_data", start="get_ads", end="get_ads")
 
-        def is_dissapreved(ad_id):
+        def is_disapproved(ad_id):
             return Ad.objects.get(id=ad_id).is_disapproved
 
-        self.assertFalse(is_dissapreved(approved_ad_1))
-        self.assertFalse(is_dissapreved(approved_ad_2))
-        self.assertFalse(is_dissapreved(approved_ad_3))
-        self.assertTrue(is_dissapreved(disapproved_ad_1))
+        self.assertFalse(is_disapproved(approved_ad_1))
+        self.assertFalse(is_disapproved(approved_ad_2))
+        self.assertFalse(is_disapproved(approved_ad_3))
+        self.assertTrue(is_disapproved(disapproved_ad_1))
 
     def test_get_ad_skip_missing_groups(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
