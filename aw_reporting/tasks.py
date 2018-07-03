@@ -543,7 +543,7 @@ def get_ads(client, account, today):
             create_stat.append(AdStatistic(**stats))
 
         if create_ad:
-            Ad.objects.bulk_create(create_ad)
+            Ad.objects.safe_bulk_create(create_ad)
 
         if create_stat:
             AdStatistic.objects.safe_bulk_create(create_stat)
