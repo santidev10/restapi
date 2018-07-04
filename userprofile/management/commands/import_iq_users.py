@@ -11,12 +11,33 @@ from django.db import transaction
 from userprofile.models import UserProfile
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
+from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    IQ_FEATURES = (
+        # dashboard
+        ('0', 'dashboard'),
+        ('1', 'adwords_accounts'),
+        ('2', 'salesforce_accounts'),
+        ('3', 'hourly_trends'),
+        ('4', 'daily_trends'),
+        ('5', 'pricing_tool'),
+        ('6', 'keywords_tool'),
+        ('7', 'pacing_reports'),
+        ('8', 'opportunities'),
+        ('9', 'operations'),
+        ('a', 'salesforce_placements'),
+        ('b', 'insights'),
+        ('c', 'campaign_creation'),
+        ('d', 'brands_page'),
+        ('e', 'setup_health_check_tool'),
+    )
+    FEATURES_IDS = {n: uid for uid, n in IQ_FEATURES}
+
     files_suffix = ""
 
     DEFAULT_AW_SETTINGS = get_default_settings()
@@ -52,12 +73,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.files_suffix = options.get("fixtures_suffix")
 
+
         with transaction.atomic():
+            Permissions.sync_groups()
+
             if options['update_visible_accounts_only']:
                 self.update_visible_accounts_only()
             else:
-                self.import_users()
+                users_info = self.get_users_info()
+                self.import_users(users_info)
                 self.update_users_permissions()
+                self.update_dashboard_access(users_info)
 
     def load_sites_info(self):
         mask = settings.BASE_DIR + \
@@ -71,8 +97,8 @@ class Command(BaseCommand):
                 result[name] = yaml.load(f)
         return result
 
-    def import_users(self):
-        for name, user_info in self.get_users_info():
+    def import_users(self, users_info):
+        for name, user_info in users_info:
             user = UserProfile(**user_info)
             try:
                 UserProfile.objects.get(email=user.email)
@@ -107,8 +133,9 @@ class Command(BaseCommand):
                 user.save()
 
     def get_users_info(self):
-        sites_info = self.load_sites_info()
+        result = []
 
+        sites_info = self.load_sites_info()
         mask = settings.BASE_DIR + \
                "/userprofile/fixtures/users/*" + self.files_suffix + ".csv"
         for filename in glob.glob(mask):
@@ -149,7 +176,9 @@ class Command(BaseCommand):
                         name,
                         self.DEFAULT_AW_SETTINGS,
                     )
-                    yield name, user_info
+                    result.append(tuple([name, user_info]))
+                    logger.info("Loaded {}: {}".format(name, user_info["email"]))
+        return result
 
     def update_users_permissions(self):
         for user in UserProfile.objects.all():
@@ -170,3 +199,24 @@ class Command(BaseCommand):
                 user.save()
 
             user.add_custom_user_group(PermissionGroupNames.HIGHLIGHTS)
+
+    def update_dashboard_access(self, users_info):
+        dashboard_id = self.FEATURES_IDS["dashboard"]
+
+        users_dict = {user_info["email"]: user_info for name, user_info in users_info}
+        queryset = UserProfile.objects.all()
+        # SAAS-2479 --->
+        queryset = queryset.filter(email__in=[
+            "freddie.taylor@publicismedia.com",
+            "juan.andresclavera@publicismedia.com",
+        ])
+        assert queryset.count() == 2
+        # <--- SAAS-2479
+        for user in queryset:
+            user_info = users_dict.get(user.email)
+            if not users_dict:
+                continue
+
+            features_available = user_info["features_available"]
+            if dashboard_id in features_available:
+                user.add_custom_user_group(PermissionGroupNames.DASHBOARD)

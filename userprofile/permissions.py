@@ -90,7 +90,7 @@ class PermissionGroupNames:
     MEDIA_BUYING = "Media buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
-    ANALYTICS = "Analytics"
+    DASHBOARD = "Dashboard"
 
 
 class Permissions:
@@ -139,10 +139,8 @@ class Permissions:
             "view_health_check",
             "view_dashboard",
         )),
-        (PermissionGroupNames.ANALYTICS, (
-            "account_creation_list",
-            "account_creation_post",
-            "settings_my_aw_accounts",
+        (PermissionGroupNames.DASHBOARD, (
+            "view_dashboard",
         ))
     )
 
@@ -183,10 +181,8 @@ class Permissions:
         "view_trends",
         "view_health_check",
         "view_dashboard",
-        # analytics sectipn
-        "account_creation_list",
-        "account_creation_post",
-        "settings_my_aw_accounts",
+        # dashboard sectipn
+        "view_dashboard",
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
