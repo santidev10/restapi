@@ -221,5 +221,6 @@ class Command(BaseCommand):
             if dashboard_id in features_available:
                 user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
 
-        for user in UserProfile.objects.filter(is_staff=True):
-            user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
+        for user in UserProfile.objects.all():
+            if user.is_staff or user.email.lower().endswith('@channelfactory.com'):
+                user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
