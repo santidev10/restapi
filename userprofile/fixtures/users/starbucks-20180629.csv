@@ -1,0 +1,2 @@
+id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
+303,pbkdf2_sha256$24000$XfoGS9SBo9hf$9uEHstV8oYf5rdhYNZtW6H94/4vL0Jiwl3E62aiU9p0=,2018-05-23 14:50:23.944799+00,f,,Megan,Kelly,f,t,2018-05-22 22:04:00.608269+00,megan.kelly@sparkfoundryww.com,,0,t,,,f,,,,,,t,f,f,,t
