@@ -220,3 +220,6 @@ class Command(BaseCommand):
             features_available = user_info["features_available"]
             if dashboard_id in features_available:
                 user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
+
+        for user in UserProfile.objects.filter(is_staff=True):
+            user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
