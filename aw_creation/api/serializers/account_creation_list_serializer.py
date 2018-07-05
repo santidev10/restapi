@@ -15,9 +15,9 @@ from aw_reporting.models import AdGroupStatistic, \
     VideoCreativeStatistic, Ad, \
     Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
     client_cost_campaign_required_annotation, SalesForceGoalType, OpPlacement
-from utils.db.aggregators import ConcatAggregate
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
+from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
 from utils.permissions import is_chf_in_request
 from utils.registry import registry
@@ -63,6 +63,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     status = SerializerMethodField()
     cost_method = SerializerMethodField()
     updated_at = SerializerMethodField()
+    is_managed = SerializerMethodField()
     # analytic data
     impressions = StatField()
     video_views = StatField()
@@ -96,10 +97,10 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             "thumbnail", "is_changed", "weekly_chart",
             # delivered stats
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
-            "ad_count", "channel_count", "video_count",
-            "interest_count", "topic_count", "keyword_count", "is_disapproved",
-            "updated_at", "brand", "agency", "from_aw", "cost_method",
-            "average_cpv", "average_cpm", "ctr", "ctr_v", "plan_cpm", "plan_cpv"
+            "ad_count", "channel_count", "video_count", "interest_count",
+            "topic_count", "keyword_count", "is_disapproved", "updated_at",
+            "brand", "agency", "from_aw", "cost_method", "average_cpv",
+            "average_cpm", "ctr", "ctr_v", "plan_cpm", "plan_cpv"
         )
 
     def __init__(self, *args, **kwargs):
@@ -267,6 +268,9 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def get_from_aw(self, obj):
         return obj.from_aw if not self.is_chf else None
+
+    def get_is_managed(self, obj):
+        return obj.is_managed if not self.is_chf else None
 
     def get_status(self, obj):
         if not self.is_chf:
