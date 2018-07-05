@@ -5,13 +5,14 @@ from urllib.parse import urlencode
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.test import APITransactionTestCase
 
 from keyword_tool.models import *
 from keyword_tool.settings import PREDEFINED_QUERIES
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import APITestUserMixin
 
 
-class KWToolAPITestCase(APITestCase):
+class KWToolAPITestCase(APITransactionTestCase, APITestUserMixin):
     def setUp(self):
         self.user = self.create_test_user()
 

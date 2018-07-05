@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('aw_reporting', '0035_fix_campaign_placement_links'),
-        ('userprofile', '0024_auto_20180604_0641'),
+        ('userprofile', '0025_lowercase_email'),
     ]
 
     operations = [
@@ -20,10 +20,5 @@ class Migration(migrations.Migration):
             model_name='userprofile',
             name='historical_aw_account',
             field=models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='user_aw_historical', to='aw_reporting.AWConnectionToUserRelation'),
-        ),
-        migrations.AlterField(
-            model_name='userprofile',
-            name='aw_settings',
-            field=django.contrib.postgres.fields.jsonb.JSONField(default=userprofile.models.get_default_settings),
         ),
     ]

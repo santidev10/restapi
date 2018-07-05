@@ -1,0 +1,21 @@
+dashboard_ad_words_rates: false
+dashboard_campaigns_segmented: false
+dashboard_costs_are_hidden: false
+dashboard_remarketing_tab_is_hidden: false
+demo_account_visible: false
+global_account_visibility: false
+hidden_campaign_types:
+  '1339625078': []
+  '2021361658': []
+  '3272686084': []
+  '5291475788': []
+  '6122430666': []
+  '8964036550': []
+show_conversions: false
+visible_accounts:
+- '1339625078'
+- '2021361658'
+- '3272686084'
+- '5291475788'
+- '6122430666'
+- '8964036550'
