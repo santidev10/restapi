@@ -126,7 +126,7 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "access",
-            "is_registered_via_google",
+            "google_account_id",
             "can_access_media_buying",
         )
 

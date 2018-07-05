@@ -25,7 +25,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "date_joined", "last_login", "email", "first_name", "token",
                 "can_access_media_buying", "has_disapproved_ad", "vendor",
                 "access", "aw_settings", "historical_aw_account",
-                "is_registered_via_google"
+                "google_account_id"
             }
         )
 

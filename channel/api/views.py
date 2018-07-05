@@ -478,7 +478,7 @@ class ChannelAuthenticationApiView(APIView):
                 access_token, google_id)
             # Create new user
             user_data["email"] = email
-            user_data["is_registered_via_google"] = True
+            user_data["google_account_id"] = google_id
             user_data["password"] = hashlib.sha1(str(
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
