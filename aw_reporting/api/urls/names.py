@@ -21,3 +21,6 @@ class Name:
 
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
+
+    class WebHook:
+        ACCOUNTS_LIST = "webhook_accounts_list"

@@ -97,7 +97,7 @@ urlpatterns = [
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
         views.WebHookAWAccountsListApiView.as_view(),
-        name="webhook_accounts_list"),
+        name=Name.WebHook.ACCOUNTS_LIST),
     url(r'^webhook_aw/save_settings/(?P<pk>\w+)/$',
         views.WebHookAWSaveSettingsApiView.as_view(),
         name="campaigns_setup_check_save_settings"),
