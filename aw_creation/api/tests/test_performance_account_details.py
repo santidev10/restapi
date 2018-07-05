@@ -136,7 +136,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
-                self.patch_user_settings(**user_settings):
+             self.patch_user_settings(**user_settings):
             response = self.client.post(
                 url, data=json.dumps({"is_chf": 1}),
                 content_type="application/json")
@@ -356,7 +356,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         placement_cpv = OpPlacement.objects.create(
             id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
             ordered_units=234, total_cost=123)
-        expected_cpm = placement_cpm.total_cost /\
+        expected_cpm = placement_cpm.total_cost / \
                        placement_cpm.ordered_units * 1000
         expected_cpv = placement_cpv.total_cost / placement_cpv.ordered_units
         Campaign.objects.create(
@@ -906,3 +906,50 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             overview_section["delivered_video_views"],
             expected_delivered_video_views)
+
+    def test_overview_reflects_to_date_range(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        account = Account.objects.create(id=1)
+        account_creation = AccountCreation.objects.create(
+            id=1, owner=user, account=account)
+        opportunity = Opportunity.objects.create(id=1)
+        placement = OpPlacement.objects.create(
+            id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            total_cost=5, ordered_units=5)
+        campaign = Campaign.objects.create(
+            id=1, salesforce_placement=placement,
+            account=account)
+        cost_1, cost_2 = 3, 4
+        impressions_1, impressions_2 = 3, 4
+        views_1, views_2 = 3, 4
+        ad_group = AdGroup.objects.create(
+            id=1, campaign=campaign,
+            cost=cost_1 + cost_2, video_views=views_1 + views_2,
+            impressions=impressions_1 + impressions_2)
+        date_1 = date(2018, 7, 1)
+        date_2 = date_1 + timedelta(days=1)
+        AdGroupStatistic.objects.create(date=date_1, ad_group=ad_group,
+                                        average_position=1,
+                                        cost=cost_1, impressions=impressions_1,
+                                        video_views=views_1)
+        AdGroupStatistic.objects.create(date=date_2, ad_group=ad_group,
+                                        average_position=1,
+                                        cost=cost_2, impressions=impressions_2,
+                                        video_views=views_2)
+        url = self._get_url(account_creation.id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url, json.dumps(dict(is_chf=1,
+                                     start_date=str(date_1),
+                                     end_date=str(date_1))),
+                content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        overview_section = response.data["overview"]
+        self.assertEqual(overview_section["cost"], cost_1)
+        self.assertEqual(overview_section["impressions"], impressions_1)
+        self.assertEqual(overview_section["video_views"], views_1)
