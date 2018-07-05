@@ -48,6 +48,12 @@ AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
                                 "CombinedApprovalStatus") \
                                + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
+AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
+                                "ImageCreativeName", "DisplayUrl", "Status",
+                                "Date", "AveragePosition",
+                                "CombinedApprovalStatus") \
+                               + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
 

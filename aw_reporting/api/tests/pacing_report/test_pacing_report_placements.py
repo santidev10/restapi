@@ -1,5 +1,6 @@
 from datetime import timedelta, date
 from itertools import product
+from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -16,7 +17,8 @@ from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
+    get_current_release
 
 
 class PacingReportPlacementsTestCase(APITestCase):
@@ -731,16 +733,13 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    def test_hard_cost_margin(self):
+    def test_hard_cost_margin_start(self):
         today = date(2018, 1, 1)
         total_cost = 6543
         our_cost = 1234
-        days_pass, days_left = 3, 6
-        total_days = days_pass + days_left
-        self.assertGreater(days_pass, 0)
-        self.assertGreater(days_left, 0)
-        start = today - timedelta(days=(days_pass - 1))
-        end = today + timedelta(days=days_left)
+        start = today - timedelta(days=1)
+        end = today + timedelta(days=1)
+        self.assertGreater(today, start)
         opportunity = Opportunity.objects.create(
             id="1", name="1")
         hard_cost_placement = OpPlacement.objects.create(
@@ -749,7 +748,12 @@ class PacingReportPlacementsTestCase(APITestCase):
         Flight.objects.create(
             start=start, end=end, total_cost=total_cost,
             placement=hard_cost_placement, cost=our_cost)
-        client_cost = total_cost / total_days * days_pass
+        Flight.objects.create(id=2,
+                              start=today + timedelta(days=1),
+                              end=today + timedelta(days=1),
+                              total_cost=999999,
+                              placement=hard_cost_placement, cost=0)
+        client_cost = total_cost
         expected_margin = (1 - our_cost / client_cost) * 100
         url = self._get_url(opportunity.id)
         with patch_now(today):

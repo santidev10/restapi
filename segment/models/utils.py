@@ -46,7 +46,6 @@ def count_segment_adwords_statistics(segment: BaseSegment):
             ad_group__video_views__gt=0,
             then="clicks",
         ), output_field=IntegerField())),
-
         sum_video_impressions=Sum(Case(When(
             ad_group__video_views__gt=0,
             then="impressions",

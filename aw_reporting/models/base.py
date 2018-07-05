@@ -1,6 +1,6 @@
 import logging
 
-from django.db import models, transaction, IntegrityError
+from django.db import models, IntegrityError, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -8,30 +8,24 @@ logger = logging.getLogger(__name__)
 class BaseQueryset(models.QuerySet):
     def safe_bulk_create(self, objs, batch_size=None):
         """
-        In case of Duplicates Integrity Error,
+        In case of Integrity Error,
         tries to insert all objects one by one
         :param objs:
         :param batch_size:
         :return:
         """
-        error_msg = "duplicate key value violates unique constraint"
+        if transaction.get_connection().in_atomic_block:
+            raise IntegrityError(
+                "`safe_bulk_create` is invoked inside a transaction")
         try:
-            with transaction.atomic():
-                self.bulk_create(objs, batch_size=batch_size)
-        except IntegrityError as e:
-            if e.args and error_msg in e.args[0]:
-                logger.info(e)
-                for obj in objs:
-                    try:
-                        with transaction.atomic():
-                            obj.save()
-                    except IntegrityError as e:
-                        if e.args and error_msg in e.args[0]:
-                            logger.info(e)
-                        else:
-                            raise
-            else:
-                raise
+            self.bulk_create(objs, batch_size=batch_size)
+        except IntegrityError as ex_1:
+            logger.info(ex_1)
+            for obj in objs:
+                try:
+                    obj.save()
+                except IntegrityError as ex_2:
+                    logger.info(ex_2)
 
 
 class BaseModel(models.Model):
