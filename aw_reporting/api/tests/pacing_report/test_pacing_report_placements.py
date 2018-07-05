@@ -733,13 +733,16 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    def test_hard_cost_margin_start(self):
+    def test_hard_cost_margin(self):
         today = date(2018, 1, 1)
         total_cost = 6543
         our_cost = 1234
-        start = today - timedelta(days=1)
-        end = today + timedelta(days=1)
-        self.assertGreater(today, start)
+        days_pass, days_left = 3, 6
+        total_days = days_pass + days_left
+        self.assertGreater(days_pass, 0)
+        self.assertGreater(days_left, 0)
+        start = today - timedelta(days=(days_pass - 1))
+        end = today + timedelta(days=days_left)
         opportunity = Opportunity.objects.create(
             id="1", name="1")
         hard_cost_placement = OpPlacement.objects.create(
@@ -748,12 +751,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         Flight.objects.create(
             start=start, end=end, total_cost=total_cost,
             placement=hard_cost_placement, cost=our_cost)
-        Flight.objects.create(id=2,
-                              start=today + timedelta(days=1),
-                              end=today + timedelta(days=1),
-                              total_cost=999999,
-                              placement=hard_cost_placement, cost=0)
-        client_cost = total_cost
+        client_cost = total_cost / total_days * days_pass
         expected_margin = (1 - our_cost / client_cost) * 100
         url = self._get_url(opportunity.id)
         with patch_now(today):
