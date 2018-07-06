@@ -10,7 +10,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account, AWConnectionToUserRelation, \
     AWConnection, AWAccountPermission
 from saas.urls.namespaces import Namespace
-from .base import AwReportingAPITestCase
+from .base import AwReportingAPITestCase, get_user_model
 
 
 class AccountConnectionPITestCase(AwReportingAPITestCase):
@@ -111,7 +111,8 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
             account=manager,
         )
         account_creation = AccountCreation.objects.create(
-            name="This item won't be deleted", account=account, owner=self.user,
+            name="This item won't be deleted", account=account,
+            owner=self.user,
         )
         # second item
         connection_1 = AWConnection.objects.create(
@@ -147,3 +148,23 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         account_1.refresh_from_db()
 
         account_creation.refresh_from_db()  # this works fine
+
+    def test_does_not_remove_user_through_historical_account_relation(self):
+        connection_1 = AWConnection.objects.create(
+            email="you@mail.kz",
+            refresh_token="",
+        )
+        user_connection = AWConnectionToUserRelation.objects.create(
+            connection=connection_1,
+            user=self.user,
+        )
+        self.user.historical_aw_account = user_connection
+        self.user.save()
+
+        url_path = Namespace.AW_REPORTING + ":" + Name.AWAccounts.CONNECTION
+        url = reverse(url_path, args=(connection_1.email,))
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user_exists = get_user_model().objects.filter(id=self.user.id).exists()
+        self.assertTrue(user_exists)

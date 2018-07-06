@@ -11,9 +11,9 @@ class PacingReportExportView(ListAPIView, PacingReportHelper):
     permission_classes = tuple()
 
     def get(self, request, *args, **kwargs):
-        report = PacingReport()
-        opportunities = report.get_opportunities(request.GET)
+        pacing_report = PacingReport()
+        opportunities = pacing_report.get_opportunities(request.GET)
 
-        report = xlsx_reports.pacing_report(report, opportunities)
+        xlsx_report = xlsx_reports.pacing_report(pacing_report, opportunities)
 
-        return xlsx_response(report.name, report)
+        return xlsx_response(pacing_report.name, xlsx_report)

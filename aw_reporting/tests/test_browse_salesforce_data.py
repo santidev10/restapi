@@ -2,16 +2,17 @@ from datetime import date
 from unittest.mock import patch, MagicMock
 
 from django.core.management import call_command
+from django.test import TransactionTestCase
 
 from aw_reporting.models import OpPlacement, Flight, Opportunity, Campaign, \
     CampaignStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
     SalesForceGoalType
 from aw_reporting.salesforce import Connection
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utils_tests import patch_now
 
 
-class BrowseSalesforceDataTestCase(APITestCase):
+class BrowseSalesforceDataTestCase(TransactionTestCase):
     def test_update_dynamic_placement_service_fee(self):
         opportunity = Opportunity.objects.create(id=1)
         today = start = end = date(2017, 1, 1)
@@ -129,8 +130,9 @@ class BrowseSalesforceDataTestCase(APITestCase):
                 Bill_off_3p_Numbers__c=False
             )
         ])
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection",
-                   return_value=sf_mock):
+        with patch(
+                "aw_reporting.management.commands.browse_salesforce_data.SConnection",
+                return_value=sf_mock):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(Opportunity.objects.all().count(), 1)

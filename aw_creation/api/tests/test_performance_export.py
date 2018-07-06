@@ -1,7 +1,7 @@
 import io
 import json
 from datetime import datetime, timedelta
-from itertools import product
+from itertools import product, chain
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
@@ -213,7 +213,12 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             sheet = book.worksheets[0]
             self.assertGreater(sheet.max_row, 10)
             rows = range(2, sheet.max_row + 1)
-            cols = range(10, 15)
+            ctr_range = 8, 10,
+            view_rate_range = 10, 11
+            quartile_range = 11, 15
+            test_ranges = [range(start, end) for start, end
+                           in [ctr_range, view_rate_range, quartile_range]]
+            cols = chain(*test_ranges)
             test_indexes = product(rows, cols)
             for row, column in test_indexes:
                 cell = sheet[row][column]
