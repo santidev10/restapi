@@ -6,8 +6,7 @@ from django.conf.urls import url
 from userprofile.api.urls.names import Name
 from userprofile.api.views import UserCreateApiView, UserAuthApiView, \
     UserProfileApiView, UserPasswordResetApiView, UserPasswordSetApiView, \
-    ContactFormApiView, ErrorReportApiView, \
-    UserProfileSharedListApiView
+    ContactFormApiView, ErrorReportApiView, UserProfileSharedListApiView
 from userprofile.api.views import UserPasswordChangeApiView
 
 urlpatterns = [
