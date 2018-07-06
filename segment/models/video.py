@@ -95,14 +95,17 @@ class SegmentVideo(BaseSegment):
 
     # ---> deprecated
 
-    @property
-    def singledb_method(self):
-        return Connector().get_video_list
-
-    segment_type = "video"
+    _singledb_method = None
+    segment_type = 'video'
 
     objects = SegmentVideoManager()
     related_aw_statistics_model = YTVideoStatistic
+
+    @property
+    def singledb_method(self):
+        if self._singledb_method is None:
+            type(self)._singledb_method = Connector().get_video_list
+        return self. _singledb_method
 
     def obtain_singledb_data(self, ids_hash):
         """

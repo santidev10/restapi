@@ -51,11 +51,16 @@ class UserCreateApiView(APIView):
         return Response(response_data, status=HTTP_201_CREATED)
 
     def check_user_segment_access(self, user):
-        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
-        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
-        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+        channel_segment_email_lists = SegmentChannel.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists,
+                keyword_segment_email_lists]):
             user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
+
 
 class UserAuthApiView(APIView):
     """
@@ -157,13 +162,17 @@ class UserProfileSharedListApiView(APIView):
         response = []
 
         # filter all user segments
-        channel_segment_email_lists = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
-        video_segment_email_lists = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
+        channel_segment_email_lists = SegmentChannel.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
+        video_segment_email_lists = SegmentVideo.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
 
         # build unique emails set
         unique_emails = set()
-        for item in [channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]:
+        for item in [channel_segment_email_lists, video_segment_email_lists,
+                     keyword_segment_email_lists]:
             unique_emails |= set(chain.from_iterable(item))
 
         # collect required user data for each email
@@ -172,7 +181,8 @@ class UserProfileSharedListApiView(APIView):
             try:
                 user = UserProfile.objects.get(email=email)
                 user_data['email'] = user.email
-                user_data['username'] = "{} {}".format(user.first_name, user.last_name)
+                user_data['username'] = "{} {}".format(user.first_name,
+                                                       user.last_name)
                 user_data['first_name'] = user.last_name
                 user_data['last_name'] = user.first_name
                 user_data['registered'] = True

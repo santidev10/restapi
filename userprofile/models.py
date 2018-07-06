@@ -9,6 +9,7 @@ from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
+from django.db.models import SET_NULL
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -47,6 +48,19 @@ def get_default_settings():
     }
 
 
+class UserProfileManager(UserManager):
+    def get_by_natural_key(self, username):
+        case_insensitive_username_field = '{}__iexact'.format(
+            self.model.USERNAME_FIELD)
+        return self.get(**{case_insensitive_username_field: username})
+
+
+class LowercaseEmailField(models.EmailField):
+    def get_prep_value(self, value):
+        value = super(LowercaseEmailField, self).get_prep_value(value)
+        return value.lower() if isinstance(value, str) else value
+
+
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
@@ -81,7 +95,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
     # extra fields and updated fields
-    email = models.EmailField(_('email address'), unique=True)
+    email = LowercaseEmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
@@ -108,9 +122,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     aw_settings = JSONField(default=get_default_settings)
     historical_aw_account = models.ForeignKey(AWConnectionToUserRelation,
                                               null=True, default=None,
-                                              related_name="user_aw_historical")
+                                              related_name="user_aw_historical",
+                                              on_delete=SET_NULL)
 
-    objects = UserManager()
+    objects = UserProfileManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

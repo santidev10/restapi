@@ -4,7 +4,6 @@ from datetime import timedelta
 from django.db.models import Case
 from django.db.models import IntegerField
 from django.db.models import Max
-from django.db.models import Q
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
@@ -28,10 +27,7 @@ class WebHookAWAccountsListApiView(APIView):
     @staticmethod
     def get(*_, pk, **k):
         # all customer accounts of that manager
-        accounts_filter = Q(managers__id=pk) \
-                        | Q(managers__managers__id=pk) \
-                        | Q(managers__managers__managers__id=pk)
-        account_ids = Account.objects.filter(accounts_filter)\
+        account_ids = Account.objects.filter(managers__id=pk)\
                                      .distinct("pk")\
                                      .values_list("pk", flat=True)
         queryset = Account.objects.filter(id__in=account_ids)
@@ -70,7 +66,7 @@ class WebHookAWAccountsListApiView(APIView):
 
         # get only 50 top ids, because 50 is an AdWords Script limit
         data = queryset[:50].values_list("id", flat=True)
-        return Response(data=data)
+        return Response(data=list(data))
 
 
 class WebHookAWSaveSettingsApiView(APIView):
