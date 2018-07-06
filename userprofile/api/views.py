@@ -22,9 +22,9 @@ from administration.notifications import send_html_email
 from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
 from userprofile.api.serializers import ContactFormSerializer, \
     ErrorReportSerializer
+from userprofile.api.serializers import UserChangePasswordSerializer
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
-from userprofile.api.serializers import UserChangePasswordSerializer
 from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 
@@ -304,19 +304,6 @@ class ContactFormApiView(APIView):
                "User message: {message} \n\n".format(**serializer.data)
         send_mail(subject, text, sender, to, fail_silently=True)
         return Response(status=HTTP_201_CREATED)
-
-
-class VendorDetailsApiView(APIView):
-    """
-    Endpoint to recognize server vendor
-    """
-    permission_classes = tuple()
-
-    def get(self, request):
-        """
-        Get procedure
-        """
-        return Response(data={"vendor": settings.VENDOR})
 
 
 class ErrorReportApiView(APIView):
