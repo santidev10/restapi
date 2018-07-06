@@ -9,6 +9,7 @@ from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
+from django.db.models import SET_NULL
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
@@ -121,7 +122,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     aw_settings = JSONField(default=get_default_settings)
     historical_aw_account = models.ForeignKey(AWConnectionToUserRelation,
                                               null=True, default=None,
-                                              related_name="user_aw_historical")
+                                              related_name="user_aw_historical",
+                                              on_delete=SET_NULL)
 
     objects = UserProfileManager()
 
