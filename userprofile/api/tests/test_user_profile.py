@@ -53,3 +53,20 @@ class UserProfileTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
         self.assertIsNotNone(user.historical_aw_account)
+
+    def test_unset_default_aw_account(self):
+        user = self.create_test_user()
+        user_connection = AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="test_email"),
+            user=user
+        )
+        user.historical_aw_account = user_connection
+        user.save()
+        self.assertIsNotNone(user.historical_aw_account)
+
+        data = dict(historical_aw_account=None)
+        response = self._update(data)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertIsNone(user.historical_aw_account)
