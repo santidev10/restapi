@@ -23,11 +23,14 @@ from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
-class AccountNamesAPITestCase(ExtendedAPITestCase):
-    def _get_url(self, account_creation_id):
-        return reverse(
+class PerformanceChartAnalyticsTestCase(ExtendedAPITestCase):
+    def _request(self, account_creation_id, **kwargs):
+        url = reverse(
             Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_CHART,
             args=(account_creation_id,))
+        return self.client.post(url,
+                                json.dumps(dict(is_staff=False, **kwargs)),
+                                content_type="application/json")
 
     @staticmethod
     def create_stats(account):
@@ -75,18 +78,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
-
         today = datetime.now().date()
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                start_date=str(today - timedelta(days=2)),
-                end_date=str(today - timedelta(days=1)),
-                indicator="impressions",
-            )),
-            content_type='application/json',
-        )
+        response = self._request(account_creation.id,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)),
+                                 indicator=Indicator.IMPRESSIONS)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
@@ -109,12 +105,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
-        response = self.client.post(
-            url,
-            json.dumps(dict(campaigns=["1"])),
-            content_type='application/json',
-        )
+        response = self._request(account_creation.id,
+                                 campaigns=["1"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 1)
@@ -136,7 +128,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
         filters = {
             'indicator': 'video_view_rate',
         }
@@ -146,10 +137,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             filters['dimension'] = dimension
             with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher):
-                response = self.client.post(
-                    url, json.dumps(filters),
-                    content_type='application/json',
-                )
+                response = self._request(account_creation.id, **filters)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 3)
             self.assertEqual(len(response.data[0]['data']), 1)
@@ -169,35 +157,22 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1, name="")
         self.create_stats(account)  # create stats that won't be visible
 
-        url = self._get_url(account_creation.id)
-
         today = datetime.now().date()
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                start_date=str(today - timedelta(days=2)),
-                end_date=str(today - timedelta(days=1)),
-                indicator="impressions",
-            )),
-            content_type='application/json',
-        )
+        response = self._request(account_creation.id,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)),
+                                 indicator=Indicator.IMPRESSIONS)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
 
     def test_success_demo(self):
         self.create_test_user()
-        url = self._get_url(DEMO_ACCOUNT_ID)
 
         today = datetime.now().date()
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                start_date=str(today - timedelta(days=2)),
-                end_date=str(today - timedelta(days=1)),
-                indicator="impressions",
-            )),
-            content_type='application/json',
-        )
+        response = self._request(DEMO_ACCOUNT_ID,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)),
+                                 indicator=Indicator.IMPRESSIONS)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
@@ -209,18 +184,12 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     def test_success_demo_data(self):
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user)
-        url = self._get_url(account_creation.id)
 
         today = datetime.now().date()
-        response = self.client.post(
-            url,
-            json.dumps(dict(
-                start_date=str(today - timedelta(days=2)),
-                end_date=str(today - timedelta(days=1)),
-                indicator="impressions",
-            )),
-            content_type='application/json',
-        )
+        response = self._request(account_creation.id,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)),
+                                 indicator=Indicator.IMPRESSIONS)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 3)
@@ -250,13 +219,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         def test_availability(expected_status_code):
             for dimension, indicator, account_id in test_cases:
-                url = self._get_url(account_id)
-                response = self.client.post(url,
-                                            json.dumps(dict(
-                                                indicator=indicator,
-                                                dimention=dimension
-                                            )),
-                                            content_type='application/json')
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
                 is_demo = account_id == DEMO_ACCOUNT_ID
                 msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
                     is_demo, dimension, indicator)
@@ -277,6 +242,76 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             test_availability(HTTP_404_NOT_FOUND)
 
+    def test_cpm_cpv_is_visible(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_paused=True)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+
+        indicators = Indicator.CPM, Indicator.CPV
+        dimensions = ALL_DIMENSIONS
+        account_ids = account_creation.id, DEMO_ACCOUNT_ID
+        staffs = True, False
+
+        test_data = list(product(indicators, dimensions, account_ids, staffs))
+        for indicator, dimension, account_id, is_staff in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
+                  "".format(indicator, dimension, account_id, is_staff)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=msg):
+                user.is_staff = is_staff
+                user.save()
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_cpm_cpv_is_not_visible(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_paused=True)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+
+        indicators = Indicator.CPM, Indicator.CPV
+        dimensions = ALL_DIMENSIONS
+        account_ids = account_creation.id, DEMO_ACCOUNT_ID
+        staffs = True, False
+
+        test_data = list(product(indicators, dimensions, account_ids, staffs))
+        for indicator, dimension, account_id, is_staff in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
+                  "".format(indicator, dimension, account_id, is_staff)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=msg):
+                user.is_staff = is_staff
+                user.save()
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+
+
+class PerformanceChartDashboardTestCase(ExtendedAPITestCase):
+    def _request(self, account_creation_id, **kwargs):
+        url = reverse(
+            Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_CHART,
+            args=(account_creation_id,))
+        return self.client.post(url,
+                                json.dumps(dict(is_chf=1, **kwargs)),
+                                content_type="application/json")
+
+    def create_test_user(self, auth=True):
+        user = super(PerformanceChartDashboardTestCase, self).create_test_user(
+            auth)
+        user.add_custom_user_permission("view_dashboard")
+        return user
+
     def test_success_on_no_global_account_visibility(self):
         user = self.create_test_user()
         user.is_staff = True
@@ -292,18 +327,14 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           name="", owner=user,
                                                           is_paused=True,
                                                           account=account)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
-            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url,
-                                        json.dumps({
-                                            "indicator": "average_cpv",
-                                            "is_chf": 1
-                                        }),
-                                        content_type="application/json")
+            response = self._request(account_creation.id,
+                                     indicator=Indicator.CPV)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -327,26 +358,74 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         test_cases = list(product(dimensions, indicators, account_ids))
 
-        def test_availability():
-            for dimension, indicator, account_id in test_cases:
-                url = self._get_url(account_id)
-                response = self.client.post(url,
-                                            json.dumps(dict(
-                                                is_chf=1,
-                                                indicator=indicator,
-                                                dimention=dimension
-                                            )),
-                                            content_type='application/json')
-                is_demo = account_id == DEMO_ACCOUNT_ID
-                msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
-                    is_demo, dimension, indicator)
-                self.assertEqual(response.status_code, HTTP_200_OK,
-                                 msg)
-
-        # show
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+        for dimension, indicator, account_id in test_cases:
+            is_demo = account_id == DEMO_ACCOUNT_ID
+            msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
+                is_demo, dimension, indicator)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=msg):
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_cpm_cpv_is_visible(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_paused=True)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
-        with self.patch_user_settings(**user_settings):
-            test_availability()
+
+        indicators = Indicator.CPM, Indicator.CPV
+        dimensions = ALL_DIMENSIONS
+        account_ids = account_creation.id, DEMO_ACCOUNT_ID
+        staffs = True, False
+
+        test_data = list(product(indicators, dimensions, account_ids, staffs))
+        for indicator, dimension, account_id, is_staff in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
+                  "".format(indicator, dimension, account_id, is_staff)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=msg):
+                user.is_staff = is_staff
+                user.save()
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_cpm_cpv_is_not_visible(self):
+        user = self.create_test_user()
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_paused=True)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+
+        indicators = Indicator.CPM, Indicator.CPV
+        dimensions = ALL_DIMENSIONS
+        account_ids = account_creation.id, DEMO_ACCOUNT_ID
+        staffs = True, False
+
+        test_data = list(product(indicators, dimensions, account_ids, staffs))
+        for indicator, dimension, account_id, is_staff in test_data:
+            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
+                  "".format(indicator, dimension, account_id, is_staff)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=msg):
+                user.is_staff = is_staff
+                user.save()
+                response = self._request(account_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
