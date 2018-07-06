@@ -23,13 +23,13 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     client_cost_ad_group_statistic_required_annotation, AdGroup
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.permissions import UserHasDashboardPermission
+from utils.permissions import UserHasDashboardOrStaffPermission
 from utils.registry import registry
 
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
     def get_filters(self):
         data = self.request.data

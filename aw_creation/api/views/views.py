@@ -46,7 +46,7 @@ from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
 from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
-    UserHasDashboardPermission
+    UserHasDashboardPermission, UserHasDashboardOrStaffPermission
 from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
@@ -1288,7 +1288,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
     def get_filters(self):
         data = self.request.data
