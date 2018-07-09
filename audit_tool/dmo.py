@@ -10,7 +10,8 @@ class BaseDMO:
 
 
 class AccountDMO(BaseDMO):
-    client_customer_id = None
+    account_id = None
+    name = None
     refresh_tokens = None
     client = None
     url_performance_report = None
@@ -29,7 +30,7 @@ class VideosChunkDMO(BaseDMO):
         for item in page.get("items", []):
             snippet = item.get("snippet", {})
             self.items.append(
-                VideoItemDMO(
+                VideoDMO(
                     id=item.get("id"),
                     title=snippet.get("title"),
                     description=snippet.get("description"),
@@ -40,7 +41,7 @@ class VideosChunkDMO(BaseDMO):
             )
 
 
-class VideoItemDMO(BaseDMO):
+class VideoDMO(BaseDMO):
     id = None
     title = None
     description = None
@@ -48,16 +49,25 @@ class VideoItemDMO(BaseDMO):
     channel_title = None
     tags = None
 
-    found_tags = None
-
     RE_CLEANUP = re.compile("\W+")
 
-    def get_text(self):
+    def get_text(self, clean=True):
         lines = [
             self.title or "",
             self.description or "",
         ] + (self.tags or [])
-        text = "\n".join([
-            self.RE_CLEANUP.sub(" ", i).lower().strip()for i in lines
-        ])
+        if clean:
+            text = "\n".join([
+                self.RE_CLEANUP.sub(" ", i).lower().strip() for i in lines
+            ])
+        else:
+            text = "\n".join(lines)
         return text
+
+    @property
+    def url(self):
+        return "http://www.youtube.com/video/" + self.id
+
+    @property
+    def channel_url(self):
+        return "http://www.youtube.com/channel/" + self.channel_id

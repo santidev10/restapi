@@ -300,6 +300,10 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
     "yulia.prokudina@sigma.software",
 ]
 
+AUDIT_TOOL_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software",
+]
+
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
 DEFAULT_PERMISSIONS_GROUP_NAME = 'Highlights'

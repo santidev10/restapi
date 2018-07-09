@@ -1,18 +1,17 @@
 from concurrent.futures import ThreadPoolExecutor
 import csv
-from datetime import timedelta
 from googleads import adwords, oauth2
 import io
 import logging
-
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
+from typing import Dict
+from typing import Iterator
+from typing import List
 import yaml
 
-from utils.utils import safe_exception
-from utils.datetime import now_in_default_tz
-
 from audit_tool.dmo import AccountDMO
+from utils.utils import safe_exception
 
 
 logger = logging.getLogger(__name__)
@@ -29,87 +28,48 @@ logging.getLogger("requests")\
 
 class AdWords:
     MAX_WORKERS = 50
+
     accounts = None
+    date_start = None
+    date_finish = None
+
     client_options = None
-    date_min = None
-    date_max = None
-    account_ids = None
 
     API_VERSION = "v201806"
     REPORT_FIELDS = (
         "Url",
         "Date",
         "Impressions",
+        "CampaignName",
+        "AdGroupName",
     )
 
-    def __init__(self, date_min=None, date_max=None, account_ids=None,
-                 download=False):
-        if date_min is None:
-            yesterday = (now_in_default_tz() - timedelta(days=1)).date()
-            date_min = yesterday.strftime("%Y%m%d")
-        self.date_min = date_min
+    def __init__(self,
+                 accounts: List[AccountDMO],
+                 date_start: str,
+                 date_finish: str,
+                 download: bool = False):
 
-        if date_max is None:
-            date_max = date_min
-        self.date_max = date_max
+        self.accounts = accounts
+        self.date_start = date_start
+        self.date_finish = date_finish
 
-        self.account_ids = account_ids
+        logger.info("Dates range: {}..{}".format(
+            self.date_start,
+            self.date_finish
+        ))
 
         if download:
             self.download()
 
-    def download(self):
-        logger.info("Dates range: {}..{}".format(self.date_min, self.date_max))
+    def download(self) -> None:
         self.load_client_options()
-        self.load_accounts()
         self.resolve_clients()
         self.download_reports()
 
     def load_client_options(self) -> None:
         with open('aw_reporting/ad_words_web.yaml', 'r') as f:
             self.client_options = yaml.load(f)
-
-    def load_accounts(self) -> None:
-        from aw_reporting.models import Account
-        from aw_reporting.models import AWConnection
-
-        logger.info("Loading accounts")
-        self.accounts = []
-
-        # load managers
-        managers = {}
-        queryset = Account.objects.filter(can_manage_clients=False)\
-                                  .values("id", "managers")
-        if self.account_ids is not None:
-            queryset = queryset.filter(id__in=self.account_ids)
-
-        for account in queryset:
-            id = account["id"]
-            if id not in managers:
-                managers[id] = []
-            managers[id].append(account["managers"])
-
-        # load connections
-        refresh_tokens = {}
-        queryset = AWConnection.objects.filter(
-            mcc_permissions__can_read=True,
-            revoked_access=False,
-        ).values("mcc_permissions__account", "refresh_token")
-        for connection in queryset:
-            id = connection["mcc_permissions__account"]
-            refresh_tokens[id] = connection["refresh_token"]
-
-        # collect accounts
-        for account_id in sorted(managers.keys()):
-            tokens = [refresh_tokens[i] for i in managers[account_id]]
-            self.accounts.append(
-                AccountDMO(
-                    client_customer_id=account_id,
-                    refresh_tokens=tokens,
-                )
-            )
-
-        logger.info("Loaded {} account(s)".format(len(self.accounts)))
 
     def resolve_clients(self) -> None:
         assert self.accounts is not None
@@ -123,42 +83,40 @@ class AdWords:
             for _ in self.accounts:
                 executor.submit(worker, _)
 
-        logger.info("Resolved {} client(s)".format(len(
-            [1 for a in self.accounts if a.client is not None])
-        ))
+        clients_count = len([1 for a in self.accounts if a.client is not None])
+        logger.info("Resolved {} client(s)".format(clients_count))
 
     def download_reports(self) -> None:
-        assert self.accounts is not None
         logger.info("Downloading reports")
 
         @safe_exception(logger)
         def worker(dmo: AccountDMO) -> None:
             self._download_url_performance_report(dmo)
             downloaded = len([1 for a in self.accounts\
-                          if a.url_performance_report is not None])
+                              if a.url_performance_report is not None])
             if downloaded % 50 == 0:
                 logger.info("  {} / {}".format(downloaded, len(self.accounts)))
 
         with ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as executor:
             futures = []
-            for i, account in enumerate(self.accounts):
+            for account in self.accounts:
                 futures.append(executor.submit(worker, account))
 
-        logger.info("Downloaded {} report(s)".format(len(
-            [1 for a in self.accounts if a.url_performance_report is not None])
-        ))
+        reports_count = len(
+            [1 for _ in self.accounts if _.url_performance_report is not None]
+        )
+        logger.info("Downloaded {} report(s)".format(reports_count))
 
-    def get_url_performance_reports(self):
-        assert self.accounts is not None
+    def get_url_performance_reports(self) -> Iterator[list]:
         for account in self.accounts:
             if account.url_performance_report:
                 yield account.url_performance_report
 
-    def get_url_performance_reports_items(self):
+    def get_url_performance_reports_items(self) -> Iterator[list]:
         for report in self.get_url_performance_reports():
             yield from report
 
-    def get_videos(self):
+    def get_video_reports(self) -> Dict[str, list]:
         videos = {}
         for item in self.get_url_performance_reports_items():
             video_id = item.get("Url", "").split("/")[-1]
@@ -173,7 +131,7 @@ class AdWords:
         for refresh_token in dmo.refresh_tokens:
             try:
                 dmo.client = self._get_client_by_token(
-                    dmo.client_customer_id,
+                    dmo.account_id,
                     refresh_token,
                 )
             except (HttpAccessTokenRefreshError, WebFault):
@@ -182,8 +140,9 @@ class AdWords:
                 return
         raise Exception("No valid refresh tokens found")
 
-    def _get_client_by_token(self, client_customer_id: str,
-                            refresh_token: str) -> adwords.AdWordsClient:
+    def _get_client_by_token(self,
+                             account_id: str,
+                             refresh_token: str) -> adwords.AdWordsClient:
         assert self.client_options is not None
 
         oauth2_client = oauth2.GoogleRefreshTokenClient(
@@ -196,16 +155,13 @@ class AdWords:
             self.client_options["developer_token"],
             oauth2_client,
             user_agent=self.client_options["user_agent"],
-            client_customer_id=client_customer_id,
+            client_customer_id=account_id,
             enable_compression=True,
         )
 
         return client
 
     def _download_url_performance_report(self, dmo: AccountDMO) -> None:
-        assert self.date_min is not None
-        assert self.date_max is not None
-
         report_definition = {
             "reportName": "URL_PERFORMANCE_REPORT",
             "dateRangeType": "CUSTOM_DATE",
@@ -215,8 +171,8 @@ class AdWords:
                 "predicates": [],
                 "fields": self.REPORT_FIELDS,
                 "dateRange": {
-                    "min": self.date_min,
-                    "max": self.date_max,
+                    "min": self.date_start,
+                    "max": self.date_finish,
                 },
             },
         }
@@ -229,9 +185,10 @@ class AdWords:
             skip_report_summary=True,
             include_zero_impressions=False,
         )
-        string_io = io.StringIO(stream.read().decode('utf-8'))
+        stream_data = stream.read().decode("utf-8")
+        string_io = io.StringIO(stream_data)
         reader = csv.DictReader(string_io, fieldnames=self.REPORT_FIELDS)
         dmo.url_performance_report = []
         for row in reader:
-            row['AccountId'] = dmo.client_customer_id
+            row["AccountId"] = dmo.account_id
             dmo.url_performance_report.append(row)

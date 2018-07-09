@@ -2,10 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 import logging
 import requests
 import time
+from django.conf import settings
 
 from utils.utils import chunks_generator
 
-from .dmo import VideosChunkDMO
+from audit_tool.dmo import VideosChunkDMO
 
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ logging.getLogger("requests")\
 
 class Youtube:
     MAX_WORKERS = 50
-    DATA_API_KEY = "AIzaSyA0flV0CBNOoN6qwdkGHoZytMu8y4ThIjs"
+    DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
                    "?key={key}&part=id,snippet&id={ids}"
 
