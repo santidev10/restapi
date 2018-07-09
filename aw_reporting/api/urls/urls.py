@@ -49,13 +49,13 @@ urlpatterns = [
     # connect aw account
     url(r'^connect_aw_account_list/$',
         views.ConnectAWAccountListApiView.as_view(),
-        name="connect_aw_account_list"),
+        name=Name.AWAccounts.LIST),
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
-        name="connect_aw_account"),
+        name=Name.AWAccounts.ACCOUNT),
     url(r'^connect_aw_account/(?P<email>[^/]+)/$',
         views.ConnectAWAccountApiView.as_view(),
-        name="aw_account_connection"),
+        name=Name.AWAccounts.CONNECTION),
 
     # benchmark
     url(r'^benchmarks/base_charts/$',
@@ -89,12 +89,15 @@ urlpatterns = [
         name="pacing_report_update_opportunity"),
     url(r'^pacing_report_export/$',
         views.PacingReportExportView.as_view(),
-        name="pacing_report_export"),
+        name=Name.PacingReport.EXPORT),
+    url(r'^flights_campaign_allocations/(?P<pk>\w+)/$',
+        views.PacingReportFlightsCampaignAllocationsView.as_view(),
+        name=Name.PacingReport.FLIGHTS_CAMPAIGN_ALLOCATIONS),
 
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',
         views.WebHookAWAccountsListApiView.as_view(),
-        name="webhook_accounts_list"),
+        name=Name.WebHook.ACCOUNTS_LIST),
     url(r'^webhook_aw/save_settings/(?P<pk>\w+)/$',
         views.WebHookAWSaveSettingsApiView.as_view(),
         name="campaigns_setup_check_save_settings"),

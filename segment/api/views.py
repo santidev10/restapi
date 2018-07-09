@@ -3,7 +3,6 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -11,7 +10,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
@@ -77,6 +76,13 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         "keyword": {"competition", "average_cpc", "average_volume"}
     }
 
+    def __validate_filters(self):
+        owner_id = self.request.query_params.get("owner_id")
+        if owner_id is not None:
+            return owner_id == str(self.request.user.id)\
+                   or self.request.user.is_staff
+        return True
+
     def do_filters(self, queryset):
         """
         Filter queryset
@@ -90,6 +96,9 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         category = self.request.query_params.get("category")
         if category:
             filters["category"] = category
+        owner_id = self.request.query_params.get("owner_id")
+        if owner_id:
+            filters["owner__id"] = owner_id
         # make filtering
         if filters:
             queryset = queryset.filter(**filters)
@@ -136,6 +145,14 @@ class SegmentListCreateApiView(DynamicModelViewMixin, ListCreateAPIView):
         if flat == "1":
             return None
         return super().paginate_queryset(queryset)
+
+    def get(self, request, *args, **kwargs):
+        if not self.__validate_filters():
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data={"error": "invalid filter(s)"})
+        return super(SegmentListCreateApiView, self).get(
+            request, *args, **kwargs)
 
 
 class SegmentRetrieveUpdateDeleteApiView(DynamicModelViewMixin,

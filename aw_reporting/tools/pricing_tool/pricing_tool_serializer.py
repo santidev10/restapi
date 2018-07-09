@@ -121,6 +121,7 @@ class PricingToolSerializer:
 
         ad_group_types = AdGroup.objects.filter(
             campaign__salesforce_placement__opportunity=opportunity) \
+            .exclude(type="") \
             .values_list("type", flat=True) \
             .order_by() \
             .distinct()
