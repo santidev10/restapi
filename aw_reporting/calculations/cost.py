@@ -39,18 +39,21 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
     today = now_in_default_tz().date()
 
     placement_ref = campaign_ref + "__salesforce_placement"
+    start_ref = campaign_ref + "__start_date"
+    start_lte_ref = start_ref + "__lte"
+
     placement_type_ref = placement_ref + "__placement_type"
     dynamic_placement_ref = placement_ref + "__dynamic_placement"
     goal_type_ref = placement_ref + "__goal_type_id"
-    start_ref = campaign_ref + "__start_date"
-    start_lte_ref = start_ref + "__lte"
     total_cost_ref = placement_ref + "__total_cost"
     ordered_rate_ref = placement_ref + "__ordered_rate"
     ordered_rate_isnull = ordered_rate_ref + "__isnull"
     tech_fee_ref = placement_ref + "__tech_fee"
+
     impressions_ref = "impressions"
     video_views_ref = "video_views"
     aw_cost_ref = "cost"
+
     then = "then"
 
     aggregation = dict(

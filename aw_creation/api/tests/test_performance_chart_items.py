@@ -21,7 +21,7 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase, patch_now, int_iterator
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
@@ -520,7 +520,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
                     item = items[0]
-                    self.assertEqual(item["cost"], expected_cost)
+                    self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_ages_client_cost(self):
         any_date_1 = date(2018, 1, 1)
@@ -572,7 +572,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
                     item = items[0]
-                    self.assertEqual(item["cost"], expected_cost)
+                    self.assertAlmostEqual(item["cost"], expected_cost)
 
     def test_ad_group_statistic_client_cost(self):
         user = self.create_test_user()
@@ -587,7 +587,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                                           account=account,
                                                           is_approved=True)
 
-        index = iter(range(1000))
         today = date(2018, 1, 1)
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
@@ -596,37 +595,37 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         opportunity = Opportunity.objects.create()
         placement_cpv = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
             ordered_rate=.12)
         placement_cpm = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM,
             ordered_rate=1.2)
         placement_outgoing_fee = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             placement_type=OpPlacement.OUTGOING_FEE_TYPE,
             ordered_rate=123)
         placement_hard_cost_include = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
             total_cost=234)
         placement_hard_cost_exclude = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
             total_cost=345)
         placement_rate_and_tech_fee_cpv = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=13)
         placement_rate_and_tech_fee_cpm = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee=14)
         placement_budget = OpPlacement.objects.create(
-            id=next(index), opportunity=opportunity,
+            id=next(int_iterator), opportunity=opportunity,
             dynamic_placement=DynamicPlacementType.BUDGET)
 
         stats_data = [
@@ -647,15 +646,16 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         ]
         expected_cost = 0
         for placement, camp_data, stats, is_zero in stats_data:
-            campaign = Campaign.objects.create(id=next(index),
+            campaign = Campaign.objects.create(id=next(int_iterator),
                                                account=account,
                                                salesforce_placement=placement,
                                                **camp_data)
-            ad_group = AdGroup.objects.create(id=next(index),
+            ad_group = AdGroup.objects.create(id=next(int_iterator),
                                               campaign=campaign)
-            AgeRangeStatistic.objects.create(ad_group=ad_group,
-                                             date=yesterday,
-                                             **stats)
+            AdGroupStatistic.objects.create(ad_group=ad_group,
+                                            date=yesterday,
+                                            average_position=1,
+                                            **stats)
             client_cost_kwargs = dict(
                 goal_type_id=placement.goal_type_id,
                 dynamic_placement=placement.dynamic_placement,
@@ -681,7 +681,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
 
-        url = self._get_url(account_creation.id, Dimension.AGE)
+        url = self._get_url(account_creation.id, Dimension.DEVICE)
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
@@ -692,3 +692,128 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             self.assertEqual(len(items), 1)
             item = items[0]
             self.assertAlmostEqual(item["cost"], expected_cost)
+
+    def test_ad_statistic_client_cost(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+
+        today = date(2018, 1, 1)
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        self.assertGreater(today, yesterday)
+        self.assertGreater(tomorrow, today)
+
+        opportunity = Opportunity.objects.create()
+        placement_cpv = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=.12)
+        placement_cpm = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            ordered_rate=1.2)
+        placement_outgoing_fee = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            ordered_rate=123)
+        placement_hard_cost_include = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=234)
+        placement_hard_cost_exclude = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=345)
+        placement_rate_and_tech_fee_cpv = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=13)
+        placement_rate_and_tech_fee_cpm = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
+            tech_fee=14)
+        placement_budget = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET)
+
+        stats_data = [
+            (placement_outgoing_fee, dict(),
+             dict(impressions=1, video_views=1), True),
+            (placement_cpm, dict(), dict(impressions=234), False),
+            (placement_cpv, dict(), dict(video_views=123), False),
+            (placement_hard_cost_include,
+             dict(start_date=yesterday, end_date=today + timedelta(days=3)),
+             dict(), False),
+            (placement_hard_cost_exclude, dict(start_date=tomorrow), dict(),
+             True),
+            (placement_rate_and_tech_fee_cpv, dict(),
+             dict(cost=56, video_views=341), False),
+            (placement_rate_and_tech_fee_cpm, dict(),
+             dict(cost=45, impressions=431), False),
+            (placement_budget, dict(), dict(cost=432), False),
+        ]
+        expected_cost = {}
+        for placement, camp_data, stats, is_zero in stats_data:
+            campaign = Campaign.objects.create(id=next(int_iterator),
+                                               account=account,
+                                               salesforce_placement=placement,
+                                               **camp_data)
+            ad_group = AdGroup.objects.create(id=next(int_iterator),
+                                              campaign=campaign)
+            ad_id = next(int_iterator)
+            name = str(ad_id)
+            ad = Ad.objects.create(id=ad_id,
+                                   creative_name=name,
+                                   ad_group=ad_group)
+            AdStatistic.objects.create(ad=ad,
+                                       average_position=1,
+                                       date=yesterday,
+                                       **stats)
+            client_cost_kwargs = dict(
+                goal_type_id=placement.goal_type_id,
+                dynamic_placement=placement.dynamic_placement,
+                placement_type=placement.placement_type,
+                ordered_rate=placement.ordered_rate,
+                impressions=stats.get("impressions") or 0,
+                video_views=stats.get("video_views") or 0,
+                aw_cost=stats.get("cost") or 0,
+                total_cost=placement.total_cost,
+                tech_fee=placement.tech_fee,
+                start=camp_data.get("start_date"),
+                end=camp_data.get("end_date")
+            )
+            with patch_now(today):
+                client_cost = get_client_cost(**client_cost_kwargs)
+            if not is_zero:
+                self.assertGreater(client_cost, 0,
+                                   "Test does not assert case "
+                                   "" + str(client_cost_kwargs))
+            expected_cost["{} #{}".format(name, ad_id)] = client_cost
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings), \
+             patch_now(today):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertEqual(len(items), OpPlacement.objects.all().count())
+            for item in items:
+                self.assertAlmostEqual(item["cost"],
+                                       expected_cost[item["name"]])

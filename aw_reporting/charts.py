@@ -596,8 +596,6 @@ class DeliveryChart:
         return queryset
 
     def add_annotate(self, queryset):
-        campaign_ref = self._get_campaign_ref(queryset)
-        placement_ref = campaign_ref + "salesforce_placement__"
         if not self.params["date"]:
             kwargs = dict(**all_stats_aggregate)
             if queryset.model is AdStatistic:
@@ -621,23 +619,21 @@ class DeliveryChart:
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
 
-        kwargs.update(get_client_cost_aggregation())
-
+        campaign_ref = self._get_campaign_ref(queryset)
+        kwargs.update(get_client_cost_aggregation(campaign_ref))
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):
         model = queryset.model
-        if model is CampaignStatistic:
-            return ""
         if model is CampaignHourlyStatistic:
-            return "campaign__"
+            return "campaign"
         if model is AdStatistic:
-            return "ad__ad_group__campaign__"
+            return "ad__ad_group__campaign"
         if model in (AgeRangeStatistic, AdGroupStatistic, GenderStatistic,
                      TopicStatistic, CityStatistic, KeywordStatistic,
                      RemarkStatistic, VideoCreativeStatistic,
                      AudienceStatistic, YTChannelStatistic, YTVideoStatistic):
-            return "ad_group__campaign__"
+            return "ad_group__campaign"
         logger.error("Undefined model %s", model)
         raise NotImplementedError
 

@@ -237,3 +237,13 @@ def get_current_release():
         return sorted(releases, reverse=True)[0]
     except:
         return "0.0"
+
+
+def _int_generator():
+    i = 0
+    while True:
+        yield i
+        i += 1
+
+
+int_iterator = iter(_int_generator())
