@@ -4,7 +4,7 @@ from datetime import timedelta, datetime
 from django.db.models import FloatField, Avg
 from django.db.models.sql.query import get_field_names_from_opts
 
-from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector, \
@@ -443,19 +443,7 @@ class DeliveryChart:
                 UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             return items
         for item in items:
-            item["cost"] = get_client_cost(
-                goal_type_id=item["goal_type_id"],
-                dynamic_placement=item["dynamic_placement"],
-                placement_type=item["placement_type"],
-                ordered_rate=item["ordered_rate"],
-                impressions=item["impressions"],
-                video_views=item["video_views"],
-                aw_cost=item["cost"],
-                total_cost=item["total_cost"],
-                tech_fee=item["tech_fee"],
-                start=item["start_date"],
-                end=item["end_date"]
-            )
+            item["cost"] = item["client_cost"]
 
         return items
 
@@ -512,7 +500,8 @@ class DeliveryChart:
 
     def get_placements(self):
         queryset = OpPlacement.objects.all()
-        filters = {"adwords_campaigns__account_id__in": self.params['accounts']}
+        filters = {
+            "adwords_campaigns__account_id__in": self.params['accounts']}
         if self.params['start']:
             filters['end__gte'] = self.params['start']
         if self.params['end']:
@@ -632,17 +621,7 @@ class DeliveryChart:
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
 
-        placement_fields = "total_cost", "ordered_units", "goal_type_id", \
-                           "placement_type", "ordered_rate", "tech_fee", \
-                           "dynamic_placement"
-        campaign_fields = "start_date", "end_date"
-
-        placement_annotation = {key: F(placement_ref + key)
-                                for key in placement_fields}
-        campaign_annotation = {key: F(campaign_ref + key)
-                               for key in campaign_fields}
-        kwargs.update(placement_annotation)
-        kwargs.update(campaign_annotation)
+        kwargs.update(get_client_cost_aggregation())
 
         return queryset.annotate(**kwargs)
 
