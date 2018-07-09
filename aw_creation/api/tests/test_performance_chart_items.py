@@ -817,3 +817,75 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             for item in items:
                 self.assertAlmostEqual(item["cost"],
                                        expected_cost[item["name"]])
+
+    def test_client_rate_average_rate(self):
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+
+        today = date(2018, 1, 1)
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        self.assertGreater(today, yesterday)
+        self.assertGreater(tomorrow, today)
+
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=.12)
+        campaign = Campaign.objects.create(id=next(int_iterator),
+                                           account=account,
+                                           salesforce_placement=placement,
+                                           video_views=123)
+        ad_group = AdGroup.objects.create(id=next(int_iterator),
+                                          campaign=campaign)
+        ad = Ad.objects.create(id=next(int_iterator),
+                               ad_group=ad_group)
+        views, impressions = 123, 234
+        AdStatistic.objects.create(ad=ad,
+                                   average_position=1,
+                                   date=yesterday,
+                                   video_views=views,
+                                   impressions=impressions)
+        client_cost = get_client_cost(
+            goal_type_id=placement.goal_type_id,
+            dynamic_placement=placement.dynamic_placement,
+            placement_type=placement.placement_type,
+            ordered_rate=placement.ordered_rate,
+            impressions=impressions,
+            video_views=views,
+            aw_cost=None,
+            total_cost=placement.total_cost,
+            tech_fee=placement.tech_fee,
+            start=None,
+            end=None
+        )
+        average_cpm = client_cost / impressions * 1000
+        average_cpv = client_cost / views
+        self.assertNotAlmostEqual(average_cpm, average_cpv)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings), \
+             patch_now(today):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertEqual(len(items), 1)
+            item = items[0]
+            self.assertAlmostEqual(item["average_cpm"], average_cpm)
+            self.assertAlmostEqual(item["average_cpv"], average_cpv)

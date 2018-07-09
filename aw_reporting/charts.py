@@ -407,6 +407,7 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
+            self._hide_aw_rate(stat)
             dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
             del stat['video_impressions']
@@ -434,18 +435,16 @@ class DeliveryChart:
             key=lambda i: i[top_by] if i[top_by] else 0,
             reverse=True,
         )
-        response["items"] = self._hide_aw_rates(response["items"])
+        # response["items"] = self._hide_aw_rates(response["items"])
         response["items"] = self._serialize_items(response["items"])
         return response
 
-    def _hide_aw_rates(self, items):
+    def _hide_aw_rate(self, item):
         if registry.user.get_aw_settings().get(
                 UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
-            return items
-        for item in items:
-            item["cost"] = item["client_cost"]
-
-        return items
+            return item
+        item["cost"] = item["client_cost"]
+        return item
 
     def _serialize_items(self, items):
         return [self._serialize_item(item) for item in items]
