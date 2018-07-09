@@ -546,7 +546,7 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         )
         return queryset
 
-    def create(self, request: object, args: object, kwargs: object) -> object:
+    def create(self, request, *args, **kwargs):
         try:
             account_creation = AccountCreation.objects.get(
                 pk=kwargs.get("pk"),
@@ -725,7 +725,7 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         )
         return queryset
 
-    def create(self, request: object, args: object, kwargs: object) -> object:
+    def create(self, request, *args, **kwargs):
         try:
             campaign_creation = CampaignCreation.objects.get(
                 pk=kwargs.get("pk"), account_creation__owner=request.user

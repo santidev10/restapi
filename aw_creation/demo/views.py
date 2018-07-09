@@ -325,6 +325,7 @@ class AdGroupCreationListSetupApiView:
                 return Response(data=DEMO_READ_ONLY,
                                 status=HTTP_403_FORBIDDEN)
             else:
+                print("<{}>".format(pk))
                 return original_method(view, request, pk=pk, **kwargs)
         return method
 
