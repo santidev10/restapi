@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
@@ -15,7 +15,8 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     YTChannelStatistic, TopicStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
     Audience, Topic, Ad, \
-    AWConnectionToUserRelation, AWConnection, RemarkStatistic, RemarkList
+    AWConnectionToUserRelation, AWConnection, RemarkStatistic, RemarkList, \
+    Opportunity, OpPlacement, SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
@@ -24,8 +25,9 @@ from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id, dimension):
-        return reverse(Namespace.AW_CREATION + ":" + Name.Dashboard.CHART_ITEMS,
-                       args=(account_creation_id, dimension))
+        return reverse(
+            Namespace.AW_CREATION + ":" + Name.Dashboard.CHART_ITEMS,
+            args=(account_creation_id, dimension))
 
     @staticmethod
     def create_stats(account):
@@ -145,32 +147,32 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            {'items', 'summary'}
+            {"items", "summary"}
         )
-        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(len(data["items"]), 1)
         self.assertEqual(
-            set(data['items'][0].keys()),
+            set(data["items"][0].keys()),
             {
-                'id',
-                'name',
-                'thumbnail',
-                'duration',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
-                'video50rate',
-                'clicks',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
+                "id",
+                "name",
+                "thumbnail",
+                "duration",
+                "video_view_rate",
+                "conversions",
+                "ctr",
+                "view_through",
+                "all_conversions",
+                "average_cpv",
+                "video100rate",
+                "video_views",
+                "video50rate",
+                "clicks",
+                "impressions",
+                "video75rate",
+                "cost",
+                "video25rate",
+                "average_cpm",
+                "ctr_v",
                 "video_clicks"
             }
         )
@@ -320,10 +322,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             for dimension in ALL_DIMENSIONS:
-                url = self._get_url(account_creation.id, dimension)
-                response = self.client.post(url)
-                self.assertEqual(response.status_code, HTTP_200_OK)
-                self.assertGreater(len(response.data), 1)
+                with self.subTest(dimension):
+                    url = self._get_url(account_creation.id, dimension)
+                    response = self.client.post(url)
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    self.assertGreater(len(response.data), 1)
 
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
@@ -447,10 +450,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
-            for dimension in ALL_DIMENSIONS:
+        for dimension in ALL_DIMENSIONS:
+            with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                       new=SingleDatabaseApiConnectorPatcher), \
+                 self.patch_user_settings(**user_settings), \
+                 self.subTest(msg=dimension):
                 url = self._get_url(account_creation.id, dimension)
                 response = self.client.post(url, dict())
                 self.assertEqual(response.status_code, HTTP_200_OK)
@@ -460,3 +464,110 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                     self.assertIsNone(item["cost"])
                     self.assertIsNone(item["average_cpm"])
                     self.assertIsNone(item["average_cpv"])
+
+    def test_ad_groups_client_cost(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        views = 123, 234
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=.12)
+
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        ad = Ad.objects.create(ad_group=ad_group)
+        AdStatistic.objects.create(average_position=1,
+                                   ad=ad,
+                                   date=any_date_1,
+                                   video_views=views[0])
+        AdStatistic.objects.create(average_position=1,
+                                   ad=ad,
+                                   date=any_date_2,
+                                   video_views=views[1])
+        rate = placement.ordered_rate
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        test_cases = (
+            ("total", any_date_1, any_date_2, sum(views) * rate),
+            ("filter by date", any_date_1, any_date_1, views[0] * rate),
+        )
+
+        url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
+            for msg, start, end, expected_cost in test_cases:
+                with self.subTest(msg=msg):
+                    response = self.client.post(url, dict(start_date=start,
+                                                          end_date=end))
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    items = response.data["items"]
+                    self.assertEqual(len(items), 1)
+                    item = items[0]
+                    self.assertEqual(item["cost"], expected_cost)
+
+    def test_ages_client_cost(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        views = 123, 234
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            ordered_rate=.12)
+
+        user = self.create_test_user()
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(salesforce_placement=placement,
+                                           account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        AgeRangeStatistic.objects.create(ad_group=ad_group,
+                                   date=any_date_1,
+                                   video_views=views[0])
+        AgeRangeStatistic.objects.create(ad_group=ad_group,
+                                   date=any_date_2,
+                                   video_views=views[1])
+        rate = placement.ordered_rate
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        test_cases = (
+            ("total", any_date_1, any_date_2, sum(views) * rate),
+            ("filter by date", any_date_1, any_date_1, views[0] * rate),
+        )
+
+        url = self._get_url(account_creation.id, Dimension.AGE)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
+            for msg, start, end, expected_cost in test_cases:
+                with self.subTest(msg=msg):
+                    response = self.client.post(url, dict(start_date=start,
+                                                          end_date=end))
+                    self.assertEqual(response.status_code, HTTP_200_OK)
+                    items = response.data["items"]
+                    self.assertEqual(len(items), 1)
+                    item = items[0]
+                    self.assertEqual(item["cost"], expected_cost)
