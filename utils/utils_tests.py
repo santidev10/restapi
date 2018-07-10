@@ -1,5 +1,6 @@
 import csv
 import io
+import itertools
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -239,11 +240,4 @@ def get_current_release():
         return "0.0"
 
 
-def _int_generator():
-    i = 0
-    while True:
-        yield i
-        i += 1
-
-
-int_iterator = iter(_int_generator())
+int_iterator = itertools.count(1, 1)
