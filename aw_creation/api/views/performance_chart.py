@@ -82,6 +82,6 @@ class PerformanceChartApiView(APIView):
         user = registry.user
         if user.get_aw_settings() \
                 .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
-            hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COSTS
+            hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COST
             if self.request.data.get("indicator") in hidden_indicators:
                 raise Http404
