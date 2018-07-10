@@ -46,7 +46,7 @@ from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
 from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
-    UserHasCHFPermission
+    UserHasDashboardPermission, UserHasDashboardOrStaffPermission
 from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
@@ -1236,7 +1236,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1288,7 +1288,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
     def get_filters(self):
         data = self.request.data

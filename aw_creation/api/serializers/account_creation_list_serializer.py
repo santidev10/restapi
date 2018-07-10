@@ -14,7 +14,8 @@ from aw_reporting.models import AdGroupStatistic, \
     Campaign, dict_norm_base_stats, \
     ConcatAggregate, VideoCreativeStatistic, Ad, \
     Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, F, SalesForceGoalType, OpPlacement
+    client_cost_campaign_required_annotation, F, SalesForceGoalType, \
+    OpPlacement, Flight
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.lang import pick_dict
@@ -48,9 +49,25 @@ PLAN_RATES_ANNOTATION = dict(
     plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
 )
 
+FLIGHTS_AGGREGATIONS = dict(
+    cpv_total_costs=Sum(Case(
+        When(placement__goal_type_id=SalesForceGoalType.CPV,
+             then="total_cost"))),
+    cpm_total_costs=Sum(Case(
+        When(placement__goal_type_id=SalesForceGoalType.CPM,
+             then="total_cost"))),
+    cpv_ordered_units=Sum(Case(
+        When(placement__goal_type_id=SalesForceGoalType.CPV,
+             then="ordered_units"))),
+    cpm_ordered_units=Sum(Case(
+        When(placement__goal_type_id=SalesForceGoalType.CPM,
+             then="ordered_units")))
+)
+
 
 class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
-    ACCOUNT_ID_KEY = "account__account_creations__id"
+    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creations__id"
+    FLIGHT_ACCOUNT_ID_KEY = "placement__adwords_campaigns__" + CAMPAIGN_ACCOUNT_ID_KEY
     is_changed = BooleanField()
     name = SerializerMethodField()
     thumbnail = SerializerMethodField()
@@ -98,7 +115,8 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
             "ad_count", "channel_count", "video_count",
             "interest_count", "topic_count", "keyword_count", "is_disapproved",
             "updated_at", "brand", "agency", "from_aw", "cost_method",
-            "average_cpv", "average_cpm", "ctr", "ctr_v", "plan_cpm", "plan_cpv"
+            "average_cpv", "average_cpm", "ctr", "ctr_v", "plan_cpm",
+            "plan_cpv"
         )
 
     def __init__(self, *args, **kwargs):
@@ -128,7 +146,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     def _get_client_cost_by_account(self, campaign_filter):
         account_client_cost = defaultdict(float)
         campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
-            .values(self.ACCOUNT_ID_KEY, "impressions", "video_views") \
+            .values(self.CAMPAIGN_ACCOUNT_ID_KEY, "impressions", "video_views") \
             .annotate(aw_cost=F("cost"),
                       start=F("start_date"), end=F("end_date"),
                       **client_cost_campaign_required_annotation)
@@ -139,7 +157,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
                            "start", "end")
 
         for campaign_data in campaigns_with_cost:
-            account_id = campaign_data[self.ACCOUNT_ID_KEY]
+            account_id = campaign_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             kwargs = {key: campaign_data.get(key) for key in keys_to_extract}
             client_cost = get_client_cost(**kwargs)
             account_client_cost[account_id] = account_client_cost[account_id] \
@@ -148,27 +166,48 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        show_client_cost = not registry.user.get_aw_settings()\
+        show_client_cost = not registry.user.get_aw_settings() \
             .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-        campaign_filter = {self.ACCOUNT_ID_KEY + "__in": account_creation_ids}
+        campaign_filter = {
+            self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids}
+        flight_filter = {
+            self.FLIGHT_ACCOUNT_ID_KEY + "__in": account_creation_ids}
         account_client_cost = dict()
         if show_client_cost:
             account_client_cost = self._get_client_cost_by_account(
                 campaign_filter)
 
         data = Campaign.objects.filter(**campaign_filter) \
-            .values(self.ACCOUNT_ID_KEY) \
-            .order_by(self.ACCOUNT_ID_KEY) \
+            .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
+            .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **base_stats_aggregator())
+        sf_data_annotated = Flight.objects.filter(**flight_filter) \
+            .values(self.FLIGHT_ACCOUNT_ID_KEY) \
+            .order_by(self.FLIGHT_ACCOUNT_ID_KEY) \
+            .annotate(**FLIGHTS_AGGREGATIONS)
+        sf_data_by_acc = {i[self.FLIGHT_ACCOUNT_ID_KEY]: i
+                          for i in sf_data_annotated}
         for account_data in data:
-            account_id = account_data[self.ACCOUNT_ID_KEY]
+            account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             dict_norm_base_stats(account_data)
             dict_add_calculated_stats(account_data)
 
             if show_client_cost:
-                account_data["cost"] = account_client_cost[account_id]
+                cost = account_client_cost[account_id]
+                sf_data_for_acc=sf_data_by_acc.get(account_id) or dict()
+                cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
+                cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
+                cpv_ordered_units = sf_data_for_acc.get("cpv_ordered_units") or 0
+                cpm_ordered_units = sf_data_for_acc.get("cpm_ordered_units") or 0
+                average_cpv = cpv_total_costs / cpv_ordered_units \
+                    if cpv_ordered_units else None
+                average_cpm = cpm_total_costs * 1000 / cpm_ordered_units \
+                    if cpm_ordered_units else None
+                account_data["cost"] = cost
+                account_data["average_cpm"] = average_cpm
+                account_data["average_cpv"] = average_cpv
             stats[account_id] = account_data
         return stats
 
@@ -258,8 +297,8 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _fields_to_exclude(self):
         user = registry.user
-        if user.get_aw_settings()\
-               .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)\
+        if user.get_aw_settings() \
+                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) \
                 and self.is_chf:
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()

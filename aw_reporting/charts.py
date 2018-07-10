@@ -4,12 +4,15 @@ from datetime import timedelta, datetime
 from django.db.models import FloatField, Avg
 from django.db.models.sql.query import get_field_names_from_opts
 
+from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz, as_datetime
 from utils.lang import flatten
+from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -404,6 +407,7 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
+            self._hide_aw_rate(stat)
             dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
             del stat['video_impressions']
@@ -431,7 +435,31 @@ class DeliveryChart:
             key=lambda i: i[top_by] if i[top_by] else 0,
             reverse=True,
         )
+        # response["items"] = self._hide_aw_rates(response["items"])
+        response["items"] = self._serialize_items(response["items"])
         return response
+
+    def _hide_aw_rate(self, item):
+        if registry.user.get_aw_settings().get(
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+            return item
+        item["cost"] = item["client_cost"]
+        return item
+
+    def _serialize_items(self, items):
+        return [self._serialize_item(item) for item in items]
+
+    def _serialize_item(self, item):
+        allowed_keys = {
+            "all_conversions", "average_cpm", "average_cpv",
+            "average_position", "clicks", "conversions", "cost", "ctr",
+            "ctr_v", "duration", "id", "impressions", "name", "status",
+            "thumbnail", "video100rate", "video25rate", "video50rate",
+            "video75rate", "video_clicks", "video_view_rate", "video_views",
+            "view_through"
+        }
+        return {key: value for key, value in item.items()
+                if key in allowed_keys}
 
     def get_external_cost(self, stat):
         external_rates = self.params['external_rates']
@@ -471,7 +499,8 @@ class DeliveryChart:
 
     def get_placements(self):
         queryset = OpPlacement.objects.all()
-        filters = {"adwords_campaigns__account_id__in": self.params['accounts']}
+        filters = {
+            "adwords_campaigns__account_id__in": self.params['accounts']}
         if self.params['start']:
             filters['end__gte'] = self.params['start']
         if self.params['end']:
@@ -566,18 +595,19 @@ class DeliveryChart:
         return queryset
 
     def add_annotate(self, queryset):
-        if not self.params['date']:
+        if not self.params["date"]:
             kwargs = dict(**all_stats_aggregate)
             if queryset.model is AdStatistic:
-                kwargs['average_position'] = Avg(
+                kwargs["average_position"] = Avg(
                     Case(
                         When(
                             average_position__gt=0,
-                            then=F('average_position'),
+                            then=F("average_position"),
                         ),
                         output_field=FloatField(),
                     )
                 )
+
         else:
             kwargs = {}
             fields = self.get_fields()
@@ -587,7 +617,24 @@ class DeliveryChart:
                     kwargs["sum_%s" % v] = Sum(v)
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
+
+        campaign_ref = self._get_campaign_ref(queryset)
+        kwargs.update(get_client_cost_aggregation(campaign_ref))
         return queryset.annotate(**kwargs)
+
+    def _get_campaign_ref(self, queryset):
+        model = queryset.model
+        if model is CampaignHourlyStatistic:
+            return "campaign"
+        if model is AdStatistic:
+            return "ad__ad_group__campaign"
+        if model in (AgeRangeStatistic, AdGroupStatistic, GenderStatistic,
+                     TopicStatistic, CityStatistic, KeywordStatistic,
+                     RemarkStatistic, VideoCreativeStatistic,
+                     AudienceStatistic, YTChannelStatistic, YTVideoStatistic):
+            return "ad_group__campaign"
+        logger.error("Undefined model %s", model)
+        raise NotImplementedError
 
     @staticmethod
     def fill_missed_dates(init_data):

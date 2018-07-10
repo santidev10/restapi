@@ -1,5 +1,6 @@
 import csv
 import io
+import itertools
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -237,3 +238,6 @@ def get_current_release():
         return sorted(releases, reverse=True)[0]
     except:
         return "0.0"
+
+
+int_iterator = itertools.count(1, 1)
