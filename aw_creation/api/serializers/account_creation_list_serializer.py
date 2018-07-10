@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Min, Max, Sum, Count, When, Case, FloatField
+from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, Q
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
     BooleanField
 
@@ -16,6 +16,7 @@ from aw_reporting.models import AdGroupStatistic, \
     Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
     client_cost_campaign_required_annotation, F, SalesForceGoalType, \
     OpPlacement, Flight
+from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.lang import pick_dict
@@ -31,17 +32,24 @@ class StruckField(SerializerMethodField):
         return self.parent.struck.get(value.id, {}).get(self.field_name)
 
 
+dynamic_placement_q = Q(dynamic_placement__in=ALL_DYNAMIC_PLACEMENTS)
+outgoing_fee_q = ~dynamic_placement_q \
+                 & Q(placement_type=OpPlacement.OUTGOING_FEE_TYPE)
+hard_cost_q = ~dynamic_placement_q & ~outgoing_fee_q \
+              & Q(goal_type_id=SalesForceGoalType.HARD_COST)
+regular_placement_q = ~dynamic_placement_q & ~outgoing_fee_q \
+                      & Q(goal_type_id__in=[SalesForceGoalType.CPV,
+                                            SalesForceGoalType.CPM])
+regular_cpv_q = regular_placement_q & Q(goal_type_id=SalesForceGoalType.CPV)
+regular_cpm_q = regular_placement_q & Q(goal_type_id=SalesForceGoalType.CPM)
+
 PLAN_STATS_ANNOTATION = dict(
-    cpv_ordered_units=Sum(Case(
-        When(goal_type_id=SalesForceGoalType.CPV, then=F("ordered_units")),
-        output_field=FloatField())),
-    cpm_ordered_units=Sum(Case(
-        When(goal_type_id=SalesForceGoalType.CPM, then=F("ordered_units")),
-        output_field=FloatField())),
-    cpv_total_cost=Sum(
-        Case(When(goal_type_id=SalesForceGoalType.CPV, then=F("total_cost")))),
-    cpm_total_cost=Sum(
-        Case(When(goal_type_id=SalesForceGoalType.CPM, then=F("total_cost")))),
+    cpv_ordered_units=Sum(Case(When(regular_cpv_q, then=F("ordered_units")),
+                               output_field=FloatField())),
+    cpm_ordered_units=Sum(Case(When(regular_cpm_q, then=F("ordered_units")),
+                               output_field=FloatField())),
+    cpv_total_cost=Sum(Case(When(regular_cpv_q, then=F("total_cost")))),
+    cpm_total_cost=Sum(Case(When(regular_cpm_q, then=F("total_cost")))),
 )
 
 PLAN_RATES_ANNOTATION = dict(
