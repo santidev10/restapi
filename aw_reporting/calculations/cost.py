@@ -56,51 +56,50 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
 
     then = "then"
 
-    aggregation = dict(
-        client_cost=Sum(Case(
-            # outgoing fee
-            When(**{
-                placement_type_ref: OpPlacement.OUTGOING_FEE_TYPE,
-                then: 0
-            }),
-            # hard cost
-            When(**{
-                goal_type_ref: SalesForceGoalType.HARD_COST,
-                start_lte_ref: today,
-                then: F(total_cost_ref)
-            }),
-            When(**{
-                goal_type_ref: SalesForceGoalType.HARD_COST,
-                then: 0
-            }),
-            # rate and tech fee
-            When(**{
-                dynamic_placement_ref: DynamicPlacementType.RATE_AND_TECH_FEE,
-                goal_type_ref: SalesForceGoalType.CPV,
-                then: F(aw_cost_ref) + F(video_views_ref) * F(tech_fee_ref)
-            }),
-            When(**{
-                dynamic_placement_ref: DynamicPlacementType.RATE_AND_TECH_FEE,
-                goal_type_ref: SalesForceGoalType.CPM,
-                then: F(aw_cost_ref) + F(impressions_ref) * F(tech_fee_ref)
-            }),
-            # budget
-            When(**{
-                dynamic_placement_ref: DynamicPlacementType.BUDGET,
-                then: F(aw_cost_ref)
-            }),
-            # regular CPM/CPV
-            When(**{
-                goal_type_ref: SalesForceGoalType.CPM,
-                ordered_rate_isnull: False,
-                then: F(impressions_ref) / 1000. * F(ordered_rate_ref),
-            }),
-            When(**{
-                goal_type_ref: SalesForceGoalType.CPV,
-                ordered_rate_isnull: False,
-                then: F(video_views_ref) * F(ordered_rate_ref),
-            }),
-            output_field=FloatField()
-        ))
-    )
+    aggregation = Sum(Case(
+        # outgoing fee
+        When(**{
+            placement_type_ref: OpPlacement.OUTGOING_FEE_TYPE,
+            then: 0
+        }),
+        # hard cost
+        When(**{
+            goal_type_ref: SalesForceGoalType.HARD_COST,
+            start_lte_ref: today,
+            then: F(total_cost_ref)
+        }),
+        When(**{
+            goal_type_ref: SalesForceGoalType.HARD_COST,
+            then: 0
+        }),
+        # rate and tech fee
+        When(**{
+            dynamic_placement_ref: DynamicPlacementType.RATE_AND_TECH_FEE,
+            goal_type_ref: SalesForceGoalType.CPV,
+            then: F(aw_cost_ref) + F(video_views_ref) * F(tech_fee_ref)
+        }),
+        When(**{
+            dynamic_placement_ref: DynamicPlacementType.RATE_AND_TECH_FEE,
+            goal_type_ref: SalesForceGoalType.CPM,
+            then: F(aw_cost_ref) + F(impressions_ref) * F(tech_fee_ref)
+        }),
+        # budget
+        When(**{
+            dynamic_placement_ref: DynamicPlacementType.BUDGET,
+            then: F(aw_cost_ref)
+        }),
+        # regular CPM/CPV
+        When(**{
+            goal_type_ref: SalesForceGoalType.CPM,
+            ordered_rate_isnull: False,
+            then: F(impressions_ref) / 1000. * F(ordered_rate_ref),
+        }),
+        When(**{
+            goal_type_ref: SalesForceGoalType.CPV,
+            ordered_rate_isnull: False,
+            then: F(video_views_ref) * F(ordered_rate_ref),
+        }),
+        output_field=FloatField()
+    ))
+
     return aggregation

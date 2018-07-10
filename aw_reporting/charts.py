@@ -33,7 +33,7 @@ class Indicator:
     IMPRESSIONS = "impressions"
     VIEWS = "video_views"
     CLICKS = "clicks"
-    COSTS = "cost"
+    COST = "cost"
 
 
 ALL_INDICATORS = sorted([value for name, value in Indicator.__dict__.items()
@@ -65,7 +65,7 @@ class Breakdown:
 
 
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
-                           Indicator.VIEWS, Indicator.COSTS)
+                           Indicator.VIEWS, Indicator.COST)
 
 
 class DeliveryChart:
@@ -203,7 +203,7 @@ class DeliveryChart:
         total_days = (placement["end"] - placement["start"]).days + 1
         if indicator in (Indicator.IMPRESSIONS, Indicator.VIEWS):
             return placement["ordered_units"] / total_days,
-        if indicator == Indicator.COSTS:
+        if indicator == Indicator.COST:
             return placement["total_cost"] / total_days,
         if indicator == Indicator.CPV:
             return placement["total_cost"], placement["ordered_units"]
@@ -296,7 +296,6 @@ class DeliveryChart:
         values_func = self.get_values_func()
         chart_items = []
 
-        #
         for label, items in items_by_label.items():
             results = []
             summaries = defaultdict(float)
@@ -407,7 +406,6 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
-            self._hide_aw_rate(stat)
             dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
             del stat['video_impressions']
@@ -435,16 +433,8 @@ class DeliveryChart:
             key=lambda i: i[top_by] if i[top_by] else 0,
             reverse=True,
         )
-        # response["items"] = self._hide_aw_rates(response["items"])
         response["items"] = self._serialize_items(response["items"])
         return response
-
-    def _hide_aw_rate(self, item):
-        if registry.user.get_aw_settings().get(
-                UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
-            return item
-        item["cost"] = item["client_cost"]
-        return item
 
     def _serialize_items(self, items):
         return [self._serialize_item(item) for item in items]
@@ -618,8 +608,11 @@ class DeliveryChart:
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
 
-        campaign_ref = self._get_campaign_ref(queryset)
-        kwargs.update(get_client_cost_aggregation(campaign_ref))
+        dashboard_ad_words_rates = registry.user.get_aw_settings() \
+            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        if not dashboard_ad_words_rates:
+            campaign_ref = self._get_campaign_ref(queryset)
+            kwargs["sum_cost"] = get_client_cost_aggregation(campaign_ref)
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):
@@ -679,7 +672,7 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == Indicator.COSTS:
+        if self.params['indicator'] == Indicator.COST:
             return 'cost'
         return 'impressions'
 
