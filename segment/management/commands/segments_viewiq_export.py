@@ -8,6 +8,7 @@ from django.core.management import BaseCommand
 from django.utils import timezone
 
 from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
+from utils.lang import deep_getattr
 
 logger = logging.getLogger(__name__)
 
@@ -15,21 +16,37 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
 
     start_column = 0
-    ids_separation_symbol = "|"
     segment_model = (SegmentChannel, SegmentVideo, SegmentKeyword)
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--private",
+            type=bool,
+            default=False
+        )
 
     def handle(self, *args, **options):
         logger.info("Start export segments procedure")
-        self.__prepare_workbook()
+        is_private_export = options.get("private")
+        self.__setup_headers(is_private_export)
+        self.__prepare_workbook(is_private_export)
         self.__set_format_options()
         for model in self.segment_model:
-            self.__export_segments(model)
+            self.__export_segments(model, is_private_export)
         self.workbook.close()
         logger.info("Export segments procedure has been finished")
 
-    def __prepare_workbook(self):
-        filename = "segment/fixtures/segment_export_{}.xlsx".format(
-            timezone.now().strftime("%Y-%m-%d"))
+    def __setup_headers(self, is_private_export):
+        self.headers = (("Title", "Related Ids", "Category"),)
+        if is_private_export:
+            self.headers = (
+                ("Title", "Related Ids", "Category", "Owner Email"),)
+
+    def __prepare_workbook(self, is_private_export):
+        filename = "segment/fixtures/segments_export_{}.xlsx"
+        if is_private_export:
+            filename = "segment/fixtures/segments_private_export_{}.xlsx"
+        filename = filename.format(timezone.now().strftime("%Y-%m-%dT%H:%M"))
         self.workbook = xlsxwriter.Workbook(filename)
 
     def __prepare_worksheet(self, name):
@@ -37,14 +54,14 @@ class Command(BaseCommand):
         columns_width = {
             0: 37,
             1: 50,
-            2: 14
+            2: 14,
+            3: 25
         }
         for key, value in columns_width.items():
             worksheet.set_column(key, key, value)
-        headers = (("Title", "Related Ids", "Category"),)
         start_row = 0
         start_row = self.__write_rows(
-            headers, start_row, worksheet, self.header_format)
+            self.headers, start_row, worksheet, self.header_format)
         return worksheet, start_row
 
     def __set_format_options(self):
@@ -64,12 +81,14 @@ class Command(BaseCommand):
             start_row += 1
         return start_row
 
-    def __export_segments(self, model):
+    def __export_segments(self, model, is_private_export):
         worksheet, start_row = self.__prepare_worksheet(
             "{}Segments".format(model.segment_type.capitalize()))
-        query = model.objects.exclude(
-            category=SegmentChannel.PRIVATE).order_by("category")
-        data = [(obj.title, self.ids_separation_symbol.join(
-                 obj.related_ids_list), obj.category)
-                for obj in query]
+        query = model.objects.exclude(category=model.PRIVATE)
+        fields = ["title", "related_ids_string", "category"]
+        if is_private_export:
+            query = model.objects.filter(category=model.PRIVATE)
+            fields += ["owner.email"]
+        query = query.order_by("category")
+        data = [[deep_getattr(obj, attr) for attr in fields] for obj in query]
         self.__write_rows(data, start_row, worksheet)

@@ -1,3 +1,4 @@
+from functools import reduce
 from typing import List
 
 
@@ -16,3 +17,10 @@ def pick_dict(item: dict, keys: List[str]):
     return {key: value
             for key, value in item.items()
             if key in keys}
+
+
+def deep_getattr(obj, attr):
+    try:
+        return reduce(getattr, attr.split("."), obj)
+    except AttributeError:
+        return ""

@@ -89,6 +89,11 @@ class BaseSegment(Timestampable):
     def related_ids_list(self):
         return self.related.all().values_list('related_id', flat=True)
 
+    @property
+    def related_ids_string(self, separation_symbol="|"):
+        return separation_symbol.join(
+            self.related.all().values_list("related_id", flat=True))
+
     def delete_related_ids(self, ids):
         assert isinstance(ids, list) or isinstance(ids,
                                                    set), "ids must be a list or set"
