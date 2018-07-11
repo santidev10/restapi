@@ -14,6 +14,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account, DATE_FORMAT, AdGroupStatistic, \
     BASE_STATS, QUARTILE_STATS, dict_quartiles_to_rates, \
     dict_add_calculated_stats
+from utils.registry import current_user, registry
 
 
 @demo_view_decorator
@@ -69,15 +70,16 @@ class AnalyzeExportApiView(APIView):
         return filters
 
     @staticmethod
-    def stream_response_generator(data_generator):
-        for row in data_generator():
-            output = StringIO()
-            writer = csv.writer(output)
-            writer.writerow(row)
-            yield output.getvalue()
+    def stream_response_generator(data_generator, user):
+        with current_user(user):
+            for row in data_generator():
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow(row)
+                yield output.getvalue()
 
     def stream_response(self, item_name, generator):
-        generator = self.stream_response_generator(generator)
+        generator = self.stream_response_generator(generator, registry.user)
         response = StreamingHttpResponse(generator,
                                          content_type="text/csv")
         filename = self.file_name.format(

@@ -31,7 +31,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "ctr", "ctr_v", "plan_cpm", "plan_cpv"
     }
 
-    url = reverse(Namespace.AW_CREATION + ":" + Name.CreationSetup.ACCOUNT_LIST)
+    url = reverse(
+        Namespace.AW_CREATION + ":" + Name.CreationSetup.ACCOUNT_LIST)
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -127,9 +128,11 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
         date = datetime.now()
         VideoCreativeStatistic.objects.create(creative=creative1, date=date,
-                                              ad_group=ad_group, impressions=10)
+                                              ad_group=ad_group,
+                                              impressions=10)
         VideoCreativeStatistic.objects.create(creative=creative2, date=date,
-                                              ad_group=ad_group, impressions=12)
+                                              ad_group=ad_group,
+                                              impressions=12)
 
         ac_creation = AccountCreation.objects.create(
             name="", owner=self.user, account=account,
@@ -234,8 +237,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         for sort_by in ("impressions", "video_views", "clicks", "cost",
                         "video_view_rate", "ctr_v"):
-            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
+            with patch(
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher):
                 response = self.client.get(
@@ -273,14 +277,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                     "aw_reporting.demo.models.SingleDatabaseApiConnector",
                     new=SingleDatabaseApiConnectorPatcher
             ), \
-            self.patch_user_settings(**user_settings):
+                 self.patch_user_settings(**user_settings):
                 response = self.client.get("{}?sort_by=name".format(self.url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
 
         self.assertEqual(
-            ("Demo", creation_1.name, creation_2.account.name, creation_3.name),
+            (
+            "Demo", creation_1.name, creation_2.account.name, creation_3.name),
             tuple(a["name"] for a in items)
         )
 
@@ -318,8 +323,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         for metric, min1, max1, min2, max2 in test_filters:
-            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
+            with patch(
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher), \
                  self.patch_user_settings(**user_settings):
@@ -333,8 +339,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 self.assertGreaterEqual(item[metric], min1)
                 self.assertLessEqual(item[metric], max1)
 
-            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
+            with patch(
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher), \
                  self.patch_user_settings(**user_settings):
@@ -372,8 +379,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
         for status, count in expected:
-            with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
+            with patch(
+                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
+                    new=SingleDatabaseApiConnectorPatcher), \
                  patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                        new=SingleDatabaseApiConnectorPatcher):
                 response = self.client.get(
@@ -466,8 +474,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher),\
-                self.patch_user_settings(**user_settings):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -551,7 +559,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 new=SingleDatabaseApiConnectorPatcher
         ):
             response = self.client.get(
-                "{}?min_start=2017-01-01&max_start=2017-01-31".format(self.url))
+                "{}?min_start=2017-01-01&max_start=2017-01-31".format(
+                    self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], ac.id)
@@ -791,7 +800,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                                 cost=cost)
         average_cpv = cost / views
         average_cpm = cost / impressions * 1000
-        response = self.client.get(self.url)
+        user_settings = {UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         accs = dict((acc["id"], acc) for acc in response.data["items"])
