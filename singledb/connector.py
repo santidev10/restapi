@@ -449,3 +449,7 @@ class IQApiConnector(object):
         endpoint = "channels/remoteauthentication/"
         response_data = self.execute_post_call(endpoint, {}, data=params)
         return response_data
+
+
+def get_connector():
+    return SingleDatabaseApiConnector()

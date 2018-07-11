@@ -17,7 +17,6 @@ from utils.utils_tests import ExtendedAPITestCase, \
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
-
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
@@ -32,10 +31,12 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         connection = AWConnection.objects.create(
             email="email@mail.com", refresh_token="****",
         )
-        AWConnectionToUserRelation.objects.create(
+        historical_aw_account = AWConnectionToUserRelation.objects.create(
             user=user,
             connection=connection,
         )
+        user.historical_aw_account = historical_aw_account
+        user.save()
         AWAccountPermission.objects.get_or_create(
             aw_connection=connection, account=manager,
         )
@@ -63,7 +64,7 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
                                         content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        aw_data = response.data["adw_data"]
+        aw_data = response.data["adw_data"]["stats"]
         self.assertIsNotNone(aw_data["ctr_v"])
         self.assertAlmostEqual(aw_data["ctr_v"], expected_ctr_v)
 

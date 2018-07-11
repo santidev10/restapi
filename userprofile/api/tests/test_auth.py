@@ -29,7 +29,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "is_staff", "last_name", "has_aw_accounts",
                 "date_joined", "last_login", "email", "first_name", "token",
                 "can_access_media_buying", "has_disapproved_ad", "vendor",
-                "access", "aw_settings"
+                "access", "aw_settings", "historical_aw_account"
             }
         )
 

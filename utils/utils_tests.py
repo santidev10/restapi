@@ -8,11 +8,13 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
+from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
 
@@ -26,7 +28,7 @@ class TestUserMixin:
         "password": "test",
     }
 
-    def create_test_user(self, auth=True):
+    def create_test_user(self, auth=True) -> UserProfile:
         """
         Make test user
         """
@@ -93,6 +95,18 @@ class SingleDatabaseApiConnectorPatcher:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
+        query_params = kwargs.get("query_params", dict())
+        size = query_params.get("size", 1)
+        if size == 0:
+            data["max_page"] = None
+        aggregations = query_params.get("aggregations", None)
+        if aggregations is None:
+            del data["aggregations"]
+        return data
+
+    def get_keyword_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_keyword_list.json') as data_file:
+            data = json.load(data_file)
         return data
 
     def get_channels_base_info(self, *args, **kwargs):
@@ -238,6 +252,25 @@ def get_current_release():
         return sorted(releases, reverse=True)[0]
     except:
         return "0.0"
+
+
+def generic_test(args_list):
+    """
+    Generates subtest per each item in the args_list
+    :param args_list: (msg: str, args: List, kwargs: Dict)
+    :return:
+    """
+    def wrapper(fn):
+        def wrapped_test_function(self):
+            for msg, args, kwargs in args_list:
+                with self.subTest(msg=msg, **kwargs), transaction.atomic():
+                    sid = transaction.savepoint()
+                    fn(self, *args, **kwargs)
+                    transaction.savepoint_rollback(sid)
+
+        return wrapped_test_function
+
+    return wrapper
 
 
 int_iterator = itertools.count(1, 1)

@@ -9,7 +9,7 @@ from PIL import Image
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
 from django.db import models
-from django.db.models import Q, F
+from django.db.models import Q, F, CASCADE
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -87,7 +87,8 @@ class AccountCreation(UniqueCreationItem):
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
-                              related_name="aw_account_creations")
+                              related_name="aw_account_creations",
+                              on_delete=CASCADE)
 
     account = models.ForeignKey(
         "aw_reporting.Account", related_name='account_creations',

@@ -49,10 +49,13 @@ class SegmentChannel(BaseSegment):
     sentiment = models.FloatField(default=0.0, db_index=True)
     if "postgres" in settings.DATABASES["default"]["ENGINE"]:
         top_recommend_channels = ArrayField(
-           base_field=models.CharField(max_length=60), default=list, size=None)
+            base_field=models.CharField(max_length=60), default=list, size=None)
+
     # <--- deprecated
 
-    singledb_method = Connector().get_channel_list
+    @property
+    def singledb_method(self):
+        return Connector().get_channel_list
 
     segment_type = 'channel'
     related_aw_statistics_model = YTChannelStatistic
@@ -100,17 +103,6 @@ class SegmentChannel(BaseSegment):
         self.videos = sum(
             value.get("videos") or 0
             for value in data.get("base_data").get("items"))
-        # <--- disabled SAAS-1178
-        # self.views_per_channel = self.views /\
-        #                          self.channels if self.channels else 0
-        # self.subscribers_per_channel = self.subscribers /\
-        #                                self.channels if self.channels else 0
-        # self.sentiment = (
-        #      self.likes / max(sum((self.likes, self.dislikes)), 1)) * 100
-        # self.engage_rate = (sum((self.likes, self.dislikes, self.comments))
-        #                     / max(self.video_views, 1)) * 100
-        # self.mini_dash_data = data.get("minidash", {})
-        # ---> disabled SAAS-1178
 
     @property
     def statistics(self):
@@ -119,19 +111,7 @@ class SegmentChannel(BaseSegment):
         """
         statistics = {
             "channels_count": self.channels,
-            # disabled SAAS-1832
-            # "videos_count": self.videos,
             "top_three_channels": self.top_three_channels,
-            # <--- deprecated
-            # "top_recommend_channels": self.top_recommend_channels,
-            # ---> deprecated
-            # <--- disabled SAAS-1178
-            # "subscribers_count": self.subscribers,
-            # "views_per_channel": self.views_per_channel,
-            # "subscribers_per_channel": self.subscribers_per_channel,
-            # "sentiment": self.sentiment,
-            # "engage_rate": self.engage_rate,
-            # ---> disabled SAAS-1178
         }
         return statistics
 

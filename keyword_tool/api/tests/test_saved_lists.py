@@ -77,11 +77,12 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
         url = reverse("keyword_tool_urls:kw_tool_saved_lists")
         response = self.client.post(
             url,
-            dict(
+            json.dumps(dict(
                 name="My list",
                 keywords=keywords,
                 category='chf',
-            )
+            )),
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertIn('category', response.data)
@@ -98,11 +99,12 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
         with patch("keyword_tool.api.views.update_kw_list_stats") as patched_task:
             response = self.client.post(
                 url,
-                dict(
+                json.dumps(dict(
                     name=name,
                     keywords=keywords,
                     category=category,
-                )
+                )),
+                content_type="application/json"
             )
             self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
             self.assertEqual(response.data['name'], name)

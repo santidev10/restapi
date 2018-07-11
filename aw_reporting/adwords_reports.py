@@ -42,6 +42,11 @@ GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",
 DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId", "Date") \
                                             + MAIN_STATISTICS_FILEDS \
                                             + COMPLETED_FIELDS
+AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
+                                "ImageCreativeName", "DisplayUrl", "Status",
+                                "Date", "AveragePosition",
+                                "CombinedApprovalStatus") \
+                               + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
 AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
                                 "ImageCreativeName", "DisplayUrl", "Status",

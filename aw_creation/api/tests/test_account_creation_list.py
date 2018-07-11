@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from aw_creation.api.urls.names import Name
@@ -366,7 +367,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                                        is_ended=False, is_paused=False,
                                        is_approved=True)
         AccountCreation.objects.create(
-            name="Running", owner=self.user, sync_at=datetime.now(),
+            name="Running", owner=self.user, sync_at=timezone.now(),
         )
         # --
         expected = (

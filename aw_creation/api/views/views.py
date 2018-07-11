@@ -22,7 +22,7 @@ from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
     GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
-from rest_framework.parsers import FileUploadParser
+from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
@@ -109,6 +109,7 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
     {"result":[{"name":"94002,California,United States","id":9031903}, ..],
                 "undefined":[]}
     """
+    parser_classes = (MultiPartParser,)
 
     def post(self, request, content_type, **_):
         file_obj = request.data['file']
@@ -1900,7 +1901,7 @@ class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
 
 class TargetingItemsImportApiView(DocumentImportBaseAPIView):
-    parser_classes = (FileUploadParser,)
+    parser_classes = (MultiPartParser,)
     permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, list_type, **_):

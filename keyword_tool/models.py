@@ -144,6 +144,9 @@ class KeyWord(BaseModel):
             top_kw_interests[interests_id] = keywords
         return top_kw_interests
 
+    class Meta:
+        ordering = ["pk"]
+
 
 class KeywordsList(BaseModel):
     name = models.TextField()

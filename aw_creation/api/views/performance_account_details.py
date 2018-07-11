@@ -13,16 +13,14 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
-    dict_quartiles_to_rates, all_stats_aggregate, \
-    VideoCreativeStatistic, GenderStatistic, Genders, AgeRangeStatistic, \
-    AgeRanges, Devices, \
-    CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, \
-    OpPlacement, \
-    AdGroupStatistic, \
-    dict_norm_base_stats, ConcatAggregate, dict_add_calculated_stats, \
+    dict_quartiles_to_rates, all_stats_aggregate, VideoCreativeStatistic, \
+    GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
+    CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
+    AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats, \
     client_cost_ad_group_statistic_required_annotation, AdGroup
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.db.aggregators import ConcatAggregate
 from utils.permissions import UserHasDashboardOrStaffPermission
 from utils.registry import registry
 

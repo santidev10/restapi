@@ -13,7 +13,7 @@ from userprofile.api.views import UserPasswordChangeApiView
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name="user_create"),
     url(r'^auth/$', UserAuthApiView.as_view(), name=Name.AUTH, ),
-    url(r'^users/me/$', UserProfileApiView.as_view(), name="user_profile"),
+    url(r'^users/me/$', UserProfileApiView.as_view(), name=Name.USER_PROFILE),
     url(r'^users/me/collaborators/$', UserProfileSharedListApiView.as_view(),
         name="user_profile_collaborators"),
     url(r'^password_reset/$', UserPasswordResetApiView.as_view(),

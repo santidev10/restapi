@@ -606,10 +606,14 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             id=next(int_iterator), opportunity=opportunity,
             placement_type=OpPlacement.OUTGOING_FEE_TYPE,
             ordered_rate=123)
-        placement_hard_cost_include = OpPlacement.objects.create(
+        placement_hard_cost_include_1 = OpPlacement.objects.create(
             id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
             total_cost=234)
+        placement_hard_cost_include_2 = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=567)
         placement_hard_cost_exclude = OpPlacement.objects.create(
             id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
@@ -633,9 +637,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
              dict(impressions=1, video_views=1), True),
             (placement_cpm, dict(), dict(impressions=234), False),
             (placement_cpv, dict(), dict(video_views=123), False),
-            (placement_hard_cost_include,
+            (placement_hard_cost_include_1,
              dict(start_date=yesterday, end_date=today + timedelta(days=3)),
              dict(), False),
+            (placement_hard_cost_include_2, dict(start_date=yesterday), dict(),
+             False),
             (placement_hard_cost_exclude, dict(start_date=tomorrow), dict(),
              True),
             (placement_rate_and_tech_fee_cpv, dict(),
@@ -672,9 +678,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             with patch_now(today):
                 client_cost = get_client_cost(**client_cost_kwargs)
             if not is_zero:
-                self.assertGreater(client_cost, 0,
-                                   "Test does not assert case "
-                                   "" + str(client_cost_kwargs))
+                self.assertGreater(client_cost, 0)
+            else:
+                self.assertEqual(client_cost, 0)
             expected_cost += client_cost
 
         user_settings = {
@@ -725,10 +731,14 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             id=next(int_iterator), opportunity=opportunity,
             placement_type=OpPlacement.OUTGOING_FEE_TYPE,
             ordered_rate=123)
-        placement_hard_cost_include = OpPlacement.objects.create(
+        placement_hard_cost_include_1 = OpPlacement.objects.create(
             id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
             total_cost=234)
+        placement_hard_cost_include_2 = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+            total_cost=567)
         placement_hard_cost_exclude = OpPlacement.objects.create(
             id=next(int_iterator), opportunity=opportunity,
             goal_type_id=SalesForceGoalType.HARD_COST,
@@ -752,9 +762,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
              dict(impressions=1, video_views=1), True),
             (placement_cpm, dict(), dict(impressions=234), False),
             (placement_cpv, dict(), dict(video_views=123), False),
-            (placement_hard_cost_include,
+            (placement_hard_cost_include_1,
              dict(start_date=yesterday, end_date=today + timedelta(days=3)),
              dict(), False),
+            (placement_hard_cost_include_2, dict(start_date=yesterday), dict(),
+             False),
             (placement_hard_cost_exclude, dict(start_date=tomorrow), dict(),
              True),
             (placement_rate_and_tech_fee_cpv, dict(),
@@ -796,9 +808,9 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             with patch_now(today):
                 client_cost = get_client_cost(**client_cost_kwargs)
             if not is_zero:
-                self.assertGreater(client_cost, 0,
-                                   "Test does not assert case "
-                                   "" + str(client_cost_kwargs))
+                self.assertGreater(client_cost, 0)
+            else:
+                self.assertEqual(client_cost, 0)
             expected_cost["{} #{}".format(name, ad_id)] = client_cost
 
         user_settings = {

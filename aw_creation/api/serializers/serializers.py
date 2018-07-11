@@ -217,6 +217,7 @@ class AdScheduleSerializer(ModelSerializer):
 class FrequencyCapUpdateSerializer(ModelSerializer):
     class Meta:
         model = FrequencyCap
+        fields = '__all__'
 
 
 class FrequencyCapSerializer(ModelSerializer):
@@ -440,6 +441,7 @@ class AppendCampaignCreationSerializer(ModelSerializer):
 class OptimizationLocationRuleUpdateSerializer(ModelSerializer):
     class Meta:
         model = LocationRule
+        fields = "__all__"
 
 
 class AdGroupCreationUpdateSerializer(ModelSerializer):

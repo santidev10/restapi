@@ -1,24 +1,24 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, Q
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
-    BooleanField
+from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, F
+from django.db.models import Q
+from rest_framework.serializers import ModelSerializer, \
+    SerializerMethodField, BooleanField
 
 from aw_creation.models import CampaignCreation, AccountCreation
 from aw_reporting.api.serializers.fields import StatField
 from aw_reporting.api.serializers.fields.parent_dict_value_field import \
     ParentDictValueField
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import AdGroupStatistic, \
-    Campaign, dict_norm_base_stats, \
-    ConcatAggregate, VideoCreativeStatistic, Ad, \
-    Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, F, SalesForceGoalType, \
-    OpPlacement, Flight
+from aw_reporting.models import Ad, AdGroupStatistic, base_stats_aggregator, \
+    Campaign, client_cost_campaign_required_annotation, \
+    dict_add_calculated_stats, dict_norm_base_stats, Flight, OpPlacement, \
+    Opportunity, SalesForceGoalType, VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
+from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
 from utils.permissions import is_chf_in_request
 from utils.registry import registry
@@ -204,11 +204,13 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
             if show_client_cost:
                 cost = account_client_cost[account_id]
-                sf_data_for_acc=sf_data_by_acc.get(account_id) or dict()
+                sf_data_for_acc = sf_data_by_acc.get(account_id) or dict()
                 cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
                 cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
-                cpv_ordered_units = sf_data_for_acc.get("cpv_ordered_units") or 0
-                cpm_ordered_units = sf_data_for_acc.get("cpm_ordered_units") or 0
+                cpv_ordered_units = sf_data_for_acc.get(
+                    "cpv_ordered_units") or 0
+                cpm_ordered_units = sf_data_for_acc.get(
+                    "cpm_ordered_units") or 0
                 average_cpv = cpv_total_costs / cpv_ordered_units \
                     if cpv_ordered_units else None
                 average_cpm = cpm_total_costs * 1000 / cpm_ordered_units \

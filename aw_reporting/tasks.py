@@ -1525,10 +1525,10 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     video_views=sum_stats.get("sum_video_views") or 0,
                     clicks=sum_stats.get("sum_clicks") or 0,
 
-                    device_computers=i["device_computers"],
-                    device_mobile=i["device_mobile"],
-                    device_tablets=i["device_tablets"],
-                    device_other=i["device_other"],
+                    device_computers=i["device_computers"] > 0,
+                    device_mobile=i["device_mobile"] > 0,
+                    device_tablets=i["device_tablets"] > 0,
+                    device_other=i["device_other"] > 0,
 
                     gender_male=genders.get("gender_male", False),
                     gender_female=genders.get("gender_female", False),

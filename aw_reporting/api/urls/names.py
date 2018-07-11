@@ -22,5 +22,10 @@ class Name:
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
 
+    class AWAccounts:
+        LIST = "connect_aw_account_list"
+        ACCOUNT = "connect_aw_account"
+        CONNECTION = "aw_account_connection"
+
     class WebHook:
         ACCOUNTS_LIST = "webhook_accounts_list"

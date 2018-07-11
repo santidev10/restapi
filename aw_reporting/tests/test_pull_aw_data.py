@@ -10,7 +10,7 @@ from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS, AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience, ParentStatistic, Ad
+    AdGroupStatistic, Audience, Ad, ParentStatistic
 from aw_reporting.tasks import AudienceAWType
 from utils.utils_tests import patch_now, build_csv_byte_stream
 
