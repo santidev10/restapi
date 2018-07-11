@@ -1,4 +1,5 @@
-from django.db.models import Sum, Case, When, F, FloatField
+from django.db.models import Sum, Case, When, F, FloatField, DateField
+from django.db.models.functions import Cast, ExtractDay, Least
 
 from aw_reporting.models.salesforce import OpPlacement
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
@@ -14,9 +15,11 @@ def get_client_cost(goal_type_id, dynamic_placement, placement_type,
         return 0
     if goal_type_id == SalesForceGoalType.HARD_COST:
         total_cost_or_zero = total_cost or 0
+        today = now_in_default_tz().date()
+        if start is not None and start > today:
+            return 0
         if start is None or end is None:
             return total_cost_or_zero
-        today = now_in_default_tz().date()
         total_days = (end - start).days + 1
         days_pass = (min(today, end) - start).days + 1
         return total_cost_or_zero / total_days * days_pass
@@ -42,7 +45,9 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
 
     placement_ref = campaign_ref + "__salesforce_placement"
     start_ref = campaign_ref + "__start_date"
+    end_ref = campaign_ref + "__end_date"
     start_lte_ref = start_ref + "__lte"
+    end_missed_ref = campaign_ref + "__end_date__isnull"
 
     placement_type_ref = placement_ref + "__placement_type"
     dynamic_placement_ref = placement_ref + "__dynamic_placement"
@@ -57,7 +62,6 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
     aw_cost_ref = "cost"
 
     then = "then"
-
     aggregation = Sum(Case(
         # outgoing fee
         When(**{
@@ -68,7 +72,17 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
         When(**{
             goal_type_ref: SalesForceGoalType.HARD_COST,
             start_lte_ref: today,
+            end_missed_ref: True,
             then: F(total_cost_ref)
+        }),
+        When(**{
+            goal_type_ref: SalesForceGoalType.HARD_COST,
+            start_lte_ref: today,
+            then: F(total_cost_ref)
+                  / (ExtractDay(F(end_ref) - F(start_ref)) + 1)
+                  * (ExtractDay(Least(Cast(today, DateField()),
+                                      F(end_ref))
+                                - F(start_ref)) + 1)
         }),
         When(**{
             goal_type_ref: SalesForceGoalType.HARD_COST,
