@@ -21,13 +21,13 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.db.aggregators import ConcatAggregate
-from utils.permissions import UserHasCHFPermission
+from utils.permissions import UserHasDashboardOrStaffPermission
 from utils.registry import registry
 
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
     def get_filters(self):
         data = self.request.data

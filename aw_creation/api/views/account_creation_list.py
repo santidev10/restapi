@@ -19,7 +19,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import BASE_STATS, Account
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.permissions import UserHasCHFPermission
+from utils.permissions import UserHasDashboardPermission
 
 
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):
@@ -30,7 +30,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),
