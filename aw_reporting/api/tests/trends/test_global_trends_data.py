@@ -8,8 +8,9 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.charts import Indicator, Breakdown
-from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement, \
+from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic
+from aw_reporting.models import CampaignHourlyStatistic, Account, User, \
+    Opportunity, OpPlacement, \
     SalesForceGoalType, Category
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
