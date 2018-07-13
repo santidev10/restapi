@@ -75,6 +75,7 @@ class UserAuthApiView(APIView):
         """
         token = request.data.get("token")
         auth_token = request.data.get("auth_token")
+        update_date_of_last_login = True
         if token:
             user = self.get_google_plus_user(token)
         elif auth_token:
@@ -82,11 +83,12 @@ class UserAuthApiView(APIView):
                 user = Token.objects.get(key=auth_token).user
             except Token.DoesNotExist:
                 user = None
+            else:
+                update_date_of_last_login = False
         else:
             serializer = AuthTokenSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.validated_data['user']
-
         if not user:
             return Response(
                 data={"error": ["Unable to authenticate user"
@@ -94,7 +96,8 @@ class UserAuthApiView(APIView):
                 status=HTTP_400_BAD_REQUEST)
 
         Token.objects.get_or_create(user=user)
-        update_last_login(None, user)
+        if update_date_of_last_login:
+            update_last_login(None, user)
         response_data = self.serializer_class(user).data
         return Response(response_data)
 
