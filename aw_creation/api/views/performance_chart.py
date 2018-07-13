@@ -44,7 +44,8 @@ class PerformanceChartApiView(APIView):
     def post(self, request, pk, **_):
         self.filter_hidden_sections()
         filters = {}
-        if request.data.get("is_chf") == 1:
+        is_dashboard = request.data.get("is_chf") == 1
+        if is_dashboard:
             user_settings = self.request.user.get_aw_settings()
             if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
                 filters["account__id__in"] = \
@@ -59,7 +60,8 @@ class PerformanceChartApiView(APIView):
         account_ids = []
         if item.account:
             account_ids.append(item.account.id)
-        chart = DeliveryChart(account_ids, segmented_by="campaigns", **filters)
+        chart = DeliveryChart(account_ids, segmented_by="campaigns",
+                              always_aw_costs=not is_dashboard, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
 

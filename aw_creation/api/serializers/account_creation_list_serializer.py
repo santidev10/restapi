@@ -166,7 +166,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     def _get_stats(self, account_creation_ids):
         stats = {}
         show_client_cost = not registry.user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES) and self.is_chf
         campaign_filter = {
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids}
         flight_filter = {
