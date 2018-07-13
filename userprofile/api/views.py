@@ -1,7 +1,6 @@
 """
 Userprofile api views module
 """
-import hashlib
 from itertools import chain
 
 import requests
@@ -10,7 +9,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
-from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
@@ -220,9 +218,6 @@ class UserPasswordResetApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         if user.is_superuser:
             return Response(status=HTTP_403_FORBIDDEN)
-        user.set_password(hashlib.sha1(str(
-                timezone.now().timestamp()).encode()).hexdigest())
-        user.save()
         token = PasswordResetTokenGenerator().make_token(user)
         host = request.build_absolute_uri("/")
         reset_uri = "{host}password_reset/?email={email}&token={token}".format(
