@@ -220,6 +220,9 @@ class UserPasswordResetApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         if user.is_superuser:
             return Response(status=HTTP_403_FORBIDDEN)
+        user.set_password(hashlib.sha1(str(
+                timezone.now().timestamp()).encode()).hexdigest())
+        user.save()
         token = PasswordResetTokenGenerator().make_token(user)
         host = request.build_absolute_uri("/")
         reset_uri = "{host}password_reset/?email={email}&token={token}".format(
@@ -234,9 +237,6 @@ class UserPasswordResetApiView(APIView):
                   "Kind regards, Channel Factory Team".format(reset_uri)
         send_html_email(
             subject, email, text_header, message, request.get_host())
-        user.set_password(hashlib.sha1(str(
-                timezone.now().timestamp()).encode()).hexdigest())
-        user.save()
         return Response(status=HTTP_202_ACCEPTED)
 
 
