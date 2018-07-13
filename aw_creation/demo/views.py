@@ -523,7 +523,9 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID \
+                    or (show_demo_data(request, pk)
+                        and not request.data.get("is_chf") == 1):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],

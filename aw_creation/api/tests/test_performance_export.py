@@ -29,6 +29,18 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             Namespace.AW_CREATION + ":" + Name.Dashboard.PERFORMANCE_EXPORT,
             args=(account_creation_id,))
 
+    def _request(self, account_creation_id, **kwargs):
+        url = self._get_url(account_creation_id)
+        return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
+
+    def _hide_demo_data_fallback(self, user):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
+
     @staticmethod
     def create_stats(account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -60,14 +72,28 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
             KeywordStatistic.objects.create(keyword="123", **stats)
             CityStatistic.objects.create(city=city, **stats)
 
+
+class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
+    def _request(self, account_creation_id, **kwargs):
+        return super(PerformanceExportAnalyticsAPITestCase, self)._request(account_creation_id, is_chf=0, **kwargs)
+
+    def assert_demo_data(self, response):
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        f = io.BytesIO(response.content)
+        book = load_workbook(f)
+        sheet = book.worksheets[0]
+
+        self.assertGreater(sheet.max_row, 10)
+
+        self.assertEqual(sheet[2][0].value, "Summary")
+        for column in range(11, 11 + 4):
+            self.assertIsNotNone(sheet[2][column].value, column)
+
+        self.assertIsNotNone(sheet[3][0].value)
+
     def test_success(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
+        self._hide_demo_data_fallback(user)
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
@@ -75,17 +101,14 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
         today = datetime.now().date()
-        filters = {
-            'start_date': str(today - timedelta(days=1)),
-            'end_date': str(today),
-        }
+        filters = dict(
+            start_date=str(today - timedelta(days=1)),
+            end_date=str(today)
+        )
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(filters), content_type='application/json',
-            )
+            response = self._request(account_creation.id, **filters)
             self.assertEqual(response.status_code, HTTP_200_OK)
             f = io.BytesIO(response.content)
             book = load_workbook(f)
@@ -95,77 +118,16 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_success_demo(self):
         self.create_test_user()
 
-        url = self._get_url(DEMO_ACCOUNT_ID)
         today = datetime.now().date()
-        filters = {
-            'start_date': str(today - timedelta(days=1)),
-            'end_date': str(today),
-        }
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(filters), content_type='application/json',
-            )
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            f = io.BytesIO(response.content)
-            book = load_workbook(f)
-            sheet = book.worksheets[0]
-            self.assertGreater(sheet.max_row, 10)
-
-    def test_success_demo_data(self):
-        user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
-        url = self._get_url(account_creation.id)
-        today = datetime.now().date()
-        filters = {
-            'start_date': str(today - timedelta(days=1)),
-            'end_date': str(today),
-        }
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(filters), content_type='application/json',
-            )
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            f = io.BytesIO(response.content)
-            book = load_workbook(f)
-            sheet = book.worksheets[0]
-            self.assertGreater(sheet.max_row, 10)
-
-    def test_success_for_chf_dashboard(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
-        account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
-        self.create_stats(account)
-
-        filters = dict(is_chf=1)
-        url = self._get_url(account_creation.id)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(filters), content_type='application/json',
-            )
-            self.assertEqual(response.status_code, HTTP_200_OK)
+        filters = dict(
+            start_date=str(today - timedelta(days=1)),
+            end_date=str(today))
+        response = self._request(DEMO_ACCOUNT_ID, **filters)
+        self.assert_demo_data(response)
 
     def test_report_is_xlsx_formatted(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
+        self._hide_demo_data_fallback(user)
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
@@ -173,12 +135,9 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, "{}", content_type='application/json',
-            )
+            response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
             try:
                 f = io.BytesIO(response.content)
@@ -188,12 +147,7 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
 
     def test_report_percent_formatted(self):
         user = self.create_test_user()
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
+        self._hide_demo_data_fallback(user)
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
@@ -201,12 +155,9 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id)
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, "{}", content_type='application/json',
-            )
+            response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
             f = io.BytesIO(response.content)
             book = load_workbook(f)
@@ -224,3 +175,64 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
                 cell = sheet[row][column]
                 self.assertEqual(cell.number_format, "0.00%",
                                  "Cell[{}:{}]".format(row, column))
+
+    def test_demo_data_fallback(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+
+        campaign_name = "Test campaign"
+        Campaign.objects.create(name=campaign_name)
+
+        response = self._request(account_creation.id)
+        self.assert_demo_data(response)
+
+
+class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
+    def _request(self, account_creation_id, **kwargs):
+        return super(PerformanceExportDashboardAPITestCase, self)._request(account_creation_id, is_chf=1, **kwargs)
+
+    def test_success_for_chf_dashboard(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        self._hide_demo_data_fallback(user)
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        self.create_stats(account)
+
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self._request(account_creation.id)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_no_demo_data(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=1, name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+
+        campaign_name = "Test campaign"
+        Campaign.objects.create(name=campaign_name)
+
+        response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        f = io.BytesIO(response.content)
+        book = load_workbook(f)
+        sheet = book.worksheets[0]
+
+        self.assertEqual(sheet[2][0].value, "Summary")
+        for column in range(11, 11 + 4):
+            self.assertIsNone(sheet[2][column].value, column)
+
+        self.assertIsNone(sheet[3][0].value)
