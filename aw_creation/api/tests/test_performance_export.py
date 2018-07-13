@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
+from aw_reporting.api.constants import DashboardRequest
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GenderStatistic, AgeRangeStatistic, \
@@ -75,15 +76,16 @@ class PerformanceExportAPITestCase(ExtendedAPITestCase):
 
 class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
     def _request(self, account_creation_id, **kwargs):
-        return super(PerformanceExportAnalyticsAPITestCase, self)._request(account_creation_id, is_chf=0, **kwargs)
+        self.assertNotIn(DashboardRequest.DASHBOARD_PARAM_NAME, kwargs.keys(),
+                         "This test case is for Analytics only. Move this test to appropriate test case: {}"
+                         .format(PerformanceExportDashboardAPITestCase.__name__))
+        return super(PerformanceExportAnalyticsAPITestCase, self)._request(account_creation_id, **kwargs)
 
     def assert_demo_data(self, response):
         self.assertEqual(response.status_code, HTTP_200_OK)
-        f = io.BytesIO(response.content)
-        book = load_workbook(f)
-        sheet = book.worksheets[0]
+        sheet = get_sheet_from_response(response)
 
-        self.assertGreater(sheet.max_row, 10)
+        self.assertFalse(is_empty_report(sheet))
 
         self.assertEqual(sheet[2][0].value, "Summary")
         for column in range(11, 11 + 4):
@@ -109,11 +111,8 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id, **filters)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            f = io.BytesIO(response.content)
-            book = load_workbook(f)
-            sheet = book.worksheets[0]
-            self.assertGreater(sheet.max_row, 10)
+            sheet = get_sheet_from_response(response)
+            self.assertFalse(is_empty_report(sheet))
 
     def test_success_demo(self):
         self.create_test_user()
@@ -121,7 +120,8 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
         today = datetime.now().date()
         filters = dict(
             start_date=str(today - timedelta(days=1)),
-            end_date=str(today))
+            end_date=str(today)
+        )
         response = self._request(DEMO_ACCOUNT_ID, **filters)
         self.assert_demo_data(response)
 
@@ -159,10 +159,8 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
-            f = io.BytesIO(response.content)
-            book = load_workbook(f)
-            sheet = book.worksheets[0]
-            self.assertGreater(sheet.max_row, 10)
+            sheet = get_sheet_from_response(response)
+            self.assertFalse(is_empty_report(sheet))
             rows = range(2, sheet.max_row + 1)
             ctr_range = 8, 10,
             view_rate_range = 10, 11
@@ -194,7 +192,8 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
 
 class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
     def _request(self, account_creation_id, **kwargs):
-        return super(PerformanceExportDashboardAPITestCase, self)._request(account_creation_id, is_chf=1, **kwargs)
+        kwargs[DashboardRequest.DASHBOARD_PARAM_NAME] = DashboardRequest.DASHBOARD_PARAM_VALUE
+        return super(PerformanceExportDashboardAPITestCase, self)._request(account_creation_id, **kwargs)
 
     def test_success_for_chf_dashboard(self):
         user = self.create_test_user()
@@ -227,12 +226,28 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
 
         response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        f = io.BytesIO(response.content)
-        book = load_workbook(f)
-        sheet = book.worksheets[0]
+        sheet = get_sheet_from_response(response)
+        self.assertTrue(is_empty_report(sheet))
 
-        self.assertEqual(sheet[2][0].value, "Summary")
-        for column in range(11, 11 + 4):
-            self.assertIsNone(sheet[2][column].value, column)
 
-        self.assertIsNone(sheet[3][0].value)
+def get_sheet_from_response(response):
+    single_sheet_index = 0
+    f = io.BytesIO(response.content)
+    book = load_workbook(f)
+    return book.worksheets[single_sheet_index]
+
+
+def is_summary_empty(sheet):
+    summary_row_number = 2
+    quarters_columns_indexes = range(11, 15)
+    other_stats_indexes = range(2, 11)
+    quarters_are_zero = all([sheet[summary_row_number][column].value == 0
+                             for column in quarters_columns_indexes])
+    other_stats_are_empty = all([sheet[summary_row_number][column].value is None
+                                 for column in other_stats_indexes])
+    return quarters_are_zero and other_stats_are_empty
+
+
+def is_empty_report(sheet):
+    min_rows_count = 2
+    return sheet.max_row <= min_rows_count and is_summary_empty(sheet)

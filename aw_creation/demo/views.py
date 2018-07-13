@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
+from aw_creation.api.utils import is_dashboard_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
@@ -43,7 +44,6 @@ class AccountCreationListApiView:
                     response.data['items'].insert(0, demo.header_data)
                     response.data['items_count'] += 1
             return response
-
         return method
 
 
@@ -82,7 +82,6 @@ class AccountCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
     @staticmethod
@@ -93,7 +92,6 @@ class AccountCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -250,7 +248,6 @@ class CampaignCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -277,7 +274,6 @@ class CampaignCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -305,7 +301,6 @@ class AdGroupCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -332,7 +327,6 @@ class AdGroupCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -361,7 +355,6 @@ class AdCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -373,7 +366,6 @@ class AdCreationAvailableAdFormatsApiView:
                 return Response(data=[AdGroupCreation.IN_STREAM_TYPE])
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -401,7 +393,6 @@ class AdCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -436,7 +427,6 @@ class PerformanceAccountCampaignsListApiView:
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
             return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -465,7 +455,6 @@ class PerformanceAccountDetailsApiView:
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
-
         return method
 
 
@@ -523,9 +512,7 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID \
-                    or (show_demo_data(request, pk)
-                        and not request.data.get("is_chf") == 1):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -556,9 +543,7 @@ class PerformanceExportWeeklyReport:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID \
-                    or (show_demo_data(request, pk)
-                        and not request.data.get("is_chf") == 1):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
@@ -686,7 +671,6 @@ class PerformanceTargetingItemAPIView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, **kwargs)
-
         return method
 
 
@@ -720,5 +704,4 @@ class AdGroupTargetingListImportApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-
         return method
