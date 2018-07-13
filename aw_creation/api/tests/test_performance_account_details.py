@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta, date
+from itertools import product
 from unittest.mock import patch
 
 import pytz
@@ -24,11 +25,15 @@ from utils.utils_tests import ExtendedAPITestCase, int_iterator
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
-class AccountDetailsAPITestCase(ExtendedAPITestCase):
+class AccountDetailsAnalyticsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
             args=(account_creation_id,))
+
+    def _request(self, account_creation_id, **kwargs):
+        url = self._get_url(account_creation_id)
+        return self.client.post(url, json.dumps(dict(is_chf=0, **kwargs)), content_type="application/json")
 
     account_list_header_fields = {
         "id", "name", "end", "account", "start", "status", "weekly_chart",
@@ -97,16 +102,13 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             id=1, defaults=dict(name=""))
         CityStatistic.objects.create(
             ad_group=ad_group, date=date, city=target, **stats)
-        url = self._get_url(account_creation.id)
         user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(
-                    dict(start_date=str(date - timedelta(days=1)),
-                         end_date=str(date))),
-                content_type='application/json')
+            response = self._request(account_creation.id,
+                                     start_date=str(date - timedelta(days=1)),
+                                     end_date=str(date))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -119,34 +121,6 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(data['details']['ad_network'], ad_network)
         self.assertEqual(set(data["overview"].keys()), self.overview_keys)
-
-    def test_success_get_chf_account(self):
-        user = self.user
-        chf_account = Account.objects.create(
-            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="1", name="")
-        managed_account.managers.add(chf_account)
-        account_creation = AccountCreation.objects.create(
-            name="Test", owner=user, account=managed_account)
-        url = self._get_url(account_creation.id)
-        user.is_staff = True
-        user.save()
-        user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-            UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]}
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, data=json.dumps({"is_chf": 1}),
-                content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        expected_fields = (
-            "delivered_cost", "plan_cost", "delivered_impressions",
-            "plan_impressions", "delivered_video_views", "plan_video_views")
-        self.assertTrue(
-            all([field in response.data["overview"]
-                 for field in expected_fields]))
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
@@ -162,13 +136,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=datetime.now(), ad_group=ad_group,
             average_position=1, impressions=100)
-        url = self._get_url(account_creation.id)
         user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, content_type='application/json')
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -180,15 +152,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIs(data['overview']['impressions'], None)
 
     def test_success_get_filter_dates_demo(self):
-        url = self._get_url(DEMO_ACCOUNT_ID)
         today = datetime.now().date()
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(
-                    dict(start_date=str(today - timedelta(days=2)),
-                         end_date=str(today - timedelta(days=1)))),
-                content_type='application/json')
+            response = self._request(DEMO_ACCOUNT_ID,
+                                     start_date=str(today - timedelta(days=2)),
+                                     end_date=str(today - timedelta(days=1)))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -203,13 +172,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
 
     def test_success_get_filter_ad_groups_demo(self):
-        url = self._get_url(DEMO_ACCOUNT_ID)
         ad_groups = ["demo11", "demo22"]
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(ad_groups=ad_groups)),
-                content_type='application/json')
+            response = self._request(DEMO_ACCOUNT_ID, ad_groups=ad_groups)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -231,10 +197,9 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         ad_creation = AdCreation.objects.create(
             name="", ad_group_creation=ad_group_creation,
             video_thumbnail="https://f.i/123.jpeg")
-        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data['id'], account_creation.id)
@@ -253,30 +218,16 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Name 123", account=account,
             is_approved=True, owner=self.user)
-        url = self._get_url(account_creation.id)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertIn("updated_at", data)
         self.assertEqual(data["updated_at"], test_time)
 
     def test_created_at_demo(self):
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertIn("updated_at", data)
-        self.assertEqual(data["updated_at"], None)
-
-    def test_details_for_chf_acc(self):
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        user = self.create_test_user()
-        user.is_staff = True
-        user.save()
-        response = self.client.post(
-            url, json.dumps(dict(is_chf=1)), content_type="application/json")
+        response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertIn("updated_at", data)
@@ -298,13 +249,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             video_views=views, cost=cost)
         average_cpm = cost / impressions * 1000
         average_cpv = cost / views
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
@@ -371,47 +321,14 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             id=1, account=account, salesforce_placement=placement_cpv)
         Campaign.objects.create(
             id=2, account=account, salesforce_placement=placement_cpm)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["plan_cpm"], expected_cpm)
         self.assertAlmostEqual(response.data["plan_cpv"], expected_cpv)
-
-    def test_plan_cpm_and_cpv_reflects_to_user_settings(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.request_user)
-        account = Account.objects.create()
-        account_creation = AccountCreation.objects.create(
-            id=1, account=account, owner=self.request_user,
-            is_approved=True)
-        account_creation.refresh_from_db()
-        Campaign.objects.create(account=account)
-        url = self._get_url(account_creation.id)
-        # hide
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True}
-        self.user.add_custom_user_permission("view_dashboard")
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, dict(is_chf=1))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["id"], account_creation.id)
-        self.assertNotIn("plan_cpm", response.data)
-        self.assertNotIn("plan_cpv", response.data)
-        # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False}
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["id"], account_creation.id)
-        self.assertIn("plan_cpm", response.data)
-        self.assertIn("plan_cpv", response.data)
 
     def test_ctr_and_ctr_v(self):
         AWConnectionToUserRelation.objects.create(
@@ -429,12 +346,170 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             video_views=views, clicks=clicks)
         ctr = clicks / impressions * 100
         ctr_v = clicks / views * 100
-        url = self._get_url(account_creation.id)
-        response = self.client.post(url)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["ctr"], ctr)
         self.assertAlmostEqual(response.data["ctr_v"], ctr_v)
+
+    def test_analytics_planned_cpv_and_cpm_are_none(self):
+        opportunity = Opportunity.objects.create()
+        placement_cpv = OpPlacement.objects.create(
+            id=1,
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=1000, ordered_rate=1.2)
+        placement_cpm = OpPlacement.objects.create(
+            id=2,
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_units=1000, ordered_rate=1.3)
+        total_cost_cpv = (34, 45)
+        total_cost_cpm = (56, 67)
+        ordered_units_cpv = (123, 234)
+        ordered_units_cpm = (1234, 2345)
+        Flight.objects.create(id=1, placement=placement_cpm,
+                              total_cost=total_cost_cpm[0],
+                              ordered_units=ordered_units_cpm[0])
+        Flight.objects.create(id=2, placement=placement_cpm,
+                              total_cost=total_cost_cpm[1],
+                              ordered_units=ordered_units_cpm[1])
+        Flight.objects.create(id=3, placement=placement_cpv,
+                              total_cost=total_cost_cpv[0],
+                              ordered_units=ordered_units_cpv[0])
+        Flight.objects.create(id=4, placement=placement_cpv,
+                              total_cost=total_cost_cpv[1],
+                              ordered_units=ordered_units_cpv[1])
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user)
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(id=1, salesforce_placement=placement_cpm,
+                                account=account)
+        Campaign.objects.create(id=2, salesforce_placement=placement_cpv,
+                                account=account)
+
+        plan_cpm = sum(total_cost_cpm) / sum(ordered_units_cpm) * 1000
+        plan_cpv = sum(total_cost_cpv) / sum(ordered_units_cpv)
+        self.assertIsNotNone(plan_cpm)
+        self.assertIsNotNone(plan_cpv)
+        costs_hidden_cases = (True, False)
+        ad_words_rates_cases = (True, False)
+        keys = (
+            ("CPM", "plan_cpm"),
+            ("CPv", "plan_cpv"),
+        )
+        test_cases = product(costs_hidden_cases, ad_words_rates_cases, keys)
+        for cost_hidden, aw_rate, msg_key in test_cases:
+            msg, key = msg_key
+            user_settings = {
+                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: cost_hidden,
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rate
+            }
+
+            with self.subTest(msg, **user_settings), \
+                 self.patch_user_settings(**user_settings):
+                response = self._request(account_creation.id)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertEqual(response.data["id"], account_creation.id)
+                self.assertIsNone(response.data[key])
+
+
+class AccountDetailsDashboardAPITestCase(ExtendedAPITestCase):
+    def _get_url(self, account_creation_id):
+        return reverse(
+            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
+            args=(account_creation_id,))
+
+    def _request(self, account_creation_id, **kwargs):
+        url = self._get_url(account_creation_id)
+        return self.client.post(url, json.dumps(dict(is_chf=1, **kwargs)), content_type="application/json")
+
+    def setUp(self):
+        self.user = self.create_test_user()
+
+    def test_details_for_chf_acc(self):
+        user = self.create_test_user()
+        user.is_staff = True
+        user.save()
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertIn("updated_at", data)
+        self.assertEqual(data["updated_at"], None)
+
+    def test_average_cpm_and_cpv_reflects_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(
+                email="me@mail.kz", refresh_token=""),
+            user=self.request_user)
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user, is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        self.user.add_custom_user_permission("view_dashboard")
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertNotIn("average_cpm", response.data)
+        self.assertNotIn("average_cpv", response.data)
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertIn("average_cpm", response.data)
+        self.assertIn("average_cpv", response.data)
+
+    def test_plan_cpm_and_cpv_reflects_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(
+                email="me@mail.kz", refresh_token=""), user=self.request_user)
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+        # hide
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        self.user.add_custom_user_permission("view_dashboard")
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertNotIn("plan_cpm", response.data)
+        self.assertNotIn("plan_cpv", response.data)
+        # show
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["id"], account_creation.id)
+        self.assertIn("plan_cpm", response.data)
+        self.assertIn("plan_cpv", response.data)
 
     def test_aw_cost(self):
         self.user.is_staff = True
@@ -468,13 +543,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             date=date(2018, 1, 1), ad_group=ad_group_2,
             cost=costs[1], average_position=1)
         expected_cost = sum(costs)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                        content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data["cost"], expected_cost)
         self.assertAlmostEqual(
@@ -498,13 +571,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         AdGroup.objects.create(id=1, campaign=campaign_one, cost=costs[0])
         AdGroup.objects.create(id=2, campaign=campaign_two, cost=costs[1])
         expected_cost = sum(costs)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                        content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data["cost"], expected_cost)
         self.assertAlmostEqual(
@@ -591,14 +662,11 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                 start=c.start_date,
                 end=c.end_date)
                 for c in campaigns])
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertAlmostEqual(response.data["cost"], expected_cost)
         self.assertAlmostEqual(
@@ -625,14 +693,12 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         Campaign.objects.create(
             id=2, salesforce_placement=placement_cpv,
             account=account, cost=1, video_views=1)
-        url = self._get_url(account_creation.id)
         # show
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(url, json.dumps(dict(is_chf=1)),
-                                        content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         acc_data = response.data
         self.assertIsNotNone(acc_data)
@@ -649,9 +715,7 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         acc_data = response.data
         self.assertIsNotNone(acc_data)
@@ -680,15 +744,37 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             salesforce_placement=placement, account=managed_account)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["brand"], test_brand)
+
+    def test_success_get_chf_account(self):
+        user = self.user
+        chf_account = Account.objects.create(
+            id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
+        managed_account = Account.objects.create(id="1", name="")
+        managed_account.managers.add(chf_account)
+        account_creation = AccountCreation.objects.create(
+            name="Test", owner=user, account=managed_account)
+        user.is_staff = True
+        user.save()
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]}
+        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        expected_fields = (
+            "delivered_cost", "plan_cost", "delivered_impressions",
+            "plan_impressions", "delivered_video_views", "plan_video_views")
+        self.assertTrue(
+            all([field in response.data["overview"]
+                 for field in expected_fields]))
 
     def test_agency(self):
         self.user.is_staff = True
@@ -706,13 +792,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             name="1", owner=self.user, account=managed_account)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["agency"], agency.name)
 
@@ -745,13 +828,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             account_creation=account_creation, campaign=None)
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data["cost_method"]),
@@ -781,13 +861,10 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id=2, campaign=campaign_two, impressions=impressions_cpv)
         self.assertGreater(impressions_cpv, 0)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1)),
-                content_type="application/json")
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         delivered_impressions = response.data["overview"][
             "delivered_impressions"]
@@ -830,29 +907,20 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id=ad_group_two_id, campaign=campaign_two, cost=1,
             video_views=1, impressions=1)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1, campaigns=[campaign_one_id])),
-                content_type="application/json")
+            response = self._request(account_creation.id,
+                                     campaigns=[campaign_one_id])
         self.assertEqual(response.status_code, HTTP_200_OK)
         overview_section = response.data["overview"]
         self.assertEqual(overview_section["plan_cost"], expected_plan_cost)
-        self.assertEqual(
-            overview_section["plan_impressions"], expected_plan_impressions)
-        self.assertEqual(
-            overview_section["plan_video_views"], expected_plan_video_views)
-        self.assertEqual(
-            overview_section["delivered_cost"], expected_delivered_cost)
-        self.assertEqual(
-            overview_section["delivered_impressions"],
-            expected_delivered_impressions)
-        self.assertEqual(
-            overview_section["delivered_video_views"],
-            expected_delivered_video_views)
+        self.assertEqual(overview_section["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(overview_section["plan_video_views"], expected_plan_video_views)
+        self.assertEqual(overview_section["delivered_cost"], expected_delivered_cost)
+        self.assertEqual(overview_section["delivered_impressions"], expected_delivered_impressions)
+        self.assertEqual(overview_section["delivered_video_views"], expected_delivered_video_views)
 
     def test_ad_groups_filter_affect_performance_data(self):
         user = self.create_test_user()
@@ -891,29 +959,20 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id=ad_group_two_id, campaign=campaign_two, cost=1,
             video_views=1, impressions=1)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1, ad_groups=[ad_group_one_id])),
-                content_type="application/json")
+            response = self._request(account_creation.id,
+                                     ad_groups=[ad_group_one_id])
         self.assertEqual(response.status_code, HTTP_200_OK)
         overview_section = response.data["overview"]
         self.assertEqual(overview_section["plan_cost"], expected_plan_cost)
-        self.assertEqual(
-            overview_section["plan_impressions"], expected_plan_impressions)
-        self.assertEqual(
-            overview_section["plan_video_views"], expected_plan_video_views)
-        self.assertEqual(
-            overview_section["delivered_cost"], expected_delivered_cost)
-        self.assertEqual(
-            overview_section["delivered_impressions"],
-            expected_delivered_impressions)
-        self.assertEqual(
-            overview_section["delivered_video_views"],
-            expected_delivered_video_views)
+        self.assertEqual(overview_section["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(overview_section["plan_video_views"], expected_plan_video_views)
+        self.assertEqual(overview_section["delivered_cost"], expected_delivered_cost)
+        self.assertEqual(overview_section["delivered_impressions"], expected_delivered_impressions)
+        self.assertEqual(overview_section["delivered_video_views"], expected_delivered_video_views)
 
     def test_overview_reflects_to_date_range(self):
         user = self.create_test_user()
@@ -946,86 +1005,18 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
                                         average_position=1,
                                         cost=cost_2, impressions=impressions_2,
                                         video_views=views_2)
-        url = self._get_url(account_creation.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True}
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url, json.dumps(dict(is_chf=1,
+            response = self._request(account_creation.id,
                                      start_date=str(date_1),
-                                     end_date=str(date_1))),
-                content_type="application/json")
+                                     end_date=str(date_1))
         self.assertEqual(response.status_code, HTTP_200_OK)
         overview_section = response.data["overview"]
         self.assertEqual(overview_section["cost"], cost_1)
         self.assertEqual(overview_section["impressions"], impressions_1)
         self.assertEqual(overview_section["video_views"], views_1)
-
-    def test_cpv_and_cpm_sf_data(self):
-        opportunity = Opportunity.objects.create()
-        total_cost_cpv = (34, 45)
-        total_cost_cpm = (56, 67)
-        ordered_units_cpv = (123, 234)
-        ordered_units_cpm = (1234, 2345)
-        placement_cpv_1 = OpPlacement.objects.create(
-            id=next(int_iterator), opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-            total_cost=total_cost_cpv[0], ordered_units=ordered_units_cpv[0],
-            ordered_rate=1.2)
-        placement_cpv_2 = OpPlacement.objects.create(
-            id=next(int_iterator), opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-            total_cost=total_cost_cpv[1], ordered_units=ordered_units_cpv[1],
-            ordered_rate=1.3)
-        placement_cpm_1 = OpPlacement.objects.create(
-            id=next(int_iterator), opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM,
-            total_cost=total_cost_cpm[0], ordered_units=ordered_units_cpm[0],
-            ordered_rate=1.4)
-        placement_cpm_2 = OpPlacement.objects.create(
-            id=next(int_iterator), opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM,
-            total_cost=total_cost_cpm[1], ordered_units=ordered_units_cpm[1],
-            ordered_rate=1.5)
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=self.request_user)
-        account = Account.objects.create()
-        account_creation = AccountCreation.objects.create(
-            id=1, account=account, owner=self.request_user,
-            is_approved=True)
-        account_creation.refresh_from_db()
-        Campaign.objects.create(id=next(int_iterator),
-                                salesforce_placement=placement_cpm_1,
-                                account=account)
-        Campaign.objects.create(id=next(int_iterator),
-                                salesforce_placement=placement_cpm_2,
-                                account=account)
-        Campaign.objects.create(id=next(int_iterator),
-                                salesforce_placement=placement_cpv_1,
-                                account=account)
-        Campaign.objects.create(id=next(int_iterator),
-                                salesforce_placement=placement_cpv_2,
-                                account=account)
-
-        plan_cpm = sum(total_cost_cpm) / sum(ordered_units_cpm) * 1000
-        plan_cpv = sum(total_cost_cpv) / sum(ordered_units_cpv)
-        url = self._get_url(account_creation.id)
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False}
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["id"], account_creation.id)
-        with self.subTest("CPM"):
-            self.assertIsNotNone(response.data["plan_cpm"])
-            self.assertAlmostEqual(response.data["plan_cpm"], plan_cpm)
-        with self.subTest("CPV"):
-            self.assertIsNotNone(response.data["plan_cpv"])
-            self.assertAlmostEqual(response.data["plan_cpv"], plan_cpv)
 
     def test_dynamic_placement_budget_rates_are_empty(self):
         opportunity = Opportunity.objects.create()
@@ -1074,3 +1065,57 @@ class AccountDetailsAPITestCase(ExtendedAPITestCase):
             self.assertIsNone(response.data["plan_cpm"])
         with self.subTest("CPV"):
             self.assertIsNone(response.data["plan_cpv"])
+
+    def test_dashboard_planned_cpv_and_cpm_are_none(self):
+        self.user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement_cpv = OpPlacement.objects.create(
+            id=1,
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            ordered_units=1000, ordered_rate=1.2, total_cost=30)
+        placement_cpm = OpPlacement.objects.create(
+            id=2,
+            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            ordered_units=1000, ordered_rate=1.3, total_cost=40)
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=self.request_user)
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user,
+            is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(id=1, salesforce_placement=placement_cpm,
+                                account=account)
+        Campaign.objects.create(id=2, salesforce_placement=placement_cpv,
+                                account=account)
+
+        plan_cpm = placement_cpm.total_cost / placement_cpm.ordered_units * 1000
+        plan_cpv = placement_cpv.total_cost / placement_cpv.ordered_units
+        costs_hidden_cases = (True, False)
+        ad_words_rates_cases = (True, False)
+        msg_keys = (
+            ("CPM", "plan_cpm", plan_cpm),
+            ("CPV", "plan_cpv", plan_cpv),
+        )
+        test_cases = product(costs_hidden_cases, ad_words_rates_cases, msg_keys)
+        for cost_hidden, aw_rate, msg_key_value in test_cases:
+            msg, key, expected_value = msg_key_value
+            user_settings = {
+                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: cost_hidden,
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rate,
+                UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            }
+
+            with self.subTest(msg, **user_settings), \
+                 self.patch_user_settings(**user_settings):
+                response = self._request(account_creation.id)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertEqual(response.data["id"], account_creation.id)
+                actual_value = response.data.get(key)
+                if cost_hidden:
+                    self.assertIsNone(actual_value)
+                else:
+                    self.assertIsNotNone(actual_value)
+                    self.assertAlmostEqual(actual_value, expected_value)

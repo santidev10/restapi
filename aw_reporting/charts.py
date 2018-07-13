@@ -77,7 +77,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, **_):
+                 region_ids=None, with_plan=False, always_aw_costs=False, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -107,6 +107,7 @@ class DeliveryChart:
             brands=brands,
             category_ids=category_ids,
             region_ids=region_ids,
+            always_aw_costs=always_aw_costs
         )
 
         self.with_plan = with_plan
@@ -610,7 +611,7 @@ class DeliveryChart:
 
         dashboard_ad_words_rates = registry.user.get_aw_settings() \
             .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-        if not dashboard_ad_words_rates:
+        if not self.params["always_aw_costs"] and not dashboard_ad_words_rates:
             campaign_ref = self._get_campaign_ref(queryset)
             kwargs["sum_cost"] = get_client_cost_aggregation(campaign_ref)
         return queryset.annotate(**kwargs)

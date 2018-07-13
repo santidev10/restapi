@@ -284,7 +284,7 @@ class PerformanceChartAnalyticsTestCase(ExtendedAPITestCase):
                                          dimention=dimension)
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_cost_reflects_to_aw_rates_setting(self):
+    def test_cost_does_not_reflect_to_aw_rates_setting(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
         any_date = date(2018, 1, 1)
@@ -322,11 +322,8 @@ class PerformanceChartAnalyticsTestCase(ExtendedAPITestCase):
             end=None
         )
         self.assertNotAlmostEqual(aw_cost, client_cost)
-        test_cases = (
-            (False, client_cost),
-            (True, aw_cost),
-        )
-        for ad_words_rate, expected_cost in test_cases:
+        test_cases = (False, True)
+        for ad_words_rate in test_cases:
             user_settings = {
                 UserSettingsKey.DASHBOARD_AD_WORDS_RATES: ad_words_rate,
                 UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -344,7 +341,7 @@ class PerformanceChartAnalyticsTestCase(ExtendedAPITestCase):
                 self.assertEqual(len(trend), 1)
                 trend_item = trend[0]
                 self.assertEqual(trend_item["label"], any_date)
-                self.assertAlmostEqual(trend_item["value"], expected_cost)
+                self.assertAlmostEqual(trend_item["value"], aw_cost)
 
 
 class PerformanceChartDashboardTestCase(ExtendedAPITestCase):
