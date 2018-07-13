@@ -1,6 +1,6 @@
 import io
+import json
 from itertools import product
-from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -112,13 +112,9 @@ class AnalyzeExportAnalyticsAPITestCase(AnalyzeExportAPITestCase):
 
 
 class AnalyzeExportDashboardAPITestCase(AnalyzeExportAPITestCase):
-    def _get_url(self, account_creation_id):
-        base_url = super(AnalyzeExportDashboardAPITestCase, self)._get_url(account_creation_id)
-        query_params = dict(is_chf=1)
-        return "?".join([
-            base_url,
-            urlencode(query_params)
-        ])
+    def _request(self, account_creation_id):
+        url = self._get_url(account_creation_id)
+        return self.client.post(url, json.dumps(dict(is_chf=1)), content_type="application/json")
 
     def test_no_demo_data(self):
         user = self.create_test_user()
@@ -129,8 +125,7 @@ class AnalyzeExportDashboardAPITestCase(AnalyzeExportAPITestCase):
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
 
-        url = self._get_url(account_creation.id)
-        response = self.client.post(url)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         f = io.BytesIO(response.content)
         book = load_workbook(f)

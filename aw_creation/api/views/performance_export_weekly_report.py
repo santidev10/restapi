@@ -42,4 +42,5 @@ class PerformanceExportWeeklyReport(APIView):
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
-        return xlsx_response(title, report.get_content())
+        response = xlsx_response(title, report.get_content())
+        return response
