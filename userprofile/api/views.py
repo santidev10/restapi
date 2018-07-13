@@ -1,6 +1,7 @@
 """
 Userprofile api views module
 """
+import hashlib
 from itertools import chain
 
 import requests
@@ -9,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
@@ -75,6 +77,7 @@ class UserAuthApiView(APIView):
         """
         token = request.data.get("token")
         auth_token = request.data.get("auth_token")
+        update_date_of_last_login = True
         if token:
             user = self.get_google_plus_user(token)
         elif auth_token:
@@ -82,11 +85,12 @@ class UserAuthApiView(APIView):
                 user = Token.objects.get(key=auth_token).user
             except Token.DoesNotExist:
                 user = None
+            else:
+                update_date_of_last_login = False
         else:
             serializer = AuthTokenSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.validated_data['user']
-
         if not user:
             return Response(
                 data={"error": ["Unable to authenticate user"
@@ -94,7 +98,8 @@ class UserAuthApiView(APIView):
                 status=HTTP_400_BAD_REQUEST)
 
         Token.objects.get_or_create(user=user)
-        update_last_login(None, user)
+        if update_date_of_last_login:
+            update_last_login(None, user)
         response_data = self.serializer_class(user).data
         return Response(response_data)
 
@@ -229,6 +234,9 @@ class UserPasswordResetApiView(APIView):
                   "Kind regards, Channel Factory Team".format(reset_uri)
         send_html_email(
             subject, email, text_header, message, request.get_host())
+        user.set_password(hashlib.sha1(str(
+                timezone.now().timestamp()).encode()).hexdigest())
+        user.save()
         return Response(status=HTTP_202_ACCEPTED)
 
 
