@@ -261,6 +261,12 @@ class UserPasswordSetApiView(APIView):
             return Response(status=HTTP_406_NOT_ACCEPTABLE)
         user.set_password(serializer.data.get("new_password"))
         user.save()
+        try:
+            token = Token.objects.get(user=user)
+        except Token.DoesNotExist:
+            return Response(status=HTTP_202_ACCEPTED)
+        else:
+            token.delete()
         return Response(status=HTTP_202_ACCEPTED)
 
 
