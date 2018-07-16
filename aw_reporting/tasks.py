@@ -5,11 +5,12 @@ import re
 from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime, timedelta
+from functools import reduce
 
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Count, Case, When, Sum, IntegerField
+from django.db.models import Min, Max, Case, When, Sum, IntegerField
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -17,6 +18,7 @@ from aw_reporting.adwords_reports import parent_performance_report
 from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields, ModelPlusDeNormFields
 from utils.datetime import now_in_default_tz
+from utils.lang import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -1319,29 +1321,27 @@ def recalculate_de_norm_fields(*args, **kwargs):
             sum_statistic_map = {s["id"]: s for s in sum_statistic}
 
             device_data = items.annotate(**_device_annotation())
-            device_data = _map_by_id(device_data)
-
             gender_data = items.annotate(**_gender_annotation(ag_link))
-            gender_data = _map_by_id(gender_data)
-
             age_data = items.annotate(**_age_annotation(ag_link))
-            age_data = _map_by_id(age_data)
-
             parent_data = items.annotate(**_parent_annotation(ag_link))
-            parent_data = _map_by_id(parent_data)
-
             targeting_data = items.annotate(**_targeting_annotation(ag_link))
-            targeting_data = _map_by_id(targeting_data)
+
+            def update_key(aggregator, item, key):
+                current_value = aggregator[key]
+                current_value.update(item)
+                return aggregator
+
+            stats_by_id = reduce(
+                lambda res, i: update_key(res, i, i["id"]),
+                flatten([device_data, gender_data, age_data, parent_data, targeting_data]),
+                defaultdict(dict)
+            )
 
             update = {}
             for i in data:
                 uid = i["id"]
-                genders = gender_data.get(uid, {})
-                ages = age_data.get(uid, {})
-                parents = parent_data.get(uid, {})
                 sum_stats = sum_statistic_map.get(uid, {})
-                device_stats = device_data.get(uid, {})
-                targeting = targeting_data.get(uid, {})
+                stats = stats_by_id[uid]
                 update[uid] = dict(
                     de_norm_fields_are_recalculated=True,
 
@@ -1353,11 +1353,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     video_views=sum_stats.get("sum_video_views") or 0,
                     clicks=sum_stats.get("sum_clicks") or 0,
 
-                    **ages,
-                    **genders,
-                    **parents,
-                    **device_stats,
-                    **targeting,
+                    **stats,
                 )
 
             for uid, updates in update.items():
@@ -1427,19 +1423,4 @@ def _targeting_annotation(ad_group_link):
     return {
         field.field_name: _build_boolean_case(build_ref(ref), False)
         for field, ref in refs_by_fields
-    }
-
-
-def _filter_dict(d, keys_to_exclude):
-    return {
-        key: value
-        for key, value in d.items()
-        if key not in keys_to_exclude
-    }
-
-
-def _map_by_id(items):
-    return {
-        item["id"]: _filter_dict(item, ("id",))
-        for item in items
     }
