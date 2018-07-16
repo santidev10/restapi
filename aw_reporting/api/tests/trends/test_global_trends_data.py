@@ -1,17 +1,21 @@
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
+from django.db.models import Sum
 from django.utils.http import urlencode
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, Account, User, Opportunity, OpPlacement, \
+from aw_reporting.charts import Indicator, Breakdown
+from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic
+from aw_reporting.models import CampaignHourlyStatistic, Account, User, \
+    Opportunity, OpPlacement, \
     SalesForceGoalType, Category
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import patch_settings
+from utils.utils_tests import patch_settings, int_iterator
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
@@ -148,11 +152,11 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         _, account, campaign, ad_group = self._create_test_data(uid, manager)
         yesterday = now_in_default_tz().date() - timedelta(days=1)
         AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group,
-                                        video_views=1, average_position=1)
+                                        video_views=1, average_position=1,
+                                        cost=1)
         return account, campaign
 
     def test_filter_manage_account(self):
-        # self.create_test_user()
         account, _ = self._create_ad_group_statistic("rel")
         self._create_ad_group_statistic("irr")
         manager = account.managers.first()
@@ -168,7 +172,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(account_data['label'], account.name)
 
     def _create_opportunity(self, campaign, **kwargs):
-        uid = kwargs.pop("uid")
+        uid = kwargs.pop("uid", None) or next(int_iterator)
         opportunity = Opportunity.objects.create(id=uid, **kwargs)
         placement = OpPlacement.objects.create(id=uid, opportunity=opportunity)
         campaign.salesforce_placement = placement
@@ -311,3 +315,32 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data), 2)
         response_ids = set([acc["id"] for acc in response.data])
         self.assertEqual(response_ids, {account_1.id, account_2.id})
+
+    def test_aw_rate_settings_does_not_affect_rates(self):
+        """
+        Bug: CHF Trends > "Show real (AdWords) costs on the dashboard"
+            affects data on CHF Trends
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2779
+        """
+        account, campaign = self._create_ad_group_statistic("rel_1")
+        manager = account.managers.first()
+        self._create_opportunity(campaign)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        stats = AdGroupStatistic.objects.all() \
+            .aggregate(views=Sum("video_views"), cost=Sum("cost"))
+        expected_cpv = stats["views"] / stats["cost"]
+        self.assertGreater(expected_cpv, 0)
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
+             self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data[0]["trend"]), 1)
+        item = response.data[0]
+        self.assertIsNotNone(item["average_1d"])
+        self.assertAlmostEqual(item["average_1d"], expected_cpv)
+        self.assertAlmostEqual(item["trend"][0]["value"], expected_cpv)

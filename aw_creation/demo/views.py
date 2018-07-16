@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
+from aw_creation.api.utils import is_dashboard_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
@@ -404,7 +405,7 @@ class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if request.query_params.get("is_chf") == "1"\
+            if request.query_params.get("is_chf") == "1" \
                     and pk != DEMO_ACCOUNT_ID:
                 return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
@@ -511,7 +512,7 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -542,7 +543,7 @@ class PerformanceExportWeeklyReport:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(

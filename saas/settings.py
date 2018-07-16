@@ -48,7 +48,8 @@ PROJECT_APPS = (
     "administration",
     "payments",
     "channel",
-    "email_reports"
+    "email_reports",
+    "audit_tool",
 )
 
 THIRD_PARTY_APPS = (
@@ -297,6 +298,10 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software",
     "yulia.prokudina@sigma.software",
+]
+
+AUDIT_TOOL_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software",
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
