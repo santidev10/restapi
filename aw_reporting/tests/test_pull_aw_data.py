@@ -11,9 +11,10 @@ from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
     AdGroupStatistic, Audience, Ad, ParentStatistic, AgeRangeStatistic, GenderStatistic, ALL_AGE_RANGES, ALL_GENDERS, \
-    ALL_PARENTS, ALL_DEVICES, CampaignStatistic
+    ALL_PARENTS, ALL_DEVICES, CampaignStatistic, AudienceStatistic, YTChannelStatistic, KeywordStatistic, \
+    YTVideoStatistic, RemarkStatistic, RemarkList, Topic, TopicStatistic
 from aw_reporting.tasks import AudienceAWType
-from utils.utils_tests import patch_now, build_csv_byte_stream
+from utils.utils_tests import patch_now, build_csv_byte_stream, int_iterator
 
 
 class PullAWDataTestCase(TransactionTestCase):
@@ -544,6 +545,27 @@ class PullAWDataTestCase(TransactionTestCase):
             CampaignStatistic.objects.create(date=today, campaign=campaign, device_id=device_id)
             AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group, device_id=device_id, average_position=1)
             AdGroupStatistic.objects.create(date=today, ad_group=ad_group, device_id=device_id, average_position=1)
+        audience_1 = Audience.objects.create(id=next(int_iterator))
+        audience_2 = Audience.objects.create(id=next(int_iterator))
+        AudienceStatistic.objects.create(date=yesterday, ad_group=ad_group, audience=audience_1)
+        AudienceStatistic.objects.create(date=yesterday, ad_group=ad_group, audience=audience_2)
+        AudienceStatistic.objects.create(date=today, ad_group=ad_group, audience=audience_2)
+        YTChannelStatistic.objects.create(date=yesterday, ad_group=ad_group, yt_id="")
+        YTChannelStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
+        KeywordStatistic.objects.create(date=yesterday, ad_group=ad_group, keyword="")
+        KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword="")
+        remark_list_1 = RemarkList.objects.create(id=next(int_iterator))
+        remark_list_2 = RemarkList.objects.create(id=next(int_iterator))
+        RemarkStatistic.objects.create(date=yesterday, ad_group=ad_group, remark=remark_list_1)
+        RemarkStatistic.objects.create(date=today, ad_group=ad_group, remark=remark_list_1)
+        RemarkStatistic.objects.create(date=yesterday, ad_group=ad_group, remark=remark_list_2)
+        topic_1 = Topic.objects.create(id=next(int_iterator))
+        topic_2 = Topic.objects.create(id=next(int_iterator))
+        TopicStatistic.objects.create(date=yesterday, ad_group=ad_group, topic=topic_1)
+        TopicStatistic.objects.create(date=yesterday, ad_group=ad_group, topic=topic_2)
+        TopicStatistic.objects.create(date=today, ad_group=ad_group, topic=topic_1)
+        YTVideoStatistic.objects.create(date=yesterday, ad_group=ad_group, yt_id="")
+        YTVideoStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
 
         with patch_now(now):
             call_command("pull_aw_data", start="get_ads", end="get_videos")

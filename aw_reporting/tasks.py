@@ -15,7 +15,7 @@ from django.utils import timezone
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import parent_performance_report
 from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
-from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
+from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields, ModelPlusDeNormFields
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -1330,35 +1330,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
             parent_data = items.annotate(**_parent_annotation(ag_link))
             parent_data = _map_by_id(parent_data)
 
-            audience_data = items.annotate(
-                count=Count("{}audiences__audience_id".format(ag_link)),
-            )
-            audience_data = {e["id"]: e["count"] for e in audience_data}
-
-            keyword_data = items.annotate(
-                count=Count("{}keywords__keyword".format(ag_link)),
-            )
-            keyword_data = {e["id"]: e["count"] for e in keyword_data}
-
-            channel_data = items.annotate(
-                count=Count("{}channel_statistics__id".format(ag_link)),
-            )
-            channel_data = {e["id"]: e["count"] for e in channel_data}
-
-            video_data = items.annotate(
-                count=Count("{}managed_video_statistics__id".format(ag_link)),
-            )
-            video_data = {e["id"]: e["count"] for e in video_data}
-
-            rem_data = items.annotate(
-                count=Count("{}remark_statistic__remark_id".format(ag_link)),
-            )
-            rem_data = {e["id"]: e["count"] for e in rem_data}
-
-            topic_data = items.annotate(
-                count=Count("{}topics__topic_id".format(ag_link)),
-            )
-            topic_data = {e["id"]: e["count"] for e in topic_data}
+            targeting_data = items.annotate(**_targeting_annotation(ag_link))
+            targeting_data = _map_by_id(targeting_data)
 
             update = {}
             for i in data:
@@ -1368,6 +1341,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 parents = parent_data.get(uid, {})
                 sum_stats = sum_statistic_map.get(uid, {})
                 device_stats = device_data.get(uid, {})
+                targeting = targeting_data.get(uid, {})
                 update[uid] = dict(
                     de_norm_fields_are_recalculated=True,
 
@@ -1379,16 +1353,11 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     video_views=sum_stats.get("sum_video_views") or 0,
                     clicks=sum_stats.get("sum_clicks") or 0,
 
-                    has_interests=audience_data.get(uid, False),
-                    has_keywords=keyword_data.get(uid, False),
-                    has_channels=channel_data.get(uid, False),
-                    has_videos=video_data.get(uid, False),
-                    has_remarketing=rem_data.get(uid, False),
-                    has_topics=topic_data.get(uid, False),
                     **ages,
                     **genders,
                     **parents,
                     **device_stats,
+                    **targeting,
                 )
 
             for uid, updates in update.items():
@@ -1443,6 +1412,22 @@ def _device_annotation():
     device_ref = "statistics__device_id"
 
     return _build_group_aggregation_map(device_ref, ALL_DEVICES, ModelDenormalizedFields.DEVICES)
+
+
+def _targeting_annotation(ad_group_link):
+    build_ref = lambda ref: "{}{}__isnull".format(ad_group_link, ref)
+    refs_by_fields = (
+        (ModelPlusDeNormFields.has_interests, "audiences__audience_id"),
+        (ModelPlusDeNormFields.has_channels, "channel_statistics__id"),
+        (ModelPlusDeNormFields.has_keywords, "keywords__keyword"),
+        (ModelPlusDeNormFields.has_remarketing, "remark_statistic__remark_id"),
+        (ModelPlusDeNormFields.has_topics, "topics__topic_id"),
+        (ModelPlusDeNormFields.has_videos, "managed_video_statistics__id"),
+    )
+    return {
+        field.field_name: _build_boolean_case(build_ref(ref), False)
+        for field, ref in refs_by_fields
+    }
 
 
 def _filter_dict(d, keys_to_exclude):
