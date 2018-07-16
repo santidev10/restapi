@@ -37,7 +37,8 @@ from aw_reporting.api.serializers.campaign_list_serializer import \
     CampaignListSerializer
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, AdGroup, \
+from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
+    AdGroup, \
     YTChannelStatistic, \
     YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic, \
     DATE_FORMAT, base_stats_aggregator, campaign_type_str, Campaign, \
@@ -45,7 +46,7 @@ from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, AdGroup,
 from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission, \
     MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
-    UserHasCHFPermission
+    UserHasDashboardPermission, UserHasDashboardOrStaffPermission
 from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
@@ -1236,7 +1237,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1288,7 +1289,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
     def get_filters(self):
         data = self.request.data
@@ -1309,8 +1310,9 @@ class PerformanceChartItemsApiView(APIView):
         filters = {}
         if request.data.get("is_chf") == 1:
             user_settings = self.request.user.get_aw_settings()
-            filters["account__id__in"] = \
-                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+                filters["account__id__in"] = \
+                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
         try:

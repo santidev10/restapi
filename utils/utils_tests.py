@@ -1,5 +1,6 @@
 import csv
 import io
+import itertools
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -38,6 +39,7 @@ class TestUserMixin:
             **self.test_user_data,
         )
         user.set_password(user.password)
+        user.save()
 
         if auth:
             Token.objects.get_or_create(user=user)
@@ -56,17 +58,19 @@ class TestUserMixin:
             user.add_custom_user_group(perm_group)
 
 
-class ExtendedAPITestCase(APITestCase, TestUserMixin):
-    multi_db = True
-
+class APITestUserMixin(TestUserMixin):
     def create_test_user(self, auth=True):
-        user = super(ExtendedAPITestCase, self).create_test_user(auth)
+        user = super(APITestUserMixin, self).create_test_user(auth)
         if Token.objects.filter(user=user).exists():
             self.request_user = user
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
         return user
+
+
+class ExtendedAPITestCase(APITestCase, APITestUserMixin):
+    multi_db = True
 
     def patch_user_settings(self, **kwargs):
         return patch_user_settings(self.request_user, **kwargs)
@@ -133,7 +137,7 @@ class SingleDatabaseApiConnectorPatcher:
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
 
-    def store_ids(self, ids):
+    def store_ids(self, query_params):
         pass
 
 
@@ -234,6 +238,22 @@ def build_csv_byte_stream(headers, rows):
     return stream
 
 
+def get_current_release():
+    import subprocess
+    import re
+    try:
+        branches = subprocess.check_output(["git", "branch", "--merged"]) \
+            .decode("utf-8").split("\n")
+
+        regexp = re.compile(r"release\/([\d.]+)")
+
+        release_branches = filter(lambda b: regexp.search(b), branches)
+        releases = [regexp.search(b).group(1) for b in release_branches]
+        return sorted(releases, reverse=True)[0]
+    except:
+        return "0.0"
+
+
 def generic_test(args_list):
     """
     Generates subtest per each item in the args_list
@@ -251,3 +271,6 @@ def generic_test(args_list):
         return wrapped_test_function
 
     return wrapper
+
+
+int_iterator = itertools.count(1, 1)

@@ -22,9 +22,9 @@ from administration.notifications import send_html_email
 from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
 from userprofile.api.serializers import ContactFormSerializer, \
     ErrorReportSerializer
+from userprofile.api.serializers import UserChangePasswordSerializer
 from userprofile.api.serializers import UserCreateSerializer, UserSerializer, \
     UserSetPasswordSerializer
-from userprofile.api.serializers import UserChangePasswordSerializer
 from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 
@@ -51,11 +51,16 @@ class UserCreateApiView(APIView):
         return Response(response_data, status=HTTP_201_CREATED)
 
     def check_user_segment_access(self, user):
-        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
-        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
-        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
+        channel_segment_email_lists = SegmentChannel.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        video_segment_email_lists = SegmentVideo.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(
+            shared_with__contains=[user.email]).exists()
+        if any([channel_segment_email_lists, video_segment_email_lists,
+                keyword_segment_email_lists]):
             user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
+
 
 class UserAuthApiView(APIView):
     """
@@ -70,6 +75,7 @@ class UserAuthApiView(APIView):
         """
         token = request.data.get("token")
         auth_token = request.data.get("auth_token")
+        update_date_of_last_login = True
         if token:
             user = self.get_google_plus_user(token)
         elif auth_token:
@@ -77,11 +83,12 @@ class UserAuthApiView(APIView):
                 user = Token.objects.get(key=auth_token).user
             except Token.DoesNotExist:
                 user = None
+            else:
+                update_date_of_last_login = False
         else:
             serializer = AuthTokenSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.validated_data['user']
-
         if not user:
             return Response(
                 data={"error": ["Unable to authenticate user"
@@ -89,7 +96,8 @@ class UserAuthApiView(APIView):
                 status=HTTP_400_BAD_REQUEST)
 
         Token.objects.get_or_create(user=user)
-        update_last_login(None, user)
+        if update_date_of_last_login:
+            update_last_login(None, user)
         response_data = self.serializer_class(user).data
         return Response(response_data)
 
@@ -157,13 +165,17 @@ class UserProfileSharedListApiView(APIView):
         response = []
 
         # filter all user segments
-        channel_segment_email_lists = SegmentChannel.objects.filter(owner=user).values_list('shared_with', flat=True)
-        video_segment_email_lists = SegmentVideo.objects.filter(owner=user).values_list('shared_with', flat=True)
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(owner=user).values_list('shared_with', flat=True)
+        channel_segment_email_lists = SegmentChannel.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
+        video_segment_email_lists = SegmentVideo.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
+        keyword_segment_email_lists = SegmentKeyword.objects.filter(
+            owner=user).values_list('shared_with', flat=True)
 
         # build unique emails set
         unique_emails = set()
-        for item in [channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]:
+        for item in [channel_segment_email_lists, video_segment_email_lists,
+                     keyword_segment_email_lists]:
             unique_emails |= set(chain.from_iterable(item))
 
         # collect required user data for each email
@@ -172,7 +184,8 @@ class UserProfileSharedListApiView(APIView):
             try:
                 user = UserProfile.objects.get(email=email)
                 user_data['email'] = user.email
-                user_data['username'] = "{} {}".format(user.first_name, user.last_name)
+                user_data['username'] = "{} {}".format(user.first_name,
+                                                       user.last_name)
                 user_data['first_name'] = user.last_name
                 user_data['last_name'] = user.first_name
                 user_data['registered'] = True
@@ -248,6 +261,12 @@ class UserPasswordSetApiView(APIView):
             return Response(status=HTTP_406_NOT_ACCEPTABLE)
         user.set_password(serializer.data.get("new_password"))
         user.save()
+        try:
+            token = Token.objects.get(user=user)
+        except Token.DoesNotExist:
+            return Response(status=HTTP_202_ACCEPTED)
+        else:
+            token.delete()
         return Response(status=HTTP_202_ACCEPTED)
 
 

@@ -10,6 +10,9 @@ def div_by_100(value):
     return value / 100. if value is not None else ""
 
 
+FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected TV Devices, Non-smart phones etc."
+
+
 class PerformanceWeeklyReport:
 
     def _set_format_options(self):
@@ -149,7 +152,7 @@ class PerformanceWeeklyReport:
         self.workbook = xlsxwriter.Workbook(self.output, {'in_memory': True})
         # clean up account name
         bad_characters = '[]:*?\/'
-        account_name = self.account.name[:31] if self.account else ""
+        account_name = self.account.name[:31] if self.account and self.account.name else ""
         for char in account_name:
             if char in bad_characters:
                 account_name = account_name.replace(char, "")
@@ -600,9 +603,9 @@ class PerformanceWeeklyReport:
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation
+
         annotation_row = [
-            ["*Other includes YouTube accessed by Smart TV's,"
-             " Connected TV Devices, Non-smart phones etc."]
+            [FOOTER_ANNOTATION]
         ]
         self.write_rows(annotation_row, start_row, self.annotation_format)
 
@@ -644,6 +647,8 @@ class PerformanceReport:
             "num_format": "0.00%",
         })
         cell_formats = {
+            8: dict(format=percent_format, fn=div_by_100),
+            9: dict(format=percent_format, fn=div_by_100),
             10: dict(format=percent_format, fn=div_by_100),
             11: dict(format=percent_format, fn=div_by_100),
             12: dict(format=percent_format, fn=div_by_100),

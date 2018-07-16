@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta, date, datetime
 from itertools import product
+from unittest import skipIf
 from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
@@ -19,7 +20,8 @@ from aw_reporting.models.salesforce_constants import \
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
+    get_current_release
 
 logger = logging.getLogger(__name__)
 

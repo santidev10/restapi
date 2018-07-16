@@ -87,15 +87,14 @@ class Query(models.Model):
                 )
             )
 
-        with transaction.atomic():
-            query_obj = cls.objects.create(text=query)
+        query_obj = cls.objects.create(text=query)
 
-            if kws:
-                KeyWord.objects.safe_bulk_create(kws)
-            if interest_relations:
-                interest_relation.objects.bulk_create(interest_relations)
-            if query_relations:
-                query_relation.objects.bulk_create(query_relations)
+        if kws:
+            KeyWord.objects.safe_bulk_create(kws)
+        if interest_relations:
+            interest_relation.objects.bulk_create(interest_relations)
+        if query_relations:
+            query_relation.objects.bulk_create(query_relations)
 
         if update_kws:
             update_keywords_stats.delay(update_kws)

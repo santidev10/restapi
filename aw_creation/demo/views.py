@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
+from aw_creation.api.utils import is_dashboard_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
@@ -13,9 +14,8 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
-
-from userprofile.models import get_default_settings
 from userprofile.models import UserSettingsKey
+from userprofile.models import get_default_settings
 from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
@@ -405,6 +405,9 @@ class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
+            if request.query_params.get("is_chf") == "1" \
+                    and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 account = DemoAccount()
                 campaigns = [
@@ -423,9 +426,7 @@ class PerformanceAccountCampaignsListApiView:
                     for c in account.children
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
+            return original_method(view, request, pk=pk, **kwargs)
         return method
 
 
@@ -461,6 +462,8 @@ class PerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 view.filter_hidden_sections()
                 filters = view.get_filters()
@@ -483,6 +486,9 @@ class PerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(
+                    view, request, pk=pk, dimension=dimension, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
@@ -506,7 +512,7 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -537,7 +543,7 @@ class PerformanceExportWeeklyReport:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(

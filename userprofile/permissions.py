@@ -6,8 +6,10 @@ from django.contrib.contenttypes.models import ContentType
 
 class GlobalPermissionManager(models.Manager):
     def get_queryset(self):
-        return super(GlobalPermissionManager, self). \
-            get_queryset().filter(content_type__model='userprofile')
+        queryset = super(GlobalPermissionManager, self)\
+                   .get_queryset()\
+                   .filter(content_type__model="userprofile")
+        return queryset
 
 
 class GlobalPermission(Permission):
@@ -44,7 +46,8 @@ class PermissionHandler:
         self.user_permissions.remove(permission)
 
     def get_user_groups(self):
-        return self.groups.values_list('name', flat=True)
+        groups = self.groups.values_list('name', flat=True)
+        return groups
 
     def add_custom_user_group(self, group_name):
         try:
@@ -80,53 +83,65 @@ class PermissionHandler:
 
 
 class PermissionGroupNames:
-    HIGHLIGHTS = 'Highlights'
-    RESEARCH = 'Research'
-    SEGMENTS = 'Segments'
-    SEGMENTS_PRE_BAKES = 'Segments - pre-baked segments'
-    MEDIA_BUYING = 'Media buying'
-    AUTH_CHANNELS = 'Auth channels and audience data'
-    TOOLS = 'Tools'
+    HIGHLIGHTS = "Highlights"
+    RESEARCH = "Research"
+    SEGMENTS = "Segments"
+    SEGMENTS_PRE_BAKES = "Segments - pre-baked segments"
+    MEDIA_BUYING = "Media buying"
+    AUTH_CHANNELS = "Auth channels and audience data"
+    TOOLS = "Tools"
+    DASHBOARD = "Dashboard"
 
 
 class Permissions:
     PERMISSION_SETS = (
-        (PermissionGroupNames.HIGHLIGHTS, ("view_highlights", "settings_my_yt_channels")),
-
-        (PermissionGroupNames.RESEARCH,  ("channel_list",
-                                          "channel_filter",
-                                          "channel_details",
-                                          "video_list",
-                                          "video_filter",
-                                          "video_details",
-                                          "keyword_list",
-                                          "keyword_details",
-                                          "keyword_filter",)),
-
-        (PermissionGroupNames.SEGMENTS, ("segment_video_private",
-                                         "segment_channel_private",
-                                         "segment_keyword_private",)),
-
-        (PermissionGroupNames.SEGMENTS_PRE_BAKES, ("segment_video_all",
-                                                   "segment_channel_all",
-                                                   "segment_keyword_all",
-                                                   "view_pre_baked_segments",)),
-
-        (PermissionGroupNames.MEDIA_BUYING, ("view_media_buying",
-                                             "settings_my_aw_accounts",)),
-
-        (PermissionGroupNames.AUTH_CHANNELS, ("channel_audience",
-                                              "channel_aw_performance",
-                                              "video_audience",
-                                              "video_aw_performance",
-                                              )),
-        (PermissionGroupNames.TOOLS, ("view_pacing_report",
-                                      "view_pricing_tool",
-                                      "view_health_check",
-                                      "view_trends",
-                                      "view_health_check",
-                                      "view_dashboard",
-                                      )),
+        (PermissionGroupNames.HIGHLIGHTS, (
+            "view_highlights",
+            "settings_my_yt_channels",
+        )),
+        (PermissionGroupNames.RESEARCH, (
+            "channel_list",
+            "channel_filter",
+            "channel_details",
+            "video_list",
+            "video_filter",
+            "video_details",
+            "keyword_list",
+            "keyword_details",
+            "keyword_filter",
+        )),
+        (PermissionGroupNames.SEGMENTS, (
+            "segment_video_private",
+            "segment_channel_private",
+            "segment_keyword_private",
+        )),
+        (PermissionGroupNames.SEGMENTS_PRE_BAKES, (
+            "segment_video_all",
+            "segment_channel_all",
+            "segment_keyword_all",
+            "view_pre_baked_segments",
+        )),
+        (PermissionGroupNames.MEDIA_BUYING, (
+            "view_media_buying",
+            "settings_my_aw_accounts",
+        )),
+        (PermissionGroupNames.AUTH_CHANNELS, (
+            "channel_audience",
+            "channel_aw_performance",
+            "video_audience",
+            "video_aw_performance",
+        )),
+        (PermissionGroupNames.TOOLS, (
+            "view_pacing_report",
+            "view_pricing_tool",
+            "view_health_check",
+            "view_trends",
+            "view_health_check",
+            "view_dashboard",
+        )),
+        (PermissionGroupNames.DASHBOARD, (
+            "view_dashboard",
+        ))
     )
 
     PERM_LIST = (
@@ -163,9 +178,10 @@ class Permissions:
         # tools section
         "view_pacing_report",
         "view_pricing_tool",
-        "view_health_check",
         "view_trends",
         "view_health_check",
+        "view_dashboard",
+        # dashboard sectipn
         "view_dashboard",
         # settings section
         "settings_my_aw_accounts",

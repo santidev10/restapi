@@ -181,6 +181,8 @@ class UserSerializer(ModelSerializer):
         return obj.has_perm("userprofile.view_media_buying")
 
     def validate_historical_aw_account(self, connection):
+        if connection is None:
+            return connection
         if not self.instance.aw_connections.filter(id=connection.id).exists():
             raise ValidationError(
                 _("Historical account should be listed in user connections"))
