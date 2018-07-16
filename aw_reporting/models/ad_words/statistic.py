@@ -3,7 +3,7 @@ import re
 from django.db import models
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
-from aw_reporting.models.ad_words.constants import VIEW_RATE_STATS
+from aw_reporting.models.ad_words.constants import VIEW_RATE_STATS, AgeRange, Gender, Parent, Device
 from aw_reporting.models.base import BaseModel
 
 
@@ -78,3 +78,35 @@ class ModelPlusDeNormFields(BaseStatisticModel):
 
     class Meta:
         abstract = True
+
+
+def _field_name_dict(pairs):
+    return {key: field.field_name for key, field in pairs}
+
+
+class ModelDenormalizedFields:
+    AGES = _field_name_dict((
+        (AgeRange.UNDETERMINED, ModelPlusDeNormFields.age_undetermined),
+        (AgeRange.AGE_18_24, ModelPlusDeNormFields.age_18_24),
+        (AgeRange.AGE_25_34, ModelPlusDeNormFields.age_25_34),
+        (AgeRange.AGE_35_44, ModelPlusDeNormFields.age_35_44),
+        (AgeRange.AGE_45_54, ModelPlusDeNormFields.age_45_54),
+        (AgeRange.AGE_55_64, ModelPlusDeNormFields.age_55_64),
+        (AgeRange.AGE_65_UP, ModelPlusDeNormFields.age_65),
+    ))
+    GENDERS = _field_name_dict((
+        (Gender.UNDETERMINED, ModelPlusDeNormFields.gender_undetermined),
+        (Gender.MALE, ModelPlusDeNormFields.gender_male),
+        (Gender.FEMALE, ModelPlusDeNormFields.gender_female),
+    ))
+    PARENTS = _field_name_dict((
+        (Parent.UNDETERMINED, ModelPlusDeNormFields.parent_undetermined),
+        (Parent.PARENT, ModelPlusDeNormFields.parent_parent),
+        (Parent.NOT_A_PARENT, ModelPlusDeNormFields.parent_not_parent),
+    ))
+    DEVICES = _field_name_dict((
+        (Device.COMPUTER, ModelPlusDeNormFields.device_computers),
+        (Device.MOBILE, ModelPlusDeNormFields.device_mobile),
+        (Device.TABLET, ModelPlusDeNormFields.device_tablets),
+        (Device.OTHER, ModelPlusDeNormFields.device_other),
+    ))

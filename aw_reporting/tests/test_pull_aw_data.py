@@ -10,7 +10,8 @@ from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS, AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience, Ad, ParentStatistic
+    AdGroupStatistic, Audience, Ad, ParentStatistic, AgeRangeStatistic, GenderStatistic, ALL_AGE_RANGES, ALL_GENDERS, \
+    ALL_PARENTS, ALL_DEVICES, CampaignStatistic
 from aw_reporting.tasks import AudienceAWType
 from utils.utils_tests import patch_now, build_csv_byte_stream
 
@@ -516,3 +517,60 @@ class PullAWDataTestCase(TransactionTestCase):
 
         self.assertEqual(Ad.objects.all().count(), 1)
         self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
+
+    def test_update_set_boolean_fields(self):
+        fields = "age_18_24", "age_25_34", "age_35_44", "age_45_54", "age_55_64", "age_65", "age_undetermined", \
+                 "device_computers", "device_mobile", "device_tablets", "device_other", \
+                 "gender_female", "gender_male", "gender_undetermined", \
+                 "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
+                 "parent_not_parent", "parent_parent", "parent_undetermined"
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        for age_range_id in ALL_AGE_RANGES:
+            AgeRangeStatistic.objects.create(date=yesterday, ad_group=ad_group, age_range_id=age_range_id)
+            AgeRangeStatistic.objects.create(date=now, ad_group=ad_group, age_range_id=age_range_id)
+        for gender_id in ALL_GENDERS:
+            GenderStatistic.objects.create(date=yesterday, ad_group=ad_group, gender_id=gender_id)
+            GenderStatistic.objects.create(date=now, ad_group=ad_group, gender_id=gender_id)
+        for parent_id in ALL_PARENTS:
+            ParentStatistic.objects.create(date=yesterday, ad_group=ad_group, parent_status_id=parent_id)
+            ParentStatistic.objects.create(date=now, ad_group=ad_group, parent_status_id=parent_id)
+        for device_id in ALL_DEVICES:
+            CampaignStatistic.objects.create(date=yesterday, campaign=campaign, device_id=device_id)
+            CampaignStatistic.objects.create(date=today, campaign=campaign, device_id=device_id)
+            AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group, device_id=device_id, average_position=1)
+            AdGroupStatistic.objects.create(date=today, ad_group=ad_group, device_id=device_id, average_position=1)
+
+        with patch_now(now):
+            call_command("pull_aw_data", start="get_ads", end="get_videos")
+
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        for field in fields:
+            self.assertTrue(getattr(campaign, field), "Campaign. {}".format(field))
+            self.assertTrue(getattr(ad_group, field), "Ad Group. {}".format(field))
+
+    def test_update_unset_boolean_fields(self):
+        fields = "age_18_24", "age_25_34", "age_35_44", "age_45_54", "age_55_64", "age_65", "age_undetermined", \
+                 "device_computers", "device_mobile", "device_tablets", "device_other", \
+                 "gender_female", "gender_male", "gender_undetermined", \
+                 "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
+                 "parent_not_parent", "parent_parent", "parent_undetermined"
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        account = self._create_account(now)
+        common_values = {field: True for field in fields}
+        campaign = Campaign.objects.create(id=1, account=account, **common_values)
+        ad_group = AdGroup.objects.create(campaign=campaign, **common_values)
+
+        with patch_now(now):
+            call_command("pull_aw_data", start="get_ads", end="get_videos")
+
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        for field in fields:
+            self.assertFalse(getattr(campaign, field), "Campaign. {}".format(field))
+            self.assertFalse(getattr(ad_group, field), "Ad Group. {}".format(field))

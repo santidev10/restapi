@@ -9,12 +9,13 @@ from datetime import datetime, timedelta
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Count, Case, When, Sum
+from django.db.models import Min, Max, Count, Case, When, Sum, IntegerField
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import parent_performance_report
-from aw_reporting.models import AdGroup, Campaign
+from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
+from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -1308,38 +1309,6 @@ def recalculate_de_norm_fields(*args, **kwargs):
             data = items.annotate(
                 min_date=Min("statistics__date"),
                 max_date=Max("statistics__date"),
-                device_computers=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 0}
-                        ),
-                    ),
-                ),
-                device_mobile=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 1}
-                        ),
-                    ),
-                ),
-                device_tablets=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 2}
-                        ),
-                    ),
-                ),
-                device_other=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 3}
-                        ),
-                    ),
-                ),
             )
             sum_statistic = items.annotate(
                 sum_cost=Sum("statistics__cost"),
@@ -1348,134 +1317,18 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 sum_clicks=Sum("statistics__clicks"),
             )
             sum_statistic_map = {s["id"]: s for s in sum_statistic}
-            gender_data = items.annotate(
-                gender_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                gender_female=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                gender_male=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-            )
-            gender_data = {e["id"]: e for e in gender_data}
 
-            age_data = items.annotate(
-                age_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                age_18_24=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                age_25_34=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-                age_35_44=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 3}
-                        ),
-                    ),
-                ),
-                age_45_54=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 4}
-                        ),
-                    ),
-                ),
-                age_55_64=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 5}
-                        ),
-                    ),
-                ),
-                age_65=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 6}
-                        ),
-                    ),
-                ),
-            )
-            age_data = {e["id"]: e for e in age_data}
+            device_data = items.annotate(**_device_annotation())
+            device_data = _map_by_id(device_data)
 
-            parent_data = items.annotate(
-                parent_parent=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                parent_not_parent=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                parent_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-            )
-            parent_data = {e["id"]: e for e in parent_data}
+            gender_data = items.annotate(**_gender_annotation(ag_link))
+            gender_data = _map_by_id(gender_data)
+
+            age_data = items.annotate(**_age_annotation(ag_link))
+            age_data = _map_by_id(age_data)
+
+            parent_data = items.annotate(**_parent_annotation(ag_link))
+            parent_data = _map_by_id(parent_data)
 
             audience_data = items.annotate(
                 count=Count("{}audiences__audience_id".format(ag_link)),
@@ -1514,6 +1367,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 ages = age_data.get(uid, {})
                 parents = parent_data.get(uid, {})
                 sum_stats = sum_statistic_map.get(uid, {})
+                device_stats = device_data.get(uid, {})
                 update[uid] = dict(
                     de_norm_fields_are_recalculated=True,
 
@@ -1525,35 +1379,16 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     video_views=sum_stats.get("sum_video_views") or 0,
                     clicks=sum_stats.get("sum_clicks") or 0,
 
-                    device_computers=i["device_computers"] > 0,
-                    device_mobile=i["device_mobile"] > 0,
-                    device_tablets=i["device_tablets"] > 0,
-                    device_other=i["device_other"] > 0,
-
-                    gender_male=genders.get("gender_male", False),
-                    gender_female=genders.get("gender_female", False),
-                    gender_undetermined=genders.get("gender_undetermined",
-                                                    False),
-
-                    age_undetermined=ages.get("age_undetermined", False),
-                    age_18_24=ages.get("age_18_24", False),
-                    age_25_34=ages.get("age_25_34", False),
-                    age_35_44=ages.get("age_35_44", False),
-                    age_45_54=ages.get("age_45_54", False),
-                    age_55_64=ages.get("age_55_64", False),
-                    age_65=ages.get("age_65", False),
-
-                    parent_parent=parents.get("parent_parent", False),
-                    parent_not_parent=parents.get("parent_not_parent", False),
-                    parent_undetermined=parents.get("parent_undetermined",
-                                                    False),
-
                     has_interests=audience_data.get(uid, False),
                     has_keywords=keyword_data.get(uid, False),
                     has_channels=channel_data.get(uid, False),
                     has_videos=video_data.get(uid, False),
                     has_remarketing=rem_data.get(uid, False),
                     has_topics=topic_data.get(uid, False),
+                    **ages,
+                    **genders,
+                    **parents,
+                    **device_stats,
                 )
 
             for uid, updates in update.items():
@@ -1569,3 +1404,57 @@ def _reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
             .values_list("campaign_id", flat=True).distinct()
     Campaign.objects.filter(id__in=campaign_ids) \
         .update(de_norm_fields_are_recalculated=False)
+
+
+def _build_boolean_case(ref, value):
+    when = When(**{ref: value},
+                then=1)
+    return Max(Case(when,
+                    default=0,
+                    output_field=IntegerField()))
+
+
+def _build_group_aggregation_map(ref, all_values, fields_map):
+    return {
+        fields_map[value]: _build_boolean_case(ref, value)
+        for value in all_values
+    }
+
+
+def _age_annotation(ad_group_link):
+    age_ref = "{}age_statistics__age_range_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(age_ref, ALL_AGE_RANGES, ModelDenormalizedFields.AGES)
+
+
+def _gender_annotation(ad_group_link):
+    gender_ref = "{}gender_statistics__gender_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(gender_ref, ALL_GENDERS, ModelDenormalizedFields.GENDERS)
+
+
+def _parent_annotation(ad_group_link):
+    parent_ref = "{}parent_statistics__parent_status_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(parent_ref, ALL_PARENTS, ModelDenormalizedFields.PARENTS)
+
+
+def _device_annotation():
+    device_ref = "statistics__device_id"
+
+    return _build_group_aggregation_map(device_ref, ALL_DEVICES, ModelDenormalizedFields.DEVICES)
+
+
+def _filter_dict(d, keys_to_exclude):
+    return {
+        key: value
+        for key, value in d.items()
+        if key not in keys_to_exclude
+    }
+
+
+def _map_by_id(items):
+    return {
+        item["id"]: _filter_dict(item, ("id",))
+        for item in items
+    }
