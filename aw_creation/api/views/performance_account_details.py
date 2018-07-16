@@ -29,6 +29,8 @@ from utils.registry import registry
 class PerformanceAccountDetailsApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
 
+    HAS_STATISTICS_KEY = "has_statistics"
+
     def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
@@ -81,8 +83,11 @@ class PerformanceAccountDetailsApiView(APIView):
             fs["date__gte"] = filters['start_date']
         if filters['end_date']:
             fs["date__lte"] = filters['end_date']
-        data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate)
+
+        queryset = AdGroupStatistic.objects.filter(**fs)
+        has_statistics = queryset.exists()
+        data = queryset.aggregate(**all_stats_aggregate)
+        data[self.HAS_STATISTICS_KEY] = 1 if has_statistics else 0
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
