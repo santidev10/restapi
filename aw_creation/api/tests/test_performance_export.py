@@ -239,13 +239,8 @@ def get_sheet_from_response(response):
 
 def is_summary_empty(sheet):
     summary_row_number = 2
-    quarters_columns_indexes = range(11, 15)
-    other_stats_indexes = range(2, 11)
-    quarters_are_zero = all([sheet[summary_row_number][column].value == 0
-                             for column in quarters_columns_indexes])
-    other_stats_are_empty = all([sheet[summary_row_number][column].value is None
-                                 for column in other_stats_indexes])
-    return quarters_are_zero and other_stats_are_empty
+    values_columns_indexes = range(2, 15)
+    return all([sheet[summary_row_number][column].value is None for column in values_columns_indexes])
 
 
 def is_empty_report(sheet):
