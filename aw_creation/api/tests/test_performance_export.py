@@ -208,7 +208,7 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
@@ -228,7 +228,7 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account_creation.id)
