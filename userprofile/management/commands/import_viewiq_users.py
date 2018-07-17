@@ -66,20 +66,24 @@ class Command(BaseCommand):
                 continue
             related_channels = user_data.pop("related_channels") or []
             access = user_data.pop("access") or []
+            date_joined = datetime.strptime(user_data["date_joined"], "%Y-%m-%d %H:%M:%S")
+            date_joined = date_joined.replace(tzinfo=timezone.utc)
             try:
                 user = get_user_model().objects.get(email=email)
             except get_user_model().DoesNotExist:
                 user_data["password"] = hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest()
                 user_data["first_name"] = user_data["first_name"] or ""
                 user_data["last_name"] = user_data["first_name"] or ""
+                last_login = datetime.strptime(user_data["last_login"], "%Y-%m-%d %H:%M:%S")
+                last_login = last_login.replace(tzinfo=timezone.utc)
+                user_data["last_login"] = last_login
+                user_data["date_joined"] = date_joined
                 user = get_user_model().objects.create(**user_data)
                 user.set_password(user.password)
                 for obj in access:
                     user.add_custom_user_group(obj)
             else:
-                user.date_joined = max(
-                    datetime.strptime(user_data["date_joined"], "%Y-%m-%d").date(),
-                    get_user_model().objects.first().date_joined.date())
+                user.date_joined = min(date_joined, user.date_joined)
             user.google_account_id = self.default_google_id
             user.save()
             for channel_id in related_channels:

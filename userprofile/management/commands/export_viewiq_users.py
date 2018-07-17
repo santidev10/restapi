@@ -86,8 +86,8 @@ class Command(BaseCommand):
                 obj.last_name,
                 self.separation_symbol.join(
                     obj.groups.values_list("name", flat=True)),
-                obj.date_joined.strftime("%Y-%m-%d"),
-                obj.last_login.strftime("%Y-%m-%d"),
+                obj.date_joined.strftime("%Y-%m-%d %H:%M:%S"),
+                obj.last_login.strftime("%Y-%m-%d %H:%M:%S"),
                 self.separation_symbol.join(
                     obj.channels.values_list("channel_id", flat=True)),
             ]
