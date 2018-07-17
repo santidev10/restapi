@@ -11,7 +11,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz, as_datetime
-from utils.lang import flatten
+from utils.lang import flatten, get_all_class_constants
 from utils.registry import registry
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,7 @@ class Indicator:
     COST = "cost"
 
 
-ALL_INDICATORS = sorted([value for name, value in Indicator.__dict__.items()
-                         if not name.startswith("_")])
+ALL_INDICATORS = get_all_class_constants(Indicator)
 
 
 class Dimension:
@@ -55,8 +54,7 @@ class Dimension:
     VIDEO = "video"
 
 
-ALL_DIMENSIONS = sorted([value for name, value in Dimension.__dict__.items()
-                         if not name.startswith("_")])
+ALL_DIMENSIONS = get_all_class_constants(Dimension)
 
 
 class Breakdown:
@@ -491,7 +489,8 @@ class DeliveryChart:
     def get_placements(self):
         queryset = OpPlacement.objects.all()
         filters = {
-            "adwords_campaigns__account_id__in": self.params['accounts']}
+            "adwords_campaigns__account_id__in": self.params['accounts']
+        }
         if self.params['start']:
             filters['end__gte'] = self.params['start']
         if self.params['end']:
