@@ -63,7 +63,9 @@ class AccountDetailsAnalyticsAPITestCase(ExtendedAPITestCase):
 
         "plan_video_views", "delivered_impressions", "plan_impressions",
         "delivered_cost", "delivered_video_views", "plan_cost",
-        "video_clicks"
+        "video_clicks",
+
+        "has_statistics",
     }
 
     detail_keys = {
