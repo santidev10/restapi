@@ -78,7 +78,7 @@ class AnalyzeDetailsApiView(APIView):
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
         data = queryset.aggregate(**all_stats_aggregate)
-        data[self.HAS_STATISTICS_KEY] = 1 if has_statistics else 0
+        data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
