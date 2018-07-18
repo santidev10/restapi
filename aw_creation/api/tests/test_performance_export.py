@@ -20,6 +20,7 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     Audience, Topic, Ad, \
     AWConnectionToUserRelation, AWConnection
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -206,9 +207,12 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
                                                           account=account,
                                                           is_approved=True)
         self.create_stats(account)
-
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1],
+        }
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -223,8 +227,11 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
 
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
-
-        response = self._request(account_creation.id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1],
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_empty_report(sheet))
