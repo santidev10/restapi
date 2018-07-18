@@ -10,7 +10,7 @@ from functools import reduce
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Case, When, Sum, IntegerField
+from django.db.models import Min, Max, Case, Count, When, Sum, IntegerField
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
@@ -1324,7 +1324,6 @@ def recalculate_de_norm_fields(*args, **kwargs):
             gender_data = items.annotate(**_gender_annotation(ag_link))
             age_data = items.annotate(**_age_annotation(ag_link))
             parent_data = items.annotate(**_parent_annotation(ag_link))
-            targeting_data = items.annotate(**_targeting_annotation(ag_link))
 
             def update_key(aggregator, item, key):
                 current_value = aggregator[key]
@@ -1333,9 +1332,40 @@ def recalculate_de_norm_fields(*args, **kwargs):
 
             stats_by_id = reduce(
                 lambda res, i: update_key(res, i, i["id"]),
-                flatten([device_data, gender_data, age_data, parent_data, targeting_data]),
+                flatten([device_data, gender_data, age_data, parent_data]),
                 defaultdict(dict)
             )
+
+            # Targeting data
+            audience_data = items.annotate(
+                count=Count("{}audiences__audience_id".format(ag_link)),
+            )
+            audience_data = {e["id"]: e["count"] for e in audience_data}
+
+            keyword_data = items.annotate(
+                count=Count("{}keywords__keyword".format(ag_link)),
+            )
+            keyword_data = {e["id"]: e["count"] for e in keyword_data}
+
+            channel_data = items.annotate(
+                count=Count("{}channel_statistics__id".format(ag_link)),
+            )
+            channel_data = {e["id"]: e["count"] for e in channel_data}
+
+            video_data = items.annotate(
+                count=Count("{}managed_video_statistics__id".format(ag_link)),
+            )
+            video_data = {e["id"]: e["count"] for e in video_data}
+
+            rem_data = items.annotate(
+                count=Count("{}remark_statistic__remark_id".format(ag_link)),
+            )
+            rem_data = {e["id"]: e["count"] for e in rem_data}
+
+            topic_data = items.annotate(
+                count=Count("{}topics__topic_id".format(ag_link)),
+            )
+            topic_data = {e["id"]: e["count"] for e in topic_data}
 
             update = {}
             for i in data:
@@ -1354,6 +1384,13 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     clicks=sum_stats.get("sum_clicks") or 0,
 
                     **stats,
+
+                    has_interests=bool(audience_data.get(uid)),
+                    has_keywords=bool(keyword_data.get(uid)),
+                    has_channels=bool(channel_data.get(uid)),
+                    has_videos=bool(video_data.get(uid)),
+                    has_remarketing=bool(rem_data.get(uid)),
+                    has_topics=bool(topic_data.get(uid)),
                 )
 
             for uid, updates in update.items():
@@ -1408,19 +1445,3 @@ def _device_annotation():
     device_ref = "statistics__device_id"
 
     return _build_group_aggregation_map(device_ref, ALL_DEVICES, ModelDenormalizedFields.DEVICES)
-
-
-def _targeting_annotation(ad_group_link):
-    build_ref = lambda ref: "{}{}__isnull".format(ad_group_link, ref)
-    refs_by_fields = (
-        (ModelPlusDeNormFields.has_interests, "audiences__audience_id"),
-        (ModelPlusDeNormFields.has_channels, "channel_statistics__id"),
-        (ModelPlusDeNormFields.has_keywords, "keywords__keyword"),
-        (ModelPlusDeNormFields.has_remarketing, "remark_statistic__remark_id"),
-        (ModelPlusDeNormFields.has_topics, "topics__topic_id"),
-        (ModelPlusDeNormFields.has_videos, "managed_video_statistics__id"),
-    )
-    return {
-        field.field_name: _build_boolean_case(build_ref(ref), False)
-        for field, ref in refs_by_fields
-    }
