@@ -103,9 +103,9 @@ class AccountCreationListApiView(ListAPIView):
                     account_creations__owner=request.user).values("id", "name")
         # page: Media Buying / Analytics
         else:
-            read_accounts = Account.user_objects(self.request.user)\
-                .filter(can_manage_clients=False)\
-                .exclude(account_creations__owner=request.user)\
+            read_accounts = Account.user_objects(self.request.user) \
+                .filter(can_manage_clients=False) \
+                .exclude(account_creations__owner=request.user) \
                 .values("id", "name")
 
         bulk_create = [
