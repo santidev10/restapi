@@ -37,6 +37,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.mcc_account = Account.objects.create(can_manage_clients=True)
+        aw_connection = AWConnection.objects.create(refresh_token="token")
+        AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
+        AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
 
     def __set_non_admin_user_with_account(self, account_id):
         user = self.user
@@ -123,6 +127,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
+        account.managers.add(self.mcc_account)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
@@ -217,6 +222,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_sort_by(self):
         account1 = Account.objects.create(id="123", name="")
+        account1.managers.add(self.mcc_account)
         stats = dict(account=account1, name="", impressions=10, video_views=9,
                      clicks=9, cost=9)
         Campaign.objects.create(id=1, **stats)
@@ -226,6 +232,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         )
 
         account2 = Account.objects.create(id="456", name="")
+        account2.managers.add(self.mcc_account)
         stats = dict(account=account2, name="", impressions=3, video_views=2,
                      clicks=1, cost=3)
         Campaign.objects.create(id=3, **stats)
@@ -252,11 +259,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_sort_by_name(self):
         account1 = Account.objects.create(id="123", name="")
+        account1.managers.add(self.mcc_account)
         creation_1 = AccountCreation.objects.create(
             name="First account", owner=self.user, account=account1,
         )
 
         account2 = Account.objects.create(id="456", name="Second account")
+        account2.managers.add(self.mcc_account)
         creation_2 = AccountCreation.objects.create(name="", owner=self.user,
                                                     account=account2,
                                                     is_managed=False,
@@ -296,6 +305,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                                        is_ended=False, is_paused=False,
                                        is_approved=True)
         account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
         AccountCreation.objects.create(
             name="Maximum", owner=self.user, account=account,
         )
@@ -304,6 +314,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             impressions=10, video_views=10, clicks=10, cost=10,
         )
         account = Account.objects.create(id=2, name="")
+        account.managers.add(self.mcc_account)
         AccountCreation.objects.create(
             name="Minimum", owner=self.user, account=account,
         )
@@ -358,18 +369,20 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 self.assertLessEqual(item[metric], max2)
 
     def test_success_status_filter(self):
-        AccountCreation.objects.create(name="Pending", owner=self.user)
-        AccountCreation.objects.create(name="Ended", owner=self.user,
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
+        AccountCreation.objects.create(name="Pending", owner=self.user, account=account)
+        AccountCreation.objects.create(name="Ended", owner=self.user, account=account,
                                        is_ended=True, is_paused=True,
                                        is_approved=True)
-        AccountCreation.objects.create(name="Paused", owner=self.user,
+        AccountCreation.objects.create(name="Paused", owner=self.user, account=account,
                                        is_ended=False, is_paused=True,
                                        is_approved=True)
-        AccountCreation.objects.create(name="Approved", owner=self.user,
+        AccountCreation.objects.create(name="Approved", owner=self.user, account=account,
                                        is_ended=False, is_paused=False,
                                        is_approved=True)
         AccountCreation.objects.create(
-            name="Running", owner=self.user, sync_at=timezone.now(),
+            name="Running", owner=self.user, sync_at=timezone.now(), account=account
         )
         # --
         expected = (
@@ -395,26 +408,29 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 self.assertEqual(i["status"], status)
 
     def test_success_dates_filter(self):
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
         today = datetime(2015, 1, 1).date()
         max_end, min_start = today, today - timedelta(days=10)
-
-        AccountCreation.objects.create(name="Empty", owner=self.user)
-        ac = AccountCreation.objects.create(name="Settings+", owner=self.user)
+        AccountCreation.objects.create(name="Empty", owner=self.user, account=account)
+        ac = AccountCreation.objects.create(name="Settings+", owner=self.user, account=account)
         CampaignCreation.objects.create(name="", account_creation=ac,
                                         start=min_start, end=max_end)
 
-        ac = AccountCreation.objects.create(name="Settings-", owner=self.user)
+        ac = AccountCreation.objects.create(name="Settings-", owner=self.user, account=account)
         CampaignCreation.objects.create(name="", account_creation=ac,
                                         start=min_start,
                                         end=max_end + timedelta(days=1))
 
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=2, name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account,
                                 start_date=min_start, end_date=max_end)
         AccountCreation.objects.create(name="Improted+", owner=self.user,
                                        account=account)
 
-        account = Account.objects.create(id=2, name="")
+        account = Account.objects.create(id=3, name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=2, name="", account=account,
                                 start_date=min_start - timedelta(days=1),
                                 end_date=max_end)
@@ -442,6 +458,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         CampaignCreation.objects.create(name="", account_creation=ac)
 
         account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account)
         managed_acc = AccountCreation.objects.create(name="", owner=self.user,
                                                      account=account,
@@ -454,9 +471,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
-        ac_creation = AccountCreation.objects.create(
-            name="", owner=self.user,
-        )
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
+        ac_creation = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(
             name="", account_creation=ac_creation,
         )
@@ -514,8 +531,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_campaigns_count(self):
-        AccountCreation.objects.create(name="", owner=self.user)
-        ac = AccountCreation.objects.create(name="", owner=self.user)
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
+        AccountCreation.objects.create(name="", owner=self.user, account=account)
+        ac = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=ac, name="")
         # --
         with patch(
@@ -531,6 +550,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_filter_campaigns_count_from_ad_words(self):
         account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account)
         ac = AccountCreation.objects.create(name="", account=account,
                                             owner=self.user, is_managed=False)
@@ -548,11 +568,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_filter_start_date(self):
-        ac = AccountCreation.objects.create(name="", owner=self.user)
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
+        ac = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=ac, name="",
                                         start="2017-01-10")
 
-        ac2 = AccountCreation.objects.create(name="", owner=self.user)
+        ac2 = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=ac2, name="",
                                         start="2017-02-10")
         # --
@@ -568,11 +590,13 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items"][0]["id"], ac.id)
 
     def test_filter_end_date(self):
-        ac = AccountCreation.objects.create(name="", owner=self.user)
+        account = Account.objects.create(id=1, name="")
+        account.managers.add(self.mcc_account)
+        ac = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=ac, name="",
                                         end="2017-01-10")
 
-        ac2 = AccountCreation.objects.create(name="", owner=self.user)
+        ac2 = AccountCreation.objects.create(name="", owner=self.user, account=account)
         CampaignCreation.objects.create(account_creation=ac2, name="",
                                         end="2017-02-10")
         # --
@@ -791,7 +815,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                          DEMO_COST_METHOD)
 
     def test_average_cpm_and_cpv(self):
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
@@ -814,7 +839,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertAlmostEqual(acc_data["average_cpm"], average_cpm)
 
     def test_average_cpm_and_cpv_is_reflect_to_user_settings(self):
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
@@ -848,7 +874,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertIn("average_cpm", acc_data)
 
     def test_ctr_and_ctr_v(self):
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
@@ -869,7 +896,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertAlmostEqual(acc_data["ctr_v"], ctr_v)
 
     def test_cost_aw_cost(self):
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
@@ -889,7 +917,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertAlmostEqual(acc_data["cost"], sum(costs))
 
     def test_cost_always_aw_cost(self):
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
@@ -1097,7 +1126,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
             goal_type_id=SalesForceGoalType.CPV,
             ordered_units=1, total_cost=1)
 
-        account = Account.objects.create()
+        account = Account.objects.create(id=1)
+        account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account)
         account_creation.refresh_from_db()
