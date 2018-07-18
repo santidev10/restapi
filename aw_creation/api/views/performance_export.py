@@ -28,10 +28,8 @@ class PerformanceExportApiView(APIView):
         if request.data.get("is_chf") == 1:
             user_settings = self.request.user.aw_settings
             visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-            if visible_accounts is None:
-                visible_accounts = []
             if not visible_all_accounts:
+                visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
                 filters["account__id__in"] = visible_accounts
         else:
             filters["owner"] = self.request.user
