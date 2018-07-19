@@ -283,7 +283,7 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
         self.assertFalse(is_empty_report(sheet))
 
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][Column.COST].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][PerformanceReportColumn.COST].value, client_cost)
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
 
