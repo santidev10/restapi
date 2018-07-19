@@ -90,8 +90,9 @@ class PerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
+        is_dashboard = self.request.data.get("is_chf") == 1
         aggregation = all_stats_aggregate
-        if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+        if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES) and is_dashboard:
             aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
             **aggregation
@@ -112,6 +113,7 @@ class PerformanceExportApiView(APIView):
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
+                always_aw_costs=not is_dashboard,
                 **filters
             )
             items = chart.get_items()

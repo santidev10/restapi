@@ -177,6 +177,38 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
                 self.assertEqual(cell.number_format, "0.00%",
                                  "Cell[{}:{}]".format(row, column))
 
+    def test_aw_data_in_summary_row(self):
+        user = self.create_test_user()
+        self._hide_demo_data_fallback(user)
+        any_date = date(2018, 1, 1)
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(name="", account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        impressions, views, aw_cost = 1234, 234, 12
+        AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=aw_cost, impressions=impressions, video_views=views)
+        average_cpm = aw_cost / impressions * 1000
+        average_cpv = aw_cost / views
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.COST].value, aw_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][PerformanceReportColumn.COST].value, aw_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
+
     def test_demo_data_fallback(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
