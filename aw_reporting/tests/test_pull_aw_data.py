@@ -636,6 +636,48 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
                                                      max=date_formatted(yesterday)))
 
+    def test_ad_group_update_requests_again_recent_statistic(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        # last_statistic_date = today - timedelta(weeks=54)
+        # request_start_date = last_statistic_date + timedelta(days=1)
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1,
+                                          campaign=campaign,
+                                          de_norm_fields_are_recalculated=True,
+                                          cost=1,
+                                          impressions=1,
+                                          video_views=1,
+                                          clicks=1,
+                                          engagements=1,
+                                          active_view_impressions=1)
+        AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group, average_position=1)
+
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, [])
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
+
+        downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       skip_report_header=True,
+                                                                       skip_column_header=True,
+                                                                       skip_report_summary=True,
+                                                                       include_zero_impressions=False)
+        call = downloader_mock.DownloadReportAsStream.mock_calls[0]
+        payload = call[1][0]
+        selector = payload["selector"]
+        self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
+        self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
+                                                     max=date_formatted(yesterday)))
+
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
