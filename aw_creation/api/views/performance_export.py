@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
+from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import PerformanceReport
@@ -38,7 +39,7 @@ class PerformanceExportApiView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data_generator = partial(self.get_export_data, item)
+        data_generator = partial(self.get_export_data, item, self.request.user)
         return self.build_response(item.name, data_generator)
 
     tabs = (
@@ -68,7 +69,7 @@ class PerformanceExportApiView(APIView):
         )
         return filters
 
-    def get_export_data(self, item):
+    def get_export_data(self, item, user):
         filters = self.get_filters()
         data = dict(name=item.name)
 
@@ -84,8 +85,11 @@ class PerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
+        aggregation = all_stats_aggregate
+        if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+            aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
+            **aggregation
         )
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)

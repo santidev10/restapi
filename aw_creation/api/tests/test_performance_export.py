@@ -1,6 +1,6 @@
 import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from itertools import product, chain
 from unittest.mock import patch
 
@@ -11,6 +11,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
 from aw_reporting.api.constants import DashboardRequest
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GenderStatistic, AgeRangeStatistic, \
@@ -18,10 +19,10 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     YTChannelStatistic, TopicStatistic, \
     KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
     Audience, Topic, Ad, \
-    AWConnectionToUserRelation, AWConnection
+    AWConnectionToUserRelation, AWConnection, Opportunity, OpPlacement, SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, int_iterator
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
@@ -236,6 +237,54 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_empty_report(sheet))
 
+    def test_sf_data_in_summary_row(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
+                                               goal_type_id=SalesForceGoalType.CPM)
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        impressions, views, aw_cost = 1234, 234, 12
+        AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=aw_cost, impressions=impressions, video_views=views)
+        client_cost = get_client_cost(
+            goal_type_id=placement.goal_type_id,
+            dynamic_placement=placement.dynamic_placement,
+            placement_type=placement.placement_type,
+            ordered_rate=placement.ordered_rate,
+            impressions=impressions,
+            video_views=views,
+            aw_cost=aw_cost,
+            total_cost=placement.total_cost,
+            tech_fee=placement.tech_fee,
+            start=any_date,
+            end=any_date
+        )
+        self.assertGreater(client_cost, 0)
+        average_cpm = client_cost / impressions * 1000
+        average_cpv = client_cost / views
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.COST].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.AVERAGE_CPM].value, average_cpm)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.AVERAGE_CPV].value, average_cpv)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
@@ -244,10 +293,25 @@ def get_sheet_from_response(response):
     return book.worksheets[single_sheet_index]
 
 
+SUMMARY_ROW_NUMBER = 2
+
+
+class Column:
+    IMPRESSIONS = 2
+    VIEWS = 3
+    COST = 4
+    AVERAGE_CPM = 5
+    AVERAGE_CPV = 6
+    CLICKS = 7
+    CTR_I = 8
+    CTR_V = 9
+    VIEW_RATE = 10
+    QUARTERS = range(11, 15)
+
+
 def is_summary_empty(sheet):
-    summary_row_number = 2
     values_columns_indexes = range(2, 15)
-    return all([sheet[summary_row_number][column].value is None for column in values_columns_indexes])
+    return all([sheet[SUMMARY_ROW_NUMBER][column].value is None for column in values_columns_indexes])
 
 
 def is_empty_report(sheet):
