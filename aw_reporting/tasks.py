@@ -4,7 +4,7 @@ import logging
 import re
 from collections import defaultdict
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import reduce
 
 import pytz
@@ -16,11 +16,13 @@ from django.utils import timezone
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import parent_performance_report
 from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
-from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields, ModelPlusDeNormFields
+from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
 
 logger = logging.getLogger(__name__)
+
+MIN_FETCH_DATE = date(2012, 1, 1)
 
 
 #  helpers --
@@ -317,7 +319,8 @@ def get_ad_groups_and_stats(client, account, today=None):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
         SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
-    today = today or timezone.now().date()
+    today = today or now_in_default_tz().date()
+    yesterday = today - timedelta(days=1)
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -326,8 +329,9 @@ def get_ad_groups_and_stats(client, account, today=None):
     min_date, max_date = get_account_border_dates(account)
 
     # we update ad groups and daily stats only if there have been changes
-    dates = (max_date + timedelta(days=1), today) \
-        if max_date else None
+    dates = (max_date + timedelta(days=1), yesterday) \
+        if max_date \
+        else (MIN_FETCH_DATE, yesterday)
     report = ad_group_performance_report(
         client, dates=dates)
 
