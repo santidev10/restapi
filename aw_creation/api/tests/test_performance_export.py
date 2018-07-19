@@ -192,6 +192,40 @@ class PerformanceExportAnalyticsAPITestCase(PerformanceExportAPITestCase):
         response = self._request(account_creation.id)
         self.assert_demo_data(response)
 
+    def test_ignores_hide_costs(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
+                                               goal_type_id=SalesForceGoalType.CPM)
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=1, impressions=1, video_views=1)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        header_row_number = 1
+        headers = tuple(cell.value for cell in sheet[header_row_number])
+        expected_headers = (None, "Name", "Impressions", "Views", "Cost", "Average cpm", "Average cpv", "Clicks",
+                            "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
+        self.assertEqual(headers, expected_headers)
+        row_lengths = [len(row) for row in sheet.rows]
+        self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
+
 
 class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
     def _request(self, account_creation_id, **kwargs):
