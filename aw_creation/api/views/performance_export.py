@@ -91,6 +91,8 @@ class PerformanceExportApiView(APIView):
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
             **aggregation
         )
+        qs = AdGroupStatistic.objects.filter(**fs)
+
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)
         dict_add_calculated_stats(stats)
