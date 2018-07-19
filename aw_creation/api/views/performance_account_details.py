@@ -125,7 +125,7 @@ class PerformanceAccountDetailsApiView(APIView):
     def _filter_costs(self, data):
         user = registry.user
         if user.get_aw_settings() \
-                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
+                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) and self.request.data.get("is_chf") == 1:
             hidden_values = "cost", "delivered_cost", "plan_cost", "average_cpm", "average_cpv"
             for key in hidden_values:
                 data.pop(key, None)
