@@ -11,7 +11,7 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceReport
+from aw_reporting.excel_reports import PerformanceReport, PerformanceReportColumn
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     DATE_FORMAT, AdGroupStatistic, dict_norm_base_stats, \
     dict_add_calculated_stats
@@ -40,19 +40,24 @@ class PerformanceExportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         data_generator = partial(self.get_export_data, item, self.request.user)
-        return self.build_response(item.name, data_generator)
+        return self.build_response(item.name, data_generator, self.request.user)
 
     tabs = (
         "device", "gender", "age", "topic", "interest", "remarketing",
         "keyword", "location", "creative", "ad", "channel", "video",
     )
 
-    def build_response(self, account_name, data_generator):
+    def build_response(self, account_name, data_generator, user):
         title = "{title}-analyze-{timestamp}".format(
             title=re.sub(r"\W", account_name, "-"),
             timestamp=datetime.now().strftime("%Y%m%d"),
         )
-        xls_report = PerformanceReport()
+        hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
+        columns_to_hide = [PerformanceReportColumn.COST, PerformanceReportColumn.AVERAGE_CPM,
+                           PerformanceReportColumn.AVERAGE_CPV] \
+            if hide_costs \
+            else []
+        xls_report = PerformanceReport(columns_to_hide=columns_to_hide)
         return xlsx_response(title, xls_report.generate(data_generator))
 
     def get_filters(self):
@@ -91,7 +96,6 @@ class PerformanceExportApiView(APIView):
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
             **aggregation
         )
-        qs = AdGroupStatistic.objects.filter(**fs)
 
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)

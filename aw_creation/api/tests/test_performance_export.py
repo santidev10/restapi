@@ -13,6 +13,7 @@ from aw_creation.models import AccountCreation
 from aw_reporting.api.constants import DashboardRequest
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.excel_reports import PerformanceReportColumn, PerformanceReport
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     GenderStatistic, AgeRangeStatistic, \
     AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, \
@@ -281,10 +282,46 @@ class PerformanceExportDashboardAPITestCase(PerformanceExportAPITestCase):
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
 
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.COST].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.COST].value, client_cost)
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][Column.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.AVERAGE_CPM].value, average_cpm)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][Column.AVERAGE_CPV].value, average_cpv)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
+
+    def test_hide_costs(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        total_columns_count = len(PerformanceReport.columns)
+        user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
+                                               goal_type_id=SalesForceGoalType.CPM)
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=1, impressions=1, video_views=1)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        header_row_number = 1
+        headers = tuple(cell.value for cell in sheet[header_row_number])
+        expected_headers = (None, "Name", "Impressions", "Views", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
+                            "25%", "50%", "75%", "100%")
+        self.assertEqual(headers, expected_headers)
+        row_lengths = [len(row) for row in sheet.rows]
+        self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
+        self.assertEqual(len(PerformanceReport.columns), total_columns_count)
 
 
 def get_sheet_from_response(response):
@@ -295,19 +332,6 @@ def get_sheet_from_response(response):
 
 
 SUMMARY_ROW_NUMBER = 2
-
-
-class Column:
-    IMPRESSIONS = 2
-    VIEWS = 3
-    COST = 4
-    AVERAGE_CPM = 5
-    AVERAGE_CPV = 6
-    CLICKS = 7
-    CTR_I = 8
-    CTR_V = 9
-    VIEW_RATE = 10
-    QUARTERS = range(11, 15)
 
 
 def is_summary_empty(sheet):
