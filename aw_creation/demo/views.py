@@ -532,7 +532,7 @@ class PerformanceExportApiView:
                         for data in items:
                             yield {**{"tab": dimension}, **data}
 
-                return view.build_response(account.name, data_generator)
+                return view.build_response(account.name, data_generator, request.user)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 

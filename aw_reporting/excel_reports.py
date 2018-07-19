@@ -610,6 +610,19 @@ class PerformanceWeeklyReport:
         self.write_rows(annotation_row, start_row, self.annotation_format)
 
 
+class PerformanceReportColumn:
+    IMPRESSIONS = 2
+    VIEWS = 3
+    COST = 4
+    AVERAGE_CPM = 5
+    AVERAGE_CPV = 6
+    CLICKS = 7
+    CTR_I = 8
+    CTR_V = 9
+    VIEW_RATE = 10
+    QUARTERS = range(11, 15)
+
+
 class PerformanceReport:
     columns = (
         ("tab", ""),
@@ -628,13 +641,26 @@ class PerformanceReport:
         ("video75rate", "75%"),
         ("video100rate", "100%"),
     )
-    column_names = dict(columns)
-
-    column_keys = tuple(key for key, _ in columns)
 
     columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
 
+    def __init__(self, columns_to_hide=None):
+        self._exclude_columns(columns_to_hide or [])
+
+    @property
+    def column_names(self):
+        return dict(self.columns)
+
+    @property
+    def column_keys(self):
+        return tuple(key for key, _ in self.columns)
+
+    def _exclude_columns(self, columns_to_hide):
+        self.columns = [column for i, column in enumerate(self.columns) if i not in columns_to_hide]
+        self.columns_width = [width for i, width in enumerate(self.columns_width) if i not in columns_to_hide]
+
     def generate(self, data_generator):
+
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet()
