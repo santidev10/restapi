@@ -2,6 +2,7 @@
 BaseSegment models module
 """
 import logging
+from itertools import chain
 
 from celery.task import task
 from django.conf import settings
@@ -138,9 +139,19 @@ class BaseSegment(Timestampable):
     def duplicate(self, owner):
         exclude_fields = ['updated_at', 'id', 'created_at', 'owner_id',
                           'related', 'shared_with']
-        segment_data = {f: getattr(self, f) for f in
-                        self._meta.get_all_field_names() if
-                        f not in exclude_fields}
+        # todo: refactor
+        fields = list(set(chain.from_iterable(
+            (field.name, field.attname) if hasattr(field, 'attname') else (field.name,)
+            for field in self._meta.get_fields()
+            # For complete backwards compatibility, you may want to exclude
+            # GenericForeignKey from the results.
+            if not (field.many_to_one and field.related_model is None)
+        )))
+        segment_data = {
+            f: getattr(self, f)
+            for f in fields
+            if f not in exclude_fields
+        }
         segment_data['title'] = '{} (copy)'.format(self.title)
         segment_data['owner'] = owner
         segment_data['category'] = 'private'
