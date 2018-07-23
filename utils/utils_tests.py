@@ -9,6 +9,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
+from django.test import override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -210,20 +211,7 @@ class SettingDoesNotExist:
     pass
 
 
-@contextmanager
-def patch_settings(**kwargs):
-    from django.conf import settings
-    old_settings = []
-    for key, new_value in kwargs.items():
-        old_value = getattr(settings, key, SettingDoesNotExist)
-        old_settings.append((key, old_value))
-        setattr(settings, key, new_value)
-    yield
-    for key, old_value in old_settings:
-        if old_value is SettingDoesNotExist:
-            delattr(settings, key)
-        else:
-            setattr(settings, key, old_value)
+patch_settings = override_settings
 
 
 def build_csv_byte_stream(headers, rows):
@@ -260,6 +248,7 @@ def generic_test(args_list):
     :param args_list: (msg: str, args: List, kwargs: Dict)
     :return:
     """
+
     def wrapper(fn):
         def wrapped_test_function(self):
             for msg, args, kwargs in args_list:
