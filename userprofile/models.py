@@ -1,18 +1,64 @@
 """
 Userprofile models module
 """
+import logging
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
-    UserManager, Permission, Group
-from django.contrib.contenttypes.models import ContentType
+    UserManager
 from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
+from django.db.models import SET_NULL
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
+
+logger = logging.getLogger(__name__)
+
+
+class UserSettingsKey:
+    DASHBOARD_CAMPAIGNS_SEGMENTED = "dashboard_campaigns_segmented"
+    DASHBOARD_AD_WORDS_RATES = "dashboard_ad_words_rates"
+    DEMO_ACCOUNT_VISIBLE = "demo_account_visible"
+    HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
+    DASHBOARD_COSTS_ARE_HIDDEN = "dashboard_costs_are_hidden"
+    SHOW_CONVERSIONS = "show_conversions"
+    VISIBLE_ACCOUNTS = "visible_accounts"
+    VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
+    HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
+    GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
+
+
+def get_default_settings():
+    return {
+        UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
+        UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        UserSettingsKey.HIDE_REMARKETING: False,
+        UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
+        UserSettingsKey.SHOW_CONVERSIONS: False,
+        UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+        UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
+        UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+    }
+
+
+class UserProfileManager(UserManager):
+    def get_by_natural_key(self, username):
+        case_insensitive_username_field = '{}__iexact'.format(
+            self.model.USERNAME_FIELD)
+        return self.get(**{case_insensitive_username_field: username})
+
+
+class LowercaseEmailField(models.EmailField):
+    def get_prep_value(self, value):
+        value = super(LowercaseEmailField, self).get_prep_value(value)
+        return value.lower() if isinstance(value, str) else value
 
 
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
@@ -49,7 +95,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
 
     # extra fields and updated fields
-    email = models.EmailField(_('email address'), unique=True)
+    email = LowercaseEmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     profile_image_url = models.URLField(null=True, blank=True)
@@ -68,27 +114,18 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     # permission fields
     features_available = models.CharField(max_length=100, default="",
                                           blank=True)
-    is_verified = models.BooleanField(default=False)
-    is_influencer = models.BooleanField(default=False)
     is_tos_signed = models.BooleanField(default=True)
     is_comparison_tool_available = models.BooleanField(default=False)
 
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
-    aw_settings = JSONField(default={
-        'dashboard_campaigns_segmented': False,
-        'dashboard_ad_words_rates': False,
-        'demo_account_visible': False,
-        'dashboard_remarketing_tab_is_hidden': False,
-        'dashboard_costs_are_hidden': False,
-        'show_conversions': False,
-        'visible_accounts': [],
-        'hidden_campaign_types': {},
-        'global_account_visibility': False,
-        'global_trends_accounts': [],
-    })
+    aw_settings = JSONField(default=get_default_settings)
+    historical_aw_account = models.ForeignKey(AWConnectionToUserRelation,
+                                              null=True, default=None,
+                                              related_name="user_aw_historical",
+                                              on_delete=SET_NULL)
 
-    objects = UserManager()
+    objects = UserProfileManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -119,6 +156,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         Returns the short name for the user
         """
         return self.first_name
+
+    def get_aw_settings(self):
+        settings = dict(**self.aw_settings)
+        for default_settings_key, default_settings_value in get_default_settings().items():
+            if default_settings_key not in settings:
+                settings[default_settings_key] = default_settings_value
+        return settings
 
     def email_user(self, subject, message, from_email=None, **kwargs):
         """

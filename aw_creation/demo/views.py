@@ -1,12 +1,12 @@
 import json
 from datetime import datetime
 
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
+from aw_creation.api.utils import is_dashboard_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
@@ -14,6 +14,9 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
+from userprofile.models import UserSettingsKey
+from userprofile.models import get_default_settings
+from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
@@ -26,9 +29,18 @@ class AccountCreationListApiView:
         def method(view, request, **kwargs):
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
+                user = request.user
+                user_settings = user.aw_settings \
+                    if hasattr(user, "aw_settings") \
+                    else get_default_settings()
+                demo_account_visible = user_settings.get(
+                    UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
+                    False
+                )
                 demo = DemoAccount()
                 filters = request.query_params
-                if demo.account_passes_filters(filters):
+                if demo_account_visible and \
+                        demo.account_passes_filters(filters):
                     response.data['items'].insert(0, demo.header_data)
                     response.data['items_count'] += 1
             return response
@@ -393,6 +405,9 @@ class PerformanceAccountCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
+            if request.query_params.get("is_chf") == "1" \
+                    and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 account = DemoAccount()
                 campaigns = [
@@ -411,9 +426,7 @@ class PerformanceAccountCampaignsListApiView:
                     for c in account.children
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
+            return original_method(view, request, pk=pk, **kwargs)
         return method
 
 
@@ -421,8 +434,9 @@ class PerformanceAccountDetailsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if request.data.get("is_chf") != 1\
-                    and (pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk)):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
 
                 account = DemoAccount()
@@ -435,7 +449,6 @@ class PerformanceAccountDetailsApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 data['overview'] = account.overview
-
                 if pk != DEMO_ACCOUNT_ID:
                     original_data = original_method(view, request, pk=pk, **kwargs).data
                     for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
@@ -449,7 +462,10 @@ class PerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                view.filter_hidden_sections()
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -470,6 +486,9 @@ class PerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
+            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
+                return original_method(
+                    view, request, pk=pk, dimension=dimension, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
@@ -493,7 +512,7 @@ class PerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -504,18 +523,16 @@ class PerformanceExportApiView:
 
                 def data_generator():
                     data = account.details
-                    yield view.column_names
-                    yield ['Summary'] + [data.get(n)
-                                         for n in view.column_keys]
+                    yield {**{"tab": "Summary"}, **data}
+
                     for dimension in view.tabs:
                         filters['dimension'] = dimension
                         charts_obj = DemoChart(account, filters)
-                        items = charts_obj.chart_items
-                        for data in items['items']:
-                            yield [dimension.capitalize()] + \
-                                  [data[n] for n in view.column_keys]
+                        items = charts_obj.chart_items["items"]
+                        for data in items:
+                            yield {**{"tab": dimension}, **data}
 
-                return view.stream_response(account.name, data_generator)
+                return view.build_response(account.name, data_generator)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
@@ -526,7 +543,7 @@ class PerformanceExportWeeklyReport:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
@@ -534,19 +551,11 @@ class PerformanceExportWeeklyReport:
                 )
                 report = DemoAnalyzeWeeklyReport(account)
 
-                response = HttpResponse(
-                    report.get_content(),
-                    content_type='application/vnd.openxmlformats-'
-                                 'officedocument.spreadsheetml.sheet'
+                title = "Channel Factory {} Weekly Report {}".format(
+                    account.name,
+                    datetime.now().date().strftime("%m.%d.%y")
                 )
-                response[
-                    'Content-Disposition'
-                ] = 'attachment; filename="Channel Factory {} Weekly ' \
-                    'Report {}.xlsx"'.format(
-                        account.name,
-                        datetime.now().date().strftime("%m.%d.%y")
-                )
-                return response
+                return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
@@ -641,6 +650,7 @@ class PerformanceTargetingReportAPIView:
                                 i["targeting"] = "{}s".format(dimension.capitalize())
                                 i["campaign"] = dict(id=campaign.id, name=campaign.name, status=campaign.status)
                                 i["ad_group"] = dict(id=ad_group.id, name=ad_group.name)
+                                i["video_clicks"] = 100
                             result.extend(items)
 
                 return result

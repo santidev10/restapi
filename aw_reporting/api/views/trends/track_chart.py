@@ -13,3 +13,8 @@ class TrackChartApiView(BaseTrackChartApiView):
         return Account.user_objects(request.user).filter(
             can_manage_clients=False,
         )
+
+    def get_filters(self):
+        filters = super(TrackChartApiView, self).get_filters()
+        filters["with_plan"] = False
+        return filters

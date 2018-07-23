@@ -7,22 +7,28 @@ from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from userprofile.models import UserSettingsKey
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
     details_keys = {
         "id", "name", "account", "status", "start", "end", "is_managed",
         "is_changed", "weekly_chart", "thumbnail",
-        "video_views", "cost", "video_view_rate", "ctr_v", "impressions",
+        "video_views", "cost", "video_view_rate", "impressions",
         "clicks",
         "ad_count", "channel_count", "video_count", "interest_count",
         "topic_count", "keyword_count",
         "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand"
+        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
+        "ctr", "ctr_v", "plan_cpm", "plan_cpv"
     }
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.mcc_account = Account.objects.create(can_manage_clients=True)
+        aw_connection = AWConnection.objects.create(refresh_token="token")
+        AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
+        AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
 
     def test_fail_post(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
@@ -31,6 +37,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         ac_creation = AccountCreation.objects.create(
             name="This is a visible account on Performance list", owner=self.user, account=account,
@@ -61,9 +68,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'current_page',
             }
         )
-        self.assertEqual(response.data['items_count'], 2)
-        self.assertEqual(len(response.data['items']), 2)
-        item = response.data['items'][1]
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(len(response.data['items']), 1)
+        item = response.data['items'][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -72,6 +79,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_filter_campaign_count(self):
         account = Account.objects.create(id="123", name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         Campaign.objects.create(id=2, name="", account=account, cost=200)
         ac_creation = AccountCreation.objects.create(
@@ -93,14 +101,18 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 response = self.client.get("{}?max_campaigns_count=2".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 2)
-        item = response.data['items'][1]
+        self.assertEqual(len(response.data['items']), 1)
+        item = response.data['items'][0]
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -124,8 +136,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_from_aw(self):
         account_1 = Account.objects.create(id=1)
-        account_2 = Account.objects.create(id=2
-                                           )
+        account_1.managers.add(self.mcc_account)
+        account_2 = Account.objects.create(id=2)
+        account_2.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, account=account_1, cost=1)
         aw_account = AccountCreation.objects.create(name="From AdWords", owner=self.user, is_managed=False,
                                                     account=account_1)

@@ -11,9 +11,9 @@ from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
     Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
 from aw_reporting.tasks import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, patch_now, \
-    patch_instance_settings
+from utils.utils_tests import ExtendedAPITestCase, patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):
@@ -725,9 +725,13 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(ad_group=ad_group_2, date=stats_date,
                                         cost=1, impressions=1,
                                         average_position=1)
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
+        }
 
         with patch_now(stats_date), \
-             patch_instance_settings(visible_accounts=[]):
+             self.patch_user_settings(**user_settings):
             response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -768,7 +772,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                         average_position=1)
 
         with patch_now(stats_date), \
-             patch_instance_settings(visible_accounts=[]):
+             self.patch_user_settings(visible_accounts=[]):
             response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -901,7 +905,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                 salesforce_placement=placement_4,
                                 start_date=start, end_date=end)
 
-        with patch_now(now), patch_instance_settings(visible_accounts=[]):
+        with patch_now(now), self.patch_user_settings(visible_accounts=[]):
             response = self._request(start=str(start), end=str(end))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -965,8 +969,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
-        common_data = dict(start=start, end=start)
-        placement_data = dict(total_cost=123, ordered_units=9999, **common_data)
+        campaign_data = dict(start_date=start, end_date=start)
+        placement_data = dict(total_cost=123, ordered_units=9999,
+                              start=start, end=start)
 
         placement_1 = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -975,9 +980,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             id=2, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             **placement_data)
         Campaign.objects.create(id=1, salesforce_placement=placement_1,
-                                **common_data)
+                                **campaign_data)
         Campaign.objects.create(id=2, salesforce_placement=placement_2,
-                                **common_data)
+                                **campaign_data)
 
         with patch_now(today):
             response = self._request(
@@ -996,8 +1001,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
-        common_data = dict(start=start, end=start)
-        placement_data = dict(total_cost=123, ordered_units=9999, **common_data)
+        campaign_data = dict(start_date=start, end_date=start)
+        placement_data = dict(total_cost=123, ordered_units=9999,
+                              start=start, end=start)
 
         placement_1 = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -1007,10 +1013,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             **placement_data)
         campaign_1 = Campaign.objects.create(id=1,
                                              salesforce_placement=placement_1,
-                                             **common_data)
+                                             **campaign_data)
         campaign_2 = Campaign.objects.create(id=2,
                                              salesforce_placement=placement_2,
-                                             **common_data)
+                                             **campaign_data)
 
         with patch_now(today):
             response = self._request(
@@ -1029,8 +1035,9 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(id=1)
         opportunity.refresh_from_db()
 
-        common_data = dict(start=start, end=start)
-        placement_data = dict(total_cost=123, ordered_units=9999, **common_data)
+        campaign_data = dict(start_date=start, end_date=start)
+        placement_data = dict(total_cost=123, ordered_units=9999,
+                              start=start, end=start)
 
         placement_1 = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -1040,17 +1047,17 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
             **placement_data)
         campaign_1 = Campaign.objects.create(id=1,
                                              salesforce_placement=placement_1,
-                                             **common_data)
+                                             **campaign_data)
         campaign_2 = Campaign.objects.create(id=2,
                                              salesforce_placement=placement_1,
-                                             **common_data)
+                                             **campaign_data)
 
         campaign_3 = Campaign.objects.create(id=3,
                                              salesforce_placement=placement_2,
-                                             **common_data)
+                                             **campaign_data)
         campaign_4 = Campaign.objects.create(id=4,
                                              salesforce_placement=placement_2,
-                                             **common_data)
+                                             **campaign_data)
 
         with patch_now(today):
             response = self._request(

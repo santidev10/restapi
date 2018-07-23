@@ -4,6 +4,8 @@ import os
 import yaml
 from django.conf import settings
 
+from aw_reporting.models import CampaignTypeId
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,29 +82,6 @@ class YAMLSettings(FileSettings):
         return yaml.dump(data, stream, default_flow_style=False)
 
 
-class InstanceSettingsKey:
-    HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
-    VISIBLE_ACCOUNTS = "visible_accounts"
-    GLOBAL_TRENDS_ACCOUNTS = "global_trends_accounts"
-
-
-class InstanceSettings(YAMLSettings):
-    data = {
-        'dashboard_campaigns_segmented': False,
-        'dashboard_ad_words_rates': False,
-        'demo_account_visible': False,
-        InstanceSettingsKey.HIDE_REMARKETING: False,
-        'dashboard_costs_are_hidden': False,
-        'show_conversions': False,
-        InstanceSettingsKey.VISIBLE_ACCOUNTS: [],
-        'hidden_campaign_types': {},
-        'global_account_visibility': False,
-        InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [],
-    }
-
-    file_name = "instance"
-
-
 class AdwordsAccountSettings:
     AVAILABLE_KEYS = (
         'dashboard_campaigns_segmented',
@@ -112,9 +91,10 @@ class AdwordsAccountSettings:
         'dashboard_costs_are_hidden',
         'show_conversions',
         'global_account_visibility',
+        'visible_all_accounts',
     )
-    CAMPAIGN_TYPES = ('display',
-                      'video',
-                      'search',
-                      'shopping',
-                      'multi_channel',)
+    CAMPAIGN_TYPES = (CampaignTypeId.DISPLAY,
+                      CampaignTypeId.MULTI_CHANNEL,
+                      CampaignTypeId.SEARCH,
+                      CampaignTypeId.SHOPPING,
+                      CampaignTypeId.VIDEO)

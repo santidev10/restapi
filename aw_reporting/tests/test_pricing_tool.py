@@ -6,10 +6,13 @@ from aw_reporting.models import Opportunity, Campaign, AdGroup, \
     CampaignStatistic, AdGroupStatistic, OpPlacement, Category
 from aw_reporting.tasks import recalculate_de_norm_fields
 from aw_reporting.tools.pricing_tool import PricingTool
+from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 
 
 class PricingToolTestCase(TestCase):
+    def setUp(self):
+        self.user = UserProfile.objects.create()
 
     def test_quarts_to_dates_1(self):
         today = datetime(2017, 4, 1)
@@ -86,7 +89,7 @@ class PricingToolTestCase(TestCase):
 
         campaign = Campaign.objects.create(
             salesforce_placement=placement,
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
         )
         ad_group = AdGroup.objects.create(
             id="1", name="", campaign=campaign, video_views=1
@@ -154,7 +157,7 @@ class PricingToolTestCase(TestCase):
         Opportunity.objects.create(id="3", name="", brand=None)
 
         campaign = Campaign.objects.create(
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
             salesforce_placement=placement,
         )
         ad_group = AdGroup.objects.create(id="1", name="", campaign=campaign,
@@ -184,7 +187,7 @@ class PricingToolTestCase(TestCase):
         placement = OpPlacement.objects.create(id="1", name="",
                                                opportunity=opportunity)
         campaign = Campaign.objects.create(
-            id="1", name="", start=q1_2015,
+            id="1", name="", start_date=q1_2015,
             salesforce_placement=placement,
         )
         ad_group = AdGroup.objects.create(id="1", name="", campaign=campaign,

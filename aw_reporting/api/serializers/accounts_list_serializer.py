@@ -6,9 +6,9 @@ from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.api.serializers.fields import StatField
-from aw_reporting.models import Campaign, Account, ConcatAggregate, \
-    base_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
+from aw_reporting.models import Campaign, Account, base_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
     AdGroupStatistic
+from utils.db.aggregators import ConcatAggregate
 
 
 class AccountsListSerializer(ModelSerializer):
@@ -84,7 +84,7 @@ class AccountsListSerializer(ModelSerializer):
                 )
             for i in data:
                 dict_norm_base_stats(i)
-                dict_calculate_stats(i)
+                dict_add_calculated_stats(i)
                 self.stats[i["account_id"]] = i
 
             # data for weekly charts

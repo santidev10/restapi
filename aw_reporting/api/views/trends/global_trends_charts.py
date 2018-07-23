@@ -13,5 +13,6 @@ class GlobalTrendsChartsApiView(BaseTrackChartApiView):
 
         return dict(
             **filters,
-            **global_filters
+            **global_filters,
+            with_plan=True,
         )

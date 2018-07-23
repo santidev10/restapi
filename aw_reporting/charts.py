@@ -1,15 +1,18 @@
 from collections import defaultdict
-from datetime import timedelta
+from datetime import timedelta, datetime
 
-from django.db.models import FloatField, Avg, F
+from django.db.models import FloatField, Avg, Min, Sum, Case, When, F
 from django.db.models.sql.query import get_field_names_from_opts
 
+from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz, as_datetime
-from utils.lang import flatten
+from utils.lang import flatten, get_all_class_constants
+from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +33,28 @@ class Indicator:
     IMPRESSIONS = "impressions"
     VIEWS = "video_views"
     CLICKS = "clicks"
-    COSTS = "cost"
+    COST = "cost"
+
+
+ALL_INDICATORS = get_all_class_constants(Indicator)
+
+
+class Dimension:
+    AD_GROUPS = "ad"
+    AGE = "age"
+    CHANNEL = "channel"
+    CREATIVE = "creative"
+    DEVICE = "device"
+    GENDER = "gender"
+    INTEREST = "interest"
+    KEYWORD = "keyword"
+    LOCATION = "location"
+    REMARKETING = "remarketing"
+    TOPIC = "topic"
+    VIDEO = "video"
+
+
+ALL_DIMENSIONS = get_all_class_constants(Dimension)
 
 
 class Breakdown:
@@ -39,7 +63,7 @@ class Breakdown:
 
 
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
-                           Indicator.VIEWS, Indicator.COSTS)
+                           Indicator.VIEWS, Indicator.COST)
 
 
 class DeliveryChart:
@@ -51,7 +75,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, **_):
+                 region_ids=None, with_plan=False, always_aw_costs=False, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -81,7 +105,10 @@ class DeliveryChart:
             brands=brands,
             category_ids=category_ids,
             region_ids=region_ids,
+            always_aw_costs=always_aw_costs
         )
+
+        self.with_plan = with_plan
 
         if additional_chart is None:
             additional_chart = bool(dimension)
@@ -113,15 +140,17 @@ class DeliveryChart:
                     **chart_type_kwargs
                 )
             ]
-            planned_data = self._get_planned_data()
-            if planned_data is not None:
-                charts.append(dict(
-                    id=TrendId.PLANNED,
-                    title="",
-                    data=[planned_data],
-                    additional_chart=False,
-                    additional_chart_type="bar"
-                ))
+
+            if self.with_plan:
+                planned_data = self._get_planned_data()
+                if planned_data is not None:
+                    charts.append(dict(
+                        id=TrendId.PLANNED,
+                        title="",
+                        data=[planned_data],
+                        additional_chart=False,
+                        additional_chart_type="bar"
+                    ))
 
         return charts
 
@@ -173,7 +202,7 @@ class DeliveryChart:
         total_days = (placement["end"] - placement["start"]).days + 1
         if indicator in (Indicator.IMPRESSIONS, Indicator.VIEWS):
             return placement["ordered_units"] / total_days,
-        if indicator == Indicator.COSTS:
+        if indicator == Indicator.COST:
             return placement["total_cost"] / total_days,
         if indicator == Indicator.CPV:
             return placement["total_cost"], placement["ordered_units"]
@@ -229,13 +258,13 @@ class DeliveryChart:
             for i in range(total_days)
         ]
         value = sum([r.get('value') for r in trend]) if trend else None
-        average = value / total_days if value is not None and total_days else 0
+        value = value / total_days if value is not None and total_days else 0
         breakdown = self.params['breakdown']
         if breakdown == Breakdown.HOURLY:
             trend = flatten([self._extend_to_day(i) for i in trend])
         return dict(
             value=value,
-            average=average,
+            average=value,
             trend=trend,
             label="Planned"
         )
@@ -266,7 +295,6 @@ class DeliveryChart:
         values_func = self.get_values_func()
         chart_items = []
 
-        #
         for label, items in items_by_label.items():
             results = []
             summaries = defaultdict(float)
@@ -377,7 +405,7 @@ class DeliveryChart:
                     else:
                         response['summary'][n] += v
 
-            dict_calculate_stats(stat)
+            dict_add_calculated_stats(stat)
             dict_quartiles_to_rates(stat)
             del stat['video_impressions']
 
@@ -390,7 +418,7 @@ class DeliveryChart:
                 stat
             )
 
-        dict_calculate_stats(response['summary'])
+        dict_add_calculated_stats(response['summary'])
         if 'video_impressions' in response['summary']:
             del response['summary']['video_impressions']
         if average_positions:
@@ -404,7 +432,23 @@ class DeliveryChart:
             key=lambda i: i[top_by] if i[top_by] else 0,
             reverse=True,
         )
+        response["items"] = self._serialize_items(response["items"])
         return response
+
+    def _serialize_items(self, items):
+        return [self._serialize_item(item) for item in items]
+
+    def _serialize_item(self, item):
+        allowed_keys = {
+            "all_conversions", "average_cpm", "average_cpv",
+            "average_position", "clicks", "conversions", "cost", "ctr",
+            "ctr_v", "duration", "id", "impressions", "name", "status",
+            "thumbnail", "video100rate", "video25rate", "video50rate",
+            "video75rate", "video_clicks", "video_view_rate", "video_views",
+            "view_through"
+        }
+        return {key: value for key, value in item.items()
+                if key in allowed_keys}
 
     def get_external_cost(self, stat):
         external_rates = self.params['external_rates']
@@ -444,7 +488,9 @@ class DeliveryChart:
 
     def get_placements(self):
         queryset = OpPlacement.objects.all()
-        filters = {"adwords_campaigns__account_id__in": self.params['accounts']}
+        filters = {
+            "adwords_campaigns__account_id__in": self.params['accounts']
+        }
         if self.params['start']:
             filters['end__gte'] = self.params['start']
         if self.params['end']:
@@ -507,13 +553,16 @@ class DeliveryChart:
             filters['video_views__gt'] = 0
 
         if self.params["am_ids"] is not None:
-            filters["%s__account_manager_id__in" % opp_link] = self.params["am_ids"]
+            filters["%s__account_manager_id__in" % opp_link] = self.params[
+                "am_ids"]
 
         if self.params["ad_ops_ids"] is not None:
-            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params["ad_ops_ids"]
+            filters["%s__ad_ops_manager_id__in" % opp_link] = self.params[
+                "ad_ops_ids"]
 
         if self.params["sales_ids"] is not None:
-            filters["%s__sales_manager_id__in" % opp_link] = self.params["sales_ids"]
+            filters["%s__sales_manager_id__in" % opp_link] = self.params[
+                "sales_ids"]
 
         if self.params["brands"] is not None:
             filters["%s__brand__in" % opp_link] = self.params["brands"]
@@ -524,7 +573,8 @@ class DeliveryChart:
                 self.params["goal_type_ids"]
 
         if self.params["category_ids"] is not None:
-            filters["%s__category_id__in" % opp_link] = self.params["category_ids"]
+            filters["%s__category_id__in" % opp_link] = self.params[
+                "category_ids"]
 
         if self.params["region_ids"] is not None:
             filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
@@ -535,18 +585,19 @@ class DeliveryChart:
         return queryset
 
     def add_annotate(self, queryset):
-        if not self.params['date']:
+        if not self.params["date"]:
             kwargs = dict(**all_stats_aggregate)
             if queryset.model is AdStatistic:
-                kwargs['average_position'] = Avg(
+                kwargs["average_position"] = Avg(
                     Case(
                         When(
                             average_position__gt=0,
-                            then=F('average_position'),
+                            then=F("average_position"),
                         ),
                         output_field=FloatField(),
                     )
                 )
+
         else:
             kwargs = {}
             fields = self.get_fields()
@@ -556,7 +607,27 @@ class DeliveryChart:
                     kwargs["sum_%s" % v] = Sum(v)
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
+
+        dashboard_ad_words_rates = registry.user.get_aw_settings() \
+            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        if not self.params["always_aw_costs"] and not dashboard_ad_words_rates:
+            campaign_ref = self._get_campaign_ref(queryset)
+            kwargs["sum_cost"] = get_client_cost_aggregation(campaign_ref)
         return queryset.annotate(**kwargs)
+
+    def _get_campaign_ref(self, queryset):
+        model = queryset.model
+        if model is CampaignHourlyStatistic:
+            return "campaign"
+        if model is AdStatistic:
+            return "ad__ad_group__campaign"
+        if model in (AgeRangeStatistic, AdGroupStatistic, GenderStatistic,
+                     TopicStatistic, CityStatistic, KeywordStatistic,
+                     RemarkStatistic, VideoCreativeStatistic,
+                     AudienceStatistic, YTChannelStatistic, YTVideoStatistic):
+            return "ad_group__campaign"
+        logger.error("Undefined model %s", model)
+        raise NotImplementedError
 
     @staticmethod
     def fill_missed_dates(init_data):
@@ -591,7 +662,7 @@ class DeliveryChart:
 
         if indicator in CALCULATED_STATS:
             info = CALCULATED_STATS[indicator]
-            fields = info['dependencies']
+            fields = info['args']
 
         elif indicator in SUM_STATS:
             fields = (indicator,)
@@ -601,7 +672,7 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == Indicator.COSTS:
+        if self.params['indicator'] == Indicator.COST:
             return 'cost'
         return 'impressions'
 
@@ -733,7 +804,7 @@ class DeliveryChart:
 
         return result
 
-    def _get_video_data(self, **kwargs):
+    def _get_video_data(self, **_):
         raw_stats = self.get_top_data(
             YTVideoStatistic.objects.all(),
             'yt_id'
@@ -797,8 +868,7 @@ class DeliveryChart:
         ids = set(s['audience_id'] for s in raw_stats)
         labels = {
             c['id']: c['name']
-            for c in Audience.objects.filter(
-            pk__in=ids).values('id', 'name')
+            for c in Audience.objects.filter(pk__in=ids).values('id', 'name')
         }
         result = defaultdict(list)
         for item in raw_stats:

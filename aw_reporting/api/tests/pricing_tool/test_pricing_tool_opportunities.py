@@ -12,10 +12,10 @@ from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     VideoCreative, VideoCreativeStatistic, Devices, Genders, AgeRanges, \
     Flight, GeoTargeting
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
-    patch_instance_settings
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
 class PricingToolTestCase(APITestCase):
@@ -2267,7 +2267,9 @@ class PricingToolTestCase(APITestCase):
         _, campaign = self._create_opportunity_campaign("1")
         campaign.account = Account.objects.create(id="1")
         campaign.save()
-        with patch_instance_settings(visible_accounts=[]):
+        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+                         UserSettingsKey.VISIBLE_ACCOUNTS: []}
+        with self.patch_user_settings(**user_settings):
             response = self._request()
 
         self.assertEqual(len(response.data["items"]), 0)
@@ -2277,7 +2279,7 @@ class PricingToolTestCase(APITestCase):
         placement = OpPlacement.objects.create(id="1", opportunity=opportunity)
         campaign = Campaign.objects.create(
             id="1", salesforce_placement=placement, account=None)
-        with patch_instance_settings(visible_accounts=[]):
+        with self.patch_user_settings(visible_accounts=[]):
             response = self._request()
 
         self.assertEqual(len(response.data["items"]), 1)
@@ -2295,9 +2297,13 @@ class PricingToolTestCase(APITestCase):
         account_2 = Account.objects.create(id="2", name="")
         Campaign.objects.create(
             id="2", account=account_2, salesforce_placement=placement)
-        with patch_instance_settings(visible_accounts=[account_1.id]):
+        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        with self.patch_user_settings(**user_settings):
             response = self._request()
 
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
         campaign_ids = [c["id"] for c in response.data["items"][0]["campaigns"]]
         self.assertEqual(campaign_ids, [campaign_1.id])
 
@@ -2320,7 +2326,10 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          video_views_100_quartile=20,
                                          impressions=100)
-        with patch_instance_settings(visible_accounts=[account_1.id]):
+
+        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        with self.patch_user_settings(**user_settings):
             response = self._request(min_video100rate=10,
                                      max_video100rate=30)
 
@@ -2341,7 +2350,9 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          video_views=2,
                                          impressions=10)
-        with patch_instance_settings(visible_accounts=[account_1.id]):
+        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        with self.patch_user_settings(**user_settings):
             response = self._request(min_video_view_rate=10,
                                      max_video_view_rate=30)
 
@@ -3011,6 +3022,20 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         opp_data = response.data["items"][0]
         self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
+    def test_empty_product(self):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        AdGroup.objects.create(id=1, campaign=campaign, type="")
+        test_type = "test-type"
+        AdGroup.objects.create(id=2, campaign=campaign, type=test_type)
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["products"], [test_type])
 
 
 def generate_campaign_statistic(

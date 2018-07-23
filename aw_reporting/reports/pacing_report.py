@@ -10,11 +10,10 @@ from aw_reporting.calculations.margin import get_days_run_and_total_days, \
     get_margin_from_flights
 from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
     get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_calculate_stats, Opportunity, Campaign, CampaignStatistic, get_margin
+    dict_add_calculated_stats, Opportunity, Campaign, CampaignStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
     DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
-from aw_reporting.settings import InstanceSettings
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
 
@@ -366,6 +365,7 @@ class PacingReport:
         plan_impressions = plan_video_views = None
         impressions = video_views = cpm_cost = cpv_cost = 0
         sum_total_cost = sum_delivery = sum_spent_cost = 0
+        current_cost_limit = 0
 
         for f in flights:
             goal_type_id = f["placement__goal_type_id"]
@@ -408,6 +408,8 @@ class PacingReport:
             elif goal_type_id == SalesForceGoalType.HARD_COST:
                 sum_spent_cost += aw_cost
             sum_total_cost += total_cost
+            if f["start"] <= self.today:
+                current_cost_limit += total_cost
         result = dict(
             plan_impressions=plan_impressions,
             plan_video_views=plan_video_views,
@@ -415,6 +417,7 @@ class PacingReport:
             plan_cpm=cpm_cost / impressions * 1000 if impressions else None,
             cost=sum_spent_cost,
             plan_cost=sum_total_cost,
+            current_cost_limit=current_cost_limit
         )
         return result
 
@@ -461,7 +464,6 @@ class PacingReport:
             margin_quality = 0
             margin_direction = 1
 
-        # pacing=((.8, .9), (1.1, 1.2)),
         low, high = self.borders['pacing']
         pacing = report["pacing"]
         if pacing is None or high[0] >= pacing >= low[1]:
@@ -493,7 +495,6 @@ class PacingReport:
                 ctr_quality = 1
 
         report.update(
-            margin=margin,
             margin_quality=margin_quality,
             margin_direction=margin_direction,
             pacing_quality=pacing_quality,
@@ -587,7 +588,7 @@ class PacingReport:
 
             o["pacing"] = self.get_pacing_from_flights(flights)
             o["margin"] = self.get_margin_from_flights(flights, o["cost"],
-                                                       o["plan_cost"])
+                                                       o["current_cost_limit"])
 
             o['thumbnail'] = thumbnails.get(o['ad_ops_manager__email'])
 
@@ -618,9 +619,9 @@ class PacingReport:
 
     def get_opportunities_queryset(self, get):
         if not isinstance(get, QueryDict):
-            qget = QueryDict("", mutable=True)
-            qget.update(get)
-            get = qget
+            query_dict_get = QueryDict("", mutable=True)
+            query_dict_get.update(get)
+            get = query_dict_get
 
         queryset = Opportunity.objects.filter(probability=100)
 
@@ -669,12 +670,7 @@ class PacingReport:
         apex_deal = get.get("apex_deal")
         if apex_deal is not None and apex_deal.isdigit():
             queryset = queryset.filter(apex_deal=bool(int(apex_deal)))
-        instance_settings = InstanceSettings()
-        if instance_settings.get('global_account_visibility'):
-            visible_ids = instance_settings.get('visible_accounts')
-            queryset = queryset.filter(
-                placements__adwords_campaigns__account_id__in=visible_ids
-            )
+
         return queryset.order_by("name", "id").distinct()
 
     def get_period_dates(self, period, custom_start, custom_end):
@@ -747,7 +743,7 @@ class PacingReport:
     # ## OPPORTUNITIES ## #
 
     # ## PLACEMENTS ## #
-    def prepare_hard_cost_placement_data(self, placement_dict_data):
+    def prepare_hard_cost_placement_data(self, placement_dict_data, flights):
         """
         :param placement_dict_data: dict
         """
@@ -757,17 +753,24 @@ class PacingReport:
             plan_cmp=None, plan_cpv=None, plan_impressions=None,
             plan_video_views=None, video_view_rate=None,
             video_view_rate_quality=None, video_views=None)
-        hardcost_placement_flights = Flight.objects.filter(
+        hard_cost_placement_flights = Flight.objects.filter(
             placement_id=placement_dict_data["id"])
-        flights_cost_data = hardcost_placement_flights.aggregate(
+        flights_cost_data = hard_cost_placement_flights.aggregate(
             total_client_cost=Sum("total_cost"),
+            current_cost_limit=Sum(Case(When(start__lte=self.today,
+                                             then="total_cost"),
+                                        output_field=FloatField(),
+                                        default=0)),
             our_cost=Sum("cost"))
         our_cost = flights_cost_data["our_cost"]
-        total_client_cost = flights_cost_data["total_client_cost"]
-        placement_dict_data.update(cost=our_cost, plan_cost=total_client_cost)
+        total_client_cost = flights_cost_data["total_client_cost"] or 0
+        placement_dict_data.update()
         border = self.borders["margin"]
-        margin = get_margin(plan_cost=total_client_cost, cost=our_cost,
-                            client_cost=total_client_cost)
+        current_cost_limit = flights_cost_data["current_cost_limit"]
+
+        margin = self.get_margin_from_flights(flights, our_cost,
+                                              current_cost_limit)
+
         if margin >= border[0]:
             margin_quality = 2
             margin_direction = 0
@@ -778,7 +781,10 @@ class PacingReport:
             margin_quality = 0
             margin_direction = 1
         placement_dict_data.update(
-            margin=margin, margin_quality=margin_quality,
+            cost=our_cost,
+            plan_cost=total_client_cost,
+            margin=margin,
+            margin_quality=margin_quality,
             margin_direction=margin_direction)
 
     def get_placements(self, opportunity):
@@ -807,11 +813,10 @@ class PacingReport:
                 is_upcoming=p["start"] > self.today if p["start"] else None,
                 tech_fee=float(p["tech_fee"]) if p["tech_fee"] else None
             )
-            if goal_type_id == SalesForceGoalType.HARD_COST:
-                self.prepare_hard_cost_placement_data(p)
-                continue
-
             flights = all_flights[p["id"]]
+            if goal_type_id == SalesForceGoalType.HARD_COST:
+                self.prepare_hard_cost_placement_data(p, flights)
+                continue
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             p.update(delivery_stats)
@@ -821,7 +826,7 @@ class PacingReport:
 
             p["pacing"] = self.get_pacing_from_flights(flights)
             p["margin"] = self.get_margin_from_flights(flights, p["cost"],
-                                                       p["plan_cost"])
+                                                       p["current_cost_limit"])
 
             self.add_calculated_fields(p)
             del p["ordered_units"]
@@ -875,7 +880,7 @@ class PacingReport:
             flight["pacing"] = self.get_pacing_from_flights(f_data)
             flight["margin"] = self.get_margin_from_flights(f_data,
                                                             flight["cost"],
-                                                            flight["plan_cost"])
+                                                            flight["current_cost_limit"])
 
             # chart data
             before_yesterday_stats = all_aw_before_yesterday_stats.get(f['id'],
@@ -930,7 +935,7 @@ class PacingReport:
 
             c["pacing"] = self.get_pacing_from_flights(flights_data, **kwargs)
             c["margin"] = self.get_margin_from_flights(flights_data, c["cost"],
-                                                       c["plan_cost"],
+                                                       c["current_cost_limit"],
                                                        **kwargs)
 
             chart_data = get_chart_data(flights=flights_data, today=self.today,
@@ -978,16 +983,6 @@ def get_today_goal(goal_items, delivered_items, end, today):
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
                    allocation_ko=1, campaign_id=None):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
-    # if not flights:
-    #     goal_type_id = None
-    # else:
-    #     goal_types = list(
-    #         set(f["placement__goal_type_id"] for f in flights))
-    #     assert len(
-    #         goal_types) == 1, "We must have a chart set for every goal type"
-    #     goal_type_id = goal_types[0]
-
-    #
     sum_today_budget = yesterday_cost = 0
     targeting = dict(impressions=0, video_views=0, clicks=0,
                      video_impressions=0)
@@ -1024,7 +1019,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     yesterday_units = yesterday_views + yesterday_impressions
     sum_today_units = today_goal_views + today_goal_impressions
 
-    dict_calculate_stats(targeting)
+    dict_add_calculated_stats(targeting)
     del targeting['average_cpv'], targeting['average_cpm']
 
     goal_types = set(f["placement__goal_type_id"] for f in flights)
@@ -1053,17 +1048,10 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     )
 
     if before_yesterday_stats is not None:
-        before_yesterday_views = before_yesterday_impressions = 0
-        if goal_type_id == SalesForceGoalType.CPV:
-            before_yesterday_views = before_yesterday_stats.get(
-                "sum_video_views")
-        elif goal_type_id == SalesForceGoalType.CPM:
-            before_yesterday_impressions = before_yesterday_stats.get(
-                "sum_impressions")
-        before_yesterday_units = before_yesterday_impressions \
-                                 or before_yesterday_views
+        before_yesterday_views = before_yesterday_stats.get("sum_video_views")
+        before_yesterday_impressions = before_yesterday_stats.get(
+            "sum_impressions")
         data.update(
-            before_yesterday_delivered=before_yesterday_units,
             before_yesterday_budget=before_yesterday_stats.get('sum_cost'),
             before_yesterday_delivered_views=before_yesterday_views,
             before_yesterday_delivered_impressions=before_yesterday_impressions,
@@ -1281,48 +1269,6 @@ def get_delivery_field_name(flight_dict):
         return "impressions"
     elif flight_dict["placement__goal_type_id"] == SalesForceGoalType.CPV:
         return "video_views"
-
-
-def get_budget_to_spend_from_added_fee_flight(f, today, allocation_ko=1,
-                                              campaign_id=None):
-    stats_total = get_stats_from_flight(f, campaign_id=campaign_id)
-    stats_3days = get_stats_from_flight(
-        f, start=today - timedelta(days=3),
-        end=today - timedelta(days=1),
-        campaign_id=campaign_id,
-    )
-    #
-    tech_fee = float(f["placement__tech_fee"] or 0)
-    if f["placement__goal_type_id"] == SalesForceGoalType.CPV:
-        video_views = stats_total["video_views"] or 0
-        total_cpv = DefaultRate.CPV \
-            if stats_total["cpv"] is None \
-            else stats_total["cpv"]
-        three_days_cpv = DefaultRate.CPV \
-            if stats_3days["cpv"] is None \
-            else stats_3days["cpv"]
-        client_cost_spent = video_views * (total_cpv + tech_fee)
-        spend_kf = three_days_cpv / (three_days_cpv + tech_fee)
-
-    elif f["placement__goal_type_id"] == SalesForceGoalType.CPM:
-        impressions = stats_total["impressions"] or 0
-        total_cpm = DefaultRate.CPM \
-            if stats_total["cpm"] is None \
-            else stats_total["cpm"]
-        three_days_cpm = DefaultRate.CPM if stats_3days[
-                                                "cpm"] is None else \
-            stats_3days["cpm"]
-        client_cost_spent = impressions / 1000 * (total_cpm + tech_fee)
-        spend_kf = three_days_cpm / (three_days_cpm + tech_fee)
-    else:
-        client_cost_spent = spend_kf = 0
-
-    total_cost = f["total_cost"] or 0
-    client_cost_remaining = total_cost * allocation_ko \
-                            - client_cost_spent
-    spent_remaining = spend_kf * client_cost_remaining
-    spent = stats_total["cost"] or 0
-    return spent + spent_remaining
 
 
 def populate_daily_delivery_data(flights):

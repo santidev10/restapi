@@ -8,7 +8,7 @@ from django.db.models import Q, F, Min, When, Case, Max, \
 from django.db.models.expressions import CombinedExpression, Value, Combinable
 
 from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
-    TopicStatistic, Topic, Audience, Campaign, Opportunity, AgeRanges, \
+    TopicStatistic, Topic, Audience, Opportunity, AgeRanges, \
     Genders, SalesForceGoalType, Devices
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
@@ -41,19 +41,19 @@ class PricingToolFiltering:
 
         start, end = cls._get_default_dates()
 
-        brands = Opportunity.objects.filter(
-            placements__adwords_campaigns__in=Campaign.objects.visible_campaigns(),
-            brand__isnull=False,
-        ).values_list("brand", flat=True).order_by("brand").distinct()
+        opportunities = Opportunity.objects.have_campaigns()
 
-        categories = Opportunity.objects.filter(
-            placements__adwords_campaigns__in=Campaign.objects.visible_campaigns(),
-            category__isnull=False,
-        ).values_list("category_id", flat=True).order_by(
-            "category_id").distinct()
+        brands = opportunities \
+            .filter(brand__isnull=False,) \
+            .values_list("brand", flat=True) \
+            .order_by("brand").distinct()
 
-        product_types = AdGroup.objects \
-            .filter(campaign__in=Campaign.objects.visible_campaigns()) \
+        categories = opportunities \
+            .filter(category__isnull=False,) \
+            .values_list("category_id", flat=True) \
+            .order_by("category_id").distinct()
+
+        product_types = AdGroup.objects.all() \
             .values_list("type", flat=True) \
             .order_by("type") \
             .distinct()
@@ -542,49 +542,6 @@ class PricingToolFiltering:
         queryset = queryset.annotate(
             creative_length_annotate=creative_length_annotate)
         queryset = queryset.filter(creative_length_annotate__gt=0)
-        return queryset
-
-    def _filter_product_types(self, queryset, product_types, *_):
-        queryset = queryset.annotate(ag_types_count=Count(
-            Case(
-                When(
-                    adgroup__type__in=product_types,
-                    then="adgroup__type",
-                ),
-                output_field=CharField(),
-            ),
-            distinct=True
-        ))
-        product_types_condition = self.kwargs.get("product_types_condition",
-                                                  self.default_condition)
-        if product_types_condition == "or":
-            queryset = queryset.filter(ag_types_count__gt=0)
-
-        elif product_types_condition == "and":
-            queryset = queryset.filter(ag_types_count=len(product_types))
-        return queryset
-
-    def _filter_locations(self, queryset, geo_locations):
-        qs = queryset.annotate(geo_locations_annotate=Count(
-            Case(
-                When(
-                    geo_performance__geo_target_id__in=geo_locations,
-                    geo_performance__is_negative=False,
-                    then='geo_performance__geo_target_id',
-                ),
-                output_field=IntegerField(),
-            ),
-            distinct=True
-        ))
-        geo_locations_condition = self.kwargs.get("geo_locations_condition",
-                                                  self.default_condition)
-        number = 0 if geo_locations_condition == "or" else len(
-            geo_locations) - 1
-        qs = qs.filter(geo_locations_annotate__gt=number)
-
-        item_ids = set(qs.values_list("id", flat=True))
-        self.filter_item_ids = self._merge_item_ids(self.filter_item_ids,
-                                                    item_ids)
         return queryset
 
     def _filter_demo_fields(self, queryset, items, fields):

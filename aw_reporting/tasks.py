@@ -4,20 +4,25 @@ import logging
 import re
 from collections import defaultdict
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from functools import reduce
 
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Count, Case, When, Sum
+from django.db.models import Min, Max, Case, Count, When, Sum, IntegerField
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import parent_performance_report
-from aw_reporting.models import AdGroup, Campaign
+from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
+from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
+from utils.lang import flatten
 
 logger = logging.getLogger(__name__)
+
+MIN_FETCH_DATE = date(2012, 1, 1)
 
 
 #  helpers --
@@ -58,9 +63,13 @@ def extract_placement_code(name):
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
 
 
+def date_to_refresh_statistic(today):
+    return today - timedelta(AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+
+
 def drop_latest_stats(queryset, today):
     # delete stats for ten days
-    date_delete = today - timedelta(AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+    date_delete = date_to_refresh_statistic(today)
     queryset.filter(date__gte=date_delete).delete()
 
 
@@ -87,78 +96,81 @@ def load_hourly_stats(client, account, *_):
     from aw_reporting.adwords_reports import campaign_performance_report, \
         MAIN_STATISTICS_FILEDS
 
-    queryset = CampaignHourlyStatistic.objects.filter(
+    statistic_queryset = CampaignHourlyStatistic.objects.filter(
         campaign__account=account)
 
     today = datetime.now(tz=pytz.timezone(account.timezone)).date()
     min_date = today - timedelta(days=10)
 
-    # delete very old stats
-    queryset.filter(date__lt=min_date).delete()
-    last_entry = queryset.order_by('-date').first()
+    last_entry = statistic_queryset.filter(date__lt=min_date) \
+        .order_by('-date').first()
+
+    start_date = min_date
+    if last_entry:
+        start_date = last_entry.date
+
+    statistic_to_drop = statistic_queryset.filter(date__gte=start_date)
+
+    report = campaign_performance_report(
+        client,
+        dates=(start_date, today),
+        fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
+                "AdvertisingChannelType", "Amount", "CampaignStatus",
+                "ServingStatus", "Date", "HourOfDay"
+                ] + list(MAIN_STATISTICS_FILEDS[:4]),
+        include_zero_impressions=False)
+
+    if not report:
+        return
+
+    campaign_ids = list(
+        account.campaigns.values_list('id', flat=True)
+    )
+    create_campaign = []
+    create_stat = []
+    for row in report:
+        campaign_id = row.CampaignId
+        if campaign_id not in campaign_ids:
+            campaign_ids.append(campaign_id)
+            try:
+                end_date = datetime.strptime(row.EndDate, GET_DF)
+            except ValueError:
+                end_date = None
+            create_campaign.append(
+                Campaign(
+                    id=campaign_id,
+                    name=row.CampaignName,
+                    account=account,
+                    type=row.AdvertisingChannelType,
+                    start_date=datetime.strptime(row.StartDate, GET_DF),
+                    end_date=end_date,
+                    budget=float(row.Amount) / 1000000,
+                    status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
+                    impressions=1,
+                    # to show this item on the accounts lists Track/Filters
+                )
+            )
+
+        create_stat.append(
+            CampaignHourlyStatistic(
+                date=row.Date,
+                hour=row.HourOfDay,
+                campaign_id=row.CampaignId,
+                video_views=row.VideoViews,
+                impressions=row.Impressions,
+                clicks=row.Clicks,
+                cost=float(row.Cost) / 1000000,
+            )
+        )
 
     with transaction.atomic():
-        # delete last day saved data
-        date = min_date  # default dummy data
-        if last_entry:
-            date = last_entry.date
-            queryset.filter(date__gte=date).delete()
+        if create_campaign:
+            Campaign.objects.bulk_create(create_campaign)
 
-        # get report
-        report = campaign_performance_report(
-            client,
-            dates=(date, today),
-            fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
-                    "AdvertisingChannelType", "Amount", "CampaignStatus",
-                    "ServingStatus", "Date", "HourOfDay"
-                    ] + list(MAIN_STATISTICS_FILEDS[:4]),
-            include_zero_impressions=False)
-        if report:
-            campaign_ids = list(
-                account.campaigns.values_list('id', flat=True)
-            )
-            create_campaign = []
-            create_stat = []
-            for row in report:
-                campaign_id = row.CampaignId
-                if campaign_id not in campaign_ids:
-                    campaign_ids.append(campaign_id)
-                    try:
-                        end_date = datetime.strptime(row.EndDate, GET_DF)
-                    except ValueError:
-                        end_date = None
-                    create_campaign.append(
-                        Campaign(
-                            id=campaign_id,
-                            name=row.CampaignName,
-                            account=account,
-                            type=row.AdvertisingChannelType,
-                            start_date=datetime.strptime(row.StartDate, GET_DF),
-                            end_date=end_date,
-                            budget=float(row.Amount) / 1000000,
-                            status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
-                            impressions=1,
-                            # to show this item on the accounts lists Track/Filters
-                        )
-                    )
+        statistic_to_drop.delete()
 
-                create_stat.append(
-                    CampaignHourlyStatistic(
-                        date=row.Date,
-                        hour=row.HourOfDay,
-                        campaign_id=row.CampaignId,
-                        video_views=row.VideoViews,
-                        impressions=row.Impressions,
-                        clicks=row.Clicks,
-                        cost=float(row.Cost) / 1000000,
-                    )
-                )
-
-            if create_campaign:
-                Campaign.objects.bulk_create(create_campaign)
-
-            if create_stat:
-                CampaignHourlyStatistic.objects.bulk_create(create_stat)
+        if create_stat:
+            CampaignHourlyStatistic.objects.bulk_create(create_stat)
 
 
 def is_ad_disapproved(campaign_row):
@@ -250,65 +262,65 @@ def get_campaigns(client, account, today=None):
                                          include_zero_impressions=False,
                                          additional_fields=('Device', 'Date')
                                          )
-    with transaction.atomic():
-        insert_stat = []
-        for row_obj in report:
-            campaign_id = row_obj.CampaignId
-            try:
-                end_date = datetime.strptime(row_obj.EndDate, GET_DF)
-            except ValueError:
-                end_date = None
+    insert_stat = []
+    for row_obj in report:
+        campaign_id = row_obj.CampaignId
+        try:
+            end_date = datetime.strptime(row_obj.EndDate, GET_DF)
+        except ValueError:
+            end_date = None
 
-            status = row_obj.CampaignStatus \
-                if row_obj.CampaignStatus in ACTION_STATUSES \
-                else row_obj.ServingStatus
+        status = row_obj.CampaignStatus \
+            if row_obj.CampaignStatus in ACTION_STATUSES \
+            else row_obj.ServingStatus
 
-            name = row_obj.CampaignName
-            placement_code = extract_placement_code(name)
-            stats = {
-                'de_norm_fields_are_recalculated': False,
-                'name': name,
-                'account': account,
-                'type': row_obj.AdvertisingChannelType,
-                'start_date': datetime.strptime(row_obj.StartDate, GET_DF),
-                'end_date': end_date,
-                'budget': float(row_obj.Amount) / 1000000,
-                'status': status,
-                'placement_code': placement_code
-            }
+        name = row_obj.CampaignName
+        placement_code = extract_placement_code(name)
+        stats = {
+            'de_norm_fields_are_recalculated': False,
+            'name': name,
+            'account': account,
+            'type': row_obj.AdvertisingChannelType,
+            'start_date': datetime.strptime(row_obj.StartDate, GET_DF),
+            'end_date': end_date,
+            'budget': float(row_obj.Amount) / 1000000,
+            'status': status,
+            'placement_code': placement_code
+        }
 
-            statistic_data = {
-                'date': row_obj.Date,
-                'campaign_id': row_obj.CampaignId,
-                'device_id': Devices.index(row_obj.Device),
+        statistic_data = {
+            'date': row_obj.Date,
+            'campaign_id': row_obj.CampaignId,
+            'device_id': Devices.index(row_obj.Device),
 
-                'video_views_25_quartile': quart_views(row_obj, 25),
-                'video_views_50_quartile': quart_views(row_obj, 50),
-                'video_views_75_quartile': quart_views(row_obj, 75),
-                'video_views_100_quartile': quart_views(row_obj, 100),
-            }
-            statistic_data.update(get_base_stats(row_obj))
+            'video_views_25_quartile': quart_views(row_obj, 25),
+            'video_views_50_quartile': quart_views(row_obj, 50),
+            'video_views_75_quartile': quart_views(row_obj, 75),
+            'video_views_100_quartile': quart_views(row_obj, 100),
+        }
+        statistic_data.update(get_base_stats(row_obj))
 
-            insert_stat.append(CampaignStatistic(**statistic_data))
+        insert_stat.append(CampaignStatistic(**statistic_data))
 
-            try:
-                campaign = Campaign.objects.get(pk=campaign_id)
-                for field, value in stats.items():
-                    setattr(campaign, field, value)
-                campaign.save()
-            except Campaign.DoesNotExist:
-                stats['id'] = campaign_id
-                Campaign.objects.create(**stats)
+        try:
+            campaign = Campaign.objects.get(pk=campaign_id)
+            for field, value in stats.items():
+                setattr(campaign, field, value)
+            campaign.save()
+        except Campaign.DoesNotExist:
+            stats['id'] = campaign_id
+            Campaign.objects.create(**stats)
 
-        if insert_stat:
-            CampaignStatistic.objects.safe_bulk_create(insert_stat)
+    if insert_stat:
+        CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
 
 def get_ad_groups_and_stats(client, account, today=None):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
         SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
-    today = today or timezone.now().date()
+    today = today or now_in_default_tz().date()
+    yesterday = today - timedelta(days=1)
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -317,65 +329,76 @@ def get_ad_groups_and_stats(client, account, today=None):
     min_date, max_date = get_account_border_dates(account)
 
     # we update ad groups and daily stats only if there have been changes
-    dates = (max_date + timedelta(days=1), today) \
-        if max_date else None
+    dates = (max_date + timedelta(days=1), yesterday) \
+        if max_date \
+        else (MIN_FETCH_DATE, yesterday)
     report = ad_group_performance_report(
         client, dates=dates)
 
     if report:
         ad_group_ids = list(AdGroup.objects.filter(
             campaign__account=account).values_list('id', flat=True))
+        campaign_ids = list(Campaign.objects.filter(
+            account=account).values_list("id", flat=True))
 
-        with transaction.atomic():
-            create_ad_groups = []
-            create_stats = []
-            updated_ad_groups = []
+        create_ad_groups = []
+        create_stats = []
+        updated_ad_groups = []
 
-            for row_obj in report:
-                ad_group_id = row_obj.AdGroupId
+        for row_obj in report:
+            ad_group_id = row_obj.AdGroupId
+            campaign_id = row_obj.CampaignId
 
-                # update ad groups
-                if ad_group_id not in updated_ad_groups:
-                    updated_ad_groups.append(ad_group_id)
+            if campaign_id not in campaign_ids:
+                logger.warning("Campaign {campaign_id} is missed."
+                               " Skipping AdGroup {ad_group_id}"
+                               "".format(ad_group_id=ad_group_id,
+                                         campaign_id=campaign_id)
+                               )
+                continue
 
-                    stats = {
-                        'de_norm_fields_are_recalculated': False,
-                        'name': row_obj.AdGroupName,
-                        'status': row_obj.AdGroupStatus,
-                        'type': row_obj.AdGroupType,
-                        'campaign_id': row_obj.CampaignId,
-                    }
+            # update ad groups
+            if ad_group_id not in updated_ad_groups:
+                updated_ad_groups.append(ad_group_id)
 
-                    if ad_group_id in ad_group_ids:
-                        AdGroup.objects.filter(
-                            pk=ad_group_id).update(**stats)
-                    else:
-                        ad_group_ids.append(ad_group_id)
-                        stats['id'] = ad_group_id
-                        create_ad_groups.append(AdGroup(**stats))
-                # --update ad groups
-                # insert stats
                 stats = {
-                    'date': row_obj.Date,
-                    'ad_network': row_obj.AdNetworkType1,
-                    'device_id': Devices.index(row_obj.Device),
-                    'ad_group_id': ad_group_id,
-                    'average_position': row_obj.AveragePosition,
-                    'engagements': row_obj.Engagements,
-                    'active_view_impressions': row_obj.ActiveViewImpressions,
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
+                    'de_norm_fields_are_recalculated': False,
+                    'name': row_obj.AdGroupName,
+                    'status': row_obj.AdGroupStatus,
+                    'type': row_obj.AdGroupType,
+                    'campaign_id': campaign_id,
                 }
-                stats.update(get_base_stats(row_obj))
-                create_stats.append(AdGroupStatistic(**stats))
 
-            if create_ad_groups:
-                AdGroup.objects.bulk_create(create_ad_groups)
+                if ad_group_id in ad_group_ids:
+                    AdGroup.objects.filter(
+                        pk=ad_group_id).update(**stats)
+                else:
+                    ad_group_ids.append(ad_group_id)
+                    stats['id'] = ad_group_id
+                    create_ad_groups.append(AdGroup(**stats))
+            # --update ad groups
+            # insert stats
+            stats = {
+                'date': row_obj.Date,
+                'ad_network': row_obj.AdNetworkType1,
+                'device_id': Devices.index(row_obj.Device),
+                'ad_group_id': ad_group_id,
+                'average_position': row_obj.AveragePosition,
+                'engagements': row_obj.Engagements,
+                'active_view_impressions': row_obj.ActiveViewImpressions,
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            create_stats.append(AdGroupStatistic(**stats))
 
-            if create_stats:
-                AdGroupStatistic.objects.safe_bulk_create(create_stats)
+        if create_ad_groups:
+            AdGroup.objects.bulk_create(create_ad_groups)
+
+        if create_stats:
+            AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
         SUM_STATS += ('engagements', 'active_view_impressions')
         stats = stats_queryset.values("ad_group_id").order_by(
@@ -420,39 +443,38 @@ def get_videos(client, account, today):
         )
         dates = (min_date, max_date)
         reports = video_performance_report(client, dates=dates)
-        with transaction.atomic():
-            create = []
-            create_creative = []
-            for row_obj in reports:
-                video_id = row_obj.VideoId.strip()
-                if video_id not in v_ids:
-                    v_ids.append(video_id)
-                    create_creative.append(
-                        VideoCreative(
-                            id=video_id,
-                            duration=row_obj.VideoDuration,
-                        )
+        create = []
+        create_creative = []
+        for row_obj in reports:
+            video_id = row_obj.VideoId.strip()
+            if video_id not in v_ids:
+                v_ids.append(video_id)
+                create_creative.append(
+                    VideoCreative(
+                        id=video_id,
+                        duration=row_obj.VideoDuration,
                     )
-
-                ad_group_id = row_obj.AdGroupId
-                if ad_group_id not in ad_group_ids:
-                    continue
-
-                stats = dict(
-                    creative_id=video_id,
-                    ad_group_id=ad_group_id,
-                    date=row_obj.Date,
-                    **get_base_stats(row_obj, quartiles=True)
-                )
-                create.append(
-                    VideoCreativeStatistic(**stats)
                 )
 
-            if create_creative:
-                VideoCreative.objects.safe_bulk_create(create_creative)
+            ad_group_id = row_obj.AdGroupId
+            if ad_group_id not in ad_group_ids:
+                continue
 
-            if create:
-                VideoCreativeStatistic.objects.safe_bulk_create(create)
+            stats = dict(
+                creative_id=video_id,
+                ad_group_id=ad_group_id,
+                date=row_obj.Date,
+                **get_base_stats(row_obj, quartiles=True)
+            )
+            create.append(
+                VideoCreativeStatistic(**stats)
+            )
+
+        if create_creative:
+            VideoCreative.objects.safe_bulk_create(create_creative)
+
+        if create:
+            VideoCreativeStatistic.objects.safe_bulk_create(create)
 
 
 def get_ads(client, account, today):
@@ -488,51 +510,50 @@ def get_ads(client, account, today):
         create_ad = []
         create_stat = []
         updated_ads = []
-        with transaction.atomic():
-            for row_obj in report:
-                ad_id = row_obj.Id
-                # update ads
-                if ad_id not in updated_ads:
-                    updated_ads.append(ad_id)
+        for row_obj in report:
+            ad_id = row_obj.Id
+            # update ads
+            if ad_id not in updated_ads:
+                updated_ads.append(ad_id)
 
-                    stats = {
-                        'headline': row_obj.Headline,
-                        'creative_name': row_obj.ImageCreativeName,
-                        'display_url': row_obj.DisplayUrl,
-                        'status': row_obj.Status,
-                        'is_disapproved': is_ad_disapproved(row_obj)
-                    }
-                    kwargs = {
-                        'id': ad_id, 'ad_group_id': row_obj.AdGroupId
-                    }
-
-                    if ad_id in ad_ids:
-                        Ad.objects.filter(**kwargs).update(**stats)
-                    else:
-                        ad_ids.append(ad_id)
-                        stats.update(kwargs)
-                        create_ad.append(Ad(**stats))
-                # -- update ads
-                # insert stats
                 stats = {
-                    'date': row_obj.Date,
-                    'ad_id': ad_id,
-                    'average_position': row_obj.AveragePosition,
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
+                    'headline': row_obj.Headline,
+                    'creative_name': row_obj.ImageCreativeName,
+                    'display_url': row_obj.DisplayUrl,
+                    'status': row_obj.Status,
+                    'is_disapproved': is_ad_disapproved(row_obj)
                 }
-                stats.update(
-                    get_base_stats(row_obj)
-                )
-                create_stat.append(AdStatistic(**stats))
+                kwargs = {
+                    'id': ad_id, 'ad_group_id': row_obj.AdGroupId
+                }
 
-            if create_ad:
-                Ad.objects.bulk_create(create_ad)
+                if ad_id in ad_ids:
+                    Ad.objects.filter(**kwargs).update(**stats)
+                else:
+                    ad_ids.append(ad_id)
+                    stats.update(kwargs)
+                    create_ad.append(Ad(**stats))
+            # -- update ads
+            # insert stats
+            stats = {
+                'date': row_obj.Date,
+                'ad_id': ad_id,
+                'average_position': row_obj.AveragePosition,
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(
+                get_base_stats(row_obj)
+            )
+            create_stat.append(AdStatistic(**stats))
 
-            if create_stat:
-                AdStatistic.objects.safe_bulk_create(create_stat)
+        if create_ad:
+            Ad.objects.safe_bulk_create(create_ad)
+
+        if create_stat:
+            AdStatistic.objects.safe_bulk_create(create_stat)
 
 
 def get_genders(client, account, today):
@@ -557,24 +578,23 @@ def get_genders(client, account, today):
         report = gender_performance_report(
             client, dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                stats = {
-                    'gender_id': Genders.index(row_obj.Criteria),
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
+        bulk_data = []
+        for row_obj in report:
+            stats = {
+                'gender_id': Genders.index(row_obj.Criteria),
+                'date': row_obj.Date,
+                'ad_group_id': row_obj.AdGroupId,
 
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_data.append(GenderStatistic(**stats))
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            bulk_data.append(GenderStatistic(**stats))
 
-            if bulk_data:
-                GenderStatistic.objects.safe_bulk_create(bulk_data)
+        if bulk_data:
+            GenderStatistic.objects.safe_bulk_create(bulk_data)
 
 
 def get_parents(client, account, today):
@@ -603,26 +623,26 @@ def get_parents(client, account, today):
         report = parent_performance_report(
             client, dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                stats = {
-                    'parent_status_id': ParentStatuses.index(row_obj.Criteria),
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
+        bulk_data = []
+        for row_obj in report:
+            ad_group_id = row_obj.AdGroupId
+            stats = {
+                'parent_status_id': ParentStatuses.index(row_obj.Criteria),
+                'date': row_obj.Date,
+                'ad_group_id': ad_group_id,
 
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_data.append(ParentStatistic(**stats))
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            bulk_data.append(ParentStatistic(**stats))
 
-                ad_group_ids.add(row_obj.AdGroupId)
+            ad_group_ids.add(row_obj.AdGroupId)
 
-            if bulk_data:
-                ParentStatistic.objects.safe_bulk_create(bulk_data)
+        if bulk_data:
+            ParentStatistic.objects.safe_bulk_create(bulk_data)
 
     _reset_denorm_flag(ad_group_ids=ad_group_ids)
 
@@ -651,24 +671,23 @@ def get_age_ranges(client, account, today):
         report = age_range_performance_report(
             client, dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                stats = {
-                    'age_range_id': AgeRanges.index(row_obj.Criteria),
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
+        bulk_data = []
+        for row_obj in report:
+            stats = {
+                'age_range_id': AgeRanges.index(row_obj.Criteria),
+                'date': row_obj.Date,
+                'ad_group_id': row_obj.AdGroupId,
 
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_data.append(AgeRangeStatistic(**stats))
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            bulk_data.append(AgeRangeStatistic(**stats))
 
-            if bulk_data:
-                AgeRangeStatistic.objects.safe_bulk_create(bulk_data)
+        if bulk_data:
+            AgeRangeStatistic.objects.safe_bulk_create(bulk_data)
 
 
 def get_placements(client, account, today):
@@ -709,62 +728,61 @@ def get_placements(client, account, today):
         report = placement_performance_report(
             client, dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_channel_data = []
-            bulk_video_data = []
+        bulk_channel_data = []
+        bulk_video_data = []
 
-            for row_obj in report:
-                # only channels
-                display_name = row_obj.DisplayName
-                criteria = row_obj.Criteria.strip()
+        for row_obj in report:
+            # only channels
+            display_name = row_obj.DisplayName
+            criteria = row_obj.Criteria.strip()
 
-                if '/channel/' in display_name:
-                    stats = {
-                        'yt_id': criteria,
-                        'date': row_obj.Date,
-                        'ad_group_id': row_obj.AdGroupId,
-                        'device_id': Devices.index(row_obj.Device),
-                        'video_views_25_quartile': quart_views(
-                            row_obj, 25),
-                        'video_views_50_quartile': quart_views(
-                            row_obj, 50),
-                        'video_views_75_quartile': quart_views(
-                            row_obj, 75),
-                        'video_views_100_quartile': quart_views(
-                            row_obj, 100),
-                    }
-                    stats.update(get_base_stats(row_obj))
-                    bulk_channel_data.append(YTChannelStatistic(**stats))
+            if '/channel/' in display_name:
+                stats = {
+                    'yt_id': criteria,
+                    'date': row_obj.Date,
+                    'ad_group_id': row_obj.AdGroupId,
+                    'device_id': Devices.index(row_obj.Device),
+                    'video_views_25_quartile': quart_views(
+                        row_obj, 25),
+                    'video_views_50_quartile': quart_views(
+                        row_obj, 50),
+                    'video_views_75_quartile': quart_views(
+                        row_obj, 75),
+                    'video_views_100_quartile': quart_views(
+                        row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_channel_data.append(YTChannelStatistic(**stats))
 
-                elif '/video/' in display_name:
-                    # only youtube ids we need in criteria
-                    if 'youtube.com/video/' in criteria:
-                        criteria = criteria.split('/')[-1]
+            elif '/video/' in display_name:
+                # only youtube ids we need in criteria
+                if 'youtube.com/video/' in criteria:
+                    criteria = criteria.split('/')[-1]
 
-                    stats = {
-                        'yt_id': criteria,
-                        'date': row_obj.Date,
-                        'ad_group_id': row_obj.AdGroupId,
-                        'device_id': Devices.index(row_obj.Device),
-                        'video_views_25_quartile': quart_views(
-                            row_obj, 25),
-                        'video_views_50_quartile': quart_views(
-                            row_obj, 50),
-                        'video_views_75_quartile': quart_views(
-                            row_obj, 75),
-                        'video_views_100_quartile': quart_views(
-                            row_obj, 100),
-                    }
-                    stats.update(get_base_stats(row_obj))
-                    bulk_video_data.append(YTVideoStatistic(**stats))
+                stats = {
+                    'yt_id': criteria,
+                    'date': row_obj.Date,
+                    'ad_group_id': row_obj.AdGroupId,
+                    'device_id': Devices.index(row_obj.Device),
+                    'video_views_25_quartile': quart_views(
+                        row_obj, 25),
+                    'video_views_50_quartile': quart_views(
+                        row_obj, 50),
+                    'video_views_75_quartile': quart_views(
+                        row_obj, 75),
+                    'video_views_100_quartile': quart_views(
+                        row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_video_data.append(YTVideoStatistic(**stats))
 
-            if bulk_channel_data:
-                YTChannelStatistic.objects.safe_bulk_create(
-                    bulk_channel_data)
+        if bulk_channel_data:
+            YTChannelStatistic.objects.safe_bulk_create(
+                bulk_channel_data)
 
-            if bulk_video_data:
-                YTVideoStatistic.objects.safe_bulk_create(
-                    bulk_video_data)
+        if bulk_video_data:
+            YTVideoStatistic.objects.safe_bulk_create(
+                bulk_video_data)
 
 
 def get_keywords(client, account, today):
@@ -791,25 +809,24 @@ def get_keywords(client, account, today):
             client,
             dates=(min_date, max_date),
         )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                keyword = row_obj.Criteria
-                stats = {
-                    'keyword': keyword,
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
+        bulk_data = []
+        for row_obj in report:
+            keyword = row_obj.Criteria
+            stats = {
+                'keyword': keyword,
+                'date': row_obj.Date,
+                'ad_group_id': row_obj.AdGroupId,
 
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_data.append(KeywordStatistic(**stats))
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            bulk_data.append(KeywordStatistic(**stats))
 
-            if bulk_data:
-                KeywordStatistic.objects.safe_bulk_create(bulk_data)
+        if bulk_data:
+            KeywordStatistic.objects.safe_bulk_create(bulk_data)
 
 
 def get_topics(client, account, today):
@@ -818,48 +835,61 @@ def get_topics(client, account, today):
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
+        logger.debug("Max Account date is None. Breaking")
         return
 
     stats_queryset = TopicStatistic.objects.filter(
         ad_group__campaign__account=account)
-    drop_latest_stats(stats_queryset, today)
 
-    saved_max_date = stats_queryset.aggregate(
-        max_date=Max('date')).get('max_date')
+    logger.debug("Get topics for {}".format(account.id))
 
-    if saved_max_date is None or saved_max_date < max_acc_date:
-        min_date = saved_max_date + timedelta(days=1) \
-            if saved_max_date else min_acc_date
-        max_date = max_acc_date
+    start_date = date_to_refresh_statistic(today)
 
-        topics = dict(Topic.objects.values_list('name', 'id'))
-        report = topics_performance_report(
-            client, dates=(min_date, max_date),
-        )
-        with transaction.atomic():
-            bulk_data = []
-            for row_obj in report:
-                topic_name = row_obj.Criteria
-                if topic_name not in topics:
-                    logger.warning("topic not found: {}")
-                    continue
+    saved_max_date = stats_queryset.filter(date__lt=start_date) \
+        .aggregate(max_date=Max('date')) \
+        .get('max_date')
 
-                stats = {
-                    'topic_id': topics[topic_name],
-                    'date': row_obj.Date,
-                    'ad_group_id': row_obj.AdGroupId,
-                    'video_views_25_quartile': quart_views(row_obj, 25),
-                    'video_views_50_quartile': quart_views(row_obj, 50),
-                    'video_views_75_quartile': quart_views(row_obj, 75),
-                    'video_views_100_quartile': quart_views(row_obj, 100),
-                }
-                stats.update(
-                    get_base_stats(row_obj)
-                )
-                bulk_data.append(TopicStatistic(**stats))
+    min_date = saved_max_date + timedelta(days=1) \
+        if saved_max_date else start_date
+    max_date = max_acc_date
+    if min_date >= max_date:
+        logger.debug(
+            "Start date to load is greater then max Account date: {} >= {}"
+                .format(min_date, max_date))
+        return
+    statistic_to_delete = stats_queryset.filter(date__gte=start_date)
 
-            if bulk_data:
-                TopicStatistic.objects.safe_bulk_create(bulk_data)
+    topics = dict(Topic.objects.values_list('name', 'id'))
+    logger.debug("Loading report")
+    report = topics_performance_report(
+        client, dates=(min_date, max_date),
+    )
+    logger.debug("Report loaded")
+    bulk_data = []
+    for row_obj in report:
+        topic_name = row_obj.Criteria
+        if topic_name not in topics:
+            logger.warning("topic not found: {}")
+            continue
+
+        stats = {
+            'topic_id': topics[topic_name],
+            'date': row_obj.Date,
+            'ad_group_id': row_obj.AdGroupId,
+            'video_views_25_quartile': quart_views(row_obj, 25),
+            'video_views_50_quartile': quart_views(row_obj, 50),
+            'video_views_75_quartile': quart_views(row_obj, 75),
+            'video_views_100_quartile': quart_views(row_obj, 100),
+        }
+        stats.update(get_base_stats(row_obj))
+        bulk_data.append(TopicStatistic(**stats))
+
+    with transaction.atomic():
+        statistic_to_delete.delete()
+        if bulk_data:
+            TopicStatistic.objects.bulk_create(bulk_data)
+
+    logger.debug("Topic report process finished")
 
 
 class AudienceAWType:
@@ -910,62 +940,61 @@ def get_interests(client, account, today):
         bulk_remarks = []
         bulk_rem_stats = []
         bulk_custom_audiences = []
-        with transaction.atomic():
-            for row_obj in report:
-                stats = dict(
-                    date=row_obj.Date,
-                    ad_group_id=row_obj.AdGroupId,
-                    video_views_25_quartile=quart_views(row_obj, 25),
-                    video_views_50_quartile=quart_views(row_obj, 50),
-                    video_views_75_quartile=quart_views(row_obj, 75),
-                    video_views_100_quartile=quart_views(row_obj, 100),
-                    **get_base_stats(row_obj)
-                )
-                au_type, au_id, *_ = row_obj.Criteria.split('::')
-                if au_type == AudienceAWType.REMARK:
-                    stats.update(remark_id=au_id)
-                    bulk_rem_stats.append(RemarkStatistic(**stats))
-                    if au_id not in remark_ids:
-                        remark_ids.update({au_id})
-                        bulk_remarks.append(
-                            RemarkList(id=au_id, name=row_obj.UserListName)
-                        )
+        for row_obj in report:
+            stats = dict(
+                date=row_obj.Date,
+                ad_group_id=row_obj.AdGroupId,
+                video_views_25_quartile=quart_views(row_obj, 25),
+                video_views_50_quartile=quart_views(row_obj, 50),
+                video_views_75_quartile=quart_views(row_obj, 75),
+                video_views_100_quartile=quart_views(row_obj, 100),
+                **get_base_stats(row_obj)
+            )
+            au_type, au_id, *_ = row_obj.Criteria.split('::')
+            if au_type == AudienceAWType.REMARK:
+                stats.update(remark_id=au_id)
+                bulk_rem_stats.append(RemarkStatistic(**stats))
+                if au_id not in remark_ids:
+                    remark_ids.update({au_id})
+                    bulk_remarks.append(
+                        RemarkList(id=au_id, name=row_obj.UserListName)
+                    )
 
-                elif au_type == AudienceAWType.USER_VERTICAL:
-                    if int(au_id) not in interest_ids:
-                        logger.warning("Audience %s not found" % au_id)
-                        continue
+            elif au_type == AudienceAWType.USER_VERTICAL:
+                if int(au_id) not in interest_ids:
+                    logger.warning("Audience %s not found" % au_id)
+                    continue
 
-                    stats.update(audience_id=au_id)
-                    bulk_aud_stats.append(AudienceStatistic(**stats))
+                stats.update(audience_id=au_id)
+                bulk_aud_stats.append(AudienceStatistic(**stats))
 
-                elif au_type == AudienceAWType.CUSTOM_AFFINITY:
-                    if int(au_id) not in interest_ids:
-                        interest_ids |= {int(au_id)}
-                        bulk_custom_audiences.append(Audience(
-                            id=au_id, name=row_obj.Criteria,
-                            type=Audience.CUSTOM_AFFINITY_TYPE
-                        ))
+            elif au_type == AudienceAWType.CUSTOM_AFFINITY:
+                if int(au_id) not in interest_ids:
+                    interest_ids |= {int(au_id)}
+                    bulk_custom_audiences.append(Audience(
+                        id=au_id, name=row_obj.Criteria,
+                        type=Audience.CUSTOM_AFFINITY_TYPE
+                    ))
 
-                    stats.update(audience_id=au_id)
-                    bulk_aud_stats.append(AudienceStatistic(**stats))
-                else:
-                    logger.warning(
-                        'Undefined criteria = %s' % row_obj.Criteria)
+                stats.update(audience_id=au_id)
+                bulk_aud_stats.append(AudienceStatistic(**stats))
+            else:
+                logger.warning(
+                    'Undefined criteria = %s' % row_obj.Criteria)
 
-            if bulk_remarks:
-                RemarkList.objects.safe_bulk_create(bulk_remarks)
+        if bulk_remarks:
+            RemarkList.objects.safe_bulk_create(bulk_remarks)
 
-            if bulk_rem_stats:
-                RemarkStatistic.objects.safe_bulk_create(
-                    bulk_rem_stats)
+        if bulk_rem_stats:
+            RemarkStatistic.objects.safe_bulk_create(
+                bulk_rem_stats)
 
-            if bulk_custom_audiences:
-                Audience.objects.safe_bulk_create(bulk_custom_audiences)
+        if bulk_custom_audiences:
+            Audience.objects.safe_bulk_create(bulk_custom_audiences)
 
-            if bulk_aud_stats:
-                AudienceStatistic.objects.safe_bulk_create(
-                    bulk_aud_stats)
+        if bulk_aud_stats:
+            AudienceStatistic.objects.safe_bulk_create(
+                bulk_aud_stats)
 
 
 def get_top_cities(report):
@@ -1110,30 +1139,29 @@ def get_geo_targeting(ad_client, account, *_):
     report = geo_location_report(ad_client)
 
     bulk_create = []
-    with transaction.atomic():
-        for row_obj in report:
-            if row_obj.CampaignId not in campaign_ids \
-                    or not row_obj.Id.isnumeric():
-                continue
-            uid = (row_obj.CampaignId, int(row_obj.Id))
-            stats = dict(
-                is_negative=row_obj.IsNegative == "true",
-                **get_base_stats(row_obj)
-            )
-            if len(row_obj.Id) > 7:  # this is a custom location
-                continue
+    for row_obj in report:
+        if row_obj.CampaignId not in campaign_ids \
+                or not row_obj.Id.isnumeric():
+            continue
+        uid = (row_obj.CampaignId, int(row_obj.Id))
+        stats = dict(
+            is_negative=row_obj.IsNegative == "true",
+            **get_base_stats(row_obj)
+        )
+        if len(row_obj.Id) > 7:  # this is a custom location
+            continue
 
-            if uid in saved_targeting:
-                GeoTargeting.objects.filter(campaign_id=row_obj.CampaignId,
-                                            geo_target_id=row_obj.Id) \
-                    .update(**stats)
-            else:
-                bulk_create.append(
-                    GeoTargeting(campaign_id=row_obj.CampaignId,
-                                 geo_target_id=row_obj.Id, **stats))
+        if uid in saved_targeting:
+            GeoTargeting.objects.filter(campaign_id=row_obj.CampaignId,
+                                        geo_target_id=row_obj.Id) \
+                .update(**stats)
+        else:
+            bulk_create.append(
+                GeoTargeting(campaign_id=row_obj.CampaignId,
+                             geo_target_id=row_obj.Id, **stats))
 
-        if bulk_create:
-            GeoTargeting.objects.safe_bulk_create(bulk_create)
+    if bulk_create:
+        GeoTargeting.objects.safe_bulk_create(bulk_create)
 
 
 ##
@@ -1271,52 +1299,22 @@ def recalculate_de_norm_fields(*args, **kwargs):
             de_norm_fields_are_recalculated=False).order_by("id")
         iterations = ceil(queryset.count() / batch_size)
         if not settings.IS_TEST:
+            model = queryset.model
             logger.info(
-                "Calculating de-norm fields: {} {}".format(queryset.model,
-                                                           iterations))
+                "Calculating de-norm fields: {}.{} {}".format(model.__module__,
+                                                              model.__name__,
+                                                              iterations))
 
         ag_link = "ad_groups__" if model is Campaign else ""
         for i in range(iterations):
             if not settings.IS_TEST:
-                logger.info("Iteration: {}".format(i + 1))
+                logger.info("./Iteration: {}".format(i + 1))
             queryset = queryset[:batch_size]
             items = queryset.values("id")
 
             data = items.annotate(
                 min_date=Min("statistics__date"),
                 max_date=Max("statistics__date"),
-                device_computers=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 0}
-                        ),
-                    ),
-                ),
-                device_mobile=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 1}
-                        ),
-                    ),
-                ),
-                device_tablets=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 2}
-                        ),
-                    ),
-                ),
-                device_other=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"statistics__device_id".format(ag_link): 3}
-                        ),
-                    ),
-                ),
             )
             sum_statistic = items.annotate(
                 sum_cost=Sum("statistics__cost"),
@@ -1325,135 +1323,24 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 sum_clicks=Sum("statistics__clicks"),
             )
             sum_statistic_map = {s["id"]: s for s in sum_statistic}
-            gender_data = items.annotate(
-                gender_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                gender_female=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                gender_male=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}gender_statistics__gender_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-            )
-            gender_data = {e["id"]: e for e in gender_data}
 
-            age_data = items.annotate(
-                age_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                age_18_24=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                age_25_34=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-                age_35_44=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 3}
-                        ),
-                    ),
-                ),
-                age_45_54=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 4}
-                        ),
-                    ),
-                ),
-                age_55_64=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 5}
-                        ),
-                    ),
-                ),
-                age_65=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}age_statistics__age_range_id".format(
-                                ag_link): 6}
-                        ),
-                    ),
-                ),
-            )
-            age_data = {e["id"]: e for e in age_data}
+            device_data = items.annotate(**_device_annotation())
+            gender_data = items.annotate(**_gender_annotation(ag_link))
+            age_data = items.annotate(**_age_annotation(ag_link))
+            parent_data = items.annotate(**_parent_annotation(ag_link))
 
-            parent_data = items.annotate(
-                parent_parent=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 0}
-                        ),
-                    ),
-                ),
-                parent_not_parent=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 1}
-                        ),
-                    ),
-                ),
-                parent_undetermined=Count(
-                    Case(
-                        When(
-                            then="id",
-                            **{"{}parent_statistics__parent_status_id".format(
-                                ag_link): 2}
-                        ),
-                    ),
-                ),
-            )
-            parent_data = {e["id"]: e for e in parent_data}
+            def update_key(aggregator, item, key):
+                current_value = aggregator[key]
+                current_value.update(item)
+                return aggregator
 
+            stats_by_id = reduce(
+                lambda res, i: update_key(res, i, i["id"]),
+                flatten([device_data, gender_data, age_data, parent_data]),
+                defaultdict(dict)
+            )
+
+            # Targeting data
             audience_data = items.annotate(
                 count=Count("{}audiences__audience_id".format(ag_link)),
             )
@@ -1487,10 +1374,8 @@ def recalculate_de_norm_fields(*args, **kwargs):
             update = {}
             for i in data:
                 uid = i["id"]
-                genders = gender_data.get(uid, {})
-                ages = age_data.get(uid, {})
-                parents = parent_data.get(uid, {})
                 sum_stats = sum_statistic_map.get(uid, {})
+                stats = stats_by_id[uid]
                 update[uid] = dict(
                     de_norm_fields_are_recalculated=True,
 
@@ -1502,35 +1387,14 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     video_views=sum_stats.get("sum_video_views") or 0,
                     clicks=sum_stats.get("sum_clicks") or 0,
 
-                    device_computers=i["device_computers"],
-                    device_mobile=i["device_mobile"],
-                    device_tablets=i["device_tablets"],
-                    device_other=i["device_other"],
+                    **stats,
 
-                    gender_male=genders.get("gender_male", False),
-                    gender_female=genders.get("gender_female", False),
-                    gender_undetermined=genders.get("gender_undetermined",
-                                                    False),
-
-                    age_undetermined=ages.get("age_undetermined", False),
-                    age_18_24=ages.get("age_18_24", False),
-                    age_25_34=ages.get("age_25_34", False),
-                    age_35_44=ages.get("age_35_44", False),
-                    age_45_54=ages.get("age_45_54", False),
-                    age_55_64=ages.get("age_55_64", False),
-                    age_65=ages.get("age_65", False),
-
-                    parent_parent=parents.get("parent_parent", False),
-                    parent_not_parent=parents.get("parent_not_parent", False),
-                    parent_undetermined=parents.get("parent_undetermined",
-                                                    False),
-
-                    has_interests=audience_data.get(uid, False),
-                    has_keywords=keyword_data.get(uid, False),
-                    has_channels=channel_data.get(uid, False),
-                    has_videos=video_data.get(uid, False),
-                    has_remarketing=rem_data.get(uid, False),
-                    has_topics=topic_data.get(uid, False),
+                    has_interests=bool(audience_data.get(uid)),
+                    has_keywords=bool(keyword_data.get(uid)),
+                    has_channels=bool(channel_data.get(uid)),
+                    has_videos=bool(video_data.get(uid)),
+                    has_remarketing=bool(rem_data.get(uid)),
+                    has_topics=bool(topic_data.get(uid)),
                 )
 
             for uid, updates in update.items():
@@ -1546,3 +1410,42 @@ def _reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
             .values_list("campaign_id", flat=True).distinct()
     Campaign.objects.filter(id__in=campaign_ids) \
         .update(de_norm_fields_are_recalculated=False)
+
+
+def _build_boolean_case(ref, value):
+    when = When(**{ref: value},
+                then=1)
+    return Max(Case(when,
+                    default=0,
+                    output_field=IntegerField()))
+
+
+def _build_group_aggregation_map(ref, all_values, fields_map):
+    return {
+        fields_map[value]: _build_boolean_case(ref, value)
+        for value in all_values
+    }
+
+
+def _age_annotation(ad_group_link):
+    age_ref = "{}age_statistics__age_range_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(age_ref, ALL_AGE_RANGES, ModelDenormalizedFields.AGES)
+
+
+def _gender_annotation(ad_group_link):
+    gender_ref = "{}gender_statistics__gender_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(gender_ref, ALL_GENDERS, ModelDenormalizedFields.GENDERS)
+
+
+def _parent_annotation(ad_group_link):
+    parent_ref = "{}parent_statistics__parent_status_id".format(ad_group_link)
+
+    return _build_group_aggregation_map(parent_ref, ALL_PARENTS, ModelDenormalizedFields.PARENTS)
+
+
+def _device_annotation():
+    device_ref = "statistics__device_id"
+
+    return _build_group_aggregation_map(device_ref, ALL_DEVICES, ModelDenormalizedFields.DEVICES)

@@ -11,8 +11,21 @@ class Name:
         OPPORTUNITIES = "pacing_report_opportunities"
         PLACEMENTS = "pacing_report_placements"
         FLIGHTS = "pacing_report_flights"
+        EXPORT = "pacing_report_export"
+        FLIGHTS_CAMPAIGN_ALLOCATIONS = "flights_campaign_allocations"
 
     class PricingTool:
         OPPORTUNITIES = "pricing_tool_opportunities"
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
+
+    class Admin:
+        VISIBLE_ACCOUNTS = "visible_accounts"
+
+    class AWAccounts:
+        LIST = "connect_aw_account_list"
+        ACCOUNT = "connect_aw_account"
+        CONNECTION = "aw_account_connection"
+
+    class WebHook:
+        ACCOUNTS_LIST = "webhook_accounts_list"

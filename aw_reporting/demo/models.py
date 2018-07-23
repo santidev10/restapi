@@ -1,4 +1,6 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
+
+from django.utils import timezone
 
 from aw_reporting.models import *
 # pylint: disable=import-error
@@ -6,6 +8,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 
 # pylint: enable=import-error
+from userprofile.models import UserSettingsKey
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +60,14 @@ class BaseDemo:
     optimization_conversions_value = 5
     optimization_view_through_value = 5
 
+    plan_cpm = 11
+    plan_cpv = .23
+
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-        self.now = datetime.now()
+        self.now = timezone.now()
         self.today = self.now.date()
         self.yesterday = datetime.now().date()
         self.start_date = self.today - timedelta(days=19)
@@ -759,9 +765,9 @@ class DemoAccount(BaseDemo):
     def account(self):
         return self
 
-    @property
-    def visible(self):
-        return InstanceSettings().get("demo_account_visible")
+    def is_visible_for_user(self, user):
+        return user.get_aw_settings()\
+                   .get(UserSettingsKey.DEMO_ACCOUNT_VISIBLE)
 
     @property
     def details(self):
@@ -852,7 +858,8 @@ class DemoAccount(BaseDemo):
             plan_cost=None,
             delivered_cost=None,
             plan_impressions=None,
-
+            video_clicks=None,
+            has_statistics=True,
         )
         return data
 
@@ -886,6 +893,7 @@ class DemoAccount(BaseDemo):
             video_views=self.video_views,
             cost=self.cost,
             clicks=self.clicks,
+            ctr=self.ctr,
             ctr_v=self.ctr_v,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
             channel_count=12,
@@ -898,7 +906,11 @@ class DemoAccount(BaseDemo):
             updated_at=None,
             brand=DEMO_BRAND,
             cost_method=DEMO_COST_METHOD,
-            agency=DEMO_AGENCY
+            agency=DEMO_AGENCY,
+            average_cpm=10,
+            average_cpv=.10782609,
+            plan_cpm=11,
+            plan_cpv=.3
         )
         return data
 

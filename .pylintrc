@@ -17,7 +17,7 @@ persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_django
+load-plugins=pylint_django,pylint_quotes
 
 # Use multiple processes to speed up Pylint.
 jobs=4
@@ -189,7 +189,7 @@ no-docstring-rgx=.*
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=100
+max-line-length=80
 
 # Regexp for a line that is allowed to be longer than the limit.
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$
@@ -371,3 +371,9 @@ int-import-graph=
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
 overgeneral-exceptions=Exception
+
+
+[QUOTES]
+string-quote=double
+triple-quote=double
+docstring-quote=double

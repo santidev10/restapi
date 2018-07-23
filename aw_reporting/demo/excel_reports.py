@@ -1,8 +1,8 @@
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.excel_reports import PerformanceWeeklyReport
 
 
-class DemoAnalyzeWeeklyReport(AnalyzeWeeklyReport):
+class DemoAnalyzeWeeklyReport(PerformanceWeeklyReport):
 
     def get_campaign_data(self):
         return self.account.children

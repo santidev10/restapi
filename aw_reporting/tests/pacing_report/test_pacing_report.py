@@ -6,8 +6,10 @@ from django.utils import timezone
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Account, Campaign, CampaignStatistic, Flight
 from aw_reporting.reports.pacing_report import PacingReport
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, patch_instance_settings
+from utils.registry import current_user
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -58,7 +60,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = datetime.now()
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
-
+        user = self.create_test_user()
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=end, probability=100
         )
@@ -95,6 +97,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         today = datetime.now()
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
+        user = self.create_test_user()
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=end, probability=100,
             budget=10  # margin will be 33%
@@ -161,8 +164,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
             id="2", name="", salesforce_placement=placement2, account=account2,
         )
 
-        with patch_instance_settings(global_account_visibility=True,
-                                     visible_accounts=["1"]):
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account1.id]
+        }
+        user = self.create_test_user()
+        user.aw_settings.update(**user_settings)
+        with current_user(user):
             report = PacingReport()
             opportunities = report.get_opportunities(dict())
         self.assertEqual(len(opportunities), 1)
@@ -283,6 +291,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         """
         today = now_in_default_tz().date()
         yesterday = today - timedelta(days=1)
+        user = self.create_test_user()
         opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,

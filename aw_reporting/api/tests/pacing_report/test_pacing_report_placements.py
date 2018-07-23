@@ -1,5 +1,6 @@
 from datetime import timedelta, date
 from itertools import product
+from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -9,12 +10,15 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes
+    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
+    Account
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
+    get_current_release
 
 
 class PacingReportPlacementsTestCase(APITestCase):
@@ -75,7 +79,8 @@ class PacingReportPlacementsTestCase(APITestCase):
                 "targeting", "yesterday_budget", "today_goal", "today_budget",
                 "yesterday_delivered", "charts",
                 "today_goal_views", "yesterday_delivered_impressions",
-                "today_goal_impressions", "yesterday_delivered_views"
+                "today_goal_impressions", "yesterday_delivered_views",
+                "current_cost_limit"
             }
         )
 
@@ -130,18 +135,22 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.data[0]["margin"], -100)
 
     def test_hard_cost_placement_margin_zero_cost(self):
-        today = timezone.now()
+        now = now_in_default_tz()
+        today = now.date()
+        start, end = today - timedelta(days=2), today + timedelta(days=2)
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today - timedelta(days=3),
             end=today + timedelta(days=3))
         hard_cost_placement = OpPlacement.objects.create(
             id="2", name="Hard cost placement", opportunity=opportunity,
-            start=today - timedelta(days=2), end=today + timedelta(days=2),
+            start=start, end=end,
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
-            placement=hard_cost_placement, cost=0, total_cost=10)
+            placement=hard_cost_placement, cost=0, total_cost=10,
+            start=start, end=end)
         Flight.objects.create(
-            id="2", placement=hard_cost_placement, cost=0, total_cost=30)
+            id="2", placement=hard_cost_placement, cost=0, total_cost=30,
+            start=start, end=end)
         url = self._get_url(opportunity.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -701,3 +710,51 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         pl_data = response.data[0]
         self.assertEqual(pl_data["margin"], 0)
+
+    def test_fix_distinct(self):
+        opportunity = Opportunity.objects.create(id=1)
+        placement_1 = OpPlacement.objects.create(id=1, opportunity=opportunity)
+        placement_2 = OpPlacement.objects.create(id=2, opportunity=opportunity)
+        account_1 = Account.objects.create(id=1)
+        account_2 = Account.objects.create(id=2)
+        Campaign.objects.create(id=1, salesforce_placement=placement_1,
+                                account=account_1)
+        Campaign.objects.create(id=2, salesforce_placement=placement_2,
+                                account=account_2)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id, account_2.id]
+        }
+        url = self._get_url(opportunity.id)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_hard_cost_margin(self):
+        today = date(2018, 1, 1)
+        total_cost = 6543
+        our_cost = 1234
+        days_pass, days_left = 3, 6
+        total_days = days_pass + days_left
+        self.assertGreater(days_pass, 0)
+        self.assertGreater(days_left, 0)
+        start = today - timedelta(days=(days_pass - 1))
+        end = today + timedelta(days=days_left)
+        opportunity = Opportunity.objects.create(
+            id="1", name="1")
+        hard_cost_placement = OpPlacement.objects.create(
+            id="2", name="Hard cost placement", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        Flight.objects.create(
+            start=start, end=end, total_cost=total_cost,
+            placement=hard_cost_placement, cost=our_cost)
+        client_cost = total_cost / total_days * days_pass
+        expected_margin = (1 - our_cost / client_cost) * 100
+        url = self._get_url(opportunity.id)
+        with patch_now(today):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data[0]["margin"], expected_margin)

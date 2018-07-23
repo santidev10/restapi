@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
-from django.db.models import Q, F
-from django_subquery.expressions import OuterRef, Subquery
+from django.db.models import Q, F, Subquery, OuterRef
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \

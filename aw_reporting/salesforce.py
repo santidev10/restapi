@@ -12,24 +12,27 @@ from utils.datetime import now_in_default_tz
 logger = logging.getLogger(__name__)
 
 
+def sf_auth():
+    with open('aw_reporting/salesforce.yaml', 'r') as f:
+        conf = yaml.load(f)
+    res = requests.post(
+        'https://login.salesforce.com/services/oauth2/token',
+        {
+            'grant_type': 'refresh_token',
+            'client_id': conf.get('consumer_key'),
+            'client_secret': conf.get('consumer_secret'),
+            'refresh_token': conf.get('refresh_token'),
+        }
+    )
+    return res.json()
+
+
 class Connection:
     def __init__(self):
-        with open('aw_reporting/salesforce.yaml', 'r') as f:
-            conf = yaml.load(f)
-        res = requests.post(
-            'https://login.salesforce.com/services/oauth2/token',
-            {
-                'grant_type': 'refresh_token',
-                'client_id': conf.get('consumer_key'),
-                'client_secret': conf.get('consumer_secret'),
-                'refresh_token': conf.get('refresh_token'),
-            }
-        )
-        print(res.text)
-        response = res.json()
+        access_data = sf_auth()
 
-        self.sf = Salesforce(instance_url=response['instance_url'],
-                             session_id=response['access_token'])
+        self.sf = Salesforce(instance_url=access_data['instance_url'],
+                             session_id=access_data['access_token'])
 
     def meta(self, name):
         return getattr(self.sf, name).metadata()

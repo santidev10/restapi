@@ -1,6 +1,6 @@
-from rest_framework.fields import SerializerMethodField
+from .parent_dict_value_field import ParentDictValueField
 
 
-class StatField(SerializerMethodField):
-    def to_representation(self, value):
-        return self.parent.stats.get(value.id, {}).get(self.field_name)
+class StatField(ParentDictValueField):
+    def __init__(self, *args, **kwargs):
+        super(StatField, self).__init__(*args, dict_key="stats", **kwargs)

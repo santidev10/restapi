@@ -5,14 +5,13 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Campaign, Account, User, Opportunity, \
-    OpPlacement, SalesForceGoalType, goal_type_str, SalesForceRegions
+    OpPlacement, SalesForceGoalType, goal_type_str
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models.salesforce_constants import ALL_SALESFORCE_REGIONS, \
     salesforce_region_str
-from aw_reporting.settings import InstanceSettingsKey
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import patch_instance_settings
 from utils.datetime import now_in_default_tz
+from utils.utils_tests import patch_settings
 
 
 class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
@@ -46,10 +45,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=now_in_default_tz())
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = response.data.get("accounts", [])
@@ -71,10 +67,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             CampaignStatistic.objects.create(campaign=campaign,
                                              date=now_in_default_tz())
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -154,10 +147,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         create_relations(1)
         create_relations(2)
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -193,10 +183,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         create_relations(1)
         create_relations(2)
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -231,10 +218,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         create_relations(1)
         create_relations(2)
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -271,10 +255,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         create_relations(2, test_brand_1)
         create_relations(3, test_brand_2)
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -291,10 +272,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         expected_goal_types = [dict(id=t, name=goal_type_str(t))
                                for t in expected_types]
 
-        instance_settings = {
-            InstanceSettingsKey.GLOBAL_TRENDS_ACCOUNTS: [manager.id]
-        }
-        with patch_instance_settings(**instance_settings):
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

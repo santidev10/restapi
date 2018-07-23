@@ -5,9 +5,10 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
-    Campaign, Audience, AudienceStatistic
+    Campaign, Audience, AudienceStatistic, Category
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase, patch_instance_settings
+from userprofile.models import UserSettingsKey
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class PricingToolTestCase(ExtendedAPITestCase):
@@ -49,10 +50,12 @@ class PricingToolTestCase(ExtendedAPITestCase):
         )
 
     def test_filters_hides_data_from_not_visible_accounts(self):
+        category_1 = Category.objects.create(id="category 1")
+        category_2 = Category.objects.create(id="category 2")
         opportunity_visible = Opportunity.objects.create(
-            id="1", brand="brand 1", category_id="category 1")
+            id="1", brand="brand 1", category=category_1)
         opportunity_hidden = Opportunity.objects.create(
-            id="2", brand="brand 2", category_id="category 2")
+            id="2", brand="brand 2", category=category_2)
         placement_visible = OpPlacement.objects.create(
             id="1", opportunity=opportunity_visible)
         placement_hidden = OpPlacement.objects.create(
@@ -71,7 +74,11 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AdGroup.objects.create(
             id="2", campaign=campaign_hidden, type="type2")
 
-        with patch_instance_settings(visible_accounts=[account_visible.id]):
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_visible.id]
+        }
+        with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -108,7 +115,7 @@ class PricingToolTestCase(ExtendedAPITestCase):
         AudienceStatistic.objects.create(audience=a_2, **common)
         AudienceStatistic.objects.create(audience=a_3, **common)
 
-        resonse = self.client.get(self.url)
+        response = self.client.get(self.url)
 
-        self.assertEqual(resonse.status_code, HTTP_200_OK)
-        self.assertEqual(resonse.data["interests"], expected_interests)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["interests"], expected_interests)

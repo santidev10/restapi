@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import socket
 
 from teamcity import is_running_under_teamcity
 
@@ -47,7 +48,8 @@ PROJECT_APPS = (
     "administration",
     "payments",
     "channel",
-    "email_reports"
+    "email_reports",
+    "audit_tool",
 )
 
 THIRD_PARTY_APPS = (
@@ -66,6 +68,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
+    'utils.registry.RegistryMiddleware',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -162,7 +165,11 @@ REST_FRAMEWORK = {
     )
 }
 
-LOGS_DIRECTORY = '.'
+LOGS_DIRECTORY = 'logs'
+
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+hostname = socket.gethostname()
+ip = socket.gethostbyname(hostname)
 
 LOGGING = {
     'version': 1,
@@ -173,8 +180,7 @@ LOGGING = {
             'formatter': 'main_formatter',
         },
         'file': {
-            'level': 'ERROR',
-            'filename': os.path.join(LOGS_DIRECTORY, 'iq_errors.log'),
+            'filename': os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'when': 'midnight',
             'interval': 1,
@@ -182,7 +188,7 @@ LOGGING = {
             'formatter': 'main_formatter',
         },
         'mail_developers': {
-            'level': 'CRITICAL',
+            'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
@@ -190,8 +196,8 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'handlers': ['console', 'file', 'mail_developers'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'handlers': ['file', 'mail_developers'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
     'formatters': {
@@ -200,8 +206,11 @@ LOGGING = {
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
         'detail_formatter': {
-            'format': '%(asctime)s %(levelname)s %(filename)s '
-                      'line %(lineno)d: %(message)s',
+            'format': 'HOST: {host}\nCWD: {cwd}\nIP: {ip}\n%(asctime)s '
+                      '%(levelname)s %(filename)s line %(lineno)d: %(message)s'
+                      ''.format(host=hostname,
+                                cwd=os.getcwd(),
+                                ip=ip),
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
     },
@@ -289,6 +298,10 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software",
     "yulia.prokudina@sigma.software",
+]
+
+AUDIT_TOOL_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software",
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"

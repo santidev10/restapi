@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Sum
 
-from aw_reporting.models import OpPlacement, dict_calculate_stats
+from aw_reporting.models import OpPlacement, dict_add_calculated_stats
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
@@ -46,7 +46,7 @@ class TechFeeCapExceeded(BaseEmailReport):
 
         for placement in placements:
 
-            dict_calculate_stats(placement)
+            dict_add_calculated_stats(placement)
             if placement["tech_fee_type"] == OpPlacement.TECH_FEE_CPV_TYPE:
                 effective_rate = placement["average_cpv"]
 

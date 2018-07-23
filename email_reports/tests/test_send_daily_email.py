@@ -168,9 +168,12 @@ class SendDailyEmailsTestCase(APITestCase):
             end=today + timedelta(days=2),
             probability=100,
         )
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        account = Account.objects.create(id="12341")
+        Campaign.objects.create(salesforce_placement=placement, account=account)
         test_host = "https://host.test"
-        opportunity_report_link = "{host}/reports/opportunities/{opp_id}" \
-            .format(host=test_host, opp_id=opportunity.id)
+        expected_account_link = "{host}/dashboard/{account_id}/?should_redirect=true" \
+            .format(host=test_host, account_id=account.id)
 
         with patch_now(now), patch_settings(HOST=test_host):
             call_command("send_daily_email_reports",
@@ -185,13 +188,38 @@ class SendDailyEmailsTestCase(APITestCase):
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         view_in_browser_link_nodes = tree.xpath("//a[@id='viewInBrowserLink']")
-        opportunity_link_nodes = tree.xpath("//a[@id='opportunityLink']")
+        account_link_nodes = tree.xpath("//a[@id='accountLink']")
         self.assertEqual(len(view_in_browser_link_nodes), 1)
-        self.assertEqual(len(opportunity_link_nodes), 1)
+        self.assertEqual(len(account_link_nodes), 1)
         view_in_browser_link = view_in_browser_link_nodes[0].get("href")
-        opportunity_link = opportunity_link_nodes[0].get("href")
+        account_link = account_link_nodes[0].get("href")
         self.assertEqual(view_in_browser_link, browser_link)
-        self.assertEqual(opportunity_link, opportunity_report_link)
+        self.assertEqual(account_link, expected_account_link)
+
+    def test_no_link_if_no_account(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        now = datetime(2017, 1, 1)
+        today = now.date()
+        SavedEmail.objects.all().delete()
+
+        Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+
+        with patch_now(now):
+            call_command("send_daily_email_reports",
+                         reports="DailyCampaignReport")
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        html_body = email.alternatives[0][0]
+        tree = etree.HTML(html_body)
+        account_link_nodes = tree.xpath("//a[@id='accountLink']")
+        self.assertEqual(len(account_link_nodes), 0)
 
     def test_delivered_units_title_cpv(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")

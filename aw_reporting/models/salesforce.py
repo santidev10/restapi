@@ -4,10 +4,12 @@ import os
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
+from django.db.models import Count
 
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
     goal_type_str, SalesForceRegions, SalesForceGoalTypes
+from userprofile.managers import UserRelatedManager
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +112,17 @@ class Contact(BaseModel):
         )
 
 
-class Opportunity(BaseModel):
+class OpportunityManager(UserRelatedManager):
+    _account_id_ref = "placements__adwords_campaigns__account_id"
+
+    def have_campaigns(self):
+        return self.get_queryset() \
+            .annotate(campaign_count=Count("placements__adwords_campaigns")) \
+            .filter(campaign_count__gt=0)
+
+
+class Opportunity(models.Model):
+    objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True)
     number = models.CharField(max_length=10, null=True)

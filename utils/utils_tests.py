@@ -1,3 +1,6 @@
+import csv
+import io
+import itertools
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -5,12 +8,13 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
-from aw_reporting.settings import InstanceSettings
 from singledb.connector import SingleDatabaseApiConnector
+from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
 
@@ -24,16 +28,18 @@ class TestUserMixin:
         "password": "test",
     }
 
-    def create_test_user(self, auth=True):
+    def create_test_user(self, auth=True) -> UserProfile:
         """
         Make test user
         """
+        get_user_model().objects.filter(email=self.test_user_data["email"]) \
+            .delete()
         Permissions.sync_groups()
-        user, created = get_user_model().objects.get_or_create(
-            email=self.test_user_data["email"],
-            defaults=self.test_user_data,
+        user = get_user_model().objects.create(
+            **self.test_user_data,
         )
         user.set_password(user.password)
+        user.save()
 
         if auth:
             Token.objects.get_or_create(user=user)
@@ -44,6 +50,7 @@ class TestUserMixin:
         user.is_staff = True
         user.is_superuser = True
         user.save()
+        return user
 
     def fill_all_groups(self, user):
         all_perm_groups = Group.objects.values_list('name', flat=True)
@@ -51,16 +58,22 @@ class TestUserMixin:
             user.add_custom_user_group(perm_group)
 
 
-class ExtendedAPITestCase(APITestCase, TestUserMixin):
-    multi_db = True
-
+class APITestUserMixin(TestUserMixin):
     def create_test_user(self, auth=True):
-        user = super(ExtendedAPITestCase, self).create_test_user(auth)
+        user = super(APITestUserMixin, self).create_test_user(auth)
         if Token.objects.filter(user=user).exists():
+            self.request_user = user
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
         return user
+
+
+class ExtendedAPITestCase(APITestCase, APITestUserMixin):
+    multi_db = True
+
+    def patch_user_settings(self, **kwargs):
+        return patch_user_settings(self.request_user, **kwargs)
 
 
 class SingleDatabaseApiConnectorPatcher:
@@ -82,6 +95,18 @@ class SingleDatabaseApiConnectorPatcher:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
+        query_params = kwargs.get("query_params", dict())
+        size = query_params.get("size", 1)
+        if size == 0:
+            data["max_page"] = None
+        aggregations = query_params.get("aggregations", None)
+        if aggregations is None:
+            del data["aggregations"]
+        return data
+
+    def get_keyword_list(*args, **kwargs):
+        with open('saas/fixtures/singledb_keyword_list.json') as data_file:
+            data = json.load(data_file)
         return data
 
     def get_channels_base_info(self, *args, **kwargs):
@@ -111,6 +136,9 @@ class SingleDatabaseApiConnectorPatcher:
             videos = json.load(data_file)
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
+
+    def store_ids(self, query_params):
+        pass
 
 
 class MockResponse(object):
@@ -161,10 +189,13 @@ def test_instance_settings(**kwargs):
 
 
 @contextmanager
-def patch_instance_settings(**kwargs):
-    with patch.object(InstanceSettings, "get",
-                      side_effect=test_instance_settings(**kwargs)) as mock_get:
-        yield mock_get
+def patch_user_settings(user, **kwargs):
+    user_settings_backup = user.aw_settings
+    user.aw_settings = {**user_settings_backup, **kwargs}
+    user.save()
+    yield
+    user.aw_settings = user_settings_backup
+    user.save()
 
 
 @contextmanager
@@ -193,3 +224,53 @@ def patch_settings(**kwargs):
             delattr(settings, key)
         else:
             setattr(settings, key, old_value)
+
+
+def build_csv_byte_stream(headers, rows):
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=headers)
+    for row in rows:
+        clean_row = dict([(k, v) for k, v in row.items() if k in headers])
+        writer.writerow(clean_row)
+    output.seek(0)
+    text_csv = output.getvalue()
+    stream = io.BytesIO(text_csv.encode())
+    return stream
+
+
+def get_current_release():
+    import subprocess
+    import re
+    try:
+        branches = subprocess.check_output(["git", "branch", "--merged"]) \
+            .decode("utf-8").split("\n")
+
+        regexp = re.compile(r"release\/([\d.]+)")
+
+        release_branches = filter(lambda b: regexp.search(b), branches)
+        releases = [regexp.search(b).group(1) for b in release_branches]
+        return sorted(releases, reverse=True)[0]
+    except:
+        return "0.0"
+
+
+def generic_test(args_list):
+    """
+    Generates subtest per each item in the args_list
+    :param args_list: (msg: str, args: List, kwargs: Dict)
+    :return:
+    """
+    def wrapper(fn):
+        def wrapped_test_function(self):
+            for msg, args, kwargs in args_list:
+                with self.subTest(msg=msg, **kwargs), transaction.atomic():
+                    sid = transaction.savepoint()
+                    fn(self, *args, **kwargs)
+                    transaction.savepoint_rollback(sid)
+
+        return wrapped_test_function
+
+    return wrapper
+
+
+int_iterator = itertools.count(1, 1)

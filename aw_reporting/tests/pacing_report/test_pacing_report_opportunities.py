@@ -11,6 +11,8 @@ from utils.utils_tests import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
+    def setUp(self):
+        self.user = self.create_test_user()
 
     def test_get_opportunities(self):
         today = timezone.now().date()

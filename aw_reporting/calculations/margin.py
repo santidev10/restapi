@@ -1,6 +1,7 @@
 from django.db.models import Sum, When, Case, Value, F, FloatField
 
-from aw_reporting.models import OpPlacement, SalesForceGoalType, Flight, \
+from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.models import SalesForceGoalType, Flight, \
     get_margin
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 
@@ -23,41 +24,19 @@ def get_margin_from_flights(flights, cost, plan_cost,
             else:
                 stats = f
 
-            delivery = stats.get("delivery") or 0
-            placement_ordered_rate = f["placement__ordered_rate"] or 0
-
-            goal_type_id = f["placement__goal_type_id"]
-            dynamic_placement = f["placement__dynamic_placement"]
-
-            if f["placement__placement_type"] \
-                    == OpPlacement.OUTGOING_FEE_TYPE:
-                continue
-
-            elif dynamic_placement \
-                    == DynamicPlacementType.RATE_AND_TECH_FEE:
-                tech_fee = float(f["placement__tech_fee"] or 0)
-
-                units = 0
-                if goal_type_id == SalesForceGoalType.CPV:
-                    units = stats.get("video_views") or 0
-
-                elif goal_type_id == SalesForceGoalType.CPM:
-                    units = stats["impressions"] / 1000
-
-                if units:
-                    rate = (stats.get("sum_cost") or 0) / units
-                    sum_client_cost += units * (rate + tech_fee)
-
-            elif dynamic_placement == DynamicPlacementType.BUDGET:
-                sum_client_cost += stats.get("sum_cost") or 0
-            elif goal_type_id == SalesForceGoalType.CPV:
-                sum_client_cost += delivery * placement_ordered_rate
-
-            elif goal_type_id == SalesForceGoalType.CPM:
-                sum_client_cost += delivery / 1000. * placement_ordered_rate
-
-            elif goal_type_id == SalesForceGoalType.HARD_COST:
-                sum_client_cost += (f["total_cost"] or 0) * allocation_ko
+            sum_client_cost += get_client_cost(
+                goal_type_id=f["placement__goal_type_id"],
+                dynamic_placement=f["placement__dynamic_placement"],
+                placement_type=f["placement__placement_type"],
+                ordered_rate=f["placement__ordered_rate"] or 0,
+                impressions=stats.get("impressions") or 0,
+                video_views=stats.get("video_views") or 0,
+                aw_cost=stats.get("sum_cost") or 0,
+                total_cost=(f["total_cost"] or 0) * allocation_ko,
+                tech_fee=float(f["placement__tech_fee"] or 0),
+                start=f["start"],
+                end=f["end"]
+            )
 
         margin = get_margin(plan_cost=plan_cost, cost=cost,
                             client_cost=sum_client_cost)

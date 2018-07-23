@@ -10,10 +10,10 @@ from rest_framework.views import APIView
 from aw_reporting.api.serializers import AccountsListSerializer
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT, Account, AdGroupStatistic, \
-    all_stats_aggregate, dict_norm_base_stats, dict_calculate_stats, \
+    all_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
     dict_quartiles_to_rates, GenderStatistic, Genders, AgeRangeStatistic, \
-    AgeRanges, Devices, CityStatistic, BASE_STATS, ConcatAggregate, \
-    CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
+    AgeRanges, Devices, CityStatistic, BASE_STATS, CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
+from utils.db.aggregators import ConcatAggregate
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
@@ -35,6 +35,8 @@ class AnalyzeDetailsApiView(APIView):
     }
     """
     serializer_class = AccountsListSerializer
+
+    HAS_STATISTICS_KEY = "has_statistics"
 
     def get_filters(self):
         data = self.request.data
@@ -73,11 +75,12 @@ class AnalyzeDetailsApiView(APIView):
         if filters["end_date"]:
             fs["date__lte"] = filters["end_date"]
 
-        data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
-        )
+        queryset = AdGroupStatistic.objects.filter(**fs)
+        has_statistics = queryset.exists()
+        data = queryset.aggregate(**all_stats_aggregate)
+        data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
-        dict_calculate_stats(data)
+        dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
         del data["video_impressions"]
 

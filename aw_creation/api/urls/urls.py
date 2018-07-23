@@ -23,7 +23,7 @@ urlpatterns = [
         name="creation_options"),
     url(r'^account_creation_list/$',
         views.AccountCreationListApiView.as_view(),
-        name="account_creation_list"),
+        name=Name.CreationSetup.ACCOUNT_LIST),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
@@ -31,7 +31,7 @@ urlpatterns = [
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
         views.AccountCreationSetupApiView.as_view(),
-        name="account_creation_setup"),
+        name=Name.CreationSetup.ACCOUNT),
     url(r'^campaign_creation_list_setup/(?P<pk>\w+)/$',
         views.CampaignCreationListSetupApiView.as_view(),
         name="campaign_creation_list_setup"),
@@ -71,7 +71,6 @@ urlpatterns = [
         views.TargetingItemsImportApiView.as_view(),
         name="targeting_items_import"),
 
-
     url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
         views.AccountCreationDuplicateApiView.as_view(),
         name="account_creation_duplicate"),
@@ -91,22 +90,22 @@ urlpatterns = [
     # Regarding SAAS-793 we return DEMO data if user has no connected MCC's for all the performance endpoints below
     url(r'^performance_account_campaigns/(?P<pk>\w+)/$',
         views.PerformanceAccountCampaignsListApiView.as_view(),
-        name="performance_account_campaigns"),
+        name=Name.Dashboard.CAMPAIGNS),
     url(r'^performance_account_details/(?P<pk>\w+)/$',
         views.PerformanceAccountDetailsApiView.as_view(),
-        name="performance_account_details"),
+        name=Name.Dashboard.ACCOUNT_DETAILS),
     url(r'^performance_chart/(?P<pk>\w+)/',
         views.PerformanceChartApiView.as_view(),
-        name="performance_chart"),
+        name=Name.Dashboard.PERFORMANCE_CHART),
     url(r'^performance_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
         views.PerformanceChartItemsApiView.as_view(),
-        name="performance_chart_items"),
+        name=Name.Dashboard.CHART_ITEMS),
     url(r'^performance_export/(?P<pk>\w+)/',
         views.PerformanceExportApiView.as_view(),
-        name="performance_export"),
+        name=Name.Dashboard.PERFORMANCE_EXPORT),
     url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
         views.PerformanceExportWeeklyReport.as_view(),
-        name="performance_export_weekly_report"),
+        name=Name.Dashboard.PERFORMANCE_EXPORT_WEEKLY_REPORT),
 
     url(r'^performance_targeting_list/$',
         views.PerformanceTargetingListAPIView.as_view(),
@@ -120,7 +119,8 @@ urlpatterns = [
     url(r'^performance_targeting_report/(?P<pk>\w+)/$',
         views.PerformanceTargetingReportAPIView.as_view(),
         name="performance_targeting_report"),
-    url(r'^performance_targeting_item/(?P<targeting>\w+)/(?P<ad_group_id>\w+)/(?P<criteria>[^/]+)/$',
+    url(
+        r'^performance_targeting_item/(?P<targeting>\w+)/(?P<ad_group_id>\w+)/(?P<criteria>[^/]+)/$',
         views.PerformanceTargetingItemAPIView.as_view(),
         name="performance_targeting_item"),
     # >>> Performance
@@ -156,4 +156,8 @@ urlpatterns = [
     url(r'^aw_creation_changes_status/(?P<account_id>\d+)/$',
         views.AwCreationChangeStatusAPIView.as_view(),
         name="aw_creation_change_status"),
+
+    url(r"^account/(?P<account_id>\w+)/account_creation/$",
+        views.AccountCreationByAccountAPIView.as_view(),
+        name=Name.Dashboard.ACCOUNT_CREATION_BY_ACCOUNT)
 ]

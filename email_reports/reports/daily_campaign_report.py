@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import timedelta
 
 from django.conf import settings
@@ -11,7 +12,7 @@ from django.template.loader import get_template
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
 from aw_reporting.models import User, SalesForceGoalType, Opportunity, \
-    OpPlacement
+    OpPlacement, Account
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
@@ -95,6 +96,10 @@ class DailyCampaignReport(BaseEmailReport):
         opportunities = report.get_opportunities({})
 
         for opportunity in opportunities:
+            if (opportunity.get('start') or date.min) > self.today \
+                    or (opportunity.get('end') or date.max) < self.today:
+                continue
+
             opportunity['type'] = "opportunity"
             PacingReportHelper.multiply_percents([opportunity])
 
@@ -136,8 +141,14 @@ class DailyCampaignReport(BaseEmailReport):
         email_uid = get_uid()
         web_view_url = reverse("email_reports_api_urls:email_report_web_view",
                                args=(email_uid,))
-        opportunity_path = "/reports/opportunities/{opportunity_id}" \
-            .format(opportunity_id=opportunity.get("id"))
+        opportunity_id = opportunity.get("id")
+        account = Account.objects.filter(
+            campaigns__salesforce_placement__opportunity_id=opportunity_id) \
+            .first()
+        account_link = "{host}/dashboard/{account_id}/?should_redirect=true".format(
+            host=self.host,
+            account_id=account.id) \
+            if account is not None else None
         goal_type_ids = opportunity["goal_type_ids"]
 
         self._add_flight_data(opportunity, report)
@@ -145,7 +156,7 @@ class DailyCampaignReport(BaseEmailReport):
             title=title,
             email_uid=email_uid,
             email_link=self.host + web_view_url,
-            opportunity_link=self.host + opportunity_path,
+            account_link=account_link,
             unsubscribe_link=self.host + "/settings",
             today=self.today,
             yesterday=self.yesterday,

@@ -121,6 +121,7 @@ class PricingToolSerializer:
 
         ad_group_types = AdGroup.objects.filter(
             campaign__salesforce_placement__opportunity=opportunity) \
+            .exclude(type="") \
             .values_list("type", flat=True) \
             .order_by() \
             .distinct()
@@ -365,7 +366,7 @@ class PricingToolSerializer:
 
     def _prepare_campaigns(self, opportunity_ids):
         opp_id_key = "salesforce_placement__opportunity_id"
-        campaigns = Campaign.objects.visible_campaigns() \
+        campaigns = Campaign.objects.all() \
             .filter(**{opp_id_key + "__in": opportunity_ids}) \
             .values("id", opp_id_key, "cost", "impressions", "video_views",
                     "start_date", "end_date", "name",

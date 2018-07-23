@@ -5,21 +5,13 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.serializers.pacing_report_opportunity_update_serializer import \
     PacingReportOpportunityUpdateSerializer
 from aw_reporting.models import Opportunity
-from aw_reporting.settings import InstanceSettings
 
 
 class PacingReportOpportunityUpdateApiView(UpdateAPIView):
     serializer_class = PacingReportOpportunityUpdateSerializer
 
     def get_queryset(self):
-        queryset = Opportunity.objects.all()
-        instance_settings = InstanceSettings()
-        if instance_settings.get('global_account_visibility'):
-            visible_ids = instance_settings.get('visible_accounts')
-            queryset = queryset.filter(
-                placements__adwords_campaigns__account_id__in=visible_ids
-            ).distinct()
-        return queryset
+        return Opportunity.objects.all()
 
     def update(self, request, *args, **kwargs):
         response = super(PacingReportOpportunityUpdateApiView, self).update(

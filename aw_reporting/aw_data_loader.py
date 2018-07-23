@@ -43,7 +43,7 @@ class AWDataLoader:
         all_names = [m.__name__ for m in self.advertising_update_tasks]
         start_index = safe_index(all_names, start, 0)
         end_index = safe_index(all_names, end, len(all_names))
-        return self.advertising_update_tasks[start_index:end_index+1]
+        return self.advertising_update_tasks[start_index:end_index + 1]
 
     def get_aw_client(self, refresh_token, client_customer_id):
         if refresh_token in self.aw_cached_clients:
@@ -78,7 +78,7 @@ class AWDataLoader:
         accounts = get_all_customers(client)
         if accounts:
             for e in accounts:
-                a, created = Account.objects.update_or_create(
+                a, _ = Account.objects.update_or_create(
                     id=e['customerId'],
                     defaults=dict(
                         name=e['name'],
@@ -129,7 +129,7 @@ class AWDataLoader:
     def advertising_account_update(self, client, account):
         today = self.today
         for task in self.update_tasks:
-            logger.debug(task, account)
+            logger.debug("Task: %s, account: %s", task.__name__, account)
             task(client, account, today)
 
         account.update_time = timezone.now()

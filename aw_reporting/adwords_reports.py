@@ -43,8 +43,23 @@ DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS = ("Criteria", "AdGroupId", "Date") \
                                             + MAIN_STATISTICS_FILEDS \
                                             + COMPLETED_FIELDS
 
+AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
+                                "ImageCreativeName", "DisplayUrl", "Status",
+                                "Date", "AveragePosition",
+                                "CombinedApprovalStatus") \
+                               + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
+
+
+class AWReport:
+    AD_GROUP_PERFORMANCE_REPORT = "ADGROUP_PERFORMANCE_REPORT"
+
+
+class DateRangeType:
+    CUSTOM_DATE = "CUSTOM_DATE"
+    ALL_TIME = "ALL_TIME"
 
 
 def stream_iterator(stream):
@@ -53,6 +68,10 @@ def stream_iterator(stream):
         if not line:
             break
         yield line.decode()
+
+
+def date_formatted(dt):
+    return dt.strftime("%Y%m%d")
 
 
 def _get_report(client, name, selector, date_range_type=None,
@@ -305,11 +324,7 @@ def audience_performance_report(client, dates):
 
 
 def ad_performance_report(client, dates=None):
-    fields = (
-                 "AdGroupId", "Headline", "Id", "ImageCreativeName",
-                 "DisplayUrl",
-                 "Status", "Date", "AveragePosition", "CombinedApprovalStatus"
-             ) + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+    fields = AD_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,
@@ -368,14 +383,15 @@ def ad_group_performance_report(client, dates=None):
         "predicates": [],
     }
     if dates:
+        start, end = dates
         selector["dateRange"] = {
-            "min": dates[0].strftime("%Y%m%d"),
-            "max": dates[1].strftime("%Y%m%d"),
+            "min": date_formatted(start),
+            "max": date_formatted(end),
         }
 
     result = _get_report(
-        client, "ADGROUP_PERFORMANCE_REPORT", selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
+        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector,
+        date_range_type=DateRangeType.CUSTOM_DATE if dates else DateRangeType.ALL_TIME,
     )
     return _output_to_rows(result, fields)
 

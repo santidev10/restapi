@@ -46,11 +46,11 @@ urlpatterns = [
     url(r'^api/v1/', include(keyword_api_urls, namespace='keyword_api_urls')),
 
     # Segment api urls
-    url(r'^api/v1/', include(segment_api_urls, namespace='segment_api_urls')),
+    url(r'^api/v1/', include(segment_api_urls, namespace=Namespace.SEGMENT)),
 
     # Userprofile api urls
     url(r'^api/v1/', include(userprofile_api_urls,
-                             namespace="userprofile_api_urls")),
+                             namespace=Namespace.USER_PROFILE)),
 
     # Stripe api urls
     url(r'^api/v1/', include(stripe_api_urls,

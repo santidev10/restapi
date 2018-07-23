@@ -55,6 +55,6 @@ class Command(BaseCommand):
     def save_data(self, title, ids):
         logger.info('Saving {} ids for segment: {}'.format(len(ids), title))
         segment_data = dict(title=title, category=self.category)
-        segment, created = self.model.objects.get_or_create(title=title, category=self.category)
+        segment, created = self.model.objects.get_or_create(**segment_data)
         segment.add_related_ids(ids)
         segment.update_statistics(segment)

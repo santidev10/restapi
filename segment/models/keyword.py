@@ -2,6 +2,7 @@
 SegmentKeyword models module
 """
 import logging
+
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
 from django.db.models import CharField
@@ -80,7 +81,10 @@ class SegmentKeyword(BaseSegment):
     top_keywords = JSONField(null=True, blank=True)
 
     related_aw_statistics_model = KeywordStatistic
-    singledb_method = Connector().get_keyword_list
+
+    @property
+    def singledb_method(self):
+        return Connector().get_keyword_list
 
     segment_type = 'keyword'
 

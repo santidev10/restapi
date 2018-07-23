@@ -24,7 +24,7 @@ class Command(BaseCommand):
             '--forced',
             dest='forced',
             default=False,
-            type=bool,
+            action='store_true',
             help='Forced update of all accounts'
         )
 
@@ -51,10 +51,12 @@ class Command(BaseCommand):
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()
         add_relation_between_report_and_creation_ads()
+        recalculate_de_norm_fields()
 
     @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
         from aw_reporting.models import Account
+        self.pre_process()
         timezones = Account.objects.filter(timezone__isnull=False).values_list(
             "timezone", flat=True).order_by("timezone").distinct()
 
@@ -64,25 +66,26 @@ class Command(BaseCommand):
             t for t in timezones
             if now.astimezone(timezone(t)).hour > 5
         ]
-        logger.info("Timezones: {}".format(timezones))
+        logger.info("Timezones: %s", timezones)
 
         # first we will update accounts based on MCC timezone
         mcc_to_update = Account.objects.filter(
-            # timezone__in=timezones,
+            timezone__in=timezones,
             can_manage_clients=True
         )
         if not options.get('forced'):
             mcc_to_update = mcc_to_update.filter(
                 Q(update_time__date__lt=today) | Q(update_time__isnull=True)
             )
-        updater = AWDataLoader(today, start=options.get("start"), end=options.get("end"))
+        updater = AWDataLoader(today, start=options.get("start"),
+                               end=options.get("end"))
         for mcc in mcc_to_update:
-            logger.info("MCC update: {}".format(mcc))
+            logger.info("MCC update: %s", mcc)
             updater.full_update(mcc)
 
         # 2) update all the advertising accounts
         accounts_to_update = Account.objects.filter(
-            # timezone__in=timezones,
+            timezone__in=timezones,
             can_manage_clients=False
         )
         if not options.get('forced'):
@@ -90,10 +93,10 @@ class Command(BaseCommand):
                 Q(update_time__date__lt=today) | Q(update_time__isnull=True)
             )
         for account in accounts_to_update:
-            logger.info("Customer account update: {}".format(account))
+            logger.info("Customer account update: %s", account)
             updater.full_update(account)
 
-        recalculate_de_norm_fields()
+        self.post_process()
 
     @staticmethod
     def create_cf_account_connection():
@@ -116,10 +119,8 @@ class Command(BaseCommand):
             except WebFault as e:
                 logger.critical(e)
             else:
-                mcc_accounts = list(filter(
-                    lambda i: i['canManageClients'] and not i['testAccount'],
-                    customers,
-                ))
+                mcc_accounts = [c for c in customers
+                                if c['canManageClients'] and not c['testAccount']]
                 for ac_data in mcc_accounts:
                     data = dict(
                         id=ac_data['customerId'],

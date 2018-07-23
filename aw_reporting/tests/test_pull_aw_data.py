@@ -1,23 +1,26 @@
-import csv
-import io
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 
 from django.core.management import call_command
+from django.test import TransactionTestCase
 from pytz import utc
-from rest_framework.test import APITestCase
 
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
     AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS, \
-    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS, AD_PERFORMANCE_REPORT_FIELDS, DateRangeType, date_formatted
 from aw_reporting.models import Campaign, Account, AWConnection, \
     AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience
-from aw_reporting.tasks import AudienceAWType
-from utils.utils_tests import patch_now
+    AdGroupStatistic, Audience, Ad, ParentStatistic, AgeRangeStatistic, GenderStatistic, ALL_AGE_RANGES, ALL_GENDERS, \
+    ALL_PARENTS, ALL_DEVICES, CampaignStatistic, AudienceStatistic, YTChannelStatistic, KeywordStatistic, \
+    YTVideoStatistic, RemarkStatistic, RemarkList, Topic, TopicStatistic
+from aw_reporting.tasks import AudienceAWType, MIN_FETCH_DATE
+from utils.utils_tests import patch_now, build_csv_byte_stream, int_iterator
 
 
-class PullAWDataTestCase(APITestCase):
+class PullAWDataTestCase(TransactionTestCase):
+    def _call_command(self, **kwargs):
+        call_command("pull_aw_data", **kwargs)
+
     def _create_account(self, update_time):
         connection = AWConnection.objects.create()
         mcc_account = Account.objects.create(id=1, timezone="UTC",
@@ -41,7 +44,8 @@ class PullAWDataTestCase(APITestCase):
         campaign = Campaign.objects.create(id=1,
                                            account=account,
                                            de_norm_fields_are_recalculated=True,
-                                           start_date=today - timedelta(days=5),
+                                           start_date=today - timedelta(
+                                               days=5),
                                            end_date=today + timedelta(days=5),
                                            cost=1,
                                            budget=1,
@@ -89,7 +93,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", end="get_campaigns")
+            self._call_command(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.cost, sum(costs))
@@ -159,8 +163,8 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_ad_groups_and_stats",
-                         end="get_ad_groups_and_stats")
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
 
         ad_group.refresh_from_db()
         self.assertEqual(ad_group.cost, sum(costs))
@@ -203,8 +207,8 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_geo_targeting",
-                         end="get_geo_targeting")
+            self._call_command(start="get_geo_targeting",
+                               end="get_geo_targeting")
 
         campaign.refresh_from_db()
         campaign_geo_targets = campaign.geo_performance.all() \
@@ -251,7 +255,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", end="get_campaigns")
+            self._call_command(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.placement_code, test_code)
@@ -309,7 +313,7 @@ class PullAWDataTestCase(APITestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_parents", end="get_parents")
+            self._call_command(start="get_parents", end="get_parents")
 
         campaign.refresh_from_db()
         ad_group.refresh_from_db()
@@ -332,7 +336,7 @@ class PullAWDataTestCase(APITestCase):
         test_report_data = [
             dict(
                 AdGroupId=ad_group.id,
-                Criteria=criteria+"::123",
+                Criteria=criteria + "::123",
                 Date=str(today),
                 Cost=0,
                 Impressions=0,
@@ -364,14 +368,354 @@ class PullAWDataTestCase(APITestCase):
         self.assertEqual(Audience.objects.first().type,
                          Audience.CUSTOM_AFFINITY_TYPE)
 
+    def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(date=today, ad_group=ad_group,
+                                        average_position=1)
 
-def build_csv_byte_stream(headers, rows):
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=headers)
-    for row in rows:
-        clean_row = dict([(k, v) for k, v in row.items() if k in headers])
-        writer.writerow(clean_row)
-    output.seek(0)
-    text_csv = output.getvalue()
-    stream = io.BytesIO(text_csv.encode())
-    return stream
+        common = dict(
+            Criteria=ParentStatuses[0],
+            Date=str(today),
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+        test_report_data = [
+            dict(AdGroupId="missing", **common),
+            dict(AdGroupId=ad_group.id, **common)
+        ]
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 0)
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data",
+                         start="get_parents",
+                         end="get_parents")
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 1)
+
+    def test_get_ad_is_disapproved(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
+                                        average_position=1)
+        approved_ad_1 = "approved_1"
+        approved_ad_2 = "approved_2"
+        approved_ad_3 = "approved_3"
+        disapproved_ad_1 = "disapproved_1"
+
+        common_data = dict(
+            AdGroupId=ad_group.id,
+            Date=str(today),
+            AveragePosition=1,
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+
+        test_report_data = [
+            dict(Id=approved_ad_1, **common_data),
+            dict(Id=approved_ad_2, CombinedApprovalStatus=None, **common_data),
+            dict(Id=approved_ad_3, CombinedApprovalStatus="any",
+                 **common_data),
+
+            dict(Id=disapproved_ad_1, CombinedApprovalStatus="disapproved",
+                 **common_data),
+        ]
+        fields = AD_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_ads", end="get_ads")
+
+        def is_disapproved(ad_id):
+            return Ad.objects.get(id=ad_id).is_disapproved
+
+        self.assertFalse(is_disapproved(approved_ad_1))
+        self.assertFalse(is_disapproved(approved_ad_2))
+        self.assertFalse(is_disapproved(approved_ad_3))
+        self.assertTrue(is_disapproved(disapproved_ad_1))
+
+    def test_get_ad_skip_missing_groups(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        valid_ad_group_id, invalid_ad_group_id = 1, 2
+        valid_ad_id, invalid_ad_id = 3, 4
+        ad_group = AdGroup.objects.create(id=valid_ad_group_id,
+                                          campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
+                                        average_position=1)
+        self.assertEqual(Ad.objects.all().count(), 0)
+
+        common_data = dict(
+            Date=str(today),
+            AveragePosition=1,
+            Cost=0,
+            Impressions=0,
+            VideoViews=0,
+            Clicks=0,
+            Conversions=0,
+            AllConversions=0,
+            ViewThroughConversions=0,
+            VideoQuartile25Rate=0,
+            VideoQuartile50Rate=0,
+            VideoQuartile75Rate=0,
+            VideoQuartile100Rate=0,
+        )
+
+        test_report_data = [
+            dict(Id=valid_ad_id, AdGroupId=valid_ad_group_id, **common_data),
+            dict(Id=invalid_ad_id, AdGroupId=invalid_ad_group_id,
+                 **common_data)
+        ]
+        fields = AD_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, test_report_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            call_command("pull_aw_data", start="get_ads", end="get_ads")
+
+        self.assertEqual(Ad.objects.all().count(), 1)
+        self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
+
+    def test_update_set_boolean_fields(self):
+        fields = "age_18_24", "age_25_34", "age_35_44", "age_45_54", "age_55_64", "age_65", "age_undetermined", \
+                 "device_computers", "device_mobile", "device_tablets", "device_other", \
+                 "gender_female", "gender_male", "gender_undetermined", \
+                 "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
+                 "parent_not_parent", "parent_parent", "parent_undetermined"
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        for age_range_id in ALL_AGE_RANGES:
+            AgeRangeStatistic.objects.create(date=yesterday, ad_group=ad_group, age_range_id=age_range_id)
+            AgeRangeStatistic.objects.create(date=now, ad_group=ad_group, age_range_id=age_range_id)
+        for gender_id in ALL_GENDERS:
+            GenderStatistic.objects.create(date=yesterday, ad_group=ad_group, gender_id=gender_id)
+            GenderStatistic.objects.create(date=now, ad_group=ad_group, gender_id=gender_id)
+        for parent_id in ALL_PARENTS:
+            ParentStatistic.objects.create(date=yesterday, ad_group=ad_group, parent_status_id=parent_id)
+            ParentStatistic.objects.create(date=now, ad_group=ad_group, parent_status_id=parent_id)
+        for device_id in ALL_DEVICES:
+            CampaignStatistic.objects.create(date=yesterday, campaign=campaign, device_id=device_id)
+            CampaignStatistic.objects.create(date=today, campaign=campaign, device_id=device_id)
+            AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group, device_id=device_id, average_position=1)
+            AdGroupStatistic.objects.create(date=today, ad_group=ad_group, device_id=device_id, average_position=1)
+        audience_1 = Audience.objects.create(id=next(int_iterator))
+        audience_2 = Audience.objects.create(id=next(int_iterator))
+        AudienceStatistic.objects.create(date=yesterday, ad_group=ad_group, audience=audience_1)
+        AudienceStatistic.objects.create(date=yesterday, ad_group=ad_group, audience=audience_2)
+        AudienceStatistic.objects.create(date=today, ad_group=ad_group, audience=audience_2)
+        YTChannelStatistic.objects.create(date=yesterday, ad_group=ad_group, yt_id="")
+        YTChannelStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
+        KeywordStatistic.objects.create(date=yesterday, ad_group=ad_group, keyword="")
+        KeywordStatistic.objects.create(date=today, ad_group=ad_group, keyword="")
+        remark_list_1 = RemarkList.objects.create(id=next(int_iterator))
+        remark_list_2 = RemarkList.objects.create(id=next(int_iterator))
+        RemarkStatistic.objects.create(date=yesterday, ad_group=ad_group, remark=remark_list_1)
+        RemarkStatistic.objects.create(date=today, ad_group=ad_group, remark=remark_list_1)
+        RemarkStatistic.objects.create(date=yesterday, ad_group=ad_group, remark=remark_list_2)
+        topic_1 = Topic.objects.create(id=next(int_iterator))
+        topic_2 = Topic.objects.create(id=next(int_iterator))
+        TopicStatistic.objects.create(date=yesterday, ad_group=ad_group, topic=topic_1)
+        TopicStatistic.objects.create(date=yesterday, ad_group=ad_group, topic=topic_2)
+        TopicStatistic.objects.create(date=today, ad_group=ad_group, topic=topic_1)
+        YTVideoStatistic.objects.create(date=yesterday, ad_group=ad_group, yt_id="")
+        YTVideoStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
+
+        with patch_now(now):
+            call_command("pull_aw_data", start="get_ads", end="get_videos")
+
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        for field in fields:
+            self.assertTrue(getattr(campaign, field), "Campaign. {}".format(field))
+            self.assertTrue(getattr(ad_group, field), "Ad Group. {}".format(field))
+
+    def test_update_unset_boolean_fields(self):
+        fields = "age_18_24", "age_25_34", "age_35_44", "age_45_54", "age_55_64", "age_65", "age_undetermined", \
+                 "device_computers", "device_mobile", "device_tablets", "device_other", \
+                 "gender_female", "gender_male", "gender_undetermined", \
+                 "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
+                 "parent_not_parent", "parent_parent", "parent_undetermined"
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        account = self._create_account(now)
+        common_values = {field: True for field in fields}
+        campaign = Campaign.objects.create(id=1, account=account, **common_values)
+        ad_group = AdGroup.objects.create(campaign=campaign, **common_values)
+
+        with patch_now(now):
+            call_command("pull_aw_data", start="get_ads", end="get_videos")
+
+        campaign.refresh_from_db()
+        ad_group.refresh_from_db()
+        for field in fields:
+            self.assertFalse(getattr(campaign, field), "Campaign. {}".format(field))
+            self.assertFalse(getattr(ad_group, field), "Ad Group. {}".format(field))
+
+    def test_first_ad_group_update_requests_report_by_yesterday(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        AdGroup.objects.create(id=1,
+                               campaign=campaign,
+                               de_norm_fields_are_recalculated=True,
+                               cost=1,
+                               impressions=1,
+                               video_views=1,
+                               clicks=1,
+                               engagements=1,
+                               active_view_impressions=1)
+
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, [])
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
+
+        downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       skip_report_header=True,
+                                                                       skip_column_header=True,
+                                                                       skip_report_summary=True,
+                                                                       include_zero_impressions=False)
+        call = downloader_mock.DownloadReportAsStream.mock_calls[0]
+        payload = call[1][0]
+        selector = payload["selector"]
+        self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
+        self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
+                                                     max=date_formatted(yesterday)))
+
+    def test_ad_group_update_requests_again_recent_statistic(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        # last_statistic_date = today - timedelta(weeks=54)
+        # request_start_date = last_statistic_date + timedelta(days=1)
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1,
+                                          campaign=campaign,
+                                          de_norm_fields_are_recalculated=True,
+                                          cost=1,
+                                          impressions=1,
+                                          video_views=1,
+                                          clicks=1,
+                                          engagements=1,
+                                          active_view_impressions=1)
+        AdGroupStatistic.objects.create(date=yesterday, ad_group=ad_group, average_position=1)
+
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, [])
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
+
+        downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       skip_report_header=True,
+                                                                       skip_column_header=True,
+                                                                       skip_report_summary=True,
+                                                                       include_zero_impressions=False)
+        call = downloader_mock.DownloadReportAsStream.mock_calls[0]
+        payload = call[1][0]
+        selector = payload["selector"]
+        self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
+        self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
+                                                     max=date_formatted(yesterday)))
+
+    def test_ad_group_update_requests_report_by_yesterday(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        last_statistic_date = today - timedelta(weeks=54)
+        request_start_date = last_statistic_date + timedelta(days=1)
+        yesterday = today - timedelta(days=1)
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1,
+                                          campaign=campaign,
+                                          de_norm_fields_are_recalculated=True,
+                                          cost=1,
+                                          impressions=1,
+                                          video_views=1,
+                                          clicks=1,
+                                          engagements=1,
+                                          active_view_impressions=1)
+        AdGroupStatistic.objects.create(date=last_statistic_date, ad_group=ad_group, average_position=1)
+
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        test_stream = build_csv_byte_stream(fields, [])
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = test_stream
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client",
+                   return_value=aw_client_mock):
+            self._call_command(start="get_ad_groups_and_stats",
+                               end="get_ad_groups_and_stats")
+
+        downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       skip_report_header=True,
+                                                                       skip_column_header=True,
+                                                                       skip_report_summary=True,
+                                                                       include_zero_impressions=False)
+        call = downloader_mock.DownloadReportAsStream.mock_calls[0]
+        payload = call[1][0]
+        selector = payload["selector"]
+        self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
+        self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
+                                                     max=date_formatted(yesterday)))

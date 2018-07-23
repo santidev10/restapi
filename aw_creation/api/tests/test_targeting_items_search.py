@@ -4,7 +4,7 @@ from utils.utils_tests import ExtendedAPITestCase, SingleDatabaseApiConnectorPat
 from unittest.mock import patch
 
 
-class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
+class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -20,7 +20,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
     def test_success_video(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "gangnam"))
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -30,7 +30,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
     def test_success_channel(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "smthing"))
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

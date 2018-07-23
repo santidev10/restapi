@@ -5,10 +5,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login, PermissionsMixin, \
     Group
+from django.core.validators import RegexValidator, EmailValidator, \
+    MaxLengthValidator
+from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import ModelSerializer, CharField, \
-    ValidationError, SerializerMethodField, RegexValidator, Serializer, \
-    EmailField, MaxLengthValidator, EmailValidator
+    ValidationError, SerializerMethodField, Serializer, EmailField
 from rest_framework.validators import UniqueValidator
 
 from administration.notifications import send_new_registration_email, \
@@ -131,11 +133,13 @@ class UserSerializer(ModelSerializer):
             "date_joined",
             "token",
             "access",
+            "aw_settings",
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",
             "has_disapproved_ad",
             "vendor",
+            "historical_aw_account"
         )
         read_only_fields = (
             "is_staff",
@@ -173,6 +177,14 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+    def validate_historical_aw_account(self, connection):
+        if connection is None:
+            return connection
+        if not self.instance.aw_connections.filter(id=connection.id).exists():
+            raise ValidationError(
+                _("Historical account should be listed in user connections"))
+        return connection
 
 
 class UserSetPasswordSerializer(Serializer):
