@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-
+ALLOWED_HOSTS = ALLOWED_HOSTS + ["api"]
 DEBUG = True
 LOGGING = {
     'version': 1,
@@ -49,7 +49,7 @@ DATABASES = {
         'NAME': 'postgres',
         'USER': 'postgres',
         'PASSWORD': '',
-        'HOST': 'saas-postgres',
+        'HOST': 'pg',
         'PORT': '',  # Set to empty string for default.
     }
 }

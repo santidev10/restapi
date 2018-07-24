@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  db:
+  pg:
     image: postgres:9.6
   api:
     build: .
@@ -11,7 +11,7 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - db
+      - pg
       - sdb
       - redis
   web:
@@ -23,8 +23,10 @@ services:
   sdb:
     image: saas-sdb
     depends_on:
-      - es
-      - cassandra
+      cassandra:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   es:
     image: elasticsearch
   cassandra:
@@ -35,5 +37,10 @@ services:
     - "7199"
     - "9160"
     - "9042"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9042"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   redis:
     image: redis

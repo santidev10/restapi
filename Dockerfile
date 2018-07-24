@@ -7,4 +7,6 @@ ADD requirements.txt /code/
 RUN pip install -r requirements.txt
 ADD . /code/
 EXPOSE 5000
+RUN ./manage.py migrate
+RUN ./manage.py shell -c "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@admin.admin', 'admin')"
 CMD ["python3", "./manage.py", "runserver", "0.0.0.0:5000"]
