@@ -15,7 +15,7 @@ from aw_reporting.models import CampaignHourlyStatistic, Account, User, \
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import patch_settings, int_iterator
+from utils.utils_tests import patch_settings, int_iterator, generic_test
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
@@ -316,7 +316,11 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         response_ids = set([acc["id"] for acc in response.data])
         self.assertEqual(response_ids, {account_1.id, account_2.id})
 
-    def test_aw_rate_settings_does_not_affect_rates(self):
+    @generic_test((
+            ("Show AW rates", (True,), {}),
+            ("Hide AW rates", (False,), {}),
+    ))
+    def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
         """
         Bug: CHF Trends > "Show real (AdWords) costs on the dashboard"
             affects data on CHF Trends
@@ -328,7 +332,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
         url = "{}?{}".format(self.url, urlencode(filters))
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
         }
         stats = AdGroupStatistic.objects.all() \
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))
@@ -337,10 +341,10 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(len(response.data[0]["trend"]), 1)
-        item = response.data[0]
-        self.assertIsNotNone(item["average_1d"])
-        self.assertAlmostEqual(item["average_1d"], expected_cpv)
-        self.assertAlmostEqual(item["trend"][0]["value"], expected_cpv)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(len(response.data), 1)
+            self.assertEqual(len(response.data[0]["trend"]), 1)
+            item = response.data[0]
+            self.assertIsNotNone(item["average_1d"])
+            self.assertAlmostEqual(item["average_1d"], expected_cpv)
+            self.assertAlmostEqual(item["trend"][0]["value"], expected_cpv)

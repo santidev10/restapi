@@ -41,10 +41,10 @@ urlpatterns = [
         name=Name.Track.FILTERS),
     url(r'^track_chart/$',
         views.TrackChartApiView.as_view(),
-        name="track_chart"),
+        name=Name.Track.CHART),
     url(r'^track_accounts_data/$',
         views.TrackAccountsDataApiView.as_view(),
-        name="track_accounts_data"),
+        name=Name.Track.DATA),
 
     # connect aw account
     url(r'^connect_aw_account_list/$',

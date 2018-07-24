@@ -6,6 +6,8 @@ class Name:
 
     class Track:
         FILTERS = "track_filters"
+        DATA = "track_accounts_data"
+        CHART = "track_chart"
 
     class PacingReport:
         OPPORTUNITIES = "pacing_report_opportunities"
