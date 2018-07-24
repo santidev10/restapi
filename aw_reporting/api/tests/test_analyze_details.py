@@ -24,7 +24,8 @@ class AnalyzeDetailsAPITestCase(AwReportingAPITestCase):
         "ctr_v_top", "cost_last_week", "average_cpv_top",
         "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
         "average_cpv_bottom", "ctr_top", "impressions_last_week",
-        "video_clicks"
+        "video_clicks",
+        "has_statistics",
     }
 
     detail_keys = {

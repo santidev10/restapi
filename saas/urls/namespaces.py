@@ -3,4 +3,3 @@ class Namespace:
     AW_CREATION = "aw_creation_urls"
     USER_PROFILE = "userprofile_api_urls"
     SEGMENT = "segment_api_urls"
-    USER_PROFILE = "userprofile_api_urls"

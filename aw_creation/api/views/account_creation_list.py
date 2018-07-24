@@ -19,7 +19,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import BASE_STATS, Account
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.permissions import UserHasCHFPermission
+from utils.permissions import UserHasDashboardPermission
 
 
 class OptimizationAccountListPaginator(CustomPageNumberPaginator):
@@ -30,7 +30,7 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 class AccountCreationListApiView(ListAPIView):
     serializer_class = AccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
-    permission_classes = (IsAuthenticated, UserHasCHFPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
     annotate_sorts = dict(
         impressions=(None, Sum("account__campaigns__impressions")),
         video_views=(None, Sum("account__campaigns__video_views")),
@@ -89,6 +89,7 @@ class AccountCreationListApiView(ListAPIView):
         # import "read only" accounts:
         # user has access to them,
         # but they are not connected to his account creations
+        # page: Dashboard
         if request.query_params.get("is_chf") == "1":
             user_settings = self.request.user.get_aw_settings()
             if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
@@ -100,10 +101,13 @@ class AccountCreationListApiView(ListAPIView):
             else:
                 read_accounts = Account.objects.exclude(
                     account_creations__owner=request.user).values("id", "name")
+        # page: Media Buying / Analytics
         else:
-            read_accounts = Account.user_objects(self.request.user).filter(
-                can_manage_clients=False).exclude(
-                account_creations__owner=request.user).values("id", "name")
+            read_accounts = Account.user_objects(self.request.user) \
+                .filter(can_manage_clients=False) \
+                .exclude(account_creations__owner=request.user) \
+                .values("id", "name")
+
         bulk_create = [
             AccountCreation(
                 account_id=i['id'],
@@ -129,7 +133,10 @@ class AccountCreationListApiView(ListAPIView):
                     UserSettingsKey.VISIBLE_ACCOUNTS)
             chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
             filters["account__managers__id"] = chf_account_id
+        else:
+            filters["account__in"] = Account.user_objects(self.request.user)
         queryset = AccountCreation.objects.filter(**filters)
+
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
             dependencies, annotate = self.annotate_sorts[sort_by]

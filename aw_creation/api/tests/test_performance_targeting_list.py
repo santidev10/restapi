@@ -25,6 +25,10 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.mcc_account = Account.objects.create(can_manage_clients=True)
+        aw_connection = AWConnection.objects.create(refresh_token="token")
+        AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
+        AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
 
     def test_fail_post(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
@@ -33,6 +37,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         ac_creation = AccountCreation.objects.create(
             name="This is a visible account on Performance list", owner=self.user, account=account,
@@ -74,6 +79,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_filter_campaign_count(self):
         account = Account.objects.create(id="123", name="")
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         Campaign.objects.create(id=2, name="", account=account, cost=200)
         ac_creation = AccountCreation.objects.create(
@@ -130,8 +136,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_from_aw(self):
         account_1 = Account.objects.create(id=1)
-        account_2 = Account.objects.create(id=2
-                                           )
+        account_1.managers.add(self.mcc_account)
+        account_2 = Account.objects.create(id=2)
+        account_2.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, account=account_1, cost=1)
         aw_account = AccountCreation.objects.create(name="From AdWords", owner=self.user, is_managed=False,
                                                     account=account_1)

@@ -1,5 +1,6 @@
 import csv
 import io
+import itertools
 import json
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -270,3 +271,6 @@ def generic_test(args_list):
         return wrapped_test_function
 
     return wrapper
+
+
+int_iterator = itertools.count(1, 1)

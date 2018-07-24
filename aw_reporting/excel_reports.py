@@ -10,6 +10,9 @@ def div_by_100(value):
     return value / 100. if value is not None else ""
 
 
+FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected TV Devices, Non-smart phones etc."
+
+
 class PerformanceWeeklyReport:
 
     def _set_format_options(self):
@@ -149,7 +152,7 @@ class PerformanceWeeklyReport:
         self.workbook = xlsxwriter.Workbook(self.output, {'in_memory': True})
         # clean up account name
         bad_characters = '[]:*?\/'
-        account_name = self.account.name[:31] if self.account else ""
+        account_name = self.account.name[:31] if self.account and self.account.name else ""
         for char in account_name:
             if char in bad_characters:
                 account_name = account_name.replace(char, "")
@@ -600,11 +603,24 @@ class PerformanceWeeklyReport:
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation
+
         annotation_row = [
-            ["*Other includes YouTube accessed by Smart TV's,"
-             " Connected TV Devices, Non-smart phones etc."]
+            [FOOTER_ANNOTATION]
         ]
         self.write_rows(annotation_row, start_row, self.annotation_format)
+
+
+class PerformanceReportColumn:
+    IMPRESSIONS = 2
+    VIEWS = 3
+    COST = 4
+    AVERAGE_CPM = 5
+    AVERAGE_CPV = 6
+    CLICKS = 7
+    CTR_I = 8
+    CTR_V = 9
+    VIEW_RATE = 10
+    QUARTERS = range(11, 15)
 
 
 class PerformanceReport:
@@ -625,13 +641,26 @@ class PerformanceReport:
         ("video75rate", "75%"),
         ("video100rate", "100%"),
     )
-    column_names = dict(columns)
-
-    column_keys = tuple(key for key, _ in columns)
 
     columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
 
+    def __init__(self, columns_to_hide=None):
+        self._exclude_columns(columns_to_hide or [])
+
+    @property
+    def column_names(self):
+        return dict(self.columns)
+
+    @property
+    def column_keys(self):
+        return tuple(key for key, _ in self.columns)
+
+    def _exclude_columns(self, columns_to_hide):
+        self.columns = [column for i, column in enumerate(self.columns) if i not in columns_to_hide]
+        self.columns_width = [width for i, width in enumerate(self.columns_width) if i not in columns_to_hide]
+
     def generate(self, data_generator):
+
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet()

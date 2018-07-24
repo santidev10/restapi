@@ -858,7 +858,8 @@ class DemoAccount(BaseDemo):
             plan_cost=None,
             delivered_cost=None,
             plan_impressions=None,
-            video_clicks=None
+            video_clicks=None,
+            has_statistics=True,
         )
         return data
 
