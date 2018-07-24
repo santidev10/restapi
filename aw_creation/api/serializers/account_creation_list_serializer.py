@@ -11,55 +11,6 @@ from aw_reporting.api.serializers.fields import StatField
 from aw_reporting.api.serializers.fields.parent_dict_value_field import \
     ParentDictValueField
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import AdGroupStatistic, \
-    Campaign, dict_norm_base_stats, \
-    VideoCreativeStatistic, Ad, \
-    Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, SalesForceGoalType, OpPlacement
-from utils.db.aggregators import ConcatAggregate
-from aw_reporting.utils import safe_max
-from userprofile.models import UserSettingsKey
-from utils.db.aggregators import ConcatAggregate
-from utils.lang import pick_dict
-from utils.permissions import is_chf_in_request
-from utils.registry import registry
-from utils.serializers import ExcludeFieldsMixin
-import logging
-from collections import defaultdict
-
-from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, F
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
-    BooleanField
-
-from aw_creation.models import CampaignCreation, AccountCreation
-from aw_reporting.api.serializers.fields import StatField
-from aw_reporting.api.serializers.fields.parent_dict_value_field import \
-    ParentDictValueField
-from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import AdGroupStatistic, \
-    Campaign, dict_norm_base_stats, \
-    VideoCreativeStatistic, Ad, \
-    Opportunity, dict_add_calculated_stats, base_stats_aggregator, \
-    client_cost_campaign_required_annotation, SalesForceGoalType, OpPlacement
-from aw_reporting.utils import safe_max
-from userprofile.models import UserSettingsKey
-from utils.db.aggregators import ConcatAggregate
-from utils.lang import pick_dict
-from utils.permissions import is_chf_in_request
-from utils.registry import registry
-from utils.serializers import ExcludeFieldsMixin
-from collections import defaultdict
-
-from django.db.models import Min, Max, Sum, Count, When, Case, FloatField, F
-from django.db.models import Q
-from rest_framework.serializers import ModelSerializer, \
-    SerializerMethodField, BooleanField
-
-from aw_creation.models import CampaignCreation, AccountCreation
-from aw_reporting.api.serializers.fields import StatField
-from aw_reporting.api.serializers.fields.parent_dict_value_field import \
-    ParentDictValueField
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import Ad, AdGroupStatistic, base_stats_aggregator, \
     Campaign, client_cost_campaign_required_annotation, \
     dict_add_calculated_stats, dict_norm_base_stats, Flight, OpPlacement, \
