@@ -8,9 +8,10 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
+from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceReport
+from aw_reporting.excel_reports import PerformanceReport, PerformanceReportColumn
 from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     DATE_FORMAT, AdGroupStatistic, dict_norm_base_stats, \
     dict_add_calculated_stats
@@ -27,9 +28,9 @@ class PerformanceExportApiView(APIView):
         filters = {}
         if request.data.get("is_chf") == 1:
             user_settings = self.request.user.aw_settings
-            visible_accounts = user_settings.get(
-                UserSettingsKey.VISIBLE_ACCOUNTS)
-            if visible_accounts:
+            visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
+            if not visible_all_accounts:
+                visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
                 filters["account__id__in"] = visible_accounts
         else:
             filters["owner"] = self.request.user
@@ -38,7 +39,7 @@ class PerformanceExportApiView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data_generator = partial(self.get_export_data, item)
+        data_generator = partial(self.get_export_data, item, self.request.user)
         return self.build_response(item.name, data_generator)
 
     tabs = (
@@ -51,7 +52,13 @@ class PerformanceExportApiView(APIView):
             title=re.sub(r"\W", account_name, "-"),
             timestamp=datetime.now().strftime("%Y%m%d"),
         )
-        xls_report = PerformanceReport()
+        user = self.request.user
+        hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
+        columns_to_hide = [PerformanceReportColumn.COST, PerformanceReportColumn.AVERAGE_CPM,
+                           PerformanceReportColumn.AVERAGE_CPV] \
+            if hide_costs and self.request.data.get("is_chf") == 1\
+            else []
+        xls_report = PerformanceReport(columns_to_hide=columns_to_hide)
         return xlsx_response(title, xls_report.generate(data_generator))
 
     def get_filters(self):
@@ -68,7 +75,7 @@ class PerformanceExportApiView(APIView):
         )
         return filters
 
-    def get_export_data(self, item):
+    def get_export_data(self, item, user):
         filters = self.get_filters()
         data = dict(name=item.name)
 
@@ -84,9 +91,14 @@ class PerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
+        is_dashboard = self.request.data.get("is_chf") == 1
+        aggregation = all_stats_aggregate
+        if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES) and is_dashboard:
+            aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate
+            **aggregation
         )
+
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)
         dict_add_calculated_stats(stats)
@@ -102,6 +114,7 @@ class PerformanceExportApiView(APIView):
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
+                always_aw_costs=not is_dashboard,
                 **filters
             )
             items = chart.get_items()

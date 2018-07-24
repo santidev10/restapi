@@ -2,7 +2,7 @@ from datetime import timedelta, datetime
 
 from django.db.models import Avg, Value, Case, When, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Min, \
-    Max
+    Max, IntegerField
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -17,7 +17,7 @@ from aw_reporting.models import CONVERSIONS, QUARTILE_STATS, \
     GenderStatistic, Genders, AgeRangeStatistic, AgeRanges, Devices, \
     CityStatistic, BASE_STATS, DATE_FORMAT, SalesForceGoalType, OpPlacement, \
     AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats, \
-    client_cost_ad_group_statistic_required_annotation, AdGroup
+    client_cost_ad_group_statistic_required_annotation
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.db.aggregators import ConcatAggregate
@@ -28,6 +28,8 @@ from utils.registry import registry
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
+
+    HAS_STATISTICS_KEY = "has_statistics"
 
     def get_filters(self):
         data = self.request.data
@@ -63,7 +65,7 @@ class PerformanceAccountDetailsApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         data = AccountCreationListSerializer(
             self.account_creation, context={"request": request}).data
-        show_conversions = self.request.user.get_aw_settings()\
+        show_conversions = self.request.user.get_aw_settings() \
             .get(UserSettingsKey.SHOW_CONVERSIONS)
         data["overview"] = self.get_overview_data(self.account_creation)
         data["details"] = self.get_details_data(self.account_creation,
@@ -81,8 +83,11 @@ class PerformanceAccountDetailsApiView(APIView):
             fs["date__gte"] = filters['start_date']
         if filters['end_date']:
             fs["date__lte"] = filters['end_date']
-        data = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **all_stats_aggregate)
+
+        queryset = AdGroupStatistic.objects.filter(**fs)
+        has_statistics = queryset.exists()
+        data = queryset.aggregate(**all_stats_aggregate)
+        data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
@@ -107,7 +112,7 @@ class PerformanceAccountDetailsApiView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         if self.request.data.get("is_chf") == 1:
             self.add_chf_performance_data(data)
-            show_client_cost = not registry.user.get_aw_settings()\
+            show_client_cost = not registry.user.get_aw_settings() \
                 .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
             if show_client_cost:
                 data["delivered_cost"] = self._get_client_cost(fs)
@@ -119,9 +124,9 @@ class PerformanceAccountDetailsApiView(APIView):
 
     def _filter_costs(self, data):
         user = registry.user
-        if user.get_aw_settings()\
-                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
-            hidden_values = "cost", "average_cpm", "average_cpv"
+        if user.get_aw_settings() \
+                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN) and self.request.data.get("is_chf") == 1:
+            hidden_values = "cost", "delivered_cost", "plan_cost", "average_cpm", "average_cpv"
             for key in hidden_values:
                 data.pop(key, None)
         return data
@@ -154,33 +159,29 @@ class PerformanceAccountDetailsApiView(APIView):
             data[field] = None
         account_campaigns_ids = self.account_creation.account. \
             campaigns.values_list("id", flat=True)
-        campaigns_ids = self.request.data.get("campaigns")
-        ad_groups_ids = self.request.data.get("ad_groups")
+        filters = self.get_filters()
+        campaigns_ids = filters.get("campaigns")
+        ad_groups_ids = filters.get("ad_groups")
+        start_date = filters.get("start_date")
+        end_date = filters.get("end_date")
         placements_filters = {}
-        ad_groups_filters = {}
+        ad_group_statistic_filters = dict(ad_group__campaign__id__in=account_campaigns_ids)
         if campaigns_ids is not None:
             placements_filters["adwords_campaigns__id__in"] = campaigns_ids
-            ad_groups_filters["campaign__id__in"] = campaigns_ids
+            ad_group_statistic_filters["ad_group__campaign__id__in"] = campaigns_ids
         if ad_groups_ids is not None:
             placements_filters[
                 "adwords_campaigns__ad_groups__id__in"] = ad_groups_ids
-            ad_groups_filters["id__in"] = ad_groups_ids
+            ad_group_statistic_filters["ad_group__id__in"] = ad_groups_ids
+        if start_date is not None:
+            ad_group_statistic_filters["date__gte"] = start_date
+        if end_date is not None:
+            ad_group_statistic_filters["date__lte"] = end_date
         placements_queryset = OpPlacement.objects.filter(
             adwords_campaigns__id__in=account_campaigns_ids).filter(
             **placements_filters).distinct()
-        ad_group_queryset = AdGroup.objects.filter(
-            campaign__id__in=account_campaigns_ids).filter(
-            **ad_groups_filters).distinct()
-        data.update(
-            ad_group_queryset.annotate(
-                cpm_impressions=Case(When(
-                    campaign__salesforce_placement__goal_type_id=
-                    SalesForceGoalType.CPM,
-                    then="impressions"))
-            ).aggregate(
-                delivered_cost=Sum("cost"),
-                delivered_impressions=Sum("cpm_impressions"),
-                delivered_video_views=Sum("video_views")))
+        ad_group_statistic_queryset = AdGroupStatistic.objects.filter(**ad_group_statistic_filters)
+        data.update(self._get_delivered_stats(ad_group_statistic_queryset))
         plan_cost = 0
         plan_impressions = 0
         plan_video_views = 0
@@ -191,9 +192,35 @@ class PerformanceAccountDetailsApiView(APIView):
             plan_video_views += (placement.ordered_units or 0) \
                 if placement.goal_type_id == SalesForceGoalType.CPV else 0
         data.update(
-            {"plan_cost": plan_cost,
-             "plan_impressions": plan_impressions,
-             "plan_video_views": plan_video_views})
+            {
+                "plan_cost": plan_cost,
+                "plan_impressions": plan_impressions,
+                "plan_video_views": plan_video_views
+            })
+
+    def _get_delivered_stats(self, queryset):
+        cpm_impressions_annotation = Case(When(
+            ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+            then="impressions"
+        ),
+            output_field=IntegerField(),
+            default=Value(0)
+        )
+        cpv_views_annotation = Case(When(
+            ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+            then="video_views"
+        ),
+            output_field=IntegerField(),
+            default=Value(0)
+        )
+        return queryset.annotate(
+            cpm_impressions=cpm_impressions_annotation,
+            cpv_video_views=cpv_views_annotation
+        ).aggregate(
+            delivered_cost=Sum("cost"),
+            delivered_impressions=Sum("cpm_impressions"),
+            delivered_video_views=Sum("cpv_video_views"),
+        )
 
     def add_standard_performance_data(self, data, filters):
         null_fields = (
