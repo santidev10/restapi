@@ -90,5 +90,5 @@ class Command(BaseCommand):
             query = model.objects.filter(category=model.PRIVATE)
             fields += ["owner.email"]
         query = query.order_by("category")
-        data = [[deep_getattr(obj, attr) for attr in fields] for obj in query]
+        data = [[deep_getattr(obj, attr, default="") for attr in fields] for obj in query]
         self.__write_rows(data, start_row, worksheet)

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    fixtures_directory = "{}/userprofile/fixtures/".format(settings.BASE_DIR)
+    fixtures_directory = join(settings.BASE_DIR, "userprofile/fixtures/")
     file_name_prefix = "users_export_"
     separation_symbol = "|"
     fields_with_separation_symbol = ["related_channels", "access"]
@@ -32,11 +32,11 @@ class Command(BaseCommand):
 
     def __load_workbooks(self):
         import_files = [
-            file_ for file_ in listdir(self.fixtures_directory)
-            if isfile(join(self.fixtures_directory, file_))
-            and file_.startswith(self.file_name_prefix)
+            file_name for file_name in listdir(self.fixtures_directory)
+            if isfile(join(self.fixtures_directory, file_name))
+            and file_name.startswith(self.file_name_prefix)
         ]
-        workbooks = [load_workbook(filename="{}{}".format(self.fixtures_directory, fixture))
+        workbooks = [load_workbook(filename=join(self.fixtures_directory, fixture))
                      for fixture in import_files]
         return workbooks
 

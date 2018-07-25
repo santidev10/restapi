@@ -24,8 +24,8 @@ def get_all_class_constants(cls):
                    if not name.startswith("_")])
 
 
-def deep_getattr(obj, attr):
+def deep_getattr(obj, attr, default=None):
     try:
         return reduce(getattr, attr.split("."), obj)
     except AttributeError:
-        return ""
+        return default
