@@ -325,19 +325,6 @@ class ContactFormApiView(APIView):
         return Response(status=HTTP_201_CREATED)
 
 
-class VendorDetailsApiView(APIView):
-    """
-    Endpoint to recognize server vendor
-    """
-    permission_classes = tuple()
-
-    def get(self, request):
-        """
-        Get procedure
-        """
-        return Response(data={"vendor": settings.VENDOR})
-
-
 class ErrorReportApiView(APIView):
     """
     Endpoint for sending error reports from UI
