@@ -20,17 +20,14 @@ urlpatterns = [
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(segment_types),
         SegmentRetrieveUpdateDeleteApiView.as_view(),
         name="segment_details"),
-    url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/share/$'.format(
-        segment_types),
+    url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/share/$'.format(segment_types),
         SegmentShareApiView.as_view(),
         name="segment_share"),
-    url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(
-        segment_types),
+    url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(segment_types),
         SegmentDuplicateApiView.as_view(),
-        name="segment_duplicate"),
+        name=Name.SEGMENT_DUPLICATE),
     url(
-        r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(
-            segment_types),
+        r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
         SegmentSuggestedChannelApiView.as_view(),
         name="suggested_channels"),
 ]

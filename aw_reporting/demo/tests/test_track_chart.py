@@ -5,24 +5,26 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.urls.names import Name
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.CHART)
 
     def setUp(self):
         self.create_test_user()
 
     def test_success_get(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
             indicator="impressions",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -31,7 +33,6 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             len(response.data[0]['data'][0]['trend']), 2, "two days")
 
     def test_success_dimensions(self):
-        base_url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -44,14 +45,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
                               'interest', 'creative', 'channel', 'video',
                               'keyword', 'location', 'ad'):
                 filters['dimension'] = dimension
-                url = "{}?{}".format(base_url, urlencode(filters))
+                url = "{}?{}".format(self.url, urlencode(filters))
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertEqual(len(response.data), 1)
                 self.assertGreater(len(response.data[0]['data']), 1)
 
     def test_success_hourly(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -59,14 +59,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             indicator="impressions",
             breakdown="hourly",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
 
     def test_success_hourly_clicks(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -74,7 +73,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             indicator="clicks",
             breakdown="hourly",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
@@ -82,7 +81,6 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         self.assertEqual(all(i['value'] for i in trend), True)
 
     def test_success_hourly_today(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today,
@@ -90,7 +88,7 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             indicator="impressions",
             breakdown="hourly",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
@@ -101,14 +99,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         )
 
     def test_get_from_future(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today,
             end_date=today + timedelta(days=10),
             indicator="clicks",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -120,14 +117,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         )
 
     def test_get_from_future_2(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today + timedelta(days=1),
             end_date=today + timedelta(days=10),
             indicator="clicks",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -135,14 +131,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
                          "There is no data from the future")
 
     def test_get_ctr_v(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=30),
             end_date=today,
             indicator="ctr_v",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
@@ -153,14 +148,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         )
 
     def test_get_ctr(self):
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=30),
             end_date=today,
             indicator="ctr",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']

@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  pg:
+    image: postgres:9.6
+    environment:
+      POSTGRES_USER: admin_saas
+      POSTGRES_PASSWORD: admin
+  api:
+    build: .
+    volumes:
+      - .:/code
+    ports:
+      - "5000:5000"
+    depends_on:
+      - pg

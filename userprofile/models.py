@@ -104,6 +104,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     paypal_email = models.EmailField(null=True, blank=True)
     facebook_id = models.CharField(max_length=255, null=True, blank=True)
     is_password_generated = models.BooleanField(default=False)
+    google_account_id = models.CharField(null=True, blank=True, max_length=255)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)

@@ -210,9 +210,15 @@ client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
 # fixme: deprecated
 base_stats_aggregate = base_stats_aggregator()
 
-all_stats_aggregate = {"sum_{}".format(s): Sum(s)
-                       for s in QUARTILE_STATS + CONVERSIONS}
-all_stats_aggregate.update(base_stats_aggregate)
+
+def all_stats_aggregator():
+    res = {"sum_{}".format(s): Sum(s)
+           for s in QUARTILE_STATS + CONVERSIONS}
+    res.update(base_stats_aggregator())
+    return res
+
+
+all_stats_aggregate = all_stats_aggregator()
 
 
 def dict_norm_base_stats(data):

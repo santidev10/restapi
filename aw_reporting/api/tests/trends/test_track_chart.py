@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -7,13 +7,17 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.charts import TrendId
+from aw_reporting.api.urls.names import Name
+from aw_reporting.charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher, generic_test, patch_now
 
 
 class TrackChartAPITestCase(AwReportingAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.CHART)
 
     def setUp(self):
         user = self.create_test_user()
@@ -36,14 +40,13 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                 impressions=test_impressions,
             )
 
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),
             indicator="impressions",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -65,14 +68,13 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                 impressions=test_impressions,
                 video_views=video_views,
             )
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=1),
             end_date=today,
             indicator="video_view_rate",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -96,7 +98,6 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                     impressions=test_impressions[device_id],
                 )
 
-        base_url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -104,7 +105,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             indicator="impressions",
             dimension="device",
         )
-        url = "{}?{}".format(base_url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -132,7 +133,6 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                     impressions=test_impressions * n,
                 )
 
-        base_url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -140,7 +140,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             indicator="impressions",
             dimension="channel",
         )
-        url = "{}?{}".format(base_url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -166,7 +166,6 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                     impressions=test_impressions * n,
                 )
 
-        base_url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -174,7 +173,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             indicator="impressions",
             dimension="video",
         )
-        url = "{}?{}".format(base_url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -196,7 +195,6 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
                     impressions=hour,
                 )
 
-        url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -204,12 +202,43 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             indicator="impressions",
             breakdown="hourly",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
         self.assertIsNotNone(trend)
         self.assertEqual(len(trend[0]["trend"]), 48, "24 hours x 2 days")
+
+    @generic_test((
+            ("Show AW rates", (True,), {}),
+            ("Hide AW rates", (False,), {}),
+    ))
+    def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
+        """
+        Bug: Trends > "Show real (AdWords) costs on the dashboard" affects data on Media Buying -> Trends
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2818
+        """
+        views, cost = 12, 23
+        any_date = date(2018, 1, 1)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, date=any_date, video_views=views, cost=cost,
+                                        average_position=1)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+
+        expected_cpv = cost / views
+        self.assertGreater(expected_cpv, 0)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
+        }
+        with patch_now(any_date), \
+             self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            trend = get_trend(response.data, TrendId.HISTORICAL)
+            historical_cpv = trend[0]["trend"]
+            self.assertEqual(len(historical_cpv), 1)
+            item = historical_cpv[0]
+            self.assertAlmostEqual(item["value"], expected_cpv)
 
 
 def get_trend(data, uid):

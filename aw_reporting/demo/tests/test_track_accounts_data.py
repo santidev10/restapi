@@ -4,16 +4,18 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.urls.names import Name
+from saas.urls.namespaces import Namespace
 from utils.utils_tests import ExtendedAPITestCase
 
 
 class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.DATA)
 
     def setUp(self):
         self.create_test_user()
 
     def test_success_daily(self):
-        url = reverse("aw_reporting_urls:track_accounts_data")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -21,7 +23,7 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
             indicator="impressions",
             dimension="age",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -40,7 +42,6 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(account['trend']), 2)
 
     def test_success_hourly(self):
-        url = reverse("aw_reporting_urls:track_accounts_data")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -49,7 +50,7 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
             dimension="age",
             breakdown="hourly",
         )
-        url = "{}?{}".format(url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")

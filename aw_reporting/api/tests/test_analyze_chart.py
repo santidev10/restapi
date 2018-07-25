@@ -1,7 +1,9 @@
 import json
 from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+
 from aw_reporting.demo.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from .base import AwReportingAPITestCase
@@ -66,11 +68,16 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
     def test_success_get_filter_items(self):
         url = reverse("aw_reporting_urls:analyze_chart",
                       args=(self.account.id,))
-        response = self.client.post(
-            url,
-            json.dumps(dict(campaigns=["1"])),
-            content_type='application/json',
-        )
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(
+                url,
+                json.dumps(dict(campaigns=["1"])),
+                content_type='application/json',
+            )
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(len(data), 1)
@@ -96,4 +103,3 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), 3)
             self.assertEqual(len(response.data[0]['data']), 1)
-
