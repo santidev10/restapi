@@ -1,31 +1,35 @@
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TransactionTestCase
 from pytz import utc
 
-from aw_reporting.models import AWConnection, Account, AWAccountPermission, \
-    Campaign, Devices, AdGroup
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import Devices
 from utils.utils_tests import build_csv_byte_stream
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 
 
 class PullHourlyAWDataTestCase(TransactionTestCase):
     def _call_command(self, **kwargs):
         call_command("pull_hourly_aw_data", **kwargs)
 
-    def _create_account(self, update_time):
-        connection = AWConnection.objects.create()
-        mcc_account = Account.objects.create(id=1, timezone="UTC",
+    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None):
+        mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
-                                             update_time=update_time)
-        permission = AWAccountPermission.objects.create(account=mcc_account,
-                                                        aw_connection=connection,
-                                                        can_read=True)
-        mcc_account.mcc_permissions.add(permission)
-        mcc_account.save()
+                                             update_time=manager_update_time)
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
 
-        account = Account.objects.create(id=2, timezone="UTC")
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time)
         account.managers.add(mcc_account)
         account.save()
         return account
@@ -78,3 +82,26 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
 
         self.assertEqual(AdGroup.objects.all().count(), 2)
         self.assertEqual(campaign.ad_groups.count(), 2)
+
+    def test_should_not_change_update_time(self):
+        test_timezone_str = "America/Los_Angeles"
+        now = datetime(2018, 2, 2, 23, 55).replace(tzinfo=utc)
+        account = self._create_account(tz=test_timezone_str)
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        def mock_download(report, *_, **__):
+            fields = report["selector"]["fields"]
+            return build_csv_byte_stream(fields, [])
+
+        downloader_mock.DownloadReportAsStream.side_effect = mock_download
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(empty=True)
+
+        account.refresh_from_db()
+        self.assertIsNone(account.update_time)
+        self.assertEqual(account.hourly_updated_at, now)

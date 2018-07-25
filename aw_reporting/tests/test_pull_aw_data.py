@@ -1,38 +1,74 @@
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock, ANY
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
+from unittest.mock import ANY
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TransactionTestCase
+from pytz import timezone
 from pytz import utc
 
-from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS, \
-    AD_GROUP_PERFORMANCE_REPORT_FIELDS, GEO_LOCATION_REPORT_FIELDS, \
-    DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS, AD_PERFORMANCE_REPORT_FIELDS, DateRangeType, date_formatted
-from aw_reporting.models import Campaign, Account, AWConnection, \
-    AWAccountPermission, Devices, AdGroup, GeoTarget, ParentStatuses, \
-    AdGroupStatistic, Audience, Ad, ParentStatistic, AgeRangeStatistic, GenderStatistic, ALL_AGE_RANGES, ALL_GENDERS, \
-    ALL_PARENTS, ALL_DEVICES, CampaignStatistic, AudienceStatistic, YTChannelStatistic, KeywordStatistic, \
-    YTVideoStatistic, RemarkStatistic, RemarkList, Topic, TopicStatistic
-from aw_reporting.tasks import AudienceAWType, MIN_FETCH_DATE
-from utils.utils_tests import patch_now, build_csv_byte_stream, int_iterator
+from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import DateRangeType
+from aw_reporting.adwords_reports import GEO_LOCATION_REPORT_FIELDS
+from aw_reporting.adwords_reports import date_formatted
+from aw_reporting.models import ALL_AGE_RANGES
+from aw_reporting.models import ALL_DEVICES
+from aw_reporting.models import ALL_GENDERS
+from aw_reporting.models import ALL_PARENTS
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
+from aw_reporting.models import Ad
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Devices
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import ParentStatistic
+from aw_reporting.models import ParentStatuses
+from aw_reporting.models import RemarkList
+from aw_reporting.models import RemarkStatistic
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
+from aw_reporting.tasks import AudienceAWType
+from aw_reporting.tasks import MIN_FETCH_DATE
+from utils.utils_tests import build_csv_byte_stream
+from utils.utils_tests import generic_test
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 
 
 class PullAWDataTestCase(TransactionTestCase):
-    def _call_command(self, **kwargs):
+    def _call_command(self, empty=False, **kwargs):
+        if empty:
+            kwargs["start"] = "get_ad_groups_and_stats"
+            kwargs["end"] = "get_campaigns"
         call_command("pull_aw_data", **kwargs)
 
-    def _create_account(self, update_time):
-        connection = AWConnection.objects.create()
-        mcc_account = Account.objects.create(id=1, timezone="UTC",
+    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None):
+        mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
-                                             update_time=update_time)
-        permission = AWAccountPermission.objects.create(account=mcc_account,
-                                                        aw_connection=connection,
-                                                        can_read=True)
-        mcc_account.mcc_permissions.add(permission)
-        mcc_account.save()
+                                             update_time=manager_update_time)
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
 
-        account = Account.objects.create(id=2, timezone="UTC")
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time)
         account.managers.add(mcc_account)
         account.save()
         return account
@@ -719,3 +755,27 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
                                                      max=date_formatted(yesterday)))
+
+    @generic_test([
+        ("Not updating before 6am", (time(5, 59), False), {}),
+        ("Updating at 6am", (time(6, 0), True), {}),
+    ])
+    def test_should_not_be_updated_until_6am(self, time_now, should_be_updated):
+        test_timezone_str = "America/Los_Angeles"
+        test_timezone = timezone(test_timezone_str)
+        today = date(2018, 2, 2)
+        yesterday = today - timedelta(days=1)
+        last_update = datetime.combine(yesterday, datetime.max.time()).replace(tzinfo=utc)
+        account = self._create_account(tz=test_timezone_str, account_update_time=last_update)
+
+        now = datetime.combine(today, time_now).replace(tzinfo=test_timezone)
+        now_utc = now.astimezone(tz=utc)
+        expected_update_time = (now_utc if should_be_updated else last_update)
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.timezone.now", return_value=now_utc), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client"):
+            self._call_command(empty=True)
+
+        account.refresh_from_db()
+        self.assertEqual(account.update_time, expected_update_time)
