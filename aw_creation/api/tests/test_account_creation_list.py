@@ -770,6 +770,22 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertIsNone(accounts[account_creation.id]["is_managed"])
 
+    def test_chf_is_managed_has_value_on_analytics(self):
+        managed_account = Account.objects.create(id="1", name="managed")
+        managed_account.managers.add(self.mcc_account)
+        account_creation = AccountCreation.objects.create(
+            name="1", owner=self.user,
+            account=managed_account, is_managed=True)
+        self.__set_non_admin_user_with_account(managed_account.id)
+        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher), \
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = dict((account["id"], account) for account in response.data["items"])
+        self.assertIsNotNone(accounts[account_creation.id]["is_managed"])
+
     def test_cost_method(self):
         opportunity = Opportunity.objects.create()
         placement1 = OpPlacement.objects.create(
