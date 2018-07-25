@@ -1,6 +1,5 @@
 FROM python:3.5
 ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE saas.docker_settings
 RUN mkdir /code
 WORKDIR /code
 ADD requirements.txt /code/

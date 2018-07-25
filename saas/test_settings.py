@@ -21,6 +21,6 @@ MIGRATION_MODULES = {
     "userprofile": None,
     "email_reports": None,
 }
-for logger_config in LOGGING["loggers"].values():
-    logger_config["filters"] = ["disable_in_tests"] \
+for logger_config in LOGGING["handlers"].values():
+    logger_config["filters"] = ["hide_all"] \
                                + logger_config.get("filters", [])
