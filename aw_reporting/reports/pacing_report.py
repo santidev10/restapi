@@ -3,17 +3,35 @@ from datetime import timedelta
 from math import ceil
 
 from django.contrib.auth import get_user_model
-from django.db.models import F, Sum, Case, When, Value, FloatField, Q
+from django.db.models import Case
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 from django.http import QueryDict
 
-from aw_reporting.calculations.margin import get_days_run_and_total_days, \
-    get_margin_from_flights
-from aw_reporting.models import OpPlacement, Flight, get_ctr_v, get_ctr, \
-    get_average_cpv, get_average_cpm, get_video_view_rate, \
-    dict_add_calculated_stats, Opportunity, Campaign, CampaignStatistic
-from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    SalesForceGoalTypes, goal_type_str, SalesForceRegions, \
-    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType, ALL_DYNAMIC_PLACEMENTS
+from aw_reporting.calculations.margin import get_days_run_and_total_days
+from aw_reporting.calculations.margin import get_margin_from_flights
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import get_average_cpm
+from aw_reporting.models import get_average_cpv
+from aw_reporting.models import get_ctr
+from aw_reporting.models import get_ctr_v
+from aw_reporting.models import get_video_view_rate
+from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
+from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
+from aw_reporting.models.salesforce_constants import SalesForceRegions
+from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
 
@@ -434,6 +452,8 @@ class PacingReport:
         else:
             units_by_yesterday = sum_delivery = 0
             for f in flights:
+                if f["placement__placement_type"] == OpPlacement.OUTGOING_FEE_TYPE:
+                    continue
                 stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
                     if campaign_id else f
                 sum_delivery += stats["delivery"] or 0

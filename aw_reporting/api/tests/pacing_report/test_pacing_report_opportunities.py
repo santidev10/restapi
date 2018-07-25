@@ -1,7 +1,8 @@
 import logging
-from datetime import timedelta, date, datetime
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from itertools import product
-from unittest import skipIf
 from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
@@ -9,26 +10,34 @@ from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.http import QueryDict
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Campaign, CampaignStatistic, Flight, \
-    Opportunity, Category, User, SalesForceRegions, OpPlacement, \
-    SalesForceGoalType
-from aw_reporting.models.salesforce_constants import \
-    DYNAMIC_PLACEMENT_TYPES, DynamicPlacementType
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Category
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import SalesForceRegions
+from aw_reporting.models import User
+from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
-    get_current_release
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 
 logger = logging.getLogger(__name__)
 
 
 class PacingReportOpportunitiesTestCase(APITestCase):
-    url = reverse(
-        Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES)
+    url = reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES)
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -675,10 +684,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     def test_pagination(self):
         response = self.client.get(self.url + "?page=1")
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data, {"items": [],
-                                         "current_page": 1,
-                                         "items_count": 0,
-                                         "max_page": 1})
+        self.assertEqual(response.data, {
+            "items": [],
+            "current_page": 1,
+            "items_count": 0,
+            "max_page": 1
+        })
 
     def test_opportunity_chart_data(self):
         """
@@ -1160,3 +1171,86 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["margin"], expected_margin)
+
+    def test_outgoing_fee_pacing(self):
+        today = date(2018, 1, 1)
+        total_cost = 6543
+        our_cost = 1234
+        days_pass, days_left = 3, 6
+        total_days = days_pass + days_left
+        self.assertGreater(days_pass, 0)
+        self.assertGreater(days_left, 0)
+        start = today - timedelta(days=days_pass)
+        end = today + timedelta(days=days_left - 1)
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator), name="1", start=today - timedelta(days=3),
+            end=today + timedelta(days=3), probability=100)
+        placement_outgoing_fee = OpPlacement.objects.create(
+            id=next(int_iterator), name="Outgoing fee placement", opportunity=opportunity,
+            start=start, end=end, placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.CPV)
+        placement_cpv = OpPlacement.objects.create(
+            id=next(int_iterator), name="Outgoing fee placement",
+            opportunity=opportunity,
+            start=start, end=end,
+            goal_type_id=SalesForceGoalType.CPV)
+        Flight.objects.create(
+            id=next(int_iterator),
+            start=start, end=end, total_cost=0,
+            ordered_units=2100,
+            delivered=2100,
+            placement=placement_outgoing_fee, cost=87)
+        plan_units, units_delivered = 123, 12
+        units_by_yesterday = plan_units * PacingReport.goal_factor * days_pass / total_days
+
+        Flight.objects.create(
+            id=next(int_iterator),
+            start=start, end=end, total_cost=total_cost, ordered_units=plan_units,
+            placement=placement_cpv, cost=1)
+        campaign_outgoing_fee = Campaign.objects.create(
+            salesforce_placement=placement_outgoing_fee)
+        campaign_cpv = Campaign.objects.create(id=next(int_iterator),
+                                               salesforce_placement=placement_cpv)
+        CampaignStatistic.objects.create(date=start, campaign=campaign_outgoing_fee,
+                                         cost=our_cost)
+        CampaignStatistic.objects.create(
+            date=start, campaign=campaign_cpv,
+            video_views=units_delivered, cost=our_cost)
+        expected_pacing = (units_delivered / units_by_yesterday) * 100
+        with patch_now(today):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["pacing"], expected_pacing)
+
+    def test_outgoing_fee_margin(self):
+        today = date(2018, 1, 1)
+        our_cost = 1234
+        days_pass, days_left = 3, 6
+        self.assertGreater(days_pass, 0)
+        self.assertGreater(days_left, 0)
+        start = today - timedelta(days=days_pass)
+        end = today + timedelta(days=days_left - 1)
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator), name="1", start=today - timedelta(days=3),
+            end=today + timedelta(days=3), probability=100)
+        placement_outgoing_fee = OpPlacement.objects.create(
+            id=next(int_iterator), name="Outgoing fee placement", opportunity=opportunity,
+            start=start, end=end, placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.CPV, ordered_units=123)
+        Flight.objects.create(
+            id=next(int_iterator),
+            start=start, end=end, total_cost=0,
+            ordered_units=2100,
+            delivered=2100,
+            placement=placement_outgoing_fee, cost=87)
+
+        campaign_outgoing_fee = Campaign.objects.create(
+            salesforce_placement=placement_outgoing_fee)
+        CampaignStatistic.objects.create(date=start, campaign=campaign_outgoing_fee,
+                                         cost=our_cost, video_views=13)
+        with patch_now(today):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["margin"], -100)
