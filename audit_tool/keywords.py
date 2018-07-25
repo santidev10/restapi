@@ -1,10 +1,10 @@
-from collections import OrderedDict
-from django.http import QueryDict
 import logging
 import re
+from collections import OrderedDict
+
+from django.http import QueryDict
 
 from singledb.connector import SingleDatabaseApiConnector
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

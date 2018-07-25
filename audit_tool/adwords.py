@@ -1,18 +1,18 @@
-from concurrent.futures import ThreadPoolExecutor
 import csv
-from googleads import adwords, oauth2
 import io
 import logging
-from oauth2client.client import HttpAccessTokenRefreshError
-from suds import WebFault
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 from typing import Iterator
 from typing import List
+
 import yaml
+from googleads import adwords, oauth2
+from oauth2client.client import HttpAccessTokenRefreshError
+from suds import WebFault
 
 from audit_tool.dmo import AccountDMO
 from utils.utils import safe_exception
-
 
 logger = logging.getLogger(__name__)
 
