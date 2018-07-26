@@ -40,7 +40,7 @@ class Command(BaseCommand):
         self.headers = (("Title", "Related Ids", "Category"),)
         if is_private_export:
             self.headers = (
-                ("Title", "Related Ids", "Category", "Owner Email"),)
+                ("Title", "Related Ids", "Category", "Owner Email", "Shared With"),)
 
     def __prepare_workbook(self, is_private_export):
         filename = "segment/fixtures/segments_export_{}.xlsx"
@@ -55,7 +55,8 @@ class Command(BaseCommand):
             0: 37,
             1: 50,
             2: 14,
-            3: 25
+            3: 25,
+            4: 50,
         }
         for key, value in columns_width.items():
             worksheet.set_column(key, key, value)
@@ -88,7 +89,7 @@ class Command(BaseCommand):
         fields = ["title", "related_ids_string", "category"]
         if is_private_export:
             query = model.objects.filter(category=model.PRIVATE)
-            fields += ["owner.email"]
+            fields += ["owner.email", "shared_with_string"]
         query = query.order_by("category")
         data = [[deep_getattr(obj, attr, default="") for attr in fields] for obj in query]
         self.__write_rows(data, start_row, worksheet)
