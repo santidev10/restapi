@@ -16,7 +16,7 @@ class Command(BaseCommand):
     fixtures_directory = join(settings.BASE_DIR, "segment/fixtures/")
     file_name_prefix = "segments_private_export_"
     separation_symbol = "|"
-    fields_with_separation_symbol = ["related_ids"]
+    fields_with_separation_symbol = ["related_ids", "shared_with"]
     names_and_models = {
         "KeywordSegments": SegmentKeyword,
         "VideoSegments": SegmentVideo,
@@ -66,6 +66,8 @@ class Command(BaseCommand):
                 obj["owner"] = None
                 owner_email = obj.pop("owner_email")
                 related_ids = obj.pop("related_ids")
+                if obj.get("shared_with") is None:
+                    obj["shared_with"] = []
                 if owner_email:
                     try:
                         obj["owner"] = get_user_model().objects.get(email=owner_email)
