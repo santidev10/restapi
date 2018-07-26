@@ -1,16 +1,19 @@
 import logging
 from functools import partial
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from pytz import utc, timezone
+from pytz import timezone
+from pytz import utc
 from suds import WebFault
 
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.aw_data_loader import AWDataLoader
-from aw_reporting.tasks import detect_success_aw_read_permissions, \
-    recalculate_de_norm_fields, max_ready_date
+from aw_reporting.tasks import detect_success_aw_read_permissions
+from aw_reporting.tasks import max_ready_date
+from aw_reporting.tasks import recalculate_de_norm_fields
 from aw_reporting.utils import command_single_process_lock
 from utils.datetime import now_in_default_tz
 
@@ -43,8 +46,9 @@ class Command(BaseCommand):
         )
 
     def pre_process(self):
+        if not settings.IS_TEST:
+            self.create_cf_account_connection()
         detect_success_aw_read_permissions()
-        self.create_cf_account_connection()
 
     @staticmethod
     def post_process():
@@ -93,10 +97,8 @@ class Command(BaseCommand):
 
     @staticmethod
     def create_cf_account_connection():
-        from aw_reporting.models import AWConnection, Account, \
-            AWAccountPermission
-        from aw_reporting.adwords_api import load_web_app_settings, \
-            get_customers
+        from aw_reporting.models import AWConnection, Account, AWAccountPermission
+        from aw_reporting.adwords_api import load_web_app_settings, get_customers
 
         settings = load_web_app_settings()
         connection, created = AWConnection.objects.update_or_create(
