@@ -20,7 +20,9 @@ class Name:
 
         ACCOUNT_LIST = "dashboard_account_creation_list"
         ACCOUNT_DETAILS = "dashboard_account_details"
+        ACCOUNT_OVERVIEW = "dashboard_account_overview"
 
     class Analytics:
         ACCOUNT_LIST = "analytics_account_creation_list"
         ACCOUNT_DETAILS = "analytics_account_details"
+        ACCOUNT_OVERVIEW = "analytics_account_overview"

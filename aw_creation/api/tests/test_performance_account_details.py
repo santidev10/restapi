@@ -25,10 +25,10 @@ from utils.utils_tests import ExtendedAPITestCase, int_iterator
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
-class AccountDetailsAnalyticsAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
-            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
+            Namespace.AW_CREATION + ":" + Name.Analytics.ACCOUNT_DETAILS,
             args=(account_creation_id,))
 
     def _request(self, account_creation_id, **kwargs):
@@ -423,7 +423,7 @@ class AccountDetailsAnalyticsAPITestCase(ExtendedAPITestCase):
                 self.assertIsNone(response.data[key])
 
 
-class AccountDetailsDashboardAPITestCase(ExtendedAPITestCase):
+class DashboardAccountDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
@@ -1075,17 +1075,18 @@ class AccountDetailsDashboardAPITestCase(ExtendedAPITestCase):
                     self.assertAlmostEqual(actual_value, expected_value)
 
 
-class AccountDetailsAnalyticsOverviewAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountOverviewAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
-            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
+            Namespace.AW_CREATION + ":" + Name.Analytics.ACCOUNT_OVERVIEW,
             args=(account_creation_id,))
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
         response = self.client.post(url, json.dumps(dict(is_chf=0, **kwargs)), content_type="application/json")
         self.assertEqual(response.status_code, status_code)
-        return response.data["overview"]
+        return response.data
+
     def _hide_demo_data(self, user):
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
@@ -1126,10 +1127,10 @@ class AccountDetailsAnalyticsOverviewAPITestCase(ExtendedAPITestCase):
             self.assertEqual(overview["cost"], aw_cost)
 
 
-class AccountDetailsDashboardOverviewAPITestCase(ExtendedAPITestCase):
+class DashboardAccountOverviewAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
-            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_DETAILS,
+            Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_OVERVIEW,
             args=(account_creation_id,))
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
