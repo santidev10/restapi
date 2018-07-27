@@ -21,12 +21,18 @@ urlpatterns = [
     url(r'^creation_options/$',
         views.CreationOptionsApiView.as_view(),
         name="creation_options"),
-    url(r'^account_creation_list/$',
-        views.AccountCreationListApiView.as_view(),
-        name=Name.CreationSetup.ACCOUNT_LIST),
     url(r'^account_creation_details/(?P<pk>\w+)/$',
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
+
+    # Analytics
+    url(r'^analytics/account_creation_list/$',
+        views.AnalyticsAccountCreationListApiView.as_view(),
+        name=Name.Analytics.ACCOUNT_LIST),
+    # Dashboard
+    url(r'^dashboard/account_creation_list/$',
+        views.DashboardAccountCreationListApiView.as_view(),
+        name=Name.Dashboard.ACCOUNT_LIST),
 
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
@@ -110,9 +116,6 @@ urlpatterns = [
     url(r'^performance_targeting_list/$',
         views.PerformanceTargetingListAPIView.as_view(),
         name="performance_targeting_list"),
-    url(r'^performance_targeting_details/(?P<pk>\w+)/$',
-        views.PerformanceTargetingDetailsAPIView.as_view(),
-        name="performance_targeting_details"),
     url(r'^performance_targeting_filters/(?P<pk>\w+)/$',
         views.PerformanceTargetingFiltersAPIView.as_view(),
         name="performance_targeting_filters"),

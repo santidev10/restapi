@@ -2,10 +2,10 @@ from django.db.models import Sum
 from rest_framework.response import Response
 from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 
-from .account_creation_list import AccountCreationListApiView
+from .analytics import AnalyticsAccountCreationListApiView
 
 
-class PerformanceTargetingListAPIView(AccountCreationListApiView):
+class PerformanceTargetingListAPIView(AnalyticsAccountCreationListApiView):
     def get_queryset(self, **filters):
         queryset = super(PerformanceTargetingListAPIView, self).get_queryset(
             **filters)

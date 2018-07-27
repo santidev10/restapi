@@ -717,9 +717,9 @@ class DemoCampaign(BaseDemo):
         return data
 
 
-class DemoAccount(BaseDemo):
+class DemoAccountDeprecated(BaseDemo):
     def __init__(self, **kwargs):
-        super(DemoAccount, self).__init__(**kwargs)
+        super(DemoAccountDeprecated, self).__init__(**kwargs)
         self.children = [DemoCampaign(id="demo{}".format(i + 1),
                                       parent=self)
                          for i in range(DEMO_CAMPAIGNS_COUNT)]
@@ -864,15 +864,14 @@ class DemoAccount(BaseDemo):
         return data
 
     @property
-    def _base_header_data(self):
-
+    def header_data(self):
         from aw_reporting.demo.charts import DemoChart
         filters = dict(
             start_date=self.today - timedelta(days=7),
             end_date=self.today - timedelta(days=1),
             indicator="video_views",
         )
-        new_demo = DemoAccount()
+        new_demo = DemoAccountDeprecated()
         new_demo.set_period_proportion(filters['start_date'],
                                        filters['end_date'])
         charts_obj = DemoChart(new_demo, filters)
@@ -905,26 +904,14 @@ class DemoAccount(BaseDemo):
             is_disapproved=False,
             from_aw=False,
             updated_at=None,
-            average_cpm=10,
-            average_cpv=.10782609,
-            plan_cpm=11,
-            plan_cpv=.3,
-        )
-        return data
-
-    @property
-    def header_data_analytics(self):
-        data = self._base_header_data
-        return data
-
-    @property
-    def header_data_dashboard(self):
-        data = self._base_header_data
-        data.update(dict(
             brand=DEMO_BRAND,
             cost_method=DEMO_COST_METHOD,
             agency=DEMO_AGENCY,
-        ))
+            average_cpm=10,
+            average_cpv=.10782609,
+            plan_cpm=11,
+            plan_cpv=.3
+        )
         return data
 
     @property
@@ -936,7 +923,7 @@ class DemoAccount(BaseDemo):
             end_date=self.today - timedelta(days=1),
             indicator="video_views",
         )
-        new_demo = DemoAccount()
+        new_demo = DemoAccountDeprecated()
         new_demo.set_period_proportion(filters['start_date'],
                                        filters['end_date'])
         charts_obj = DemoChart(new_demo, filters)

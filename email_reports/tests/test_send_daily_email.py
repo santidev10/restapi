@@ -1,18 +1,27 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 from functools import partial
 
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 from lxml import etree
 
-from aw_reporting.models import SalesForceGoalType, User, Opportunity, \
-    OpPlacement, Flight, Account, Campaign, CampaignStatistic, UserRole
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from aw_reporting.models import UserRole
 from email_reports.models import SavedEmail
 from email_reports.reports.daily_campaign_report import OpportunityManager
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, \
-    patch_settings, patch_now
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import patch_now
 
 
 class SendDailyEmailsTestCase(APITestCase):
@@ -175,7 +184,7 @@ class SendDailyEmailsTestCase(APITestCase):
         expected_account_link = "{host}/dashboard/{account_id}/?should_redirect=true" \
             .format(host=test_host, account_id=account.id)
 
-        with patch_now(now), patch_settings(HOST=test_host):
+        with patch_now(now), override_settings(HOST=test_host):
             call_command("send_daily_email_reports",
                          reports="DailyCampaignReport")
 

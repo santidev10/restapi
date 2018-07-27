@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
 
-class SimpleField(serializers.FloatField):
+class SimpleField(serializers.Field):
     def to_representation(self, value):
         return value

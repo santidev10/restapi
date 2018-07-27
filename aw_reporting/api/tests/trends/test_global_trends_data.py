@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
+from django.test import override_settings
 from django.utils.http import urlencode
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
@@ -15,7 +16,7 @@ from aw_reporting.models import CampaignHourlyStatistic, Account, User, \
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import patch_settings, int_iterator, generic_test
+from utils.utils_tests import int_iterator, generic_test
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
@@ -56,7 +57,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             dimension="age",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -101,7 +102,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             account=account.id,
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -130,7 +131,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -164,7 +165,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self._create_ad_group_statistic(1)
         self._create_ad_group_statistic(2)
 
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
@@ -192,7 +193,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
         filters = dict(am=am_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -212,7 +213,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
         filters = dict(ad_ops=ad_ops_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -231,7 +232,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
                                  sales_manager=sales_2)
         filters = dict(sales=sales_1.id)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -251,7 +252,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
         filters = dict(brands=brand_1)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -271,7 +272,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
         filters = dict(goal_type=SalesForceGoalType.CPV)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -290,7 +291,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
                                  category=category_2)
         filters = dict(category=category_1)
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -309,7 +310,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
         filters = dict(region="0,1")
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
@@ -338,7 +339,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             .aggregate(views=Sum("video_views"), cost=Sum("cost"))
         expected_cpv = stats["views"] / stats["cost"]
         self.assertGreater(expected_cpv, 0)
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)

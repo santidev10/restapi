@@ -4,6 +4,7 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -16,7 +17,7 @@ from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher, patch_settings, int_iterator, generic_test
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher, int_iterator, generic_test
 
 
 class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
@@ -65,7 +66,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -88,7 +89,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -116,7 +117,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         url = "{}?{}".format(self.url, urlencode(filters))
 
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -141,7 +142,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -167,7 +168,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -197,7 +198,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one chart")
@@ -230,7 +231,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -268,7 +269,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         manager = self.campaign.account.managers.first()
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
-             patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -302,7 +303,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         manager = self.campaign.account.managers.first()
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
-             patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -330,7 +331,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -381,7 +382,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend_info = get_trend(response.data, TrendId.PLANNED)[0]
@@ -445,7 +446,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend_info = get_trend(response.data, TrendId.PLANNED)[0]
@@ -498,7 +499,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
@@ -552,7 +553,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
@@ -603,7 +604,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = account.managers.first()
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.PLANNED)
@@ -634,7 +635,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
         }
-        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)

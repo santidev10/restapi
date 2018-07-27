@@ -7,9 +7,6 @@ from rest_framework.serializers import ModelSerializer, \
     SerializerMethodField, BooleanField
 
 from aw_creation.models import CampaignCreation, AccountCreation
-from aw_reporting.api.serializers.fields import StatField
-from aw_reporting.api.serializers.fields.parent_dict_value_field import \
-    ParentDictValueField
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import Ad, AdGroupStatistic, base_stats_aggregator, \
     Campaign, client_cost_campaign_required_annotation, \
@@ -23,6 +20,7 @@ from utils.lang import pick_dict
 from utils.permissions import is_chf_in_request
 from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
+from utils.serializers.fields import ParentDictValueField, StatField
 
 logger = logging.getLogger(__name__)
 

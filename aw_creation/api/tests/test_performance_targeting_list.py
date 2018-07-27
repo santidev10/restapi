@@ -6,21 +6,42 @@ from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import *
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from userprofile.models import UserSettingsKey
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
     details_keys = {
-        "id", "name", "account", "status", "start", "end", "is_managed",
-        "is_changed", "weekly_chart", "thumbnail",
-        "video_views", "cost", "video_view_rate", "impressions",
+        "account",
+        "ad_count",
+        "average_cpm",
+        "average_cpv",
+        "channel_count",
         "clicks",
-        "ad_count", "channel_count", "video_count", "interest_count",
-        "topic_count", "keyword_count",
-        "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
-        "ctr", "ctr_v", "plan_cpm", "plan_cpv"
+        "cost",
+        "ctr",
+        "ctr_v",
+        "end",
+        "from_aw",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
+        "is_managed",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "status",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
+        "video_view_rate",
+        "video_views",
+        "weekly_chart",
     }
 
     def setUp(self):
