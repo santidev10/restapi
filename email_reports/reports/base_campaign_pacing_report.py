@@ -101,7 +101,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             body_header,
             main_body,
             "Best,",
-            "Channel Factory IQ Team"
+            "Channel Factory ViewIQ Team"
         ])
 
     def _flight_description(self, flight, pacing, date_end):
