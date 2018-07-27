@@ -50,7 +50,7 @@ class ContactMessageSendApiView(APIView):
         subject = data.get("subject")
         to = settings.LANDING_CONTACTS.get(subject, settings.LANDING_CONTACTS.get('default'))
         text = "Dear Manager, \n" \
-               "You've got a new contact message sent via SaaS contact form. \n\n" \
+               "You've got a new contact message sent via ViewIQ contact form. \n\n" \
                "From: {name} \n" \
                "Email: {email} \n" \
                "Company: {company}\n" \

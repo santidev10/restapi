@@ -224,7 +224,7 @@ class UserPasswordResetApiView(APIView):
             host=host,
             email=email,
             token=token)
-        subject = "SaaS > Password reset notification"
+        subject = "ViewIQ > Password reset notification"
         text_header = "Dear {} \n".format(user.get_full_name())
         message = "Click the link below to reset your password.\n" \
                   "{}\n\n" \
