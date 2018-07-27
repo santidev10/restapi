@@ -2,6 +2,7 @@ import csv
 import io
 import itertools
 import json
+import logging
 from contextlib import contextmanager
 from datetime import datetime, date
 from unittest.mock import patch
@@ -18,6 +19,8 @@ from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
+
+logger = logging.getLogger(__name__)
 
 
 class TestUserMixin:
@@ -242,12 +245,15 @@ def get_current_release():
         return "0.0"
 
 
-def generic_test(args_list):
+def generic_test(args_list, debug_indexes=None):
     """
     Generates subtest per each item in the args_list
     :param args_list: (msg: str, args: List, kwargs: Dict)
     :return:
     """
+    if debug_indexes:
+        logger.warning("Do not commit with `debug_indexes`. For debug purposes only")
+        args_list = [args_list[index] for index in debug_indexes]
 
     def wrapper(fn):
         def wrapped_test_function(self):

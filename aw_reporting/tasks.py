@@ -11,7 +11,7 @@ import pytz
 from celery import task
 from django.db import transaction
 from django.db.models import Min, Max, Case, Count, When, Sum, IntegerField
-from django.utils import timezone
+from pytz import timezone
 
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import parent_performance_report
@@ -51,6 +51,18 @@ def get_base_stats(row, quartiles=False):
             video_views_100_quartile=quart_views(row, 100),
         )
     return stats
+
+
+MIN_UPDATE_HOUR = 6
+
+
+def max_ready_datetime(dt: datetime):
+    return dt - timedelta(hours=MIN_UPDATE_HOUR)
+
+
+def max_ready_date(dt: datetime, tz=None, tz_str="UTC"):
+    tz = tz or timezone(tz_str)
+    return max_ready_datetime(dt).astimezone(tz).date() - timedelta(days=1)
 
 
 def extract_placement_code(name):
@@ -233,17 +245,16 @@ def detect_success_aw_read_permissions():
                 permission.save()
 
 
-def get_campaigns(client, account, today=None):
+def get_campaigns(client, account, *_):
     from aw_reporting.adwords_reports import campaign_performance_report
     from aw_reporting.models import ACTION_STATUSES
     from aw_reporting.models import Campaign
     from aw_reporting.models import CampaignStatistic
     from aw_reporting.models import Devices
-    from django.conf import settings
 
     min_fetch_date = datetime(2012, 1, 1).date()
-    tz = pytz.timezone(account.timezone or settings.DEFAULT_TIMEZONE)
-    today = datetime.now(tz=tz).date()
+    now = now_in_default_tz()
+    today = now.date()
 
     stats_queryset = CampaignStatistic.objects.filter(
         campaign__account=account
@@ -255,7 +266,7 @@ def get_campaigns(client, account, today=None):
     min_date = dates['max_date'] + timedelta(days=1) \
         if dates['max_date'] \
         else min_fetch_date
-    max_date = today - timedelta(1)
+    max_date = max_ready_date(now, tz_str=account.timezone)
 
     report = campaign_performance_report(client,
                                          dates=(min_date, max_date),
@@ -315,12 +326,13 @@ def get_campaigns(client, account, today=None):
         CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
 
-def get_ad_groups_and_stats(client, account, today=None):
+def get_ad_groups_and_stats(client, account, *_):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
         SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
-    today = today or now_in_default_tz().date()
-    yesterday = today - timedelta(days=1)
+    now = now_in_default_tz()
+    today = now.date()
+    max_available_date = max_ready_date(now, tz_str=account.timezone)
 
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
@@ -329,9 +341,9 @@ def get_ad_groups_and_stats(client, account, today=None):
     min_date, max_date = get_account_border_dates(account)
 
     # we update ad groups and daily stats only if there have been changes
-    dates = (max_date + timedelta(days=1), yesterday) \
+    dates = (max_date + timedelta(days=1), max_available_date) \
         if max_date \
-        else (MIN_FETCH_DATE, yesterday)
+        else (MIN_FETCH_DATE, max_available_date)
     report = ad_group_performance_report(
         client, dates=dates)
 
