@@ -7,6 +7,7 @@ from os.path import isfile, join
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 from openpyxl import load_workbook
 
@@ -59,6 +60,7 @@ class Command(BaseCommand):
                     obj[key] = obj[key].split(self.separation_symbol)
         return data
 
+    @transaction.atomic
     def __create_users(self, users_data):
         for user_data in users_data:
             email = user_data.get("email")

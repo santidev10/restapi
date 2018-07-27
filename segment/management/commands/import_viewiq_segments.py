@@ -5,6 +5,7 @@ from os.path import isfile, join
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
+from django.db import transaction
 from openpyxl import load_workbook
 
 from segment.models import SegmentKeyword, SegmentVideo, SegmentChannel
@@ -59,6 +60,7 @@ class Command(BaseCommand):
                     obj[key] = obj[key].split(self.separation_symbol)
         return data
 
+    @transaction.atomic
     def __create_segments(self, segments_data):
         for key, value in segments_data.items():
             segment_model = self.names_and_models[key]
