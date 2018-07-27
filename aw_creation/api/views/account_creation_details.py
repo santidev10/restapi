@@ -2,10 +2,9 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_creation.api.views.performance_account_details import \
-    PerformanceAccountDetailsApiView
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
+from to_be_removed.performance_account_details import PerformanceAccountDetailsApiView
 from userprofile.models import UserSettingsKey
 
 

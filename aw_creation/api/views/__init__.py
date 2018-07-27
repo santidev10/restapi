@@ -4,7 +4,7 @@ from .account_creation_setup import AccountCreationSetupApiView
 from .analytics import AnalyticsAccountCreationListApiView
 from .analytics import AnalyticsAccountOverviewAPIView
 from .dashboard import DashboardAccountCreationListApiView
-from .performance_account_details import PerformanceAccountDetailsApiView
+from .dashboard import DashboardAccountOverviewAPIView
 from .performance_chart import PerformanceChartApiView
 from .performance_export import PerformanceExportApiView
 from .performance_export_weekly_report import PerformanceExportWeeklyReport

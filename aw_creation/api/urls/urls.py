@@ -2,6 +2,7 @@ from django.conf.urls import url
 
 from aw_creation.api import views
 from aw_creation.api.urls.names import Name
+from to_be_removed.performance_account_details import PerformanceAccountDetailsApiView
 
 urlpatterns = [
     url(r'^geo_target_list/$',
@@ -30,7 +31,7 @@ urlpatterns = [
         views.AnalyticsAccountCreationListApiView.as_view(),
         name=Name.Analytics.ACCOUNT_LIST),
     url(r'^analytics/performance_account/(?P<pk>\w+)/$',
-        views.PerformanceAccountDetailsApiView.as_view(),
+        PerformanceAccountDetailsApiView.as_view(),
         name=Name.Analytics.ACCOUNT_DETAILS),
     url(r'^analytics/performance_account/(?P<pk>\w+)/overview/$',
         views.AnalyticsAccountOverviewAPIView.as_view(),
@@ -40,10 +41,10 @@ urlpatterns = [
         views.DashboardAccountCreationListApiView.as_view(),
         name=Name.Dashboard.ACCOUNT_LIST),
     url(r'^dashboard/performance_account/(?P<pk>\w+)/$',
-        views.PerformanceAccountDetailsApiView.as_view(),
+        PerformanceAccountDetailsApiView.as_view(),
         name=Name.Dashboard.ACCOUNT_DETAILS),
     url(r'^dashboard/performance_account/(?P<pk>\w+)/overview$',
-        views.PerformanceAccountDetailsApiView.as_view(),
+        views.DashboardAccountOverviewAPIView.as_view(),
         name=Name.Dashboard.ACCOUNT_OVERVIEW),
 
     # these endpoints are closed for users who don't have Media Buying add-on
