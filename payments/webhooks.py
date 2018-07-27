@@ -103,7 +103,7 @@ class Webhook(with_metaclass(Registerable, object)):
 
     def proceed_event(self):
         if hasattr(self, 'message'):
-            self.event.customer.user.email_user('SaaS > Payment notifications',
+            self.event.customer.user.email_user('ViewIQ > Payment notifications',
                                                 '{}\n\n'
                                                 'Please do not respond to this email.'
                                                 .format(self.message),
