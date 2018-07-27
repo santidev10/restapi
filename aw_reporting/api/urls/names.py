@@ -1,3 +1,7 @@
+from utils.utils import unique_constant_tree
+
+
+@unique_constant_tree
 class Name:
     class GlobalTrends:
         CHARTS = "global_trends_charts"
