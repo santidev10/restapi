@@ -7,6 +7,7 @@ from aw_creation.api.views.analytics import AnalyticsAccountCreationListApiView
 from aw_creation.api.views.analytics import AnalyticsAccountCreationOverviewAPIView
 from aw_creation.api.views.analytics import AnalyticsPerformanceChartApiView
 from aw_creation.api.views.analytics import AnalyticsPerformanceChartItemsApiView
+from aw_creation.api.views.analytics import AnalyticsPerformanceExportApiView
 
 urlpatterns = [
     url(r'^account_creation_list/$',
@@ -27,4 +28,7 @@ urlpatterns = [
     url(r'^performance_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
         AnalyticsPerformanceChartItemsApiView.as_view(),
         name=Name.Analytics.PERFORMANCE_CHART_ITEMS),
+    url(r'^performance_export/(?P<pk>\w+)/',
+        AnalyticsPerformanceExportApiView.as_view(),
+        name=Name.Analytics.PERFORMANCE_EXPORT),
 ]

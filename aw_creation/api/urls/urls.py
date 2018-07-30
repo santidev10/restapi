@@ -91,9 +91,6 @@ urlpatterns = [
 
     # <<< Performance
     # Regarding SAAS-793 we return DEMO data if user has no connected MCC's for all the performance endpoints below
-    url(r'^performance_export/(?P<pk>\w+)/',
-        views.PerformanceExportApiView.as_view(),
-        name=Name.Dashboard.PERFORMANCE_EXPORT),
     url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
         views.PerformanceExportWeeklyReport.as_view(),
         name=Name.Dashboard.PERFORMANCE_EXPORT_WEEKLY_REPORT),

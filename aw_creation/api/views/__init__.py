@@ -7,13 +7,14 @@ from .analytics import AnalyticsAccountCreationListApiView
 from .analytics import AnalyticsAccountCreationOverviewAPIView
 from .analytics import AnalyticsPerformanceChartApiView
 from .analytics import AnalyticsPerformanceChartItemsApiView
+from .analytics import AnalyticsPerformanceExportApiView
 from .dashboard import DashboardAccountCreationCampaignsListApiView
 from .dashboard import DashboardAccountCreationDetailsAPIView
 from .dashboard import DashboardAccountCreationListApiView
 from .dashboard import DashboardAccountCreationOverviewAPIView
 from .dashboard import DashboardPerformanceChartApiView
 from .dashboard import DashboardPerformanceChartItemsApiView
-from .performance_export import PerformanceExportApiView
+from .dashboard import DashboardPerformanceExportApiView
 from .performance_export_weekly_report import PerformanceExportWeeklyReport
 from .performance_targeting_list import PerformanceTargetingListAPIView
 from .views import *
