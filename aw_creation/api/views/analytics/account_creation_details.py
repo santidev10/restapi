@@ -28,22 +28,19 @@ from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
-from utils.permissions import UserHasDashboardOrStaffPermission
 
 logger = logging.getLogger(__name__)
 
 
 @demo_view_decorator
-class AnalyticsAccountDetailsAPIView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
-
-    HAS_STATISTICS_KEY = "has_statistics"
+class AnalyticsAccountCreationDetailsAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, **_):
         account_creation = self._get_account_creation(request, pk)
         data = AnalyticsAccountCreationListSerializer(account_creation, context={"request": request}).data
         show_conversions = self.request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
-        data["details"] = self._get_details_data(account_creation, show_conversions)
+        data["details"] = self.get_details_data(account_creation, show_conversions)
         return Response(data=data)
 
     def _get_account_creation(self, request, pk):
@@ -53,7 +50,7 @@ class AnalyticsAccountDetailsAPIView(APIView):
             raise Http404
 
     @staticmethod
-    def _get_details_data(account_creation, show_conversions):
+    def get_details_data(account_creation, show_conversions):
         if show_conversions:
             ads_and_placements_stats = {s: Sum(s) for s in
                                         CONVERSIONS + QUARTILE_STATS}

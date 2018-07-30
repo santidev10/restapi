@@ -11,7 +11,7 @@ from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.models import UserSettingsKey
-from utils.permissions import UserHasDashboardPermission
+from to_be_removed.permissions import UserHasDashboardPermissionDeprecated
 from utils.registry import registry
 
 
@@ -24,7 +24,7 @@ class PerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermissionDeprecated)
 
     def get_filters(self):
         data = self.request.data

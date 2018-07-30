@@ -31,7 +31,7 @@ from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.models import UserSettingsKey
 
 
-class DashboardAccountOverviewAPIView(APIView):
+class DashboardAccountCreationOverviewAPIView(APIView):
     HAS_STATISTICS_KEY = "has_statistics"
 
     def post(self, request, pk):

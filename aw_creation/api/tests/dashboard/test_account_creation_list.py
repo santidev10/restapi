@@ -78,6 +78,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.add_custom_user_permission("view_dashboard")
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
@@ -272,8 +273,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_cost_client_cost_dashboard(self):
-        self.user.add_custom_user_permission("view_dashboard")
-
         manager = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)

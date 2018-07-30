@@ -693,8 +693,6 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts = dict((account["id"], account) for account in response.data["items"])
         self.assertIsNotNone(accounts[account_creation.id]["is_managed"])
 
-
-
     def test_average_cpm_and_cpv(self):
         account = Account.objects.create(id=1)
         account.managers.add(self.mcc_account)

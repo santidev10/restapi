@@ -34,7 +34,7 @@ from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
-class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_DETAILS,

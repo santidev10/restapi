@@ -22,13 +22,13 @@ from to_be_removed.accaount_creation_list_serializer import AccountCreationListS
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.db.aggregators import ConcatAggregate
-from utils.permissions import UserHasDashboardOrStaffPermission
+from to_be_removed.permissions import UserHasDashboardOrStaffPermissionDeprecated
 from utils.registry import registry
 
 
 @demo_view_decorator
 class PerformanceAccountDetailsApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermissionDeprecated)
 
     HAS_STATISTICS_KEY = "has_statistics"
 

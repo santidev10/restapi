@@ -32,7 +32,7 @@ from aw_reporting.models import dict_quartiles_to_rates
 from utils.datetime import now_in_default_tz
 
 
-class AnalyticsAccountOverviewAPIView(APIView):
+class AnalyticsAccountCreationOverviewAPIView(APIView):
     HAS_STATISTICS_KEY = "has_statistics"
 
     def post(self, request, pk):
@@ -66,7 +66,6 @@ class AnalyticsAccountOverviewAPIView(APIView):
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
         del data['video_impressions']
-        # 'age', 'gender', 'device', 'location'
         annotate = dict(v=Sum('cost'))
         gender = GenderStatistic.objects.filter(**fs).values(
             'gender_id').order_by('gender_id').annotate(**annotate)

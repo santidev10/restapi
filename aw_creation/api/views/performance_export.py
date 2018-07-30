@@ -16,13 +16,13 @@ from aw_reporting.models import dict_quartiles_to_rates, all_stats_aggregate, \
     DATE_FORMAT, AdGroupStatistic, dict_norm_base_stats, \
     dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
-from utils.permissions import UserHasDashboardOrStaffPermission
+from to_be_removed.permissions import UserHasDashboardOrStaffPermissionDeprecated
 from utils.views import xlsx_response
 
 
 @demo_view_decorator
 class PerformanceExportApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermissionDeprecated)
 
     def post(self, request, pk, **_):
         filters = {}

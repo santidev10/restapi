@@ -21,7 +21,7 @@ from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import int_iterator
 
 
-class AnalyticsAccountOverviewAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_OVERVIEW,

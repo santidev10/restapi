@@ -1,3 +1,3 @@
 from .account_creation_list import AnalyticsAccountCreationListApiView
-from .account_overview import AnalyticsAccountOverviewAPIView
-from .account_details import AnalyticsAccountDetailsAPIView
+from .account_creation_overview import AnalyticsAccountCreationOverviewAPIView
+from .account_creation_details import AnalyticsAccountCreationDetailsAPIView
