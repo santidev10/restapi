@@ -1,6 +1,3 @@
-# pylint: disable=import-error
-
-# pylint: enable=import-error
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Case, When, Q, ExpressionWrapper, F, \
@@ -12,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 
-from aw_creation.api.serializers import *
+from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, default_languages
 from aw_reporting.demo.decorators import demo_view_decorator
@@ -27,8 +24,8 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 
 @demo_view_decorator
-class AccountCreationListApiView(ListAPIView):
-    serializer_class = AccountCreationListSerializer
+class DashboardAccountCreationListApiView(ListAPIView):
+    serializer_class = DashboardAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
     annotate_sorts = dict(
@@ -89,24 +86,16 @@ class AccountCreationListApiView(ListAPIView):
         # import "read only" accounts:
         # user has access to them,
         # but they are not connected to his account creations
-        # page: Dashboard
-        if request.query_params.get("is_chf") == "1":
-            user_settings = self.request.user.get_aw_settings()
-            if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
-                visible_account_ids = self.request.user.get_aw_settings()\
-                                          .get(UserSettingsKey.VISIBLE_ACCOUNTS)
-                read_accounts = Account.objects.filter(
-                    id__in=visible_account_ids).exclude(
-                    account_creations__owner=request.user).values("id", "name")
-            else:
-                read_accounts = Account.objects.exclude(
-                    account_creations__owner=request.user).values("id", "name")
-        # page: Media Buying / Analytics
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
+            visible_account_ids = self.request.user.get_aw_settings() \
+                .get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            read_accounts = Account.objects.filter(
+                id__in=visible_account_ids).exclude(
+                account_creations__owner=request.user).values("id", "name")
         else:
-            read_accounts = Account.user_objects(self.request.user) \
-                .filter(can_manage_clients=False) \
-                .exclude(account_creations__owner=request.user) \
-                .values("id", "name")
+            read_accounts = Account.objects.exclude(
+                account_creations__owner=request.user).values("id", "name")
 
         bulk_create = [
             AccountCreation(
@@ -119,22 +108,19 @@ class AccountCreationListApiView(ListAPIView):
         ]
         if bulk_create:
             AccountCreation.objects.bulk_create(bulk_create)
-        response = super(AccountCreationListApiView, self).get(
+        response = super(DashboardAccountCreationListApiView, self).get(
             request, *args, **kwargs)
         return response
 
     def get_queryset(self, **filters):
         filters["owner"] = self.request.user
         filters["is_deleted"] = False
-        if self.request.query_params.get("is_chf") == "1":
-            user_settings = self.request.user.get_aw_settings()
-            if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
-                filters["account__id__in"] = user_settings.get(
-                    UserSettingsKey.VISIBLE_ACCOUNTS)
-            chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-            filters["account__managers__id"] = chf_account_id
-        else:
-            filters["account__in"] = Account.user_objects(self.request.user)
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
+            filters["account__id__in"] = user_settings.get(
+                UserSettingsKey.VISIBLE_ACCOUNTS)
+        chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+        filters["account__managers__id"] = chf_account_id
         queryset = AccountCreation.objects.filter(**filters)
 
         sort_by = self.request.query_params.get("sort_by")

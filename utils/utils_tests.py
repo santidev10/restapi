@@ -10,7 +10,6 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.test import override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -212,9 +211,6 @@ def patch_now(now):
 
 class SettingDoesNotExist:
     pass
-
-
-patch_settings = override_settings
 
 
 def build_csv_byte_stream(headers, rows):

@@ -1343,18 +1343,6 @@ class PerformanceChartItemsApiView(APIView):
 
 
 @demo_view_decorator
-class PerformanceTargetingDetailsAPIView(RetrieveAPIView):
-    serializer_class = AccountCreationListSerializer
-
-    def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            is_deleted=False,
-            owner=self.request.user,
-        )
-        return queryset
-
-
-@demo_view_decorator
 class PerformanceTargetingFiltersAPIView(APIView):
     def get_queryset(self):
         return AccountCreation.objects.filter(owner=self.request.user)

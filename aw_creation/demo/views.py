@@ -14,6 +14,7 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
+from to_be_removed.demo_account import DemoAccountDeprecated
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
 from utils.views import xlsx_response
@@ -21,7 +22,7 @@ from utils.views import xlsx_response
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
 
 
-class AccountCreationListApiView:
+class AnalyticsAccountCreationListApiView:
 
     @staticmethod
     def get(original_method):
@@ -41,22 +42,36 @@ class AccountCreationListApiView:
                 filters = request.query_params
                 if demo_account_visible and \
                         demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.header_data)
+                    response.data['items'].insert(0, demo.header_data_analytics)
                     response.data['items_count'] += 1
             return response
+
         return method
 
 
-class PerformanceTargetingDetailsAPIView:
+class DashboardAccountCreationListApiView:
+
     @staticmethod
     def get(original_method):
 
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+        def method(view, request, **kwargs):
+            response = original_method(view, request, **kwargs)
+            if response.status_code == HTTP_200_OK:
+                user = request.user
+                user_settings = user.aw_settings \
+                    if hasattr(user, "aw_settings") \
+                    else get_default_settings()
+                demo_account_visible = user_settings.get(
+                    UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
+                    False
+                )
                 demo = DemoAccount()
-                return Response(data=demo.header_data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
+                filters = request.query_params
+                if demo_account_visible and \
+                        demo.account_passes_filters(filters):
+                    response.data['items'].insert(0, demo.header_data_dashboard)
+                    response.data['items_count'] += 1
+            return response
 
         return method
 
@@ -82,6 +97,7 @@ class AccountCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
     @staticmethod
@@ -92,6 +108,7 @@ class AccountCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -248,6 +265,7 @@ class CampaignCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -274,6 +292,7 @@ class CampaignCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -301,6 +320,7 @@ class AdGroupCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -327,6 +347,7 @@ class AdGroupCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -355,6 +376,7 @@ class AdCreationSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -366,6 +388,7 @@ class AdCreationAvailableAdFormatsApiView:
                 return Response(data=[AdGroupCreation.IN_STREAM_TYPE])
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -393,12 +416,13 @@ class AdCreationListSetupApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
 def show_demo_data(request, pk):
     return not request.user.aw_connections.count() or \
-        get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
+           get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
 
 
 class PerformanceAccountCampaignsListApiView:
@@ -427,6 +451,7 @@ class PerformanceAccountCampaignsListApiView:
                 ]
                 return Response(status=HTTP_200_OK, data=campaigns)
             return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -439,7 +464,7 @@ class PerformanceAccountDetailsApiView:
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
 
-                account = DemoAccount()
+                account = DemoAccountDeprecated()
                 data = account.header_data
                 data['details'] = account.details
 
@@ -455,6 +480,7 @@ class PerformanceAccountDetailsApiView:
                         data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
+
         return method
 
 
@@ -671,6 +697,7 @@ class PerformanceTargetingItemAPIView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, **kwargs)
+
         return method
 
 
@@ -704,5 +731,5 @@ class AdGroupTargetingListImportApiView:
                                 status=HTTP_403_FORBIDDEN)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
-        return method
 
+        return method

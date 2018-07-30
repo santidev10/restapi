@@ -1,4 +1,4 @@
-from .parent_dict_value_field import ParentDictValueField
+from utils.serializers.fields import ParentDictValueField
 
 
 class StatField(ParentDictValueField):
