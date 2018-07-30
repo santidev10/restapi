@@ -13,10 +13,10 @@ urlpatterns = [
     url(r'^performance_account/(?P<pk>\w+)/$',
         AnalyticsAccountCreationDetailsAPIView.as_view(),
         name=Name.Analytics.ACCOUNT_DETAILS),
-    url(r'^performance_account/(?P<pk>\w+)/overview$',
+    url(r'^performance_account/(?P<pk>\w+)/overview/$',
         AnalyticsAccountCreationOverviewAPIView.as_view(),
         name=Name.Analytics.ACCOUNT_OVERVIEW),
-    url(r'^performance_account/(?P<pk>\w+)/campaigns',
+    url(r'^performance_account/(?P<pk>\w+)/campaigns/$',
         AnalyticsAccountCreationCampaignsListApiView.as_view(),
         name=Name.Analytics.CAMPAIGNS),
 ]
