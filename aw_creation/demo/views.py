@@ -14,7 +14,7 @@ from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
-from to_be_removed.demo_account import DemoAccountDeprecated
+from to_be_removed.demo_views import PerformanceAccountDetailsApiViewOLD
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
 from utils.views import xlsx_response
@@ -455,25 +455,18 @@ class PerformanceAccountCampaignsListApiView:
         return method
 
 
-class PerformanceAccountDetailsApiView:
+PerformanceAccountDetailsApiView = PerformanceAccountDetailsApiViewOLD
+
+
+class AnalyticsAccountDetailsAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if request.data.get("is_chf") == 1 and pk != DEMO_ACCOUNT_ID:
-                return original_method(view, request, pk=pk, **kwargs)
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                filters = view.get_filters()
 
-                account = DemoAccountDeprecated()
-                data = account.header_data
+                account = DemoAccount()
+                data = account.header_data_analytics
                 data['details'] = account.details
-
-                account.set_period_proportion(filters['start_date'],
-                                              filters['end_date'])
-                account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
-                )
-                data['overview'] = account.overview
                 if pk != DEMO_ACCOUNT_ID:
                     original_data = original_method(view, request, pk=pk, **kwargs).data
                     for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):

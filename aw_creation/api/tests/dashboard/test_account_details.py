@@ -683,3 +683,44 @@ class DashboardAccountDetailsAPITestCase(ExtendedAPITestCase):
                 else:
                     self.assertIsNotNone(actual_value)
                     self.assertAlmostEqual(actual_value, expected_value)
+
+    def test_average_cpm_and_cpv_not_reflect_to_user_settings(self):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(
+                email="me@mail.kz", refresh_token=""),
+            user=self.request_user)
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=1, account=account, owner=self.request_user, is_approved=True)
+        account_creation.refresh_from_db()
+        Campaign.objects.create(account=account)
+        # hide
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        self.user.add_custom_user_permission("view_dashboard")
+        with self.patch_user_settings(**user_settings), \
+             self.subTest("hide"):
+            response = self._request(account_creation.id)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data["id"], account_creation.id)
+            self.assertNotIn("average_cpm", response.data)
+            self.assertNotIn("average_cpv", response.data)
+            self.assertNotIn("plan_cpm", response.data)
+            self.assertNotIn("plan_cpv", response.data)
+        # show
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
+        }
+        with self.patch_user_settings(**user_settings), \
+             self.subTest("show"):
+            response = self._request(account_creation.id)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data["id"], account_creation.id)
+            self.assertIn("average_cpm", response.data)
+            self.assertIn("average_cpv", response.data)
+            self.assertIn("plan_cpm", response.data)
+            self.assertIn("plan_cpv", response.data)

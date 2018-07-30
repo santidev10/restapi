@@ -2,6 +2,7 @@ from .account_creation_by_account import AccountCreationByAccountAPIView
 from .account_creation_details import AccountCreationDetailsApiView
 from .account_creation_setup import AccountCreationSetupApiView
 from .analytics import AnalyticsAccountCreationListApiView
+from .analytics import AnalyticsAccountDetailsAPIView
 from .analytics import AnalyticsAccountOverviewAPIView
 from .dashboard import DashboardAccountCreationListApiView
 from .dashboard import DashboardAccountOverviewAPIView

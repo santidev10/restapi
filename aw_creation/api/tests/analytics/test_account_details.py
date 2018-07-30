@@ -16,8 +16,6 @@ from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.demo.models import IMPRESSIONS
-from aw_reporting.demo.models import TOTAL_DEMO_AD_GROUPS_COUNT
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -44,47 +42,56 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
-        return self.client.post(url, json.dumps(dict(is_chf=0, **kwargs)), content_type="application/json")
+        return self.client.post(url, json.dumps(kwargs), content_type="application/json")
 
     account_list_header_fields = {
-        "id", "name", "end", "account", "start", "status", "weekly_chart",
-        "thumbnail", "is_changed",
-        "clicks", "cost", "impressions", "video_views", "video_view_rate",
+        "account",
+        "ad_count",
+        "average_cpm",
+        "average_cpv",
+        "channel_count",
+        "clicks",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "details",
+        "end",
+        "from_aw",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
         "is_managed",
-        "ad_count", "channel_count", "video_count", "interest_count",
-        "topic_count", "keyword_count",
-        "is_disapproved", "from_aw", "updated_at",
-        "cost_method", "agency", "brand", "average_cpm", "average_cpv",
-        "ctr", "ctr_v", "plan_cpm", "plan_cpv"
-    }
-    overview_keys = {
-        "age", "gender", "device", "location",
-        "clicks", "cost", "impressions", "video_views",
-        "ctr", "ctr_v", "average_cpm", "average_cpv",
-        "all_conversions", "conversions", "view_through",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "status",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
         "video_view_rate",
-        "video100rate", "video25rate", "video50rate",
-        "video75rate", "video_views_this_week",
-        "video_view_rate_top", "impressions_this_week",
-        "video_views_last_week", "cost_this_week",
-        "video_view_rate_bottom", "clicks_this_week",
-        "ctr_v_top", "cost_last_week", "average_cpv_top",
-        "ctr_v_bottom", "ctr_bottom", "clicks_last_week",
-        "average_cpv_bottom", "ctr_top", "impressions_last_week",
-
-        "plan_video_views", "delivered_impressions", "plan_impressions",
-        "delivered_cost", "delivered_video_views", "plan_cost",
-        "video_clicks",
-
-        "has_statistics",
+        "video_views",
+        "weekly_chart",
     }
-
     detail_keys = {
+        "ad_network",
+        "age",
+        "all_conversions",
+        "average_position",
+        "conversions",
         "creative",
-        "age", "gender", "device",
-        "all_conversions", "conversions", "view_through", "average_position",
-        "video100rate", "video25rate", "video50rate", "video75rate",
-        "delivery_trend", "ad_network"
+        "delivery_trend",
+        "device",
+        "gender",
+        "video100rate",
+        "video25rate",
+        "video50rate",
+        "video75rate",
+        "view_through",
     }
 
     def setUp(self):
@@ -126,14 +133,13 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            self.account_list_header_fields | {"details", "overview"})
+            self.account_list_header_fields)
         self.assertEqual(set(data["details"].keys()), self.detail_keys)
         self.assertEqual(data['details']['video25rate'], 100)
         self.assertEqual(data['details']['video50rate'], 75)
         self.assertEqual(data['details']['video75rate'], 50)
         self.assertEqual(data['details']['video100rate'], 25)
         self.assertEqual(data['details']['ad_network'], ad_network)
-        self.assertEqual(set(data["overview"].keys()), self.overview_keys)
 
     def test_success_get_no_account(self):
         # add a connection not to show demo data
@@ -158,11 +164,9 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            self.account_list_header_fields | {"details", "overview"})
+            self.account_list_header_fields)
         self.assertEqual(set(data["details"].keys()), self.detail_keys)
-        self.assertEqual(set(data["overview"].keys()), self.overview_keys)
         self.assertIs(data['impressions'], None)
-        self.assertIs(data['overview']['impressions'], None)
 
     def test_success_get_filter_dates_demo(self):
         today = datetime.now().date()
@@ -175,30 +179,12 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(
             set(data.keys()),
-            self.account_list_header_fields | {"details", "overview"})
+            self.account_list_header_fields)
         self.assertEqual(set(data["details"].keys()), self.detail_keys)
-        self.assertEqual(set(data["overview"].keys()), self.overview_keys)
         self.assertEqual(
             data["details"]['delivery_trend'][0]['label'], "Impressions")
         self.assertEqual(
             data["details"]['delivery_trend'][1]['label'], "Views")
-        self.assertEqual(data['overview']['impressions'], IMPRESSIONS / 10)
-
-    def test_success_get_filter_ad_groups_demo(self):
-        ad_groups = ["demo11", "demo22"]
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(DEMO_ACCOUNT_ID, ad_groups=ad_groups)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(
-            set(data.keys()),
-            self.account_list_header_fields | {"details", "overview"})
-        self.assertEqual(set(data["details"].keys()), self.detail_keys)
-        self.assertEqual(set(data["overview"].keys()), self.overview_keys)
-        self.assertEqual(
-            data['overview']['impressions'],
-            IMPRESSIONS / TOTAL_DEMO_AD_GROUPS_COUNT * len(ad_groups))
 
     def test_success_get_demo_data(self):
         account_creation = AccountCreation.objects.create(
@@ -220,7 +206,6 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['status'], account_creation.status)
         self.assertEqual(data['thumbnail'], ad_creation.video_thumbnail)
         self.assertIsNotNone(data['impressions'])
-        self.assertIsNotNone(data['overview']['impressions'])
 
     def test_updated_at(self):
         test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
@@ -272,46 +257,6 @@ class AnalyticsAccountDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["id"], account_creation.id)
         self.assertAlmostEqual(response.data["average_cpm"], average_cpm)
         self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
-
-    def test_average_cpm_and_cpv_reflects_to_user_settings(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""),
-            user=self.request_user)
-        account = Account.objects.create()
-        account_creation = AccountCreation.objects.create(
-            id=1, account=account, owner=self.request_user, is_approved=True)
-        account_creation.refresh_from_db()
-        Campaign.objects.create(account=account)
-        url = self._get_url(account_creation.id)
-        # hide
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
-        }
-        self.user.add_custom_user_permission("view_dashboard")
-        with self.patch_user_settings(**user_settings), \
-             self.subTest("hide"):
-            response = self.client.post(url, dict(is_chf=1))
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.data["id"], account_creation.id)
-            self.assertNotIn("average_cpm", response.data)
-            self.assertNotIn("average_cpv", response.data)
-            self.assertNotIn("plan_cpm", response.data)
-            self.assertNotIn("plan_cpv", response.data)
-        # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
-        }
-        with self.patch_user_settings(**user_settings), \
-             self.subTest("show"):
-            response = self.client.post(url)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.data["id"], account_creation.id)
-            self.assertIn("average_cpm", response.data)
-            self.assertIn("average_cpv", response.data)
-            self.assertIn("plan_cpm", response.data)
-            self.assertIn("plan_cpv", response.data)
 
     def test_plan_cpm_and_cpv(self):
         AWConnectionToUserRelation.objects.create(
