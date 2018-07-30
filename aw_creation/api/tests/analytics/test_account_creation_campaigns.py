@@ -3,20 +3,21 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
+from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation, CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, \
     DEMO_AD_GROUPS
 from aw_reporting.models import Account, Campaign, AdGroup, \
     AWConnectionToUserRelation, AWConnection, campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
-from saas.urls.namespaces import Namespace
+from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 
 
-class AccountNamesAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_id):
-        return reverse(Namespace.AW_CREATION + ":" + Name.Dashboard.CAMPAIGNS,
+        return reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.CAMPAIGNS,
                        args=(account_id,))
 
     campaign_keys = {
@@ -36,7 +37,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
     }
 
     def create_test_user(self, auth=True, connected=True):
-        user = super(AccountNamesAPITestCase, self).create_test_user(auth)
+        user = super(AnalyticsAccountCreationCampaignsAPITestCase, self).create_test_user(auth)
         if connected:
             AWConnectionToUserRelation.objects.create(
                 # user must have a connected account not to see demo data
@@ -80,28 +81,6 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             set(ad_group.keys()),
             self.ad_group_keys,
         )
-
-    def test_success_get_chf_account(self):
-        user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
-        user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = [account.id]
-        user.aw_settings[UserSettingsKey.HIDDEN_CAMPAIGN_TYPES] = {
-            "".format(account.id): []}
-        user.update_access([{"name": "Tools", "value": True}])
-        user.save()
-        account_creation = AccountCreation.objects.create(
-            name="", account=account, owner=user)
-        campaign_id = "1"
-        ad_group_id = "1"
-        campaign = Campaign.objects.create(
-            id=campaign_id, name="", account=account)
-        AdGroup.objects.create(id=ad_group_id, name="", campaign=campaign)
-        url = self._get_url(account_creation.id)
-        response = self.client.get("{}{}".format(url, "?is_chf=1"))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        campaign = response.data[0]
-        self.assertEqual(campaign["id"], campaign_id)
-        self.assertEqual(campaign["ad_groups"][0]["id"], ad_group_id)
 
     def test_success_get_managed_campaign(self):
         user = self.create_test_user()
@@ -203,7 +182,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
-                account.id: hidden_types}
+                account.id: hidden_types
+            }
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
@@ -233,7 +213,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
-                account.id: all_types}
+                account.id: all_types
+            }
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)

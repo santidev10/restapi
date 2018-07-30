@@ -1,8 +1,9 @@
 from django.conf.urls import url
 
 from aw_creation.api.urls.names import Name
-from aw_creation.api.views.analytics import AnalyticsAccountCreationListApiView
+from aw_creation.api.views.analytics import AnalyticsAccountCreationCampaignsListApiView
 from aw_creation.api.views.analytics import AnalyticsAccountCreationDetailsAPIView
+from aw_creation.api.views.analytics import AnalyticsAccountCreationListApiView
 from aw_creation.api.views.analytics import AnalyticsAccountCreationOverviewAPIView
 
 urlpatterns = [
@@ -15,4 +16,7 @@ urlpatterns = [
     url(r'^performance_account/(?P<pk>\w+)/overview$',
         AnalyticsAccountCreationOverviewAPIView.as_view(),
         name=Name.Analytics.ACCOUNT_OVERVIEW),
+    url(r'^performance_account/(?P<pk>\w+)/campaigns',
+        AnalyticsAccountCreationCampaignsListApiView.as_view(),
+        name=Name.Analytics.CAMPAIGNS),
 ]
