@@ -19,11 +19,6 @@ def pick_dict(item: dict, keys: List[str]):
             if key in keys}
 
 
-def get_all_class_constants(cls):
-    return sorted([value for name, value in cls.__dict__.items()
-                   if not name.startswith("_")])
-
-
 def deep_getattr(obj, attr, default=None):
     try:
         return reduce(getattr, attr.split("."), obj)

@@ -1,3 +1,7 @@
+from utils.utils import unique_constant_tree
+
+
+@unique_constant_tree
 class Name:
     TOPIC_LIST = "topic_list"
     AUDIENCE_LIST_FLAT = "flat_audience_list"
@@ -7,7 +11,6 @@ class Name:
         ACCOUNT = "account_creation_setup"
 
     class Dashboard:
-        ACCOUNT_DETAILS = "performance_account_details"
         CAMPAIGNS = "performance_account_campaigns"
         PERFORMANCE_CHART = "performance_chart"
         CHART_ITEMS = "performance_chart_items"
@@ -16,6 +19,10 @@ class Name:
         ACCOUNT_CREATION_BY_ACCOUNT = "account_creation_by_account"
 
         ACCOUNT_LIST = "dashboard_account_creation_list"
+        ACCOUNT_DETAILS = "dashboard_account_details"
+        ACCOUNT_OVERVIEW = "dashboard_account_overview"
 
     class Analytics:
         ACCOUNT_LIST = "analytics_account_creation_list"
+        ACCOUNT_DETAILS = "analytics_account_details"
+        ACCOUNT_OVERVIEW = "analytics_account_overview"

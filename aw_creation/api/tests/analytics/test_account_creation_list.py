@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_202_ACCEPTED
 
 from aw_creation.api.urls.names import Name
+from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
@@ -28,7 +29,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from saas.urls.namespaces import Namespace
+from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
@@ -68,8 +69,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "weekly_chart",
     }
 
-    url = reverse(
-        Namespace.AW_CREATION + ":" + Name.Analytics.ACCOUNT_LIST)
+    url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_LIST)
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -692,8 +692,6 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((account["id"], account) for account in response.data["items"])
         self.assertIsNotNone(accounts[account_creation.id]["is_managed"])
-
-
 
     def test_average_cpm_and_cpv(self):
         account = Account.objects.create(id=1)

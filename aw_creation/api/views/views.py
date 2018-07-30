@@ -45,8 +45,8 @@ from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
     AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats
 from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission, \
-    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes, \
-    UserHasDashboardPermission, UserHasDashboardOrStaffPermission
+    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
+from to_be_removed.permissions import UserHasDashboardPermissionDeprecated, UserHasDashboardOrStaffPermissionDeprecated
 from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
@@ -1237,7 +1237,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 # <<< Performance
 @demo_view_decorator
 class PerformanceAccountCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardPermissionDeprecated)
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
@@ -1289,7 +1289,7 @@ class PerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermission)
+    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermissionDeprecated)
 
     def get_filters(self):
         data = self.request.data

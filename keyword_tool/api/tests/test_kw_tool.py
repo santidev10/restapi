@@ -1,4 +1,5 @@
 from copy import deepcopy
+from unittest import skip
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -57,13 +58,13 @@ class KWToolAPITestCase(APITransactionTestCase, APITestUserMixin):
         self.client.get(url)
         optimize_keyword.assert_called_once_with([query])  # was not called
 
+    @skip("Unknown")
     @patch("keyword_tool.api.views.optimize_keyword")
-    def _test_optimize_query_similar_queries(self, optimize_keyword):
+    def test_optimize_query_similar_queries(self, optimize_keyword):
         call_command("load_product_and_services")
         optimize_keyword.return_value = deepcopy(RESP)
         query = "pokemon"
-        url = reverse("keyword_tool_urls:kw_tool_optimize_query",
-                      args=(query,))
+        url = reverse("keyword_tool_urls:kw_tool_optimize_query", args=(query,))
         response = self.client.get(url)
         optimize_keyword.assert_called(query)
         self.assertEqual(response.status_code, HTTP_200_OK)

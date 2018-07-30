@@ -17,7 +17,7 @@ from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
-from utils.permissions import is_chf_in_request
+from to_be_removed.permissions import is_chf_in_request_deprecated
 from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
 from utils.serializers.fields import ParentDictValueField, StatField
@@ -128,7 +128,7 @@ class AccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def __init__(self, *args, **kwargs):
         super(AccountCreationListSerializer, self).__init__(*args, **kwargs)
-        self.is_chf = is_chf_in_request(self.context.get("request"))
+        self.is_chf = is_chf_in_request_deprecated(self.context.get("request"))
         self._filter_fields()
         self.settings = {}
         self.stats = {}

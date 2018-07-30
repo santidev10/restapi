@@ -8,6 +8,7 @@ from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
+from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
@@ -31,7 +32,7 @@ from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from saas.urls.namespaces import Namespace
+from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
@@ -73,10 +74,11 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "weekly_chart",
     }
 
-    url = reverse(Namespace.AW_CREATION + ":" + Name.Dashboard.ACCOUNT_LIST)
+    url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.ACCOUNT_LIST)
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.user.add_custom_user_permission("view_dashboard")
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
@@ -271,8 +273,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_cost_client_cost_dashboard(self):
-        self.user.add_custom_user_permission("view_dashboard")
-
         manager = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)

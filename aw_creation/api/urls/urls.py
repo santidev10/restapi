@@ -1,7 +1,10 @@
-from django.conf.urls import url
+from django.conf.urls import url, include
 
 from aw_creation.api import views
+from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.urls.names import Name
+from .urls_dashboard import urlpatterns as dashboard_urls
+from .urls_analytics import urlpatterns as analytics_urls
 
 urlpatterns = [
     url(r'^geo_target_list/$',
@@ -25,14 +28,8 @@ urlpatterns = [
         views.AccountCreationDetailsApiView.as_view(),
         name="account_creation_details"),
 
-    # Analytics
-    url(r'^analytics/account_creation_list/$',
-        views.AnalyticsAccountCreationListApiView.as_view(),
-        name=Name.Analytics.ACCOUNT_LIST),
-    # Dashboard
-    url(r'^dashboard/account_creation_list/$',
-        views.DashboardAccountCreationListApiView.as_view(),
-        name=Name.Dashboard.ACCOUNT_LIST),
+    url(r'analytics/', include(analytics_urls, namespace=Namespace.ANALYTICS)),
+    url(r'dashboard/', include(dashboard_urls, namespace=Namespace.DASHBOARD)),
 
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
@@ -97,9 +94,6 @@ urlpatterns = [
     url(r'^performance_account_campaigns/(?P<pk>\w+)/$',
         views.PerformanceAccountCampaignsListApiView.as_view(),
         name=Name.Dashboard.CAMPAIGNS),
-    url(r'^performance_account_details/(?P<pk>\w+)/$',
-        views.PerformanceAccountDetailsApiView.as_view(),
-        name=Name.Dashboard.ACCOUNT_DETAILS),
     url(r'^performance_chart/(?P<pk>\w+)/',
         views.PerformanceChartApiView.as_view(),
         name=Name.Dashboard.PERFORMANCE_CHART),

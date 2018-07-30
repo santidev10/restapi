@@ -1,4 +1,4 @@
-from utils.lang import get_all_class_constants
+from utils.utils import get_all_class_constants
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CONVERSIONS = ("all_conversions", "conversions", "view_through")

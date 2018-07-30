@@ -1,3 +1,5 @@
+from unittest import skip
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, \
     HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
@@ -7,8 +9,7 @@ from utils.utils_tests import ExtendedAPITestCase, SegmentFunctionalityMixin, \
     SingleDBMixin
 
 
-class VideoListTestCase(
-        ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDBMixin):
+class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDBMixin):
     def setUp(self):
         self.url = reverse("video_api_urls:video_list")
 
@@ -31,12 +32,14 @@ class VideoListTestCase(
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.keys(), {"error"})
 
-    def _test_simple_list_works(self):
+    @skip("Unknown")
+    def test_simple_list_works(self):
         self.create_admin_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def _test_video_segment_filter_success(self):
+    @skip("Unknown")
+    def test_video_segment_filter_success(self):
         self.create_admin_user()
         videos_limit = 5
         video_fields = "video_id"

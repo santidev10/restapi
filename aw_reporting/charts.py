@@ -11,7 +11,8 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz, as_datetime
-from utils.lang import flatten, get_all_class_constants
+from utils.lang import flatten
+from utils.utils import get_all_class_constants
 from utils.registry import registry
 
 logger = logging.getLogger(__name__)

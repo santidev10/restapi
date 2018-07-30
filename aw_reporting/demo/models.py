@@ -6,7 +6,6 @@ from aw_reporting.models import *
 # pylint: disable=import-error
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
-
 # pylint: enable=import-error
 from userprofile.models import UserSettingsKey
 
@@ -19,7 +18,7 @@ DEMO_AD_GROUPS = (
 )
 TOTAL_DEMO_AD_GROUPS_COUNT = len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT
 DEMO_BRAND = "Demo Brand"
-DEMO_COST_METHOD = "CPM, CPV"
+DEMO_COST_METHOD = ["CPM", "CPV"]
 DEMO_AGENCY = "Initiative LA"
 
 IMPRESSIONS = 150000
@@ -115,7 +114,7 @@ class BaseDemo:
             connector = SingleDatabaseApiConnector()
             try:
                 fields = (
-                "video_id", "title", "thumbnail_image_url", "duration")
+                    "video_id", "title", "thumbnail_image_url", "duration")
                 query_params = dict(fields=",".join(fields), sort="views:desc",
                                     **self.common_media_filters)
                 response_data = connector.get_video_list(query_params)
@@ -205,18 +204,26 @@ class BaseDemo:
         {'label': '/Beauty Mavens', "id": 92505},
         {'label': '/Beauty Products & Services', "id": 80546},
         {'label': '/Family-Focused', "id": 91000},
-        {'label': '/News Junkies & Avid Readers/Entertainment '
-                  '& Celebrity News Junkies',
-         'id': 92006},
-        {'label': "/News Junkies & Avid Readers/Women's Media Fans",
-         'id': 92007},
+        {
+            'label': '/News Junkies & Avid Readers/Entertainment '
+                     '& Celebrity News Junkies',
+            'id': 92006
+        },
+        {
+            'label': "/News Junkies & Avid Readers/Women's Media Fans",
+            'id': 92007
+        },
         {'label': '/Foodies', 'id': 92300},
-        {'label': '/Sports & Fitness/Outdoor Recreational Equipment',
-         'id': 80549},
+        {
+            'label': '/Sports & Fitness/Outdoor Recreational Equipment',
+            'id': 80549
+        },
         {'label': '/Sports Fans', "id": 90200},
         {'label': '/News Junkies & Avid Readers', "id": 92000},
-        {'label': '/Sports & Fitness/Fitness Products & Services/'
-                  'Exercise Equipment', "id": 80559},
+        {
+            'label': '/Sports & Fitness/Fitness Products & Services/'
+                     'Exercise Equipment', "id": 80559
+        },
     )
 
     remarketing = (
@@ -766,8 +773,8 @@ class DemoAccount(BaseDemo):
         return self
 
     def is_visible_for_user(self, user):
-        return user.get_aw_settings()\
-                   .get(UserSettingsKey.DEMO_ACCOUNT_VISIBLE)
+        return user.get_aw_settings() \
+            .get(UserSettingsKey.DEMO_ACCOUNT_VISIBLE)
 
     @property
     def details(self):
@@ -1066,8 +1073,8 @@ class DemoAccount(BaseDemo):
                 return
 
         for metric in (
-        "impressions", "video_views", "clicks", "cost", "video_view_rate",
-        "ctr_v"):
+                "impressions", "video_views", "clicks", "cost", "video_view_rate",
+                "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
