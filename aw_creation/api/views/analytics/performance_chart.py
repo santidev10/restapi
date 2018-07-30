@@ -16,7 +16,7 @@ from utils.registry import registry
 
 
 @demo_view_decorator
-class PerformanceChartApiView(APIView):
+class AnalyticsPerformanceChartApiView(APIView):
     """
     Send filters to get data for charts
 
@@ -24,7 +24,7 @@ class PerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (IsAuthenticated, UserHasDashboardPermissionDeprecated)
+    permission_classes = (IsAuthenticated, )
 
     def get_filters(self):
         data = self.request.data
@@ -43,17 +43,8 @@ class PerformanceChartApiView(APIView):
 
     def post(self, request, pk, **_):
         self.filter_hidden_sections()
-        filters = {}
-        is_dashboard = request.data.get("is_chf") == 1
-        if is_dashboard:
-            user_settings = self.request.user.get_aw_settings()
-            if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
         try:
-            item = AccountCreation.objects.filter(**filters).get(pk=pk)
+            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         filters = self.get_filters()
@@ -61,26 +52,11 @@ class PerformanceChartApiView(APIView):
         if item.account:
             account_ids.append(item.account.id)
         chart = DeliveryChart(account_ids, segmented_by="campaigns",
-                              always_aw_costs=not is_dashboard, **filters)
+                              always_aw_costs=True, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
 
     def filter_hidden_sections(self):
-        is_dashboard = str(self.request.data.get("is_chf")) == "1"
-        if is_dashboard:
-            self.filter_dashboard_hidden_sections()
-        else:
-            self.filter_analytics_hidden_sections()
-
-    def filter_dashboard_hidden_sections(self):
-        user = registry.user
-        if not user.get_aw_settings() \
-                .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
-            hidden_indicators = Indicator.CPV, Indicator.CPM
-            if self.request.data.get("indicator") in hidden_indicators:
-                raise Http404
-
-    def filter_analytics_hidden_sections(self):
         user = registry.user
         if user.get_aw_settings() \
                 .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):

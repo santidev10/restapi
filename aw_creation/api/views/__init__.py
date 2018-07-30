@@ -5,11 +5,12 @@ from .analytics import AnalyticsAccountCreationCampaignsListApiView
 from .analytics import AnalyticsAccountCreationDetailsAPIView
 from .analytics import AnalyticsAccountCreationListApiView
 from .analytics import AnalyticsAccountCreationOverviewAPIView
+from .analytics import AnalyticsPerformanceChartApiView
 from .dashboard import DashboardAccountCreationCampaignsListApiView
 from .dashboard import DashboardAccountCreationDetailsAPIView
 from .dashboard import DashboardAccountCreationListApiView
 from .dashboard import DashboardAccountCreationOverviewAPIView
-from .performance_chart import PerformanceChartApiView
+from .dashboard import DashboardPerformanceChartApiView
 from .performance_export import PerformanceExportApiView
 from .performance_export_weekly_report import PerformanceExportWeeklyReport
 from .performance_targeting_list import PerformanceTargetingListAPIView
