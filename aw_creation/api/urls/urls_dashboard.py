@@ -6,6 +6,7 @@ from aw_creation.api.views.dashboard import DashboardAccountCreationDetailsAPIVi
 from aw_creation.api.views.dashboard import DashboardAccountCreationListApiView
 from aw_creation.api.views.dashboard import DashboardAccountCreationOverviewAPIView
 from aw_creation.api.views.dashboard import DashboardPerformanceChartApiView
+from aw_creation.api.views.dashboard import DashboardPerformanceChartItemsApiView
 
 urlpatterns = [
     url(r'^account_creation_list/$',
@@ -23,4 +24,7 @@ urlpatterns = [
     url(r'^performance_chart/(?P<pk>\w+)/',
         DashboardPerformanceChartApiView.as_view(),
         name=Name.Dashboard.PERFORMANCE_CHART),
+    url(r'^performance_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
+        DashboardPerformanceChartItemsApiView.as_view(),
+        name=Name.Dashboard.PERFORMANCE_CHART_ITEMS),
 ]

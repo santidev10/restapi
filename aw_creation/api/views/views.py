@@ -34,7 +34,6 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.generics import UpdateAPIView
 from rest_framework.parsers import FileUploadParser
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_200_OK
@@ -53,7 +52,6 @@ from aw_creation.models import LocationRule
 from aw_creation.models import AdScheduleRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
-from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import BASE_STATS
 from aw_reporting.models import GeoTarget
@@ -65,19 +63,15 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import TopicStatistic
-from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import Campaign
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_add_calculated_stats
-from to_be_removed.permissions import UserHasDashboardOrStaffPermissionDeprecated
-from userprofile.models import UserSettingsKey
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
-from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
 logger = logging.getLogger(__name__)
@@ -1262,70 +1256,6 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
             ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
         )
         return queryset
-
-
-# <<< Performance
-
-@demo_view_decorator
-class PerformanceChartItemsApiView(APIView):
-    """
-    Send filters to get a list of targeted items
-
-    Body example:
-
-    {"segmented": false}
-    """
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermissionDeprecated)
-
-    def get_filters(self):
-        data = self.request.data
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        filters = dict(
-            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
-            if start_date else None,
-            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
-            if end_date else None,
-            campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"),
-            segmented_by=data.get("segmented"))
-        return filters
-
-    def post(self, request, pk, **kwargs):
-        dimension = kwargs.get('dimension')
-        filters = {}
-        if request.data.get("is_chf") == 1:
-            user_settings = self.request.user.get_aw_settings()
-            if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
-        try:
-            item = AccountCreation.objects.filter(**filters).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        filters = self.get_filters()
-        accounts = []
-        if item.account:
-            accounts.append(item.account.id)
-        chart = DeliveryChart(
-            accounts=accounts,
-            dimension=dimension,
-            **filters)
-        data = chart.get_items()
-        data = self._filter_costs(data)
-        return Response(data=data)
-
-    def _filter_costs(self, data):
-        user = registry.user
-        if user.get_aw_settings()\
-               .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)\
-            and self.request.data.get("is_chf") != 1:
-            for item in data["items"]:
-                item["average_cpm"] = item["average_cpv"] = item["cost"] = None
-
-        return data
 
 
 @demo_view_decorator

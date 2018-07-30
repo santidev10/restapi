@@ -73,6 +73,7 @@ class UserHasPermissionBase(permissions.IsAuthenticated):
     def has_permission(self, request, view):
         return request.user.has_perm(self.permission)
 
+
 class UserHasDashboardPermission(UserHasPermissionBase):
     permission = "userprofile.view_dashboard"
 

@@ -1,34 +1,58 @@
 import json
-from datetime import datetime, timedelta, date
+from datetime import datetime
+from datetime import timedelta
+from datetime import date
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
+from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import Dimension, ALL_DIMENSIONS
+from aw_reporting.charts import Dimension
+from aw_reporting.charts import ALL_DIMENSIONS
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
-    GenderStatistic, AgeRangeStatistic, \
-    AudienceStatistic, VideoCreativeStatistic, YTVideoStatistic, \
-    YTChannelStatistic, TopicStatistic, \
-    KeywordStatistic, CityStatistic, AdStatistic, VideoCreative, GeoTarget, \
-    Audience, Topic, Ad, \
-    AWConnectionToUserRelation, AWConnection, RemarkStatistic, RemarkList, \
-    Opportunity, OpPlacement, SalesForceGoalType
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import CityStatistic
+from aw_reporting.models import AdStatistic
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import Audience
+from aw_reporting.models import Topic
+from aw_reporting.models import Ad
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import AWConnection
+from aw_reporting.models import RemarkStatistic
+from aw_reporting.models import RemarkList
+from aw_reporting.models import Opportunity
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from saas.urls.namespaces import Namespace
+from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, patch_now, int_iterator
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import patch_now
+from utils.utils_tests import int_iterator
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
-class AccountNamesAPITestCase(ExtendedAPITestCase):
+class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id, dimension):
         return reverse(
-            Namespace.AW_CREATION + ":" + Name.Dashboard.CHART_ITEMS,
+            RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.PERFORMANCE_CHART_ITEMS,
             args=(account_creation_id, dimension))
 
     @staticmethod
@@ -405,35 +429,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             }
         )
 
-    def test_success_regardless_global_account_visibility(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
-
-        account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
-        self.create_stats(account)
-
-        url = self._get_url(account_creation.id, Dimension.TOPIC)
-
-        user_settings = {
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
-            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
-        }
-        with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url,
-                json.dumps(dict(is_chf=1)),
-                content_type='application/json',
-            )
-        self.assertEqual(response.status_code, HTTP_200_OK)
+    
 
     def test_hide_costs(self):
         user = self.create_test_user()
