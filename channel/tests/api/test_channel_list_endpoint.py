@@ -1,3 +1,5 @@
+from unittest import skip
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, \
     HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
@@ -32,12 +34,14 @@ class ChannelListTestCase(
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.keys(), {"error"})
 
-    def _test_simple_list_works(self):
+    @skip("Unknown")
+    def test_simple_list_works(self):
         self._create_admin_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def _test_channel_segment_filter_success(self):
+    @skip("Unknown")
+    def test_channel_segment_filter_success(self):
         self._create_admin_user()
         channels_ids_count = 5
         channels_ids = self.obtain_channels_ids(channels_ids_count)
@@ -51,7 +55,8 @@ class ChannelListTestCase(
         self.assertEqual(
             {obj["id"] for obj in response.data["items"]}, channels_ids)
 
-    def _test_video_segment_filter_success(self):
+    @skip("Unknown")
+    def test_video_segment_filter_success(self):
         self._create_admin_user()
         videos_limit = 5
         videos_data = self.obtain_videos_data(size=videos_limit)
