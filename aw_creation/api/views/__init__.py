@@ -17,6 +17,5 @@ from .dashboard import DashboardPerformanceChartApiView
 from .dashboard import DashboardPerformanceChartItemsApiView
 from .dashboard import DashboardPerformanceExportApiView
 from .dashboard import DashboardPerformanceExportWeeklyReportApiView
-from .performance_export_weekly_report import PerformanceExportWeeklyReport
 from .performance_targeting_list import PerformanceTargetingListAPIView
 from .views import *
