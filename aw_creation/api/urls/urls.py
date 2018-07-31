@@ -1,10 +1,10 @@
 from django.conf.urls import url, include
 
 from aw_creation.api import views
-from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.urls.names import Name
-from .urls_dashboard import urlpatterns as dashboard_urls
+from aw_creation.api.urls.namespace import Namespace
 from .urls_analytics import urlpatterns as analytics_urls
+from .urls_dashboard import urlpatterns as dashboard_urls
 
 urlpatterns = [
     url(r'^geo_target_list/$',
@@ -24,9 +24,6 @@ urlpatterns = [
     url(r'^creation_options/$',
         views.CreationOptionsApiView.as_view(),
         name="creation_options"),
-    url(r'^account_creation_details/(?P<pk>\w+)/$',
-        views.AccountCreationDetailsApiView.as_view(),
-        name="account_creation_details"),
 
     url(r'analytics/', include(analytics_urls, namespace=Namespace.ANALYTICS)),
     url(r'dashboard/', include(dashboard_urls, namespace=Namespace.DASHBOARD)),

@@ -1,5 +1,4 @@
 from .account_creation_by_account import AccountCreationByAccountAPIView
-from .account_creation_details import AccountCreationDetailsApiView
 from .account_creation_setup import AccountCreationSetupApiView
 from .analytics import AnalyticsAccountCreationCampaignsListApiView
 from .analytics import AnalyticsAccountCreationDetailsAPIView
