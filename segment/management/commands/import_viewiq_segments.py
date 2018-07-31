@@ -17,6 +17,7 @@ class Command(BaseCommand):
     fixtures_directory = join(settings.BASE_DIR, "segment/fixtures/")
     file_name_prefix = "segments_private_export_"
     separation_symbol = "|"
+    related_ids_columns = (1, 2, 3, 4)
     fields_with_separation_symbol = ["related_ids", "shared_with"]
     names_and_models = {
         "KeywordSegments": SegmentKeyword,
@@ -48,6 +49,16 @@ class Command(BaseCommand):
                 data = worksheet.values
                 headers = next(data)
                 headers = [header.lower().replace(" ", "_") for header in headers]
+                headers = headers[:self.related_ids_columns[0] + 1] + headers[self.related_ids_columns[3] + 1:]
+                data = [list(obj) for obj in data]
+                for obj in data:
+                    all_related_ids = ""
+                    for related_ids_column in self.related_ids_columns:
+                        related_ids = obj[related_ids_column]
+                        if related_ids is not None:
+                            all_related_ids += related_ids
+                    obj[1] = all_related_ids
+                data = [obj[:self.related_ids_columns[0] + 1] + obj[self.related_ids_columns[3] + 1:] for obj in data]
                 parsed_data = [dict(zip(headers, obj)) for obj in data]
                 parsed_data = self.__clean_up_separation_symbols(parsed_data)
                 result[worksheet.title] = parsed_data
