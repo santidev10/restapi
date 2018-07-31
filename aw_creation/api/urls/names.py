@@ -11,7 +11,6 @@ class Name:
         ACCOUNT = "account_creation_setup"
 
     class Dashboard:
-        PERFORMANCE_CHART = "performance_chart"
         CHART_ITEMS = "performance_chart_items"
         PERFORMANCE_EXPORT = "performance_export"
         PERFORMANCE_EXPORT_WEEKLY_REPORT = "performance_export_weekly_report"
@@ -21,9 +20,11 @@ class Name:
         ACCOUNT_DETAILS = "dashboard_account_details"
         ACCOUNT_OVERVIEW = "dashboard_account_overview"
         CAMPAIGNS = "dashboard_account_creation_campaigns"
+        PERFORMANCE_CHART = "dashboard_performance_chart"
 
     class Analytics:
         ACCOUNT_LIST = "analytics_account_creation_list"
         ACCOUNT_DETAILS = "analytics_account_details"
         ACCOUNT_OVERVIEW = "analytics_account_overview"
         CAMPAIGNS = "analytics_account_creation_campaigns"
+        PERFORMANCE_CHART = "analytics_performance_chart"

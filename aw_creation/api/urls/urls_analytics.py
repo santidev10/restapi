@@ -5,6 +5,7 @@ from aw_creation.api.views.analytics import AnalyticsAccountCreationCampaignsLis
 from aw_creation.api.views.analytics import AnalyticsAccountCreationDetailsAPIView
 from aw_creation.api.views.analytics import AnalyticsAccountCreationListApiView
 from aw_creation.api.views.analytics import AnalyticsAccountCreationOverviewAPIView
+from aw_creation.api.views.analytics import AnalyticsPerformanceChartApiView
 
 urlpatterns = [
     url(r'^account_creation_list/$',
@@ -19,4 +20,7 @@ urlpatterns = [
     url(r'^performance_account/(?P<pk>\w+)/campaigns/$',
         AnalyticsAccountCreationCampaignsListApiView.as_view(),
         name=Name.Analytics.CAMPAIGNS),
+    url(r'^performance_chart/(?P<pk>\w+)/',
+        AnalyticsPerformanceChartApiView.as_view(),
+        name=Name.Analytics.PERFORMANCE_CHART),
 ]

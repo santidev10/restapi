@@ -5,6 +5,7 @@ from aw_creation.api.views.dashboard import DashboardAccountCreationCampaignsLis
 from aw_creation.api.views.dashboard import DashboardAccountCreationDetailsAPIView
 from aw_creation.api.views.dashboard import DashboardAccountCreationListApiView
 from aw_creation.api.views.dashboard import DashboardAccountCreationOverviewAPIView
+from aw_creation.api.views.dashboard import DashboardPerformanceChartApiView
 
 urlpatterns = [
     url(r'^account_creation_list/$',
@@ -19,4 +20,7 @@ urlpatterns = [
     url(r'^performance_account/(?P<pk>\w+)/campaigns/$',
         DashboardAccountCreationCampaignsListApiView.as_view(),
         name=Name.Dashboard.CAMPAIGNS),
+    url(r'^performance_chart/(?P<pk>\w+)/',
+        DashboardPerformanceChartApiView.as_view(),
+        name=Name.Dashboard.PERFORMANCE_CHART),
 ]
