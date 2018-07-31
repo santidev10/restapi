@@ -55,7 +55,9 @@ class Command(BaseCommand):
                     all_related_ids = ""
                     for related_ids_column in self.related_ids_columns:
                         related_ids = obj[related_ids_column]
-                        if related_ids is not None:
+                        if related_ids:
+                            if all_related_ids:
+                                all_related_ids += self.separation_symbol
                             all_related_ids += related_ids
                     obj[1] = all_related_ids
                 data = [obj[:self.related_ids_columns[0] + 1] + obj[self.related_ids_columns[3] + 1:] for obj in data]
