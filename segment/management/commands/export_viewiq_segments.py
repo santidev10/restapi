@@ -120,17 +120,11 @@ class Command(BaseCommand):
         for obj_data in data:
             related_ids_index = fields.index("related_ids_list")
             related_ids_list = list(obj_data.pop(related_ids_index))
-            related_ids_chunks = make_chunks(related_ids_list, size=self.related_ids_chunk_size)
-            chunks = [chunk for chunk in related_ids_chunks]
-            len_difference = self.max_related_ids_columns - len(chunks)
-            for i in range(len_difference):
-                chunks.insert(0, [])
-            for chunk in chunks:
-                related_ids_string = self.separation_symbol.join([value for value in chunk])
+            related_ids_strings = [
+                self.separation_symbol.join(
+                    related_ids_list[i*self.related_ids_chunk_size:(i+1)*self.related_ids_chunk_size])
+                for i in range(self.max_related_ids_columns)]
+            related_ids_strings.sort()
+            for related_ids_string in related_ids_strings:
                 obj_data.insert(related_ids_index, related_ids_string)
         self.__write_rows(data, start_row, worksheet)
-
-
-def make_chunks(iterable, size):
-    for obj in range(0, len(iterable), size):
-        yield iterable[obj:obj + size]
