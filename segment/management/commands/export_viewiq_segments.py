@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
 
     start_column = 0
+    related_ids_chunk_size = 2500
+    max_related_ids_columns = 4
+    separation_symbol = "|"
     segment_model = (SegmentChannel, SegmentVideo, SegmentKeyword)
 
     def add_arguments(self, parser):
@@ -37,10 +40,29 @@ class Command(BaseCommand):
         logger.info("Export segments procedure has been finished")
 
     def __setup_headers(self, is_private_export):
-        self.headers = (("Title", "Related Ids", "Category"),)
+        self.headers = (
+            (
+                "Title",
+                "Related Ids",
+                "Related Ids",
+                "Related Ids",
+                "Related Ids",
+                "Category"
+            ),
+        )
         if is_private_export:
             self.headers = (
-                ("Title", "Related Ids", "Category", "Owner Email", "Shared With"),)
+                (
+                    "Title",
+                    "Related Ids",
+                    "Related Ids",
+                    "Related Ids",
+                    "Related Ids",
+                    "Category",
+                    "Owner Email",
+                    "Shared With",
+                ),
+            )
 
     def __prepare_workbook(self, is_private_export):
         filename = "segment/fixtures/segments_export_{}.xlsx"
@@ -52,11 +74,14 @@ class Command(BaseCommand):
     def __prepare_worksheet(self, name):
         worksheet = self.workbook.add_worksheet(name)
         columns_width = {
-            0: 37,
-            1: 50,
-            2: 14,
-            3: 25,
-            4: 50,
+            0: 35,
+            1: 15,
+            2: 15,
+            3: 15,
+            4: 15,
+            5: 25,
+            6: 30,
+            7: 30,
         }
         for key, value in columns_width.items():
             worksheet.set_column(key, key, value)
@@ -86,10 +111,20 @@ class Command(BaseCommand):
         worksheet, start_row = self.__prepare_worksheet(
             "{}Segments".format(model.segment_type.capitalize()))
         query = model.objects.exclude(category=model.PRIVATE)
-        fields = ["title", "related_ids_string", "category"]
+        fields = ["title", "related_ids_list", "category"]
         if is_private_export:
             query = model.objects.filter(category=model.PRIVATE)
             fields += ["owner.email", "shared_with_string"]
         query = query.order_by("category")
         data = [[deep_getattr(obj, attr, default="") for attr in fields] for obj in query]
+        for obj_data in data:
+            related_ids_index = fields.index("related_ids_list")
+            related_ids_list = list(obj_data.pop(related_ids_index))
+            related_ids_strings = [
+                self.separation_symbol.join(
+                    related_ids_list[i*self.related_ids_chunk_size:(i+1)*self.related_ids_chunk_size])
+                for i in range(self.max_related_ids_columns)]
+            related_ids_strings.sort()
+            for related_ids_string in related_ids_strings:
+                obj_data.insert(related_ids_index, related_ids_string)
         self.__write_rows(data, start_row, worksheet)

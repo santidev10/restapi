@@ -91,11 +91,6 @@ class BaseSegment(Timestampable):
         return self.related.all().values_list('related_id', flat=True)
 
     @property
-    def related_ids_string(self, separation_symbol="|"):
-        return separation_symbol.join(
-            self.related.all().values_list("related_id", flat=True))
-
-    @property
     def shared_with_string(self, separation_symbol="|"):
         return separation_symbol.join(self.shared_with)
 
