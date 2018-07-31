@@ -864,6 +864,7 @@ def get_topics(client, account, today):
     min_date = saved_max_date + timedelta(days=1) \
         if saved_max_date else start_date
     max_date = max_acc_date
+    print(min_date, max_date)
     if min_date >= max_date:
         logger.debug(
             "Start date to load is greater then max Account date: {} >= {}"

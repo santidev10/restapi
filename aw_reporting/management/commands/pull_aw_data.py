@@ -62,7 +62,7 @@ class Command(BaseCommand):
         self.pre_process()
 
         now = now_in_default_tz(utc)
-        today = now.today()
+        today = now.date()
         forced = options.get("forced")
         start = options.get("start")
         end = options.get("end")
