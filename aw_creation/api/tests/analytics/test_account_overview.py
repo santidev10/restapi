@@ -29,7 +29,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
-        response = self.client.post(url, json.dumps(dict(is_chf=0, **kwargs)), content_type="application/json")
+        response = self.client.post(url, json.dumps(kwargs), content_type="application/json")
         self.assertEqual(response.status_code, status_code)
         return response.data
 

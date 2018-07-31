@@ -11,7 +11,6 @@ from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.models import UserSettingsKey
-from to_be_removed.permissions import UserHasDashboardPermissionDeprecated
 from utils.registry import registry
 
 
