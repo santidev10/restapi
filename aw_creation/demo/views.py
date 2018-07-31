@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
-from aw_creation.api.utils import is_dashboard_request
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
     Language, TargetingItem, AdCreation
@@ -15,6 +14,7 @@ from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
 from to_be_removed.demo_views import PerformanceAccountDetailsApiViewOLD
+from to_be_removed.utils import is_dashboard_request
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
 from utils.views import xlsx_response
@@ -611,11 +611,42 @@ class DashboardPerformanceChartItemsApiView:
         return method
 
 
-class PerformanceExportApiView:
+class AnalyticsPerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.set_period_proportion(filters['start_date'],
+                                              filters['end_date'])
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+
+                def data_generator():
+                    data = account.details
+                    yield {**{"tab": "Summary"}, **data}
+
+                    for dimension in view.tabs:
+                        filters['dimension'] = dimension
+                        charts_obj = DemoChart(account, filters)
+                        items = charts_obj.chart_items["items"]
+                        for data in items:
+                            yield {**{"tab": dimension}, **data}
+
+                return view.build_response(account.name, data_generator)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class DashboardPerformanceExportApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
