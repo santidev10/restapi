@@ -3,17 +3,25 @@ from datetime import datetime
 
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, LocationRule, AdScheduleRule, FrequencyCap, \
-    Language, TargetingItem, AdCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
+from aw_creation.models import TargetingItem
 from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
-from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
-from to_be_removed.demo_views import PerformanceAccountDetailsApiViewOLD
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount
+from aw_reporting.models import CONVERSIONS
+from aw_reporting.models import VIEW_RATE_STATS
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
 from utils.views import xlsx_response
@@ -476,9 +484,6 @@ class DashboardAccountCreationCampaignsListApiView:
             return original_method(view, request, pk=pk, **kwargs)
 
         return method
-
-
-PerformanceAccountDetailsApiView = PerformanceAccountDetailsApiViewOLD
 
 
 class AnalyticsAccountCreationDetailsAPIView:

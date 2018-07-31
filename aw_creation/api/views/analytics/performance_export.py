@@ -11,19 +11,18 @@ from aw_creation.models import AccountCreation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import PerformanceReport
-from aw_reporting.models import dict_quartiles_to_rates
-from aw_reporting.models import all_stats_aggregate
-from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import all_stats_aggregate
 from aw_reporting.models import dict_add_calculated_stats
-from to_be_removed.permissions import UserHasDashboardOrStaffPermissionDeprecated
+from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models import dict_quartiles_to_rates
 from utils.views import xlsx_response
 
 
 @demo_view_decorator
 class AnalyticsPerformanceExportApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardOrStaffPermissionDeprecated)
+    permission_classes = (IsAuthenticated, )
 
     def post(self, request, pk, **_):
         try:

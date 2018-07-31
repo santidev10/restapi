@@ -95,8 +95,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
 
     def test_success_for_chf_dashboard(self):
         user = self.create_test_user()
-        user.is_staff = True
-        user.save()
+        user.add_custom_user_permission("view_dashboard")
         self._hide_demo_data_fallback(user)
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
