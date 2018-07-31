@@ -1,5 +1,4 @@
 import io
-import json
 import re
 
 from openpyxl import load_workbook
@@ -8,7 +7,6 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.api.constants import DashboardRequest
 from aw_reporting.excel_reports import FOOTER_ANNOTATION
 from aw_reporting.models import Account, Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
@@ -25,10 +23,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def _request(self, account_creation_id):
         url = self._get_url(account_creation_id)
-        dashboard_payload = {
-            DashboardRequest.DASHBOARD_PARAM_NAME: DashboardRequest.DASHBOARD_PARAM_VALUE,
-        }
-        return self.client.post(url, json.dumps(dashboard_payload), content_type="application/json")
+        return self.client.post(url, "{}", content_type="application/json")
 
     def test_no_demo_data(self):
         user = self.create_test_user()
