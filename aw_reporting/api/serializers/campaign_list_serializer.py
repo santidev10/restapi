@@ -3,8 +3,7 @@ import re
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.api.serializers.simple_serializers import \
-    AdGroupListSerializer
+from aw_reporting.api.serializers.simple_serializers import AdGroupListSerializer
 from aw_reporting.models import Campaign
 
 

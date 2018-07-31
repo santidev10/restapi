@@ -3,7 +3,8 @@ import calendar
 import csv
 import itertools
 import re
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 from io import StringIO
@@ -14,39 +15,68 @@ from django.conf import settings
 # pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Value, Case, When, F, \
-    IntegerField as AggrIntegerField, Min, Max
-from django.http import StreamingHttpResponse, Http404
+from django.db.models import Value
+from django.db.models import Case
+from django.db.models import When
+from django.db.models import F
+from django.db.models import IntegerField as AggrIntegerField
+from django.db.models import Min
+from django.db.models import Max
+from django.http import StreamingHttpResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, \
-    GenericAPIView, ListCreateAPIView, RetrieveAPIView, UpdateAPIView
-from rest_framework.parsers import FileUploadParser, MultiPartParser
+from rest_framework.generics import ListAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import GenericAPIView
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import UpdateAPIView
+from rest_framework.parsers import FileUploadParser
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK, \
-    HTTP_404_NOT_FOUND, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_204_NO_CONTENT
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, FrequencyCap, Language, LocationRule, AdScheduleRule, \
-    TargetingItem, default_languages
-from aw_reporting.api.serializers.campaign_list_serializer import \
-    CampaignListSerializer
+from aw_creation.models import AccountCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import TargetingItem
+from aw_creation.models import default_languages
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import BASE_STATS, GeoTarget, Topic, Audience, \
-    AdGroup, \
-    YTChannelStatistic, \
-    YTVideoStatistic, KeywordStatistic, AudienceStatistic, TopicStatistic, \
-    DATE_FORMAT, base_stats_aggregator, campaign_type_str, Campaign, \
-    AdGroupStatistic, dict_norm_base_stats, dict_add_calculated_stats
+from aw_reporting.models import BASE_STATS
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import Topic
+from aw_reporting.models import Audience
+from aw_reporting.models import AdGroup
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import Campaign
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models import dict_add_calculated_stats
+from to_be_removed.permissions import UserHasDashboardOrStaffPermissionDeprecated
 from userprofile.models import UserSettingsKey
-from utils.permissions import IsAuthQueryTokenPermission, \
-    MediaBuyingAddOnPermission, user_has_permission, or_permission_classes
-from to_be_removed.permissions import UserHasDashboardPermissionDeprecated, UserHasDashboardOrStaffPermissionDeprecated
+from utils.permissions import IsAuthQueryTokenPermission
+from utils.permissions import MediaBuyingAddOnPermission
+from utils.permissions import user_has_permission
+from utils.permissions import or_permission_classes
 from utils.registry import registry
 from utils.views import XLSX_CONTENT_TYPE
 
@@ -1235,50 +1265,6 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 
 # <<< Performance
-@demo_view_decorator
-class PerformanceAccountCampaignsListApiView(APIView):
-    permission_classes = (IsAuthenticated, UserHasDashboardPermissionDeprecated)
-
-    def get_queryset(self):
-        pk = self.kwargs.get("pk")
-        user = registry.user
-        account_id = AccountCreation.objects.get(id=pk).account_id
-        types_hidden = user.get_aw_settings()\
-            .get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])
-        types_to_exclude = [campaign_type_str(t) for t in types_hidden]
-        queryset = Campaign.objects \
-            .filter(
-            account__account_creations__id=pk,
-            account__account_creations__owner=self.request.user) \
-            .exclude(type__in=types_to_exclude) \
-            .order_by("name", "id").distinct()
-        return queryset
-
-    def get(self, request, pk, **kwargs):
-        filters = {"is_deleted": False}
-        if request.query_params.get("is_chf") == "1":
-            filters["account__id__in"] = []
-            user_settings = self.request.user.get_aw_settings()
-            if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-                filters["account__id__in"] = \
-                    user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        else:
-            filters["owner"] = self.request.user
-        try:
-            account_creation = AccountCreation.objects.filter(
-                **filters).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            campaign_creation_ids = set()
-        else:
-            campaign_creation_ids = set(
-                account_creation.campaign_creations.filter(
-                    is_deleted=False
-                ).values_list("id", flat=True))
-        queryset = self.get_queryset()
-        serializer = CampaignListSerializer(
-            queryset, many=True, campaign_creation_ids=campaign_creation_ids)
-        return Response(serializer.data)
-
 
 @demo_view_decorator
 class PerformanceChartItemsApiView(APIView):
