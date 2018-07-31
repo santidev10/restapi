@@ -8,6 +8,7 @@ from aw_creation.api.views.dashboard import DashboardAccountCreationOverviewAPIV
 from aw_creation.api.views.dashboard import DashboardPerformanceChartApiView
 from aw_creation.api.views.dashboard import DashboardPerformanceChartItemsApiView
 from aw_creation.api.views.dashboard import DashboardPerformanceExportApiView
+from aw_creation.api.views.dashboard import DashboardPerformanceExportWeeklyReportApiView
 
 urlpatterns = [
     url(r'^account_creation_list/$',
@@ -31,4 +32,7 @@ urlpatterns = [
     url(r'^performance_export/(?P<pk>\w+)/',
         DashboardPerformanceExportApiView.as_view(),
         name=Name.Analytics.PERFORMANCE_EXPORT),
+    url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
+        DashboardPerformanceExportWeeklyReportApiView.as_view(),
+        name=Name.Dashboard.PERFORMANCE_EXPORT_WEEKLY_REPORT),
 ]

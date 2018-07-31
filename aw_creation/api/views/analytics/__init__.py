@@ -5,3 +5,4 @@ from .account_creation_overview import AnalyticsAccountCreationOverviewAPIView
 from .performance_chart import AnalyticsPerformanceChartApiView
 from .performance_chart_items import AnalyticsPerformanceChartItemsApiView
 from .performance_export import AnalyticsPerformanceExportApiView
+from .performance_export_weekly_report import AnalyticsPerformanceExportWeeklyReportApiView

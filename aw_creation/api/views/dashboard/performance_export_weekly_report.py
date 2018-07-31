@@ -11,7 +11,7 @@ from utils.views import xlsx_response
 
 
 @demo_view_decorator
-class PerformanceExportWeeklyReport(APIView):
+class DashboardPerformanceExportWeeklyReportApiView(APIView):
     """
     Send filters to download weekly report
 

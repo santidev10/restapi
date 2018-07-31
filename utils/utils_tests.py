@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.urlresolvers import reverse as django_reverse
 from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
@@ -265,3 +266,10 @@ def generic_test(args_list, debug_indexes=None):
 
 
 int_iterator = itertools.count(1, 1)
+
+
+def reverse(view_name, namespaces, **kwargs):
+    return django_reverse(
+        ":".join(namespaces + [view_name]),
+        **kwargs
+    )

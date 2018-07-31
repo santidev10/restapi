@@ -14,7 +14,6 @@ from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from aw_reporting.models import VIEW_RATE_STATS, CONVERSIONS
 from to_be_removed.demo_views import PerformanceAccountDetailsApiViewOLD
-from to_be_removed.utils import is_dashboard_request
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
 from utils.views import xlsx_response
@@ -673,11 +672,34 @@ class DashboardPerformanceExportApiView:
         return method
 
 
-class PerformanceExportWeeklyReport:
+class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or (show_demo_data(request, pk) and not is_dashboard_request(request)):
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+                filters = view.get_filters()
+                account = DemoAccount()
+                account.filter_out_items(
+                    filters['campaigns'], filters['ad_groups'],
+                )
+                report = DemoAnalyzeWeeklyReport(account)
+
+                title = "Channel Factory {} Weekly Report {}".format(
+                    account.name,
+                    datetime.now().date().strftime("%m.%d.%y")
+                )
+                return xlsx_response(title, report.get_content())
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class DashboardPerformanceExportWeeklyReportApiView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
