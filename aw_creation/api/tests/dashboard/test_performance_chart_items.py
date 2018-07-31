@@ -101,7 +101,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self.client.post(
                 url,
-                json.dumps(dict(is_chf=1)),
+                "{}",
                 content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
