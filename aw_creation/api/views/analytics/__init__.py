@@ -3,3 +3,4 @@ from .account_creation_details import AnalyticsAccountCreationDetailsAPIView
 from .account_creation_list import AnalyticsAccountCreationListApiView
 from .account_creation_overview import AnalyticsAccountCreationOverviewAPIView
 from .performance_chart import AnalyticsPerformanceChartApiView
+from .performance_chart_items import AnalyticsPerformanceChartItemsApiView
