@@ -70,6 +70,8 @@ class Command(BaseCommand):
             access = user_data.pop("access") or []
             date_joined = datetime.strptime(user_data["date_joined"], "%Y-%m-%d %H:%M:%S")
             date_joined = date_joined.replace(tzinfo=timezone.utc)
+            company = user_data.get("company")
+            phone_number = user_data.get("phone_number")
             try:
                 user = get_user_model().objects.get(email=email)
             except get_user_model().DoesNotExist:
@@ -86,6 +88,10 @@ class Command(BaseCommand):
                     user.add_custom_user_group(obj)
             else:
                 user.date_joined = min(date_joined, user.date_joined)
+                if company and not user.company:
+                    user.company = company
+                if phone_number and not user.phone_number:
+                    user.phone_number = phone_number
             user.google_account_id = self.default_google_id
             user.save()
             for channel_id in related_channels:
