@@ -1,9 +1,10 @@
-from django.core.mail import send_mail
-from django.conf import settings
-from django.template.loader import render_to_string
 from collections import defaultdict
 
-TRACKING_TAGS_SUBJECT = "SAAS Tags Needed for {account} by {first_name} {last_name}"
+from django.conf import settings
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+
+TRACKING_TAGS_SUBJECT = "ViewIQ Tags Needed for {account} by {first_name} {last_name}"
 
 
 def tag_field_to_readable_name(field_name):

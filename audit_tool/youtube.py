@@ -1,13 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
 import logging
-import requests
 import time
+from concurrent.futures import ThreadPoolExecutor
+
+import requests
 from django.conf import settings
 
-from utils.utils import chunks_generator
-
 from audit_tool.dmo import VideosChunkDMO
-
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 

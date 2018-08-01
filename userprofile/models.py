@@ -33,6 +33,42 @@ class UserSettingsKey:
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
 
 
+class UserLogoSettings:
+    AIRBNB = "airbnb"
+    BUTTERFINGER = "butterfinger"
+    DR_PEPPER = "dr_pepper"
+    GAMELOFT = "gameloft"
+    GROUPON = "groupon"
+    HALLMARK = "hallmark"
+    IMAX = "imax"
+    INTEL = "intel"
+    LEGO = "lego"
+    LG = "lg"
+    LIVE_NATION = "live_nation"
+    MARS = "mars"
+    MATTEL = "mattel"
+    MICROSOFT = "microsoft"
+    NBA = "nba"
+    NESTLE = "nestle"
+    OLIVE_GARDEN = "olive_garden"
+    PRUDENTIAL = "prudential"
+    PURINA = "purina"
+    RED_BULL = "red_bull"
+    SALLY_BEAUTY = "sally_beauty"
+    SAMSUNG = "samsung"
+    SEVEN_UP = "seven_up"
+    SONY = "sony"
+    STATE_FARM = "state_farm"
+    TOO_FACED = "too_faced"
+    TOYOTA = "toyota"
+    USA_POST = "usa_post"
+    VERZION = "verizon",
+    VISION = "visio"
+    VOLCOM = "volcom"
+    WRIGLEY = "wrigley"
+    XEROX = "xerox"
+
+
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
@@ -104,6 +140,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     paypal_email = models.EmailField(null=True, blank=True)
     facebook_id = models.CharField(max_length=255, null=True, blank=True)
     is_password_generated = models.BooleanField(default=False)
+    google_account_id = models.CharField(null=True, blank=True, max_length=255)
+    logo = models.CharField(null=True, blank=True, max_length=255)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)

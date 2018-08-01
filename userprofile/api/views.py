@@ -224,7 +224,7 @@ class UserPasswordResetApiView(APIView):
             host=host,
             email=email,
             token=token)
-        subject = "SaaS > Password reset notification"
+        subject = "ViewIQ > Password reset notification"
         text_header = "Dear {} \n".format(user.get_full_name())
         message = "Click the link below to reset your password.\n" \
                   "{}\n\n" \
@@ -323,19 +323,6 @@ class ContactFormApiView(APIView):
                "User message: {message} \n\n".format(**serializer.data)
         send_mail(subject, text, sender, to, fail_silently=True)
         return Response(status=HTTP_201_CREATED)
-
-
-class VendorDetailsApiView(APIView):
-    """
-    Endpoint to recognize server vendor
-    """
-    permission_classes = tuple()
-
-    def get(self, request):
-        """
-        Get procedure
-        """
-        return Response(data={"vendor": settings.VENDOR})
 
 
 class ErrorReportApiView(APIView):

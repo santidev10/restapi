@@ -118,21 +118,16 @@ class SegmentKeyword(BaseSegment):
         """
         Update segment statistics fields
         """
-
         self.keywords = data.get('data', {}).get('items_count')
-
         average_volume = data.get('data', {}).get('aggregations', {}).get('avg_search_volume')
         if average_volume:
-            self.average_volume = average_volume[0].get('value')
-
+            self.average_volume = average_volume[0].get('value') or 0
         average_cpc = data.get('data', {}).get('aggregations', {}).get('avg_average_cpc')
         if average_cpc:
-            self.average_cpc = average_cpc[0].get('value')
-
+            self.average_cpc = average_cpc[0].get('value') or 0
         competition = data.get('data', {}).get('aggregations', {}).get('avg_competition')
         if competition:
-            self.competition = competition[0].get('value')
-
+            self.competition = competition[0].get('value') or 0
         keywords = data['top_keywords']['items']
         if keywords:
             self.top_keywords = [{'keyword': kw['keyword'], 'value': kw['search_volume']} for kw in keywords]

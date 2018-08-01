@@ -1,25 +1,25 @@
+import logging
 from datetime import timedelta
+from io import BytesIO
+from typing import Dict
+from typing import List
+from typing import Set
+
+import xlsxwriter
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.core.management import BaseCommand
 from django.http import QueryDict
-from io import BytesIO
-import logging
-from typing import Dict
-from typing import List
-from typing import Set
-import xlsxwriter
 
 from audit_tool.adwords import AdWords
-from audit_tool.youtube import Youtube
-from audit_tool.keywords import Keywords
 from audit_tool.dmo import AccountDMO
 from audit_tool.dmo import VideoDMO
-from aw_reporting.models import Account
+from audit_tool.keywords import Keywords
+from audit_tool.youtube import Youtube
 from aw_reporting.models import AWConnection
-from singledb.connector import  SingleDatabaseApiConnector
+from aw_reporting.models import Account
+from singledb.connector import SingleDatabaseApiConnector
 from utils.datetime import now_in_default_tz
-
 
 logger = logging.getLogger(__name__)
 

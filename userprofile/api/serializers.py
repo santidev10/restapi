@@ -113,7 +113,6 @@ class UserSerializer(ModelSerializer):
     token = SerializerMethodField()
     has_aw_accounts = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
-    vendor = SerializerMethodField()
     can_access_media_buying = SerializerMethodField()
 
     class Meta:
@@ -138,8 +137,9 @@ class UserSerializer(ModelSerializer):
             "profile_image_url",
             "can_access_media_buying",
             "has_disapproved_ad",
-            "vendor",
-            "historical_aw_account"
+            "historical_aw_account",
+            "google_account_id",
+            "logo",
         )
         read_only_fields = (
             "is_staff",
@@ -149,7 +149,8 @@ class UserSerializer(ModelSerializer):
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",
-            "vendor",
+            "google_account_id",
+            "logo",
         )
 
     @staticmethod
@@ -171,9 +172,6 @@ class UserSerializer(ModelSerializer):
             return obj.auth_token.key
         except Token.DoesNotExist:
             return
-
-    def get_vendor(self, obj):
-        return settings.VENDOR
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")

@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import socket
 
-from teamcity import is_running_under_teamcity
+from teamcity import is_running_under_teamcity, teamcity_presence_env_var
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +27,11 @@ SECRET_KEY = '%ics*w%224v(ymhbgk4rpsqhs0ss7r(pxel%n(1fko6*5$-1=8'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS_ENV = os.getenv("ALLOWED_HOSTS")
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
+else:
+    ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -178,6 +182,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'main_formatter',
+            'filters': ['require_debug_true']
         },
         'file': {
             'filename': os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
@@ -196,7 +201,7 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'handlers': ['file', 'mail_developers'],
+            'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
@@ -216,19 +221,21 @@ LOGGING = {
     },
     'filters': {
         'require_debug_false': {
-            '()': 'django.utils.log.CallbackFilter',
-            'callback': lambda r: not DEBUG,
+            '()': 'django.utils.log.RequireDebugFalse',
         },
-        "disable_in_tests": {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
-            'callback': lambda r: None,
+            'callback': lambda r: 0,
         }
     }
 }
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
-EMAIL_PORT = 1025
+EMAIL_PORT = os.getenv("EMAIL_PORT", None) or 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
@@ -240,7 +247,8 @@ YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 STRIPE_PUBLIC_KEY = None
 STRIPE_SECRET_KEY = None
 
-SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
+SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
+SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
 
 import djcelery
@@ -257,7 +265,8 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 
-BROKER_URL = "redis://localhost:6379/0"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
 KW_TOOL_KEY = "Qi3mxPnm"
 
@@ -310,8 +319,6 @@ DEFAULT_PERMISSIONS_GROUP_NAME = 'Highlights'
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
-VENDOR = 'viewiq'
-
 TESTIMONIALS = {
     "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
@@ -333,6 +340,12 @@ HOST = "https://viewiq.com"
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]
+
+
+# patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
+def is_running_under_teamcity():
+    return bool(os.getenv(teamcity_presence_env_var))
+
 
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"

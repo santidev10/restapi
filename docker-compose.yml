@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  pg:
+    image: postgres:9.6
+    environment:
+      POSTGRES_DB: saas
+      POSTGRES_PASSWORD: password
+  api:
+    build: .
+    volumes:
+      - .:/code
+    ports:
+      - "5000:5000"
+    environment:
+      SINGLE_DATABASE_API_HOST: sdb
+      REDIS_HOST: redis
+      ALLOWED_HOSTS: api
+    depends_on:
+      - pg
+      - sdb
+      - redis
+      - web
+  web:
+    image: saas-ui
+    ports:
+      - "8000:8000"
+  sdb:
+    image: saas-sdb
+    depends_on:
+      - cassandra
+      - redis
+      - es
+  es:
+    image: elasticsearch
+  cassandra:
+    image: cassandra
+    expose:
+    - "9042"
+  redis:
+    image: redis

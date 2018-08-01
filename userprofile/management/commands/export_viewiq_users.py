@@ -1,13 +1,12 @@
 """
-Command to export non-private segments data from ViewIq
+Command to export users from ViewIq
 """
 import logging
 
 import xlsxwriter
+from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
 from django.utils import timezone
-
-from segment.models import SegmentChannel, SegmentVideo, SegmentKeyword
 
 logger = logging.getLogger(__name__)
 
@@ -15,33 +14,46 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
 
     start_column = 0
-    ids_separation_symbol = "|"
-    segment_model = (SegmentChannel, SegmentVideo, SegmentKeyword)
+    model = get_user_model()
+    separation_symbol = "|"
 
     def handle(self, *args, **options):
-        logger.info("Start export segments procedure")
+        logger.info("Start export users")
         self.__prepare_workbook()
         self.__set_format_options()
-        for model in self.segment_model:
-            self.__export_segments(model)
+        self.__export_users()
         self.workbook.close()
-        logger.info("Export segments procedure has been finished")
+        logger.info("Export users procedure has been finished")
 
     def __prepare_workbook(self):
-        filename = "segment/fixtures/segment_export_{}.xlsx".format(
-            timezone.now().strftime("%Y-%m-%d"))
+        filename = "userprofile/fixtures/users_export_{}.xlsx"
+        filename = filename.format(timezone.now().strftime("%Y-%m-%dT%H:%M"))
         self.workbook = xlsxwriter.Workbook(filename)
 
     def __prepare_worksheet(self, name):
         worksheet = self.workbook.add_worksheet(name)
+        headers = (
+            (
+                "Email",
+                "First Name",
+                "Last Name",
+                "Access",
+                "Date Joined",
+                "Last Login",
+                "Related Channels"
+            ),
+        )
         columns_width = {
-            0: 37,
-            1: 50,
-            2: 14
+            0: 40,
+            1: 40,
+            2: 40,
+            3: 40,
+            4: 15,
+            5: 15,
+            6: 40
         }
         for key, value in columns_width.items():
             worksheet.set_column(key, key, value)
-        headers = (("Title", "Related Ids", "Category"),)
         start_row = 0
         start_row = self.__write_rows(
             headers, start_row, worksheet, self.header_format)
@@ -64,12 +76,20 @@ class Command(BaseCommand):
             start_row += 1
         return start_row
 
-    def __export_segments(self, model):
-        worksheet, start_row = self.__prepare_worksheet(
-            "{}Segments".format(model.segment_type.capitalize()))
-        query = model.objects.exclude(
-            category=SegmentChannel.PRIVATE).order_by("category")
-        data = [(obj.title, self.ids_separation_symbol.join(
-                 obj.related_ids_list), obj.category)
-                for obj in query]
+    def __export_users(self):
+        worksheet, start_row = self.__prepare_worksheet("UsersViewIQ")
+        query = self.model.objects.all().order_by("email")
+        data = [
+            [
+                obj.email,
+                obj.first_name,
+                obj.last_name,
+                self.separation_symbol.join(
+                    obj.groups.values_list("name", flat=True)),
+                obj.date_joined.strftime("%Y-%m-%d %H:%M:%S"),
+                obj.last_login.strftime("%Y-%m-%d %H:%M:%S"),
+                self.separation_symbol.join(
+                    obj.channels.values_list("channel_id", flat=True)),
+            ]
+            for obj in query]
         self.__write_rows(data, start_row, worksheet)

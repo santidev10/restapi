@@ -13,9 +13,10 @@ from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
     Opportunity, OpPlacement, SalesForceGoalType
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher, patch_settings
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher, patch_settings, int_iterator, generic_test
 
 
 class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
@@ -23,7 +24,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.account, self.campaign, self.ad_group = self.create_data("1")
+        self.account, self.campaign, self.ad_group = self.create_data(next(int_iterator))
 
     def create_data(self, uid):
         account = self.create_account(self.user, uid)
@@ -290,7 +291,6 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
                     impressions=test_impressions * n,
                 )
 
-        base_url = reverse("aw_reporting_urls:track_chart")
         today = datetime.now().date()
         filters = dict(
             start_date=today - timedelta(days=2),
@@ -298,7 +298,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             indicator=Indicator.IMPRESSIONS,
             dimension="video",
         )
-        url = "{}?{}".format(base_url, urlencode(filters))
+        url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
@@ -610,6 +610,39 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertIsNotNone(trend)
         planned_trend = trend[0]["trend"]
         self.assertEqual(planned_trend, expected_planned_trend)
+
+    @generic_test((
+            ("Show AW rates", (True,), {}),
+            ("Hide AW rates", (False,), {}),
+    ))
+    def test_aw_rate_settings_does_not_affect_rates(self, aw_rates):
+        """
+        Bug: Trends > "Show real (AdWords) costs on the dashboard" affects data on Media Buying -> Trends
+        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2818
+        """
+        account = self.account
+        manager = account.managers.first()
+        views, cost = 12, 23
+        any_date = date(2018, 1, 1)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, date=any_date, video_views=views, cost=cost,
+                                        average_position=1)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+
+        expected_cpv = cost / views
+        self.assertGreater(expected_cpv, 0)
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: aw_rates
+        }
+        with patch_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id), \
+             self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            trend = get_trend(response.data, TrendId.HISTORICAL)
+            historical_cpv = trend[0]["trend"]
+            self.assertEqual(len(historical_cpv), 1)
+            item = historical_cpv[0]
+            self.assertAlmostEqual(item["value"], expected_cpv)
 
 
 def get_trend(data, uid):

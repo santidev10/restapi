@@ -220,7 +220,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
         message_from = self.request.user.get_full_name()
         exist_emails = segment.shared_with
         host = self.request.get_host()
-        subject = "Enterprise > You have been added as collaborator"
+        subject = "ViewIQ > You have been added as collaborator"
         segment_url = "https://{host}/segments/{segment_type}s/{segment_id}"\
                       .format(host=host,
                               segment_type=segment.segment_type,
