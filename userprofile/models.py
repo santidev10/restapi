@@ -35,6 +35,7 @@ class UserSettingsKey:
 
 class UserLogoSettings:
     AIRBNB = "airbnb"
+    APEX = "apex"
     BUTTERFINGER = "butterfinger"
     DR_PEPPER = "dr_pepper"
     GAMELOFT = "gameloft"
