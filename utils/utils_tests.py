@@ -10,7 +10,6 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.http.request import HttpRequest
 from django.test import override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
@@ -20,7 +19,6 @@ from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
-from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
