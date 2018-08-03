@@ -477,6 +477,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             ordered_rate=.12)
 
         user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
@@ -501,7 +502,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                    video_views=views[1])
         rate = placement.ordered_rate
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(views) * rate),
@@ -515,7 +517,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -532,6 +535,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             ordered_rate=.12)
 
         user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
@@ -553,7 +557,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                                          video_views=views[1])
         rate = placement.ordered_rate
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(views) * rate),
@@ -567,7 +572,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -576,6 +582,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_ad_group_statistic_client_cost(self):
         user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
@@ -684,7 +691,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             expected_cost += client_cost
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.DEVICE)
@@ -692,7 +700,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)
@@ -701,6 +709,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_ad_statistic_client_cost(self):
         user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
@@ -814,7 +823,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             expected_cost["{} #{}".format(name, ad_id)] = client_cost
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
@@ -822,7 +832,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), OpPlacement.objects.all().count())
@@ -832,6 +842,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_client_rate_average_rate(self):
         user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
@@ -886,7 +897,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertNotAlmostEqual(average_cpm, average_cpv)
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
@@ -894,7 +906,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)

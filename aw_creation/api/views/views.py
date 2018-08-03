@@ -1308,13 +1308,15 @@ class PerformanceChartItemsApiView(APIView):
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get('dimension')
         filters = {}
-        if request.data.get("is_chf") == 1:
+        always_aw_costs = False
+        if str(request.data.get("is_chf")) == "1":
             user_settings = self.request.user.get_aw_settings()
             if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
                 filters["account__id__in"] = \
                     user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
         else:
             filters["owner"] = self.request.user
+            always_aw_costs = True
         try:
             item = AccountCreation.objects.filter(**filters).get(pk=pk)
         except AccountCreation.DoesNotExist:
@@ -1326,6 +1328,7 @@ class PerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
+            always_aw_costs=always_aw_costs,
             **filters)
         data = chart.get_items()
         data = self._filter_costs(data)
