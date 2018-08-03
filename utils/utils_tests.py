@@ -72,9 +72,6 @@ class APITestUserMixin(TestUserMixin):
             self.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
-        request = HttpRequest()
-        request.user = user
-        registry.init(request)
         return user
 
 

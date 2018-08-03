@@ -3,10 +3,12 @@ from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from django.http import StreamingHttpResponse
+from django.http.request import HttpRequest
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.registry import registry
 from .base import AwReportingAPITestCase
 
 
@@ -16,6 +18,9 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
         self.user = self.create_test_user()
         self.account = self.create_account(self.user)
         self.create_stats(self.account)
+        request = HttpRequest()
+        request.user = self.user
+        registry.init(request)
 
     @staticmethod
     def create_stats(account):
