@@ -1309,7 +1309,7 @@ class PerformanceChartItemsApiView(APIView):
         dimension = kwargs.get('dimension')
         filters = {}
         always_aw_costs = False
-        if request.data.get("is_chf") == 1:
+        if str(request.data.get("is_chf")) == "1":
             user_settings = self.request.user.get_aw_settings()
             if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
                 filters["account__id__in"] = \
