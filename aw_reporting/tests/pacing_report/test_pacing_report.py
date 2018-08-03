@@ -2,14 +2,15 @@ from datetime import datetime, timedelta
 
 import pytz
 from django.utils import timezone
+from django.http.request import HttpRequest
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Account, Campaign, CampaignStatistic, Flight
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.registry import current_user
 from utils.utils_tests import ExtendedAPITestCase
+from utils.registry import registry
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -170,9 +171,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
         }
         user = self.create_test_user()
         user.aw_settings.update(**user_settings)
-        with current_user(user):
-            report = PacingReport()
-            opportunities = report.get_opportunities(dict())
+        request = HttpRequest()
+        request.user = user
+        registry.init(user)
+        report = PacingReport()
+        opportunities = report.get_opportunities(dict())
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
         self.assertEqual(opportunity_data['id'], opportunity1.id)
