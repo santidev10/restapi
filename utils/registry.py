@@ -4,7 +4,9 @@ from threading import local
 
 
 class _Registry(local):
-    def __init__(self):
+    _user = None    # dependency injection from unit tests
+
+    def __init__(self, _user=None):
         super(_Registry, self).__init__()
         self.request = None
 
@@ -16,6 +18,8 @@ class _Registry(local):
 
     @property
     def user(self):
+        if self._user is not None:
+            return self._user
         if self.request is not None:
             return self.request.user
         return None
