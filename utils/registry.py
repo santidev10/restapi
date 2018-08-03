@@ -38,13 +38,9 @@ class RegistryMiddleware:
 
     def process_request(self, request):
         registry.request = request
-        registry.user = request.user
+        registry.user = None
 
     def process_response(self, request, response):
-        if registry.request is not None and registry.request is not request:
-            raise Exception("Registry has been corrupted")
-        if registry._user is not None and registry._user is not request.user:
-            raise Exception("Registry.user has been corrupted")
         registry.request = None
         registry.user = None
         return response
