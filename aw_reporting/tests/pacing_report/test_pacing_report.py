@@ -173,7 +173,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         user.aw_settings.update(**user_settings)
         request = HttpRequest()
         request.user = user
-        registry.init(user)
+        registry.init(request)
         report = PacingReport()
         opportunities = report.get_opportunities(dict())
         self.assertEqual(len(opportunities), 1)
