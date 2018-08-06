@@ -121,6 +121,14 @@ urlpatterns = [
         views.PricingToolOpportunityView.as_view(),
         name=Name.PricingTool.OPPORTUNITIES),
 
+    # Forecast tool
+    url(r'^forecast_tool/filters/$',
+        views.ForecastToolFiltersApiView.as_view(),
+        name=Name.ForecastTool.FILTERS),
+    url(r'^forecast_tool/estimate/$',
+        views.ForecastToolEstimateApiView.as_view(),
+        name=Name.ForecastTool.ESTIMATE),
+
     # Global trends
     url(r'^global_trends/filters',
         views.GlobalTrendsFiltersApiView.as_view(),
