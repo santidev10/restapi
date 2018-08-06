@@ -13,6 +13,7 @@ from .connect_aw_account_list import ConnectAWAccountListApiView
 from .health_check_tool import *
 from .pacing_report import *
 from .pricing_tool import *
+from .forecast_tool import *
 from .trends import *
 from .web_hook import WebHookAWAccountsListApiView
 from .web_hook import WebHookAWSaveSettingsApiView
