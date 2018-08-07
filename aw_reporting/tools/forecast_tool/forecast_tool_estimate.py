@@ -37,8 +37,12 @@ class ForecastToolEstimate:
         queryset = self._get_ad_group_statistic_queryset()
         summary = queryset.aggregate(
             **AD_GROUP_COSTS_ANNOTATE)
-        average_cpv = get_average_cpv(cost=summary["views_cost"], **summary) + self.CPV_BUFFER
-        average_cpm = get_average_cpm(cost=summary["sum_cost"], **summary) + self.CPM_BUFFER
+        average_cpv = get_average_cpv(cost=summary["views_cost"], **summary)
+        if average_cpv is not None:
+            average_cpv += self.CPV_BUFFER
+        average_cpm = get_average_cpm(cost=summary["sum_cost"], **summary)
+        if average_cpm is not None:
+            average_cpm += self.CPM_BUFFER
         response = dict(
             average_cpv=average_cpv,
             average_cpm=average_cpm,
