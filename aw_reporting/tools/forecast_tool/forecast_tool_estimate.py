@@ -26,6 +26,9 @@ AD_GROUP_COSTS_ANNOTATE = dict(
 
 
 class ForecastToolEstimate:
+    CPV_BUFFER = 0.015
+    CPM_BUFFER = 2
+
     def __init__(self, kwargs, opportunities):
         self.kwargs = kwargs
         self.opportunities = opportunities
@@ -34,16 +37,11 @@ class ForecastToolEstimate:
         queryset = self._get_ad_group_statistic_queryset()
         summary = queryset.aggregate(
             **AD_GROUP_COSTS_ANNOTATE)
-        average_cpv = get_average_cpv(cost=summary["views_cost"], **summary)
-        average_cpm = get_average_cpm(cost=summary["sum_cost"], **summary)
-        margin = self.kwargs["margin"]
-
-        margin_rate = 1 - margin / 100
+        average_cpv = get_average_cpv(cost=summary["views_cost"], **summary) + self.CPV_BUFFER
+        average_cpm = get_average_cpm(cost=summary["sum_cost"], **summary) + self.CPM_BUFFER
         response = dict(
-            average_cpv=average_cpv, average_cpm=average_cpm,
-            suggested_cpv=average_cpv / margin_rate if average_cpv and margin_rate else None,
-            suggested_cpm=average_cpm / margin_rate if average_cpm and margin_rate else None,
-            margin=margin,
+            average_cpv=average_cpv,
+            average_cpm=average_cpm,
             charts=self._get_charts(),
         )
         return response
@@ -128,20 +126,19 @@ class ForecastToolEstimate:
 
         if len(periods) == 0:
             return [], []
-        placements_data = self._get_placements_queryset() \
-            .values("start", "end", "total_cost", "ordered_units",
-                    "goal_type_id")
+        placements_data = self._get_placements_queryset().values(
+            "start", "end", "total_cost", "ordered_units", "goal_type_id")
 
         return _planned_stats(placements_data, periods, compare_yoy)
 
     def _get_placements_queryset(self):
         periods = self.kwargs["periods"]
-        date_filter = reduce(lambda r, p: r | Q(start__lte=p[1], end__gte=p[0]),
-                             periods,
-                             Q())
-        queryset = OpPlacement.objects \
-            .filter(date_filter,
-                    opportunity__in=self.opportunities)
+        date_filter = reduce(
+            lambda r, p: r | Q(start__lte=p[1], end__gte=p[0]),
+            periods,
+            Q()
+        )
+        queryset = OpPlacement.objects.filter(date_filter, opportunity__in=self.opportunities)
 
         exclude_campaigns = self.kwargs.get("exclude_campaigns")
         if exclude_campaigns is not None:
