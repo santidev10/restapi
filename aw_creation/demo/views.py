@@ -525,7 +525,7 @@ class DashboardAccountCreationDetailsAPIView:
         return method
 
 
-class DashboardAccountCreationOverviewAPIView:
+class BaseAccountCreationOverviewAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
@@ -535,6 +535,14 @@ class DashboardAccountCreationOverviewAPIView:
                 return original_method(view, request, pk=pk, **kwargs)
 
         return method
+
+
+class DashboardAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
+    pass
+
+
+class AnalyticsAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
+    pass
 
 
 class AnalyticsPerformanceChartApiView:
