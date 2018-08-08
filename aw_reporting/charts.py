@@ -41,7 +41,7 @@ ALL_INDICATORS = get_all_class_constants(Indicator)
 
 
 class Dimension:
-    AD_GROUPS = "ad"
+    ADS = "ad"
     AGE = "age"
     CHANNEL = "channel"
     CREATIVE = "creative"
