@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -32,6 +33,7 @@ from aw_reporting.models import dict_quartiles_to_rates
 from utils.datetime import now_in_default_tz
 
 
+@demo_view_decorator
 class AnalyticsAccountCreationOverviewAPIView(APIView):
     HAS_STATISTICS_KEY = "has_statistics"
 
@@ -49,14 +51,14 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
     def _get_overview_data(self, account_creation):
         filters = self._get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
-        if filters['campaigns']:
-            fs["ad_group__campaign__id__in"] = filters['campaigns']
-        if filters['ad_groups']:
-            fs["ad_group__id__in"] = filters['ad_groups']
-        if filters['start_date']:
-            fs["date__gte"] = filters['start_date']
-        if filters['end_date']:
-            fs["date__lte"] = filters['end_date']
+        if filters["campaigns"]:
+            fs["ad_group__campaign__id__in"] = filters["campaigns"]
+        if filters["ad_groups"]:
+            fs["ad_group__id__in"] = filters["ad_groups"]
+        if filters["start_date"]:
+            fs["date__gte"] = filters["start_date"]
+        if filters["end_date"]:
+            fs["date__lte"] = filters["end_date"]
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
@@ -65,23 +67,23 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
         dict_quartiles_to_rates(data)
-        del data['video_impressions']
-        annotate = dict(v=Sum('cost'))
+        del data["video_impressions"]
+        annotate = dict(v=Sum("cost"))
         gender = GenderStatistic.objects.filter(**fs).values(
-            'gender_id').order_by('gender_id').annotate(**annotate)
-        gender = [dict(name=Genders[i['gender_id']], value=i['v']) for i in
+            "gender_id").order_by("gender_id").annotate(**annotate)
+        gender = [dict(name=Genders[i["gender_id"]], value=i["v"]) for i in
                   gender]
         age = AgeRangeStatistic.objects.filter(**fs).values(
             "age_range_id").order_by("age_range_id").annotate(**annotate)
-        age = [dict(name=AgeRanges[i['age_range_id']], value=i['v']) for i in
+        age = [dict(name=AgeRanges[i["age_range_id"]], value=i["v"]) for i in
                age]
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+        device = [dict(name=Devices[i["device_id"]], value=i["v"]) for i in
                   device]
         location = CityStatistic.objects.filter(**fs).values(
-            "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
-        location = [dict(name=i['city__name'], value=i['v']) for i in location]
+            "city_id", "city__name").annotate(**annotate).order_by("v")[:6]
+        location = [dict(name=i["city__name"], value=i["v"]) for i in location]
         data.update(gender=gender, age=age, device=device, location=location)
         self._add_standard_performance_data(data, fs)
         return data

@@ -1,4 +1,3 @@
-import json
 from datetime import date
 
 from django.core.urlresolvers import reverse
@@ -7,6 +6,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -22,6 +22,53 @@ from utils.utils_tests import int_iterator
 
 
 class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
+    _keys = {
+        "age",
+        "all_conversions",
+        "average_cpm",
+        "average_cpv",
+        "average_cpv_bottom",
+        "average_cpv_top",
+        "clicks",
+        "clicks_last_week",
+        "clicks_this_week",
+        "conversions",
+        "cost",
+        "cost_last_week",
+        "cost_this_week",
+        "ctr",
+        "ctr_bottom",
+        "ctr_top",
+        "ctr_v",
+        "ctr_v_bottom",
+        "ctr_v_top",
+        "delivered_cost",
+        "delivered_impressions",
+        "delivered_video_views",
+        "device",
+        "gender",
+        "has_statistics",
+        "impressions",
+        "impressions_last_week",
+        "impressions_this_week",
+        "location",
+        "plan_cost",
+        "plan_impressions",
+        "plan_video_views",
+        "video100rate",
+        "video25rate",
+        "video50rate",
+        "video75rate",
+        "video_clicks",
+        "video_view_rate",
+        "video_view_rate_bottom",
+        "video_view_rate_top",
+        "video_views",
+        "video_views_last_week",
+        "video_views_this_week",
+        "view_through",
+    }
+
     def _get_url(self, account_creation_id):
         return reverse(
             RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_OVERVIEW,
@@ -29,19 +76,30 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
-        response = self.client.post(url, json.dumps(kwargs), content_type="application/json")
+        response = self.client.post(url, kwargs)
         self.assertEqual(response.status_code, status_code)
         return response.data
 
     def _hide_demo_data(self, user):
         AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=user)
+                email="me@mail.kz", refresh_token=""),
+            user=user)
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_dashboard")
+
+    def test_success(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=next(int_iterator), account=account, owner=self.request_user,
+            is_approved=True)
+        overview = self._request(account_creation.id)
+        self.assertEqual(set(overview.keys()), self._keys)
+
+    def test_success_demo(self):
+        overview = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(set(overview.keys()), self._keys)
 
     def test_cost_is_aw_cost(self):
         self._hide_demo_data(self.user)
@@ -66,7 +124,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
         }
         with self.patch_user_settings(**user_settings):
             overview = self._request(account_creation.id, start_date=str(any_date), end_date=str(any_date))

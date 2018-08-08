@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -31,6 +32,7 @@ from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.models import UserSettingsKey
 
 
+@demo_view_decorator
 class DashboardAccountCreationOverviewAPIView(APIView):
     HAS_STATISTICS_KEY = "has_statistics"
 

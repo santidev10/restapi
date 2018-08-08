@@ -525,6 +525,26 @@ class DashboardAccountCreationDetailsAPIView:
         return method
 
 
+class BaseAccountCreationOverviewAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                return Response(data=DemoAccount().overview)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
+
+        return method
+
+
+class DashboardAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
+    pass
+
+
+class AnalyticsAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
+    pass
+
+
 class AnalyticsPerformanceChartApiView:
     @staticmethod
     def post(original_method):
