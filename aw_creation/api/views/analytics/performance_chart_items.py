@@ -20,7 +20,7 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
 
     {"segmented": false}
     """
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get_filters(self):
         data = self.request.data
@@ -49,6 +49,7 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
+            always_aw_costs=True,
             **filters)
         data = chart.get_items()
         return Response(data=data)
