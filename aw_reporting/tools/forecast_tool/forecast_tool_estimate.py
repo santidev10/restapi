@@ -1,13 +1,10 @@
 from collections import defaultdict
-from datetime import timedelta
-from functools import reduce
 from operator import itemgetter
 
-from django.db.models import FloatField, Max, Value, BooleanField
+from django.db.models import FloatField
 from django.db.models import Q, When, Case, Sum
 
-from aw_reporting.models import Campaign, SalesForceGoalType, OpPlacement, \
-    CampaignStatistic, AdGroupStatistic, get_average_cpv, get_average_cpm
+from aw_reporting.models import Campaign, CampaignStatistic, AdGroupStatistic, get_average_cpv, get_average_cpm
 
 AD_GROUP_COSTS_ANNOTATE = dict(
     sum_cost=Sum("cost"),
@@ -35,8 +32,7 @@ class ForecastToolEstimate:
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
-        summary = queryset.aggregate(
-            **AD_GROUP_COSTS_ANNOTATE)
+        summary = queryset.aggregate(**AD_GROUP_COSTS_ANNOTATE)
         average_cpv = get_average_cpv(cost=summary["views_cost"], **summary)
         if average_cpv is not None:
             average_cpv += self.CPV_BUFFER
@@ -83,7 +79,8 @@ class ForecastToolEstimate:
 
                 cpv_lines[line].append(
                     dict(
-                        label=date, value=average_cpv
+                        label=date,
+                        value=average_cpv + self.CPV_BUFFER
                     )
                 )
 
@@ -95,13 +92,10 @@ class ForecastToolEstimate:
 
                 cpm_lines[line].append(
                     dict(
-                        label=date, value=average_cpm
+                        label=date,
+                        value=average_cpm + self.CPM_BUFFER
                     )
                 )
-
-        planned_cpm, planned_cpv = self._get_planned_rates()
-        cpm_lines.update(planned_cpm)
-        cpv_lines.update(planned_cpv)
 
         cpv_chart = cpm_chart = None
         if cpv_lines:
@@ -123,42 +117,6 @@ class ForecastToolEstimate:
                 title="CPM",
             )
         return dict(cpv=cpv_chart, cpm=cpm_chart)
-
-    def _get_planned_rates(self):
-        periods = self.kwargs["periods"]
-        compare_yoy = self.kwargs.get("compare_yoy", False)
-
-        if len(periods) == 0:
-            return [], []
-        placements_data = self._get_placements_queryset().values(
-            "start", "end", "total_cost", "ordered_units", "goal_type_id")
-
-        return _planned_stats(placements_data, periods, compare_yoy)
-
-    def _get_placements_queryset(self):
-        periods = self.kwargs["periods"]
-        date_filter = reduce(
-            lambda r, p: r | Q(start__lte=p[1], end__gte=p[0]),
-            periods,
-            Q()
-        )
-        queryset = OpPlacement.objects.filter(date_filter, opportunity__in=self.opportunities)
-
-        exclude_campaigns = self.kwargs.get("exclude_campaigns")
-        if exclude_campaigns is not None:
-            safe_exclude = exclude_campaigns or [-1]
-            queryset = queryset.annotate(campaign_count=Max(
-                Case(When(~Q(adwords_campaigns__id__in=safe_exclude),
-                          then=Value(1)),
-                     output_field=BooleanField(),
-                     default=Value(0))))
-            queryset = queryset.filter(campaign_count=Value(1))
-
-        exclude_opportunities = self.kwargs.get("exclude_opportunities")
-        if exclude_opportunities is not None:
-            queryset = queryset.exclude(
-                opportunity_id__in=exclude_opportunities)
-        return queryset
 
     def _filter_specified_date_range(self, queryset):
         periods = self.kwargs["periods"]
@@ -205,43 +163,3 @@ class ForecastToolEstimate:
                 **{opportunity_id_ref: exclude_opportunities})
 
         return queryset
-
-
-def _planned_stats(all_placements, periods, compare_yoy=False):
-    planned_cpm = defaultdict(list)
-    planned_cpv = defaultdict(list)
-    for start, end in periods:
-        days = (end - start).days + 1
-        for day in range(days):
-            dt = start + timedelta(days=day)
-            cpm, cpv = _planned_stats_for_date(all_placements, dt)
-            if cpm is not None:
-                label = _stats_label(dt, compare_yoy, "CPM")
-                planned_cpm[label].append(dict(label=dt, value=cpm))
-
-            if cpv is not None:
-                label = _stats_label(dt, compare_yoy, "CPV")
-                planned_cpv[label].append(dict(label=dt, value=cpv))
-
-    return planned_cpm, planned_cpv
-
-
-def _stats_label(dt, compare_yoy, default):
-    suffix = dt.year if compare_yoy else default
-    return "Planned {}".format(suffix)
-
-
-def _planned_stats_for_date(all_placements, dt):
-    placements = [p for p in all_placements
-                  if p["start"] <= dt <= p["end"]]
-    cpm_cost = sum([p["total_cost"] for p in placements
-                    if p["goal_type_id"] == SalesForceGoalType.CPM])
-    cpv_cost = sum([p["total_cost"] for p in placements
-                    if p["goal_type_id"] == SalesForceGoalType.CPV])
-    cpm_units = sum([p["ordered_units"] for p in placements
-                     if p["goal_type_id"] == SalesForceGoalType.CPM])
-    cpv_units = sum([p["ordered_units"] for p in placements
-                     if p["goal_type_id"] == SalesForceGoalType.CPV])
-    planned_cpm = cpm_cost * 1000. / cpm_units if cpm_units != 0 else None
-    planned_cpv = cpv_cost * 1. / cpv_units if cpv_units != 0 else None
-    return planned_cpm, planned_cpv
