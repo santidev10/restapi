@@ -615,3 +615,28 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             item = items[0]
             self.assertAlmostEqual(item["average_cpm"], average_cpm)
             self.assertAlmostEqual(item["average_cpv"], average_cpv)
+
+    @generic_test([
+        ("Show conversions = {}, dimension = {}".format(*args), args, dict())
+        for args in product((True, False), ALL_DIMENSIONS)
+    ])
+    def test_convention_independent(self, show_conversions, dimension):
+        user = self.create_test_user()
+        self._hide_demo_data(user)
+        account = Account.objects.create(id=next(int_iterator))
+        self.create_stats(account)
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account, is_approved=True)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: show_conversions,
+        }
+        url = self._get_url(account_creation.id, dimension)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertGreater(len(items), 0)
+            for item in items:
+                self.assertIsNotNone(item["conversions"])
+                self.assertIsNotNone(item["all_conversions"])
+                self.assertIsNotNone(item["view_through"])

@@ -56,6 +56,7 @@ class DashboardPerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
+            show_conversions=user_settings.get(UserSettingsKey.SHOW_CONVERSIONS),
             **filters)
         data = chart.get_items()
         return Response(data=data)

@@ -1,13 +1,12 @@
-import json
 from datetime import datetime
 from datetime import timedelta
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
+from aw_reporting.charts import ALL_DIMENSIONS
 from aw_reporting.charts import Dimension
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -34,14 +33,20 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, int_iterator, generic_test, reverse
 
 
 class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id, dimension):
-        return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.PERFORMANCE_CHART_ITEMS,
-            args=(account_creation_id, dimension))
+        return reverse(Name.Dashboard.PERFORMANCE_CHART_ITEMS, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+                       args=(account_creation_id, dimension))
+
+    def _hide_demo_data(self, user):
+        AWConnectionToUserRelation.objects.create(
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
 
     @staticmethod
     def create_stats(account):
@@ -79,11 +84,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_regardless_global_account_visibility(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
+        self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
@@ -99,9 +100,63 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self.client.post(
-                url,
-                "{}",
-                content_type='application/json',
-            )
+            response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @generic_test([
+        (dimension, (dimension,), dict())
+        for dimension in ALL_DIMENSIONS
+    ])
+    def test_conversions_are_hidden(self, dimension):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+        account = Account.objects.create(id=next(int_iterator))
+        self.create_stats(account)
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
+                               all_conversions=3, view_through=4)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: False,
+        }
+        url = self._get_url(account_creation.id, dimension)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertGreater(len(items), 0)
+            for item in items:
+                self.assertNotIn("conversions", item)
+                self.assertNotIn("all_conversions", item)
+                self.assertNotIn("view_through", item)
+
+    @generic_test([
+        (dimension, (dimension,), dict())
+        for dimension in ALL_DIMENSIONS
+    ])
+    def test_conversions_are_visible(self, dimension):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+        account = Account.objects.create(id=next(int_iterator))
+        self.create_stats(account)
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
+                               all_conversions=3, view_through=4)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True,
+        }
+        url = self._get_url(account_creation.id, dimension)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertGreater(len(items), 0)
+            for item in items:
+                self.assertIsNotNone(item["conversions"])
+                self.assertIsNotNone(item["all_conversions"])
+                self.assertIsNotNone(item["view_through"])
