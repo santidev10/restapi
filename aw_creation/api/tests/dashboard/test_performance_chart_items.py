@@ -33,7 +33,10 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, int_iterator, generic_test, reverse
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import generic_test
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
