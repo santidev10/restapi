@@ -5,7 +5,6 @@ from django.db.models import Sum
 from aw_reporting.models import Opportunity
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from aw_reporting.tools.forecast_tool.forecast_tool_filtering import ForecastToolFiltering
-from aw_reporting.tools.forecast_tool.forecast_tool_serializer import ForecastToolSerializer
 from utils.datetime import now_in_default_tz, build_periods
 
 
@@ -24,7 +23,6 @@ class ForecastTool:
         kwargs['margin'] = kwargs.get('margin') or 30
         self.kwargs = kwargs
         self.filter = ForecastToolFiltering(kwargs)
-        self.serializer = ForecastToolSerializer(kwargs)
         self._opportunities_qs = self.filter.apply(
             self._get_opportunity_queryset())
         self.estimate_tool = ForecastToolEstimate(
@@ -37,9 +35,6 @@ class ForecastTool:
     @property
     def estimate(self):
         return self.estimate_tool.estimate()
-
-    def get_opportunities_data(self, opportunities):
-        return self.serializer.get_opportunities_data(opportunities)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')
