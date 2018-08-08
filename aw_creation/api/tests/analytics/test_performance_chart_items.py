@@ -1,59 +1,64 @@
 import json
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from datetime import date
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import Dimension
 from aw_reporting.charts import ALL_DIMENSIONS
+from aw_reporting.charts import Dimension
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from aw_reporting.models import Campaign
+from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import GenderStatistic
-from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import TopicStatistic
-from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import CityStatistic
 from aw_reporting.models import AdStatistic
-from aw_reporting.models import VideoCreative
-from aw_reporting.models import GeoTarget
+from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
-from aw_reporting.models import Topic
-from aw_reporting.models import Ad
-from aw_reporting.models import AWConnectionToUserRelation
-from aw_reporting.models import AWConnection
-from aw_reporting.models import RemarkStatistic
-from aw_reporting.models import RemarkList
-from aw_reporting.models import Opportunity
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CityStatistic
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import RemarkList
+from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import patch_now
-from utils.utils_tests import int_iterator
+from utils.utils_tests import ExtendedAPITestCase, reverse, generic_test
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 
 
 class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id, dimension):
-        return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.PERFORMANCE_CHART_ITEMS,
-            args=(account_creation_id, dimension))
+        return reverse(Name.Analytics.PERFORMANCE_CHART_ITEMS, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+                       args=(account_creation_id, dimension))
+
+    def _hide_demo_data(self, user):
+        AWConnectionToUserRelation.objects.create(
+            # user must have a connected account not to see demo data
+            connection=AWConnection.objects.create(email="me@mail.kz",
+                                                   refresh_token=""),
+            user=user,
+        )
 
     @staticmethod
     def create_stats(account):
@@ -429,8 +434,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             }
         )
 
-    
-
     def test_hide_costs(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(
@@ -459,14 +462,15 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 items = response.data["items"]
                 self.assertGreater(len(items), 0)
                 for item in items:
-                    self.assertIsNone(item["cost"])
-                    self.assertIsNone(item["average_cpm"])
-                    self.assertIsNone(item["average_cpv"])
+                    self.assertIsNotNone(item["cost"])
+                    self.assertIsNotNone(item["average_cpm"])
+                    self.assertIsNotNone(item["average_cpv"])
 
-    def test_ad_groups_client_cost(self):
+    def test_ad_groups_cost(self):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         views = 123, 234
+        costs = 12, 23
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -490,18 +494,20 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         AdStatistic.objects.create(average_position=1,
                                    ad=ad,
                                    date=any_date_1,
-                                   video_views=views[0])
+                                   video_views=views[0],
+                                   cost=costs[0])
         AdStatistic.objects.create(average_position=1,
                                    ad=ad,
                                    date=any_date_2,
-                                   video_views=views[1])
+                                   video_views=views[1],
+                                   cost=costs[1])
         rate = placement.ordered_rate
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
         test_cases = (
-            ("total", any_date_1, any_date_2, sum(views) * rate),
-            ("filter by date", any_date_1, any_date_1, views[0] * rate),
+            ("total", any_date_1, any_date_2, sum(costs)),
+            ("filter by date", any_date_1, any_date_1, costs[0]),
         )
 
         url = self._get_url(account_creation.id, Dimension.AD_GROUPS)
@@ -518,10 +524,11 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                     item = items[0]
                     self.assertAlmostEqual(item["cost"], expected_cost)
 
-    def test_ages_client_cost(self):
+    def test_ages_cost(self):
         any_date_1 = date(2018, 1, 1)
         any_date_2 = any_date_1 + timedelta(days=1)
         views = 123, 234
+        costs = 12, 23
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
@@ -543,17 +550,19 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         ad_group = AdGroup.objects.create(campaign=campaign)
         AgeRangeStatistic.objects.create(ad_group=ad_group,
                                          date=any_date_1,
-                                         video_views=views[0])
+                                         video_views=views[0],
+                                         cost=costs[0])
         AgeRangeStatistic.objects.create(ad_group=ad_group,
                                          date=any_date_2,
-                                         video_views=views[1])
+                                         video_views=views[1],
+                                         cost=costs[1])
         rate = placement.ordered_rate
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
         test_cases = (
-            ("total", any_date_1, any_date_2, sum(views) * rate),
-            ("filter by date", any_date_1, any_date_1, views[0] * rate),
+            ("total", any_date_1, any_date_2, sum(costs)),
+            ("filter by date", any_date_1, any_date_1, costs[0]),
         )
 
         url = self._get_url(account_creation.id, Dimension.AGE)
@@ -570,7 +579,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                     item = items[0]
                     self.assertAlmostEqual(item["cost"], expected_cost)
 
-    def test_ad_group_statistic_client_cost(self):
+    def test_ad_group_statistic_cost(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
@@ -658,26 +667,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                             date=yesterday,
                                             average_position=1,
                                             **stats)
-            client_cost_kwargs = dict(
-                goal_type_id=placement.goal_type_id,
-                dynamic_placement=placement.dynamic_placement,
-                placement_type=placement.placement_type,
-                ordered_rate=placement.ordered_rate,
-                impressions=stats.get("impressions") or 0,
-                video_views=stats.get("video_views") or 0,
-                aw_cost=stats.get("cost") or 0,
-                total_cost=placement.total_cost,
-                tech_fee=placement.tech_fee,
-                start=camp_data.get("start_date"),
-                end=camp_data.get("end_date")
-            )
-            with patch_now(today):
-                client_cost = get_client_cost(**client_cost_kwargs)
-            if not is_zero:
-                self.assertGreater(client_cost, 0)
-            else:
-                self.assertEqual(client_cost, 0)
-            expected_cost += client_cost
+            aw_cost = stats.get("cost") or 0
+            expected_cost += aw_cost
 
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
@@ -695,7 +686,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             item = items[0]
             self.assertAlmostEqual(item["cost"], expected_cost)
 
-    def test_ad_statistic_client_cost(self):
+    def test_ad_statistic_cost(self):
         user = self.create_test_user()
         AWConnectionToUserRelation.objects.create(
             connection=AWConnection.objects.create(email="me@mail.kz",
@@ -788,26 +779,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                        average_position=1,
                                        date=yesterday,
                                        **stats)
-            client_cost_kwargs = dict(
-                goal_type_id=placement.goal_type_id,
-                dynamic_placement=placement.dynamic_placement,
-                placement_type=placement.placement_type,
-                ordered_rate=placement.ordered_rate,
-                impressions=stats.get("impressions") or 0,
-                video_views=stats.get("video_views") or 0,
-                aw_cost=stats.get("cost") or 0,
-                total_cost=placement.total_cost,
-                tech_fee=placement.tech_fee,
-                start=camp_data.get("start_date"),
-                end=camp_data.get("end_date")
-            )
-            with patch_now(today):
-                client_cost = get_client_cost(**client_cost_kwargs)
-            if not is_zero:
-                self.assertGreater(client_cost, 0)
-            else:
-                self.assertEqual(client_cost, 0)
-            expected_cost["{} #{}".format(name, ad_id)] = client_cost
+            aw_cost = stats.get("cost") or 0
+            expected_cost["{} #{}".format(name, ad_id)] = aw_cost
 
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
@@ -858,27 +831,15 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                           campaign=campaign)
         ad = Ad.objects.create(id=next(int_iterator),
                                ad_group=ad_group)
-        views, impressions = 123, 234
+        views, impressions, cost = 123, 234, 132
         AdStatistic.objects.create(ad=ad,
                                    average_position=1,
                                    date=yesterday,
                                    video_views=views,
-                                   impressions=impressions)
-        client_cost = get_client_cost(
-            goal_type_id=placement.goal_type_id,
-            dynamic_placement=placement.dynamic_placement,
-            placement_type=placement.placement_type,
-            ordered_rate=placement.ordered_rate,
-            impressions=impressions,
-            video_views=views,
-            aw_cost=None,
-            total_cost=placement.total_cost,
-            tech_fee=placement.tech_fee,
-            start=None,
-            end=None
-        )
-        average_cpm = client_cost / impressions * 1000
-        average_cpv = client_cost / views
+                                   impressions=impressions,
+                                   cost=cost)
+        average_cpm = cost / impressions * 1000
+        average_cpv = cost / views
         self.assertNotAlmostEqual(average_cpm, average_cpv)
 
         user_settings = {
@@ -897,3 +858,35 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             item = items[0]
             self.assertAlmostEqual(item["average_cpm"], average_cpm)
             self.assertAlmostEqual(item["average_cpv"], average_cpv)
+
+    @generic_test([
+        ("Hide costs", (True,), dict()),
+        ("Show costs", (False,), dict()),
+    ])
+    def test_dashboard_cost_independent(self, hide_dashboard_cost):
+        any_date = date(2018, 1, 1)
+        user = self.create_test_user()
+        self._hide_demo_data(user)
+        account = Account.objects.create(id=next(int_iterator), name="")
+        account_creation = AccountCreation.objects.create(name="", owner=user,
+                                                          is_managed=False,
+                                                          account=account,
+                                                          is_approved=True)
+        campaign = Campaign.objects.create(id=next(int_iterator),
+                                           account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator),
+                                          campaign=campaign)
+        expected_cost = 123
+        GenderStatistic.objects.create(date=any_date, ad_group=ad_group, cost=expected_cost)
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost
+        }
+        url = self._get_url(account_creation.id, Dimension.GENDER)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(len(response.data["items"]), 1)
+
+            item = response.data["items"][0]
+            self.assertEqual(item["cost"], expected_cost)
