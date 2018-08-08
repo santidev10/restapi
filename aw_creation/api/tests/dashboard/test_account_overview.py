@@ -1,13 +1,13 @@
 import json
 from datetime import date, timedelta
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -18,16 +18,61 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, reverse
 from utils.utils_tests import int_iterator
 
 
 class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
+    _overview_keys = {
+        "age",
+        "all_conversions",
+        "average_cpm",
+        "average_cpv",
+        "average_cpv_bottom",
+        "average_cpv_top",
+        "clicks",
+        "clicks_last_week",
+        "clicks_this_week",
+        "conversions",
+        "cost",
+        "cost_last_week",
+        "cost_this_week",
+        "ctr",
+        "ctr_bottom",
+        "ctr_top",
+        "ctr_v",
+        "ctr_v_bottom",
+        "ctr_v_top",
+        "delivered_cost",
+        "delivered_impressions",
+        "delivered_video_views",
+        "device",
+        "gender",
+        "has_statistics",
+        "impressions",
+        "impressions_last_week",
+        "impressions_this_week",
+        "location",
+        "plan_cost",
+        "plan_impressions",
+        "plan_video_views",
+        "video100rate",
+        "video25rate",
+        "video50rate",
+        "video75rate",
+        "video_clicks",
+        "video_view_rate",
+        "video_view_rate_bottom",
+        "video_view_rate_top",
+        "video_views",
+        "video_views_last_week",
+        "video_views_this_week",
+        "view_through",
+    }
 
     def _get_url(self, account_creation_id):
-        return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.ACCOUNT_OVERVIEW,
-            args=(account_creation_id,))
+        return reverse(Name.Dashboard.ACCOUNT_OVERVIEW, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+                       args=(account_creation_id,))
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
@@ -38,6 +83,22 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_dashboard")
+
+    def test_success(self):
+        account = Account.objects.create()
+        account_creation = AccountCreation.objects.create(
+            id=next(int_iterator), account=account, owner=self.request_user,
+            is_approved=True)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(account_creation.id)
+        self.assertEqual(set(overview.keys()), self._overview_keys)
+
+    def test_success_demo(self):
+        overview = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_hidden_costs(self):
         account = Account.objects.create()
