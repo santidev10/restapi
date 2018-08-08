@@ -32,8 +32,7 @@ class ForecastToolEstimate:
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
-        summary = queryset.aggregate(
-            **AD_GROUP_COSTS_ANNOTATE)
+        summary = queryset.aggregate(**AD_GROUP_COSTS_ANNOTATE)
         average_cpv = get_average_cpv(cost=summary["views_cost"], **summary)
         if average_cpv is not None:
             average_cpv += self.CPV_BUFFER
@@ -80,7 +79,8 @@ class ForecastToolEstimate:
 
                 cpv_lines[line].append(
                     dict(
-                        label=date, value=average_cpv
+                        label=date,
+                        value=average_cpv + self.CPV_BUFFER
                     )
                 )
 
@@ -92,7 +92,8 @@ class ForecastToolEstimate:
 
                 cpm_lines[line].append(
                     dict(
-                        label=date, value=average_cpm
+                        label=date,
+                        value=average_cpm + self.CPM_BUFFER
                     )
                 )
 
