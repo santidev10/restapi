@@ -6,9 +6,9 @@ from django.db.models import Q, When, Case, Sum
 
 from aw_reporting.models import Campaign, CampaignStatistic, AdGroupStatistic, get_average_cpv, get_average_cpm
 
-AD_GROUP_COSTS_ANNOTATE = dict(
-    sum_cost=Sum("cost"),
-    views_cost=Sum(
+AD_GROUP_COSTS_ANNOTATE = (
+    ("sum_cost", Sum("cost")),
+    ("views_cost", Sum(
         Case(
             When(
                 ad_group__video_views__gt=0,
@@ -16,9 +16,9 @@ AD_GROUP_COSTS_ANNOTATE = dict(
             ),
             output_field=FloatField(),
         )
-    ),
-    impressions=Sum("impressions"),
-    video_views=Sum("video_views"),
+    )),
+    ("impressions", Sum("impressions")),
+    ("video_views", Sum("video_views"))
 )
 
 
@@ -32,7 +32,7 @@ class ForecastToolEstimate:
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
-        summary = queryset.aggregate(**AD_GROUP_COSTS_ANNOTATE)
+        summary = queryset.aggregate(**dict(AD_GROUP_COSTS_ANNOTATE))
         average_cpv = get_average_cpv(cost=summary["views_cost"], **summary)
         if average_cpv is not None:
             average_cpv += self.CPV_BUFFER
@@ -62,7 +62,7 @@ class ForecastToolEstimate:
         queryset = queryset.filter(cost__gt=0)
 
         data = queryset.values('date').order_by('date').annotate(
-            **AD_GROUP_COSTS_ANNOTATE)
+            **dict(AD_GROUP_COSTS_ANNOTATE))
         cpv_lines = defaultdict(list)
         cpm_lines = defaultdict(list)
 
