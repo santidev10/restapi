@@ -26,7 +26,6 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import dict_quartiles_to_rates
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.models import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 
 logger = logging.getLogger(__name__)
@@ -39,8 +38,7 @@ class AnalyticsAccountCreationDetailsAPIView(APIView):
     def post(self, request, pk, **_):
         account_creation = self._get_account_creation(request, pk)
         data = AnalyticsAccountCreationListSerializer(account_creation, context={"request": request}).data
-        show_conversions = self.request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
-        data["details"] = self.get_details_data(account_creation, show_conversions)
+        data["details"] = self.get_details_data(account_creation)
         return Response(data=data)
 
     def _get_account_creation(self, request, pk):
@@ -50,12 +48,9 @@ class AnalyticsAccountCreationDetailsAPIView(APIView):
             raise Http404
 
     @staticmethod
-    def get_details_data(account_creation, show_conversions):
-        if show_conversions:
-            ads_and_placements_stats = {s: Sum(s) for s in
-                                        CONVERSIONS + QUARTILE_STATS}
-        else:
-            ads_and_placements_stats = {s: Sum(s) for s in QUARTILE_STATS}
+    def get_details_data(account_creation):
+        ads_and_placements_stats = {s: Sum(s) for s in
+                                    CONVERSIONS + QUARTILE_STATS}
 
         fs = dict(ad_group__campaign__account=account_creation.account)
         data = AdGroupStatistic.objects.filter(**fs).aggregate(

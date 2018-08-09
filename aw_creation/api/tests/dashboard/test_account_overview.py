@@ -1,4 +1,3 @@
-import json
 from datetime import date, timedelta
 
 from rest_framework.status import HTTP_200_OK
@@ -91,6 +90,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             is_approved=True)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True,
         }
         with self.patch_user_settings(**user_settings):
             overview = self._request(account_creation.id)
@@ -649,3 +649,52 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(overview["plan_impressions"], expected_plan_impressions)
         self.assertEqual(overview["delivered_cost"], expected_delivered_cost)
         self.assertEqual(overview["delivered_impressions"], expected_delivered_impressions)
+
+    def test_conversions_are_hidden(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        conversions = 2
+        all_conversions = 3
+        view_through = 4
+        account = Account.objects.create(id=next(int_iterator))
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
+                                          all_conversions=3, view_through=4)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=any_date, average_position=1,
+                                        conversions=conversions,
+                                        all_conversions=all_conversions,
+                                        view_through=view_through)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(account_creation.id)
+            self.assertNotIn("conversions", overview)
+            self.assertNotIn("all_conversions", overview)
+            self.assertNotIn("view_through", overview)
+
+    def test_conversions_are_visible(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        conversions = 2
+        all_conversions = 3
+        view_through = 4
+        account = Account.objects.create(id=next(int_iterator))
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=any_date, average_position=1,
+                                        conversions=conversions,
+                                        all_conversions=all_conversions,
+                                        view_through=view_through)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(account_creation.id)
+            self.assertEqual(overview["conversions"], conversions)
+            self.assertEqual(overview["all_conversions"], all_conversions)
+            self.assertEqual(overview["view_through"], view_through)

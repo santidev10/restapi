@@ -122,10 +122,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             id=1, defaults=dict(name=""))
         CityStatistic.objects.create(
             ad_group=ad_group, date=date, city=target, **stats)
-        user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+                   new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id,
                                      start_date=str(date - timedelta(days=1)),
                                      end_date=str(date))
@@ -155,10 +153,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=datetime.now(), ad_group=ad_group,
             average_position=1, impressions=100)
-        user_settings = {UserSettingsKey.SHOW_CONVERSIONS: True}
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+                   new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data

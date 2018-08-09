@@ -76,7 +76,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, always_aw_costs=False, **_):
+                 region_ids=None, with_plan=False, always_aw_costs=False, show_conversions=True, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -106,7 +106,8 @@ class DeliveryChart:
             brands=brands,
             category_ids=category_ids,
             region_ids=region_ids,
-            always_aw_costs=always_aw_costs
+            always_aw_costs=always_aw_costs,
+            show_conversions=show_conversions,
         )
 
         self.with_plan = with_plan
@@ -614,6 +615,9 @@ class DeliveryChart:
         if not self.params["always_aw_costs"] and not dashboard_ad_words_rates:
             campaign_ref = self._get_campaign_ref(queryset)
             kwargs["sum_cost"] = get_client_cost_aggregation(campaign_ref)
+        if not self.params["show_conversions"]:
+            for key in CONVERSIONS:
+                del kwargs["sum_{}".format(key)]
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):

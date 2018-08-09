@@ -29,6 +29,7 @@ from aw_reporting.models import client_cost_ad_group_statistic_required_annotati
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+from aw_reporting.models.ad_words.constants import CONVERSIONS
 from userprofile.models import UserSettingsKey
 
 
@@ -65,6 +66,17 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             ad_groups=data.get("ad_groups"))
         return filters
 
+    def _get_stats_aggregator(self, user):
+        keys_to_exclude = ()
+        show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        if not show_conversions:
+            keys_to_exclude += tuple("sum_{}".format(key) for key in CONVERSIONS)
+        return {
+            key: value
+            for key, value in all_stats_aggregate.items()
+            if key not in keys_to_exclude
+        }
+
     def _get_overview_data(self, account_creation, current_user):
         filters = self._get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
@@ -79,7 +91,9 @@ class DashboardAccountCreationOverviewAPIView(APIView):
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
-        data = queryset.aggregate(**all_stats_aggregate)
+
+        stats_aggregator = self._get_stats_aggregator(current_user)
+        data = queryset.aggregate(**stats_aggregator)
         data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)

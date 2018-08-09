@@ -17,7 +17,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, generic_test
 from utils.utils_tests import int_iterator
 
 
@@ -129,3 +129,31 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             overview = self._request(account_creation.id, start_date=str(any_date), end_date=str(any_date))
             self.assertEqual(overview["cost"], aw_cost)
+
+    @generic_test([
+        ("Show conversions", (True,), dict()),
+        ("Hide conversions", (False,), dict()),
+    ])
+    def test_conversions_are_always_visible(self, show_conversions):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        conversions = 2
+        all_conversions = 3
+        view_through = 4
+        account = Account.objects.create(id=next(int_iterator))
+        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=any_date, average_position=1,
+                                        conversions=conversions,
+                                        all_conversions=all_conversions,
+                                        view_through=view_through)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: show_conversions,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(account_creation.id)
+            self.assertEqual(overview["conversions"], conversions)
+            self.assertEqual(overview["all_conversions"], all_conversions)
+            self.assertEqual(overview["view_through"], view_through)
