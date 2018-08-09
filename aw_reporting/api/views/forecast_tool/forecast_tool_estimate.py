@@ -6,7 +6,6 @@ from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
 
 
 class ForecastToolEstimateApiView(APIView):
-    @staticmethod
-    def post(request):
+    def post(self, request):
         toll_obj = ForecastTool(**request.data)
         return Response(data=toll_obj.estimate, status=HTTP_200_OK)

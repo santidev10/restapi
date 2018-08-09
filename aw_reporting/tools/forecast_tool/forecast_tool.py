@@ -11,17 +11,20 @@ from utils.datetime import now_in_default_tz, build_periods
 
 def model_to_filter(mod):
     return [dict(id=i.pk, name=str(i.name))
-            for i in mod.objects.all().order_by('name')]
+            for i in mod.objects.all().order_by("name")]
 
 
 DATE_FORMAT = "%Y-%m-%d"
 
 
 class ForecastTool:
+
+    default_margin = 30
+
     def __init__(self, today=None, **kwargs):
         self.today = today or now_in_default_tz().date()
         kwargs.update(self._get_date_kwargs(kwargs))
-        kwargs['margin'] = kwargs.get('margin') or 30
+        kwargs["margin"] = kwargs.get("margin") or self.default_margin
         self.kwargs = kwargs
         self.filter = ForecastToolFiltering(kwargs)
         self.serializer = ForecastToolSerializer(kwargs)
@@ -42,7 +45,7 @@ class ForecastTool:
         return self.serializer.get_opportunities_data(opportunities)
 
     def _get_date_kwargs(self, kwargs):
-        quarters = kwargs.get('quarters')
+        quarters = kwargs.get("quarters")
         start = datetime.strptime(kwargs["start"], DATE_FORMAT).date() \
             if kwargs.get("start") else None
         end = datetime.strptime(kwargs["end"], DATE_FORMAT).date() \
