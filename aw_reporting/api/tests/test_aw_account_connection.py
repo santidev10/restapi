@@ -10,6 +10,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account, AWConnectionToUserRelation, \
     AWConnection, AWAccountPermission
 from saas.urls.namespaces import Namespace
+from utils.utils_tests import int_iterator
 from .base import AwReportingAPITestCase, get_user_model
 
 
@@ -168,3 +169,37 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         user_exists = get_user_model().objects.filter(id=self.user.id).exists()
         self.assertTrue(user_exists)
+
+    def test_creates_account_creation(self):
+        url = "{}?{}".format(
+            self._url,
+            urlencode(dict(
+                redirect_url="https://saas.channelfactory.com"
+            ))
+        )
+        self.assertFalse(Account.objects.all().exists())
+        self.assertFalse(AccountCreation.objects.all().exists())
+        account_id = next(int_iterator)
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=account_id,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
+        test_email = "test@mail.com"
+        view_path = "aw_reporting.api.views.connect_aw_account"
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
+                patch(view_path + ".upload_initial_aw_data") as initial_upload_task:
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
+            response = self.client.post(url, dict(code="1111"))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(Account.objects.filter(id=account_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=account_id).exists())

@@ -8,10 +8,11 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 from pytz import timezone
 from pytz import utc
 
+from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
@@ -740,8 +741,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.aw_data_loader.get_web_app_client",
-                   return_value=aw_client_mock):
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
             self._call_command(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
@@ -845,3 +845,48 @@ class PullAWDataTestCase(TransactionTestCase):
 
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
+
+    def test_pre_process_chf_account_has_account_creation(self):
+        chf_acc_id = "test_id"
+        self.assertFalse(Account.objects.all().exists())
+        self.assertFalse(AccountCreation.objects.all().exists())
+        test_response = [
+            dict(
+                customerId=chf_acc_id,
+                canManageClients=True,
+                testAccount=False,
+                descriptiveName="",
+                currencyCode="",
+                dateTimeZone="UTC",
+            ),
+        ]
+        mocked_client = MagicMock()
+        mocked_client.GetService().getCustomers.return_value = test_response
+        with override_settings(IS_TEST=False), \
+             patch("aw_reporting.adwords_api.get_client", return_value=mocked_client):
+            self._call_command(start="get_ads", end="get_campaigns")
+
+        self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
+
+    def test_creates_account_Creation_for_customer_accounts(self):
+        self._create_account().delete()
+        test_account_id = next(int_iterator)
+        self.assertFalse(Account.objects.filter(id=test_account_id).exists())
+
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="",
+                currencyCode="",
+                dateTimeZone="UTC",
+            ),
+        ]
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(start="get_ads", end="get_campaigns")
+
+        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())

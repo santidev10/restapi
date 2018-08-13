@@ -13,6 +13,7 @@ from django.db.models import Q, F, CASCADE
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from aw_reporting.models import Account
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class AccountCreation(UniqueCreationItem):
                               null=True)
 
     account = models.OneToOneField(
-        "aw_reporting.Account", related_name='account_creation',
+        Account, related_name='account_creation',
         null=True, blank=True,
     )
     is_paused = models.BooleanField(default=False)
@@ -150,6 +151,12 @@ def save_account_receiver(sender, instance, created, **_):
     if instance.is_deleted and not created:
         instance.is_deleted = False
         instance.save()
+
+
+@receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
+def create_account_receiver(sender, instance: Account, created, **_):
+    if created:
+        AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 
 
 def default_languages():
