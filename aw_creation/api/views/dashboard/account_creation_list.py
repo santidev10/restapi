@@ -1,19 +1,15 @@
 from django.conf import settings
-from django.db import transaction
 from django.db.models import Case, When, Q, ExpressionWrapper, F, \
     IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
     Min, Max
 from django.db.models.functions import Coalesce
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.status import HTTP_202_ACCEPTED
 
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, default_languages
+from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import BASE_STATS, Account
+from aw_reporting.models import BASE_STATS
 from userprofile.models import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import UserHasDashboardPermission
@@ -82,46 +78,17 @@ class DashboardAccountCreationListApiView(ListAPIView):
         ),
     )
 
-    def get(self, request, *args, **kwargs):
-        # import "read only" accounts:
-        # user has access to them,
-        # but they are not connected to his account creations
-        user_settings = self.request.user.get_aw_settings()
-        if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
-            visible_account_ids = self.request.user.get_aw_settings() \
-                .get(UserSettingsKey.VISIBLE_ACCOUNTS)
-            read_accounts = Account.objects.filter(
-                id__in=visible_account_ids).exclude(
-                account_creation__owner=request.user).values("id", "name")
-        else:
-            read_accounts = Account.objects.exclude(
-                account_creation__owner=request.user).values("id", "name")
-
-        bulk_create = [
-            AccountCreation(
-                account_id=i['id'],
-                name="",
-                owner=request.user,
-                is_managed=False,
-            )
-            for i in read_accounts
-        ]
-        if bulk_create:
-            AccountCreation.objects.bulk_create(bulk_create)
-        response = super(DashboardAccountCreationListApiView, self).get(
-            request, *args, **kwargs)
-        return response
-
     def get_queryset(self, **filters):
-        filters["owner"] = self.request.user
-        filters["is_deleted"] = False
         user_settings = self.request.user.get_aw_settings()
-        if not user_settings[UserSettingsKey.VISIBLE_ALL_ACCOUNTS]:
-            filters["account__id__in"] = user_settings.get(
-                UserSettingsKey.VISIBLE_ACCOUNTS)
+        visibility_filter = Q() \
+            if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
+            else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-        filters["account__managers__id"] = chf_account_id
-        queryset = AccountCreation.objects.filter(**filters)
+        queryset = AccountCreation.objects.filter(
+            Q(**filters)
+            & Q(is_deleted=False, account__managers__id=chf_account_id)
+            & visibility_filter
+        )
 
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

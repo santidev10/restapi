@@ -404,3 +404,23 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)
+
+    def test_list_only_chf_accounts(self):
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        another_mcc_account = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
+        visible_account = Account.objects.create(id=next(int_iterator))
+        visible_account.managers.add(chf_mcc_account)
+        visible_account_creation = AccountCreation.objects.create(id=next(int_iterator), account=visible_account)
+        visible_account_creation.refresh_from_db()
+        hidden_account = Account.objects.create(id=next(int_iterator))
+        hidden_account.managers.add(another_mcc_account)
+        AccountCreation.objects.create(id=next(int_iterator), account=hidden_account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        accounts = response.data["items"]
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[0]["id"], visible_account_creation.id)
