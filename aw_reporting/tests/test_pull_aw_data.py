@@ -846,6 +846,7 @@ class PullAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
 
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_pre_process_chf_account_has_account_creation(self):
         chf_acc_id = "test_id"
         self.assertFalse(Account.objects.all().exists())
@@ -869,6 +870,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
 
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_creates_account_Creation_for_customer_accounts(self):
         self._create_account().delete()
         test_account_id = next(int_iterator)

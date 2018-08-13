@@ -6,6 +6,7 @@ import uuid
 from decimal import Decimal
 
 from PIL import Image
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
 from django.db import models
@@ -155,6 +156,8 @@ def save_account_receiver(sender, instance, created, **_):
 
 @receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
 def create_account_receiver(sender, instance: Account, created, **_):
+    if getattr(settings, "DISABLE_ACCOUNT_CREATION_AUTO_CREATING", False):
+        return
     if created:
         AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 

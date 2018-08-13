@@ -3,15 +3,20 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from django.test import override_settings
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Account, AWConnectionToUserRelation, \
-    AWConnection, AWAccountPermission
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import get_user_model
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import int_iterator
-from .base import AwReportingAPITestCase, get_user_model
+from .base import AwReportingAPITestCase
 
 
 class AccountConnectionPITestCase(AwReportingAPITestCase):
@@ -170,6 +175,7 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         user_exists = get_user_model().objects.filter(id=self.user.id).exists()
         self.assertTrue(user_exists)
 
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_creates_account_creation(self):
         url = "{}?{}".format(
             self._url,
