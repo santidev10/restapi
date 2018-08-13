@@ -91,5 +91,7 @@ class TechFeeCapExceeded(BaseEmailReport):
                     to=self.get_to(to_recipients),
                     cc=self.get_cc(cc_recipients),
                     bcc=self.get_bcc(),
+                    reply_to="",
+                    from_email=settings.SENDER_EMAIL_ADDRESS,
                 )
                 msg.send(fail_silently=False)

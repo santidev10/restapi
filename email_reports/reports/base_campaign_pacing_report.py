@@ -43,7 +43,9 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             to=self._get_to(opportunity),
             cc=self._get_cc(opportunity),
             bcc=self.get_bcc(),
-            headers={'X-Priority': 2}
+            headers={'X-Priority': 2},
+            reply_to="",
+            from_email=settings.SENDER_EMAIL_ADDRESS,
         )
         msg.send(fail_silently=False)
 

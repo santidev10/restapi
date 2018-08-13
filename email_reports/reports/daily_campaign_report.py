@@ -127,6 +127,8 @@ class DailyCampaignReport(BaseEmailReport):
                 settings.EMAIL_HOST_USER,
                 to=self.get_to(to_emails),
                 bcc=self.get_bcc(),
+                reply_to="",
+                from_email=settings.SENDER_EMAIL_ADDRESS,
             )
             msg.attach_alternative(html_content, "text/html")
             msg.send()
