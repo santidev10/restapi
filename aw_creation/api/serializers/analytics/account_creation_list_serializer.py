@@ -95,6 +95,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     status = CharField()
     updated_at = SerializerMethodField()
     is_managed = BooleanField()
+    is_editable = SerializerMethodField()
     # analytic data
     impressions = StatField()
     video_views = StatField()
@@ -129,7 +130,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "topic_count", "keyword_count", "is_disapproved", "updated_at",
             "from_aw", "average_cpv",
             "average_cpm", "ctr", "ctr_v", "plan_cpm",
-            "plan_cpv"
+            "plan_cpv", "is_editable",
         )
 
     def __init__(self, *args, **kwargs):
@@ -140,6 +141,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.plan_rates = {}
         self.struck = {}
         self.daily_chart = defaultdict(list)
+        self.user = kwargs.get("context").get("request").user
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -335,3 +337,6 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
                 "AccountCreation (id: ) has more then one opportunity".format(
                     obj.id))
         return opportunities.first()
+
+    def get_is_editable(self, obj):
+        return obj.owner == self.user

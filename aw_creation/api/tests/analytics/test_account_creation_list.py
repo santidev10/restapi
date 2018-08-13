@@ -53,6 +53,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "interest_count",
         "is_changed",
         "is_disapproved",
+        "is_editable",
         "is_managed",
         "keyword_count",
         "name",
@@ -888,3 +889,21 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], account_creation.id)
+
+    def test_is_editable(self):
+        user = self.user
+        mcc_account = self.mcc_account
+        visible_account = Account.objects.create(id=next(int_iterator))
+        visible_account.managers.add(mcc_account)
+        visible_account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=None,
+                                                                  account=visible_account)
+        own_account_creation = AccountCreation.objects.create(id=next(int_iterator), account=None, owner=user)
+        visible_account_creation.refresh_from_db()
+        own_account_creation.refresh_from_db()
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        accounts_by_id = {acc["id"]: acc for acc in response.data["items"]}
+        self.assertTrue(accounts_by_id.get(own_account_creation.id)["is_editable"])
+        self.assertFalse(accounts_by_id.get(visible_account_creation.id)["is_editable"])
