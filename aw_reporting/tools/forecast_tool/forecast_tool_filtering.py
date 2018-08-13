@@ -69,8 +69,6 @@ class ForecastToolFiltering:
                     name="{}{} sec{}".format(f, "" if t is None else "-{}".format(t), "+" if t is None else ""))
                 for uid, (f, t) in enumerate(VIDEO_LENGTHS)],
             creative_lengths_condition=CONDITIONS,
-            exclude_campaigns="list of campaign ids is expected",
-            exclude_opportunities="list of opportunity ids is expected",
             **_get_interests_filters()
         )
         return filters
