@@ -51,7 +51,6 @@ class ForecastToolEstimate:
             ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities,
         )
         queryset = self._filter_out_hidden_data(queryset)
-        queryset = self._filter_excluded_items(queryset)
         queryset = self._filter_specified_date_range(queryset)
         return queryset
 
@@ -147,19 +146,4 @@ class ForecastToolEstimate:
         queryset = queryset.exclude(
             date__gte="2015-01-01", date__lt="2015-07-01", **{key: 1}
         )
-        return queryset
-
-    def _filter_excluded_items(self, queryset):
-        exclude_campaigns = self.kwargs.get("exclude_campaigns")
-        if exclude_campaigns:
-            queryset = queryset.exclude(
-                ad_group__campaign_id__in=exclude_campaigns)
-
-        exclude_opportunities = self.kwargs.get("exclude_opportunities")
-        if exclude_opportunities:
-            opportunity_id_ref = "ad_group__campaign__salesforce_placement" \
-                                 "__opportunity_id__in"
-            queryset = queryset.exclude(
-                **{opportunity_id_ref: exclude_opportunities})
-
         return queryset
