@@ -88,10 +88,11 @@ class AccountCreation(UniqueCreationItem):
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
-                              on_delete=CASCADE)
+                              on_delete=CASCADE,
+                              null=True)
 
-    account = models.ForeignKey(
-        "aw_reporting.Account", related_name='account_creations',
+    account = models.OneToOneField(
+        "aw_reporting.Account", related_name='account_creation',
         null=True, blank=True,
     )
     is_paused = models.BooleanField(default=False)

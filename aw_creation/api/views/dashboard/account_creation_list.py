@@ -92,10 +92,10 @@ class DashboardAccountCreationListApiView(ListAPIView):
                 .get(UserSettingsKey.VISIBLE_ACCOUNTS)
             read_accounts = Account.objects.filter(
                 id__in=visible_account_ids).exclude(
-                account_creations__owner=request.user).values("id", "name")
+                account_creation__owner=request.user).values("id", "name")
         else:
             read_accounts = Account.objects.exclude(
-                account_creations__owner=request.user).values("id", "name")
+                account_creation__owner=request.user).values("id", "name")
 
         bulk_create = [
             AccountCreation(
@@ -289,33 +289,3 @@ class DashboardAccountCreationListApiView(ListAPIView):
             queryset = queryset.filter(**having)
 
         return queryset
-
-    def post(self, *a, **_):
-        account_count = AccountCreation.objects.filter(
-            owner=self.request.user).count()
-
-        with transaction.atomic():
-            account_creation = AccountCreation.objects.create(
-                name="Account {}".format(account_count + 1),
-                owner=self.request.user,
-            )
-            campaign_creation = CampaignCreation.objects.create(
-                name="Campaign 1",
-                account_creation=account_creation,
-            )
-            ad_group_creation = AdGroupCreation.objects.create(
-                name="AdGroup 1",
-                campaign_creation=campaign_creation,
-            )
-            AdCreation.objects.create(
-                name="Ad 1",
-                ad_group_creation=ad_group_creation,
-            )
-            AccountCreation.objects.filter(id=account_creation.id).update(
-                is_deleted=True)  # do not show it in the list
-
-        for language in default_languages():
-            campaign_creation.languages.add(language)
-
-        data = AccountCreationSetupSerializer(account_creation).data
-        return Response(status=HTTP_202_ACCEPTED, data=data)

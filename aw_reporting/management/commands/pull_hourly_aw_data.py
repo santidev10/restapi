@@ -28,9 +28,9 @@ class Command(BaseCommand):
                          & (Q(max_end__gte=now) | Q(max_end__isnull=True))
         accounts = Account.objects.filter(can_manage_clients=False) \
             .annotate(
-            min_cc_start=Min("account_creations__campaign_creations__start"),
+            min_cc_start=Min("account_creation__campaign_creations__start"),
             min_c_start=Min("campaigns__start_date"),
-            max_cc_end=Max("account_creations__campaign_creations__end"),
+            max_cc_end=Max("account_creation__campaign_creations__end"),
             max_c_end=Max("campaigns__end_date")) \
             .annotate(max_end=Greatest("max_cc_end", "max_c_end"),
                       min_start=Least("min_cc_start", "min_c_start")) \
