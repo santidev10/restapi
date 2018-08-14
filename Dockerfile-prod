@@ -1,4 +1,4 @@
-FROM python:3.5-slim
+FROM python:3.5
 
 RUN mkdir -p /projects/saas/saas-master && \
     mkdir -p /etc/uwsgi/sites
@@ -8,7 +8,7 @@ COPY ./ /projects/saas/saas-master
 WORKDIR /projects/saas/saas-master
 
 RUN apt update && \
-    apt -y install uwsgi && \
+    apt -y install uwsgi build-essential && \
     cd /projects/saas/saas-master && \
     pip install -r requirements.txt
 
