@@ -5,9 +5,11 @@ RUN mkdir -p /projects/saas/saas-master && \
 
 COPY ./ /projects/saas/saas-master
 
+WORKDIR /projects/saas/saas-master
+
 RUN apt update && \
     apt -y install uwsgi && \
-    cd /opt && \
+    cd /projects/saas/saas-master && \
     pip install -r requirements.txt
 
 EXPOSE 3035
