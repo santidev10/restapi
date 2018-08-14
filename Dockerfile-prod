@@ -1,0 +1,15 @@
+FROM python:3.5-slim
+
+RUN mkdir -p /projects/saas/saas-master && \
+    mkdir -p /etc/uwsgi/sites
+
+COPY ./ /projects/saas/saas-master
+
+RUN apt update && \
+    apt -y install uwsgi && \
+    cd /opt && \
+    pip install -r requirements.txt
+
+EXPOSE 3035
+
+CMD "/usr/local/bin/uwsgi --ini /etc/uwsgi/sites/saas-master"
