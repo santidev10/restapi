@@ -1,26 +1,48 @@
 import json
-from datetime import timedelta, datetime
-from unittest.mock import patch, Mock
+from datetime import datetime
+from datetime import timedelta
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from django.core import mail
-from django.core.urlresolvers import reverse
+from django.test import override_settings
 from oauth2client.client import HttpAccessTokenRefreshError
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 from suds import WebFault
 
 from aw_creation.api.urls.names import Name
-from aw_creation.models import *
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
+from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import *
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import Ad
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     def _get_url(self, account_id):
-        return reverse(Namespace.AW_CREATION + ":" + Name.CreationSetup.ACCOUNT,
+        return reverse(Name.CreationSetup.ACCOUNT,
+                       [Namespace.AW_CREATION],
                        args=(account_id,))
 
     def setUp(self):
@@ -661,3 +683,33 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.put(url, dict(name="test name"))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_creates_customer_account(self):
+        user = self.user
+        test_aw_id = "test_aw_id"
+        manager = Account.objects.create(id=next(int_iterator))
+        connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****", )
+        AWConnectionToUserRelation.objects.create(connection=connection, user=user, )
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager, )
+
+        self.assertEqual(Account.objects.all().count(), 1)
+        self.assertEqual(AccountCreation.objects.all().count(), 1)
+
+        account_creation = AccountCreation.objects.create(account=None, owner=user, name="any")
+
+        url = self._get_url(account_creation.id)
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account", return_value=test_aw_id):
+            response = self.client.put(
+                url,
+                dict(
+                    name=account_creation.name,
+                    is_approved=True,
+                ),
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        account_creation.refresh_from_db()
+        self.assertIsNotNone(account_creation.account)
+        self.assertEqual(Account.objects.all().count(), 2)
+        self.assertEqual(AccountCreation.objects.all().count(), 2)

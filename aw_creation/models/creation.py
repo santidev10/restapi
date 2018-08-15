@@ -158,7 +158,7 @@ def save_account_receiver(sender, instance, created, **_):
 def create_account_receiver(sender, instance: Account, created, **_):
     if getattr(settings, "DISABLE_ACCOUNT_CREATION_AUTO_CREATING", False):
         return
-    if created:
+    if created and not instance.skip_creating_account_creation:
         AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 
 
@@ -478,8 +478,8 @@ class AdGroupCreation(UniqueCreationItem):
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
-                        AdCreation.objects.filter(
-                            ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+                AdCreation.objects.filter(
+                    ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
