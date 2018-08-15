@@ -116,16 +116,12 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
             aw_connection=connection,
             account=manager,
         )
-        account_creation = AccountCreation.objects.create(
-            name="This item won't be deleted", account=account,
-            owner=self.user,
-        )
         # second item
         connection_1 = AWConnection.objects.create(
             email="you@mail.kz",
             refresh_token="",
         )
-        AWConnectionToUserRelation.objects.create(
+        connection_to_user = AWConnectionToUserRelation.objects.create(
             connection=connection_1,
             user=self.user,
         )
@@ -136,10 +132,6 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
             aw_connection=connection_1,
             account=manager_1,
         )
-        account_creation_1 = AccountCreation.objects.create(
-            name="This item will be deleted", account=account_1,
-            owner=self.user,
-        )
         # the tests
         url_path = Namespace.AW_REPORTING + ":" + Name.AWAccounts.CONNECTION
         url = reverse(url_path, args=(connection_1.email,))
@@ -149,11 +141,9 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['email'], connection.email)
 
-        self.assertRaises(AccountCreation.DoesNotExist,
-                          account_creation_1.refresh_from_db)
-        account_1.refresh_from_db()
-
-        account_creation.refresh_from_db()  # this works fine
+        connection_1.refresh_from_db()
+        self.assertRaises(AWConnectionToUserRelation.DoesNotExist,
+                          connection_to_user.refresh_from_db)
 
     def test_does_not_remove_user_through_historical_account_relation(self):
         connection_1 = AWConnection.objects.create(
@@ -209,3 +199,24 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(Account.objects.filter(id=account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=account_id).exists())
+
+    def test_leaves_account_creation_on_unlink(self):
+        user = self.user
+        manager = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        connection = AWConnection.objects.create(
+            email="you@mail.kz",
+            refresh_token="",
+        )
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager)
+        AWConnectionToUserRelation.objects.create(user=user, connection=connection)
+        account_creation = AccountCreation.objects.create(owner=user, account=account)
+
+        url_path = Namespace.AW_REPORTING + ":" + Name.AWAccounts.CONNECTION
+        url = reverse(url_path, args=(connection.email,))
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        self.assertTrue(AccountCreation.objects.filter(id=account_creation.id).exists())

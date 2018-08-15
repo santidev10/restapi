@@ -197,20 +197,9 @@ class ConnectAWAccountApiView(APIView):
                 user=request.user,
                 connection__email=email,
             )
+            user_connection.delete()
         except AWConnectionToUserRelation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
-        else:
-            # we need to remove account creations that created
-            # within the connection
-            mcc_connection = user_connection.connection
-            accounts = Account.objects.filter(
-                managers__mcc_permissions__aw_connection=mcc_connection)
-            AccountCreation.objects \
-                .filter(owner=request.user, account__in=accounts) \
-                .delete()
-
-            # now delete the relation itself
-            user_connection.delete()
 
         qs = AWConnectionToUserRelation.objects.filter(
             user=request.user
