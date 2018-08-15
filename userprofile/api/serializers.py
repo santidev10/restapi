@@ -81,7 +81,8 @@ class UserCreateSerializer(ModelSerializer):
         user.save(update_fields=["password"])
 
         # new default access implementation
-        user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+        for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+            user.add_custom_user_group(group_name)
 
         # set token
         Token.objects.get_or_create(user=user)

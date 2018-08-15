@@ -485,7 +485,8 @@ class ChannelAuthenticationApiView(APIView):
             user.set_password(user.password)
 
             # new default access implementation
-            user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+            for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+                user.add_custom_user_group(group_name)
 
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)

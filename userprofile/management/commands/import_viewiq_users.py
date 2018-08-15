@@ -77,7 +77,7 @@ class Command(BaseCommand):
             except get_user_model().DoesNotExist:
                 user_data["password"] = hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest()
                 user_data["first_name"] = user_data["first_name"] or ""
-                user_data["last_name"] = user_data["first_name"] or ""
+                user_data["last_name"] = user_data["last_name"] or ""
                 last_login = datetime.strptime(user_data["last_login"], "%Y-%m-%d %H:%M:%S")
                 last_login = last_login.replace(tzinfo=timezone.utc)
                 user_data["last_login"] = last_login
