@@ -45,6 +45,7 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 
 
@@ -280,32 +281,36 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                                          dimention=dimension)
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_cpm_cpv_is_not_visible(self):
+    @generic_test([
+        ("AW cost = {}, indicator = {}, dimention = {}, is_demo = {}, is_staff = {}".format(*args), args, dict())
+        for args in product(
+            (True, False),
+            (Indicator.CPM, Indicator.CPV),
+            ALL_DIMENSIONS,
+            (True, False),
+            (True, False)
+        )
+    ])
+    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, indicator, dimension, is_demo, is_staff):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_paused=True)
+        user.is_staff = is_staff
+        user.save()
 
+        account_creation_id = DEMO_ACCOUNT_ID
+        if not is_demo:
+            account_creation_id = AccountCreation.objects.create(name="", owner=user,
+                                                                 is_paused=True).id
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates
         }
 
-        indicators = Indicator.CPM, Indicator.CPV
-        dimensions = ALL_DIMENSIONS
-        account_ids = account_creation.id, DEMO_ACCOUNT_ID
-        staffs = True, False
-
-        test_data = list(product(indicators, dimensions, account_ids, staffs))
-        for indicator, dimension, account_id, is_staff in test_data:
-            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
-                  "".format(indicator, dimension, account_id, is_staff)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
-                user.is_staff = is_staff
-                user.save()
-                response = self._request(account_id,
-                                         indicator=indicator,
-                                         dimention=dimension)
-                self.assertEqual(response.status_code, HTTP_200_OK)
+        with self.patch_user_settings(**user_settings):
+            user.is_staff = is_staff
+            user.save()
+            response = self._request(account_creation_id,
+                                     indicator=indicator,
+                                     dimention=dimension)
+            self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cost_does_not_reflect_to_aw_rates_setting(self):
         user = self.create_test_user()
