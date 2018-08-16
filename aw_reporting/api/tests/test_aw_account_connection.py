@@ -3,14 +3,20 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from django.test import override_settings
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Account, AWConnectionToUserRelation, \
-    AWConnection, AWAccountPermission
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import get_user_model
 from saas.urls.namespaces import Namespace
-from .base import AwReportingAPITestCase, get_user_model
+from utils.utils_tests import int_iterator
+from .base import AwReportingAPITestCase
 
 
 class AccountConnectionPITestCase(AwReportingAPITestCase):
@@ -110,16 +116,12 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
             aw_connection=connection,
             account=manager,
         )
-        account_creation = AccountCreation.objects.create(
-            name="This item won't be deleted", account=account,
-            owner=self.user,
-        )
         # second item
         connection_1 = AWConnection.objects.create(
             email="you@mail.kz",
             refresh_token="",
         )
-        AWConnectionToUserRelation.objects.create(
+        connection_to_user = AWConnectionToUserRelation.objects.create(
             connection=connection_1,
             user=self.user,
         )
@@ -130,10 +132,6 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
             aw_connection=connection_1,
             account=manager_1,
         )
-        account_creation_1 = AccountCreation.objects.create(
-            name="This item will be deleted", account=account_1,
-            owner=self.user,
-        )
         # the tests
         url_path = Namespace.AW_REPORTING + ":" + Name.AWAccounts.CONNECTION
         url = reverse(url_path, args=(connection_1.email,))
@@ -143,11 +141,9 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['email'], connection.email)
 
-        self.assertRaises(AccountCreation.DoesNotExist,
-                          account_creation_1.refresh_from_db)
-        account_1.refresh_from_db()
-
-        account_creation.refresh_from_db()  # this works fine
+        connection_1.refresh_from_db()
+        self.assertRaises(AWConnectionToUserRelation.DoesNotExist,
+                          connection_to_user.refresh_from_db)
 
     def test_does_not_remove_user_through_historical_account_relation(self):
         connection_1 = AWConnection.objects.create(
@@ -168,3 +164,59 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         user_exists = get_user_model().objects.filter(id=self.user.id).exists()
         self.assertTrue(user_exists)
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_creates_account_creation(self):
+        url = "{}?{}".format(
+            self._url,
+            urlencode(dict(
+                redirect_url="https://saas.channelfactory.com"
+            ))
+        )
+        self.assertFalse(Account.objects.all().exists())
+        self.assertFalse(AccountCreation.objects.all().exists())
+        account_id = next(int_iterator)
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=account_id,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
+        test_email = "test@mail.com"
+        view_path = "aw_reporting.api.views.connect_aw_account"
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
+                patch(view_path + ".upload_initial_aw_data") as initial_upload_task:
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
+            response = self.client.post(url, dict(code="1111"))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(Account.objects.filter(id=account_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=account_id).exists())
+
+    def test_leaves_account_creation_on_unlink(self):
+        user = self.user
+        manager = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        connection = AWConnection.objects.create(
+            email="you@mail.kz",
+            refresh_token="",
+        )
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager)
+        AWConnectionToUserRelation.objects.create(user=user, connection=connection)
+        account_creation = AccountCreation.objects.create(owner=user, account=account)
+
+        url_path = Namespace.AW_REPORTING + ":" + Name.AWAccounts.CONNECTION
+        url = reverse(url_path, args=(connection.email,))
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        self.assertTrue(AccountCreation.objects.filter(id=account_creation.id).exists())

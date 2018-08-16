@@ -28,6 +28,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         "interest_count",
         "is_changed",
         "is_disapproved",
+        "is_editable",
         "is_managed",
         "keyword_count",
         "name",
