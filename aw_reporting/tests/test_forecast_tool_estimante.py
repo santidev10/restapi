@@ -1,12 +1,13 @@
+from datetime import date
+
 from django.urls import reverse
 
-from aw_reporting.models import Account, AdGroup, Campaign, Opportunity, OpPlacement, AdGroupStatistic
-from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
-from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
-from utils.utils_tests import ExtendedAPITestCase
-from saas.urls.namespaces import Namespace
 from aw_reporting.api.urls.names import Name
-from datetime import date
+from aw_reporting.models import Account, AdGroup, Campaign, Opportunity, OpPlacement, AdGroupStatistic
+from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
+from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
@@ -26,6 +27,11 @@ class ForecastToolEstimateAPITestCase(ExtendedAPITestCase):
         ad_group = AdGroup.objects.create(id="1", name="", campaign=campaign)
         AdGroupStatistic.objects.create(
             date=date(2017, 11, 21), ad_group=ad_group, cost=cost, average_position=1, impressions=impressions)
-        with self.patch_user_settings(VISIBLE_ACCOUNTS=[]):
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+        with self.patch_user_settings(**user_settings):
             response = self.client.post(self.url)
-        self.assertEqual(expected_average_cpm, response.data.get("average_cpm"))
+        self.assertEqual(response.data.get("average_cpm"), expected_average_cpm)
