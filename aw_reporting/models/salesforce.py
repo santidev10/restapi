@@ -115,8 +115,8 @@ class Contact(BaseModel):
 class OpportunityManager(UserRelatedManager):
     _account_id_ref = "placements__adwords_campaigns__account_id"
 
-    def have_campaigns(self):
-        return self.get_queryset() \
+    def have_campaigns(self, ignore_user=False):
+        return self.get_queryset(ignore_user=ignore_user) \
             .annotate(campaign_count=Count("placements__adwords_campaigns")) \
             .filter(campaign_count__gt=0)
 
