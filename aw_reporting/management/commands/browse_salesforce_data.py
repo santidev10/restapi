@@ -1,18 +1,29 @@
 import calendar
 import logging
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
-from django.db.models import Q, F, Subquery, OuterRef
+from django.db.models import F
+from django.db.models import OuterRef
+from django.db.models import Q
+from django.db.models import Subquery
 
 from aw_reporting.models.ad_words import Campaign
-from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \
-    User, Contact, SFAccount, Category, Flight, Activity
-from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    DynamicPlacementType
+from aw_reporting.models.salesforce import Activity
+from aw_reporting.models.salesforce import Category
+from aw_reporting.models.salesforce import Contact
+from aw_reporting.models.salesforce import Flight
+from aw_reporting.models.salesforce import OpPlacement
+from aw_reporting.models.salesforce import Opportunity
+from aw_reporting.models.salesforce import SFAccount
+from aw_reporting.models.salesforce import User
+from aw_reporting.models.salesforce import UserRole
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz
@@ -267,15 +278,15 @@ class Command(BaseCommand):
         opportunity_ids = []
         placement_ids = []
         for model, method in [
-            (UserRole, 'get_user_roles'),
-            (User, 'get_users'),
-            (Contact, 'get_contacts'),
-            (SFAccount, 'get_accounts'),
-            (Category, 'get_categories'),
+            # (UserRole, 'get_user_roles'),
+            # (User, 'get_users'),
+            # (Contact, 'get_contacts'),
+            # (SFAccount, 'get_accounts'),
+            # (Category, 'get_categories'),
             (Opportunity, 'get_opportunities'),
-            (OpPlacement, 'get_placements'),
-            (Flight, 'get_flights'),
-            (Activity, 'get_activities'),
+            # (OpPlacement, 'get_placements'),
+            # (Flight, 'get_flights'),
+            # (Activity, 'get_activities'),
         ]:
             logger.info("Getting %s items" % model.__name__)
             existed_ids = model.objects.all().values_list('id', flat=True)

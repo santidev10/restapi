@@ -11,7 +11,7 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
     serializer_class = PacingReportOpportunityUpdateSerializer
 
     def get_queryset(self):
-        return Opportunity.objects.all()
+        return Opportunity.objects.get_queryset_for_user(user=self.request.user)
 
     def update(self, request, *args, **kwargs):
         response = super(PacingReportOpportunityUpdateApiView, self).update(

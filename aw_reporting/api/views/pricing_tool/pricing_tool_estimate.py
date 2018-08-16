@@ -8,5 +8,5 @@ from aw_reporting.tools.pricing_tool import PricingTool
 class PricingToolEstimateView(APIView):
     @staticmethod
     def post(request):
-        toll_obj = PricingTool(**request.data)
+        toll_obj = PricingTool(user=request.user, **request.data)
         return Response(data=toll_obj.estimate, status=HTTP_200_OK)
