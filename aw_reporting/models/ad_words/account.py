@@ -15,6 +15,11 @@ class Account(models.Model):
     hourly_updated_at = models.DateTimeField(null=True)
     settings_updated_at = models.DateTimeField(null=True)
 
+    def __init__(self,  *args, **kwargs):
+        skip_creating_account_creation = kwargs.pop("skip_creating_account_creation", False)
+        super(Account, self).__init__(*args, **kwargs)
+        self.skip_creating_account_creation = skip_creating_account_creation
+
     def __str__(self):
         return "Account: {}".format(self.name)
 

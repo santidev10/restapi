@@ -92,35 +92,14 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
         ),
     )
 
-    def get(self, request, *args, **kwargs):
-        # import "read only" accounts:
-        # user has access to them,
-        # but they are not connected to his account creations
-        read_accounts = Account.user_objects(self.request.user) \
-            .filter(can_manage_clients=False) \
-            .exclude(account_creations__owner=request.user) \
-            .values("id", "name")
-
-        bulk_create = [
-            AccountCreation(
-                account_id=i['id'],
-                name="",
-                owner=request.user,
-                is_managed=False,
-            )
-            for i in read_accounts
-        ]
-        if bulk_create:
-            AccountCreation.objects.bulk_create(bulk_create)
-        response = super(AnalyticsAccountCreationListApiView, self).get(
-            request, *args, **kwargs)
-        return response
-
     def get_queryset(self, **filters):
-        filters["owner"] = self.request.user
-        filters["is_deleted"] = False
-        filters["account__in"] = Account.user_objects(self.request.user)
-        queryset = AccountCreation.objects.filter(**filters)
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(**filters)
+            & Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
 
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

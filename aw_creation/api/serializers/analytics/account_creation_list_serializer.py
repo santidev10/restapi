@@ -82,7 +82,7 @@ FLIGHTS_AGGREGATIONS = dict(
 
 
 class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
-    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creations__id"
+    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creation__id"
     FLIGHT_ACCOUNT_ID_KEY = "placement__adwords_campaigns__" + CAMPAIGN_ACCOUNT_ID_KEY
     is_changed = BooleanField()
     name = SerializerMethodField()
@@ -95,6 +95,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     status = CharField()
     updated_at = SerializerMethodField()
     is_managed = BooleanField()
+    is_editable = SerializerMethodField()
     # analytic data
     impressions = StatField()
     video_views = StatField()
@@ -129,7 +130,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "topic_count", "keyword_count", "is_disapproved", "updated_at",
             "from_aw", "average_cpv",
             "average_cpm", "ctr", "ctr_v", "plan_cpm",
-            "plan_cpv"
+            "plan_cpv", "is_editable",
         )
 
     def __init__(self, *args, **kwargs):
@@ -140,6 +141,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.plan_rates = {}
         self.struck = {}
         self.daily_chart = defaultdict(list)
+        self.user = kwargs.get("context").get("request").user
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -197,7 +199,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return stats
 
     def _get_plan_rates(self, account_creation_ids):
-        account_creation_ref = "adwords_campaigns__account__account_creations__id"
+        account_creation_ref = "adwords_campaigns__account__account_creation__id"
         keys = list(PLAN_RATES_ANNOTATION.keys())
         stats = OpPlacement.objects \
             .filter(**{account_creation_ref + "__in": account_creation_ids}) \
@@ -254,10 +256,10 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
         daily_chart = defaultdict(list)
-        account_id_key = "ad_group__campaign__account__account_creations__id"
+        account_id_key = "ad_group__campaign__account__account_creation__id"
         group_by = (account_id_key, "date")
         daily_stats = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(*group_by).order_by(*group_by).annotate(
             views=Sum("video_views")
         )
@@ -268,9 +270,9 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_video_ads_data(self, account_creation_ids):
         ids = account_creation_ids
-        group_key = "ad_group__campaign__account__account_creations__id"
+        group_key = "ad_group__campaign__account__account_creation__id"
         video_creative_stats = VideoCreativeStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(group_key, "creative_id").order_by(group_key,
                                                     "creative_id").annotate(
             impressions=Sum("impressions"))
@@ -329,9 +331,12 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_opportunity(self, obj):
         opportunities = Opportunity.objects.filter(
-            placements__adwords_campaigns__account__account_creations=obj)
+            placements__adwords_campaigns__account__account_creation=obj)
         if opportunities.count() > 1:
             logger.warning(
                 "AccountCreation (id: ) has more then one opportunity".format(
                     obj.id))
         return opportunities.first()
+
+    def get_is_editable(self, obj):
+        return obj.owner == self.user

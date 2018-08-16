@@ -6,6 +6,7 @@ import uuid
 from decimal import Decimal
 
 from PIL import Image
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator, \
     RegexValidator
 from django.db import models
@@ -13,6 +14,7 @@ from django.db.models import Q, F, CASCADE
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from aw_reporting.models import Account
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -88,10 +90,11 @@ class AccountCreation(UniqueCreationItem):
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
-                              on_delete=CASCADE)
+                              on_delete=CASCADE,
+                              null=True)
 
-    account = models.ForeignKey(
-        "aw_reporting.Account", related_name='account_creations',
+    account = models.OneToOneField(
+        Account, related_name='account_creation',
         null=True, blank=True,
     )
     is_paused = models.BooleanField(default=False)
@@ -149,6 +152,14 @@ def save_account_receiver(sender, instance, created, **_):
     if instance.is_deleted and not created:
         instance.is_deleted = False
         instance.save()
+
+
+@receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
+def create_account_receiver(sender, instance: Account, created, **_):
+    if getattr(settings, "DISABLE_ACCOUNT_CREATION_AUTO_CREATING", False):
+        return
+    if created and not instance.skip_creating_account_creation:
+        AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 
 
 def default_languages():
@@ -467,8 +478,8 @@ class AdGroupCreation(UniqueCreationItem):
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
-                        AdCreation.objects.filter(
-                            ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+                AdCreation.objects.filter(
+                    ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]

@@ -4,6 +4,7 @@ except ImportError:
     pass
 
 IS_TEST = True
+DISABLE_ACCOUNT_CREATION_AUTO_CREATING = True
 
 MIGRATION_MODULES = {
     "administration": None,

@@ -24,8 +24,8 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
         types_to_exclude = [campaign_type_str(t) for t in types_hidden]
         queryset = Campaign.objects \
             .filter(
-            account__account_creations__id=pk,
-            account__account_creations__owner=self.request.user) \
+            account__account_creation__id=pk,
+            account__account_creation__owner=self.request.user) \
             .exclude(type__in=types_to_exclude) \
             .order_by("name", "id").distinct()
         return queryset

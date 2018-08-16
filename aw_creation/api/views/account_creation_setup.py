@@ -26,9 +26,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                                                   is_managed=True)
         return queryset
 
-    @staticmethod
-    def account_creation(account_creation, mcc_account, connection):
-
+    def account_creation(self, account_creation, mcc_account, connection):
         aw_id = create_customer_account(
             mcc_account.id, connection.refresh_token,
             account_creation.name, mcc_account.currency_code,
@@ -40,6 +38,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
             name=account_creation.name,
             currency_code=mcc_account.currency_code,
             timezone=mcc_account.timezone,
+            skip_creating_account_creation=True,
         )
         customer.managers.add(mcc_account)
         account_creation.account = customer
