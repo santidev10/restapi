@@ -54,7 +54,7 @@ class ForecastTool:
         )
 
     def _get_opportunity_queryset(self):
-        return Opportunity.objects.have_campaigns() \
+        return Opportunity.objects.have_campaigns(ignore_user=True) \
             .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
             .order_by("-aw_budget")
 
