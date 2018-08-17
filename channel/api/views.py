@@ -37,7 +37,7 @@ from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
+    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission, OrPermissionsBase
 
 
 # pylint: enable=import-error

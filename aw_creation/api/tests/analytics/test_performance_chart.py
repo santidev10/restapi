@@ -215,45 +215,6 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[1]['title'], "Campaign #demo1")
         self.assertEqual(data[2]['title'], "Campaign #demo2")
 
-    def test_hide_cost_based_on_user_settings(self):
-        user = self.create_test_user()
-        self._hide_demo_data(user)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_paused=True)
-        self.assertNotEqual(account_creation.status,
-                            AccountCreation.STATUS_PENDING)
-
-        dimensions = ALL_DIMENSIONS
-        cost_indicators = Indicator.CPM, Indicator.CPV, Indicator.COST
-        account_ids = account_creation.id, DEMO_ACCOUNT_ID
-
-        test_cases = list(product(dimensions, cost_indicators, account_ids))
-
-        def test_availability(expected_status_code):
-            for dimension, indicator, account_id in test_cases:
-                response = self._request(account_id,
-                                         indicator=indicator,
-                                         dimention=dimension)
-                is_demo = account_id == DEMO_ACCOUNT_ID
-                msg = "Demo: {}; Dimension: {}; Indicator: {}".format(
-                    is_demo, dimension, indicator)
-                self.assertEqual(response.status_code, expected_status_code,
-                                 msg)
-
-        # show
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False
-        }
-        with self.patch_user_settings(**user_settings):
-            test_availability(HTTP_200_OK)
-
-        # hide
-        user_settings = {
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
-        }
-        with self.patch_user_settings(**user_settings):
-            test_availability(HTTP_404_NOT_FOUND)
-
     def test_cpm_cpv_is_visible(self):
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user,
@@ -282,8 +243,9 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     @generic_test([
-        ("AW cost = {}, indicator = {}, dimention = {}, is_demo = {}, is_staff = {}".format(*args), args, dict())
+        ("AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, is_demo = {}, is_staff = {}".format(*args), args, dict())
         for args in product(
+            (True, False),
             (True, False),
             (Indicator.CPM, Indicator.CPV),
             ALL_DIMENSIONS,
@@ -291,7 +253,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             (True, False)
         )
     ])
-    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, indicator, dimension, is_demo, is_staff):
+    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo, is_staff):
         user = self.create_test_user()
         user.is_staff = is_staff
         user.save()
@@ -301,12 +263,11 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             account_creation_id = AccountCreation.objects.create(name="", owner=user,
                                                                  is_paused=True).id
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates,
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost,
         }
 
         with self.patch_user_settings(**user_settings):
-            user.is_staff = is_staff
-            user.save()
             response = self._request(account_creation_id,
                                      indicator=indicator,
                                      dimention=dimension)

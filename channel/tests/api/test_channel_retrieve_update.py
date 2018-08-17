@@ -3,15 +3,15 @@ from unittest.mock import patch
 
 import requests
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher, MockResponse
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import MockResponse
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
@@ -81,7 +81,10 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         user = self.create_test_user(True)
+        print("Has perm", user.has_perm("userprofile.channel_details"))
         self.fill_all_groups(user)
+        user.refresh_from_db()
+        print("Has perm", user.has_perm("userprofile.channel_details"))
 
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             data = json.load(data_file)
