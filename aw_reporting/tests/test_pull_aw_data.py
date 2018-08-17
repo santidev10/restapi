@@ -892,3 +892,22 @@ class PullAWDataTestCase(TransactionTestCase):
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
+
+    def test_get_topics_success(self):
+        now = datetime(2018, 2, 3, 4, 5)
+        today = now.date()
+        last_update = today - timedelta(days=3)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream([], [])
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=last_update, average_position=1)
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(start="get_topics", end="get_topics")
+
+        account.refresh_from_db()

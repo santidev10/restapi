@@ -124,9 +124,10 @@ class DailyCampaignReport(BaseEmailReport):
             msg = EmailMultiAlternatives(
                 context.get("title"),
                 text_content,
-                settings.EMAIL_HOST_USER,
+                from_email=settings.SENDER_EMAIL_ADDRESS,
                 to=self.get_to(to_emails),
                 bcc=self.get_bcc(),
+                reply_to="",
             )
             msg.attach_alternative(html_content, "text/html")
             msg.send()

@@ -458,7 +458,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                    video_views=views[1],
                                    cost=costs[1])
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
@@ -472,7 +473,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -503,7 +505,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                          video_views=views[1],
                                          cost=costs[1])
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
@@ -517,7 +520,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -553,7 +557,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                         cost=expected_cost)
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.DEVICE)
@@ -561,7 +566,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)
@@ -602,7 +607,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self.assertNotAlmostEqual(average_cpm, average_cpv)
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.ADS)
@@ -610,7 +616,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)
