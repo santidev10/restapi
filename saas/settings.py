@@ -350,6 +350,8 @@ def is_running_under_teamcity():
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
+AMAZON_S3_LOGO_STORAGE_URL_FORMAT = ""
+
 try:
     from .local_settings import *
 except ImportError:
