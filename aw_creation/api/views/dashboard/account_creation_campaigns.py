@@ -8,7 +8,6 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import campaign_type_str, Campaign
 from userprofile.models import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
-from utils.registry import registry
 
 
 @demo_view_decorator
@@ -17,7 +16,7 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
 
     def get_queryset(self):
         pk = self.kwargs.get("pk")
-        user = registry.user
+        user = self.request.user
         account_id = AccountCreation.objects.get(id=pk).account_id
         types_hidden = user.get_aw_settings() \
             .get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])

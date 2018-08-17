@@ -87,12 +87,9 @@ class PricingToolTestCase(ExtendedAPITestCase):
         def id_name_list(i):
             return [dict(id=i, name=i)]
 
-        self.assertEqual(filters["product_types"],
-                         id_name_list(ad_group_visible.type))
-        self.assertEqual(filters["brands"],
-                         id_name_list(opportunity_visible.brand))
-        self.assertEqual(filters["categories"],
-                         id_name_list(opportunity_visible.category_id))
+        self.assertEqual(filters["product_types"], id_name_list(ad_group_visible.type))
+        self.assertEqual(filters["brands"], id_name_list(opportunity_visible.brand))
+        self.assertEqual(filters["categories"], id_name_list(opportunity_visible.category_id))
 
     def test_interests_contains_type(self):
         any_date = date(2018, 1, 1)
