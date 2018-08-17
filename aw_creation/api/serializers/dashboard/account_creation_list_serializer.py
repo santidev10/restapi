@@ -392,10 +392,9 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
-        opportunities = Opportunity.objects.filter(
-            placements__adwords_campaigns__account__account_creation=obj)
-        if opportunities.count() > 1:
-            logger.warning(
-                "AccountCreation (id: ) has more then one opportunity".format(
-                    obj.id))
+        opportunities = Opportunity.objects.filter(placements__adwords_campaigns__account__account_creation=obj)\
+                                           .distinct()
+        opp_count = opportunities.count()
+        if opp_count > 1:
+            logger.warning("AccountCreation (id: {}) has more then one opportunity ({})".format(obj.id, opp_count))
         return opportunities.first()

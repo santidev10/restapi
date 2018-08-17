@@ -37,6 +37,8 @@ class Command(BaseCommand):
                 "Email",
                 "First Name",
                 "Last Name",
+                "Company",
+                "Phone number",
                 "Access",
                 "Date Joined",
                 "Last Login",
@@ -47,10 +49,12 @@ class Command(BaseCommand):
             0: 40,
             1: 40,
             2: 40,
-            3: 40,
-            4: 15,
-            5: 15,
-            6: 40
+            3: 20,
+            4: 20,
+            5: 40,
+            6: 15,
+            7: 15,
+            8: 40,
         }
         for key, value in columns_width.items():
             worksheet.set_column(key, key, value)
@@ -84,6 +88,8 @@ class Command(BaseCommand):
                 obj.email,
                 obj.first_name,
                 obj.last_name,
+                obj.company,
+                obj.phone_number,
                 self.separation_symbol.join(
                     obj.groups.values_list("name", flat=True)),
                 obj.date_joined.strftime("%Y-%m-%d %H:%M:%S"),

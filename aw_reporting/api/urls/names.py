@@ -25,6 +25,10 @@ class Name:
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
 
+    class ForecastTool:
+        ESTIMATE = "forecast_tool_estimate"
+        FILTERS = "forecast_tool_filters"
+
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
 

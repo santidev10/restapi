@@ -1,3 +1,4 @@
+from copy import copy
 import re
 from datetime import datetime
 from functools import partial
@@ -92,7 +93,7 @@ class DashboardPerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
-        aggregation = all_stats_aggregate
+        aggregation = copy(all_stats_aggregate)
         if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(

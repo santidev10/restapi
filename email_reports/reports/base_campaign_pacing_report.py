@@ -39,11 +39,12 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         msg = EmailMultiAlternatives(
             self._get_subject(opportunity),
             self._build_body(opportunity, flights_with_pacing, date_end),
-            settings.EMAIL_HOST_USER,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             to=self._get_to(opportunity),
             cc=self._get_cc(opportunity),
             bcc=self.get_bcc(),
-            headers={'X-Priority': 2}
+            headers={'X-Priority': 2},
+            reply_to="",
         )
         msg.send(fail_silently=False)
 

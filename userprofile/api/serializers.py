@@ -81,7 +81,8 @@ class UserCreateSerializer(ModelSerializer):
         user.save(update_fields=["password"])
 
         # new default access implementation
-        user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+        for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+            user.add_custom_user_group(group_name)
 
         # set token
         Token.objects.get_or_create(user=user)
@@ -138,7 +139,8 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "has_disapproved_ad",
             "historical_aw_account",
-            "google_account_id"
+            "google_account_id",
+            "logo",
         )
         read_only_fields = (
             "is_staff",
@@ -148,7 +150,8 @@ class UserSerializer(ModelSerializer):
             "has_aw_accounts",
             "profile_image_url",
             "can_access_media_buying",
-            "google_account_id"
+            "google_account_id",
+            "logo",
         )
 
     @staticmethod

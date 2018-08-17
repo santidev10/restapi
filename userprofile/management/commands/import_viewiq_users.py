@@ -7,6 +7,7 @@ from os.path import isfile, join
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 from openpyxl import load_workbook
 
@@ -59,6 +60,7 @@ class Command(BaseCommand):
                     obj[key] = obj[key].split(self.separation_symbol)
         return data
 
+    @transaction.atomic
     def __create_users(self, users_data):
         for user_data in users_data:
             email = user_data.get("email")
@@ -68,12 +70,14 @@ class Command(BaseCommand):
             access = user_data.pop("access") or []
             date_joined = datetime.strptime(user_data["date_joined"], "%Y-%m-%d %H:%M:%S")
             date_joined = date_joined.replace(tzinfo=timezone.utc)
+            company = user_data.get("company")
+            phone_number = user_data.get("phone_number")
             try:
                 user = get_user_model().objects.get(email=email)
             except get_user_model().DoesNotExist:
                 user_data["password"] = hashlib.sha1(str(timezone.now().timestamp()).encode()).hexdigest()
                 user_data["first_name"] = user_data["first_name"] or ""
-                user_data["last_name"] = user_data["first_name"] or ""
+                user_data["last_name"] = user_data["last_name"] or ""
                 last_login = datetime.strptime(user_data["last_login"], "%Y-%m-%d %H:%M:%S")
                 last_login = last_login.replace(tzinfo=timezone.utc)
                 user_data["last_login"] = last_login
@@ -84,6 +88,10 @@ class Command(BaseCommand):
                     user.add_custom_user_group(obj)
             else:
                 user.date_joined = min(date_joined, user.date_joined)
+                if company and not user.company:
+                    user.company = company
+                if phone_number and not user.phone_number:
+                    user.phone_number = phone_number
             user.google_account_id = self.default_google_id
             user.save()
             for channel_id in related_channels:

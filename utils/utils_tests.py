@@ -11,6 +11,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse as django_reverse
 from django.db import transaction
+from django.http.request import HttpRequest
+from django.test import override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -19,6 +21,7 @@ from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from userprofile.permissions import Permissions
 from utils.datetime import Time
+from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +148,8 @@ class SingleDatabaseApiConnectorPatcher:
         pass
 
 
+
+
 class MockResponse(object):
     def __init__(self, status_code=HTTP_200_OK, **kwargs):
         self.status_code = status_code
@@ -208,6 +213,14 @@ def patch_now(now):
         now = datetime.combine(now, datetime.min.time())
     with patch.object(Time, "now", return_value=now):
         yield
+
+
+@contextmanager
+def patch_registy_user(user, **kwargs):
+    backup_user = registry._user
+    registry._user = user
+    yield
+    registry._user = backup_user
 
 
 class SettingDoesNotExist:

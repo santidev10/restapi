@@ -1,18 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
-from contextlib import contextmanager
 from threading import local
 
 
-class _Keys:
-    USER = "user"
-    REQUEST = "request"
-
-
 class _Registry(local):
-    def __init__(self):
+    _user = None    # dependency injection from unit tests
+
+    def __init__(self, _user=None):
         super(_Registry, self).__init__()
-        self._user = None
+        self.request = None
+
+    def init(self, request):
+        self.request = request
+
+    def reset(self):
         self.request = None
 
     @property
@@ -23,10 +24,6 @@ class _Registry(local):
             return self.request.user
         return None
 
-    @user.setter
-    def user(self, value):
-        self._user = value
-
 
 registry = _Registry()
 
@@ -35,18 +32,9 @@ class RegistryMiddleware:
     """
     Simple middleware that adds the request object into Registry
     """
-
     def process_request(self, request):
-        registry.request = request
+        registry.init(request)
 
     def process_response(self, request, response):
-        registry.request = None
+        registry.reset()
         return response
-
-
-@contextmanager
-def current_user(user):
-    user_backup = registry.user
-    registry.user = user
-    yield
-    registry.user = user_backup
