@@ -1,18 +1,29 @@
 import calendar
 import logging
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
-from django.db.models import Q, F, Subquery, OuterRef
+from django.db.models import F
+from django.db.models import OuterRef
+from django.db.models import Q
+from django.db.models import Subquery
 
 from aw_reporting.models.ad_words import Campaign
-from aw_reporting.models.salesforce import OpPlacement, Opportunity, UserRole, \
-    User, Contact, SFAccount, Category, Flight, Activity
-from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    DynamicPlacementType
+from aw_reporting.models.salesforce import Activity
+from aw_reporting.models.salesforce import Category
+from aw_reporting.models.salesforce import Contact
+from aw_reporting.models.salesforce import Flight
+from aw_reporting.models.salesforce import OpPlacement
+from aw_reporting.models.salesforce import Opportunity
+from aw_reporting.models.salesforce import SFAccount
+from aw_reporting.models.salesforce import User
+from aw_reporting.models.salesforce import UserRole
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz

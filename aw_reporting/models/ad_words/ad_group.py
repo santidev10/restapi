@@ -2,10 +2,10 @@ from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
-from userprofile.managers import UserRelatedManager
+from userprofile.managers import UserRelatedManagerMixin
 
 
-class AdGroupManager(UserRelatedManager):
+class AdGroupManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "campaign__account_id"
 
 
