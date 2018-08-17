@@ -528,8 +528,8 @@ class PacingReport:
         )
 
     # ## OPPORTUNITIES ## #
-    def get_opportunities(self, get):
-        queryset = self.get_opportunities_queryset(get)
+    def get_opportunities(self, get, user=None):
+        queryset = self.get_opportunities_queryset(get, user)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -637,13 +637,14 @@ class PacingReport:
 
         return opportunities
 
-    def get_opportunities_queryset(self, get):
+    def get_opportunities_queryset(self, get, user):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
             get = query_dict_get
 
-        queryset = Opportunity.objects.filter(probability=100)
+        queryset = Opportunity.objects.get_queryset_for_user(user) \
+            .filter(probability=100)
 
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
