@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT, Account
-from userprofile.models import UserSettingsKey
 
 
 @demo_view_decorator
@@ -43,7 +42,6 @@ class AnalyzeChartApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         filters = self.get_filters()
-        show_aw_costs = request.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-        chart = DeliveryChart([item.id], segmented_by="campaigns", show_aw_costs=show_aw_costs, **filters)
+        chart = DeliveryChart([item.id], segmented_by="campaigns", **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)

@@ -25,7 +25,7 @@ class BaseTrackDataApiView(TrackApiBase):
         chart = DeliveryChart(
             visible_accounts,
             additional_chart=False,
-            show_aw_costs=True,
+            always_aw_costs=True,
             **filters
         )
         data = chart.get_account_segmented_data()

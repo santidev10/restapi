@@ -12,6 +12,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.models import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
+from utils.registry import registry
 
 
 @demo_view_decorator
@@ -55,16 +56,13 @@ class DashboardPerformanceChartApiView(APIView):
         account_ids = []
         if item.account:
             account_ids.append(item.account.id)
-
-        show_aw_costs = request.user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         chart = DeliveryChart(account_ids, segmented_by="campaigns",
-                              show_aw_costs=show_aw_costs, **filters)
+                              always_aw_costs=False, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
 
     def filter_hidden_sections(self):
-        user = self.request.user
+        user = registry.user
         if not user.get_aw_settings() \
                 .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             hidden_indicators = Indicator.CPV, Indicator.CPM

@@ -49,7 +49,7 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
-            show_aw_costs=True,
+            always_aw_costs=True,
             **filters)
         data = chart.get_items()
         return Response(data=data)

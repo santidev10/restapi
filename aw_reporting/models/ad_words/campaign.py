@@ -3,10 +3,10 @@ from django.db import models
 from aw_reporting.models.ad_words.account import Account
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
 from aw_reporting.models.salesforce import OpPlacement
-from userprofile.managers import UserRelatedManagerMixin
+from userprofile.managers import UserRelatedManager
 
 
-class CampaignManager(models.Manager, UserRelatedManagerMixin):
+class CampaignManager(UserRelatedManager):
     _account_id_ref = "account_id"
 
 

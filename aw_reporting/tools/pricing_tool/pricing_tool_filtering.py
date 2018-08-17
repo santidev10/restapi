@@ -37,11 +37,11 @@ class PricingToolFiltering:
         self.filter_item_ids = None
 
     @classmethod
-    def get_filters(cls, user):
+    def get_filters(cls):
 
         start, end = cls._get_default_dates()
 
-        opportunities = Opportunity.objects.have_campaigns(user=user)
+        opportunities = Opportunity.objects.have_campaigns()
 
         brands = opportunities \
             .filter(brand__isnull=False,) \
@@ -53,7 +53,7 @@ class PricingToolFiltering:
             .values_list("category_id", flat=True) \
             .order_by("category_id").distinct()
 
-        product_types = AdGroup.objects.get_queryset_for_user(user=user) \
+        product_types = AdGroup.objects.all() \
             .values_list("type", flat=True) \
             .order_by("type") \
             .distinct()

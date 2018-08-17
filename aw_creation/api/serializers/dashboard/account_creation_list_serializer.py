@@ -10,9 +10,9 @@ from django.db.models import Min
 from django.db.models import Q
 from django.db.models import Sum
 from django.db.models import When
-from rest_framework.serializers import BooleanField
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import \
+    SerializerMethodField, BooleanField
 
 from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.models import AccountCreation
@@ -35,6 +35,7 @@ from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
+from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
 from utils.serializers.fields import ParentDictValueField
 from utils.serializers.fields import StatField
@@ -136,7 +137,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         )
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs["context"]["request"].user
         super(DashboardAccountCreationListSerializer, self).__init__(*args, **kwargs)
         self._filter_fields()
         self.settings = {}
@@ -182,7 +182,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        show_client_cost = not self.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_client_cost = not registry.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         campaign_filter = {
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
@@ -315,7 +315,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return video_ads_data
 
     def _fields_to_exclude(self):
-        user = self.user
+        user = registry.user
         if user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
