@@ -278,15 +278,15 @@ class Command(BaseCommand):
         opportunity_ids = []
         placement_ids = []
         for model, method in [
-            # (UserRole, 'get_user_roles'),
-            # (User, 'get_users'),
-            # (Contact, 'get_contacts'),
-            # (SFAccount, 'get_accounts'),
-            # (Category, 'get_categories'),
+            (UserRole, 'get_user_roles'),
+            (User, 'get_users'),
+            (Contact, 'get_contacts'),
+            (SFAccount, 'get_accounts'),
+            (Category, 'get_categories'),
             (Opportunity, 'get_opportunities'),
-            # (OpPlacement, 'get_placements'),
-            # (Flight, 'get_flights'),
-            # (Activity, 'get_activities'),
+            (OpPlacement, 'get_placements'),
+            (Flight, 'get_flights'),
+            (Activity, 'get_activities'),
         ]:
             logger.info("Getting %s items" % model.__name__)
             existed_ids = model.objects.all().values_list('id', flat=True)
