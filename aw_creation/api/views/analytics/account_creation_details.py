@@ -7,7 +7,6 @@ from django.db.models import FloatField as AggrFloatField
 from django.db.models import Sum
 from django.db.models import Q
 from django.db.models import When
-
 from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
