@@ -42,7 +42,6 @@ class AnalyticsPerformanceChartApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
-        self.filter_hidden_sections()
         user = self.request.user
         related_accounts = Account.user_objects(user)
         queryset = AccountCreation.objects.filter(
