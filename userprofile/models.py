@@ -69,8 +69,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     Username, password and email are required. Other fields are optional.
     """
-    default_logo = "viewiq"
-
     username = models.CharField(
         _('username'), max_length=30, blank=True, null=True,
         help_text=_('Required. 30 characters or fewer. Letters, digits and '
@@ -188,9 +186,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     @property
     def logo_url(self):
-        logo = self.default_logo if not self.logo else self.logo
-        assert settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT, "AMAZON_S3_LOGO_STORAGE_URL_FORMAT settings must be set up"
-        return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo)
+        logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
+        return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
 
 
 class UserChannel(Timestampable):
