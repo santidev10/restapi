@@ -509,7 +509,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertNotIn("average_cpv", overview)
 
     def test_campaigns_filter_affect_performance_data(self):
-        user = self.create_test_user()
+        user = self.user
         any_date = date(2018, 1, 1)
         user.is_staff = True
         user.save()
@@ -557,7 +557,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(overview["delivered_impressions"], expected_delivered_impressions)
 
     def test_overview_reflects_to_date_range(self):
-        user = self.create_test_user()
+        user = self.user
         user.is_staff = True
         user.save()
         account = Account.objects.create(id=1)

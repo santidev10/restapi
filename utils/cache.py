@@ -1,3 +1,4 @@
+from functools import wraps
 from hashlib import md5
 
 from django.conf import settings
@@ -60,8 +61,10 @@ def cached_view_decorator(method):
             response = method(self=self, request=request, *args, **kwargs)
             if isinstance(response, Response) and response.status_code < 300:
                 response['X-Cached-Content'] = False
-                cached_response = {'data': response.data,
-                                   'status': response.status_code}
+                cached_response = {
+                    'data': response.data,
+                    'status': response.status_code
+                }
                 cache.set(key, cached_response, settings.CACHE_TIMEOUT)
             else:
                 skip_caching = True
@@ -91,12 +94,31 @@ def cached_view_decorator(method):
         cache_reset()
         return method(self, *args, **kwargs)
 
-    wrapped = {'get': wrapped_get,
-               'get_for_exportable': wrapped_get,
-               'put': wrapped_put_update,
-               'post': wrapped_put_update,
-               'delete': wrapped_put_update}
+    wrapped = {
+        'get': wrapped_get,
+        'get_for_exportable': wrapped_get,
+        'put': wrapped_put_update,
+        'post': wrapped_put_update,
+        'delete': wrapped_put_update
+    }
 
     assert method.__name__ in wrapped, \
         "Unsupported method name: '{}'".format(method.__name__)
     return wrapped[method.__name__]
+
+
+def cached_fn(fn):
+    invoked = False
+    result = None
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        global invoked
+        global result
+
+        if not invoked:
+            result = fn(*args, **kwargs)
+            invoked = True
+        return result
+
+    return wrapper

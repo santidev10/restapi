@@ -550,7 +550,6 @@ class AnalyticsPerformanceChartApiView:
     def post(original_method):
         def method(view, request, pk, **kwargs):
             if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                view.filter_hidden_sections()
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
