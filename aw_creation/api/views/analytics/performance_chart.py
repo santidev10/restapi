@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.db.models import Q
 from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.models import Account
 from aw_reporting.models import DATE_FORMAT
 from userprofile.models import UserSettingsKey
 from utils.registry import registry
@@ -42,8 +44,14 @@ class AnalyticsPerformanceChartApiView(APIView):
 
     def post(self, request, pk, **_):
         self.filter_hidden_sections()
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         filters = self.get_filters()
