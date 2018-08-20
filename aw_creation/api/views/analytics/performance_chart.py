@@ -2,18 +2,17 @@ from datetime import datetime
 
 from django.db.models import Q
 from django.http import Http404
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import DeliveryChart, Indicator
+from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account
 from aw_reporting.models import DATE_FORMAT
-from userprofile.models import UserSettingsKey
-from utils.registry import registry
 
 
 @demo_view_decorator
@@ -62,11 +61,3 @@ class AnalyticsPerformanceChartApiView(APIView):
                               always_aw_costs=True, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)
-
-    def filter_hidden_sections(self):
-        user = registry.user
-        if user.get_aw_settings() \
-                .get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
-            hidden_indicators = Indicator.CPV, Indicator.CPM, Indicator.COST
-            if self.request.data.get("indicator") in hidden_indicators:
-                raise Http404

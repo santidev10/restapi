@@ -1,7 +1,6 @@
 import json
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
