@@ -155,6 +155,7 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 AUTH_USER_MODEL = "userprofile.UserProfile"
+USER_DEFAULT_LOGO = "viewiq"
 GOOGLE_APP_AUD = "832846444492-9j4sj19tkkrd3tpg7s8j5910l7kprg45.apps.googleusercontent.com"
 
 REST_FRAMEWORK = {
@@ -349,6 +350,8 @@ def is_running_under_teamcity():
 
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
+
+AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 
 try:
     from .local_settings import *

@@ -3,6 +3,7 @@ Userprofile models module
 """
 import logging
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager
 from django.contrib.postgres.fields import JSONField
@@ -31,43 +32,6 @@ class UserSettingsKey:
     VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
     HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
-
-
-class UserLogoSettings:
-    AIRBNB = "airbnb"
-    APEX = "apex"
-    BUTTERFINGER = "butterfinger"
-    DR_PEPPER = "dr_pepper"
-    GAMELOFT = "gameloft"
-    GROUPON = "groupon"
-    HALLMARK = "hallmark"
-    IMAX = "imax"
-    INTEL = "intel"
-    LEGO = "lego"
-    LG = "lg"
-    LIVE_NATION = "live_nation"
-    MARS = "mars"
-    MATTEL = "mattel"
-    MICROSOFT = "microsoft"
-    NBA = "nba"
-    NESTLE = "nestle"
-    OLIVE_GARDEN = "olive_garden"
-    PRUDENTIAL = "prudential"
-    PURINA = "purina"
-    RED_BULL = "red_bull"
-    SALLY_BEAUTY = "sally_beauty"
-    SAMSUNG = "samsung"
-    SEVEN_UP = "seven_up"
-    SONY = "sony"
-    STATE_FARM = "state_farm"
-    TOO_FACED = "too_faced"
-    TOYOTA = "toyota"
-    USA_POST = "usa_post"
-    VERZION = "verizon",
-    VISION = "visio"
-    VOLCOM = "volcom"
-    WRIGLEY = "wrigley"
-    XEROX = "xerox"
 
 
 def get_default_settings():
@@ -219,6 +183,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     @property
     def access(self):
         return self.groups.values('name')
+
+    @property
+    def logo_url(self):
+        logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
+        return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
 
 
 class UserChannel(Timestampable):

@@ -30,7 +30,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "last_login", "email", "first_name", "token",
                 "can_access_media_buying", "has_disapproved_ad", "access",
                 "aw_settings", "historical_aw_account",
-                "google_account_id", "logo"
+                "google_account_id", "logo_url"
             }
         )
 
