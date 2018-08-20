@@ -10,6 +10,7 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import Value
+from django.db.models import Q
 from django.db.models import When
 from django.http import Http404
 from rest_framework.response import Response
@@ -17,6 +18,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.models import Account
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -43,8 +45,14 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         return Response(data=data)
 
     def _get_account_creation(self, request, pk):
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
         try:
-            return AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            return queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
 
