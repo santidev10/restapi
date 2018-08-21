@@ -1350,9 +1350,14 @@ class PerformanceTargetingFiltersAPIView(APIView):
 class PerformanceTargetingReportAPIView(APIView):
     def get_object(self):
         pk = self.kwargs["pk"]
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
         try:
-            item = AccountCreation.objects.filter(owner=self.request.user).get(
-                pk=pk)
+            item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
         else:
