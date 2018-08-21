@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Case
+from django.db.models import Case, IntegerField, Value
 from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
@@ -63,8 +63,18 @@ PLAN_STATS_ANNOTATION = dict(
 )
 
 PLAN_RATES_ANNOTATION = dict(
-    plan_cpm=F("cpm_total_cost") / F("cpm_ordered_units") * 1000,
-    plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
+    plan_cpm=Case(When(
+        cpm_ordered_units__gt=0,
+        then=F("cpm_total_cost") / F("cpm_ordered_units") * 1000),
+        default=Value(None),
+        output_field=FloatField()
+    ),
+    plan_cpv=Case(When(
+        cpv_ordered_units__gt=0,
+        then=F("cpv_total_cost") / F("cpv_ordered_units")),
+        default=Value(None),
+        output_field=FloatField()
+    )
 )
 
 FLIGHTS_AGGREGATIONS = dict(

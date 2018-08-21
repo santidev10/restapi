@@ -81,11 +81,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
         """
         user = self.create_test_user(True)
-        print("Has perm", user.has_perm("userprofile.channel_details"))
         self.fill_all_groups(user)
         user.refresh_from_db()
-        print("Has perm", user.has_perm("userprofile.channel_details"))
-
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
