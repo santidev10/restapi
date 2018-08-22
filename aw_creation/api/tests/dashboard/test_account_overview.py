@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from numbers import Number
 
 from rest_framework.status import HTTP_200_OK
 
@@ -698,3 +699,20 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             self.assertEqual(overview["conversions"], conversions)
             self.assertEqual(overview["all_conversions"], all_conversions)
             self.assertEqual(overview["view_through"], view_through)
+
+    def test_demo_account_performance_charts(self):
+        overview = self._request(DEMO_ACCOUNT_ID)
+        keys = (
+            "delivered_cost",
+            "delivered_impressions",
+            "delivered_video_views",
+            "plan_cost",
+            "plan_impressions",
+            "plan_video_views",
+        )
+        for key in keys:
+            self.assertIn(key, overview, key)
+            self.assertIsInstance(overview[key], Number, key)
+        self.assertGreater(overview["plan_cost"], overview["delivered_cost"])
+        self.assertGreater(overview["plan_impressions"], overview["delivered_impressions"])
+        self.assertGreater(overview["plan_video_views"], overview["delivered_video_views"])
