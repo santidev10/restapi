@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import PerformanceWeeklyReport
+from userprofile.models import UserSettingsKey
 from utils.views import xlsx_response
 
 
@@ -29,9 +30,13 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
+        queryset = AccountCreation.objects.all()
+        user_settings = request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            queryset = queryset.filter(account__id__in=visible_accounts)
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
