@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 from typing import Iterator
 from typing import List
-from typing import Tuple
 
 import yaml
 from googleads import adwords, oauth2
@@ -31,8 +30,7 @@ class AdWords:
     MAX_WORKERS = 50
 
     accounts = None
-    date_start = None
-    date_finish = None
+    date = None
 
     client_options = None
 
@@ -47,38 +45,21 @@ class AdWords:
 
     def __init__(self,
                  accounts: List[AccountDMO],
-                 date_start: str,
-                 date_finish: str,
-                 download: bool = False,
-                 save_filename: str = None,
-                 load_filename: str = None,
-                 fields: Tuple[str] = None,
-                 ):
+                 date: str,
+                 download: bool = False):
 
         self.accounts = accounts
-        self.date_start = date_start
-        self.date_finish = date_finish
-        self.save_filename = save_filename
-        self.load_filename = load_filename
-        if fields:
-            self.REPORT_FIELDS = fields
+        self.date = date
 
-        logger.info("Dates range: {}..{}".format(
-            self.date_start,
-            self.date_finish
-        ))
+        logger.info("Date: {}".format(self.date))
 
-        if load_filename:
-            self.load_reports()
-        elif download:
+        if download:
             self.download()
 
     def download(self) -> None:
         self.load_client_options()
         self.resolve_clients()
         self.download_reports()
-        if self.save_filename is not None:
-            self.save_reports()
 
     def load_client_options(self) -> None:
         with open('aw_reporting/ad_words_web.yaml', 'r') as f:
@@ -119,37 +100,6 @@ class AdWords:
             [1 for _ in self.accounts if _.url_performance_report is not None]
         )
         logger.info("Downloaded {} report(s)".format(reports_count))
-
-    def save_reports(self) -> None:
-        assert self.save_filename is not None
-        logger.info("Saving reports to '{}'".format(self.save_filename))
-        with open(self.save_filename, "w") as f:
-            writer = csv.DictWriter(f, fieldnames=["ID", "AccountId"] + list(self.REPORT_FIELDS))
-            writer.writeheader()
-            for video_id, report_rows in self.get_video_reports().items():
-                for row in report_rows:
-                    row["ID"] = video_id
-                    writer.writerow(row)
-        logger.info("All reports have been saved")
-
-    def load_reports(self) -> None:
-        assert self.load_filename is not None
-        logger.info("Loading reports from '{}'".format(self.load_filename))
-        with open(self.load_filename, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                del row["ID"]
-                dmo = None
-                for account in self.accounts:
-                    if account.account_id == row.get("AccountId"):
-                        dmo = account
-                        break
-                if dmo is None:
-                    continue
-                if dmo.url_performance_report is None:
-                    dmo.url_performance_report = []
-                dmo.url_performance_report.append(row)
-        logger.info("All reports have been loaded")
 
     def get_url_performance_reports(self) -> Iterator[list]:
         for account in self.accounts:
@@ -215,8 +165,8 @@ class AdWords:
                 "predicates": [],
                 "fields": self.REPORT_FIELDS,
                 "dateRange": {
-                    "min": self.date_start,
-                    "max": self.date_finish,
+                    "min": self.date,
+                    "max": self.date,
                 },
             },
         }
