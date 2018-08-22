@@ -410,12 +410,13 @@ class Command(BaseCommand):
             impressions = sum([int(_.get("Impressions")) for _ in report])
             totals["impressions"] += impressions
         totals["videos"] = len(set(_.id for _ in videos))
+        totals["new_videos"] = len(set(_.id for _ in videos) - old_videos)
         totals["channels"] = len(set(_.channel_id for _ in videos))
 
         # prepare E-mail
         subject = "Daily Audit {}".format(date)
         body = "Total impressions: {impressions}\n" \
-               "Total videos: {videos}\n" \
+               "Total videos (new): {videos} {new_videos}\n" \
                "Total channels: {channels}\n".format(**totals)
 
         # E-mail
