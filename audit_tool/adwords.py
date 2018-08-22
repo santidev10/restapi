@@ -30,8 +30,7 @@ class AdWords:
     MAX_WORKERS = 50
 
     accounts = None
-    date_start = None
-    date_finish = None
+    date = None
 
     client_options = None
 
@@ -46,18 +45,13 @@ class AdWords:
 
     def __init__(self,
                  accounts: List[AccountDMO],
-                 date_start: str,
-                 date_finish: str,
+                 date: str,
                  download: bool = False):
 
         self.accounts = accounts
-        self.date_start = date_start
-        self.date_finish = date_finish
+        self.date = date
 
-        logger.info("Dates range: {}..{}".format(
-            self.date_start,
-            self.date_finish
-        ))
+        logger.info("Date: {}".format(self.date))
 
         if download:
             self.download()
@@ -171,8 +165,8 @@ class AdWords:
                 "predicates": [],
                 "fields": self.REPORT_FIELDS,
                 "dateRange": {
-                    "min": self.date_start,
-                    "max": self.date_finish,
+                    "min": self.date,
+                    "max": self.date,
                 },
             },
         }
