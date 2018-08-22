@@ -225,7 +225,7 @@ class Command(BaseCommand):
             "text_wrap": True
         })
 
-        audit_date = datetime.strptime(self.date_start, "%Y%m%d")
+        audit_date = datetime.strptime(date, "%Y%m%d")
 
         # add sheet: Keywords Hits
         videos_to_save = []
