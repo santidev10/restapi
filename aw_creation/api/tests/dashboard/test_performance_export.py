@@ -5,7 +5,6 @@ from datetime import datetime
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
@@ -15,8 +14,6 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.excel_reports import PerformanceReport
 from aw_reporting.excel_reports import PerformanceReportColumn
-from aw_reporting.models import AWConnection
-from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
@@ -44,24 +41,17 @@ from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
-        return reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Analytics.PERFORMANCE_EXPORT,
+        return reverse(Name.Dashboard.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id,))
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
         return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
-
-    def _hide_demo_data_fallback(self, user):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=user,
-        )
 
     def _create_stats(self, account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -96,7 +86,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_success_for_chf_dashboard(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        self._hide_demo_data_fallback(user)
         account = Account.objects.create(id=1, name="")
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
