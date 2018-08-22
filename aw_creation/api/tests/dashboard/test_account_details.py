@@ -4,7 +4,7 @@ from itertools import product
 from unittest.mock import patch
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -30,13 +30,13 @@ from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
-        return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.ACCOUNT_DETAILS,
-            args=(account_creation_id,))
+        return reverse(Name.Dashboard.ACCOUNT_DETAILS, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+                       args=(account_creation_id,))
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
@@ -535,3 +535,40 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.assertIn("average_cpv", response.data)
             self.assertIn("plan_cpm", response.data)
             self.assertIn("plan_cpv", response.data)
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_no_demo_data(self):
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+        Campaign.objects.create(id=next(int_iterator), account=account)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        item = response.data
+        stats = (
+            "clicks",
+            "cost",
+            "impressions",
+            "video_views",
+        )
+        rates = (
+            "average_cpm",
+            "average_cpv",
+            "ctr",
+            "ctr_v",
+            "plan_cpm",
+            "plan_cpv",
+            "video_view_rate",
+        )
+        for key in stats:
+            self.assertEqual(item[key], 0, key)
+        for key in rates:
+            self.assertIsNone(item[key])
