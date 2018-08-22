@@ -34,7 +34,7 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
         user_settings = request.user.get_aw_settings()
         if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-            queryset = queryset.filter(account__id__in=visible_accounts)
+            queryset = queryset.filter(account_id__in=visible_accounts)
         try:
             item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:

@@ -32,10 +32,10 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
 
     def post(self, request, pk, **_):
         user = self.request.user
-        related_accounts = Account.user_objects(user)
+        related_accounts_ids = Account.user_objects(user).values_list("id", flat=True)
         queryset = AccountCreation.objects.filter(
             Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
+            & (Q(owner=user) | Q(account_id__in=related_accounts_ids))
         )
         try:
             item = queryset.get(pk=pk)
