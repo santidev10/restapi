@@ -161,25 +161,18 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             self.ad_group_keys,
         )
 
-    def test_filters_by_campaign_types(self):
+    def test_excluded_campaings_filter_ingores(self):
         user = self.create_test_user()
         account = Account.objects.create(id=1)
         account_creation = AccountCreation.objects.create(
-            id=2,
-            name="", owner=user, account=account, is_managed=True,
-            sync_at=timezone.now())
+            id=2, name="", owner=user, account=account, is_managed=True, sync_at=timezone.now())
         all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
-
         for index, campaign_type in enumerate(all_types):
-            Campaign.objects.create(id=index,
-                                    type=campaign_type_str(campaign_type),
-                                    account=account)
+            Campaign.objects.create(id=index, type=campaign_type_str(campaign_type), account=account)
         hidden_types = all_types[::2]
-        expected_types = set(all_types) - set(hidden_types)
+        expected_types = set(all_types)
         expected_types_str = set(campaign_type_str(t) for t in expected_types)
-
         url = self._get_url(account_creation.id)
-
         user_settings = {
             UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {
                 account.id: hidden_types
@@ -187,11 +180,9 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
-
         self.assertEqual(response.status_code, HTTP_200_OK)
         ids = [c["id"] for c in response.data]
-        types = Campaign.objects.filter(id__in=ids) \
-            .values_list("type", flat=True)
+        types = Campaign.objects.filter(id__in=ids).values_list("type", flat=True)
         self.assertEqual(len(types), len(expected_types))
         self.assertEqual(set(types), expected_types_str)
 
