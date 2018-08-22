@@ -1,6 +1,6 @@
+from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
@@ -9,7 +9,6 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import campaign_type_str, Campaign
 from userprofile.models import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
-from utils.registry import registry
 
 
 @demo_view_decorator
@@ -26,8 +25,6 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
 
     def get(self, request, pk):
         account_creation = self._get_account_creation(pk)
-        if account_creation is None:
-            return Response(data={"error": "account creation doesn't exist"}, status=HTTP_404_NOT_FOUND)
         campaign_creation_ids = set(account_creation.campaign_creations.filter(
             is_deleted=False).values_list("id", flat=True))
         queryset = self.get_queryset(account_creation.account_id)
@@ -44,4 +41,4 @@ class DashboardAccountCreationCampaignsListApiView(APIView):
         try:
             return AccountCreation.objects.filter(**filters).get(id=pk)
         except AccountCreation.DoesNotExist:
-            return None
+            raise Http404
