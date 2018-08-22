@@ -1,5 +1,6 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
@@ -15,40 +16,32 @@ from utils.registry import registry
 class DashboardAccountCreationCampaignsListApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
-    def get_queryset(self):
-        pk = self.kwargs.get("pk")
-        user = registry.user
-        account_id = AccountCreation.objects.get(id=pk).account_id
-        types_hidden = user.get_aw_settings() \
-            .get(UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])
-        types_to_exclude = [campaign_type_str(t) for t in types_hidden]
-        queryset = Campaign.objects \
-            .filter(
-            account__account_creation__id=pk,
-            account__account_creation__owner=self.request.user) \
-            .exclude(type__in=types_to_exclude) \
-            .order_by("name", "id").distinct()
+    def get_queryset(self, account_id):
+        types_hidden = self.request.user.get_aw_settings().get(
+            UserSettingsKey.HIDDEN_CAMPAIGN_TYPES).get(account_id, [])
+        types_to_exclude = [campaign_type_str(c_type) for c_type in types_hidden]
+        queryset = Campaign.objects.filter(account_id=account_id).exclude(
+            type__in=types_to_exclude).order_by("name", "id").distinct()
         return queryset
 
-    def get(self, request, pk, **kwargs):
-        filters = dict(
-            is_deleted=False,
-            account__id__in=[],
-        )
-        user_settings = request.user.get_aw_settings()
-        if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
-            filters["account__id__in"] = \
-                user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-        try:
-            account_creation = AccountCreation.objects.filter(**filters).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            campaign_creation_ids = set()
-        else:
-            campaign_creation_ids = set(
-                account_creation.campaign_creations.filter(
-                    is_deleted=False
-                ).values_list("id", flat=True))
-        queryset = self.get_queryset()
+    def get(self, request, pk):
+        account_creation = self._get_account_creation(pk)
+        if account_creation is None:
+            return Response(data={"error": "account creation doesn't exist"}, status=HTTP_404_NOT_FOUND)
+        campaign_creation_ids = set(account_creation.campaign_creations.filter(
+            is_deleted=False).values_list("id", flat=True))
+        queryset = self.get_queryset(account_creation.account_id)
         serializer = CampaignListSerializer(
             queryset, many=True, campaign_creation_ids=campaign_creation_ids)
         return Response(serializer.data)
+
+    def _get_account_creation(self, pk):
+        filters = {"is_deleted": False}
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            filters["account__id__in"] = visible_accounts
+        try:
+            return AccountCreation.objects.filter(**filters).get(id=pk)
+        except AccountCreation.DoesNotExist:
+            return None
