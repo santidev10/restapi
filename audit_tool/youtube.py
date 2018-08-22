@@ -18,7 +18,7 @@ class Youtube:
     MAX_WORKERS = 50
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
-                   "?key={key}&part=id,snippet&id={ids}"
+                   "?key={key}&part=id,snippet,statistics&id={ids}"
 
     chunks = None
 

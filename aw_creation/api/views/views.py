@@ -17,6 +17,7 @@ from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
 from django.db.models import Value
 from django.db.models import Case
+from django.db.models import Q
 from django.db.models import When
 from django.db.models import F
 from django.db.models import IntegerField as AggrIntegerField
@@ -53,6 +54,7 @@ from aw_creation.models import AdScheduleRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
 from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.models import Account
 from aw_reporting.models import BASE_STATS
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import Topic
@@ -1261,7 +1263,13 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 @demo_view_decorator
 class PerformanceTargetingFiltersAPIView(APIView):
     def get_queryset(self):
-        return AccountCreation.objects.filter(owner=self.request.user)
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
+        return queryset
 
     @staticmethod
     def get_campaigns(item):
@@ -1342,9 +1350,14 @@ class PerformanceTargetingFiltersAPIView(APIView):
 class PerformanceTargetingReportAPIView(APIView):
     def get_object(self):
         pk = self.kwargs["pk"]
+        user = self.request.user
+        related_accounts = Account.user_objects(user)
+        queryset = AccountCreation.objects.filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
         try:
-            item = AccountCreation.objects.filter(owner=self.request.user).get(
-                pk=pk)
+            item = queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
         else:
