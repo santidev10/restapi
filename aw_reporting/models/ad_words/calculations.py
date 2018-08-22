@@ -1,7 +1,6 @@
 from functools import wraps
 
 from django.db.models import Sum, Case, When, IntegerField, F
-from django.db.models.functions import Coalesce
 
 from aw_reporting.models.ad_words.constants import QUARTILE_STATS, CONVERSIONS
 
@@ -161,7 +160,6 @@ def dict_quartiles_to_rates(data):
         if qf in data:
             del data[qf]
 
-
 def base_stats_aggregator(prefix=None):
     prefix = prefix or ""
     return dict(
@@ -185,8 +183,8 @@ def base_stats_aggregator(prefix=None):
             )
         ),
         sum_video_views=Sum("video_views"),
-        sum_clicks=Coalesce(Sum("clicks"), 0),
-        sum_cost=Coalesce(Sum("cost"), 0)
+        sum_clicks=Sum("clicks"),
+        sum_cost=Sum("cost"),
     )
 
 
