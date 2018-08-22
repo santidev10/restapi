@@ -416,7 +416,7 @@ class Command(BaseCommand):
         # prepare E-mail
         subject = "Daily Audit {}".format(date)
         body = "Total impressions: {impressions}\n" \
-               "Total videos (new): {videos} {new_videos}\n" \
+               "Total videos (new): {videos} ({new_videos})\n" \
                "Total channels: {channels}\n".format(**totals)
 
         # E-mail
