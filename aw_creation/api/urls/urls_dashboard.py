@@ -31,7 +31,7 @@ urlpatterns = [
         name=Name.Dashboard.PERFORMANCE_CHART_ITEMS),
     url(r'^performance_export/(?P<pk>\w+)/',
         DashboardPerformanceExportApiView.as_view(),
-        name=Name.Analytics.PERFORMANCE_EXPORT),
+        name=Name.Dashboard.PERFORMANCE_EXPORT),
     url(r'^performance_export_weekly_report/(?P<pk>\w+)/$',
         DashboardPerformanceExportWeeklyReportApiView.as_view(),
         name=Name.Dashboard.PERFORMANCE_EXPORT_WEEKLY_REPORT),

@@ -160,7 +160,6 @@ def dict_quartiles_to_rates(data):
         if qf in data:
             del data[qf]
 
-
 def base_stats_aggregator(prefix=None):
     prefix = prefix or ""
     return dict(
@@ -185,7 +184,7 @@ def base_stats_aggregator(prefix=None):
         ),
         sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"),
-        sum_cost=Sum("cost")
+        sum_cost=Sum("cost"),
     )
 
 

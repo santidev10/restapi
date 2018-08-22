@@ -509,16 +509,12 @@ class DashboardAccountCreationDetailsAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
 
                 account = DemoAccount()
                 data = account.header_data_dashboard
                 data['details'] = account.details
 
-                if pk != DEMO_ACCOUNT_ID:
-                    original_data = original_method(view, request, pk=pk, **kwargs).data
-                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
-                        data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
 

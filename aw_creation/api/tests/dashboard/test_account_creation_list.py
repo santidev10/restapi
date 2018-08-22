@@ -3,7 +3,6 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 
@@ -36,6 +35,7 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -74,7 +74,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "weekly_chart",
     }
 
-    url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.ACCOUNT_LIST)
+    url = reverse(Name.Dashboard.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.DASHBOARD])
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -424,3 +424,42 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts = response.data["items"]
         self.assertEqual(len(accounts), 1)
         self.assertEqual(accounts[0]["id"], visible_account_creation.id)
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_no_demo_data(self):
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+        Campaign.objects.create(id=next(int_iterator), account=account)
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        item = response.data["items"][0]
+        stats = (
+            "clicks",
+            "cost",
+            "impressions",
+            "video_views",
+        )
+        rates = (
+            "average_cpm",
+            "average_cpv",
+            "ctr",
+            "ctr_v",
+            "plan_cpm",
+            "plan_cpv",
+            "video_view_rate",
+        )
+        for key in stats:
+            self.assertEqual(item[key], 0, key)
+        for key in rates:
+            self.assertIsNone(item[key])
