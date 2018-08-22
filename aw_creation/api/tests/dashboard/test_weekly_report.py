@@ -10,6 +10,7 @@ from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import FOOTER_ANNOTATION
 from aw_reporting.models import Account, Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
+from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase, int_iterator, reverse
 
 
@@ -34,7 +35,12 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
 
-        response = self._request(account_creation.id)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_report_empty(sheet))
