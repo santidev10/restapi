@@ -143,7 +143,7 @@ class Command(BaseCommand):
                     logger.info("Loaded {}: {}".format(name, user_info["email"]))
         return result
 
-    def update_users_permissions(self, users_info):
+    def update_permissions(self, users_info):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
                 logger.info("Updating CHF account:" + user.email)
