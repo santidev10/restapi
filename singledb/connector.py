@@ -6,12 +6,13 @@ from urllib.parse import urlencode, quote
 
 import requests
 from django.conf import settings
+from django.http import Http404
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
     DEFAULT_KEYWORD_LIST_FIELDS
-
 from singledb.settings import DEFAULT_VIDEO_DETAILS_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES, DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_CHANNEL_DETAILS_SOURCES, DEFAULT_KEYWORD_DETAILS_SOURCES, \
@@ -81,6 +82,8 @@ class SingleDatabaseApiConnector(object):
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
         else:
+            if self.response.status_code == HTTP_404_NOT_FOUND:
+                raise Http404(self.response.text)
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
                     "Error during iq api call: {}".format(self.response.text),
