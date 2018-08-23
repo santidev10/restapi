@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.test import override_settings
@@ -64,7 +65,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "plan_cpm",
         "plan_cpv",
         "start",
-        "status",
         "thumbnail",
         "topic_count",
         "updated_at",
@@ -152,6 +152,16 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             set(item.keys()),
             self.details_keys,
         )
+
+    def test_properties_demo(self):
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(set(response.data["items"][0].keys()), self.details_keys)
 
     def test_get_chf_account_creation_list_queryset(self):
         chf_account = Account.objects.create(
@@ -463,3 +473,28 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             self.assertEqual(item[key], 0, key)
         for key in rates:
             self.assertIsNone(item[key])
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_no_status_filters(self):
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+        AccountCreation.objects.filter(account=account).update(is_paused=False)
+        Campaign.objects.create(id=next(int_iterator), account=account)
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+
+        url = "?".join([
+            self.url,
+            urlencode(dict(status="Paused")),
+        ])
+
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
