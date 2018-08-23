@@ -298,12 +298,14 @@ class Command(BaseCommand):
             worksheet.set_column(x, x, field[1])
 
         y = 0
+        new_videos = set()
         for item in sorted_videos:
             hits = len(item.found)
             if hits < 5:
                 break
             if item.id in old_videos:
                 continue
+            new_videos.add(item.id)
             data = reports[item.id]
             impressions = sum([int(r.get("Impressions")) for r in data])
             words = ",".join(item.found)
@@ -410,7 +412,7 @@ class Command(BaseCommand):
             impressions = sum([int(_.get("Impressions")) for _ in report])
             totals["impressions"] += impressions
         totals["videos"] = len(set(_.id for _ in videos))
-        totals["new_videos"] = len(set(_.id for _ in videos) - old_videos)
+        totals["new_videos"] = len(new_videos)
         totals["channels"] = len(set(_.channel_id for _ in videos))
 
         # prepare E-mail
