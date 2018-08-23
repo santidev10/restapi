@@ -34,6 +34,40 @@ from utils.utils_tests import reverse
 
 
 class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
+    _keys = {
+        "account",
+        "ad_count",
+        "agency",
+        "average_cpm",
+        "average_cpv",
+        "brand",
+        "channel_count",
+        "clicks",
+        "cost",
+        "cost_method",
+        "ctr",
+        "ctr_v",
+        "details",
+        "end",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
+        "video_view_rate",
+        "video_views",
+        "weekly_chart",
+    }
+
     def _get_url(self, account_creation_id):
         return reverse(Name.Dashboard.ACCOUNT_DETAILS, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id,))
@@ -42,16 +76,29 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         url = self._get_url(account_creation_id)
         return self.client.post(url, json.dumps(kwargs), content_type="application/json")
 
-    def _hide_demo_data(self, user):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""),
-            user=user)
-
     def setUp(self):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_dashboard")
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_properties(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(set(response.data.keys()), self._keys)
+
+    def test_properties_demo(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(set(response.data.keys()), self._keys)
 
     def test_demo_details_for_chf_acc(self):
         user = self.create_test_user()
@@ -63,7 +110,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], None)
 
     def test_average_cpm_and_cpv_reflects_to_user_settings(self):
-        self._hide_demo_data(self.request_user)
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user, is_approved=True)
@@ -93,7 +139,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIn("average_cpv", response.data)
 
     def test_plan_cpm_and_cpv_reflects_to_user_settings(self):
-        self._hide_demo_data(self.request_user)
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
@@ -126,7 +171,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     def test_aw_cost(self):
         self.user.is_staff = True
         self.user.save()
-        self._hide_demo_data(self.request_user)
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
@@ -163,7 +207,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_cost_client_cost(self):
         self.user.is_staff = True
-        self._hide_demo_data(self.request_user)
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, owner=self.request_user, account=account,
@@ -249,7 +292,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["cost"], expected_cost)
 
     def test_hide_costs_according_to_user_settings(self):
-        self._hide_demo_data(self.request_user)
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
             id=1, opportunity=opportunity,
@@ -301,7 +343,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertNotIn("average_cpv", acc_data)
 
     def test_brand(self):
-        self._hide_demo_data(self.request_user)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         managed_account = Account.objects.create(id="2", name="")
@@ -323,7 +364,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["brand"], test_brand)
 
     def test_success_get_chf_account(self):
-        self._hide_demo_data(self.request_user)
         user = self.user
 
         chf_account = Account.objects.create(
@@ -344,7 +384,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_agency(self):
-        self._hide_demo_data(self.request_user)
         agency = Contact.objects.create(first_name="first", last_name="last")
         opportunity = Opportunity.objects.create(agency=agency)
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
@@ -366,7 +405,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["agency"], agency.name)
 
     def test_cost_method(self):
-        self._hide_demo_data(self.request_user)
         opportunity = Opportunity.objects.create()
         placement1 = OpPlacement.objects.create(
             id=1, opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
@@ -401,7 +439,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             {p.goal_type for p in [placement1, placement2, placement3]})
 
     def test_dynamic_placement_budget_rates_are_empty(self):
-        self._hide_demo_data(self.request_user)
         opportunity = Opportunity.objects.create()
         placement_cpv = OpPlacement.objects.create(
             id=next(int_iterator),
@@ -501,7 +538,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
                     self.assertAlmostEqual(actual_value, expected_value)
 
     def test_average_cpm_and_cpv_not_reflect_to_user_settings(self):
-        self._hide_demo_data(self.request_user)
         account = Account.objects.create()
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user, is_approved=True)
