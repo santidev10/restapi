@@ -213,8 +213,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(len(response.data["items"]), 2)
         item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
@@ -255,7 +255,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                     "{}?sort_by={}".format(self.url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
-            expected_top_account = items[0]
+            expected_top_account = items[1]
             self.assertEqual(top_account.name, expected_top_account["name"])
 
     def test_success_sort_by_name(self):
@@ -392,7 +392,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             ("Ended", 1),
             ("Paused", 1),
             ("Approved", 1),
-            ("Running", 1),
+            ("Running", 2),  # with Demo
         )
 
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
@@ -480,7 +480,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data["items_count"], 1,
+            response.data["items_count"], 2,
             "The account has no end date that's why it's shown"
         )
 
@@ -523,8 +523,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         ):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 0)
-        self.assertEqual(len(response.data["items"]), 0)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
 
     def test_filter_campaigns_count_from_ad_words(self):
         account = Account.objects.create(id=1, name="")
@@ -865,7 +865,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items_count"], 2)
 
     def test_created_account_is_managed(self):
         user = self.user
@@ -889,8 +889,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(response.data["items"][0]["id"], account_creation.id)
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(response.data["items"][1]["id"], account_creation.id)
 
     def test_is_editable(self):
         user = self.user
@@ -905,7 +905,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(response.data["items_count"], 3)
         accounts_by_id = {acc["id"]: acc for acc in response.data["items"]}
         self.assertTrue(accounts_by_id.get(own_account_creation.id)["is_editable"])
         self.assertFalse(accounts_by_id.get(visible_account_creation.id)["is_editable"])

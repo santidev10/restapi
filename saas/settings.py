@@ -316,7 +316,13 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
-DEFAULT_PERMISSIONS_GROUP_NAMES = ("Highlights", "Research", "Segments")
+DEFAULT_PERMISSIONS_GROUP_NAMES = (
+    "Highlights",
+    "Research",
+    "Segments",
+    "Dashboard",
+)
+
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 

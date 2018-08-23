@@ -38,7 +38,7 @@ def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: False,

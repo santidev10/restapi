@@ -145,9 +145,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(len(response.data["items"]), 1)
-        item = response.data["items"][0]
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(len(response.data["items"]), 2)
+        item = response.data["items"][1]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -422,8 +422,8 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = response.data["items"]
-        self.assertEqual(len(accounts), 1)
-        self.assertEqual(accounts[0]["id"], visible_account_creation.id)
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[1]["id"], visible_account_creation.id)
 
     @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_no_demo_data(self):
