@@ -160,26 +160,6 @@ class DashboardAccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__gte=min_end)
             if max_end:
                 queryset = queryset.filter(end__lte=max_end)
-        status = filters.get("status")
-        if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True, is_managed=True)
-            elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_managed=True,
-                                           is_ended=False)
-            elif status == "Running":
-                running_filter = Q(sync_at__isnull=False, is_managed=True,
-                                   is_paused=False, is_ended=False) | \
-                                 Q(is_managed=False)
-                queryset = queryset.filter(running_filter)
-            elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
-            elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
 
         if "from_aw" in filters:
             from_aw = filters.get('from_aw') == '1'

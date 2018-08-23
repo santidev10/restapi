@@ -103,7 +103,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     start = SerializerMethodField()
     end = SerializerMethodField()
     is_disapproved = SerializerMethodField()
-    status = SerializerMethodField()
     cost_method = SerializerMethodField()
     updated_at = SerializerMethodField()
     # analytic data
@@ -135,7 +134,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "account", "status",
+            "id", "name", "start", "end", "account",
             "thumbnail", "is_changed", "weekly_chart",
             # delivered stats
             "clicks", "cost", "impressions", "video_views", "video_view_rate",
@@ -329,14 +328,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         if user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
-
-    def get_status(self, obj):
-        if obj.is_ended:
-            return obj.STATUS_ENDED
-        if obj.is_paused:
-            return obj.STATUS_PAUSED
-        if obj.sync_at or not obj.is_managed:
-            return obj.STATUS_RUNNING
 
     @staticmethod
     def get_name(obj):
