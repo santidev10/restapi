@@ -148,8 +148,6 @@ class SingleDatabaseApiConnectorPatcher:
         pass
 
 
-
-
 class MockResponse(object):
     def __init__(self, status_code=HTTP_200_OK, **kwargs):
         self.status_code = status_code
