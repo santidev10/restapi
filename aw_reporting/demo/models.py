@@ -950,7 +950,7 @@ class DemoAccount(BaseDemo):
         "weekly_chart",
     }
     _dashboard_specific_keys = {
-        "agency"
+        "agency",
         "brand",
         "cost_method",
     }

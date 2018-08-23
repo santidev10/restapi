@@ -486,7 +486,7 @@ class DashboardAccountCreationCampaignsListApiView:
         return method
 
 
-class BaseAccountCreationDetailsAPIView:
+class AnalyticsAccountCreationDetailsAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
@@ -502,12 +502,20 @@ class BaseAccountCreationDetailsAPIView:
         return method
 
 
-class AnalyticsAccountCreationDetailsAPIView(BaseAccountCreationDetailsAPIView):
-    pass
+class DashboardAccountCreationDetailsAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
 
+                account = DemoAccount()
+                data = account.header_data_dashboard
+                data['details'] = account.details
 
-class DashboardAccountCreationDetailsAPIView(BaseAccountCreationDetailsAPIView):
-    pass
+                return Response(status=HTTP_200_OK, data=data)
+            return original_method(view, request, pk=pk, **kwargs)
+
+        return method
 
 
 class BaseAccountCreationOverviewAPIView:
