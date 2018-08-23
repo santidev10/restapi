@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_202_ACCEPTED
@@ -31,7 +31,9 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher, int_iterator
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -70,7 +72,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "weekly_chart",
     }
 
-    url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_LIST)
+    url = reverse(Name.Analytics.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.ANALYTICS])
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -907,3 +909,40 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts_by_id = {acc["id"]: acc for acc in response.data["items"]}
         self.assertTrue(accounts_by_id.get(own_account_creation.id)["is_editable"])
         self.assertFalse(accounts_by_id.get(visible_account_creation.id)["is_editable"])
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_no_demo_data(self):
+        account = Account.objects.create(id=next(int_iterator))
+        AccountCreation.objects.filter(account=account).update(owner=self.user)
+        Campaign.objects.create(id=next(int_iterator), account=account)
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        item = response.data["items"][0]
+        stats = (
+            "clicks",
+            "cost",
+            "impressions",
+            "video_views",
+        )
+        rates = (
+            "average_cpm",
+            "average_cpv",
+            "ctr",
+            "ctr_v",
+            "plan_cpm",
+            "plan_cpv",
+            "video_view_rate",
+        )
+        for key in stats:
+            self.assertEqual(item[key], 0, key)
+        for key in rates:
+            self.assertIsNone(item[key])
