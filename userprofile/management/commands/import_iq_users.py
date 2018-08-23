@@ -56,13 +56,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--update_visible_accounts_only',
-            dest='update_visible_accounts_only',
-            help='Update visible accounts setting only',
-            type=bool,
-            default=False,
-        )
-        parser.add_argument(
             "--fixtures_suffix",
             dest="fixtures_suffix",
             help="set fixtures suffix like '20180629'",
@@ -73,17 +66,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.files_suffix = options.get("fixtures_suffix")
 
-
         with transaction.atomic():
             Permissions.sync_groups()
 
-            if options['update_visible_accounts_only']:
-                self.update_visible_accounts_only()
-            else:
-                users_info = self.get_users_info()
-                self.import_users(users_info)
-                self.update_users_permissions()
-                self.update_dashboard_access(users_info)
+            users_info = self.get_users_info()
+            self.import_users(users_info)
+            self.update_permissions(users_info)
 
     def load_sites_info(self):
         mask = settings.BASE_DIR + \
@@ -105,31 +93,6 @@ class Command(BaseCommand):
             except UserProfile.DoesNotExist:
                 logger.info("New account [{}]:  {}" \
                             .format(name, user.email))
-                user.save()
-
-    def update_visible_accounts_only(self):
-        for name, user_info in self.get_users_info():
-            email = user_info["email"]
-            try:
-                user = UserProfile.objects.get(email=email)
-            except UserProfile.DoesNotExist:
-                logger.info("{} - does not exist\n".format(email))
-                continue
-
-            db_value = user.aw_settings["visible_accounts"]
-            import_value = user_info["aw_settings"][UserSettingsKey.VISIBLE_ACCOUNTS]
-
-            if db_value != import_value:
-                logger.info("{}  different set of visible accounts\n"
-                            "db    : {}\n"
-                            "import: {}\n"
-                            .format(
-                                email,
-                                ",".join(db_value),
-                                ",".join(import_value),
-                            )
-                )
-                user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = import_value
                 user.save()
 
     def get_users_info(self):
@@ -180,7 +143,7 @@ class Command(BaseCommand):
                     logger.info("Loaded {}: {}".format(name, user_info["email"]))
         return result
 
-    def update_users_permissions(self):
+    def update_users_permissions(self, users_info):
         for user in UserProfile.objects.all():
             if user.email.lower().endswith('@channelfactory.com'):
                 logger.info("Updating CHF account:" + user.email)
@@ -198,29 +161,5 @@ class Command(BaseCommand):
                 user.aw_settings = self.DEFAULT_AW_SETTINGS
                 user.save()
 
-            user.add_custom_user_group(PermissionGroupNames.HIGHLIGHTS)
-
-    def update_dashboard_access(self, users_info):
-        dashboard_id = self.FEATURES_IDS["dashboard"]
-
-        users_dict = {user_info["email"]: user_info for name, user_info in users_info}
-        queryset = UserProfile.objects.all()
-        # SAAS-2479 --->
-        queryset = queryset.filter(email__in=[
-            "freddie.taylor@publicismedia.com",
-            "juan.andresclavera@publicismedia.com",
-        ])
-        assert queryset.count() == 2
-        # <--- SAAS-2479
-        for user in queryset:
-            user_info = users_dict.get(user.email)
-            if not users_dict:
-                continue
-
-            features_available = user_info["features_available"]
-            if dashboard_id in features_available:
-                user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
-
-        for user in UserProfile.objects.all():
-            if user.is_staff or user.email.lower().endswith('@channelfactory.com'):
-                user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
+            for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+                user.add_custom_user_group(group_name)
