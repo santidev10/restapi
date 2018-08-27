@@ -726,6 +726,10 @@ class DemoCampaign(BaseDemo):
 
 
 class DemoAccount(BaseDemo):
+    plan_cost = 2500000
+    plan_impressions = 242600000
+    plan_video_views = 21600000
+
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
         self.children = [DemoCampaign(id="demo{}".format(i + 1),
@@ -839,9 +843,9 @@ class DemoAccount(BaseDemo):
             ctr_v=self.ctr_v,
             ctr_v_bottom=self.ctr_v_bottom,
             ctr_v_top=self.ctr_v_top,
-            delivered_cost=12.345,
-            delivered_impressions=234.567,
-            delivered_video_views=34.567,
+            delivered_cost=self.cost,
+            delivered_impressions=self.impressions,
+            delivered_video_views=self.video_views,
             device=[dict(name=e, value=i + 1) for i, e in enumerate(reversed(Devices))],
             gender=[dict(name=e, value=i + 1) for i, e in enumerate(Genders)],
             has_statistics=True,
@@ -849,9 +853,9 @@ class DemoAccount(BaseDemo):
             impressions_last_week=self.impressions_last_week,
             impressions_this_week=self.impressions_this_week,
             location=[dict(name=e['label'], value=i + 1) for i, e in enumerate(reversed(self.location))][:6],
-            plan_cost=123.45,
-            plan_impressions=2345.67,
-            plan_video_views=345.67,
+            plan_cost=self.plan_cost,
+            plan_impressions=self.plan_impressions,
+            plan_video_views=self.plan_video_views,
             video100rate=self.video100rate,
             video25rate=self.video25rate,
             video50rate=self.video50rate,
@@ -960,7 +964,6 @@ class DemoAccount(BaseDemo):
         "is_managed",
         "status",
     }
-
 
     @property
     def header_data_analytics(self):

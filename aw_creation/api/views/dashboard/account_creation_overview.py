@@ -42,18 +42,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         data = self._get_overview_data(account_creation, request.user)
         return Response(data=data)
 
-    def _get_account_creation(self, pk):
-        account_creation_queryset = AccountCreation.objects.all()
-        user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-            account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
-        try:
-            return account_creation_queryset.get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            raise Http404
-
-    def _get_filters(self):
+    def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
         end_date = data.get("end_date")
@@ -65,6 +54,17 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             campaigns=data.get("campaigns"),
             ad_groups=data.get("ad_groups"))
         return filters
+
+    def _get_account_creation(self, pk):
+        account_creation_queryset = AccountCreation.objects.all()
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
+        try:
+            return account_creation_queryset.get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            raise Http404
 
     def _get_stats_aggregator(self, user):
         keys_to_exclude = ()
@@ -78,7 +78,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         }
 
     def _get_overview_data(self, account_creation, current_user):
-        filters = self._get_filters()
+        filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
         if filters['campaigns']:
             fs["ad_group__campaign__id__in"] = filters['campaigns']
@@ -161,7 +161,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             data[field] = None
         account_campaigns_ids = account_creation.account. \
             campaigns.values_list("id", flat=True)
-        filters = self._get_filters()
+        filters = self.get_filters()
         campaigns_ids = filters.get("campaigns")
         ad_groups_ids = filters.get("ad_groups")
         start_date = filters.get("start_date")
