@@ -24,7 +24,6 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account
 from aw_reporting.models import BASE_STATS
 from utils.api_paginator import CustomPageNumberPaginator
 
