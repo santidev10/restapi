@@ -170,8 +170,6 @@ def save_account_receiver(sender, instance, created, **_):
 
 @receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
 def create_account_receiver(sender, instance: Account, created, **_):
-    if getattr(settings, "DISABLE_ACCOUNT_CREATION_AUTO_CREATING", False):
-        return
     if created and not instance.skip_creating_account_creation:
         AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 

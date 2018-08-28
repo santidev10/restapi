@@ -16,7 +16,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=user,
         )
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
                                                           is_approved=True)
         start = datetime(2009, 3, 10).date()
@@ -64,7 +65,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=user,
         )
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
                                                           is_approved=True)
         Campaign.objects.create(id=1, name="", account=account)

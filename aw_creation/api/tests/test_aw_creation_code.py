@@ -13,11 +13,11 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
 class CreationCodeAPITestCase(AwReportingAPITestCase):
 
     def test_success_get(self):
-        user = self.create_test_user(auth=False)
+        self.create_test_user(auth=False)
         account = Account.objects.create(id="123", name="What")
-        account_creation = AccountCreation.objects.create(
-            name="", owner=user, account=account, is_approved=True
-        )
+        account_creation = account.account_creation
+        account_creation.is_managed = True
+        account_creation.save()
         campaign_creation = CampaignCreation.objects.create(
             id=1,
             name="Sm name", account_creation=account_creation,

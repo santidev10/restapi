@@ -56,17 +56,13 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         user.save()
         self._hide_demo_data(user)
         account = Account.objects.create(id=1)
-        account_creation = AccountCreation.objects.create(id=2,
-                                                          name="", owner=user,
-                                                          is_paused=True,
-                                                          account=account)
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id,
+            response = self._request(account.account_creation.id,
                                      indicator=Indicator.CPV)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -159,16 +155,13 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_cost_reflects_to_aw_rates_setting(self):
-        user = self.create_test_user()
+        self.create_test_user()
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
             ordered_rate=12)
         account = Account.objects.create(id=next(int_iterator))
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_paused=True,
-                                                          account=account)
         campaign = Campaign.objects.create(id=next(int_iterator),
                                            salesforce_placement=placement,
                                            account=account)
@@ -207,7 +200,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             with self.subTest(show_ad_words_rate=ad_words_rate), \
                  self.patch_user_settings(**user_settings):
 
-                response = self._request(account_creation.id,
+                response = self._request(account.account_creation.id,
                                          indicator=Indicator.COST)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertEqual(len(response.data), 1)
