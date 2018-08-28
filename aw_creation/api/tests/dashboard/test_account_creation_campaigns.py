@@ -6,10 +6,16 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.models import Account, Campaign, AdGroup
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
+from userprofile.permissions import Permissions
 from utils.utils_tests import ExtendedAPITestCase
 
 
 class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(DashboardAccountCreationCampaignsAPITestCase, cls).setUpClass()
+        Permissions.sync_groups()
+
     def _get_url(self, account_id):
         return reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.CAMPAIGNS,
                        args=(account_id,))

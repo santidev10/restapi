@@ -33,12 +33,18 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(AccountCreationSetupAPITestCase, cls).setUpClass()
+        Permissions.sync_groups()
+
     def _get_url(self, account_id):
         return reverse(Name.CreationSetup.ACCOUNT,
                        [Namespace.AW_CREATION],

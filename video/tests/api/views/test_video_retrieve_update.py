@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
 from utils.utils_tests import ExtendedAPITestCase, MockResponse
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import reverse
@@ -13,6 +14,11 @@ from video.api.urls.names import Name
 
 
 class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(VideoRetrieveUpdateTestSpec, cls).setUpClass()
+        Permissions.sync_groups()
+
     def _get_url(self, video_id):
         return reverse(
             Name.VIDEO,
