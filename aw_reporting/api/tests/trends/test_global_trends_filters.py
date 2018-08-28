@@ -121,7 +121,8 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.create_test_user()
         manager = Account.objects.create(id="manager")
         test_account_manager = User.objects.create(id="123",
-                                                   name="Test User Name")
+                                                   name="Test User Name",
+                                                   is_active=True)
         expected_am_data = dict(id=test_account_manager.id,
                                 name=test_account_manager.name)
 
@@ -158,7 +159,8 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.create_test_user()
         manager = Account.objects.create(id="manager")
         test_ad_ops = User.objects.create(id="123",
-                                          name="Test User Name")
+                                          name="Test User Name",
+                                          is_active=True)
         expected_ad_ops_data = dict(id=test_ad_ops.id,
                                     name=test_ad_ops.name)
 
@@ -194,7 +196,8 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.create_test_user()
         manager = Account.objects.create(id="manager")
         test_sales = User.objects.create(id="123",
-                                         name="Test User Name")
+                                         name="Test User Name",
+                                         is_active=True)
         expected_sales_data = dict(id=test_sales.id,
                                    name=test_sales.name)
 
