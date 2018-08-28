@@ -523,7 +523,10 @@ class BaseAccountCreationOverviewAPIView:
     def post(original_method):
         def method(view, request, pk, **kwargs):
             if pk == DEMO_ACCOUNT_ID:
-                return Response(data=DemoAccount().overview)
+                account = DemoAccount()
+                filters = view.get_filters()
+                account.filter_out_items(filters["campaigns"], filters["ad_groups"])
+                return Response(data=account.overview)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
