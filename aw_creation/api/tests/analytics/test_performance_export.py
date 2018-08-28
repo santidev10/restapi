@@ -7,7 +7,7 @@ from itertools import chain
 from itertools import product
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
+from django.test import override_settings
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
@@ -16,6 +16,7 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.excel_reports import PerformanceReportColumn
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -45,24 +46,28 @@ from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
-        return reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.PERFORMANCE_EXPORT,
+        return reverse(Name.Analytics.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
                        args=(account_creation_id,))
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
         return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
 
-    def _hide_demo_data_fallback(self, user):
+    def _add_aw_connection(self, user):
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
             user=user,
         )
+
+    def _hide_demo_data_fallback(self, user):
+        self._add_aw_connection(user)
 
     def _create_stats(self, account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -267,6 +272,24 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_success_for_linked_account(self):
+        user = self.create_test_user()
+        self._add_aw_connection(user)
+        manager = Account.objects.create(id=next(int_iterator))
+        AWAccountPermission.objects.create(aw_connection=user.aw_connections.first().connection,
+                                           account=manager)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        account.save()
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
 
 def get_sheet_from_response(response):

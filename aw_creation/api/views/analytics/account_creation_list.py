@@ -24,7 +24,6 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account
 from aw_reporting.models import BASE_STATS
 from utils.api_paginator import CustomPageNumberPaginator
 
@@ -94,12 +93,8 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
     def get_queryset(self, **filters):
         user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(**filters)
-            & Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+        queryset = AccountCreation.objects.user_related(user) \
+            .filter(**filters)
 
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:
