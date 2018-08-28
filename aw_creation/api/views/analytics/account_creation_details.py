@@ -45,13 +45,8 @@ class AnalyticsAccountCreationDetailsAPIView(APIView):
 
     def _get_account_creation(self, request, pk):
         user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
         try:
-            return queryset.get(pk=pk)
+            return AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
 

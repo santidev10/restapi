@@ -1264,12 +1264,7 @@ class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
 class PerformanceTargetingFiltersAPIView(APIView):
     def get_queryset(self):
         user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
-        return queryset
+        return AccountCreation.objects.user_related(user)
 
     @staticmethod
     def get_campaigns(item):
@@ -1351,13 +1346,8 @@ class PerformanceTargetingReportAPIView(APIView):
     def get_object(self):
         pk = self.kwargs["pk"]
         user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
         try:
-            item = queryset.get(pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
         else:

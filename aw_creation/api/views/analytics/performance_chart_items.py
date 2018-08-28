@@ -41,14 +41,9 @@ class AnalyticsPerformanceChartItemsApiView(APIView):
 
     def post(self, request, pk, **kwargs):
         dimension = kwargs.get('dimension')
-        user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+        user = request.user
         try:
-            item = queryset.get(pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         filters = self.get_filters()

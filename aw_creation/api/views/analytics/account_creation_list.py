@@ -94,12 +94,8 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
     def get_queryset(self, **filters):
         user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(**filters)
-            & Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+        queryset = AccountCreation.objects.user_related(user) \
+            .filter(**filters)
 
         sort_by = self.request.query_params.get("sort_by")
         if sort_by in self.annotate_sorts:

@@ -31,14 +31,9 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
-        user = self.request.user
-        related_accounts_ids = Account.user_objects(user).values_list("id", flat=True)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account_id__in=related_accounts_ids))
-        )
+        user = request.user
         try:
-            item = queryset.get(pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
