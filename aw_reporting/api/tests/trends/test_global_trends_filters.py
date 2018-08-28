@@ -155,6 +155,42 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         account_managers = response.data.get("am", [])
         self.assertEqual(account_managers, [expected_am_data])
 
+    def test_account_managers_inactive(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_account_manager = User.objects.create(id="123",
+                                                   name="Test User Name",
+                                                   is_active=False)
+
+        def create_relations(_id):
+            opportunity = Opportunity.objects.create(
+                id=_id,
+                account_manager=test_account_manager)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            campaign = Campaign.objects.create(
+                id=_id,
+                salesforce_placement=placement,
+                account=test_account)
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                date=now_in_default_tz(),
+            )
+
+            test_account.managers.add(manager)
+            test_account.save()
+
+        create_relations(1)
+        create_relations(2)
+
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account_managers = response.data.get("am", [])
+        self.assertEqual(account_managers, [])
+
     def test_ad_ops_manager(self):
         self.create_test_user()
         manager = Account.objects.create(id="manager")
@@ -192,6 +228,40 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         account_managers = response.data.get("ad_ops", [])
         self.assertEqual(account_managers, [expected_ad_ops_data])
 
+    def test_ad_ops_manager_inactive(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_ad_ops = User.objects.create(id="123",
+                                          name="Test User Name (inactive)",
+                                          is_active=False)
+        def create_relations(_id):
+            opportunity = Opportunity.objects.create(
+                id=_id,
+                ad_ops_manager=test_ad_ops)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            campaign = Campaign.objects.create(
+                id=_id,
+                salesforce_placement=placement,
+                account=test_account)
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                date=now_in_default_tz(),
+            )
+            test_account.managers.add(manager)
+            test_account.save()
+
+        create_relations(1)
+        create_relations(2)
+
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account_managers = response.data.get("ad_ops", [])
+        self.assertEqual(account_managers, [])
+
     def test_sales_manager(self):
         self.create_test_user()
         manager = Account.objects.create(id="manager")
@@ -227,6 +297,40 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         account_managers = response.data.get("sales", [])
         self.assertEqual(account_managers, [expected_sales_data])
+
+    def test_sales_manager_inactive(self):
+        self.create_test_user()
+        manager = Account.objects.create(id="manager")
+        test_sales = User.objects.create(id="123",
+                                         name="Test User Name",
+                                         is_active=False)
+
+        def create_relations(_id):
+            opportunity = Opportunity.objects.create(
+                id=_id,
+                sales_manager=test_sales)
+            placement = OpPlacement.objects.create(id=_id,
+                                                   opportunity=opportunity)
+            test_account = Account.objects.create(id=_id)
+            campaign = Campaign.objects.create(
+                id=_id,
+                salesforce_placement=placement,
+                account=test_account)
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                date=now_in_default_tz())
+            test_account.managers.add(manager)
+            test_account.save()
+
+        create_relations(1)
+        create_relations(2)
+
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account_managers = response.data.get("sales", [])
+        self.assertEqual(account_managers, [])
 
     def test_brand(self):
         self.create_test_user()
