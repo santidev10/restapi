@@ -22,11 +22,12 @@ from utils.views import xlsx_response
 
 @demo_view_decorator
 class AnalyticsPerformanceExportApiView(APIView):
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, **_):
+        user = request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 

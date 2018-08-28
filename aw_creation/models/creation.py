@@ -85,7 +85,18 @@ class UniqueCreationItem(models.Model):
         return self.sync_at and self.sync_at >= self.created_at
 
 
+class AccountCreationManager(models.Manager.from_queryset(CreationItemQueryset)):
+    def user_related(self, user):
+        related_accounts = Account.user_objects(user)
+        return self.get_queryset() \
+            .filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
+
+
 class AccountCreation(UniqueCreationItem):
+    objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
