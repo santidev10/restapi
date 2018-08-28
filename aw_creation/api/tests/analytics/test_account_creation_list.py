@@ -946,3 +946,61 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             self.assertEqual(item[key], 0, key)
         for key in rates:
             self.assertIsNone(item[key])
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_visible_all_accounts_does_not_affect_values(self):
+        """
+        Bug: https://channelfactory.atlassian.net/browse/VIQ-223
+        Summary: Analytics > The adjustment of OPs visibility affects Analytics data displaying
+        """
+        account = Account.objects.create(id=next(int_iterator))
+        AccountCreation.objects.filter(account=account).update(owner=self.user)
+        common_rates = dict(ordered_units=1, total_cost=1)
+        opportunity = Opportunity.objects.create()
+        placement_cpv = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                   goal_type_id=SalesForceGoalType.CPV,
+                                                   **common_rates)
+        placement_cpm = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                   goal_type_id=SalesForceGoalType.CPM,
+                                                   **common_rates)
+        common_stats = dict(
+            clicks=1, cost=1, video_views=1, impressions=1
+        )
+        Campaign.objects.create(id=next(int_iterator), account=account,
+                                salesforce_placement=placement_cpm,
+                                **common_stats)
+        Campaign.objects.create(id=next(int_iterator), account=account,
+                                salesforce_placement=placement_cpv,
+                                **common_stats)
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: ["some_account_id"],
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        item = response.data["items"][0]
+        stats = (
+            "clicks",
+            "cost",
+            "impressions",
+            "video_views",
+        )
+        rates = (
+            "average_cpm",
+            "average_cpv",
+            "ctr",
+            "ctr_v",
+            "plan_cpm",
+            "plan_cpv",
+            "video_view_rate",
+        )
+        for key in stats + rates:
+            with self.subTest(key):
+                self.assertIsNotNone(item[key], key)
+                self.assertGreater(item[key], 0)
