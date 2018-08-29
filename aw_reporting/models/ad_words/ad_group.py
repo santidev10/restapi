@@ -8,6 +8,9 @@ from userprofile.managers import UserRelatedManager
 class AdGroupManager(UserRelatedManager):
     _account_id_ref = "campaign__account_id"
 
+    def get_queryset(self, ignore_user=True):
+        return super(AdGroupManager, self).get_queryset(ignore_user=ignore_user)
+
 
 class AdGroup(ModelPlusDeNormFields):
     objects = AdGroupManager()
