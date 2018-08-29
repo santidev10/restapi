@@ -1,7 +1,7 @@
 import json
+from datetime import timedelta
 
 from django.core.urlresolvers import reverse
-from datetime import timedelta
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
@@ -12,7 +12,8 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
 
     def test_success_patch(self):
         user = self.create_test_user(auth=False)
-        account = Account.objects.create(id="123", name="")
+        account = Account.objects.create(id="123", name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="", owner=user, account=account, is_approved=True
         )

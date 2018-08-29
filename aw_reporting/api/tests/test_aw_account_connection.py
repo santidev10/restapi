@@ -3,7 +3,6 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -165,7 +164,6 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
         user_exists = get_user_model().objects.filter(id=self.user.id).exists()
         self.assertTrue(user_exists)
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_creates_account_creation(self):
         url = "{}?{}".format(
             self._url,
@@ -203,7 +201,8 @@ class AccountConnectionPITestCase(AwReportingAPITestCase):
     def test_leaves_account_creation_on_unlink(self):
         user = self.user
         manager = Account.objects.create(id=next(int_iterator))
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account.managers.add(manager)
         connection = AWConnection.objects.create(
             email="you@mail.kz",

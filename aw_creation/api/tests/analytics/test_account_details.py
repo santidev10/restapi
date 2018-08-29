@@ -5,7 +5,6 @@ from itertools import product
 from unittest.mock import patch
 
 import pytz
-from django.test import override_settings
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
@@ -98,7 +97,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_get(self):
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="", is_managed=False, owner=self.user,
             account=account, is_approved=True)
@@ -175,7 +175,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_updated_at(self):
         test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
-        account = Account.objects.create(update_time=test_time)
+        account = Account.objects.create(update_time=test_time,
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="Name 123", account=account,
             is_approved=True, owner=self.user)
@@ -195,7 +196,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], None)
 
     def test_average_cpm_and_cpv(self):
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -218,7 +219,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
 
     def test_plan_cpm_and_cpv(self):
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user, is_approved=True)
         account_creation.refresh_from_db()
@@ -247,7 +248,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["plan_cpv"], expected_cpv)
 
     def test_ctr_and_ctr_v(self):
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -290,7 +291,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         Flight.objects.create(id=4, placement=placement_cpv,
                               total_cost=total_cost_cpv[1],
                               ordered_units=ordered_units_cpv[1])
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -325,7 +326,6 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(response.data["id"], account_creation.id)
                 self.assertIsNone(response.data[key])
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_no_demo_data(self):
         account = Account.objects.create(id=next(int_iterator))
         AccountCreation.objects.filter(account=account).update(owner=self.user)

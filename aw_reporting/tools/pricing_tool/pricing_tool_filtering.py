@@ -53,7 +53,7 @@ class PricingToolFiltering:
             .values_list("category_id", flat=True) \
             .order_by("category_id").distinct()
 
-        product_types = AdGroup.objects.all() \
+        product_types = AdGroup.objects.get_queryset(ignore_user=False) \
             .values_list("type", flat=True) \
             .order_by("type") \
             .distinct()

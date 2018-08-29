@@ -93,7 +93,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         self._hide_demo_data(user)
 
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -147,7 +148,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_get_video(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_approved=True,
                                                           account=account)
@@ -283,7 +285,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -315,7 +318,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_get_all_dimensions(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -334,7 +338,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -408,7 +413,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_all_dimensions_hide_costs_independent(self, hide_dashboard_costs, dimension):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -439,7 +445,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
 
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -489,7 +496,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
 
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -531,7 +539,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_device_cost(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -576,7 +585,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_ads_average_rate(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -631,7 +641,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_convention_independent(self, show_conversions, dimension):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         self.create_stats(account)
         account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account,
                                                           is_approved=True)

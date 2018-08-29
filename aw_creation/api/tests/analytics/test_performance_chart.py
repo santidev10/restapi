@@ -98,7 +98,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
     def test_success_get_filter_dates(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -120,7 +121,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -143,7 +145,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
     def test_all_dimensions(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -215,33 +218,6 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[1]['title'], "Campaign #demo1")
         self.assertEqual(data[2]['title'], "Campaign #demo2")
 
-    def test_cpm_cpv_is_visible(self):
-        user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_paused=True)
-
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
-        }
-
-        indicators = Indicator.CPM, Indicator.CPV
-        dimensions = ALL_DIMENSIONS
-        account_ids = account_creation.id, DEMO_ACCOUNT_ID
-        staffs = True, False
-
-        test_data = list(product(indicators, dimensions, account_ids, staffs))
-        for indicator, dimension, account_id, is_staff in test_data:
-            msg = "Indicator: {}, dimension: {}, account: {}, is_staff: {}" \
-                  "".format(indicator, dimension, account_id, is_staff)
-            with self.patch_user_settings(**user_settings), \
-                 self.subTest(msg=msg):
-                user.is_staff = is_staff
-                user.save()
-                response = self._request(account_id,
-                                         indicator=indicator,
-                                         dimention=dimension)
-                self.assertEqual(response.status_code, HTTP_200_OK)
-
     @generic_test([
         ("AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, is_demo = {}, is_staff = {}".format(*args), args, dict())
         for args in product(
@@ -281,7 +257,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
             ordered_rate=12)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True,
                                                           account=account)

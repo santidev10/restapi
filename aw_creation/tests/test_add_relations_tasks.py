@@ -1,12 +1,20 @@
-from utils.utils_tests import ExtendedAPITestCase
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from datetime import timedelta
-from aw_creation.tasks import add_relation_between_report_and_creation_ads
+
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
+from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
-from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, AdCreation
-from aw_reporting.models import Account, Campaign, AdGroup, Ad
+from aw_reporting.models import Account
+from aw_reporting.models import Ad
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AddRelationsTestCase(ExtendedAPITestCase):
@@ -26,13 +34,14 @@ class AddRelationsTestCase(ExtendedAPITestCase):
                                                               sync_at=sync_at)
         campaign_creation_2 = CampaignCreation.objects.create(name="", account_creation=account_creation,
                                                               sync_at=sync_at)
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         account_creation.account = account
         account_creation.save()
         campaign_1 = Campaign.objects.create(
-            id="1", account=account,  name="ee, 1 #{}".format(campaign_creation_2.id),
+            id="1", account=account, name="ee, 1 #{}".format(campaign_creation_2.id),
         )
-        campaign_2 = Campaign.objects.create(id="2", name="# Campaign #", account=account)
+        Campaign.objects.create(id="2", name="# Campaign #", account=account)
 
         # run tasks
         add_relation_between_report_and_creation_campaigns()
@@ -45,7 +54,8 @@ class AddRelationsTestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_creation_2.campaign_id, campaign_1.id)
 
     def test_link_ad_groups(self):
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         campaign = Campaign.objects.create(id="1", account=account, name="")
 
         sync_at = timezone.now() + timedelta(seconds=60)
@@ -79,7 +89,8 @@ class AddRelationsTestCase(ExtendedAPITestCase):
                           "ad_group_1 contain its id, but campaign_1 isn't linked with campaign_creation_1")
 
     def test_link_ads(self):
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         campaign = Campaign.objects.create(id="1", account=account, name="")
         ad_group_1 = AdGroup.objects.create(id="1", campaign=campaign, name="")
         ad_group_2 = AdGroup.objects.create(id="2", campaign=campaign, name="")
@@ -118,5 +129,3 @@ class AddRelationsTestCase(ExtendedAPITestCase):
         self.assertEqual(ad_creation_2.ad_id, ad_2.id)
         self.assertIsNone(ad_creation_3.ad_id, "AdGroup #1 != AdGroupCreation#2")
         self.assertIsNone(ad_creation_4.ad_id, "AdGroup #2 != AdGroupCreation#1")
-
-
