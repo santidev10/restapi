@@ -16,7 +16,7 @@ from aw_reporting.excel_reports import PerformanceReport
 from aw_reporting.excel_reports import PerformanceReportColumn
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import DATE_FORMAT
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -93,7 +93,7 @@ class DashboardPerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
-        aggregation = copy(all_stats_aggregate)
+        aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
         if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(

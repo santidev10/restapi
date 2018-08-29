@@ -571,7 +571,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         for key in rates:
             self.assertIsNone(item[key])
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     @generic_test([
         (
                 "Goal type: {}, Dynamic placement: {}".format(goal_type_str(goal_type_id), dynamic_placement),
@@ -587,7 +586,10 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity,
                                                goal_type_id=goal_type_id,
-                                               dynamic_placement=dynamic_placement)
+                                               dynamic_placement=dynamic_placement,
+                                               tech_fee=1)
+        Flight.objects.create(placement=placement,
+                              ordered_units=1, total_cost=1, cost=1, delivered=1, ordered_cost=1)
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
         account = Account.objects.create(id=next(int_iterator))
         account.managers.add(chf_mcc_account)

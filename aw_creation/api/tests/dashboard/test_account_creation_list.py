@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from itertools import product
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -25,15 +26,18 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import Contact
+from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
@@ -471,3 +475,46 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
+
+    @generic_test([
+        (
+                "Goal type: {}, Dynamic placement: {}".format(goal_type_str(goal_type_id), dynamic_placement),
+                (goal_type_id, dynamic_placement),
+                dict()
+        )
+        for goal_type_id, dynamic_placement in product(
+            (SalesForceGoalType.CPM, SalesForceGoalType.CPV),
+            (DynamicPlacementType.BUDGET, DynamicPlacementType.RATE_AND_TECH_FEE),
+        )
+    ])
+    def test_budget_placements_rates(self, goal_type_id, dynamic_placement):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity,
+                                               goal_type_id=goal_type_id,
+                                               dynamic_placement=dynamic_placement,
+                                               tech_fee=1)
+        Flight.objects.create(placement=placement,
+                              ordered_units=1, total_cost=1, cost=1, delivered=1, ordered_cost=1)
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        }
+
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement,
+                                           cost=1, impressions=2000, video_views=30)
+
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        item = response.data["items"][0]
+        if goal_type_id == SalesForceGoalType.CPM:
+            self.assertAlmostEqual(item["average_cpm"], campaign.cost / campaign.impressions * 1000)
+        elif goal_type_id == SalesForceGoalType.CPV:
+            self.assertAlmostEqual(item["average_cpv"], campaign.cost / campaign.video_views)

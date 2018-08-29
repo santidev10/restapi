@@ -1,19 +1,58 @@
+import logging
 from collections import defaultdict
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
-from django.db.models import FloatField, Avg, Min, Sum, Case, When, F
+from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import Min
+from django.db.models import Sum
+from django.db.models import When
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.models import *
+from aw_reporting.models import AdGroupStatistic, base_stats_aggregator
+from aw_reporting.models import AdStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CALCULATED_STATS
+from aw_reporting.models import CONVERSIONS
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import CityStatistic
+from aw_reporting.models import Devices
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import Genders
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import QUARTILE_STATS
+from aw_reporting.models import RemarkList
+from aw_reporting.models import RemarkStatistic
+from aw_reporting.models import SUM_STATS
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models import dict_quartiles_to_rates
+from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserSettingsKey
-from utils.datetime import now_in_default_tz, as_datetime
+from utils.datetime import as_datetime
+from utils.datetime import now_in_default_tz
 from utils.lang import flatten
-from utils.utils import get_all_class_constants
 from utils.registry import registry
+from utils.utils import get_all_class_constants
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +169,8 @@ class DeliveryChart:
         )
         if self.params['segmented_by']:
             charts = self.get_segmented_data(
-                self.get_chart_data, self.params['segmented_by'],
+                self.get_chart_data,
+                self.params['segmented_by'],
                 **chart_type_kwargs
             )
         else:
@@ -588,7 +628,7 @@ class DeliveryChart:
 
     def add_annotate(self, queryset):
         if not self.params["date"]:
-            kwargs = dict(**all_stats_aggregate)
+            kwargs = dict(**all_stats_aggregator())
             if queryset.model is AdStatistic:
                 kwargs["average_position"] = Avg(
                     Case(
@@ -604,6 +644,7 @@ class DeliveryChart:
             kwargs = {}
             fields = self.get_fields()
             all_sum_stats = SUM_STATS + CONVERSIONS + QUARTILE_STATS
+            base_stats_aggregate = base_stats_aggregator()
             for v in fields:
                 if v in all_sum_stats:
                     kwargs["sum_%s" % v] = Sum(v)

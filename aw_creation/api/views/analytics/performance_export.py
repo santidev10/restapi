@@ -13,7 +13,7 @@ from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import PerformanceReport
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import DATE_FORMAT
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -78,7 +78,7 @@ class AnalyticsPerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
-        aggregation = all_stats_aggregate
+        aggregation = all_stats_aggregator("ad_group__campaign__")
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
             **aggregation
         )

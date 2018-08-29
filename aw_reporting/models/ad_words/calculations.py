@@ -1,8 +1,15 @@
 from functools import wraps
 
-from django.db.models import Sum, Case, When, IntegerField, F
+from django.db.models import Case
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import IntegerField
+from django.db.models import Sum
+from django.db.models import When
 
-from aw_reporting.models.ad_words.constants import QUARTILE_STATS, CONVERSIONS
+from aw_reporting.models.ad_words.constants import CONVERSIONS
+from aw_reporting.models.ad_words.constants import QUARTILE_STATS
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 
 def get_average_cpv(*args, **kwargs):
@@ -142,9 +149,6 @@ def dict_add_calculated_stats(data):
                 for data_key, fn_key in kwargs_map
             ))
         )
-        # kwargs = dict(((fn_key, data.get(data_key))
-        #                for data_key, fn_key in kwargs_map))
-
         data[n] = None if None in args else rec(*args, **kwargs)
 
 
@@ -159,6 +163,7 @@ def dict_quartiles_to_rates(data):
             if impressions and qv is not None else None
         if qf in data:
             del data[qf]
+
 
 def base_stats_aggregator(prefix=None):
     prefix = prefix or ""
@@ -206,18 +211,67 @@ client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
     *CLIENT_COST_REQUIRED_FIELDS, prefix="ad_group__campaign__"
 )
 
-# fixme: deprecated
-base_stats_aggregate = base_stats_aggregator()
 
-
-def all_stats_aggregator():
+def all_stats_aggregator(prefix=None):
     res = {"sum_{}".format(s): Sum(s)
            for s in QUARTILE_STATS + CONVERSIONS}
-    res.update(base_stats_aggregator())
+    res.update(base_stats_aggregator(prefix))
     return res
 
 
-all_stats_aggregate = all_stats_aggregator()
+def dynamic_placement_aggregatons(prefix=None):
+    prefix = prefix or ""
+    return dict(
+        dynamic_placement_cpm_cost=Sum(
+            Case(
+                When(**{
+                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
+                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPM,
+                    "then": "cost"
+                }),
+                output_field=FloatField(),
+                default=0,
+            )
+        ),
+        dynamic_placement_cpv_cost=Sum(
+            Case(
+                When(**{
+                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
+                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPV,
+                    "then": "cost"
+                }),
+                output_field=FloatField(),
+                default=0,
+            )
+        ),
+        dynamic_placement_cpm_units=Sum(
+            Case(
+                When(**{
+                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
+                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPM,
+                    "then": "impressions"
+                }),
+                output_field=IntegerField(),
+                default=0,
+            )
+        ),
+        dynamic_placement_cpv_units=Sum(
+            Case(
+                When(**{
+                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
+                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPV,
+                    "then": "video_views"
+                }),
+                output_field=IntegerField(),
+                default=0,
+            )
+        ),
+    )
+
+
+def dashboard_aggregation(prefix=None):
+    prefix = prefix or ""
+    return {**base_stats_aggregator(prefix), **dynamic_placement_aggregatons(prefix)}
 
 
 def dict_norm_base_stats(data):

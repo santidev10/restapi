@@ -5,16 +5,14 @@ from datetime import timedelta
 from itertools import product
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import ALL_DIMENSIONS
+from aw_reporting.charts import ALL_DIMENSIONS, Dimension
 from aw_reporting.charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
@@ -47,12 +45,16 @@ from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
     def _request(self, account_creation_id, **kwargs):
-        url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.PERFORMANCE_CHART,
-                      args=(account_creation_id,))
+        url = reverse(
+            Name.Analytics.PERFORMANCE_CHART,
+            [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+            args=(account_creation_id,)
+        )
         return self.client.post(url,
                                 json.dumps(dict(is_staff=False, **kwargs)),
                                 content_type="application/json")
@@ -142,7 +144,13 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[0]['title'], "#1")
         self.assertEqual(len(data[0]['data'][0]['trend']), 1)
 
-    def test_all_dimensions(self):
+    @generic_test([
+        (dimension, (dimension,), dict())
+        for dimension in (Dimension.DEVICE, Dimension.GENDER, Dimension.AGE, Dimension.TOPIC, Dimension.INTEREST,
+                          Dimension.CREATIVE, Dimension.CHANNEL, Dimension.VIDEO, Dimension.KEYWORD,
+                          Dimension.LOCATION, Dimension.ADS)
+    ])
+    def test_all_dimensions(self, dimension):
         user = self.create_test_user()
         self._hide_demo_data(user)
         account = Account.objects.create(id=1, name="",
@@ -155,17 +163,14 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
 
         filters = {
             'indicator': 'video_view_rate',
+            'dimension': dimension,
         }
-        for dimension in ('device', 'gender', 'age', 'topic',
-                          'interest', 'creative', 'channel', 'video',
-                          'keyword', 'location', 'ad'):
-            filters['dimension'] = dimension
-            with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher):
-                response = self._request(account_creation.id, **filters)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(len(response.data), 3)
-            self.assertEqual(len(response.data[0]['data']), 1)
+        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self._request(account_creation.id, **filters)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data[0]['data']), 1)
 
     def test_success_get_no_account(self):
         user = self.create_test_user()
@@ -219,7 +224,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[2]['title'], "Campaign #demo2")
 
     @generic_test([
-        ("AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, is_demo = {}, is_staff = {}".format(*args), args, dict())
+        ("AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, is_demo = {}, is_staff = {}".format(
+            *args), args, dict())
         for args in product(
             (True, False),
             (True, False),
@@ -229,7 +235,8 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             (True, False)
         )
     ])
-    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo, is_staff):
+    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo,
+                                is_staff):
         user = self.create_test_user()
         user.is_staff = is_staff
         user.save()
