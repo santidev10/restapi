@@ -24,8 +24,41 @@ logger = logging.getLogger(__name__)
 
 MIN_FETCH_DATE = date(2012, 1, 1)
 
+TRACKING_CLICK_TYPES = ("Website", "Call-to-Action overlay", "App store", "Cards", "End cap")
+
 
 #  helpers --
+def prepare_click_type_report_key(ad_group_id, unique_field_name, row_date):
+    return "{}{}{}".format(ad_group_id, unique_field_name, row_date)
+
+
+def format_click_types_report(report, unique_field_name):
+    """
+    :param report: click types report
+    :param unique_field_name: Device, Age, Gender, Location, etc.
+    :return {"ad_group_id+unique_field+date": [Row(), Row() ...], ... }
+    """
+    if not report:
+        return {}
+
+    def reformat_click_type(click_type):
+        db_field_prefix = "clicks_"
+        return "{}{}".format(db_field_prefix, click_type.lower().replace("-", "_").replace(" ", "_"))
+
+    report = [row for row in report if row.ClickType in TRACKING_CLICK_TYPES]
+    result = dict()
+    for row in report:
+        key = prepare_click_type_report_key(row.AdGroupId, getattr(row, unique_field_name), row.Date)
+        value = {"click_type": reformat_click_type(row.ClickType), "clicks": row.Clicks}
+        try:
+            prev_value = result[key]
+        except KeyError:
+            result[key] = [value]
+        else:
+            result[key] = prev_value.append(value)
+    return result
+
+
 def quart_views(row, n):
     per = getattr(row, 'VideoQuartile%dRate' % n)
     impressions = int(row.Impressions)
@@ -330,6 +363,15 @@ def get_ad_groups_and_stats(client, account, *_):
     from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
         SUM_STATS
     from aw_reporting.adwords_reports import ad_group_performance_report
+    click_type_report_fields = (
+        "AdGroupId",
+        "Date",
+        "Device",
+        "Clicks",
+        "ClickType",
+    )
+    report_unique_field_name = "Device"
+
     now = now_in_default_tz()
     today = now.date()
     max_available_date = max_ready_date(now, tz_str=account.timezone)
@@ -346,8 +388,10 @@ def get_ad_groups_and_stats(client, account, *_):
         else (MIN_FETCH_DATE, max_available_date)
     report = ad_group_performance_report(
         client, dates=dates)
-
     if report:
+        click_type_report = ad_group_performance_report(client, dates=dates, fields=click_type_report_fields)
+        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+
         ad_group_ids = list(AdGroup.objects.filter(
             campaign__account=account).values_list('id', flat=True))
         campaign_ids = list(Campaign.objects.filter(
@@ -404,6 +448,14 @@ def get_ad_groups_and_stats(client, account, *_):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
+
+            key = prepare_click_type_report_key(
+                row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+            key_data = click_type_data.get(key)
+            if key_data:
+                for obj in key_data:
+                    stats[obj.get("click_type")] = obj.get("clicks")
+
             create_stats.append(AdGroupStatistic(**stats))
 
         if create_ad_groups:
@@ -412,7 +464,14 @@ def get_ad_groups_and_stats(client, account, *_):
         if create_stats:
             AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
-        SUM_STATS += ('engagements', 'active_view_impressions')
+        SUM_STATS += (
+            'engagements',
+            'active_view_impressions',
+            "clicks_website",
+            "clicks_call_to_action_overlay",
+            "clicks_app_store",
+            "clicks_cards",
+            "clicks_end_cap")
         stats = stats_queryset.values("ad_group_id").order_by(
             "ad_group_id").annotate(
             **{s: Sum(s) for s in SUM_STATS}

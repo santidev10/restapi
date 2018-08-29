@@ -375,8 +375,9 @@ def campaign_performance_report(client,
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None):
-    fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+def ad_group_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,
