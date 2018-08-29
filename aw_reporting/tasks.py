@@ -24,7 +24,13 @@ logger = logging.getLogger(__name__)
 
 MIN_FETCH_DATE = date(2012, 1, 1)
 
-TRACKING_CLICK_TYPES = ("Website", "Call-to-Action overlay", "App store", "Cards", "End cap")
+TRACKING_CLICK_TYPES = (
+    ("Website", "click_website"),
+    ("Call-to-Action overlay", "clicks_call_to_action_overlay"),
+    ("App store", "clicks_app_store"),
+    ("Cards", "clicks_cards"),
+    ("End cap", "clicks_end_cap")
+)
 
 
 #  helpers --
@@ -40,16 +46,12 @@ def format_click_types_report(report, unique_field_name):
     """
     if not report:
         return {}
-
-    def reformat_click_type(click_type):
-        db_field_prefix = "clicks_"
-        return "{}{}".format(db_field_prefix, click_type.lower().replace("-", "_").replace(" ", "_"))
-
-    report = [row for row in report if row.ClickType in TRACKING_CLICK_TYPES]
+    tracking_click_types = dict(TRACKING_CLICK_TYPES)
+    report = [row for row in report if row.ClickType in tracking_click_types.keys()]
     result = dict()
     for row in report:
         key = prepare_click_type_report_key(row.AdGroupId, getattr(row, unique_field_name), row.Date)
-        value = {"click_type": reformat_click_type(row.ClickType), "clicks": row.Clicks}
+        value = {"click_type": tracking_click_types.get(row.ClickType), "clicks": row.Clicks}
         try:
             prev_value = result[key]
         except KeyError:
