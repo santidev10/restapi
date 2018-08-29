@@ -6,12 +6,14 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import AccountCreation
 from aw_reporting.excel_reports import FOOTER_ANNOTATION
-from aw_reporting.models import Account, Campaign
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, int_iterator, reverse
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
@@ -27,20 +29,16 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         return self.client.post(url, "{}", content_type="application/json")
 
     def test_no_demo_data(self):
-        user = self.create_test_user()
+        self.create_test_user()
         account = Account.objects.create(id=next(int_iterator))
-        account_creation = AccountCreation.objects.create(owner=user,
-                                                          is_managed=False,
-                                                          account=account)
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
-
 
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+            response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_report_empty(sheet))

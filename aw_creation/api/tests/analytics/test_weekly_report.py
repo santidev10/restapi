@@ -32,7 +32,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_success(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account)
@@ -108,7 +109,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_header_budget(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,
                                                           is_managed=False,
                                                           account=account)
@@ -140,7 +142,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_header_cpv(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,
                                                           is_managed=False,
                                                           account=account)
@@ -160,7 +163,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_header_contracted_views(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,
                                                           is_managed=False,
                                                           account=account)
@@ -192,7 +196,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_header_na_if_no_data(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,
                                                           is_managed=False,
                                                           account=account)

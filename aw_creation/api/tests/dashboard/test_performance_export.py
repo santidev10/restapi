@@ -10,7 +10,6 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.excel_reports import PerformanceReport
 from aw_reporting.excel_reports import PerformanceReportColumn
@@ -87,10 +86,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
         self._create_stats(account)
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
@@ -98,17 +93,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         with patch("aw_reporting.charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+            response = self._request(account.account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_no_demo_data(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
 
         campaign_name = "Test campaign"
         Campaign.objects.create(name=campaign_name)
@@ -116,7 +107,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+            response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_empty_report(sheet))
@@ -130,10 +121,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                goal_type_id=SalesForceGoalType.CPM)
 
         account = Account.objects.create(id=next(int_iterator), name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
         campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
         ad_group = AdGroup.objects.create(campaign=campaign)
         impressions, views, aw_cost = 1234, 234, 12
@@ -160,7 +147,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+            response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -180,10 +167,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                goal_type_id=SalesForceGoalType.CPM)
 
         account = Account.objects.create(id=next(int_iterator), name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
         campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
         ad_group = AdGroup.objects.create(campaign=campaign)
         AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
@@ -193,7 +176,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id)
+            response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))

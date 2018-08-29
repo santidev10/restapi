@@ -21,11 +21,4 @@ class AccountCreationByAccountAPIView(APIView):
             account = accounts_queryset.get(id=account_id)
         except Account.DoesNotExist:
             raise Http404
-        account_creation, _ = AccountCreation.objects \
-            .get_or_create(account=account,
-                           owner=user,
-                           defaults=dict(
-                               name="",
-                               is_managed=False
-                           ))
-        return Response(dict(id=account_creation.id))
+        return Response(dict(id=account.account_creation.id))

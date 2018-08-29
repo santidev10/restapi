@@ -90,7 +90,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success(self):
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=next(int_iterator), account=account, owner=self.request_user,
             is_approved=True)
@@ -106,7 +106,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         any_date = date(2018, 1, 1)
         another_date = date(2018, 1, 2)
         self.assertNotEqual(any_date, another_date)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=next(int_iterator), account=account, owner=self.request_user,
             is_approved=True)
@@ -140,7 +140,8 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         conversions = 2
         all_conversions = 3
         view_through = 4
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)

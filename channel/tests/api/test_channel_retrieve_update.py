@@ -9,12 +9,18 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel
+from userprofile.permissions import Permissions
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import MockResponse
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(ChannelRetrieveUpdateTestCase, cls).setUpClass()
+        Permissions.sync_groups()
+
     def test_user_can_update_own_channel(self):
         user = self.create_test_user(True)
         with open('saas/fixtures/singledb_channel_list.json') as data_file:

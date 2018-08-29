@@ -7,7 +7,6 @@ from itertools import chain
 from itertools import product
 from unittest.mock import patch
 
-from django.test import override_settings
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
@@ -114,7 +113,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_success(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -146,7 +146,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_report_is_xlsx_formatted(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -166,7 +167,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_report_percent_formatted(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -197,7 +199,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self._hide_demo_data_fallback(user)
         any_date = date(2018, 1, 1)
         user.add_custom_user_permission("view_dashboard")
-        account = Account.objects.create(id=next(int_iterator), name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -227,7 +230,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_demo_data_fallback(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -247,7 +251,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
 
-        account = Account.objects.create(id=next(int_iterator), name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -273,7 +278,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_success_for_linked_account(self):
         user = self.create_test_user()
         self._add_aw_connection(user)
