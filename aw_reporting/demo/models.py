@@ -8,6 +8,7 @@ from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 # pylint: enable=import-error
 from userprofile.models import UserSettingsKey
+from utils.lang import pick_dict
 
 logger = logging.getLogger(__name__)
 
@@ -725,6 +726,10 @@ class DemoCampaign(BaseDemo):
 
 
 class DemoAccount(BaseDemo):
+    plan_cost = 2500000
+    plan_impressions = 242600000
+    plan_video_views = 21600000
+
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
         self.children = [DemoCampaign(id="demo{}".format(i + 1),
@@ -838,9 +843,9 @@ class DemoAccount(BaseDemo):
             ctr_v=self.ctr_v,
             ctr_v_bottom=self.ctr_v_bottom,
             ctr_v_top=self.ctr_v_top,
-            delivered_cost=12.345,
-            delivered_impressions=234.567,
-            delivered_video_views=34.567,
+            delivered_cost=self.cost,
+            delivered_impressions=self.impressions,
+            delivered_video_views=self.video_views,
             device=[dict(name=e, value=i + 1) for i, e in enumerate(reversed(Devices))],
             gender=[dict(name=e, value=i + 1) for i, e in enumerate(Genders)],
             has_statistics=True,
@@ -848,9 +853,9 @@ class DemoAccount(BaseDemo):
             impressions_last_week=self.impressions_last_week,
             impressions_this_week=self.impressions_this_week,
             location=[dict(name=e['label'], value=i + 1) for i, e in enumerate(reversed(self.location))][:6],
-            plan_cost=123.45,
-            plan_impressions=2345.67,
-            plan_video_views=345.67,
+            plan_cost=self.plan_cost,
+            plan_impressions=self.plan_impressions,
+            plan_video_views=self.plan_video_views,
             video100rate=self.video100rate,
             video25rate=self.video25rate,
             video50rate=self.video50rate,
@@ -882,54 +887,93 @@ class DemoAccount(BaseDemo):
         chart_lines = charts_obj.chart_lines(new_demo, filters)
 
         data = dict(
-            id=self.id,
             account=self.id,
-            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
-            name=self.name,
-            status="Running",
-            start=self.start_date,
-            end=self.end_date,
-            is_changed=False,
-            is_managed=True,
-            is_editable=True,
-            weekly_chart=chart_lines[0]['trend'],
-            video_view_rate=self.video_view_rate,
-            impressions=self.impressions,
-            video_views=self.video_views,
-            cost=self.cost,
-            clicks=self.clicks,
-            ctr=self.ctr,
-            ctr_v=self.ctr_v,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
-            channel_count=12,
-            video_count=12,
-            interest_count=10,
-            topic_count=8,
-            keyword_count=8,
-            is_disapproved=False,
-            from_aw=False,
-            updated_at=None,
+            agency=DEMO_AGENCY,
             average_cpm=10,
             average_cpv=.10782609,
+            brand=DEMO_BRAND,
+            channel_count=12,
+            clicks=self.clicks,
+            cost=self.cost,
+            cost_method=DEMO_COST_METHOD,
+            ctr=self.ctr,
+            ctr_v=self.ctr_v,
+            end=self.end_date,
+            from_aw=False,
+            id=self.id,
+            impressions=self.impressions,
+            interest_count=10,
+            is_changed=False,
+            is_disapproved=False,
+            is_editable=True,
+            is_managed=True,
+            keyword_count=8,
+            name=self.name,
             plan_cpm=11,
             plan_cpv=.3,
+            start=self.start_date,
+            status="Running",
+            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            topic_count=8,
+            updated_at=None,
+            video_count=12,
+            video_view_rate=self.video_view_rate,
+            video_views=self.video_views,
+            weekly_chart=chart_lines[0]['trend'],
         )
         return data
 
+    _shared_keys = {
+        "account",
+        "ad_count",
+        "average_cpm",
+        "average_cpv",
+        "channel_count",
+        "clicks",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "end",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
+        "video_view_rate",
+        "video_views",
+        "weekly_chart",
+    }
+    _dashboard_specific_keys = {
+        "agency",
+        "brand",
+        "cost_method",
+    }
+    _analytics_specific_keys = {
+        "from_aw",
+        "is_editable",
+        "is_managed",
+        "status",
+    }
+
     @property
     def header_data_analytics(self):
-        data = self._base_header_data
-        return data
+        keys = list(self._shared_keys | self._analytics_specific_keys)
+        return pick_dict(self._base_header_data, keys)
 
     @property
     def header_data_dashboard(self):
-        data = self._base_header_data
-        data.update(dict(
-            brand=DEMO_BRAND,
-            cost_method=DEMO_COST_METHOD,
-            agency=DEMO_AGENCY,
-        ))
-        return data
+        keys = list(self._shared_keys | self._dashboard_specific_keys)
+        return pick_dict(self._base_header_data, keys)
 
     @property
     def account_details(

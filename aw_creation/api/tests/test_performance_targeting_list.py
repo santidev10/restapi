@@ -90,9 +90,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'current_page',
             }
         )
-        self.assertEqual(response.data['items_count'], 1)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(response.data['items_count'], 2)
+        self.assertEqual(len(response.data['items']), 2)
+        item = response.data['items'][1]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -123,8 +123,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 response = self.client.get("{}?max_campaigns_count=2".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 1)
-        item = response.data['items'][0]
+        self.assertEqual(len(response.data['items']), 2)
+        item = response.data['items'][1]
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_get_demo(self):

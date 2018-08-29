@@ -716,3 +716,25 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertGreater(overview["plan_cost"], overview["delivered_cost"])
         self.assertGreater(overview["plan_impressions"], overview["delivered_impressions"])
         self.assertGreater(overview["plan_video_views"], overview["delivered_video_views"])
+
+    def test_demo_data_are_equal_to_header(self):
+        data = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(data["delivered_impressions"], 150000)
+        self.assertEqual(data["delivered_video_views"], 53000)
+        self.assertEqual(data["delivered_cost"], 3700)
+
+    def test_demo_data_filtered_by_campaign(self):
+        base_data = self._request(DEMO_ACCOUNT_ID)
+
+        data = self._request(DEMO_ACCOUNT_ID, campaigns=["demo1"])
+        self.assertGreater(base_data["delivered_impressions"], data["delivered_impressions"])
+        self.assertGreater(base_data["delivered_video_views"], data["delivered_video_views"])
+        self.assertGreater(base_data["delivered_cost"], data["delivered_cost"])
+
+    def test_demo_data_filtered_by_ad_groups(self):
+        base_data = self._request(DEMO_ACCOUNT_ID)
+
+        data = self._request(DEMO_ACCOUNT_ID, ad_groups=["demo11"])
+        self.assertGreater(base_data["delivered_impressions"], data["delivered_impressions"])
+        self.assertGreater(base_data["delivered_video_views"], data["delivered_video_views"])
+        self.assertGreater(base_data["delivered_cost"], data["delivered_cost"])

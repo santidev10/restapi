@@ -1,0 +1,2 @@
+id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
+134,pbkdf2_sha256$24000$3nKVQiKxeCcg$vyZCyTAcDIMFh+S72RBUYAKjwkWqJc1pHA54Z6M4ojY=,2018-08-07 22:03:12.062706+00,f,,Angelina,Ali,f,t,2018-07-24 14:46:06.485007+00,aali@handlpartners.com,,0,t,,,f,,,,,,t,f,f,,t

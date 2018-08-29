@@ -1,8 +1,5 @@
 from datetime import datetime
 
-from django.db.models import Q
-from django.http import Http404
-
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -11,7 +8,6 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account
 from aw_reporting.models import DATE_FORMAT
 
 
@@ -24,7 +20,7 @@ class AnalyticsPerformanceChartApiView(APIView):
 
     {"indicator": "impressions", "dimension": "device"}
     """
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get_filters(self):
         data = self.request.data
@@ -42,14 +38,9 @@ class AnalyticsPerformanceChartApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
-        user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+        user = request.user
         try:
-            item = queryset.get(pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
         filters = self.get_filters()

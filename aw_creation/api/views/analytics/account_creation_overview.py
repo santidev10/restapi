@@ -10,7 +10,6 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import Value
-from django.db.models import Q
 from django.db.models import When
 from django.http import Http404
 from rest_framework.response import Response
@@ -18,7 +17,6 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -44,20 +42,28 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         data = self._get_overview_data(account_creation)
         return Response(data=data)
 
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"))
+        return filters
+
     def _get_account_creation(self, request, pk):
-        user = self.request.user
-        related_accounts = Account.user_objects(user)
-        queryset = AccountCreation.objects.filter(
-            Q(is_deleted=False)
-            & (Q(owner=user) | Q(account__in=related_accounts))
-        )
+        user = request.user
         try:
-            return queryset.get(pk=pk)
+            return AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
 
     def _get_overview_data(self, account_creation):
-        filters = self._get_filters()
+        filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
         if filters["campaigns"]:
             fs["ad_group__campaign__id__in"] = filters["campaigns"]
@@ -95,19 +101,6 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         self._add_standard_performance_data(data, fs)
         return data
-
-    def _get_filters(self):
-        data = self.request.data
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        filters = dict(
-            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
-            if start_date else None,
-            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
-            if end_date else None,
-            campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"))
-        return filters
 
     def _add_standard_performance_data(self, data, filters):
         null_fields = (

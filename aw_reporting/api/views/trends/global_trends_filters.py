@@ -63,6 +63,7 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
 
 
 def _users_data(**filters):
+    filters["is_active"] = True
     users = User.objects.filter(**filters) \
         .distinct()
     return [dict(id=am.id, name=am.name) for am in users]
