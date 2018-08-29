@@ -1,4 +1,3 @@
-from django.test import override_settings
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
@@ -230,8 +229,7 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
     def test_ignores_visible_accounts_setting(self):
         user = self.create_test_user()
-        with override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False):
-            account = Account.objects.create()
+        account = Account.objects.create()
         account_creation = account.account_creation
         account_creation.owner = user
         account_creation.save()

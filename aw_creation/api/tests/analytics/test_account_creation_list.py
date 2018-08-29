@@ -1015,7 +1015,6 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertIsNotNone(item[key], key)
                 self.assertGreater(item[key], 0)
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_demo_account_visibility_does_not_affect_result(self):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
