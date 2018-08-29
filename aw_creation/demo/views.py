@@ -37,18 +37,9 @@ class AnalyticsAccountCreationListApiView:
         def method(view, request, **kwargs):
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
-                user = request.user
-                user_settings = user.aw_settings \
-                    if hasattr(user, "aw_settings") \
-                    else get_default_settings()
-                demo_account_visible = user_settings.get(
-                    UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
-                    False
-                )
                 demo = DemoAccount()
                 filters = request.query_params
-                if demo_account_visible and \
-                        demo.account_passes_filters(filters):
+                if demo.account_passes_filters(filters):
                     response.data['items'].insert(0, demo.header_data_analytics)
                     response.data['items_count'] += 1
             return response

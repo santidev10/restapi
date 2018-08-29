@@ -17,6 +17,7 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models import Language
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -143,12 +144,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="", owner=user,
         )
-        user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
-        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+                   new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -279,12 +276,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                                                     account=account3)
 
         # --
-        user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
-        }
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get("{}?sort_by=name".format(self.url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -485,12 +478,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         )
 
     def test_success_get_demo(self):
-        user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
-        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+                   new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -911,13 +900,12 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertFalse(accounts_by_id.get(visible_account_creation.id)["is_editable"])
 
     @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
-    def test_no_demo_data(self):
+    def test_no_demo_data_on_real_account(self):
         account = Account.objects.create(id=next(int_iterator))
         AccountCreation.objects.filter(account=account).update(owner=self.user)
         Campaign.objects.create(id=next(int_iterator), account=account)
 
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
@@ -925,8 +913,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        item = response.data["items"][0]
+        self.assertEqual(response.data["items_count"], 2)
+        items = {i["id"]: i for i in response.data["items"]}
+        item = items.get(account.account_creation.id)
         stats = (
             "clicks",
             "cost",
@@ -974,7 +963,6 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                                 **common_stats)
 
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: ["some_account_id"],
@@ -983,8 +971,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        item = response.data["items"][0]
+        self.assertEqual(response.data["items_count"], 2)
+        items = {i["id"]: i for i in response.data["items"]}
+        item = items.get(account.account_creation.id)
         stats = (
             "clicks",
             "cost",
@@ -1004,3 +993,16 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             with self.subTest(key):
                 self.assertIsNotNone(item[key], key)
                 self.assertGreater(item[key], 0)
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    def test_demo_account_visibility_does_not_affect_result(self):
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 1)
+        item = response.data["items"][0]
+        self.assertEqual(item["id"], DEMO_ACCOUNT_ID)
