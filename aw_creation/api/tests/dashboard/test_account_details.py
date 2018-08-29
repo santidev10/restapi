@@ -24,11 +24,13 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
@@ -608,3 +610,42 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.assertEqual(item[key], 0, key)
         for key in rates:
             self.assertIsNone(item[key])
+
+    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
+    @generic_test([
+        (
+                "Goal type: {}, Dynamic placement: {}".format(goal_type_str(goal_type_id), dynamic_placement),
+                (goal_type_id, dynamic_placement),
+                dict()
+        )
+        for goal_type_id, dynamic_placement in product(
+            (SalesForceGoalType.CPM, SalesForceGoalType.CPV),
+            (DynamicPlacementType.BUDGET, DynamicPlacementType.RATE_AND_TECH_FEE),
+        )
+    ])
+    def test_budget_placements_rates(self, goal_type_id, dynamic_placement):
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity,
+                                               goal_type_id=goal_type_id,
+                                               dynamic_placement=dynamic_placement)
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        }
+
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement,
+                                           cost=1, impressions=2000, video_views=30)
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        if goal_type_id == SalesForceGoalType.CPM:
+            self.assertAlmostEqual(response.data["average_cpm"], campaign.cost / campaign.impressions * 1000)
+        elif goal_type_id == SalesForceGoalType.CPV:
+            self.assertAlmostEqual(response.data["average_cpv"], campaign.cost / campaign.video_views)
