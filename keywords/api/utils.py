@@ -1,4 +1,5 @@
 from aw_reporting.models import KeywordStatistic, base_stats_aggregate
+from aw_reporting.models import AdGroup
 from django.db.models import Count, ExpressionWrapper, Case, When, F, Value, FloatField
 from collections import defaultdict
 
@@ -11,8 +12,12 @@ def get_keywords_aw_stats(accounts, keywords, fields=None):
     if fields:
         annotate = {k: v for k, v in annotate.items() if k in fields}
 
+    account_ids = accounts.values_list("id", flat=True)
+    ad_group_ids = AdGroup.objects.filter(campaign__account_id__in=account_ids)
+
     stats = KeywordStatistic.objects.filter(
-        ad_group__campaign__account__in=accounts, keyword__in=keywords,
+        ad_group_id__in=ad_group_ids,
+        keyword__in=keywords,
     ).values('keyword').order_by('keyword').annotate(**annotate)
     stats = {s['keyword']: s for s in stats}
     return stats
