@@ -1,6 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
-from djanfo.conf import settings
+from django.conf import settings
 from io import BytesIO
 
 import xlsxwriter
