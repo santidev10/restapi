@@ -38,6 +38,19 @@ class Command(BaseCommand):
     )
     FEATURES_IDS = {n: uid for uid, n in IQ_FEATURES}
 
+    AVAILABLE_LOGOS = {
+        "amazon": "amazon",
+        "apex": "apex",
+        "apexsingapore-20180629": "apex",
+        "apexsingapore": "apex",
+        "audi": "audi",
+        "colonize": "colonize",
+        "redpulse": "redpulse",
+        "redpulse-20180823": "redpulse",
+        "stubhub": "stubhub",
+        "wwe": "wwe",
+    }
+
     files_suffix = ""
 
     DEFAULT_AW_SETTINGS = get_default_settings()
@@ -89,11 +102,15 @@ class Command(BaseCommand):
         for name, user_info in users_info:
             user = UserProfile(**user_info)
             try:
-                UserProfile.objects.get(email=user.email)
+                user = UserProfile.objects.get(email=user.email)
             except UserProfile.DoesNotExist:
                 logger.info("New account [{}]:  {}" \
                             .format(name, user.email))
-                user.save()
+
+            if name in self.AVAILABLE_LOGOS:
+                user.logo = self.AVAILABLE_LOGOS.get(name)
+
+            user.save()
 
     def get_users_info(self):
         result = []
