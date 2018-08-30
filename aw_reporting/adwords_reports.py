@@ -263,12 +263,13 @@ def geo_location_report(client):
     return _output_to_rows(result, fields)
 
 
-def _daily_statistic_performance_report(client, name, dates=None,
-                                        additional_fields=None):
-    fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+def _daily_statistic_performance_report(
+        client, name, dates=None, additional_fields=None, fields=None):
+    if fields is None:
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 
-    if additional_fields:
-        fields += additional_fields
+        if additional_fields:
+            fields += additional_fields
 
     selector = {
         "fields": fields,
@@ -286,9 +287,9 @@ def _daily_statistic_performance_report(client, name, dates=None,
     return _output_to_rows(result, fields)
 
 
-def gender_performance_report(client, dates):
+def gender_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "GENDER_PERFORMANCE_REPORT", dates
+        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
