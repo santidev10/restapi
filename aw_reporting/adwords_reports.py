@@ -318,9 +318,9 @@ def topics_performance_report(client, dates, fields=None):
     )
 
 
-def audience_performance_report(client, dates):
+def audience_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AUDIENCE_PERFORMANCE_REPORT", dates,
+        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
         additional_fields=("UserListName",)
     )
 

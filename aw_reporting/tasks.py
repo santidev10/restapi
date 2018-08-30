@@ -1079,6 +1079,17 @@ def get_interests(client, account, today):
 
         report = audience_performance_report(
             client, dates=(min_date, max_date))
+        report_unique_field_name = "Criteria"
+        click_type_report_fields = (
+            "AdGroupId",
+            "Date",
+            "Criteria",
+            "Clicks",
+            "ClickType",
+        )
+        click_type_report = audience_performance_report(
+            client, dates=(min_date, max_date), fields=click_type_report_fields)
+        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
         remark_ids = set(RemarkList.objects.values_list('id', flat=True))
         interest_ids = set(Audience.objects.values_list('id', flat=True))
         bulk_aud_stats = []
@@ -1095,6 +1106,13 @@ def get_interests(client, account, today):
                 video_views_100_quartile=quart_views(row_obj, 100),
                 **get_base_stats(row_obj)
             )
+            if click_type_data:
+                key = prepare_click_type_report_key(
+                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+                key_data = click_type_data.get(key)
+                if key_data:
+                    for obj in key_data:
+                        stats[obj.get("click_type")] = obj.get("clicks")
             au_type, au_id, *_ = row_obj.Criteria.split('::')
             if au_type == AudienceAWType.REMARK:
                 stats.update(remark_id=au_id)
