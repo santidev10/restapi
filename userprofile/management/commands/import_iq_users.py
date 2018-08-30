@@ -168,7 +168,14 @@ class Command(BaseCommand):
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True
                 user.aw_settings = self.CHF_AW_SETTINGS
+                user.add_custom_user_group(PermissionGroupNames.HIGHLIGHTS)
+                user.add_custom_user_group(PermissionGroupNames.RESEARCH)
+                user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
+                user.add_custom_user_group(PermissionGroupNames.SEGMENTS_PRE_BAKES)
+                user.add_custom_user_group(PermissionGroupNames.MEDIA_BUYING)
+                user.add_custom_user_group(PermissionGroupNames.AUTH_CHANNELS)
                 user.add_custom_user_group(PermissionGroupNames.TOOLS)
+                user.add_custom_user_group(PermissionGroupNames.DASHBOARD)
             else:
                 logger.info("Updating account:" + user.email)
 
