@@ -312,9 +312,9 @@ def keywords_performance_report(client, dates, fields=None):
     )
 
 
-def topics_performance_report(client, dates):
+def topics_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates,
+        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
