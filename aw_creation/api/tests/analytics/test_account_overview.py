@@ -1,6 +1,5 @@
 from datetime import date
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -17,8 +16,10 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, generic_test
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
@@ -71,8 +72,10 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
 
     def _get_url(self, account_creation_id):
         return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_OVERVIEW,
-            args=(account_creation_id,))
+            Name.Analytics.ACCOUNT_OVERVIEW,
+            [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+            args=(account_creation_id,)
+        )
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)

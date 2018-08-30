@@ -1,12 +1,21 @@
 from collections import defaultdict
 
-from django.db.models import Min, Max, Sum, Case, When, Value, \
-    IntegerField as AggrIntegerField
+from django.db.models import Case
+from django.db.models import IntegerField as AggrIntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.models import Campaign, Account, base_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
-    AdGroupStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_norm_base_stats
 from utils.db.aggregators import ConcatAggregate
 from utils.serializers.fields import StatField
 
@@ -67,21 +76,21 @@ class AccountsListSerializer(ModelSerializer):
                 .values("account_id") \
                 .order_by("account_id") \
                 .annotate(
-                    min_start=Min("start_date"),
-                    max_end=Max("end_date"),
-                    end_is_null=Sum(
-                        Case(
-                            When(
-                                end_date__isnull=True,
-                                then=Value(1),
-                            ),
-                            default=Value(0),
-                            output_field=AggrIntegerField()
-                        )
-                    ),
-                    statuses=ConcatAggregate("status", distinct=True),
-                    **base_stats_aggregate
-                )
+                min_start=Min("start_date"),
+                max_end=Max("end_date"),
+                end_is_null=Sum(
+                    Case(
+                        When(
+                            end_date__isnull=True,
+                            then=Value(1),
+                        ),
+                        default=Value(0),
+                        output_field=AggrIntegerField()
+                    )
+                ),
+                statuses=ConcatAggregate("status", distinct=True),
+                **base_stats_aggregator()
+            )
             for i in data:
                 dict_norm_base_stats(i)
                 dict_add_calculated_stats(i)

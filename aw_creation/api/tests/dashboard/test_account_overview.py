@@ -601,7 +601,7 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(overview["delivered_impressions"], expected_delivered_impressions)
 
     def test_conversions_are_hidden(self):
-        user = self.create_test_user()
+        self.create_test_user()
         any_date = date(2018, 1, 1)
         conversions = 2
         all_conversions = 3

@@ -24,7 +24,7 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import client_cost_ad_group_statistic_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
@@ -73,7 +73,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             keys_to_exclude += tuple("sum_{}".format(key) for key in CONVERSIONS)
         return {
             key: value
-            for key, value in all_stats_aggregate.items()
+            for key, value in all_stats_aggregator("ad_group__campaign__").items()
             if key not in keys_to_exclude
         }
 

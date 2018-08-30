@@ -14,10 +14,12 @@ from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import TopicStatistic
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+
+all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
 
 
 def div_by_100(value):
