@@ -265,6 +265,7 @@ def geo_location_report(client):
 
 def _daily_statistic_performance_report(
         client, name, dates=None, additional_fields=None, fields=None):
+
     if fields is None:
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 
@@ -299,9 +300,9 @@ def parent_performance_report(client, dates):
     )
 
 
-def age_range_performance_report(client, dates):
+def age_range_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AGE_RANGE_PERFORMANCE_REPORT", dates
+        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 

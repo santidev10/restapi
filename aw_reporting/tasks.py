@@ -51,7 +51,7 @@ def format_click_types_report(report, unique_field_name):
     result = dict()
     for row in report:
         key = prepare_click_type_report_key(row.AdGroupId, getattr(row, unique_field_name), row.Date)
-        value = {"click_type": tracking_click_types.get(row.ClickType), "clicks": row.Clicks}
+        value = {"click_type": tracking_click_types.get(row.ClickType), "clicks": int(row.Clicks)}
         try:
             prev_value = result[key]
         except KeyError:
@@ -762,7 +762,18 @@ def get_age_ranges(client, account, today):
         report = age_range_performance_report(
             client, dates=(min_date, max_date),
         )
+        report_unique_field_name = "Criteria"
+        click_type_report_fields = (
+            "AdGroupId",
+            "Date",
+            "Criteria",
+            "Clicks",
+            "ClickType",
+        )
         bulk_data = []
+        click_type_report = age_range_performance_report(
+            client, dates=(min_date, max_date), fields=click_type_report_fields)
+        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
         for row_obj in report:
             stats = {
                 'age_range_id': AgeRanges.index(row_obj.Criteria),
@@ -775,6 +786,13 @@ def get_age_ranges(client, account, today):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
+            if click_type_data:
+                key = prepare_click_type_report_key(
+                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+                key_data = click_type_data.get(key)
+                if key_data:
+                    for obj in key_data:
+                        stats[obj.get("click_type")] = obj.get("clicks")
             bulk_data.append(AgeRangeStatistic(**stats))
 
         if bulk_data:
