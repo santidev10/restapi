@@ -123,9 +123,9 @@ class DeliveryChart:
             campaigns = [campaign]
 
         if not campaigns and accounts:
-            campaigns = Campaign.objects.filter(
-                account_id__in=accounts
-            ).values_list('id', flat=True)
+            campaigns = Campaign.objects.get_queryset(ignore_user=True) \
+                .filter(account_id__in=accounts) \
+                .values_list('id', flat=True)
 
         self.params = dict(
             accounts=accounts,
@@ -199,13 +199,12 @@ class DeliveryChart:
     def get_segmented_data(self, method, segmented_by, **kwargs):
         items = defaultdict(lambda: {'campaigns': []})
         if self.params['ad_groups']:
-            qs = Campaign.objects.filter(
-                ad_groups__id__in=self.params['ad_groups'],
-            ).distinct()
+            qs = Campaign.objects.get_queryset(ignore_user=True) \
+                .filter(ad_groups__id__in=self.params['ad_groups'], ) \
+                .distinct()
         elif self.params['campaigns']:
-            qs = Campaign.objects.filter(
-                pk__in=self.params['campaigns'],
-            )
+            qs = Campaign.objects.get_queryset(ignore_user=True) \
+                .filter(pk__in=self.params['campaigns'], )
         else:
             qs = Campaign.objects.none()
 
