@@ -151,7 +151,6 @@ class Command(BaseCommand):
                 user.is_comparison_tool_available = True
                 user.is_subscribed_to_campaign_notifications = True
                 user.aw_settings = self.CHF_AW_SETTINGS
-                user.save()
                 user.add_custom_user_group(PermissionGroupNames.TOOLS)
             else:
                 logger.info("Updating account:" + user.email)
@@ -159,7 +158,9 @@ class Command(BaseCommand):
             if not user.aw_settings:
                 logger.info("Found account without aw_settings:" + user.email)
                 user.aw_settings = self.DEFAULT_AW_SETTINGS
-                user.save()
+
+            user.aw_settings[UserSettingsKey.DEMO_ACCOUNT_VISIBLE] = True
+            user.save()
 
             for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
                 user.add_custom_user_group(group_name)
