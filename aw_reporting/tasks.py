@@ -450,13 +450,13 @@ def get_ad_groups_and_stats(client, account, *_):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-
-            key = prepare_click_type_report_key(
-                row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-            key_data = click_type_data.get(key)
-            if key_data:
-                for obj in key_data:
-                    stats[obj.get("click_type")] = obj.get("clicks")
+            if click_type_data:
+                key = prepare_click_type_report_key(
+                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+                key_data = click_type_data.get(key)
+                if key_data:
+                    for obj in key_data:
+                        stats[obj.get("click_type")] = obj.get("clicks")
 
             create_stats.append(AdGroupStatistic(**stats))
 
