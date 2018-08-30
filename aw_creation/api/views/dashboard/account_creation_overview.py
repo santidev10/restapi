@@ -151,14 +151,6 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         return sum([get_client_cost(**map_data(data)) for data in statistics])
 
     def _add_chf_performance_data(self, data, account_creation):
-        null_fields = (
-            "impressions_this_week", "cost_last_week", "impressions_last_week",
-            "cost_this_week", "video_views_this_week", "clicks_this_week",
-            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
-            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
-            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
-        for field in null_fields:
-            data[field] = None
         account_campaigns_ids = account_creation.account. \
             campaigns.values_list("id", flat=True)
         filters = self.get_filters()
