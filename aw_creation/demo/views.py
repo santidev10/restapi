@@ -509,7 +509,7 @@ class DashboardAccountCreationDetailsAPIView:
         return method
 
 
-class BaseAccountCreationOverviewAPIView:
+class DashboardAccountCreationOverviewAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
@@ -517,19 +517,26 @@ class BaseAccountCreationOverviewAPIView:
                 account = DemoAccount()
                 filters = view.get_filters()
                 account.filter_out_items(filters["campaigns"], filters["ad_groups"])
-                return Response(data=account.overview)
+                return Response(data=account.overview_dashboard)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
 
-class DashboardAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+class AnalyticsAccountCreationOverviewAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                filters = view.get_filters()
+                account.filter_out_items(filters["campaigns"], filters["ad_groups"])
+                return Response(data=account.overview_analytics)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
 
-
-class AnalyticsAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+        return method
 
 
 class AnalyticsPerformanceChartApiView:

@@ -28,21 +28,11 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         "all_conversions",
         "average_cpm",
         "average_cpv",
-        "average_cpv_bottom",
-        "average_cpv_top",
         "clicks",
-        "clicks_last_week",
-        "clicks_this_week",
         "conversions",
         "cost",
-        "cost_last_week",
-        "cost_this_week",
         "ctr",
-        "ctr_bottom",
-        "ctr_top",
         "ctr_v",
-        "ctr_v_bottom",
-        "ctr_v_top",
         "delivered_cost",
         "delivered_impressions",
         "delivered_video_views",
@@ -50,8 +40,6 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         "gender",
         "has_statistics",
         "impressions",
-        "impressions_last_week",
-        "impressions_this_week",
         "location",
         "plan_cost",
         "plan_impressions",
@@ -62,17 +50,16 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         "video75rate",
         "video_clicks",
         "video_view_rate",
-        "video_view_rate_bottom",
-        "video_view_rate_top",
         "video_views",
-        "video_views_last_week",
-        "video_views_this_week",
         "view_through",
     }
 
     def _get_url(self, account_creation_id):
-        return reverse(Name.Dashboard.ACCOUNT_OVERVIEW, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
-                       args=(account_creation_id,))
+        return reverse(
+            Name.Dashboard.ACCOUNT_OVERVIEW,
+            [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+            args=(account_creation_id,)
+        )
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
