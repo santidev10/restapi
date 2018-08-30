@@ -32,8 +32,29 @@ TRACKING_CLICK_TYPES = (
     ("End cap", "clicks_end_cap")
 )
 
+DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME = "Criteria"
+
+DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS = (
+    "AdGroupId",
+    "Date",
+    "Criteria",
+    "Clicks",
+    "ClickType",
+)
+
 
 #  helpers --
+def update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name):
+    if click_type_data:
+        key = prepare_click_type_report_key(
+            row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+        key_data = click_type_data.get(key)
+        if key_data:
+            for obj in key_data:
+                stats[obj.get("click_type")] = obj.get("clicks")
+    return stats
+
+
 def prepare_click_type_report_key(ad_group_id, unique_field_name, row_date):
     return "{}{}{}".format(ad_group_id, unique_field_name, row_date)
 
@@ -450,14 +471,7 @@ def get_ad_groups_and_stats(client, account, *_):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-            if click_type_data:
-                key = prepare_click_type_report_key(
-                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-                key_data = click_type_data.get(key)
-                if key_data:
-                    for obj in key_data:
-                        stats[obj.get("click_type")] = obj.get("clicks")
-
+            update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name)
             create_stats.append(AdGroupStatistic(**stats))
 
         if create_ad_groups:
@@ -651,17 +665,9 @@ def get_genders(client, account, today):
         report = gender_performance_report(
             client, dates=(min_date, max_date),
         )
-        report_unique_field_name = "Criteria"
-        click_type_report_fields = (
-            "AdGroupId",
-            "Date",
-            "Criteria",
-            "Clicks",
-            "ClickType",
-        )
         click_type_report = gender_performance_report(
-            client, dates=(min_date, max_date), fields=click_type_report_fields)
-        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+            client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         bulk_data = []
         for row_obj in report:
             stats = {
@@ -675,13 +681,8 @@ def get_genders(client, account, today):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-            if click_type_data:
-                key = prepare_click_type_report_key(
-                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-                key_data = click_type_data.get(key)
-                if key_data:
-                    for obj in key_data:
-                        stats[obj.get("click_type")] = obj.get("clicks")
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
             bulk_data.append(GenderStatistic(**stats))
 
         if bulk_data:
@@ -762,18 +763,10 @@ def get_age_ranges(client, account, today):
         report = age_range_performance_report(
             client, dates=(min_date, max_date),
         )
-        report_unique_field_name = "Criteria"
-        click_type_report_fields = (
-            "AdGroupId",
-            "Date",
-            "Criteria",
-            "Clicks",
-            "ClickType",
-        )
         bulk_data = []
         click_type_report = age_range_performance_report(
-            client, dates=(min_date, max_date), fields=click_type_report_fields)
-        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+            client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         for row_obj in report:
             stats = {
                 'age_range_id': AgeRanges.index(row_obj.Criteria),
@@ -786,13 +779,8 @@ def get_age_ranges(client, account, today):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-            if click_type_data:
-                key = prepare_click_type_report_key(
-                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-                key_data = click_type_data.get(key)
-                if key_data:
-                    for obj in key_data:
-                        stats[obj.get("click_type")] = obj.get("clicks")
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
             bulk_data.append(AgeRangeStatistic(**stats))
 
         if bulk_data:
@@ -918,17 +906,9 @@ def get_keywords(client, account, today):
             client,
             dates=(min_date, max_date),
         )
-        report_unique_field_name = "Criteria"
-        click_type_report_fields = (
-            "AdGroupId",
-            "Date",
-            "Criteria",
-            "Clicks",
-            "ClickType",
-        )
         click_type_report = keywords_performance_report(
-            client, dates=(min_date, max_date), fields=click_type_report_fields)
-        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+            client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         bulk_data = []
         for row_obj in report:
             keyword = row_obj.Criteria
@@ -943,13 +923,8 @@ def get_keywords(client, account, today):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-            if click_type_data:
-                key = prepare_click_type_report_key(
-                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-                key_data = click_type_data.get(key)
-                if key_data:
-                    for obj in key_data:
-                        stats[obj.get("click_type")] = obj.get("clicks")
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
             bulk_data.append(KeywordStatistic(**stats))
 
         if bulk_data:
@@ -991,18 +966,10 @@ def get_topics(client, account, today):
     report = topics_performance_report(
         client, dates=(min_date, max_date),
     )
-    report_unique_field_name = "Criteria"
-    click_type_report_fields = (
-        "AdGroupId",
-        "Date",
-        "Criteria",
-        "Clicks",
-        "ClickType",
-    )
     logger.debug("Report loaded")
     click_type_report = topics_performance_report(
-        client, dates=(min_date, max_date), fields=click_type_report_fields)
-    click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+        client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+    click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
     bulk_data = []
     for row_obj in report:
         topic_name = row_obj.Criteria
@@ -1020,13 +987,7 @@ def get_topics(client, account, today):
             'video_views_100_quartile': quart_views(row_obj, 100),
         }
         stats.update(get_base_stats(row_obj))
-        if click_type_data:
-            key = prepare_click_type_report_key(
-                row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-            key_data = click_type_data.get(key)
-            if key_data:
-                for obj in key_data:
-                    stats[obj.get("click_type")] = obj.get("clicks")
+        update_stats_with_click_type_data(stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         bulk_data.append(TopicStatistic(**stats))
 
     with transaction.atomic():
@@ -1079,17 +1040,9 @@ def get_interests(client, account, today):
 
         report = audience_performance_report(
             client, dates=(min_date, max_date))
-        report_unique_field_name = "Criteria"
-        click_type_report_fields = (
-            "AdGroupId",
-            "Date",
-            "Criteria",
-            "Clicks",
-            "ClickType",
-        )
         click_type_report = audience_performance_report(
-            client, dates=(min_date, max_date), fields=click_type_report_fields)
-        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+            client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         remark_ids = set(RemarkList.objects.values_list('id', flat=True))
         interest_ids = set(Audience.objects.values_list('id', flat=True))
         bulk_aud_stats = []
@@ -1106,13 +1059,8 @@ def get_interests(client, account, today):
                 video_views_100_quartile=quart_views(row_obj, 100),
                 **get_base_stats(row_obj)
             )
-            if click_type_data:
-                key = prepare_click_type_report_key(
-                    row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-                key_data = click_type_data.get(key)
-                if key_data:
-                    for obj in key_data:
-                        stats[obj.get("click_type")] = obj.get("clicks")
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
             au_type, au_id, *_ = row_obj.Criteria.split('::')
             if au_type == AudienceAWType.REMARK:
                 stats.update(remark_id=au_id)
