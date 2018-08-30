@@ -306,9 +306,9 @@ def age_range_performance_report(client, dates, fields=None):
     )
 
 
-def keywords_performance_report(client, dates):
+def keywords_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates
+        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
