@@ -687,7 +687,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
