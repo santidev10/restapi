@@ -77,7 +77,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.files_suffix = options.get("fixtures_suffix")
+        self.files_suffix = options.get("fixtures_suffix", "")
 
         with transaction.atomic():
             Permissions.sync_groups()
@@ -110,6 +110,7 @@ class Command(BaseCommand):
             if name in self.AVAILABLE_LOGOS:
                 user.logo = self.AVAILABLE_LOGOS.get(name)
 
+            user.aw_settings[UserSettingsKey.VISIBLE_ACCOUNTS] = user_info["aw_settings"][UserSettingsKey.VISIBLE_ACCOUNTS]
             user.save()
 
     def get_users_info(self):
