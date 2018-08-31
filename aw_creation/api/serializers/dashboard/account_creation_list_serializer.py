@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from django.db.models import Case, IntegerField, Value
+from django.db.models import Case
 from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
@@ -9,10 +9,11 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Q
 from django.db.models import Sum
+from django.db.models import Value
 from django.db.models import When
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import \
-    SerializerMethodField, BooleanField
+from rest_framework.serializers import SerializerMethodField
 
 from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.models import AccountCreation
@@ -26,10 +27,10 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models.ad_words.calculations import dashboard_aggregation
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
@@ -80,15 +81,19 @@ PLAN_RATES_ANNOTATION = dict(
 FLIGHTS_AGGREGATIONS = dict(
     cpv_total_costs=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPV,
+             placement__dynamic_placement__isnull=True,
              then="total_cost"))),
     cpm_total_costs=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPM,
+             placement__dynamic_placement__isnull=True,
              then="total_cost"))),
     cpv_ordered_units=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPV,
+             placement__dynamic_placement__isnull=True,
              then="ordered_units"))),
     cpm_ordered_units=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPM,
+             placement__dynamic_placement__isnull=True,
              then="ordered_units")))
 )
 
@@ -208,7 +213,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      **base_stats_aggregator())
+                      **dashboard_aggregation())
         sf_data_annotated = Flight.objects.filter(**flight_filter) \
             .values(self.FLIGHT_ACCOUNT_ID_KEY) \
             .order_by(self.FLIGHT_ACCOUNT_ID_KEY) \
@@ -219,23 +224,32 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             dict_norm_base_stats(account_data)
             dict_add_calculated_stats(account_data)
+            dict_add_calculated_stats(account_data)
 
             if show_client_cost:
-                cost = account_client_cost[account_id]
                 sf_data_for_acc = sf_data_by_acc.get(account_id) or dict()
                 cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
                 cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
-                cpv_ordered_units = sf_data_for_acc.get(
-                    "cpv_ordered_units") or 0
-                cpm_ordered_units = sf_data_for_acc.get(
-                    "cpm_ordered_units") or 0
-                average_cpv = cpv_total_costs / cpv_ordered_units \
-                    if cpv_ordered_units else None
-                average_cpm = cpm_total_costs * 1000 / cpm_ordered_units \
-                    if cpm_ordered_units else None
-                account_data["cost"] = cost
+                cpv_ordered_units = sf_data_for_acc.get("cpv_ordered_units") or 0
+                cpm_ordered_units = sf_data_for_acc.get("cpm_ordered_units") or 0
+                dynamic_placement_cpm_cost = account_data.get("dynamic_placement_cpm_cost") or 0
+                dynamic_placement_cpv_cost = account_data.get("dynamic_placement_cpv_cost") or 0
+                dynamic_placement_cpm_units = account_data.get("dynamic_placement_cpm_units") or 0
+                dynamic_placement_cpv_units = account_data.get("dynamic_placement_cpv_units") or 0
+
+                cpv_cost = cpv_total_costs + dynamic_placement_cpv_cost
+                cpm_cost = cpm_total_costs + dynamic_placement_cpm_cost
+                cpv_units = cpv_ordered_units + dynamic_placement_cpv_units
+                cpm_units = cpm_ordered_units + dynamic_placement_cpm_units
+
+                average_cpv = cpv_cost / cpv_units \
+                    if cpv_units else None
+                average_cpm = cpm_cost * 1000 / cpm_units \
+                    if cpm_units else None
+                account_data["cost"] = account_client_cost[account_id]
                 account_data["average_cpm"] = average_cpm
                 account_data["average_cpv"] = average_cpv
+
             stats[account_id] = account_data
         return stats
 
@@ -393,8 +407,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
-        opportunities = Opportunity.objects.filter(placements__adwords_campaigns__account__account_creation=obj)\
-                                           .distinct()
+        opportunities = Opportunity.objects.filter(placements__adwords_campaigns__account__account_creation=obj) \
+            .distinct()
         opp_count = opportunities.count()
         if opp_count > 1:
             logger.warning("AccountCreation (id: {}) has more then one opportunity ({})".format(obj.id, opp_count))

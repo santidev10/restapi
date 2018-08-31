@@ -11,8 +11,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse as django_reverse
 from django.db import transaction
-from django.http.request import HttpRequest
-from django.test import override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
@@ -41,7 +39,6 @@ class TestUserMixin:
         """
         get_user_model().objects.filter(email=self.test_user_data["email"]) \
             .delete()
-        Permissions.sync_groups()
         user = get_user_model().objects.create(
             **self.test_user_data,
         )

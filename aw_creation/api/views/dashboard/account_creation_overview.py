@@ -24,7 +24,7 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import client_cost_ad_group_statistic_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
@@ -73,7 +73,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             keys_to_exclude += tuple("sum_{}".format(key) for key in CONVERSIONS)
         return {
             key: value
-            for key, value in all_stats_aggregate.items()
+            for key, value in all_stats_aggregator("ad_group__campaign__").items()
             if key not in keys_to_exclude
         }
 
@@ -151,14 +151,6 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         return sum([get_client_cost(**map_data(data)) for data in statistics])
 
     def _add_chf_performance_data(self, data, account_creation):
-        null_fields = (
-            "impressions_this_week", "cost_last_week", "impressions_last_week",
-            "cost_this_week", "video_views_this_week", "clicks_this_week",
-            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
-            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
-            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
-        for field in null_fields:
-            data[field] = None
         account_campaigns_ids = account_creation.account. \
             campaigns.values_list("id", flat=True)
         filters = self.get_filters()

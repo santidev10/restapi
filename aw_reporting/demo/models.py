@@ -871,6 +871,64 @@ class DemoAccount(BaseDemo):
         )
         return data
 
+    _overview_keys_shared = {
+        "age",
+        "all_conversions",
+        "average_cpm",
+        "average_cpv",
+        "clicks",
+        "conversions",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "delivered_cost",
+        "delivered_impressions",
+        "delivered_video_views",
+        "device",
+        "gender",
+        "has_statistics",
+        "impressions",
+        "location",
+        "plan_cost",
+        "plan_impressions",
+        "plan_video_views",
+        "video100rate",
+        "video25rate",
+        "video50rate",
+        "video75rate",
+        "video_clicks",
+        "video_view_rate",
+        "video_views",
+        "view_through",
+    }
+    _overview_keys_dashboard = _overview_keys_shared
+    _overview_keys_analytics = _overview_keys_shared | {
+        "average_cpv_bottom",
+        "average_cpv_top",
+        "clicks_last_week",
+        "clicks_this_week",
+        "cost_last_week",
+        "cost_this_week",
+        "ctr_bottom",
+        "ctr_top",
+        "ctr_v_bottom",
+        "ctr_v_top",
+        "impressions_last_week",
+        "impressions_this_week",
+        "video_view_rate_bottom",
+        "video_view_rate_top",
+        "video_views_last_week",
+        "video_views_this_week",
+    }
+
+    @property
+    def overview_analytics(self):
+        return pick_dict(self.overview, self._overview_keys_analytics)
+
+    @property
+    def overview_dashboard(self):
+        return pick_dict(self.overview, self._overview_keys_dashboard)
+
     @property
     def _base_header_data(self):
 

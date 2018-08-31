@@ -1,22 +1,45 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
-from django.db.models import Sum, Case, When, IntegerField, ExpressionWrapper, \
-    F, FloatField, Value, Max, Min, Avg
+from django.db.models import Avg
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.api.serializers import AccountsListSerializer
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import DATE_FORMAT, Account, AdGroupStatistic, \
-    all_stats_aggregate, dict_norm_base_stats, dict_add_calculated_stats, \
-    dict_quartiles_to_rates, GenderStatistic, Genders, AgeRangeStatistic, \
-    AgeRanges, Devices, CityStatistic, BASE_STATS, CONVERSIONS, QUARTILE_STATS, VideoCreativeStatistic
-from utils.db.aggregators import ConcatAggregate
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import BASE_STATS
+from aw_reporting.models import CONVERSIONS
+from aw_reporting.models import CityStatistic
+from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import Devices
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import Genders
+from aw_reporting.models import QUARTILE_STATS
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import all_stats_aggregator
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_norm_base_stats
+from aw_reporting.models import dict_quartiles_to_rates
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
+from utils.db.aggregators import ConcatAggregate
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +100,7 @@ class AnalyzeDetailsApiView(APIView):
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
-        data = queryset.aggregate(**all_stats_aggregate)
+        data = queryset.aggregate(**all_stats_aggregator("ad_group__campaign__"))
         data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)

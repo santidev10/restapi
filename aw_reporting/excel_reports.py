@@ -1,23 +1,21 @@
 from datetime import datetime
 from datetime import timedelta
+from django.conf import settings
 from io import BytesIO
 
 import xlsxwriter
-from django.conf import settings
-from django.db.models import Sum
 
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Devices
-from aw_reporting.models import Flight
 from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import Opportunity
-from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import TopicStatistic
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+
+all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
 
 
 def div_by_100(value):
@@ -291,21 +289,6 @@ class PerformanceWeeklyReport:
         contracted_views_title = "Contracted Views: "
         contracted_views_data = "N/A\n"
         # reporting date range
-        opportunity = Opportunity.objects.filter(placements__adwords_campaigns__account=self.account).first()
-        flights = Flight.objects.filter(placement__adwords_campaigns__account=self.account)
-        if opportunity is not None:
-            cpv_data = "{}\n".format(opportunity.cpv or "N/A")
-        if flights.exists():
-            total_cost = flights \
-                             .aggregate(total_cost=Sum("total_cost")) \
-                             .get("total_cost") or 0
-            contracted_views = flights.filter(placement__goal_type_id=SalesForceGoalType.CPV) \
-                .aggregate(views=Sum("ordered_units")) \
-                .get("views") or "N/A"
-
-            budget_data = "{}\n".format(total_cost)
-            contracted_views_data = "{}\n".format(contracted_views)
-
         reporting_date_range_title = "Reporting date range: "
         reporting_date_range_data = "{} - {}".format(
             self.date_delta.strftime("%m/%d/%y"),

@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import DATE_FORMAT, Account
+from aw_reporting.models import Account
+from aw_reporting.models import DATE_FORMAT
 
 
 @demo_view_decorator

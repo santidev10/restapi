@@ -1,6 +1,5 @@
 from datetime import date
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -17,8 +16,10 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, generic_test
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
@@ -71,8 +72,10 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
 
     def _get_url(self, account_creation_id):
         return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_OVERVIEW,
-            args=(account_creation_id,))
+            Name.Analytics.ACCOUNT_OVERVIEW,
+            [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+            args=(account_creation_id,)
+        )
 
     def _request(self, account_creation_id, status_code=HTTP_200_OK, **kwargs):
         url = self._get_url(account_creation_id)
@@ -90,7 +93,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success(self):
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=next(int_iterator), account=account, owner=self.request_user,
             is_approved=True)
@@ -106,7 +109,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         any_date = date(2018, 1, 1)
         another_date = date(2018, 1, 2)
         self.assertNotEqual(any_date, another_date)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=next(int_iterator), account=account, owner=self.request_user,
             is_approved=True)
@@ -140,7 +143,8 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         conversions = 2
         all_conversions = 3
         view_through = 4
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)

@@ -37,18 +37,9 @@ class AnalyticsAccountCreationListApiView:
         def method(view, request, **kwargs):
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
-                user = request.user
-                user_settings = user.aw_settings \
-                    if hasattr(user, "aw_settings") \
-                    else get_default_settings()
-                demo_account_visible = user_settings.get(
-                    UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
-                    False
-                )
                 demo = DemoAccount()
                 filters = request.query_params
-                if demo_account_visible and \
-                        demo.account_passes_filters(filters):
+                if demo.account_passes_filters(filters):
                     response.data['items'].insert(0, demo.header_data_analytics)
                     response.data['items_count'] += 1
             return response
@@ -518,7 +509,7 @@ class DashboardAccountCreationDetailsAPIView:
         return method
 
 
-class BaseAccountCreationOverviewAPIView:
+class DashboardAccountCreationOverviewAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
@@ -526,19 +517,26 @@ class BaseAccountCreationOverviewAPIView:
                 account = DemoAccount()
                 filters = view.get_filters()
                 account.filter_out_items(filters["campaigns"], filters["ad_groups"])
-                return Response(data=account.overview)
+                return Response(data=account.overview_dashboard)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
 
-class DashboardAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+class AnalyticsAccountCreationOverviewAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                filters = view.get_filters()
+                account.filter_out_items(filters["campaigns"], filters["ad_groups"])
+                return Response(data=account.overview_analytics)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
 
-
-class AnalyticsAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+        return method
 
 
 class AnalyticsPerformanceChartApiView:
@@ -696,7 +694,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
+            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(

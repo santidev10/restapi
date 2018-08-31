@@ -26,10 +26,10 @@ from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
-from aw_reporting.models import all_stats_aggregate
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from utils.datetime import now_in_default_tz
 
 
@@ -76,7 +76,7 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
-        data = queryset.aggregate(**all_stats_aggregate)
+        data = queryset.aggregate(**all_stats_aggregator("ad_group__campaign__"))
         data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)

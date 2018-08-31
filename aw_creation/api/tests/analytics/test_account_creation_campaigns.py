@@ -1,24 +1,33 @@
-from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import AccountCreation, CampaignCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DEMO_CAMPAIGNS_COUNT, \
-    DEMO_AD_GROUPS
-from aw_reporting.models import Account, Campaign, AdGroup, \
-    AWConnectionToUserRelation, AWConnection, campaign_type_str
+from aw_creation.models import AccountCreation
+from aw_creation.models import CampaignCreation
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DEMO_AD_GROUPS
+from aw_reporting.demo.models import DEMO_CAMPAIGNS_COUNT
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_id):
-        return reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.CAMPAIGNS,
-                       args=(account_id,))
+        return reverse(
+            Name.Analytics.CAMPAIGNS, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+            args=(account_id,)
+        )
 
     campaign_keys = {
         'id',
@@ -49,7 +58,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           account=account,
                                                           is_managed=False,
@@ -84,7 +94,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_managed_campaign(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           account=account,
                                                           is_managed=True,
@@ -163,9 +174,10 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
     def test_excluded_campaings_filter_ingores(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1)
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
-            id=2, name="", owner=user, account=account, is_managed=True, sync_at=timezone.now())
+            id=next(int_iterator), name="", owner=user, account=account, is_managed=True, sync_at=timezone.now())
         all_types = AdwordsAccountSettings.CAMPAIGN_TYPES
         for index, campaign_type in enumerate(all_types):
             Campaign.objects.create(id=index, type=campaign_type_str(campaign_type), account=account)
@@ -188,7 +200,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
 
     def test_campaign_without_type_are_visible(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1)
+        account = Account.objects.create(id=1,
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=2,
             name="", owner=user, account=account, is_managed=True,
@@ -213,3 +226,30 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], campaign.id)
+
+    def test_ignores_visible_accounts_setting(self):
+        user = self.create_test_user()
+        account = Account.objects.create()
+        account_creation = account.account_creation
+        account_creation.owner = user
+        account_creation.save()
+
+        campaign = Campaign.objects.create(id=str(next(int_iterator)), account=account)
+        ad_group = AdGroup.objects.create(id=str(next(int_iterator)), campaign=campaign)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+
+        }
+        url = self._get_url(account_creation.id)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        campaign_data = response.data[0]
+        self.assertEqual(campaign_data["id"], campaign.id)
+        self.assertEqual(len(campaign_data["ad_groups"]), 1)
+        ad_group_data = campaign_data["ad_groups"][0]
+        self.assertEqual(ad_group_data["id"], ad_group.id)
