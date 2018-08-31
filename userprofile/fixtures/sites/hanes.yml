@@ -6,6 +6,12 @@ demo_account_visible: false
 global_account_visibility: false
 hidden_campaign_types:
   '3113990933': []
+  '3364087096': []
+  '3381367880': []
+  '5510302376': []
 show_conversions: false
 visible_accounts:
 - '3113990933'
+- '3364087096'
+- '3381367880'
+- '5510302376'
