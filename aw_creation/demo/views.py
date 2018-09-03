@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 
-from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -418,16 +417,11 @@ class AdCreationListSetupApiView:
         return method
 
 
-def show_demo_data(request, pk):
-    return not request.user.aw_connections.count() or \
-           get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
-
-
 class AnalyticsAccountCreationCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 campaigns = [
                     dict(
@@ -543,7 +537,7 @@ class AnalyticsPerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -586,7 +580,7 @@ class AnalyticsPerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -632,7 +626,7 @@ class AnalyticsPerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -694,7 +688,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
@@ -740,7 +734,7 @@ class PerformanceTargetingFiltersAPIView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 filters = view.get_static_filters()
                 filters["start_date"] = account.start_date
