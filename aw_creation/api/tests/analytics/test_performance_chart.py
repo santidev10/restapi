@@ -211,7 +211,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(name="", owner=user)
 
         today = datetime.now().date()
-        response = self._request(account_creation.id,
+        response = self._request("demo",
                                  start_date=str(today - timedelta(days=2)),
                                  end_date=str(today - timedelta(days=1)),
                                  indicator=Indicator.IMPRESSIONS)
