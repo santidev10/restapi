@@ -979,6 +979,11 @@ class DemoAccount(BaseDemo):
             video_view_rate=self.video_view_rate,
             video_views=self.video_views,
             weekly_chart=chart_lines[0]['trend'],
+            clicks_website=1,
+            clicks_call_to_action_overlay=1,
+            clicks_app_store=1,
+            clicks_cards=1,
+            clicks_end_cap=1,
         )
         return data
 
@@ -1015,6 +1020,11 @@ class DemoAccount(BaseDemo):
         "agency",
         "brand",
         "cost_method",
+        "clicks_website",
+        "clicks_call_to_action_overlay",
+        "clicks_app_store",
+        "clicks_cards",
+        "clicks_end_cap",
     }
     _analytics_specific_keys = {
         "from_aw",
