@@ -152,7 +152,7 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         SAAS-793
         :return:
         """
-        user = self.create_test_user()
+        user = self.create_test_user(connected=False)
         account_creation = AccountCreation.objects.create(name="", owner=user)
 
         url = self._get_url(account_creation.id)
