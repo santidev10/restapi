@@ -153,9 +153,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         :return:
         """
         user = self.create_test_user(connected=False)
-        account_creation = AccountCreation.objects.create(name="", owner=user)
 
-        url = self._get_url(account_creation.id)
+        url = self._get_url("demo")
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
