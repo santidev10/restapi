@@ -366,46 +366,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         item = data['items'][0]
         self.assertEqual(item['video_view_rate'], 10)  # 10 %
 
-    def test_success_demo_data_if_no_aw_data(self):
-        user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
-        url = self._get_url(account_creation.id, Dimension.ADS)
-
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(
-            set(data.keys()),
-            {'items', 'summary'}
-        )
-        self.assertEqual(len(data['items']), 10)
-        self.assertEqual(
-            set(data['items'][0].keys()),
-            {
-                'name',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'status',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
-                'video50rate',
-                'clicks',
-                'average_position',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
-            }
-        )
-
     @generic_test([
         ("Hide dashboard costs = {}. Dimension = {}".format(hide_costs, dimension), (hide_costs, dimension), dict())
         for hide_costs, dimension in product((True, False), ALL_DIMENSIONS)

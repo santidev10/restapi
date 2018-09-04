@@ -543,7 +543,7 @@ class AnalyticsPerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -586,7 +586,7 @@ class AnalyticsPerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -632,7 +632,7 @@ class AnalyticsPerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -694,7 +694,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
