@@ -487,7 +487,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             (DynamicPlacementType.BUDGET, DynamicPlacementType.RATE_AND_TECH_FEE),
         )
     ])
-    def test_dynamic_placements_rates(self, goal_type_id, dynamic_placement):
+    def test_budget_placements_rates(self, goal_type_id, dynamic_placement):
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity,
                                                goal_type_id=goal_type_id,
@@ -506,14 +506,15 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
         }
 
-        Campaign.objects.create(account=account, salesforce_placement=placement,
-                                cost=1, impressions=2000, video_views=30)
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement,
+                                           cost=1, impressions=2000, video_views=30)
 
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         item = response.data["items"][0]
-
-        self.assertAlmostEqual(item["average_cpm"], item["cost"] / item["impressions"] * 1000)
-        self.assertAlmostEqual(item["average_cpv"], item["cost"] / item["video_views"])
+        if goal_type_id == SalesForceGoalType.CPM:
+            self.assertAlmostEqual(item["average_cpm"], campaign.cost / campaign.impressions * 1000)
+        elif goal_type_id == SalesForceGoalType.CPV:
+            self.assertAlmostEqual(item["average_cpv"], campaign.cost / campaign.video_views)
