@@ -27,10 +27,10 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
-from aw_reporting.models.ad_words.calculations import dashboard_aggregation
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import safe_max
 from userprofile.models import UserSettingsKey
@@ -213,7 +213,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      **dashboard_aggregation())
+                      **base_stats_aggregator())
         sf_data_annotated = Flight.objects.filter(**flight_filter) \
             .values(self.FLIGHT_ACCOUNT_ID_KEY) \
             .order_by(self.FLIGHT_ACCOUNT_ID_KEY) \
@@ -223,32 +223,11 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         for account_data in data:
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             dict_norm_base_stats(account_data)
-            dict_add_calculated_stats(account_data)
-            dict_add_calculated_stats(account_data)
 
             if show_client_cost:
                 sf_data_for_acc = sf_data_by_acc.get(account_id) or dict()
-                cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
-                cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
-                cpv_ordered_units = sf_data_for_acc.get("cpv_ordered_units") or 0
-                cpm_ordered_units = sf_data_for_acc.get("cpm_ordered_units") or 0
-                dynamic_placement_cpm_cost = account_data.get("dynamic_placement_cpm_cost") or 0
-                dynamic_placement_cpv_cost = account_data.get("dynamic_placement_cpv_cost") or 0
-                dynamic_placement_cpm_units = account_data.get("dynamic_placement_cpm_units") or 0
-                dynamic_placement_cpv_units = account_data.get("dynamic_placement_cpv_units") or 0
-
-                cpv_cost = cpv_total_costs + dynamic_placement_cpv_cost
-                cpm_cost = cpm_total_costs + dynamic_placement_cpm_cost
-                cpv_units = cpv_ordered_units + dynamic_placement_cpv_units
-                cpm_units = cpm_ordered_units + dynamic_placement_cpm_units
-
-                average_cpv = cpv_cost / cpv_units \
-                    if cpv_units else None
-                average_cpm = cpm_cost * 1000 / cpm_units \
-                    if cpm_units else None
                 account_data["cost"] = account_client_cost[account_id]
-                account_data["average_cpm"] = average_cpm
-                account_data["average_cpv"] = average_cpv
+            dict_add_calculated_stats(account_data)
 
             stats[account_id] = account_data
         return stats
