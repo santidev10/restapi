@@ -2,14 +2,12 @@ from functools import wraps
 
 from django.db.models import Case
 from django.db.models import F
-from django.db.models import FloatField
 from django.db.models import IntegerField
 from django.db.models import Sum
 from django.db.models import When
 
 from aw_reporting.models.ad_words.constants import CONVERSIONS
 from aw_reporting.models.ad_words.constants import QUARTILE_STATS
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 
 def get_average_cpv(*args, **kwargs):
@@ -217,61 +215,6 @@ def all_stats_aggregator(prefix=None):
            for s in QUARTILE_STATS + CONVERSIONS}
     res.update(base_stats_aggregator(prefix))
     return res
-
-
-def dynamic_placement_aggregatons(prefix=None):
-    prefix = prefix or ""
-    return dict(
-        dynamic_placement_cpm_cost=Sum(
-            Case(
-                When(**{
-                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
-                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPM,
-                    "then": "cost"
-                }),
-                output_field=FloatField(),
-                default=0,
-            )
-        ),
-        dynamic_placement_cpv_cost=Sum(
-            Case(
-                When(**{
-                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
-                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPV,
-                    "then": "cost"
-                }),
-                output_field=FloatField(),
-                default=0,
-            )
-        ),
-        dynamic_placement_cpm_units=Sum(
-            Case(
-                When(**{
-                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
-                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPM,
-                    "then": "impressions"
-                }),
-                output_field=IntegerField(),
-                default=0,
-            )
-        ),
-        dynamic_placement_cpv_units=Sum(
-            Case(
-                When(**{
-                    "{}salesforce_placement__dynamic_placement__isnull".format(prefix): False,
-                    "{}salesforce_placement__goal_type_id".format(prefix): SalesForceGoalType.CPV,
-                    "then": "video_views"
-                }),
-                output_field=IntegerField(),
-                default=0,
-            )
-        ),
-    )
-
-
-def dashboard_aggregation(prefix=None):
-    prefix = prefix or ""
-    return {**base_stats_aggregator(prefix), **dynamic_placement_aggregatons(prefix)}
 
 
 def dict_norm_base_stats(data):
