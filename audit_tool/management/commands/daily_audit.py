@@ -491,7 +491,7 @@ class Command(BaseCommand):
                     lines.append(line)
         return lines
 
-    def save_s3(self, filename, data, content_type=None):
+    def save_s3(self, filename, data, content_type):
         s3 = boto3.client("s3",
                           aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
                           aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY)
@@ -499,5 +499,5 @@ class Command(BaseCommand):
         s3.put_object(Bucket=settings.AMAZON_S3_BUCKET_NAME,
                       Key=self.s3_folder + "/" + filename,
                       Body=data,
-                      ContentType)
+                      ContentType=content_type)
         s3.close()
