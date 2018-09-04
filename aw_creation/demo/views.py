@@ -427,7 +427,7 @@ class AnalyticsAccountCreationCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID or request.user.aw_connections.count() == 0:
                 account = DemoAccount()
                 campaigns = [
                     dict(
