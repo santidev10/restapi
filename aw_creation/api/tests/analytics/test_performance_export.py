@@ -227,22 +227,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
 
-    def test_demo_data_fallback(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-        account = Account.objects.create(id=1, name="",
-                                         skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
-
-        campaign_name = "Test campaign"
-        Campaign.objects.create(name=campaign_name)
-
-        response = self._request(account_creation.id)
-        self.assert_demo_data(response)
-
     def test_ignores_hide_costs(self):
         user = self.create_test_user()
         any_date = date(2018, 1, 1)
