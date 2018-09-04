@@ -12,9 +12,11 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import ALL_DIMENSIONS, Dimension
+from aw_reporting.charts import ALL_DIMENSIONS
+from aw_reporting.charts import Dimension
 from aw_reporting.charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -55,16 +57,27 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
             args=(account_creation_id,)
         )
-        return self.client.post(url,
-                                json.dumps(dict(is_staff=False, **kwargs)),
-                                content_type="application/json")
+        return self.client.post(
+            url,
+            json.dumps(dict(is_staff=False, **kwargs)),
+            content_type="application/json"
+        )
 
     def _hide_demo_data(self, user):
+        self._create_manager_with_connection(user)
+
+    def _create_manager_with_connection(self, user):
+        connection = AWConnection.objects.create(
+            email="me@mail.kz",
+            refresh_token="")
         AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
+            connection=connection,
             user=user,
         )
+        manager = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
+        AWAccountPermission.objects.create(account=manager,
+                                           aw_connection=connection)
+        return manager
 
     @staticmethod
     def create_stats(account):
@@ -315,3 +328,29 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                 trend_item = trend[0]
                 self.assertEqual(trend_item["label"], any_date)
                 self.assertAlmostEqual(trend_item["value"], aw_cost)
+
+    def test_account_visibility_independent(self):
+        any_indicator = Indicator.CPV
+        any_dimension = Dimension.ADS
+        user = self.create_test_user()
+        manager = self._create_manager_with_connection(user)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        self.create_stats(account)
+        account_creation = account.account_creation
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(
+                account_creation.id,
+                indicator=any_indicator,
+                dimension=any_dimension
+            )
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
