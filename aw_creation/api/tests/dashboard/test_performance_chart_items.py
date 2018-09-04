@@ -5,10 +5,9 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import AccountCreation
 from aw_reporting.charts import ALL_DIMENSIONS
 from aw_reporting.charts import Dimension
-from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnection, CLICKS_STATS
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -101,6 +100,46 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_cta_fields_in_topic_dimension_response(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+
+        account = Account.objects.create(id=1, name="")
+        self.create_stats(account)
+
+        url = self._get_url(account.account_creation.id, Dimension.TOPIC)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        for field in CLICKS_STATS:
+            self.assertTrue(field in response.data.get("items")[0].keys())
+
+    def test_cta_fields_in_gender_dimension_response(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+
+        account = Account.objects.create(id=1, name="")
+        self.create_stats(account)
+
+        url = self._get_url(account.account_creation.id, Dimension.GENDER)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        for field in CLICKS_STATS:
+            self.assertTrue(field in response.data.get("items")[0].keys())
 
     @generic_test([
         (dimension, (dimension,), dict())
