@@ -139,7 +139,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
         for field in CLICKS_STATS:
-            self.assertIn(field in response.data.get("items")[0].keys())
+            self.assertIn(field, response.data.get("items")[0].keys())
 
     @generic_test([
         (dimension, (dimension,), dict())
