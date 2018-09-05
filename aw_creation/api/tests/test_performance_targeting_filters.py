@@ -98,9 +98,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_demo_data(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
         url = reverse("aw_creation_urls:performance_targeting_filters",
-                      args=(account_creation.id,))
+                      args=("demo",))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
