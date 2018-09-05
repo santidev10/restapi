@@ -81,19 +81,15 @@ PLAN_RATES_ANNOTATION = dict(
 FLIGHTS_AGGREGATIONS = dict(
     cpv_total_costs=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPV,
-             placement__dynamic_placement__isnull=True,
              then="total_cost"))),
     cpm_total_costs=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPM,
-             placement__dynamic_placement__isnull=True,
              then="total_cost"))),
     cpv_ordered_units=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPV,
-             placement__dynamic_placement__isnull=True,
              then="ordered_units"))),
     cpm_ordered_units=Sum(Case(
         When(placement__goal_type_id=SalesForceGoalType.CPM,
-             placement__dynamic_placement__isnull=True,
              then="ordered_units")))
 )
 
