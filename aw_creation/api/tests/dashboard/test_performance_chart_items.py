@@ -119,7 +119,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
         for field in CLICKS_STATS:
-            self.assertTrue(field in response.data.get("items")[0].keys())
+            self.assertIn(field, response.data.get("items")[0].keys())
 
     def test_cta_fields_in_gender_dimension_response(self):
         user = self.create_test_user()
@@ -139,7 +139,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
         for field in CLICKS_STATS:
-            self.assertTrue(field in response.data.get("items")[0].keys())
+            self.assertIn(field in response.data.get("items")[0].keys())
 
     @generic_test([
         (dimension, (dimension,), dict())
