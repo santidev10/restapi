@@ -418,16 +418,11 @@ class AdCreationListSetupApiView:
         return method
 
 
-def show_demo_data(request, pk):
-    return not request.user.aw_connections.count() or \
-           get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
-
-
 class AnalyticsAccountCreationCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or request.user.aw_connections.count() == 0:
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 campaigns = [
                     dict(
@@ -740,7 +735,7 @@ class PerformanceTargetingFiltersAPIView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 filters = view.get_static_filters()
                 filters["start_date"] = account.start_date
