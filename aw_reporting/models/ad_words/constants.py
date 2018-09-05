@@ -1,6 +1,13 @@
 from utils.utils import get_all_class_constants
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
+CLICKS_STATS = (
+    "clicks_website",
+    "clicks_call_to_action_overlay",
+    "clicks_app_store",
+    "clicks_cards",
+    "clicks_end_cap"
+)
 CONVERSIONS = ("all_conversions", "conversions", "view_through")
 
 SUM_STATS = BASE_STATS + CONVERSIONS
