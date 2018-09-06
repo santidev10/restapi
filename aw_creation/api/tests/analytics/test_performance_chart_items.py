@@ -141,7 +141,12 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
-                "video_clicks"
+                "video_clicks",
+                'clicks_end_cap',
+                'clicks_cards',
+                'clicks_app_store',
+                'clicks_website',
+                'clicks_call_to_action_overlay'
             }
         )
 
@@ -191,7 +196,12 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 "video25rate",
                 "average_cpm",
                 "ctr_v",
-                "video_clicks"
+                "video_clicks",
+                'clicks_end_cap',
+                'clicks_cards',
+                'clicks_app_store',
+                'clicks_website',
+                'clicks_call_to_action_overlay'
             }
         )
 
