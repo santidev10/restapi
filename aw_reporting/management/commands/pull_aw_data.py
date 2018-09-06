@@ -77,7 +77,7 @@ class Command(BaseCommand):
     def _update_accounts(self, today, forced, start, end, is_mcc: bool):
         from aw_reporting.models import Account
         updater = AWDataLoader(today, start=start, end=end)
-        accounts = Account.objects.filter(can_manage_clients=is_mcc)
+        accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
         accounts_to_update = self._filtered_accounts_generator(accounts, forced)
         for account in accounts_to_update:
             logger.info("%s update: %s", self._get_account_type_str(is_mcc), account)
