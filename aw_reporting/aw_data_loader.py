@@ -6,6 +6,7 @@ from suds import WebFault
 
 import aw_reporting.tasks as aw_tasks
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.models import Account
 from utils.lang import safe_index
 
@@ -101,6 +102,9 @@ class AWDataLoader:
                 client = self.get_aw_client(aw_connection.refresh_token,
                                             account.id)
                 result = task(client, account)
+            except AccountInactiveError:
+                account.is_active = False
+                account.save()
             except HttpAccessTokenRefreshError as e:
                 logger.warning((permission, e))
                 aw_connection.revoked_access = True

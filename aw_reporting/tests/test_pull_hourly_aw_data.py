@@ -21,7 +21,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
     def _call_command(self, **kwargs):
         call_command("pull_hourly_aw_data", **kwargs)
 
-    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None):
+    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
                                              update_time=manager_update_time)
@@ -29,7 +29,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
                                            aw_connection=AWConnection.objects.create(),
                                            can_read=True)
 
-        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time)
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time, **kwargs)
         account.managers.add(mcc_account)
         account.save()
         return account
@@ -105,3 +105,15 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertIsNone(account.update_time)
         self.assertEqual(account.hourly_updated_at, now)
+
+    def test_skip_inactive_account(self):
+        self._create_account(is_active=False)
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.return_value = build_csv_byte_stream([], [])
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        downloader_mock.assert_not_called()
