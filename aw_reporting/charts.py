@@ -115,7 +115,8 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, always_aw_costs=False, show_conversions=True, **_):
+                 region_ids=None, with_plan=False, always_aw_costs=False, show_conversions=True,
+                 apex_deal=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -147,6 +148,7 @@ class DeliveryChart:
             region_ids=region_ids,
             always_aw_costs=always_aw_costs,
             show_conversions=show_conversions,
+            apex_deal=apex_deal,
         )
 
         self.with_plan = with_plan
@@ -562,6 +564,9 @@ class DeliveryChart:
         if self.params["region_ids"] is not None:
             filters["opportunity__region_id__in"] = self.params["region_ids"]
 
+        if self.params["apex_deal"] is not None:
+            filters["opportunity__apex_deal"] = self.params["apex_deal"]
+
         indicator = self.params["indicator"]
         if indicator in (Indicator.CPM, Indicator.IMPRESSIONS):
             filters["goal_type_id"] = SalesForceGoalType.CPM
@@ -619,6 +624,9 @@ class DeliveryChart:
 
         if self.params["region_ids"] is not None:
             filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
+
+        if self.params["apex_deal"] is not None:
+            filters["%s__apex_deal" % opp_link] = self.params["apex_deal"]
 
         if filters:
             queryset = queryset.filter(**filters)
