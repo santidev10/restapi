@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from functools import reduce
 
 from django.db.models import Case
 from django.db.models import Count
@@ -210,12 +211,23 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **base_stats_aggregator())
-        sf_data_annotated = Flight.objects.filter(**flight_filter) \
-            .values(self.FLIGHT_ACCOUNT_ID_KEY) \
-            .order_by(self.FLIGHT_ACCOUNT_ID_KEY) \
-            .annotate(**FLIGHTS_AGGREGATIONS)
-        sf_data_by_acc = {i[self.FLIGHT_ACCOUNT_ID_KEY]: i
-                          for i in sf_data_annotated}
+        flights = Flight.objects.filter(**flight_filter) \
+            .distinct() \
+            .annotate(account_creation_id=F("placement__adwords_campaigns__account__account_creation__id"),
+                      goal_type_id=F("placement__goal_type_id"))
+
+        def accumulate(res, item):
+            acc_data = res[item.account_creation_id]
+            if item.goal_type_id == SalesForceGoalType.CPV:
+                acc_data["cpv_total_cost"] += item.total_cost
+                acc_data["cpv_ordered_units"] += item.ordered_units
+            elif item.goal_type_id == SalesForceGoalType.CPM:
+                acc_data["cpm_total_cost"] += item.total_cost
+                acc_data["cpm_ordered_units"] += item.ordered_units
+            res[item.account_creation_id] = acc_data
+            return res
+
+        sf_data_by_acc = reduce(accumulate, flights, defaultdict(lambda: defaultdict(lambda: 0)))
         for account_data in data:
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             dict_norm_base_stats(account_data)
@@ -223,17 +235,15 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
             if show_client_cost:
                 cost = account_client_cost[account_id]
-                sf_data_for_acc = sf_data_by_acc.get(account_id) or dict()
-                cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
-                cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
-                cpv_ordered_units = sf_data_for_acc.get(
-                    "cpv_ordered_units") or 0
-                cpm_ordered_units = sf_data_for_acc.get(
-                    "cpm_ordered_units") or 0
+                sf_data_for_acc = sf_data_by_acc[account_id]
+                cpv_total_costs = sf_data_for_acc["cpv_total_cost"]
+                cpm_total_costs = sf_data_for_acc["cpm_total_cost"]
+                cpv_ordered_units = sf_data_for_acc["cpv_ordered_units"]
+                cpm_ordered_units = sf_data_for_acc["cpm_ordered_units"]
                 average_cpv = cpv_total_costs / cpv_ordered_units \
-                    if cpv_ordered_units else None
+                    if cpv_ordered_units > 0 else None
                 average_cpm = cpm_total_costs * 1000 / cpm_ordered_units \
-                    if cpm_ordered_units else None
+                    if cpm_ordered_units > 0 else None
                 account_data["cost"] = cost
                 account_data["average_cpm"] = average_cpm
                 account_data["average_cpv"] = average_cpv
