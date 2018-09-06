@@ -327,8 +327,9 @@ def audience_performance_report(client, dates, fields=None):
     )
 
 
-def ad_performance_report(client, dates=None):
-    fields = AD_PERFORMANCE_REPORT_FIELDS
+def ad_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,
