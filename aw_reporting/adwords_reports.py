@@ -48,7 +48,11 @@ AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
                                 "Date", "AveragePosition",
                                 "CombinedApprovalStatus") \
                                + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
-
+FATAL_AW_ERRORS = (
+    "AuthorizationError.CUSTOMER_NOT_ACTIVE",
+    "AuthorizationError.USER_PERMISSION_DENIED",
+    "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH",
+)
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
 
@@ -99,9 +103,7 @@ def _get_report(client, name, selector, date_range_type=None,
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
                 logger.warning(e)
-                if e.type == "AuthorizationError.USER_PERMISSION_DENIED":
-                    return
-                elif e.type == "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH":
+                if e.type in FATAL_AW_ERRORS:
                     return
                 raise
 
