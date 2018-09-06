@@ -571,7 +571,14 @@ def get_ads(client, account, today):
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
         return
-
+    click_type_report_fields = (
+        "AdGroupId",
+        "Date",
+        "Id",
+        "Clicks",
+        "ClickType",
+    )
+    report_unique_field_name = "Id"
     stats_queryset = AdStatistic.objects.filter(
         ad__ad_group__campaign__account=account)
     drop_latest_stats(stats_queryset, today)
@@ -594,6 +601,8 @@ def get_ads(client, account, today):
             client,
             dates=(min_date, max_date),
         )
+        click_type_report = ad_performance_report(client, dates=(min_date, max_date), fields=click_type_report_fields)
+        click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
         create_ad = []
         create_stat = []
         updated_ads = []
@@ -634,6 +643,7 @@ def get_ads(client, account, today):
             stats.update(
                 get_base_stats(row_obj)
             )
+            update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name)
             create_stat.append(AdStatistic(**stats))
 
         if create_ad:
