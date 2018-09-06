@@ -10,11 +10,14 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import TransactionTestCase
 from django.test import override_settings
+from googleads.errors import AdWordsReportBadRequestError
 from pytz import timezone
 from pytz import utc
+from requests import HTTPError
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
-from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS, AWErrorType
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
@@ -923,3 +926,19 @@ class PullAWDataTestCase(TransactionTestCase):
             self._call_command()
 
         downloader_mock.assert_not_called()
+
+    def test_mark_account_as_inactive(self):
+        account = self._create_account(is_active=True)
+
+        exception = AdWordsReportBadRequestError(AWErrorType.NOT_ACTIVE, "<null>", None, HTTP_400_BAD_REQUEST,
+                                                 HTTPError(), 'XML Body')
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)

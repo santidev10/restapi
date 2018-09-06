@@ -48,13 +48,24 @@ AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
                                 "Date", "AveragePosition",
                                 "CombinedApprovalStatus") \
                                + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
+
+
+class AWErrorType:
+    NOT_ACTIVE = "AuthorizationError.CUSTOMER_NOT_ACTIVE"
+    PERMISSIONS_DENIED = "AuthorizationError.USER_PERMISSION_DENIED"
+    REPORT_TYPE_MISMATCH = "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH"
+
+
 FATAL_AW_ERRORS = (
-    "AuthorizationError.CUSTOMER_NOT_ACTIVE",
-    "AuthorizationError.USER_PERMISSION_DENIED",
-    "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH",
+    AWErrorType.PERMISSIONS_DENIED,
+    AWErrorType.REPORT_TYPE_MISMATCH,
 )
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
+
+
+class AccountInactiveError(Exception):
+    pass
 
 
 class AWReport:
@@ -103,9 +114,13 @@ def _get_report(client, name, selector, date_range_type=None,
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
                 logger.warning(e)
+                if e.type == AWErrorType.NOT_ACTIVE:
+                    raise AccountInactiveError()
                 if e.type in FATAL_AW_ERRORS:
                     return
                 raise
+        except AccountInactiveError as ex:
+            raise ex
 
         except Exception as e:
             error_str = str(e)
