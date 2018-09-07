@@ -1,13 +1,20 @@
 from django.conf import settings
 
 from aw_reporting.models import Account
+from userprofile.models import UserSettingsKey
 
 
-def get_account_queryset():
+def get_account_queryset(user):
     global_trends_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-    queryset = Account.objects \
-        .filter(managers__id=global_trends_account_id,
-                can_manage_clients=False) \
+    queryset = Account.objects.all()
+    user_settings = user.get_aw_settings()
+    if user_settings.get(UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY):
+        visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        queryset = queryset.filter(id__in=visible_accounts)
+
+    queryset = queryset.filter(
+        managers__id=global_trends_account_id,
+        can_manage_clients=False) \
         .order_by("name")
     return queryset
 
