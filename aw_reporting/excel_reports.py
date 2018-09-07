@@ -19,7 +19,7 @@ from aw_reporting.models import dict_quartiles_to_rates
 all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
 
 
-def add_clicks_to_all_stats_aggregate(aggregation_dict):
+def get_all_stats_aggregate_with_clicks_stats(aggregation_dict):
     for field in CLICKS_STATS:
         aggregation_dict[field] = Sum(field)
     return aggregation_dict
@@ -333,7 +333,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **add_clicks_to_all_stats_aggregate(all_stats_aggregate)
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__campaign__name']
@@ -345,7 +345,7 @@ class PerformanceWeeklyReport:
     def get_total_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
-            **add_clicks_to_all_stats_aggregate(all_stats_aggregate)
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
@@ -442,7 +442,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **add_clicks_to_all_stats_aggregate(all_stats_aggregate)
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__name']
@@ -609,7 +609,7 @@ class PerformanceWeeklyReport:
     def get_device_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         device_data = queryset.values("device_id").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by("device_id")
         for i in device_data:
             i['name'] = Devices[i['device_id']]
@@ -631,6 +631,11 @@ class PerformanceWeeklyReport:
             "Views",
             "View Rate",
             "Clicks",
+            "CTA Clicks",
+            "Website",
+            "App Store",
+            "Cards",
+            "End Screen",
             "CTR",
             "Video Played to: 100%"
         )]
@@ -643,10 +648,20 @@ class PerformanceWeeklyReport:
             if device == "Other":
                 device = "Other*"
             rows.append(
-                (device, obj['impressions'], obj['video_views'],
-                 div_by_100(obj['video_view_rate']), obj['clicks'],
-                 div_by_100(obj['ctr']),
-                 div_by_100(obj['video100rate']))
+                (
+                    device,
+                    obj['impressions'],
+                    obj['video_views'],
+                    div_by_100(obj['video_view_rate']),
+                    obj['clicks'],
+                    obj["clicks_call_to_action_overlay"],
+                    obj["clicks_website"],
+                    obj["clicks_app_store"],
+                    obj["clicks_cards"],
+                    obj["clicks_end_cap"],
+                    div_by_100(obj['ctr']),
+                    div_by_100(obj['video100rate'])
+                )
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation
