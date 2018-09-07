@@ -1,8 +1,9 @@
-from copy import copy
 import re
+from copy import copy
 from datetime import datetime
 from functools import partial
 
+from django.db.models import Sum
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -12,9 +13,10 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceReport
-from aw_reporting.excel_reports import PerformanceReportColumn
+from aw_reporting.excel_reports_dashboard import PerformanceReport
+from aw_reporting.excel_reports_dashboard import PerformanceReportColumn
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
@@ -94,11 +96,11 @@ class DashboardPerformanceExportApiView(APIView):
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
         aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
+        for field in CLICKS_STATS:
+            aggregation["sum_{}".format(field)] = Sum(field)
         if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
             aggregation["sum_cost"] = get_client_cost_aggregation()
-        stats = AdGroupStatistic.objects.filter(**fs).aggregate(
-            **aggregation
-        )
+        stats = AdGroupStatistic.objects.filter(**fs).aggregate(**aggregation)
 
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)

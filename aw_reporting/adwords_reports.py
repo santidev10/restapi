@@ -280,12 +280,14 @@ def geo_location_report(client):
     return _output_to_rows(result, fields)
 
 
-def _daily_statistic_performance_report(client, name, dates=None,
-                                        additional_fields=None):
-    fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+def _daily_statistic_performance_report(
+        client, name, dates=None, additional_fields=None, fields=None):
 
-    if additional_fields:
-        fields += additional_fields
+    if fields is None:
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+
+        if additional_fields:
+            fields += additional_fields
 
     selector = {
         "fields": fields,
@@ -303,9 +305,9 @@ def _daily_statistic_performance_report(client, name, dates=None,
     return _output_to_rows(result, fields)
 
 
-def gender_performance_report(client, dates):
+def gender_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "GENDER_PERFORMANCE_REPORT", dates
+        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
@@ -315,33 +317,34 @@ def parent_performance_report(client, dates):
     )
 
 
-def age_range_performance_report(client, dates):
+def age_range_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AGE_RANGE_PERFORMANCE_REPORT", dates
+        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def keywords_performance_report(client, dates):
+def keywords_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates
+        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def topics_performance_report(client, dates):
+def topics_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates,
+        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def audience_performance_report(client, dates):
+def audience_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AUDIENCE_PERFORMANCE_REPORT", dates,
+        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
         additional_fields=("UserListName",)
     )
 
 
-def ad_performance_report(client, dates=None):
-    fields = AD_PERFORMANCE_REPORT_FIELDS
+def ad_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,
@@ -392,8 +395,9 @@ def campaign_performance_report(client,
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None):
-    fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+def ad_group_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,

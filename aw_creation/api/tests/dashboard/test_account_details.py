@@ -66,6 +66,11 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "video_view_rate",
         "video_views",
         "weekly_chart",
+        "clicks_website",
+        "clicks_end_cap",
+        "clicks_cards",
+        "clicks_call_to_action_overlay",
+        "clicks_app_store",
     }
 
     def _get_url(self, account_creation_id):

@@ -1,11 +1,12 @@
 from datetime import datetime
 from datetime import timedelta
-from django.conf import settings
 from io import BytesIO
 
 import xlsxwriter
+from django.conf import settings
+from django.db.models import Sum
 
-from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AdGroupStatistic, CLICKS_STATS
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
@@ -16,6 +17,12 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 
 all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
+
+
+def get_all_stats_aggregate_with_clicks_stats(aggregation_dict):
+    for field in CLICKS_STATS:
+        aggregation_dict[field] = Sum(field)
+    return aggregation_dict
 
 
 def div_by_100(value):
@@ -326,7 +333,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__campaign__name']
@@ -338,7 +345,7 @@ class PerformanceWeeklyReport:
     def get_total_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
@@ -358,6 +365,11 @@ class PerformanceWeeklyReport:
             "Views",
             "View Rate",
             "Clicks",
+            "CTA Clicks",
+            "Website",
+            "App Store",
+            "Cards",
+            "End Screen",
             "CTR",
             "Video played to: 25%",
             "Video played to: 50%",
@@ -375,9 +387,16 @@ class PerformanceWeeklyReport:
         for obj in self.get_campaign_data():
             rows.append((
                 # placement
-                obj["name"], obj["impressions"], obj["video_views"],
+                obj["name"],
+                obj["impressions"],
+                obj["video_views"],
                 div_by_100(obj["video_view_rate"]),
                 obj["clicks"],
+                obj["clicks_call_to_action_overlay"],
+                obj["clicks_website"],
+                obj["clicks_app_store"],
+                obj["clicks_cards"],
+                obj["clicks_end_cap"],
                 div_by_100(obj["ctr"]),
                 div_by_100(obj["video25rate"]),
                 div_by_100(obj["video50rate"]),
@@ -399,6 +418,11 @@ class PerformanceWeeklyReport:
             total_data["video_views"],
             div_by_100(total_data["video_view_rate"]),
             total_data["clicks"],
+            total_data["clicks_website"],
+            total_data["clicks_call_to_action_overlay"],
+            total_data["clicks_app_store"],
+            total_data["clicks_cards"],
+            total_data["clicks_end_cap"],
             div_by_100(total_data["ctr"]),
             div_by_100(total_data["video25rate"]),
             div_by_100(total_data["video50rate"]),
@@ -418,7 +442,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__name']
@@ -440,6 +464,11 @@ class PerformanceWeeklyReport:
             "Views",
             "View Rate",
             "Clicks",
+            "CTA Clicks",
+            "Website",
+            "App Store",
+            "Cards",
+            "End Screen",
             "CTR",
             "Video played to: 100%",
             "Viewable Impressions",
@@ -455,9 +484,15 @@ class PerformanceWeeklyReport:
                 obj["video_views"],
                 div_by_100(obj["video_view_rate"]),
                 obj["clicks"],
+                obj["clicks_call_to_action_overlay"],
+                obj["clicks_website"],
+                obj["clicks_app_store"],
+                obj["clicks_cards"],
+                obj["clicks_end_cap"],
                 div_by_100(obj["ctr"]),
                 div_by_100(obj["video100rate"]),
-                "", "",
+                "",
+                "",
             )
             for obj in self.get_ad_group_data()
         ]
@@ -574,7 +609,7 @@ class PerformanceWeeklyReport:
     def get_device_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         device_data = queryset.values("device_id").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregate)
         ).order_by("device_id")
         for i in device_data:
             i['name'] = Devices[i['device_id']]
@@ -596,6 +631,11 @@ class PerformanceWeeklyReport:
             "Views",
             "View Rate",
             "Clicks",
+            "CTA Clicks",
+            "Website",
+            "App Store",
+            "Cards",
+            "End Screen",
             "CTR",
             "Video Played to: 100%"
         )]
@@ -608,10 +648,20 @@ class PerformanceWeeklyReport:
             if device == "Other":
                 device = "Other*"
             rows.append(
-                (device, obj['impressions'], obj['video_views'],
-                 div_by_100(obj['video_view_rate']), obj['clicks'],
-                 div_by_100(obj['ctr']),
-                 div_by_100(obj['video100rate']))
+                (
+                    device,
+                    obj['impressions'],
+                    obj['video_views'],
+                    div_by_100(obj['video_view_rate']),
+                    obj['clicks'],
+                    obj["clicks_call_to_action_overlay"],
+                    obj["clicks_website"],
+                    obj["clicks_app_store"],
+                    obj["clicks_cards"],
+                    obj["clicks_end_cap"],
+                    div_by_100(obj['ctr']),
+                    div_by_100(obj['video100rate'])
+                )
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation

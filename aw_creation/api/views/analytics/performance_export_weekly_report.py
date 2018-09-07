@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceWeeklyReport
+from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport
 from utils.views import xlsx_response
 
 

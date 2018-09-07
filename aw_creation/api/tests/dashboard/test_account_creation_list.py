@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from itertools import product
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -24,20 +23,18 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Campaign
 from aw_reporting.models import Contact
-from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
@@ -162,7 +159,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(set(response.data["items"][0].keys()), self.details_keys)
+        self.assertEqual(set(response.data["items"][0].keys()), set(tuple(self.details_keys) + CLICKS_STATS))
 
     def test_get_chf_account_creation_list_queryset(self):
         chf_account = Account.objects.create(

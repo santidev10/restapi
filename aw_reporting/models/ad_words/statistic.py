@@ -19,6 +19,11 @@ class BaseStatisticModel(BaseModel):
     video_views_50_quartile = models.FloatField(default=0)
     video_views_75_quartile = models.FloatField(default=0)
     video_views_100_quartile = models.FloatField(default=0)
+    clicks_website = models.IntegerField(default=0)
+    clicks_call_to_action_overlay = models.IntegerField(default=0)
+    clicks_app_store = models.IntegerField(default=0)
+    clicks_cards = models.IntegerField(default=0)
+    clicks_end_cap = models.IntegerField(default=0)
 
     class Meta:
         abstract = True

@@ -11,8 +11,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.excel_reports import PerformanceReport
-from aw_reporting.excel_reports import PerformanceReportColumn
+from aw_reporting.excel_reports_dashboard import PerformanceReport
+from aw_reporting.excel_reports_dashboard import PerformanceReportColumn
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup

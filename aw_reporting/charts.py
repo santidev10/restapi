@@ -13,13 +13,14 @@ from django.db.models import When
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.models import AdGroupStatistic, base_stats_aggregator
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CALCULATED_STATS
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
@@ -40,6 +41,7 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -488,7 +490,8 @@ class DeliveryChart:
             "ctr_v", "duration", "id", "impressions", "name", "status",
             "thumbnail", "video100rate", "video25rate", "video50rate",
             "video75rate", "video_clicks", "video_view_rate", "video_views",
-            "view_through"
+            "view_through", "clicks_website", "clicks_call_to_action_overlay",
+            "clicks_app_store", "clicks_cards", "clicks_end_cap"
         }
         return {key: value for key, value in item.items()
                 if key in allowed_keys}
@@ -666,6 +669,9 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
+        if queryset.model not in (CampaignHourlyStatistic, ):
+            for field in CLICKS_STATS:
+                kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):

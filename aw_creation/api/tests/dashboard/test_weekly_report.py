@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_reporting.excel_reports import FOOTER_ANNOTATION
+from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
