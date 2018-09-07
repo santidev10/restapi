@@ -14,7 +14,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.excel_reports import PerformanceReportColumn
+from aw_reporting.excel_reports_analytics import PerformanceReportColumn
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation

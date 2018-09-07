@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceWeeklyReport
+from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport
 from aw_reporting.models import Account
 from utils.views import xlsx_response
 
