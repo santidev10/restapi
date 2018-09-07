@@ -14,8 +14,9 @@ class Account(models.Model):
     update_time = models.DateTimeField(null=True)
     hourly_updated_at = models.DateTimeField(null=True)
     settings_updated_at = models.DateTimeField(null=True)
+    is_active = models.BooleanField(null=False, default=True)
 
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         skip_creating_account_creation = kwargs.pop("skip_creating_account_creation", False)
         super(Account, self).__init__(*args, **kwargs)
         self.skip_creating_account_creation = skip_creating_account_creation

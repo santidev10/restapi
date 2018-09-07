@@ -4,18 +4,33 @@ import logging
 import re
 from collections import defaultdict
 from collections import namedtuple
-from datetime import datetime, timedelta, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from functools import reduce
 
 import pytz
 from celery import task
 from django.db import transaction
-from django.db.models import Min, Max, Case, Count, When, Sum, IntegerField
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Sum
+from django.db.models import When
 from pytz import timezone
 
-from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.adwords_reports import parent_performance_report
-from aw_reporting.models import AdGroup, Campaign, ALL_AGE_RANGES, ALL_GENDERS, ALL_PARENTS, ALL_DEVICES
+from aw_reporting.models import ALL_AGE_RANGES
+from aw_reporting.models import ALL_DEVICES
+from aw_reporting.models import ALL_GENDERS
+from aw_reporting.models import ALL_PARENTS
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
@@ -282,6 +297,7 @@ def detect_success_aw_read_permissions():
     from aw_reporting.models import AWAccountPermission
     for permission in AWAccountPermission.objects.filter(
             can_read=False,
+            account__is_active=True,
             aw_connection__revoked_access=False,
     ):
         try:
@@ -294,6 +310,10 @@ def detect_success_aw_read_permissions():
         else:
             try:
                 get_all_customers(client, page_size=1, limit=1)
+            except AccountInactiveError:
+                account = permission.account
+                account.is_active = False
+                account.save()
             except Exception as e:
                 logger.info(e)
             else:

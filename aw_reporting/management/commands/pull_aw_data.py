@@ -77,7 +77,7 @@ class Command(BaseCommand):
     def _update_accounts(self, today, forced, start, end, is_mcc: bool):
         from aw_reporting.models import Account
         updater = AWDataLoader(today, start=start, end=end)
-        accounts = Account.objects.filter(can_manage_clients=is_mcc)
+        accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
         accounts_to_update = self._filtered_accounts_generator(accounts, forced)
         for account in accounts_to_update:
             logger.info("%s update: %s", self._get_account_type_str(is_mcc), account)
@@ -87,12 +87,10 @@ class Command(BaseCommand):
         return "MCC" if is_mcc else "Customer"
 
     def _filtered_accounts_generator(self, queryset, forced):
-        if forced:
-            return queryset
         now = now_in_default_tz(utc)
         for account in queryset:
             tz = timezone(account.timezone)
-            if not account.update_time or max_ready_date(account.update_time, tz) < max_ready_date(now, tz):
+            if forced or _update_account(account, now, tz):
                 yield account
 
     @staticmethod
@@ -131,3 +129,7 @@ class Command(BaseCommand):
                     AWAccountPermission.objects.get_or_create(
                         aw_connection=connection, account=obj,
                     )
+
+
+def _update_account(account, now, tz):
+    return not account.update_time or max_ready_date(account.update_time, tz) < max_ready_date(now, tz)
