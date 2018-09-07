@@ -442,7 +442,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **all_stats_aggregate
+            **add_clicks_to_all_stats_aggregate(all_stats_aggregate)
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__name']
@@ -479,9 +479,15 @@ class PerformanceWeeklyReport:
                 obj["video_views"],
                 div_by_100(obj["video_view_rate"]),
                 obj["clicks"],
+                obj["clicks_website"],
+                obj["clicks_call_to_action_overlay"],
+                obj["clicks_app_store"],
+                obj["clicks_cards"],
+                obj["clicks_end_cap"],
                 div_by_100(obj["ctr"]),
                 div_by_100(obj["video100rate"]),
-                "", "",
+                "",
+                "",
             )
             for obj in self.get_ad_group_data()
         ]
