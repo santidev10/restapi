@@ -79,21 +79,6 @@ PLAN_RATES_ANNOTATION = dict(
     )
 )
 
-FLIGHTS_AGGREGATIONS = dict(
-    cpv_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="total_cost"))),
-    cpm_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="total_cost"))),
-    cpv_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="ordered_units"))),
-    cpm_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="ordered_units")))
-)
-
 
 class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
     CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creation__id"
