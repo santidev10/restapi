@@ -107,6 +107,14 @@ class Breakdown:
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
                            Indicator.VIEWS, Indicator.COST)
 
+CLICK_STATS_TYPES_IGNORE_MODELS = (
+    CampaignHourlyStatistic,
+    YTVideoStatistic,
+    CityStatistic,
+    YTChannelStatistic,
+    VideoCreativeStatistic,
+)
+
 
 class DeliveryChart:
 
@@ -669,7 +677,7 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
-        if queryset.model not in (CampaignHourlyStatistic, ):
+        if queryset.model not in CLICK_STATS_TYPES_IGNORE_MODELS:
             for field in CLICKS_STATS:
                 kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)
