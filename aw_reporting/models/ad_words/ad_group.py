@@ -1,7 +1,7 @@
 from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
-from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
+from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields, BaseClicksTypesStatisticsModel
 from userprofile.managers import UserRelatedManager
 
 
@@ -12,7 +12,7 @@ class AdGroupManager(UserRelatedManager):
         return super(AdGroupManager, self).get_queryset(ignore_user=ignore_user)
 
 
-class AdGroup(ModelPlusDeNormFields):
+class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = AdGroupManager()
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
