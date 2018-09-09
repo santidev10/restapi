@@ -695,6 +695,11 @@ class PerformanceReport:
         ("average_cpm", "Average cpm"),
         ("average_cpv", "Average cpv"),
         ("clicks", "Clicks"),
+        ("CTA Clicks", "clicks_call_to_action_overlay"),
+        ("Website", "clicks_website"),
+        ("App Store", "clicks_app_store"),
+        ("Cards", "clicks_cards"),
+        ("End Screen", "clicks_end_cap"),
         ("ctr", "Ctr(i)"),
         ("ctr_v", "Ctr(v)"),
         ("video_view_rate", "View rate"),
@@ -703,8 +708,7 @@ class PerformanceReport:
         ("video75rate", "75%"),
         ("video100rate", "100%"),
     )
-
-    columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
+    columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
 
     def __init__(self, columns_to_hide=None):
         self._exclude_columns(columns_to_hide or [])
