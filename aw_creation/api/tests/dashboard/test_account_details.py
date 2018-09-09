@@ -4,6 +4,7 @@ from itertools import product
 from unittest.mock import patch
 
 from django.conf import settings
+from django.db.models import Sum
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -22,13 +23,11 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
@@ -575,3 +574,55 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.assertEqual(item[key], 0, key)
         for key in rates:
             self.assertIsNone(item[key])
+
+    def test_rates_on_multiple_campaigns(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-278
+        Summary: Dashboard > Incorrect cpv/ cpm on Dashboard for Dynamic placement if several placements with the same type are present
+        Root cause: stats aggregates multiple times on several Campaign-Placement relations
+        """
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+        opportunity = Opportunity.objects.create()
+        placement_cpm_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                     goal_type_id=SalesForceGoalType.CPM)
+        placement_cpm_2 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                     goal_type_id=SalesForceGoalType.CPM)
+        placement_cpv_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                     goal_type_id=SalesForceGoalType.CPV)
+        placement_cpv_2 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity,
+                                                     goal_type_id=SalesForceGoalType.CPV)
+        Flight.objects.create(id=next(int_iterator), placement=placement_cpm_1, total_cost=2, ordered_units=1)
+        Flight.objects.create(id=next(int_iterator), placement=placement_cpm_2, total_cost=3, ordered_units=2)
+        Flight.objects.create(id=next(int_iterator), placement=placement_cpv_1, total_cost=4, ordered_units=3)
+        Flight.objects.create(id=next(int_iterator), placement=placement_cpv_2, total_cost=5, ordered_units=4)
+
+        for index, placement in enumerate(opportunity.placements.all()):
+            for _ in range(1 + index):
+                Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=placement)
+
+        def get_agg(goal_type_id):
+            return Flight.objects.filter(placement__opportunity=opportunity,
+                                         placement__goal_type_id=goal_type_id) \
+                .aggregate(cost=Sum("total_cost"),
+                           units=Sum("ordered_units"))
+
+        cpv_agg = get_agg(SalesForceGoalType.CPV)
+        cpm_agg = get_agg(SalesForceGoalType.CPM)
+        expected_cpm = cpm_agg["cost"] / cpm_agg["units"] * 1000
+        expected_cpv = cpv_agg["cost"] / cpv_agg["units"]
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        item = response.data
+        with self.subTest("CPM"):
+            self.assertAlmostEqual(item["average_cpm"], expected_cpm)
+        with self.subTest("CPV"):
+            self.assertAlmostEqual(item["average_cpv"], expected_cpv)
