@@ -88,11 +88,6 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
                 'average_cpm',
                 'ctr_v',
                 "video_clicks",
-                'clicks_end_cap',
-                'clicks_cards',
-                'clicks_app_store',
-                'clicks_website',
-                'clicks_call_to_action_overlay'
             }
         )
 
@@ -123,7 +118,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(response.data['items']), 0)
 
     def test_demo_all_dimensions(self):
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             for dimension in ('device', 'gender', 'age', 'topic',
                               'interest', 'creative', 'channel', 'video',

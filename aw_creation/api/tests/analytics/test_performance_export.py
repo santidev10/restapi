@@ -126,7 +126,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             start_date=str(today - timedelta(days=1)),
             end_date=str(today)
         )
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id, **filters)
             sheet = get_sheet_from_response(response)
@@ -154,7 +154,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -175,7 +175,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)

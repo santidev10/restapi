@@ -55,7 +55,7 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
             'end_date': str(today),
         }
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url, json.dumps(filters), content_type='application/json',

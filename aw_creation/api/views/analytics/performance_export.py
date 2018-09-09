@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import DeliveryChart
+from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports_analytics import PerformanceReport
 from aw_reporting.models import AdGroupStatistic

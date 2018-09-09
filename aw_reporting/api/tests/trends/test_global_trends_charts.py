@@ -11,9 +11,9 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import Breakdown
-from aw_reporting.charts import Indicator
-from aw_reporting.charts import TrendId
+from aw_reporting.analytics_charts import Breakdown
+from aw_reporting.analytics_charts import Indicator
+from aw_reporting.analytics_charts import TrendId
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
@@ -281,7 +281,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
@@ -315,7 +315,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)

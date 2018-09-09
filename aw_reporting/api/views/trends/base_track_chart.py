@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 
 from aw_reporting.api.views.trends.base_track import TrackApiBase
-from aw_reporting.charts import DeliveryChart
+from aw_reporting.analytics_charts import DeliveryChart
 
 
 class BaseTrackChartApiView(TrackApiBase):

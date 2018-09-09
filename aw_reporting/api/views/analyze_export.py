@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.charts import DeliveryChart
+from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account, DATE_FORMAT, AdGroupStatistic, \
     BASE_STATS, QUARTILE_STATS, dict_quartiles_to_rates, \

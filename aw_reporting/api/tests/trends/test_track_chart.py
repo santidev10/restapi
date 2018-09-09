@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import TrendId, Indicator, Breakdown
+from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from saas.urls.namespaces import Namespace
@@ -141,7 +141,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="channel",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 
@@ -174,7 +174,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="video",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 

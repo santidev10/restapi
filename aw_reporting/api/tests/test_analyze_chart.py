@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.charts import ALL_DIMENSIONS
+from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.demo.models import *
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher, generic_test
 from .base import AwReportingAPITestCase
@@ -96,7 +96,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
             'indicator': 'video_view_rate',
             'dimension': dimension
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url, json.dumps(filters),

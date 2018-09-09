@@ -90,7 +90,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
