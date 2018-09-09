@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 MIN_FETCH_DATE = date(2012, 1, 1)
 
 TRACKING_CLICK_TYPES = (
-    ("Website", "click_website"),
+    ("Website", "clicks_website"),
     ("Call-to-Action overlay", "clicks_call_to_action_overlay"),
     ("App store", "clicks_app_store"),
     ("Cards", "clicks_cards"),
