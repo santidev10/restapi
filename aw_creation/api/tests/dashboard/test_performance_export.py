@@ -90,7 +90,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -182,8 +182,10 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(is_empty_report(sheet))
         header_row_number = 1
         headers = tuple(cell.value for cell in sheet[header_row_number])
-        expected_headers = (None, "Name", "Impressions", "Views", "Clicks", "Ctr(i)", "Ctr(v)", "View rate",
-                            "25%", "50%", "75%", "100%")
+        expected_headers = (
+            None, "Name", "Impressions", "Views", "Clicks", "CTA Clicks", "Website", "App Store", "Cards", "End Screen",
+            "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
+
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))

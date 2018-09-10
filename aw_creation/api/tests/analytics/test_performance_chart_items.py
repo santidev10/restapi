@@ -9,8 +9,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import Dimension
+from aw_reporting.analytics_charts import ALL_DIMENSIONS
+from aw_reporting.analytics_charts import Dimension
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -142,11 +142,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'average_cpm',
                 'ctr_v',
                 "video_clicks",
-                'clicks_end_cap',
-                'clicks_cards',
-                'clicks_app_store',
-                'clicks_website',
-                'clicks_call_to_action_overlay'
             }
         )
 
@@ -161,7 +156,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self.create_stats(account)
         url = self._get_url(account_creation.id, Dimension.VIDEO)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(url)
 
@@ -331,7 +326,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             for dimension in ALL_DIMENSIONS:
                 with self.subTest(dimension):
@@ -389,7 +384,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_costs
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             url = self._get_url(account_creation.id, dimension)
@@ -439,7 +434,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
@@ -487,7 +482,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.AGE)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
@@ -536,7 +531,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         }
 
         url = self._get_url(account_creation.id, Dimension.DEVICE)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
@@ -587,7 +582,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         }
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):

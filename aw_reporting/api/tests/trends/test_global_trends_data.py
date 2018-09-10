@@ -9,8 +9,8 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import Breakdown
-from aw_reporting.charts import Indicator
+from aw_reporting.analytics_charts import Breakdown
+from aw_reporting.analytics_charts import Indicator
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic

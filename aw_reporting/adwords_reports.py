@@ -130,7 +130,7 @@ def _get_report(client, name, selector, date_range_type=None,
             logger.error("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1
-                seconds = try_num ** 4
+                seconds = try_num ** 3
                 logger.info("Sleep for %d seconds" % seconds)
                 sleep(seconds)
             else:

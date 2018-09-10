@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import Indicator, Breakdown
+from aw_reporting.analytics_charts import Indicator, Breakdown
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace

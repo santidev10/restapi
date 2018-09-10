@@ -12,9 +12,9 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import Dimension
-from aw_reporting.charts import Indicator
+from aw_reporting.analytics_charts import ALL_DIMENSIONS
+from aw_reporting.analytics_charts import Dimension
+from aw_reporting.analytics_charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
@@ -178,7 +178,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             'indicator': 'video_view_rate',
             'dimension': dimension,
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id, **filters)
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -10,9 +10,9 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import ALL_INDICATORS
-from aw_reporting.charts import Indicator
+from aw_reporting.dashboard_charts import ALL_DIMENSIONS
+from aw_reporting.dashboard_charts import ALL_INDICATORS
+from aw_reporting.dashboard_charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
