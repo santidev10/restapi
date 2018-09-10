@@ -237,6 +237,11 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
+                "clicks_end_cap",
+                "clicks_website",
+                "clicks_app_store",
+                "clicks_cards",
+                "clicks_call_to_action_overlay",
             }
         )
 

@@ -57,6 +57,11 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
+                "clicks_call_to_action_overlay",
+                "clicks_app_store",
+                "clicks_end_cap",
+                "clicks_cards",
+                "clicks_website",
             }
         )
 
