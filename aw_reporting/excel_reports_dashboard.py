@@ -739,13 +739,13 @@ class PerformanceReport:
             "num_format": "0.00%",
         })
         cell_formats = {
-            8: dict(format=percent_format, fn=div_by_100),
-            9: dict(format=percent_format, fn=div_by_100),
-            10: dict(format=percent_format, fn=div_by_100),
-            11: dict(format=percent_format, fn=div_by_100),
-            12: dict(format=percent_format, fn=div_by_100),
-            13: dict(format=percent_format, fn=div_by_100),
             14: dict(format=percent_format, fn=div_by_100),
+            15: dict(format=percent_format, fn=div_by_100),
+            16: dict(format=percent_format, fn=div_by_100),
+            17: dict(format=percent_format, fn=div_by_100),
+            18: dict(format=percent_format, fn=div_by_100),
+            19: dict(format=percent_format, fn=div_by_100),
+            20: dict(format=percent_format, fn=div_by_100),
         }
 
         self._write_rows(worksheet, data_generator(), 1, 0, cell_formats)
