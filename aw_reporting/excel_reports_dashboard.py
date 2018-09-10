@@ -150,14 +150,19 @@ class PerformanceWeeklyReport:
             3: middle_columns_cell_format,
             4: middle_columns_percentage_cell_format,
             5: middle_columns_cell_format,
-            6: middle_columns_percentage_cell_format,
-            7: last_columns_percentage_cell_format,
-            8: last_columns_percentage_cell_format,
-            9: last_columns_percentage_cell_format,
-            10: last_columns_percentage_cell_format,
+            6: middle_columns_cell_format,
+            7: middle_columns_cell_format,
+            8: middle_columns_cell_format,
+            9: middle_columns_cell_format,
+            10: middle_columns_cell_format,
+            11: middle_columns_percentage_cell_format,
+            12: last_columns_percentage_cell_format,
+            13: last_columns_percentage_cell_format,
+            14: last_columns_percentage_cell_format,
+            15: last_columns_percentage_cell_format,
             # TODO We don't collect the statistic for those two columns yet
-            11: middle_columns_cell_format,
-            12: last_columns_cell_format,
+            16: middle_columns_cell_format,
+            17: last_columns_cell_format,
 
         }
 
@@ -186,13 +191,18 @@ class PerformanceWeeklyReport:
             4: 15,
             5: 10,
             6: 10,
-            7: 25,
-            8: 25,
-            9: 25,
-            10: 25,
-            # TODO We don't collect the statistic for those two columns yet
-            11: 25,
+            7: 10,
+            8: 10,
+            9: 10,
+            10: 10,
+            11: 10,
             12: 25,
+            13: 25,
+            14: 25,
+            15: 25,
+            # TODO We don't collect the statistic for those two columns yet
+            16: 25,
+            17: 25,
         }
         for key, value in columns_width.items():
             self.worksheet.set_column(key, key, value)
