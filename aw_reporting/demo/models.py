@@ -729,6 +729,11 @@ class DemoAccount(BaseDemo):
     plan_cost = 2500000
     plan_impressions = 242600000
     plan_video_views = 21600000
+    clicks_website = 19
+    clicks_call_to_action_overlay = 17
+    clicks_app_store = 15
+    clicks_cards = 13
+    clicks_end_cap = 7
 
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
