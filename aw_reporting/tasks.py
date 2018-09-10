@@ -93,7 +93,8 @@ def format_click_types_report(report, unique_field_name):
         except KeyError:
             result[key] = [value]
         else:
-            result[key] = prev_value.append(value)
+            prev_value.append(value)
+            result[key] = prev_value
     return result
 
 
