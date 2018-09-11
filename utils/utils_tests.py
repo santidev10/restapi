@@ -17,7 +17,6 @@ from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
-from userprofile.permissions import Permissions
 from utils.datetime import Time
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,6 @@ class TestUserMixin:
         """
         get_user_model().objects.filter(email=self.test_user_data["email"]) \
             .delete()
-        Permissions.sync_groups()
         user = get_user_model().objects.create(
             **self.test_user_data,
         )

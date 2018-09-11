@@ -5,10 +5,9 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.models import AccountCreation
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import Dimension
-from aw_reporting.models import AWConnection
+from aw_reporting.dashboard_charts import ALL_DIMENSIONS
+from aw_reporting.dashboard_charts import Dimension
+from aw_reporting.models import AWConnection, CLICKS_STATS
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -90,13 +89,9 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self._hide_demo_data(user)
 
         account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
         self.create_stats(account)
 
-        url = self._get_url(account_creation.id, Dimension.TOPIC)
+        url = self._get_url(account.account_creation.id, Dimension.TOPIC)
 
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
@@ -105,6 +100,46 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_cta_fields_in_topic_dimension_response(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+
+        account = Account.objects.create(id=1, name="")
+        self.create_stats(account)
+
+        url = self._get_url(account.account_creation.id, Dimension.TOPIC)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        for field in CLICKS_STATS:
+            self.assertIn(field, response.data.get("items")[0].keys())
+
+    def test_cta_fields_in_gender_dimension_response(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+
+        account = Account.objects.create(id=1, name="")
+        self.create_stats(account)
+
+        url = self._get_url(account.account_creation.id, Dimension.GENDER)
+
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        for field in CLICKS_STATS:
+            self.assertIn(field, response.data.get("items")[0].keys())
 
     @generic_test([
         (dimension, (dimension,), dict())
@@ -116,7 +151,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
-        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
                                all_conversions=3, view_through=4)
@@ -124,7 +158,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.SHOW_CONVERSIONS: False,
         }
-        url = self._get_url(account_creation.id, dimension)
+        url = self._get_url(account.account_creation.id, dimension)
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, dict())
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -145,7 +179,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self._hide_demo_data(user)
         account = Account.objects.create(id=next(int_iterator))
         self.create_stats(account)
-        account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account)
         campaign = Campaign.objects.create(id=next(int_iterator), account=account)
         AdGroup.objects.create(id=next(int_iterator), campaign=campaign, conversions=2,
                                all_conversions=3, view_through=4)
@@ -153,7 +186,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.SHOW_CONVERSIONS: True,
         }
-        url = self._get_url(account_creation.id, dimension)
+        url = self._get_url(account.account_creation.id, dimension)
         with self.patch_user_settings(**user_settings):
             response = self.client.post(url, dict())
             self.assertEqual(response.status_code, HTTP_200_OK)

@@ -17,6 +17,7 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
         self.account = self.create_account(self.user)
         self.create_stats(self.account)
 
+
     @staticmethod
     def create_stats(account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -53,12 +54,11 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
             'start_date': str(today - timedelta(days=1)),
             'end_date': str(today),
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url, json.dumps(filters), content_type='application/json',
             )
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(type(response), StreamingHttpResponse)
-            self.assertGreater(len(list(response)), 10)
-

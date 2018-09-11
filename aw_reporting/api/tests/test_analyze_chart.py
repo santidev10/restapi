@@ -4,8 +4,9 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.demo.models import *
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher, generic_test
 from .base import AwReportingAPITestCase
 
 
@@ -33,7 +34,7 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
 
         for ad_group in (ad_group1, ad_group2):
             stats = dict(ad_group=ad_group, **base_stats)
-            AdGroupStatistic.objects.create(average_position=1,  **stats)
+            AdGroupStatistic.objects.create(average_position=1, **stats)
             GenderStatistic.objects.create(**stats)
             AgeRangeStatistic.objects.create(**stats)
             TopicStatistic.objects.create(topic=topic, **stats)
@@ -84,22 +85,23 @@ class AccountNamesAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data[0]['title'], "#1")
         self.assertEqual(len(data[0]['data'][0]['trend']), 1)
 
-    def test_all_dimensions(self):
+    @generic_test([
+        (dimension, (dimension,), dict())
+        for dimension in ALL_DIMENSIONS
+    ], [0])
+    def test_all_dimensions(self, dimension):
         url = reverse("aw_reporting_urls:analyze_chart",
                       args=(self.account.id,))
         filters = {
             'indicator': 'video_view_rate',
+            'dimension': dimension
         }
-        for dimension in ('device', 'gender', 'age', 'topic',
-                          'interest', 'creative', 'channel', 'video',
-                          'keyword', 'location', 'ad'):
-            filters['dimension'] = dimension
-            with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher):
-                response = self.client.post(
-                    url, json.dumps(filters),
-                    content_type='application/json',
-                )
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(len(response.data), 3)
-            self.assertEqual(len(response.data[0]['data']), 1)
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.post(
+                url, json.dumps(filters),
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data[0]['data']), 1)

@@ -27,8 +27,12 @@ def get_process_name(pid):
     return Process(pid).name()
 
 
+def is_docker(pid):
+    return pid.isnumeric() and int(pid) == 1
+
+
 def is_similar_process(pid):
-    if not pid.isnumeric():
+    if not pid.isnumeric() or is_docker(pid):
         return False
     pid_int = int(pid)
     current_pid = os.getpid()

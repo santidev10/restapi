@@ -26,7 +26,7 @@ class Command(BaseCommand):
         now = timezone.now()
         ongoing_filter = (Q(min_start__lte=now) | Q(min_start__isnull=True)) \
                          & (Q(max_end__gte=now) | Q(max_end__isnull=True))
-        accounts = Account.objects.filter(can_manage_clients=False) \
+        accounts = Account.objects.filter(can_manage_clients=False, is_active=True) \
             .annotate(
             min_cc_start=Min("account_creation__campaign_creations__start"),
             min_c_start=Min("campaigns__start_date"),

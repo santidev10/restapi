@@ -5,18 +5,27 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, TargetingItem
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
-from aw_reporting.models import Account, Campaign, AdGroup, YTChannelStatistic, \
-    Audience, Topic, \
-    YTVideoStatistic, AudienceStatistic, TopicStatistic, KeywordStatistic
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import TargetingItem
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
-
     data_keys = {
         "label", "items", "id",
         "impressions", "video_views", "clicks", "cost",
@@ -33,7 +42,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     def test_success_post(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
@@ -83,7 +93,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     def test_targeting_status(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
         campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
                                            account=account, start_date=start, end_date=end)
@@ -128,14 +139,16 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     def test_targeting_interest(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
         campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
                                            account=account, start_date=start, end_date=end)
         ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign, video_views=1)
 
         audience = Audience.objects.create(id=1, name="Test", type=Audience.AFFINITY_TYPE)
-        AudienceStatistic.objects.create(date=start, audience=audience, ad_group=ad_group, video_views=5, impressions=10)
+        AudienceStatistic.objects.create(date=start, audience=audience, ad_group=ad_group, video_views=5,
+                                         impressions=10)
 
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
         campaign_creation = CampaignCreation.objects.create(
@@ -164,7 +177,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     def test_success_group_by_campaign(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False)
 
         start = datetime(2017, 1, 1).date()
@@ -218,7 +232,8 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
     def test_success_min_max_kpi(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="", owner=user, account=account, is_managed=False)
 
@@ -280,10 +295,10 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(kpi["ctr"]["min"], 12.5)
         self.assertEqual(kpi["ctr"]["max"], 25)
-        self.assertAlmostEqual(kpi["ctr_v"]["min"], 1/6 * 100, places=10)
+        self.assertAlmostEqual(kpi["ctr_v"]["min"], 1 / 6 * 100, places=10)
         self.assertEqual(kpi["ctr_v"]["max"], 100)
 
-        self.assertAlmostEqual(kpi["average_cpv"]["min"], 1/3, places=10)
+        self.assertAlmostEqual(kpi["average_cpv"]["min"], 1 / 3, places=10)
         self.assertEqual(kpi["average_cpv"]["max"], 1)
 
         self.assertEqual(kpi["average_cpm"]["min"], 250)

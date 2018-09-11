@@ -20,6 +20,7 @@ from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CALCULATED_STATS
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
@@ -40,14 +41,15 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import all_stats_aggregate
-from aw_reporting.models import base_stats_aggregate
+from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.models import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
@@ -104,6 +106,14 @@ class Breakdown:
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
                            Indicator.VIEWS, Indicator.COST)
 
+CLICK_STATS_TYPES_IGNORE_MODELS = (
+    CampaignHourlyStatistic,
+    YTVideoStatistic,
+    CityStatistic,
+    YTChannelStatistic,
+    VideoCreativeStatistic,
+)
+
 
 class DeliveryChart:
 
@@ -114,7 +124,8 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True, **_):
+                 region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
+                 apex_deal=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -122,9 +133,9 @@ class DeliveryChart:
             campaigns = [campaign]
 
         if not campaigns and accounts:
-            campaigns = Campaign.objects.filter(
-                account_id__in=accounts
-            ).values_list('id', flat=True)
+            campaigns = Campaign.objects \
+                .filter(account_id__in=accounts) \
+                .values_list('id', flat=True)
 
         self.params = dict(
             accounts=accounts,
@@ -146,6 +157,7 @@ class DeliveryChart:
             region_ids=region_ids,
             show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
+            apex_deal=apex_deal,
         )
 
         self.with_plan = with_plan
@@ -168,7 +180,8 @@ class DeliveryChart:
         )
         if self.params['segmented_by']:
             charts = self.get_segmented_data(
-                self.get_chart_data, self.params['segmented_by'],
+                self.get_chart_data,
+                self.params['segmented_by'],
                 **chart_type_kwargs
             )
         else:
@@ -197,13 +210,12 @@ class DeliveryChart:
     def get_segmented_data(self, method, segmented_by, **kwargs):
         items = defaultdict(lambda: {'campaigns': []})
         if self.params['ad_groups']:
-            qs = Campaign.objects.filter(
-                ad_groups__id__in=self.params['ad_groups'],
-            ).distinct()
+            qs = Campaign.objects \
+                .filter(ad_groups__id__in=self.params['ad_groups'], ) \
+                .distinct()
         elif self.params['campaigns']:
-            qs = Campaign.objects.filter(
-                pk__in=self.params['campaigns'],
-            )
+            qs = Campaign.objects \
+                .filter(pk__in=self.params['campaigns'], )
         else:
             qs = Campaign.objects.none()
 
@@ -485,7 +497,8 @@ class DeliveryChart:
             "ctr_v", "duration", "id", "impressions", "name", "status",
             "thumbnail", "video100rate", "video25rate", "video50rate",
             "video75rate", "video_clicks", "video_view_rate", "video_views",
-            "view_through"
+            "view_through", "clicks_website", "clicks_call_to_action_overlay",
+            "clicks_app_store", "clicks_cards", "clicks_end_cap"
         }
         return {key: value for key, value in item.items()
                 if key in allowed_keys}
@@ -561,6 +574,9 @@ class DeliveryChart:
         if self.params["region_ids"] is not None:
             filters["opportunity__region_id__in"] = self.params["region_ids"]
 
+        if self.params["apex_deal"] is not None:
+            filters["opportunity__apex_deal"] = self.params["apex_deal"]
+
         indicator = self.params["indicator"]
         if indicator in (Indicator.CPM, Indicator.IMPRESSIONS):
             filters["goal_type_id"] = SalesForceGoalType.CPM
@@ -619,6 +635,9 @@ class DeliveryChart:
         if self.params["region_ids"] is not None:
             filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
 
+        if self.params["apex_deal"] is not None:
+            filters["%s__apex_deal" % opp_link] = self.params["apex_deal"]
+
         if filters:
             queryset = queryset.filter(**filters)
 
@@ -626,7 +645,7 @@ class DeliveryChart:
 
     def add_annotate(self, queryset):
         if not self.params["date"]:
-            kwargs = dict(**all_stats_aggregate)
+            kwargs = dict(**all_stats_aggregator())
             if queryset.model is AdStatistic:
                 kwargs["average_position"] = Avg(
                     Case(
@@ -642,6 +661,7 @@ class DeliveryChart:
             kwargs = {}
             fields = self.get_fields()
             all_sum_stats = SUM_STATS + CONVERSIONS + QUARTILE_STATS
+            base_stats_aggregate = base_stats_aggregator()
             for v in fields:
                 if v in all_sum_stats:
                     kwargs["sum_%s" % v] = Sum(v)
@@ -654,6 +674,9 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
+        if queryset.model not in CLICK_STATS_TYPES_IGNORE_MODELS:
+            for field in CLICKS_STATS:
+                kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):

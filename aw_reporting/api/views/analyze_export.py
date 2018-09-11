@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.charts import DeliveryChart
+from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroupStatistic
@@ -82,8 +82,7 @@ class AnalyzeExportApiView(APIView):
 
     def stream_response(self, item_name, generator):
         generator = self.stream_response_generator(generator)
-        response = StreamingHttpResponse(generator,
-                                         content_type="text/csv")
+        response = StreamingHttpResponse(generator, content_type="text/csv")
         filename = self.file_name.format(
             title=re.sub(r"\W", item_name, "-"),
             timestamp=datetime.now().strftime("%Y%m%d"),

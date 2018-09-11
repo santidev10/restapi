@@ -39,6 +39,7 @@ class TrackApiBase(APIView):
         end_date = data.get("end_date")
         accounts = data.get("accounts")
         accounts = accounts.split("-") if accounts else None
+        apex_deal = data.get("apex_deal")
         filters = dict(
             account=data.get("account"),
             accounts=accounts,
@@ -51,4 +52,6 @@ class TrackApiBase(APIView):
             end_date=datetime.strptime(end_date, DATE_FORMAT).date()
             if end_date else None,
         )
+        if apex_deal is not None:
+            filters["apex_deal"] = apex_deal == "1"
         return filters

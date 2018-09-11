@@ -9,8 +9,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import Dimension
+from aw_reporting.analytics_charts import ALL_DIMENSIONS
+from aw_reporting.analytics_charts import Dimension
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -93,7 +93,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         self._hide_demo_data(user)
 
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -140,21 +141,22 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
-                "video_clicks"
+                "video_clicks",
             }
         )
 
     def test_success_get_video(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_approved=True,
                                                           account=account)
         self.create_stats(account)
         url = self._get_url(account_creation.id, Dimension.VIDEO)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(url)
 
@@ -189,7 +191,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 "video25rate",
                 "average_cpm",
                 "ctr_v",
-                "video_clicks"
+                "video_clicks",
             }
         )
 
@@ -235,6 +237,11 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'video25rate',
                 'average_cpm',
                 'ctr_v',
+                "clicks_end_cap",
+                "clicks_website",
+                "clicks_app_store",
+                "clicks_cards",
+                "clicks_call_to_action_overlay",
             }
         )
 
@@ -283,7 +290,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_get_filter_items(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -315,14 +323,15 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_get_all_dimensions(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
         self.create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             for dimension in ALL_DIMENSIONS:
                 with self.subTest(dimension):
@@ -334,7 +343,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -361,46 +371,6 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         item = data['items'][0]
         self.assertEqual(item['video_view_rate'], 10)  # 10 %
 
-    def test_success_demo_data_if_no_aw_data(self):
-        user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
-        url = self._get_url(account_creation.id, Dimension.ADS)
-
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(
-            set(data.keys()),
-            {'items', 'summary'}
-        )
-        self.assertEqual(len(data['items']), 10)
-        self.assertEqual(
-            set(data['items'][0].keys()),
-            {
-                'name',
-                'video_view_rate',
-                'conversions',
-                'ctr',
-                'status',
-                'view_through',
-                'all_conversions',
-                'average_cpv',
-                'video100rate',
-                'video_views',
-                'video50rate',
-                'clicks',
-                'average_position',
-                'impressions',
-                'video75rate',
-                'cost',
-                'video25rate',
-                'average_cpm',
-                'ctr_v',
-            }
-        )
-
     @generic_test([
         ("Hide dashboard costs = {}. Dimension = {}".format(hide_costs, dimension), (hide_costs, dimension), dict())
         for hide_costs, dimension in product((True, False), ALL_DIMENSIONS)
@@ -408,7 +378,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_all_dimensions_hide_costs_independent(self, hide_dashboard_costs, dimension):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -418,7 +389,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_costs
         }
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             url = self._get_url(account_creation.id, dimension)
@@ -439,7 +410,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
 
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -458,7 +430,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                    video_views=views[1],
                                    cost=costs[1])
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
@@ -466,13 +439,14 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -487,7 +461,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
 
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -503,7 +478,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                          video_views=views[1],
                                          cost=costs[1])
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         test_cases = (
             ("total", any_date_1, any_date_2, sum(costs)),
@@ -511,13 +487,14 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.AGE)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
-                                                          end_date=end))
+                                                          end_date=end,
+                                                          is_chf=1))
                     self.assertEqual(response.status_code, HTTP_200_OK)
                     items = response.data["items"]
                     self.assertEqual(len(items), 1)
@@ -527,7 +504,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_device_cost(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -553,15 +531,16 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                         cost=expected_cost)
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.DEVICE)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)
@@ -571,7 +550,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_ads_average_rate(self):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -602,15 +582,16 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self.assertNotAlmostEqual(average_cpm, average_cpv)
 
         user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              self.patch_user_settings(**user_settings), \
              patch_now(today):
-            response = self.client.post(url, dict())
+            response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             self.assertEqual(len(items), 1)
@@ -625,7 +606,8 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
     def test_convention_independent(self, show_conversions, dimension):
         user = self.create_test_user()
         self._hide_demo_data(user)
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         self.create_stats(account)
         account_creation = AccountCreation.objects.create(id=next(int_iterator), owner=user, account=account,
                                                           is_approved=True)

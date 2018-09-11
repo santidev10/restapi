@@ -8,12 +8,16 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import TransactionTestCase, override_settings
+from django.test import TransactionTestCase
+from django.test import override_settings
+from googleads.errors import AdWordsReportBadRequestError
 from pytz import timezone
 from pytz import utc
+from requests import HTTPError
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
-from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS, AWErrorType
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
@@ -62,7 +66,7 @@ class PullAWDataTestCase(TransactionTestCase):
             kwargs["end"] = "get_campaigns"
         call_command("pull_aw_data", **kwargs)
 
-    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None):
+    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
                                              update_time=manager_update_time)
@@ -70,7 +74,8 @@ class PullAWDataTestCase(TransactionTestCase):
                                            aw_connection=AWConnection.objects.create(),
                                            can_read=True)
 
-        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time)
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time,
+                                         **kwargs)
         account.managers.add(mcc_account)
         account.save()
         return account
@@ -846,7 +851,6 @@ class PullAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_pre_process_chf_account_has_account_creation(self):
         chf_acc_id = "test_id"
         self.assertFalse(Account.objects.all().exists())
@@ -870,7 +874,6 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_creates_account_Creation_for_customer_accounts(self):
         self._create_account().delete()
         test_account_id = next(int_iterator)
@@ -892,3 +895,50 @@ class PullAWDataTestCase(TransactionTestCase):
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
+
+    def test_get_topics_success(self):
+        now = datetime(2018, 2, 3, 4, 5)
+        today = now.date()
+        last_update = today - timedelta(days=3)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream([], [])
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=last_update, average_position=1)
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(start="get_topics", end="get_topics")
+
+        account.refresh_from_db()
+
+    def test_skip_inactive_account(self):
+        self._create_account(is_active=False)
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.return_value = build_csv_byte_stream([], [])
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        downloader_mock.assert_not_called()
+
+    def test_mark_account_as_inactive(self):
+        account = self._create_account(is_active=True)
+
+        exception = AdWordsReportBadRequestError(AWErrorType.NOT_ACTIVE, "<null>", None, HTTP_400_BAD_REQUEST,
+                                                 HTTPError(), 'XML Body')
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)

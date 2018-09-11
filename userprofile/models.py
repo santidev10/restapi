@@ -3,6 +3,7 @@ Userprofile models module
 """
 import logging
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
     UserManager
 from django.contrib.postgres.fields import JSONField
@@ -37,7 +38,7 @@ def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: False,
@@ -105,6 +106,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     facebook_id = models.CharField(max_length=255, null=True, blank=True)
     is_password_generated = models.BooleanField(default=False)
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
+    logo = models.CharField(null=True, blank=True, max_length=255)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -181,6 +183,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     @property
     def access(self):
         return self.groups.values('name')
+
+    @property
+    def logo_url(self):
+        logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
+        return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
 
 
 class UserChannel(Timestampable):

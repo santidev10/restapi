@@ -154,6 +154,7 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 AUTH_USER_MODEL = "userprofile.UserProfile"
+USER_DEFAULT_LOGO = "viewiq"
 GOOGLE_APP_AUD = "832846444492-9j4sj19tkkrd3tpg7s8j5910l7kprg45.apps.googleusercontent.com"
 
 REST_FRAMEWORK = {
@@ -314,7 +315,13 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
-DEFAULT_PERMISSIONS_GROUP_NAME = 'Highlights'
+DEFAULT_PERMISSIONS_GROUP_NAMES = (
+    "Highlights",
+    "Research",
+    "Segments",
+    "Dashboard",
+)
+
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
@@ -348,6 +355,8 @@ def is_running_under_teamcity():
 
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
+
+AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 
 try:
     from .local_settings import *

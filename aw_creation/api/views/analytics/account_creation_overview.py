@@ -26,10 +26,10 @@ from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
-from aw_reporting.models import all_stats_aggregate
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
+from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from utils.datetime import now_in_default_tz
 
 
@@ -42,14 +42,28 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         data = self._get_overview_data(account_creation)
         return Response(data=data)
 
+    def get_filters(self):
+        data = self.request.data
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        filters = dict(
+            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
+            if start_date else None,
+            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
+            if end_date else None,
+            campaigns=data.get("campaigns"),
+            ad_groups=data.get("ad_groups"))
+        return filters
+
     def _get_account_creation(self, request, pk):
+        user = request.user
         try:
-            return AccountCreation.objects.filter(owner=request.user).get(pk=pk)
+            return AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             raise Http404
 
     def _get_overview_data(self, account_creation):
-        filters = self._get_filters()
+        filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
         if filters["campaigns"]:
             fs["ad_group__campaign__id__in"] = filters["campaigns"]
@@ -62,7 +76,7 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
 
         queryset = AdGroupStatistic.objects.filter(**fs)
         has_statistics = queryset.exists()
-        data = queryset.aggregate(**all_stats_aggregate)
+        data = queryset.aggregate(**all_stats_aggregator("ad_group__campaign__"))
         data[self.HAS_STATISTICS_KEY] = has_statistics
         dict_norm_base_stats(data)
         dict_add_calculated_stats(data)
@@ -87,19 +101,6 @@ class AnalyticsAccountCreationOverviewAPIView(APIView):
         data.update(gender=gender, age=age, device=device, location=location)
         self._add_standard_performance_data(data, fs)
         return data
-
-    def _get_filters(self):
-        data = self.request.data
-        start_date = data.get("start_date")
-        end_date = data.get("end_date")
-        filters = dict(
-            start_date=datetime.strptime(start_date, DATE_FORMAT).date()
-            if start_date else None,
-            end_date=datetime.strptime(end_date, DATE_FORMAT).date()
-            if end_date else None,
-            campaigns=data.get("campaigns"),
-            ad_groups=data.get("ad_groups"))
-        return filters
 
     def _add_standard_performance_data(self, data, filters):
         null_fields = (

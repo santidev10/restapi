@@ -1,5 +1,5 @@
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.excel_reports import PerformanceWeeklyReport
+from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport
 
 
 class DemoAnalyzeWeeklyReport(PerformanceWeeklyReport):

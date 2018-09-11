@@ -29,6 +29,7 @@ class VideosChunkDMO(BaseDMO):
 
         for item in page.get("items", []):
             snippet = item.get("snippet", {})
+            statistics = item.get("statistics", {})
             self.items.append(
                 VideoDMO(
                     id=item.get("id"),
@@ -37,6 +38,8 @@ class VideosChunkDMO(BaseDMO):
                     channel_id=snippet.get("channelId"),
                     channel_title=snippet.get("channelTitle"),
                     tags=snippet.get("tags"),
+                    likes=statistics.get("likeCount"),
+                    dislikes=statistics.get("dislikeCount"),
                 )
             )
 
@@ -47,6 +50,8 @@ class VideoDMO(BaseDMO):
     description = None
     channel_id = None
     channel_title = None
+    likes = None
+    dislikes = None
     tags = None
 
     RE_CLEANUP = re.compile("\W+")
@@ -71,3 +76,14 @@ class VideoDMO(BaseDMO):
     @property
     def channel_url(self):
         return "http://www.youtube.com/channel/" + self.channel_id
+
+    @property
+    def sentiment(self):
+        if self.likes is None or self.dislikes is None:
+            return None
+        likes = int(self.likes)
+        dislikes = int(self.dislikes)
+        if likes + dislikes == 0:
+            return None
+        sentiment = likes / (likes + dislikes)
+        return sentiment

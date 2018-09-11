@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports import PerformanceWeeklyReport
+from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport
 from utils.views import xlsx_response
 
 
@@ -29,9 +29,9 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
         return filters
 
     def post(self, request, pk, **_):
+        user = request.user
         try:
-            item = AccountCreation.objects.filter(owner=request.user).get(
-                pk=pk)
+            item = AccountCreation.objects.user_related(user).get(pk=pk)
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 

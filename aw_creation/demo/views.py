@@ -37,18 +37,9 @@ class AnalyticsAccountCreationListApiView:
         def method(view, request, **kwargs):
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
-                user = request.user
-                user_settings = user.aw_settings \
-                    if hasattr(user, "aw_settings") \
-                    else get_default_settings()
-                demo_account_visible = user_settings.get(
-                    UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
-                    False
-                )
                 demo = DemoAccount()
                 filters = request.query_params
-                if demo_account_visible and \
-                        demo.account_passes_filters(filters):
+                if demo.account_passes_filters(filters):
                     response.data['items'].insert(0, demo.header_data_analytics)
                     response.data['items_count'] += 1
             return response
@@ -427,16 +418,11 @@ class AdCreationListSetupApiView:
         return method
 
 
-def show_demo_data(request, pk):
-    return not request.user.aw_connections.count() or \
-           get_object_or_404(AccountCreation, pk=pk).status == AccountCreation.STATUS_PENDING
-
-
 class AnalyticsAccountCreationCampaignsListApiView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 campaigns = [
                     dict(
@@ -490,15 +476,12 @@ class AnalyticsAccountCreationDetailsAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
 
                 account = DemoAccount()
                 data = account.header_data_analytics
                 data['details'] = account.details
-                if pk != DEMO_ACCOUNT_ID:
-                    original_data = original_method(view, request, pk=pk, **kwargs).data
-                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
-                        data[k] = original_data[k]
+
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
 
@@ -509,48 +492,53 @@ class DashboardAccountCreationDetailsAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
 
                 account = DemoAccount()
                 data = account.header_data_dashboard
                 data['details'] = account.details
 
-                if pk != DEMO_ACCOUNT_ID:
-                    original_data = original_method(view, request, pk=pk, **kwargs).data
-                    for k in ('id', 'name', 'status', 'thumbnail', 'is_changed'):
-                        data[k] = original_data[k]
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
 
-class BaseAccountCreationOverviewAPIView:
+class DashboardAccountCreationOverviewAPIView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
             if pk == DEMO_ACCOUNT_ID:
-                return Response(data=DemoAccount().overview)
+                account = DemoAccount()
+                filters = view.get_filters()
+                account.filter_out_items(filters["campaigns"], filters["ad_groups"])
+                return Response(data=account.overview_dashboard)
             else:
                 return original_method(view, request, pk=pk, **kwargs)
 
         return method
 
 
-class DashboardAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+class AnalyticsAccountCreationOverviewAPIView:
+    @staticmethod
+    def post(original_method):
+        def method(view, request, pk, **kwargs):
+            if pk == DEMO_ACCOUNT_ID:
+                account = DemoAccount()
+                filters = view.get_filters()
+                account.filter_out_items(filters["campaigns"], filters["ad_groups"])
+                return Response(data=account.overview_analytics)
+            else:
+                return original_method(view, request, pk=pk, **kwargs)
 
-
-class AnalyticsAccountCreationOverviewAPIView(BaseAccountCreationOverviewAPIView):
-    pass
+        return method
 
 
 class AnalyticsPerformanceChartApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
-                view.filter_hidden_sections()
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -593,7 +581,7 @@ class AnalyticsPerformanceChartItemsApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, dimension, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -639,7 +627,7 @@ class AnalyticsPerformanceExportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.set_period_proportion(filters['start_date'],
@@ -701,7 +689,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 filters = view.get_filters()
                 account = DemoAccount()
                 account.filter_out_items(
@@ -747,7 +735,7 @@ class PerformanceTargetingFiltersAPIView:
     @staticmethod
     def get(original_method):
         def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID or show_demo_data(request, pk):
+            if pk == DEMO_ACCOUNT_ID:
                 account = DemoAccount()
                 filters = view.get_static_filters()
                 filters["start_date"] = account.start_date

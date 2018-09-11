@@ -37,7 +37,7 @@ from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
+    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission, OrPermissionsBase
 
 
 # pylint: enable=import-error
@@ -485,7 +485,8 @@ class ChannelAuthenticationApiView(APIView):
             user.set_password(user.password)
 
             # new default access implementation
-            user.add_custom_user_group(settings.DEFAULT_PERMISSIONS_GROUP_NAME)
+            for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+                user.add_custom_user_group(group_name)
 
             # Get or create auth token instance for user
             Token.objects.get_or_create(user=user)

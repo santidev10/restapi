@@ -11,8 +11,7 @@ from userprofile.models import UserProfile, UserChannel
 
 
 class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
-    @patch("channel.api.views.requests")
-    def test_remove_auth_channel(self, requests_mock):
+    def test_remove_auth_channel(self):
         user = self.create_test_user(True)
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
@@ -28,8 +27,7 @@ class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
         self.assertFalse(UserProfile.objects.filter(pk=user.pk).exists())
         self.assertFalse(UserChannel.objects.filter(pk=channel.pk).exists())
 
-    @patch("channel.api.views.requests")
-    def test_remove_success_on_404_from_sdb(self, requests_mock):
+    def test_remove_success_on_404_from_sdb(self):
         user = self.create_test_user(True)
         response = MockResponse(HTTP_404_NOT_FOUND)
         with open('saas/fixtures/singledb_channel_list.json') as data_file:

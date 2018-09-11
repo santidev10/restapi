@@ -5,7 +5,6 @@ from unittest.mock import Mock
 from unittest.mock import patch
 
 from django.core import mail
-from django.test import override_settings
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -34,12 +33,18 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(AccountCreationSetupAPITestCase, cls).setUpClass()
+        Permissions.sync_groups()
+
     def _get_url(self, account_id):
         return reverse(Name.CreationSetup.ACCOUNT,
                        [Namespace.AW_CREATION],
@@ -340,7 +345,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             account=manager,
         )
         # creating of a MCC account
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id="1", name="Hi",
                                                           account=account,
                                                           owner=self.user)
@@ -408,7 +414,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             account=manager,
         )
         # creating of a MCC account
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id="1", name="Hi",
                                                           account=account,
                                                           owner=self.user)
@@ -541,7 +548,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             aw_connection=connection,
             account=manager,
         )
-        account = Account.objects.create(id="7514485750", name="@")
+        account = Account.objects.create(id="7514485750", name="@",
+                                         skip_creating_account_creation=True)
         account.managers.add(manager)
         account_creation = AccountCreation.objects.create(
             name="Pep",
@@ -562,7 +570,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             self.assertEqual(update_method.call_count, 1)
 
     def test_fail_disapprove(self):
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         ac = self.create_account_creation(self.user)
         ac.account = account
         ac.is_approved = True
@@ -627,7 +636,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_marked_is_disapproved_account(self):
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="",
                                                           owner=self.user,
                                                           account=account, )
@@ -674,7 +684,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         self.fill_all_groups(user)
 
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects \
             .create(name="", owner=user, account=account, )
 
@@ -684,7 +695,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    @override_settings(DISABLE_ACCOUNT_CREATION_AUTO_CREATING=False)
     def test_creates_customer_account(self):
         user = self.user
         test_aw_id = "test_aw_id"

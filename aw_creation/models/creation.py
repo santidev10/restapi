@@ -7,10 +7,13 @@ from decimal import Decimal
 
 from PIL import Image
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator, \
-    RegexValidator
+from django.core.validators import MaxValueValidator
+from django.core.validators import MinValueValidator
+from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import Q, F, CASCADE
+from django.db.models import CASCADE
+from django.db.models import F
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -85,7 +88,18 @@ class UniqueCreationItem(models.Model):
         return self.sync_at and self.sync_at >= self.created_at
 
 
+class AccountCreationManager(models.Manager.from_queryset(CreationItemQueryset)):
+    def user_related(self, user):
+        related_accounts = Account.user_objects(user)
+        return self.get_queryset() \
+            .filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
+
+
 class AccountCreation(UniqueCreationItem):
+    objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
@@ -156,8 +170,6 @@ def save_account_receiver(sender, instance, created, **_):
 
 @receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
 def create_account_receiver(sender, instance: Account, created, **_):
-    if getattr(settings, "DISABLE_ACCOUNT_CREATION_AUTO_CREATING", False):
-        return
     if created and not instance.skip_creating_account_creation:
         AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 

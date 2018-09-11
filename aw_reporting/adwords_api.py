@@ -175,7 +175,11 @@ def get_all_customers(client, page_size=1000, limit=None):
     customers = []
 
     while more_pages:
-        page = managed_customer_service.get(selector)
+        try:
+            page = managed_customer_service.get(selector)
+        except Exception as ex:
+            logger.exception(ex)
+            break
         if 'entries' in page and page['entries']:
             customers += page['entries']
 

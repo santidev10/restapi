@@ -1,26 +1,36 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
-from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.test import override_settings
 from django.utils.http import urlencode
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import Indicator, Breakdown
-from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic
-from aw_reporting.models import CampaignHourlyStatistic, Account, User, \
-    Opportunity, OpPlacement, \
-    SalesForceGoalType, Category
+from aw_reporting.analytics_charts import Breakdown
+from aw_reporting.analytics_charts import Indicator
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import Category
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import int_iterator, generic_test
+from utils.utils_tests import generic_test
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.DATA)
+    url = reverse(Name.GlobalTrends.DATA, [Namespace.AW_REPORTING])
 
     def _create_test_data(self, uid=1, manager=None):
         user = self.create_test_user()
@@ -349,3 +359,23 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             self.assertIsNotNone(item["average_1d"])
             self.assertAlmostEqual(item["average_1d"], expected_cpv)
             self.assertAlmostEqual(item["trend"][0]["value"], expected_cpv)
+
+    @generic_test([
+        ("Global account visibility is ON", (True, 0), dict()),
+        ("Global account visibility is OFF", (False, 1), dict()),
+    ])
+    def test_global_account_visibility(self, global_account_visibility, items_count):
+        account, campaign = self._create_ad_group_statistic("rel_1")
+        manager = account.managers.first()
+        self._create_opportunity(campaign)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+        with self.patch_user_settings(**user_settings), \
+             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(len(response.data), items_count)

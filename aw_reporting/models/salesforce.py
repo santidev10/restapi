@@ -118,8 +118,7 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
     _account_id_ref = "placements__adwords_campaigns__account_id"
 
     def have_campaigns(self, user=None):
-        qs=self.get_queryset_for_user(user=user)
-        return qs \
+        return self.get_queryset_for_user(user=user) \
             .annotate(campaign_count=Count("placements__adwords_campaigns")) \
             .filter(campaign_count__gt=0)
 

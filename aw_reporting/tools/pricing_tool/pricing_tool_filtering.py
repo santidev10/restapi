@@ -1,19 +1,45 @@
 from collections import defaultdict
 from functools import reduce
 
-from django.db.models import Count, FloatField, CharField, BooleanField, \
-    QuerySet
-from django.db.models import Q, F, Min, When, Case, Max, \
-    Sum, IntegerField
-from django.db.models.expressions import CombinedExpression, Value, Combinable
+from django.db.models import BooleanField
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Q
+from django.db.models import QuerySet
+from django.db.models import Sum
+from django.db.models import When
+from django.db.models.expressions import Combinable
+from django.db.models.expressions import CombinedExpression
+from django.db.models.expressions import Value
 
-from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
-    TopicStatistic, Topic, Audience, Opportunity, AgeRanges, \
-    Genders, SalesForceGoalType, Devices
-from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS, \
-    AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
-from utils.datetime import now_in_default_tz, quarter_days
-from utils.query import build_query_bool, split_request, merge_when, Operator
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Devices
+from aw_reporting.models import Genders
+from aw_reporting.models import Opportunity
+from aw_reporting.models import ParentStatuses
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.tools.pricing_tool.constants import AGE_FIELDS
+from aw_reporting.tools.pricing_tool.constants import DEVICE_FIELDS
+from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS
+from aw_reporting.tools.pricing_tool.constants import PARENT_FIELDS
+from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES
+from aw_reporting.tools.pricing_tool.constants import VIDEO_LENGTHS
+from utils.datetime import now_in_default_tz
+from utils.datetime import quarter_days
+from utils.query import Operator
+from utils.query import build_query_bool
+from utils.query import merge_when
+from utils.query import split_request
 
 CONDITIONS = [
     dict(id="or", name="Or"),

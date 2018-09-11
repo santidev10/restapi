@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
-from aw_reporting.charts import DeliveryChart, Indicator
+from aw_reporting.dashboard_charts import DeliveryChart, Indicator
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.models import UserSettingsKey
@@ -56,8 +56,7 @@ class DashboardPerformanceChartApiView(APIView):
         if item.account:
             account_ids.append(item.account.id)
 
-        show_aw_costs = request.user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         chart = DeliveryChart(account_ids, segmented_by="campaigns",
                               show_aw_costs=show_aw_costs, **filters)
         chart_data = chart.get_response()
