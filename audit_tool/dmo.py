@@ -40,6 +40,7 @@ class VideosChunkDMO(BaseDMO):
                     tags=snippet.get("tags"),
                     likes=statistics.get("likeCount"),
                     dislikes=statistics.get("dislikeCount"),
+                    category_id=snippet.get("categoryId"),
                 )
             )
 
@@ -53,6 +54,7 @@ class VideoDMO(BaseDMO):
     likes = None
     dislikes = None
     tags = None
+    category_id = None
 
     RE_CLEANUP = re.compile("\W+")
 
