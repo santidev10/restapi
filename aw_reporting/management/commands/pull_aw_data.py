@@ -45,6 +45,14 @@ class Command(BaseCommand):
                 m.__name__ for m in AWDataLoader.advertising_update_tasks)
         )
 
+        parser.add_argument(
+            "--account_ids",
+            dest="account_ids",
+            help="Account IDs to update as a comma separated string",
+            type=str,
+            default=None,
+        )
+
     def pre_process(self):
         if not settings.IS_TEST:
             self.create_cf_account_connection()
@@ -66,21 +74,27 @@ class Command(BaseCommand):
         forced = options.get("forced")
         start = options.get("start")
         end = options.get("end")
+        account_ids_str = options.get("account_ids")
+        account_ids = account_ids_str.split(",") if account_ids_str is not None else None
 
-        update_account_fn = partial(self._update_accounts, today=today, forced=forced, start=start, end=end)
+        update_account_fn = partial(self._update_accounts, today=today, forced=forced, start=start, end=end,
+                                    account_ids=account_ids)
 
         update_account_fn(is_mcc=True)
         update_account_fn(is_mcc=False)
 
         self.post_process()
 
-    def _update_accounts(self, today, forced, start, end, is_mcc: bool):
+    def _update_accounts(self, today, forced, start, end, account_ids, is_mcc: bool):
         from aw_reporting.models import Account
         updater = AWDataLoader(today, start=start, end=end)
         accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
-        accounts_to_update = self._filtered_accounts_generator(accounts, forced)
-        for account in accounts_to_update:
-            logger.info("%s update: %s", self._get_account_type_str(is_mcc), account)
+        if account_ids is not None:
+            accounts = accounts.filter(id__in=account_ids)
+        accounts_to_update = list(self._filtered_accounts_generator(accounts, forced))
+        count = len(accounts_to_update)
+        for index, account in enumerate(accounts_to_update):
+            logger.info("%d/%d: %s update: %s", index, count, self._get_account_type_str(is_mcc), account)
             updater.full_update(account)
 
     def _get_account_type_str(self, is_mcc):
