@@ -126,7 +126,8 @@ def _get_report(client, name, selector, date_range_type=None,
             error_str = str(e)
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise
-
+            if "invalid_grant" in error_str:
+                return
             logger.error("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1
