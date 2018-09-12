@@ -993,7 +993,7 @@ def get_topics(client, account, today):
         for row_obj in report:
             topic_name = row_obj.Criteria
             if topic_name not in topics:
-                logger.warning("topic not found: {}")
+                logger.warning("topic not found: {}".format(topic_name))
                 continue
             stats = {
                 'topic_id': topics[topic_name],
