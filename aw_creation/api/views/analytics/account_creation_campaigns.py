@@ -18,7 +18,7 @@ class AnalyticsAccountCreationCampaignsListApiView(APIView):
         account_creation = self._get_account_creation(pk)
         campaign_creation_ids = set(account_creation.campaign_creations.filter(
             is_deleted=False).values_list("id", flat=True))
-        queryset = Campaign.objects.get_queryset(ignore_user=True) \
+        queryset = Campaign.objects \
             .filter(account_id=account_creation.account_id) \
             .order_by("name", "id") \
             .distinct()

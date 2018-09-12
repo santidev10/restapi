@@ -11,9 +11,13 @@ from rest_framework.views import APIView
 
 from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account, DATE_FORMAT, AdGroupStatistic, \
-    BASE_STATS, QUARTILE_STATS, dict_quartiles_to_rates, \
-    dict_add_calculated_stats
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import BASE_STATS
+from aw_reporting.models import DATE_FORMAT
+from aw_reporting.models import QUARTILE_STATS
+from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_quartiles_to_rates
 
 
 @demo_view_decorator

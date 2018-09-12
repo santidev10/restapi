@@ -17,9 +17,7 @@ from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
-from userprofile.permissions import Permissions
 from utils.datetime import Time
-from utils.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -208,14 +206,6 @@ def patch_now(now):
         now = datetime.combine(now, datetime.min.time())
     with patch.object(Time, "now", return_value=now):
         yield
-
-
-@contextmanager
-def patch_registy_user(user, **kwargs):
-    backup_user = registry._user
-    registry._user = user
-    yield
-    registry._user = backup_user
 
 
 class SettingDoesNotExist:

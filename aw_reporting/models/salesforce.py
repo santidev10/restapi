@@ -6,10 +6,12 @@ from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
 from django.db.models import Count
 
-from aw_reporting.models.base import BaseModel
-from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    goal_type_str, SalesForceRegions, SalesForceGoalTypes
-from userprofile.managers import UserRelatedManager
+from aw_reporting.models.base import BaseModel, BaseQueryset
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
+from aw_reporting.models.salesforce_constants import SalesForceRegions
+from aw_reporting.models.salesforce_constants import goal_type_str
+from userprofile.managers import UserRelatedManagerMixin
 
 logger = logging.getLogger(__name__)
 
@@ -112,11 +114,11 @@ class Contact(BaseModel):
         )
 
 
-class OpportunityManager(UserRelatedManager):
+class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelatedManagerMixin):
     _account_id_ref = "placements__adwords_campaigns__account_id"
 
-    def have_campaigns(self, ignore_user=False):
-        return self.get_queryset(ignore_user=ignore_user) \
+    def have_campaigns(self, user=None):
+        return self.get_queryset_for_user(user=user) \
             .annotate(campaign_count=Count("placements__adwords_campaigns")) \
             .filter(campaign_count__gt=0)
 

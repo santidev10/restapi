@@ -98,7 +98,7 @@ class AnalyticsPerformanceExportApiView(APIView):
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
-                always_aw_costs=True,
+                show_aw_costs=True,
                 **filters
             )
             items = chart.get_items()

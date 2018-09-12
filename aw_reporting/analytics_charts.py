@@ -13,7 +13,7 @@ from django.db.models import When
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.models import AdGroupStatistic, base_stats_aggregator
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -40,6 +40,7 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -47,11 +48,9 @@ from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.models import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
-from utils.registry import registry
 from utils.utils import get_all_class_constants
 
 logger = logging.getLogger(__name__)
@@ -115,7 +114,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, always_aw_costs=False, show_conversions=True,
+                 region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
                  apex_deal=None, **_):
         if account and account in accounts:
             accounts = [account]
@@ -124,7 +123,7 @@ class DeliveryChart:
             campaigns = [campaign]
 
         if not campaigns and accounts:
-            campaigns = Campaign.objects.get_queryset(ignore_user=True) \
+            campaigns = Campaign.objects \
                 .filter(account_id__in=accounts) \
                 .values_list('id', flat=True)
 
@@ -146,7 +145,7 @@ class DeliveryChart:
             brands=brands,
             category_ids=category_ids,
             region_ids=region_ids,
-            always_aw_costs=always_aw_costs,
+            show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
             apex_deal=apex_deal,
         )
@@ -201,11 +200,11 @@ class DeliveryChart:
     def get_segmented_data(self, method, segmented_by, **kwargs):
         items = defaultdict(lambda: {'campaigns': []})
         if self.params['ad_groups']:
-            qs = Campaign.objects.get_queryset(ignore_user=True) \
+            qs = Campaign.objects \
                 .filter(ad_groups__id__in=self.params['ad_groups'], ) \
                 .distinct()
         elif self.params['campaigns']:
-            qs = Campaign.objects.get_queryset(ignore_user=True) \
+            qs = Campaign.objects \
                 .filter(pk__in=self.params['campaigns'], )
         else:
             qs = Campaign.objects.none()
@@ -658,9 +657,7 @@ class DeliveryChart:
                 elif v in base_stats_aggregate:
                     kwargs[v] = base_stats_aggregate[v]
 
-        dashboard_ad_words_rates = registry.user.get_aw_settings() \
-            .get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
-        if not self.params["always_aw_costs"] and not dashboard_ad_words_rates:
+        if not self.params["show_aw_costs"]:
             campaign_ref = self._get_campaign_ref(queryset)
             kwargs["sum_cost"] = get_client_cost_aggregation(campaign_ref)
         if not self.params["show_conversions"]:

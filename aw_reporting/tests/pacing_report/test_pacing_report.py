@@ -1,16 +1,20 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 import pytz
-from unittest.mock import patch
 
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Account, Campaign, CampaignStatistic, Flight
+from aw_reporting.models import Opportunity
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import patch_registy_user
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -171,11 +175,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
         }
         user = self.create_test_user()
         user.aw_settings.update(**user_settings)
-
-        with patch_registy_user(user):
-            report = PacingReport()
-            opportunities = report.get_opportunities(dict())
-
+        report = PacingReport()
+        opportunities = report.get_opportunities(dict(), user=user)
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
         self.assertEqual(opportunity_data['id'], opportunity1.id)

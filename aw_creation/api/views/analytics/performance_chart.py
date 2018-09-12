@@ -48,6 +48,6 @@ class AnalyticsPerformanceChartApiView(APIView):
         if item.account:
             account_ids.append(item.account.id)
         chart = DeliveryChart(account_ids, segmented_by="campaigns",
-                              always_aw_costs=True, **filters)
+                              show_aw_costs=True, **filters)
         chart_data = chart.get_response()
         return Response(data=chart_data)

@@ -169,7 +169,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
 
-        data = Campaign.objects.get_queryset(ignore_user=True) \
+        data = Campaign.objects \
             .filter(**campaign_filter) \
             .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \

@@ -8,6 +8,6 @@ from aw_reporting.tools.pricing_tool import PricingTool
 class PricingToolFiltersView(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
-        response = PricingTool.get_filters()
+        response = PricingTool.get_filters(user=request.user)
 
         return Response(data=response, status=HTTP_200_OK)

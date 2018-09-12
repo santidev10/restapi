@@ -117,7 +117,7 @@ class DashboardPerformanceExportApiView(APIView):
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
-                always_aw_costs=False,
+                show_aw_costs=False,
                 **filters
             )
             items = chart.get_items()

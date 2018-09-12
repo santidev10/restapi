@@ -2,14 +2,11 @@ from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields, BaseClicksTypesStatisticsModel
-from userprofile.managers import UserRelatedManager
+from userprofile.managers import UserRelatedManagerMixin
 
 
-class AdGroupManager(UserRelatedManager):
+class AdGroupManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "campaign__account_id"
-
-    def get_queryset(self, ignore_user=True):
-        return super(AdGroupManager, self).get_queryset(ignore_user=ignore_user)
 
 
 class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):

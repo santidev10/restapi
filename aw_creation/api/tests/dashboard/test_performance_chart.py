@@ -2,7 +2,6 @@ import json
 from datetime import date
 from itertools import product
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
@@ -25,14 +24,17 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, reverse
 from utils.utils_tests import int_iterator
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
     def _request(self, account_creation_id, **kwargs):
-        url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.PERFORMANCE_CHART,
-                      args=(account_creation_id,))
+        url = reverse(
+            Name.Dashboard.PERFORMANCE_CHART,
+            [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+            args=(account_creation_id,)
+        )
         return self.client.post(url,
                                 json.dumps(dict(is_staff=False, **kwargs)),
                                 content_type="application/json")
