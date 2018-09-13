@@ -101,7 +101,7 @@ class UserAuthApiView(APIView):
 
         response_data = self.serializer_class(user).data
 
-        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email)
+        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
         if custom_auth_flags:
             for name, value in custom_auth_flags.items():
                 response_data[name] = value
