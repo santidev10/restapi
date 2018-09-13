@@ -1,5 +1,4 @@
-from datetime import datetime
-
+from datetime import date
 from django.db.models import Sum, Q
 from rest_framework.fields import SerializerMethodField
 
@@ -17,7 +16,7 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
     clicks_end_cap = StatField()
     hide_click_types = SerializerMethodField()
 
-    show_click_types_after_date = datetime(year=2018, month=9, day=14)
+    show_click_types_after_date = date(year=2018, month=9, day=14)
 
     class Meta:
         model = AccountCreation
@@ -52,8 +51,7 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
             "adwords_campaigns__account__account_creation__id", flat=True)
         if obj.id in apex_accounts_creations_ids:
             return False
-        end = self.get_end(obj)
-        if end is None:
-            return False
-        account_end = datetime.strptime(end, "%Y-%m-%d")
-        return account_end < self.show_click_types_after_date
+        account_end_date = self.get_end(obj)
+        if account_end_date is None:
+            return True
+        return account_end_date < self.show_click_types_after_date
