@@ -348,6 +348,13 @@ CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]
 
+CUSTOM_AUTH_FLAGS = {
+    # "user@example.com": {
+    #    "hide_something": True,
+    #    "show_something_else": True,
+    #    "logo_url": "https://s3.amazonaws.com/viewiq-prod/logos/super_user.png",
+    # },
+}
 
 # patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
 def is_running_under_teamcity():
