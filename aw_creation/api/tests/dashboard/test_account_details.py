@@ -70,6 +70,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "clicks_cards",
         "clicks_call_to_action_overlay",
         "clicks_app_store",
+        "hide_click_types",
     }
 
     def _get_url(self, account_creation_id):

@@ -155,11 +155,13 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
+        dashboard_specific_keys = CLICKS_STATS + ("hide_click_types",)
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(set(response.data["items"][0].keys()), set(tuple(self.details_keys) + CLICKS_STATS))
+        self.assertEqual(set(response.data["items"][0].keys()),
+                         set(tuple(self.details_keys) + dashboard_specific_keys))
 
     def test_get_chf_account_creation_list_queryset(self):
         chf_account = Account.objects.create(

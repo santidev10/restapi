@@ -989,6 +989,7 @@ class DemoAccount(BaseDemo):
             clicks_app_store=1,
             clicks_cards=1,
             clicks_end_cap=1,
+            hide_click_types=True,
         )
         return data
 
@@ -1030,6 +1031,7 @@ class DemoAccount(BaseDemo):
         "clicks_app_store",
         "clicks_cards",
         "clicks_end_cap",
+        "hide_click_types",
     }
     _analytics_specific_keys = {
         "from_aw",

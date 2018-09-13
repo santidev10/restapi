@@ -1,8 +1,11 @@
-from django.db.models import Sum
+from datetime import datetime
+
+from django.db.models import Sum, Q
+from rest_framework.fields import SerializerMethodField
 
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroup, Opportunity, OpPlacement
 from utils.serializers.fields import StatField
 
 
@@ -12,6 +15,9 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
     clicks_app_store = StatField()
     clicks_cards = StatField()
     clicks_end_cap = StatField()
+    hide_click_types = SerializerMethodField()
+
+    show_click_types_after_date = datetime(year=2018, month=9, day=14)
 
     class Meta:
         model = AccountCreation
@@ -21,6 +27,7 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
             "clicks_app_store",
             "clicks_cards",
             "clicks_end_cap",
+            "hide_click_types",
         ) + DashboardAccountCreationListSerializer.Meta.fields
 
     def _get_stats(self, account_creation_ids):
@@ -38,3 +45,15 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
             stats_value.update(clicks_data)
         return stats
 
+    def get_hide_click_types(self, obj):
+        apex_opportunities_ids = Opportunity.objects.filter(apex_deal=True).values_list("id", flat=True)
+        apex_accounts_creations_ids = OpPlacement.objects.filter(
+            Q(opportunity_id__in=apex_opportunities_ids) & Q(adwords_campaigns__id__isnull=False)).values_list(
+            "adwords_campaigns__account__account_creation__id", flat=True)
+        if obj.id in apex_accounts_creations_ids:
+            return False
+        end = self.get_end(obj)
+        if end is None:
+            return False
+        account_end = datetime.strptime(end, "%Y-%m-%d")
+        return account_end < self.show_click_types_after_date
