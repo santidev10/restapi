@@ -52,5 +52,8 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
             "adwords_campaigns__account__account_creation__id", flat=True)
         if obj.id in apex_accounts_creations_ids:
             return False
-        account_end = datetime.strptime(self.get_end(obj), "%Y-%m-%d")
+        end = self.get_end(obj)
+        if end is None:
+            return False
+        account_end = datetime.strptime(end, "%Y-%m-%d")
         return account_end < self.show_click_types_after_date
