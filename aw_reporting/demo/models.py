@@ -729,8 +729,8 @@ class DemoAccount(BaseDemo):
     plan_cost = 2500000
     plan_impressions = 242600000
     plan_video_views = 21600000
-    clicks_website = 19
-    clicks_call_to_action_overlay = 17
+    clicks_website = 110
+    clicks_call_to_action_overlay = 50
     clicks_app_store = 15
     clicks_cards = 13
     clicks_end_cap = 7
@@ -984,12 +984,12 @@ class DemoAccount(BaseDemo):
             video_view_rate=self.video_view_rate,
             video_views=self.video_views,
             weekly_chart=chart_lines[0]['trend'],
-            clicks_website=1,
-            clicks_call_to_action_overlay=1,
-            clicks_app_store=1,
-            clicks_cards=1,
-            clicks_end_cap=1,
-            hide_click_types=True,
+            clicks_website=350,
+            clicks_call_to_action_overlay=250,
+            clicks_app_store=100,
+            clicks_cards=110,
+            clicks_end_cap=140,
+            hide_click_types=False,
         )
         return data
 
