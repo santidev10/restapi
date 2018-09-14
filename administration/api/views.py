@@ -9,6 +9,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
+from django.conf import settings
 
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView, DestroyAPIView, \
@@ -107,7 +108,6 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
         return Response(serializer.errors, HTTP_400_BAD_REQUEST)
 
 
-
 class AuthAsAUserAdminApiView(APIView):
     """
     Login as a user endpoint
@@ -124,6 +124,10 @@ class AuthAsAUserAdminApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
         Token.objects.get_or_create(user=user)
         response_data = RegularUserSerializer(user).data
+        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
+        if custom_auth_flags:
+            for name, value in custom_auth_flags.items():
+                response_data[name] = value
         return Response(response_data)
 
 
