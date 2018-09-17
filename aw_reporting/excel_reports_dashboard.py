@@ -33,6 +33,45 @@ FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected T
 
 
 class PerformanceWeeklyReport:
+    _shared_columns = (
+        "Impressions",
+        "Views",
+        "View Rate",
+        "Clicks",
+        "Call-to-Action overlay",
+        "Website",
+        "App Store",
+        "Cards",
+        "End cap",
+        "CTR",
+        "Video played to: 25%",
+        "Video played to: 50%",
+        "Video played to: 75%",
+        "Video played to: 100%",
+        # TODO We don't collect the statistic for those two columns yet
+        "Viewable Impressions",
+        "Viewability"
+    )
+
+    def _extract_data_row(self, row):
+        return (
+            row["impressions"],
+            row["video_views"],
+            div_by_100(row["video_view_rate"]),
+            row["clicks"],
+            row["clicks_call_to_action_overlay"],
+            row["clicks_website"],
+            row["clicks_app_store"],
+            row["clicks_cards"],
+            row["clicks_end_cap"],
+            div_by_100(row["ctr"]),
+            div_by_100(row["video25rate"]),
+            div_by_100(row["video50rate"]),
+            div_by_100(row["video75rate"]),
+            div_by_100(row["video100rate"]),
+            "",
+            ""
+        )
 
     def _set_format_options(self):
         """
@@ -376,24 +415,7 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Placement",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "Call-to-Action overlay",
-            "Website",
-            "App Store",
-            "Cards",
-            "End cap",
-            "CTR",
-            "Video played to: 25%",
-            "Video played to: 50%",
-            "Video played to: 75%",
-            "Video played to: 100%",
-
-            # TODO We don't collect the statistic for those two columns yet
-            "Viewable Impressions",
-            "Viewability"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -403,25 +425,7 @@ class PerformanceWeeklyReport:
             rows.append((
                 # placement
                 obj["name"],
-                obj["impressions"],
-                obj["video_views"],
-                div_by_100(obj["video_view_rate"]),
-                obj["clicks"],
-                obj["clicks_call_to_action_overlay"],
-                obj["clicks_website"],
-                obj["clicks_app_store"],
-                obj["clicks_cards"],
-                obj["clicks_end_cap"],
-                div_by_100(obj["ctr"]),
-                div_by_100(obj["video25rate"]),
-                div_by_100(obj["video50rate"]),
-                div_by_100(obj["video75rate"]),
-                div_by_100(obj["video100rate"]),
-                # TODO We don't collect the statistic for those two columns yet
-                # viewable impressions
-                "",
-                # viewability
-                ""
+                *self._extract_data_row(obj),
             ))
         start_row = self.write_rows(rows, start_row)
         # Write total
@@ -430,24 +434,7 @@ class PerformanceWeeklyReport:
         total_row = [(
             "Total",
             total_data["impressions"],
-            total_data["video_views"],
-            div_by_100(total_data["video_view_rate"]),
-            total_data["clicks"],
-            total_data["clicks_website"],
-            total_data["clicks_call_to_action_overlay"],
-            total_data["clicks_app_store"],
-            total_data["clicks_cards"],
-            total_data["clicks_end_cap"],
-            div_by_100(total_data["ctr"]),
-            div_by_100(total_data["video25rate"]),
-            div_by_100(total_data["video50rate"]),
-            div_by_100(total_data["video75rate"]),
-            div_by_100(total_data["video100rate"]),
-            # TODO We don't collect the statistic for those two columns yet
-            # viewable impressions
-            "",
-            # viewability
-            ""
+            *self._extract_data_row(total_data),
         )]
         start_row = self.write_rows(
             total_row, start_row, data_cell_options=self.footer_format)
@@ -475,39 +462,14 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Ad Groups",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "Call-to-Action overlay",
-            "Website",
-            "App Store",
-            "Cards",
-            "End cap",
-            "CTR",
-            "Video played to: 100%",
-            "Viewable Impressions",
-            "Viewability"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
-        # TODO We don't collect this statistic yet.
         ad_group_info = [
             (
                 obj["name"],
-                obj["impressions"],
-                obj["video_views"],
-                div_by_100(obj["video_view_rate"]),
-                obj["clicks"],
-                obj["clicks_call_to_action_overlay"],
-                obj["clicks_website"],
-                obj["clicks_app_store"],
-                obj["clicks_cards"],
-                obj["clicks_end_cap"],
-                div_by_100(obj["ctr"]),
-                div_by_100(obj["video100rate"]),
-                "",
-                "",
+                *self._extract_data_row(obj),
             )
             for obj in self.get_ad_group_data()
         ]
@@ -535,15 +497,15 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Interests",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (
+                obj["name"],
+                *self._extract_data_row(obj),
+            )
             for obj in self.get_interest_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -571,16 +533,16 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Topics",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
 
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (
+                obj["name"],
+                *self._extract_data_row(obj),
+            )
             for obj in self.get_topic_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -607,15 +569,15 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Keywords",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj['name'], obj['impressions'], obj['video_views'],
-             div_by_100(obj['video_view_rate']))
+            (
+                obj['name'],
+                *self._extract_data_row(obj),
+            )
             for obj in self.get_keyword_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -642,17 +604,7 @@ class PerformanceWeeklyReport:
         # Write header
         headers = [(
             "Device",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "Call-to-Action overlay",
-            "Website",
-            "App Store",
-            "Cards",
-            "End cap",
-            "CTR",
-            "Video Played to: 100%"
+            *self._shared_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -665,17 +617,7 @@ class PerformanceWeeklyReport:
             rows.append(
                 (
                     device,
-                    obj['impressions'],
-                    obj['video_views'],
-                    div_by_100(obj['video_view_rate']),
-                    obj['clicks'],
-                    obj["clicks_call_to_action_overlay"],
-                    obj["clicks_website"],
-                    obj["clicks_app_store"],
-                    obj["clicks_cards"],
-                    obj["clicks_end_cap"],
-                    div_by_100(obj['ctr']),
-                    div_by_100(obj['video100rate'])
+                    *self._extract_data_row(obj),
                 )
             )
         start_row = self.write_rows(rows, start_row)
