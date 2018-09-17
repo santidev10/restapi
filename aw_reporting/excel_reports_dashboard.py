@@ -50,7 +50,7 @@ class PerformanceWeeklyReport:
         "Video played to: 100%",
         # TODO We don't collect the statistic for those two columns yet
         "Viewable Impressions",
-        "Viewability"
+        "Viewability",
     )
 
     def _extract_data_row(self, row):
