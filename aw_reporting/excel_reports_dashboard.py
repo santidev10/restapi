@@ -389,9 +389,16 @@ class PerformanceWeeklyReport:
         budget_data = "N/A\n"
         if opportunity is not None and opportunity.budget is not None:
             budget_data = "${}\n".format(opportunity.budget)
-        # cpv
-        cpv_title = "CPV: "
-        cpv_data = "N/A\n"
+        # rates
+        rates_title = "Contracted Rates: "
+        cpv_data = "N/A"
+        cpm_data = "N/A"
+        if opportunity is not None:
+            if opportunity.contracted_cpv:
+                cpv_data = "${}".format(opportunity.contracted_cpv)
+            if opportunity.contracted_cpm:
+                cpm_data = "${}".format(opportunity.contracted_cpm)
+        rates_data = "CPV {} / CPM {}\n".format(cpv_data, cpm_data)
         # contracted views
         contracted_views_title = "Contracted Views: "
         contracted_views_data = "N/A\n"
@@ -417,8 +424,8 @@ class PerformanceWeeklyReport:
             budget_title,
             budget_data,
             self.bold_format,
-            cpv_title,
-            cpv_data,
+            rates_title,
+            rates_data,
             self.bold_format,
             contracted_views_title,
             contracted_views_data,
