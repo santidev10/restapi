@@ -13,6 +13,7 @@ from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
@@ -370,6 +371,7 @@ class PerformanceWeeklyReport:
         logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
         self.worksheet.insert_image(
             'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+        opportunity = Opportunity.objects.filter(placements__adwords_campaigns__account=self.account).first()
         # TODO replace N/A
         # campaign
         campaign_title = "Campaign: "
@@ -383,8 +385,10 @@ class PerformanceWeeklyReport:
             if self.account and self.account.end_date is not None else "N/A"
         flight_data = "{} - {}\n".format(flight_start_date, flight_end_date)
         # budget
-        budget_title = "Budget: "
+        budget_title = "Client Budget: "
         budget_data = "N/A\n"
+        if opportunity is not None and opportunity.budget is not None:
+            budget_data = "${}\n".format(opportunity.budget)
         # cpv
         cpv_title = "CPV: "
         cpv_data = "N/A\n"
