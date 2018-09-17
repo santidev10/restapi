@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -696,7 +697,10 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-
+                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+                    .get(request.user.email.lower(), {}) \
+                    .get("hide_brand_name", False)
+                report.hide_logo = hide_brand_name
                 title = "Channel Factory {} Weekly Report {}".format(
                     account.name,
                     datetime.now().date().strftime("%m.%d.%y")
@@ -719,7 +723,10 @@ class DashboardPerformanceExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-
+                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+                    .get(request.user.email.lower(), {}) \
+                    .get("hide_brand_name", False)
+                report.hide_logo = hide_brand_name
                 title = "Channel Factory {} Weekly Report {}".format(
                     account.name,
                     datetime.now().date().strftime("%m.%d.%y")
