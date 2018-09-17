@@ -13,6 +13,8 @@ from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
@@ -32,6 +34,7 @@ class SectionName:
     TOPICS = "Topics"
     KEYWORDS = "Keywords"
     DEVICES = "Device"
+    CREATIVES = "Creatives"
 
 
 SECTIONS_WITH_CTA = (
@@ -45,6 +48,7 @@ SECTIONS_WITH_CTA = (
 
 REGULAR_STATISTIC_SECTIONS = (
     SectionName.VIDEOS,
+    SectionName.CREATIVES,
 )
 
 COLUMN_SET_REGULAR = (
@@ -163,6 +167,41 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data_row[1].value, video_title)
         self.assertEqual(data_row[2].value, sum(impressions))
 
+    def test_creatives_section(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        today = max(any_date_1, any_date_2)
+        self.create_test_user()
+        any_video = SingleDatabaseApiConnectorPatcher.get_video_list()["items"][0]
+        video_title = any_video["title"]
+        video_id = any_video["id"]
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        impressions = (2, 3)
+        creative = VideoCreative.objects.create(id=video_id)
+        common = dict(
+            ad_group=ad_group,
+            creative=creative,
+        )
+        VideoCreativeStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
+        VideoCreativeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with patch_now(today), \
+             self.patch_user_settings(**user_settings), \
+             patch("aw_reporting.excel_reports_dashboard.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, SectionName.CREATIVES)
+        data_row = sheet[row_index + 1]
+        self.assertEqual(data_row[1].value, video_title)
+        self.assertEqual(data_row[2].value, sum(impressions))
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
@@ -198,6 +237,7 @@ def are_all_sections_empty(sheet):
     section_names = (
         (SectionName.PLACEMENT, "Total"),
         (SectionName.VIDEOS, None),
+        (SectionName.CREATIVES, None),
         (SectionName.AD_GROUPS, None),
         (SectionName.INTERESTS, None),
         (SectionName.TOPICS, None),

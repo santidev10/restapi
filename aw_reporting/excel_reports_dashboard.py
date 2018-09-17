@@ -14,6 +14,7 @@ from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
@@ -324,6 +325,7 @@ class PerformanceWeeklyReport:
         self.prepare_overview_section()
         next_row = self.prepare_placement_section(self.start_row)
         next_row = self.prepare_video_section(next_row)
+        next_row = self.prepare_creatives_section(next_row)
         next_row = self.prepare_ad_group_section(next_row)
         next_row = self.prepare_interest_section(next_row)
         next_row = self.prepare_topic_section(next_row)
@@ -559,6 +561,46 @@ class PerformanceWeeklyReport:
                 *self._extract_data_row_without_cta(obj),
             )
             for obj in self.get_video_data()
+        ]
+        start_row = self.write_rows(rows, start_row)
+        return start_row + 1
+
+    def get_creatives_data(self):
+        queryset = VideoCreativeStatistic.objects.filter(**self.get_filters())
+        videos_data = queryset \
+            .values("creative_id") \
+            .annotate(**all_stats_aggregation()) \
+            .order_by("creative_id")
+        videos_data = list(videos_data)
+        ids = [i["creative_id"] for i in videos_data]
+        videos_info = {}
+        connector = SingleDatabaseApiConnector()
+        try:
+            items = connector.get_videos_base_info(ids)
+        except SingleDatabaseApiConnectorException as e:
+            logger.error(e)
+        else:
+            videos_info = {i['id']: i for i in items}
+        for item in videos_data:
+            video_id = item["creative_id"]
+            item['name'] = videos_info.get(video_id, {}).get("title", video_id)
+            dict_norm_base_stats(item)
+            dict_add_calculated_stats(item)
+            dict_quartiles_to_rates(item)
+        return videos_data
+
+    def prepare_creatives_section(self, start_row):
+        headers = [(
+            "Creatives",
+            *self._general_columns,
+        )]
+        start_row = self.write_rows(headers, start_row, self.header_format)
+        rows = [
+            (
+                obj["name"],
+                *self._extract_data_row_without_cta(obj),
+            )
+            for obj in self.get_creatives_data()
         ]
         start_row = self.write_rows(rows, start_row)
         return start_row + 1
