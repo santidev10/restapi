@@ -27,10 +27,11 @@ logger = logging.getLogger(__name__)
 all_stats_aggregation = partial(all_stats_aggregator, "ad_group__campaign__")
 
 
-def get_all_stats_aggregate_with_clicks_stats(aggregation_dict):
-    for field in CLICKS_STATS:
-        aggregation_dict[field] = Sum(field)
-    return aggregation_dict
+def get_all_stats_aggregate_with_clicks_stats():
+    return {
+        **all_stats_aggregation(),
+        **{field: Sum(field) for field in CLICKS_STATS}
+    }
 
 
 def div_by_100(value):
@@ -426,7 +427,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregation())
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__campaign__name']
@@ -438,7 +439,7 @@ class PerformanceWeeklyReport:
     def get_total_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
-            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregation())
+            **get_all_stats_aggregate_with_clicks_stats()
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
@@ -483,7 +484,7 @@ class PerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregation())
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__name']
@@ -565,7 +566,7 @@ class PerformanceWeeklyReport:
     def get_interest_data(self):
         queryset = AudienceStatistic.objects.filter(**self.get_filters())
         interest_data = queryset.values("audience__name").annotate(
-            **all_stats_aggregation()
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("audience__name")
         for i in interest_data:
             i['name'] = i['audience__name']
@@ -601,7 +602,7 @@ class PerformanceWeeklyReport:
         queryset = TopicStatistic.objects.filter(**self.get_filters())
         topic_data = queryset.values("topic__name").order_by(
             "topic__name").annotate(
-            **all_stats_aggregation()
+            **get_all_stats_aggregate_with_clicks_stats()
         )
         for i in topic_data:
             i['name'] = i['topic__name']
@@ -637,7 +638,7 @@ class PerformanceWeeklyReport:
     def get_keyword_data(self):
         queryset = KeywordStatistic.objects.filter(**self.get_filters())
         keyword_data = queryset.values("keyword").annotate(
-            **all_stats_aggregation()
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("keyword")
         for i in keyword_data:
             i['name'] = i['keyword']
@@ -672,7 +673,7 @@ class PerformanceWeeklyReport:
     def get_device_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         device_data = queryset.values("device_id").annotate(
-            **get_all_stats_aggregate_with_clicks_stats(all_stats_aggregation())
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("device_id")
         for i in device_data:
             i['name'] = Devices[i['device_id']]
