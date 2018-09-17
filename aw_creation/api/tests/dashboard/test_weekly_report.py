@@ -237,8 +237,29 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         sheet = get_sheet_from_response(response)
         header_value = get_title_cell(sheet).value
         expected_rates = "Contracted Rates: CPV ${} / CPM ${}".format(opportunity.contracted_cpv,
-                                                                     opportunity.contracted_cpm)
+                                                                      opportunity.contracted_cpm)
         self.assertIn(expected_rates, header_value)
+
+    def test_contracted_units(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(video_views=1234, impressions=6432)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        account = Account.objects.create(id=next(int_iterator))
+        Campaign.objects.create(account=account, salesforce_placement=placement)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header_value = get_title_cell(sheet).value
+        expected_units = "Contracted Units: ordered CPV units = {} views / ordered CPM units = {} impressions".format(
+            opportunity.video_views,
+            opportunity.impressions,
+        )
+        self.assertIn(expected_units, header_value)
 
 
 def get_sheet_from_response(response):

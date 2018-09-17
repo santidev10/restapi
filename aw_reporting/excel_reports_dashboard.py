@@ -400,8 +400,15 @@ class PerformanceWeeklyReport:
                 cpm_data = "${}".format(opportunity.contracted_cpm)
         rates_data = "CPV {} / CPM {}\n".format(cpv_data, cpm_data)
         # contracted views
-        contracted_views_title = "Contracted Views: "
-        contracted_views_data = "N/A\n"
+        contracted_units_title = "Contracted Units: "
+        contracted_views_data = "N/A"
+        contracted_impressions_data = "N/A"
+        if opportunity is not None:
+            if opportunity.video_views:
+                contracted_views_data = "ordered CPV units = {} views".format(opportunity.video_views)
+            if opportunity.impressions:
+                contracted_impressions_data = "ordered CPM units = {} impressions".format(opportunity.impressions)
+        contracted_units_data = "{} / {}\n".format(contracted_views_data, contracted_impressions_data)
         # reporting date range
         reporting_date_range_title = "Reporting date range: "
         reporting_date_range_data = "{} - {}".format(
@@ -427,8 +434,8 @@ class PerformanceWeeklyReport:
             rates_title,
             rates_data,
             self.bold_format,
-            contracted_views_title,
-            contracted_views_data,
+            contracted_units_title,
+            contracted_units_data,
             self.bold_format,
             reporting_date_range_title,
             reporting_date_range_data,
