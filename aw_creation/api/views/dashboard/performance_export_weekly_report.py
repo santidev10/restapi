@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
@@ -42,6 +43,10 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
 
         filters = self.get_filters()
         report = PerformanceWeeklyReport(item.account, **filters)
+        hide_brand_name = settings.CUSTOM_AUTH_FLAGS\
+                                  .get(request.user.email.lower(), {})\
+                                  .get("hide_brand_name", False)
+        report.hide_logo = hide_brand_name
 
         title = "Channel Factory {} Weekly Report {}".format(
             item.name,
