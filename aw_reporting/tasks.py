@@ -59,11 +59,18 @@ DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS = (
 
 
 #  helpers --
-def update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name):
+def update_stats_with_click_type_data(
+        stats, click_type_data, row_obj, report_unique_field_name, ignore_a_few_records=False):
     if click_type_data:
         key = prepare_click_type_report_key(
             row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
-        key_data = click_type_data.get(key)
+        if ignore_a_few_records:
+            try:
+                key_data = click_type_data.pop(key)
+            except KeyError:
+                return stats
+        else:
+            key_data = click_type_data.get(key)
         if key_data:
             for obj in key_data:
                 stats[obj.get("click_type")] = obj.get("clicks")
@@ -492,7 +499,8 @@ def get_ad_groups_and_stats(client, account, *_):
                 'video_views_100_quartile': quart_views(row_obj, 100),
             }
             stats.update(get_base_stats(row_obj))
-            update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name)
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, report_unique_field_name, ignore_a_few_records=True)
             create_stats.append(AdGroupStatistic(**stats))
 
         if create_ad_groups:
@@ -968,65 +976,49 @@ def get_topics(client, account, today):
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
     if max_acc_date is None:
-        logger.debug("Max Account date is None. Breaking")
         return
 
-    stats_queryset = TopicStatistic.objects.filter(
-        ad_group__campaign__account=account)
+    stats_queryset = TopicStatistic.objects.filter(ad_group__campaign__account=account)
 
-    logger.debug("Get topics for {}".format(account.id))
+    drop_latest_stats(stats_queryset, today)
 
-    start_date = date_to_refresh_statistic(today)
-
-    saved_max_date = stats_queryset.filter(date__lt=start_date) \
-        .aggregate(max_date=Max('date')) \
-        .get('max_date')
-
-    min_date = saved_max_date + timedelta(days=1) \
-        if saved_max_date else start_date
-    max_date = max_acc_date
-    if min_date >= max_date:
-        logger.debug(
-            "Start date to load is greater then max Account date: {} >= {}"
-                .format(min_date, max_date))
-        return
-    statistic_to_delete = stats_queryset.filter(date__gte=start_date)
+    saved_max_date = stats_queryset.aggregate(max_date=Max('date')).get('max_date')
 
     topics = dict(Topic.objects.values_list('name', 'id'))
-    logger.debug("Loading report")
-    report = topics_performance_report(
-        client, dates=(min_date, max_date),
-    )
-    logger.debug("Report loaded")
-    click_type_report = topics_performance_report(
-        client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-    click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
-    bulk_data = []
-    for row_obj in report:
-        topic_name = row_obj.Criteria
-        if topic_name not in topics:
-            logger.warning("topic not found: {}")
-            continue
 
-        stats = {
-            'topic_id': topics[topic_name],
-            'date': row_obj.Date,
-            'ad_group_id': row_obj.AdGroupId,
-            'video_views_25_quartile': quart_views(row_obj, 25),
-            'video_views_50_quartile': quart_views(row_obj, 50),
-            'video_views_75_quartile': quart_views(row_obj, 75),
-            'video_views_100_quartile': quart_views(row_obj, 100),
-        }
-        stats.update(get_base_stats(row_obj))
-        update_stats_with_click_type_data(stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
-        bulk_data.append(TopicStatistic(**stats))
+    if saved_max_date is None or saved_max_date < max_acc_date:
+        min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+        max_date = max_acc_date
 
-    with transaction.atomic():
-        statistic_to_delete.delete()
+        report = topics_performance_report(client, dates=(min_date, max_date),)
+
+        click_type_report = topics_performance_report(
+            client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+
+        click_type_data = format_click_types_report(
+            click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        bulk_data = []
+        for row_obj in report:
+            topic_name = row_obj.Criteria
+            if topic_name not in topics:
+                logger.warning("topic not found: {}".format(topic_name))
+                continue
+            stats = {
+                'topic_id': topics[topic_name],
+                'date': row_obj.Date,
+                'ad_group_id': row_obj.AdGroupId,
+                'video_views_25_quartile': quart_views(row_obj, 25),
+                'video_views_50_quartile': quart_views(row_obj, 50),
+                'video_views_75_quartile': quart_views(row_obj, 75),
+                'video_views_100_quartile': quart_views(row_obj, 100),
+            }
+            stats.update(get_base_stats(row_obj))
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+            bulk_data.append(TopicStatistic(**stats))
+
         if bulk_data:
             TopicStatistic.objects.bulk_create(bulk_data)
-
-    logger.debug("Topic report process finished")
 
 
 class AudienceAWType:

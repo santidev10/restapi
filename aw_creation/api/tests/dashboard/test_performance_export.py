@@ -183,7 +183,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         header_row_number = 1
         headers = tuple(cell.value for cell in sheet[header_row_number])
         expected_headers = (
-            None, "Name", "Impressions", "Views", "Clicks", "CTA Clicks", "Website", "App Store", "Cards", "End Screen",
+            None, "Name", "Impressions", "Views", "Clicks", "Call-to-Action overlay", "Website", "App Store", "Cards", "End cap",
             "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
 
         self.assertEqual(headers, expected_headers)

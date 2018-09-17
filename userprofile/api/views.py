@@ -98,7 +98,14 @@ class UserAuthApiView(APIView):
         Token.objects.get_or_create(user=user)
         if update_date_of_last_login:
             update_last_login(None, user)
+
         response_data = self.serializer_class(user).data
+
+        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
+        if custom_auth_flags:
+            for name, value in custom_auth_flags.items():
+                response_data[name] = value
+
         return Response(response_data)
 
     def delete(self, request):
