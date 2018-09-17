@@ -1,5 +1,8 @@
 import io
 import re
+from datetime import date
+from datetime import timedelta
+from unittest.mock import patch
 
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
@@ -8,18 +11,22 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
 from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
-from utils.utils import get_all_class_constants
 from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 from utils.utils_tests import reverse
 
 
 class SectionName:
     PLACEMENT = "Placement"
+    VIDEOS = "Video"
     AD_GROUPS = "Ad Groups"
     INTERESTS = "Interests"
     TOPICS = "Topics"
@@ -27,7 +34,56 @@ class SectionName:
     DEVICES = "Device"
 
 
-ALL_SECTIONS = get_all_class_constants(SectionName)
+SECTIONS_WITH_CTA = (
+    SectionName.PLACEMENT,
+    SectionName.AD_GROUPS,
+    SectionName.INTERESTS,
+    SectionName.TOPICS,
+    SectionName.KEYWORDS,
+    SectionName.DEVICES,
+)
+
+REGULAR_STATISTIC_SECTIONS = (
+    SectionName.VIDEOS,
+)
+
+COLUMN_SET_REGULAR = (
+    "Impressions",
+    "Views",
+    "View Rate",
+    "Clicks",
+    "CTR",
+    "Video played to: 25%",
+    "Video played to: 50%",
+    "Video played to: 75%",
+    "Video played to: 100%",
+    "Viewable Impressions",
+    "Viewability",
+)
+
+COLUMN_SET_WITH_CTA = (
+    "Impressions",
+    "Views",
+    "View Rate",
+    "Clicks",
+    "Call-to-Action overlay",
+    "Website",
+    "App Store",
+    "Cards",
+    "End cap",
+    "CTR",
+    "Video played to: 25%",
+    "Video played to: 50%",
+    "Video played to: 75%",
+    "Video played to: 100%",
+    "Viewable Impressions",
+    "Viewability",
+)
+
+COLUMN_SET_BY_SECTION_NAME = {
+    **{section_name: COLUMN_SET_REGULAR for section_name in REGULAR_STATISTIC_SECTIONS},
+    **{section_name: COLUMN_SET_WITH_CTA for section_name in SECTIONS_WITH_CTA},
+}
 
 
 class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
@@ -59,27 +115,10 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     @generic_test([
         (section, (section,), dict())
-        for section in ALL_SECTIONS
+        for section in SECTIONS_WITH_CTA
     ])
     def test_column_set(self, section):
-        shared_columns = (
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "Call-to-Action overlay",
-            "Website",
-            "App Store",
-            "Cards",
-            "End cap",
-            "CTR",
-            "Video played to: 25%",
-            "Video played to: 50%",
-            "Video played to: 75%",
-            "Video played to: 100%",
-            "Viewable Impressions",
-            "Viewability",
-        )
+        shared_columns = COLUMN_SET_BY_SECTION_NAME.get(section)
         self.create_test_user()
         account = Account.objects.create(id=next(int_iterator))
 
@@ -93,6 +132,36 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         row_index = get_section_start_row(sheet, section)
         title_values = tuple(cell.value for cell in sheet[row_index][1:])
         self.assertEqual(title_values, (section,) + shared_columns)
+
+    def test_video_section(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        today = max(any_date_1, any_date_2)
+        self.create_test_user()
+        any_video = SingleDatabaseApiConnectorPatcher.get_video_list()["items"][0]
+        video_title = any_video["title"]
+        video_id = any_video["id"]
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        impressions = (2, 3)
+        YTVideoStatistic.objects.create(date=any_date_1, ad_group=ad_group, yt_id=video_id, impressions=impressions[0])
+        YTVideoStatistic.objects.create(date=any_date_2, ad_group=ad_group, yt_id=video_id, impressions=impressions[1])
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with patch_now(today), \
+             self.patch_user_settings(**user_settings), \
+             patch("aw_reporting.excel_reports_dashboard.SingleDatabaseApiConnector",
+                   new=SingleDatabaseApiConnectorPatcher):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, SectionName.VIDEOS)
+        data_row = sheet[row_index + 1]
+        self.assertEqual(data_row[1].value, video_title)
+        self.assertEqual(data_row[2].value, sum(impressions))
 
 
 def get_sheet_from_response(response):
@@ -128,6 +197,7 @@ def is_report_empty(sheet):
 def are_all_sections_empty(sheet):
     section_names = (
         (SectionName.PLACEMENT, "Total"),
+        (SectionName.VIDEOS, None),
         (SectionName.AD_GROUPS, None),
         (SectionName.INTERESTS, None),
         (SectionName.TOPICS, None),
