@@ -367,29 +367,42 @@ def is_report_empty(sheet):
 
 
 def are_all_sections_empty(sheet):
+    total_row = ("Total", 0)
     section_names = (
-        (SectionName.PLACEMENT, "Total"),
-        (SectionName.VIDEOS, "Total"),
-        (SectionName.CREATIVES, "Total"),
-        (SectionName.AD_GROUPS, None),
-        (SectionName.INTERESTS, None),
-        (SectionName.TOPICS, None),
-        (SectionName.AGES, "Total"),
-        (SectionName.GENDERS, "Total"),
+        (SectionName.PLACEMENT, [total_row]),
+        (SectionName.VIDEOS, [total_row]),
+        (SectionName.CREATIVES, [total_row]),
+        (SectionName.AD_GROUPS, []),
+        (SectionName.INTERESTS, []),
+        (SectionName.TOPICS, []),
+        (SectionName.AGES, [total_row]),
+        (SectionName.GENDERS, [total_row]),
 
-        (SectionName.KEYWORDS, None),
-        (SectionName.DEVICES, FOOTER_ANNOTATION),
+        (SectionName.KEYWORDS, []),
+        (SectionName.DEVICES, [(FOOTER_ANNOTATION, None)]),
     )
     return all([
-        is_section_empty(sheet, section_name, next_value)
-        for section_name, next_value in section_names
+        is_section_empty(sheet, section_name, static_rows)
+        for section_name, static_rows in section_names
     ])
 
 
-def is_section_empty(sheet, section_name, next_value):
+def is_static_row_empty(sheet, row_data, row):
+    name, default_value = row_data
+    return sheet[row][TITLE_COLUMN].value == name \
+           and sheet[row][TITLE_COLUMN + 1].value == default_value
+
+
+def is_section_empty(sheet, section_name, static_rows):
     section_row_number = get_section_start_row(sheet, section_name)
-    next_row_number = section_row_number + 1
-    return sheet[next_row_number][TITLE_COLUMN].value == next_value
+    static_rows_are_empty = all([
+        is_static_row_empty(sheet, name, section_row_number + index + 1)
+        for index, name in enumerate(static_rows)
+    ])
+
+    next_row_number = section_row_number + len(static_rows) + 1
+    return static_rows_are_empty \
+           and sheet[next_row_number][TITLE_COLUMN].value is None
 
 
 def get_section_start_row(sheet, section_name):

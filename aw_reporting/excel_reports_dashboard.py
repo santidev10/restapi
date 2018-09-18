@@ -83,17 +83,17 @@ class PerformanceWeeklyReport:
         "Viewability",
     )
 
-    def _extract_data_row_with_cta(self, row):
+    def _extract_data_row_with_cta(self, row, default=None):
         return (
-            row["impressions"],
-            row["video_views"],
-            div_by_100(row["video_view_rate"]),
-            row["clicks"],
-            row["clicks_call_to_action_overlay"],
-            row["clicks_website"],
-            row["clicks_app_store"],
-            row["clicks_cards"],
-            row["clicks_end_cap"],
+            row["impressions"] or default,
+            row["video_views"] or default,
+            div_by_100(row["video_view_rate"]) or default,
+            row["clicks"] or default,
+            row["clicks_call_to_action_overlay"] or default,
+            row["clicks_website"] or default,
+            row["clicks_app_store"] or default,
+            row["clicks_cards"] or default,
+            row["clicks_end_cap"] or default,
             div_by_100(row["ctr"]),
             div_by_100(row["video25rate"]),
             div_by_100(row["video50rate"]),
@@ -103,17 +103,17 @@ class PerformanceWeeklyReport:
             ""
         )
 
-    def _extract_data_row_without_cta(self, row):
+    def _extract_data_row_without_cta(self, row, default=None):
         return (
-            row["impressions"],
-            row["video_views"],
-            div_by_100(row["video_view_rate"]),
-            row["clicks"],
-            div_by_100(row["ctr"]),
-            div_by_100(row["video25rate"]),
-            div_by_100(row["video50rate"]),
-            div_by_100(row["video75rate"]),
-            div_by_100(row["video100rate"]),
+            row["impressions"] or default,
+            row["video_views"] or default,
+            div_by_100(row["video_view_rate"]) or default,
+            row["clicks"] or default,
+            div_by_100(row["ctr"]) or default,
+            div_by_100(row["video25rate"]) or default,
+            div_by_100(row["video50rate"]) or default,
+            div_by_100(row["video75rate"]) or default,
+            div_by_100(row["video100rate"]) or default,
             "",
             ""
         )
@@ -462,16 +462,6 @@ class PerformanceWeeklyReport:
             dict_quartiles_to_rates(i)
         return campaign_data
 
-    def get_placement_total_data(self):
-        queryset = AdGroupStatistic.objects.filter(**self.get_filters())
-        total_data = queryset.aggregate(
-            **get_all_stats_aggregate_with_clicks_stats()
-        )
-        dict_norm_base_stats(total_data)
-        dict_add_calculated_stats(total_data)
-        dict_quartiles_to_rates(total_data)
-        return total_data
-
     def prepare_placement_section(self, start_row):
         """
         Filling placement section
@@ -494,15 +484,13 @@ class PerformanceWeeklyReport:
                 *self._extract_data_row_with_cta(obj),
             ))
         start_row = self.write_rows(rows, start_row)
-        # Write total
-        total_data = self.get_placement_total_data()
-        # Drop None values
-        total_row = [(
-            "Total",
-            *self._extract_data_row_with_cta(total_data),
-        )]
-        start_row = self.write_rows(
-            total_row, start_row, data_cell_options=self.footer_format)
+
+        start_row = self._prepare_total_data(
+            start_row,
+            AdGroupStatistic.objects.filter(**self.get_filters()),
+            get_all_stats_aggregate_with_clicks_stats,
+            self._extract_data_row_with_cta
+        )
         return start_row + 1
 
     def get_ad_group_data(self):
@@ -574,7 +562,7 @@ class PerformanceWeeklyReport:
         dict_quartiles_to_rates(total_data)
         total_row = [(
             "Total",
-            *extractor(total_data),
+            *extractor(total_data, default=0),
         )]
         start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
         return start_row
