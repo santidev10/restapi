@@ -701,12 +701,13 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)
                 report.hide_logo = hide_brand_name
-                brand_name = "" if hide_brand_name else "Channel Factory "
-                title = "{}{} Weekly Report {}".format(
+                brand_name = "" if hide_brand_name else "Channel Factory"
+                title = " ".join([f for f in [
                     brand_name,
                     account.name,
+                    "Weekly Report",
                     datetime.now().date().strftime("%m.%d.%y")
-                )
+                ] if f])
                 return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
@@ -729,12 +730,13 @@ class DashboardPerformanceExportWeeklyReportApiView:
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)
                 report.hide_logo = hide_brand_name
-                brand_name = "" if hide_brand_name else "Channel Factory "
-                title = "{}{} Weekly Report {}".format(
+                brand_name = "" if hide_brand_name else "Channel Factory"
+                title = " ".join([f for f in [
                     brand_name,
                     account.name,
+                    "Weekly Report",
                     datetime.now().date().strftime("%m.%d.%y")
-                )
+                ] if f])
                 return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
