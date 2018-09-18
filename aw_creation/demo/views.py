@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -696,11 +697,17 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-
-                title = "Channel Factory {} Weekly Report {}".format(
+                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+                    .get(request.user.email.lower(), {}) \
+                    .get("hide_brand_name", False)
+                report.hide_logo = hide_brand_name
+                brand_name = "" if hide_brand_name else "Channel Factory"
+                title = " ".join([f for f in [
+                    brand_name,
                     account.name,
+                    "Weekly Report",
                     datetime.now().date().strftime("%m.%d.%y")
-                )
+                ] if f])
                 return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
@@ -719,11 +726,17 @@ class DashboardPerformanceExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-
-                title = "Channel Factory {} Weekly Report {}".format(
+                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+                    .get(request.user.email.lower(), {}) \
+                    .get("hide_brand_name", False)
+                report.hide_logo = hide_brand_name
+                brand_name = "" if hide_brand_name else "Channel Factory"
+                title = " ".join([f for f in [
+                    brand_name,
                     account.name,
+                    "Weekly Report",
                     datetime.now().date().strftime("%m.%d.%y")
-                )
+                ] if f])
                 return xlsx_response(title, report.get_content())
             else:
                 return original_method(view, request, pk=pk, **kwargs)
