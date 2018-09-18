@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db.models import Sum
 
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Devices
@@ -17,6 +18,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import age_range_str
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
@@ -326,6 +328,7 @@ class PerformanceWeeklyReport:
         self.prepare_overview_section()
         next_row = self.prepare_placement_section(self.start_row)
         next_row = self.prepare_video_section(next_row)
+        next_row = self.prepare_ages_section(next_row)
         next_row = self.prepare_creatives_section(next_row)
         next_row = self.prepare_ad_group_section(next_row)
         next_row = self.prepare_interest_section(next_row)
@@ -579,6 +582,35 @@ class PerformanceWeeklyReport:
                 *self._extract_data_row_without_cta(obj),
             )
             for obj in self.get_video_data()
+        ]
+        start_row = self.write_rows(rows, start_row)
+        return start_row + 1
+
+    def get_ages_data(self):
+        queryset = AgeRangeStatistic.objects.filter(**self.get_filters())
+        ages_data = queryset \
+            .values("age_range_id") \
+            .annotate(**get_all_stats_aggregate_with_clicks_stats()) \
+            .order_by("age_range_id")
+        for item in ages_data:
+            item["name"] = age_range_str(item["age_range_id"])
+            dict_norm_base_stats(item)
+            dict_add_calculated_stats(item)
+            dict_quartiles_to_rates(item)
+        return ages_data
+
+    def prepare_ages_section(self, start_row):
+        headers = [(
+            "Ages",
+            *self._with_cta_columns,
+        )]
+        start_row = self.write_rows(headers, start_row, self.header_format)
+        rows = [
+            (
+                obj["name"],
+                *self._extract_data_row_with_cta(obj),
+            )
+            for obj in self.get_ages_data()
         ]
         start_row = self.write_rows(rows, start_row)
         return start_row + 1
