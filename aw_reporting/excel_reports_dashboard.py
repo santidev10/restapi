@@ -449,7 +449,7 @@ class PerformanceWeeklyReport:
         )
         # TODO add brand image
 
-    def get_campaign_data(self):
+    def get_placement_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
@@ -462,7 +462,7 @@ class PerformanceWeeklyReport:
             dict_quartiles_to_rates(i)
         return campaign_data
 
-    def get_total_data(self):
+    def get_placement_total_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         total_data = queryset.aggregate(
             **get_all_stats_aggregate_with_clicks_stats()
@@ -487,7 +487,7 @@ class PerformanceWeeklyReport:
         # Write content
 
         rows = []
-        for obj in self.get_campaign_data():
+        for obj in self.get_placement_data():
             rows.append((
                 # placement
                 obj["name"],
@@ -495,11 +495,10 @@ class PerformanceWeeklyReport:
             ))
         start_row = self.write_rows(rows, start_row)
         # Write total
-        total_data = self.get_total_data()
+        total_data = self.get_placement_total_data()
         # Drop None values
         total_row = [(
             "Total",
-            total_data["impressions"],
             *self._extract_data_row_with_cta(total_data),
         )]
         start_row = self.write_rows(
@@ -566,6 +565,20 @@ class PerformanceWeeklyReport:
             dict_quartiles_to_rates(item)
         return videos_data
 
+    def _prepare_total_data(self, start_row, queryset, aggregator, extractor):
+        total_data = queryset.aggregate(
+            **aggregator()
+        )
+        dict_norm_base_stats(total_data)
+        dict_add_calculated_stats(total_data)
+        dict_quartiles_to_rates(total_data)
+        total_row = [(
+            "Total",
+            *extractor(total_data),
+        )]
+        start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
+        return start_row
+
     def prepare_video_section(self, start_row):
         """
         Filling interest section
@@ -587,6 +600,13 @@ class PerformanceWeeklyReport:
             for obj in self.get_video_data()
         ]
         start_row = self.write_rows(rows, start_row)
+        start_row = self._prepare_total_data(
+            start_row,
+            YTVideoStatistic.objects.filter(**self.get_filters()),
+            all_stats_aggregation,
+            self._extract_data_row_without_cta
+        )
+
         return start_row + 1
 
     def get_ages_data(self):
@@ -616,6 +636,12 @@ class PerformanceWeeklyReport:
             for obj in self.get_ages_data()
         ]
         start_row = self.write_rows(rows, start_row)
+        start_row = self._prepare_total_data(
+            start_row,
+            AgeRangeStatistic.objects.filter(**self.get_filters()),
+            get_all_stats_aggregate_with_clicks_stats,
+            self._extract_data_row_with_cta
+        )
         return start_row + 1
 
     def get_genders_data(self):
@@ -645,6 +671,12 @@ class PerformanceWeeklyReport:
             for obj in self.get_genders_data()
         ]
         start_row = self.write_rows(rows, start_row)
+        start_row = self._prepare_total_data(
+            start_row,
+            GenderStatistic.objects.filter(**self.get_filters()),
+            get_all_stats_aggregate_with_clicks_stats,
+            self._extract_data_row_with_cta
+        )
         return start_row + 1
 
     def get_creatives_data(self):
@@ -685,6 +717,12 @@ class PerformanceWeeklyReport:
             for obj in self.get_creatives_data()
         ]
         start_row = self.write_rows(rows, start_row)
+        start_row = self._prepare_total_data(
+            start_row,
+            VideoCreativeStatistic.objects.filter(**self.get_filters()),
+            all_stats_aggregation,
+            self._extract_data_row_without_cta
+        )
         return start_row + 1
 
     def get_interest_data(self):

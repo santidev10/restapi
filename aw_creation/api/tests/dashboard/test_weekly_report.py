@@ -369,13 +369,13 @@ def is_report_empty(sheet):
 def are_all_sections_empty(sheet):
     section_names = (
         (SectionName.PLACEMENT, "Total"),
-        (SectionName.VIDEOS, None),
-        (SectionName.CREATIVES, None),
+        (SectionName.VIDEOS, "Total"),
+        (SectionName.CREATIVES, "Total"),
         (SectionName.AD_GROUPS, None),
         (SectionName.INTERESTS, None),
         (SectionName.TOPICS, None),
-        (SectionName.AGES, None),
-        (SectionName.GENDERS, None),
+        (SectionName.AGES, "Total"),
+        (SectionName.GENDERS, "Total"),
 
         (SectionName.KEYWORDS, None),
         (SectionName.DEVICES, FOOTER_ANNOTATION),
