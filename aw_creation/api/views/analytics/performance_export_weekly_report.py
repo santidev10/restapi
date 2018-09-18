@@ -43,7 +43,9 @@ class AnalyticsPerformanceExportWeeklyReportApiView(APIView):
                                   .get(request.user.email.lower(), {})\
                                   .get("hide_brand_name", False)
         report.hide_logo = hide_brand_name
-        title = "Channel Factory {} Weekly Report {}".format(
+        brand_name = "" if hide_brand_name else "Channel Factory "
+        title = "{}{} Weekly Report {}".format(
+            brand_name,
             item.name,
             datetime.now().date().strftime("%m.%d.%y")
         )
