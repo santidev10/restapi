@@ -13,6 +13,7 @@ from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
@@ -370,6 +371,7 @@ class PerformanceWeeklyReport:
         logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
         self.worksheet.insert_image(
             'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+        opportunity = Opportunity.objects.filter(placements__adwords_campaigns__account=self.account).first()
         # TODO replace N/A
         # campaign
         campaign_title = "Campaign: "
@@ -383,14 +385,30 @@ class PerformanceWeeklyReport:
             if self.account and self.account.end_date is not None else "N/A"
         flight_data = "{} - {}\n".format(flight_start_date, flight_end_date)
         # budget
-        budget_title = "Budget: "
+        budget_title = "Client Budget: "
         budget_data = "N/A\n"
-        # cpv
-        cpv_title = "CPV: "
-        cpv_data = "N/A\n"
+        if opportunity is not None and opportunity.budget is not None:
+            budget_data = "${}\n".format(opportunity.budget)
+        # rates
+        rates_title = "Contracted Rates: "
+        cpv_data = "N/A"
+        cpm_data = "N/A"
+        if opportunity is not None:
+            if opportunity.contracted_cpv:
+                cpv_data = "${}".format(opportunity.contracted_cpv)
+            if opportunity.contracted_cpm:
+                cpm_data = "${}".format(opportunity.contracted_cpm)
+        rates_data = "CPV {} / CPM {}\n".format(cpv_data, cpm_data)
         # contracted views
-        contracted_views_title = "Contracted Views: "
-        contracted_views_data = "N/A\n"
+        contracted_units_title = "Contracted Units: "
+        contracted_views_data = "N/A"
+        contracted_impressions_data = "N/A"
+        if opportunity is not None:
+            if opportunity.video_views:
+                contracted_views_data = "ordered CPV units = {} views".format(opportunity.video_views)
+            if opportunity.impressions:
+                contracted_impressions_data = "ordered CPM units = {} impressions".format(opportunity.impressions)
+        contracted_units_data = "{} / {}\n".format(contracted_views_data, contracted_impressions_data)
         # reporting date range
         reporting_date_range_title = "Reporting date range: "
         reporting_date_range_data = "{} - {}".format(
@@ -413,11 +431,11 @@ class PerformanceWeeklyReport:
             budget_title,
             budget_data,
             self.bold_format,
-            cpv_title,
-            cpv_data,
+            rates_title,
+            rates_data,
             self.bold_format,
-            contracted_views_title,
-            contracted_views_data,
+            contracted_units_title,
+            contracted_units_data,
             self.bold_format,
             reporting_date_range_title,
             reporting_date_range_data,

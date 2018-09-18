@@ -13,6 +13,8 @@ from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
@@ -201,6 +203,63 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         data_row = sheet[row_index + 1]
         self.assertEqual(data_row[1].value, video_title)
         self.assertEqual(data_row[2].value, sum(impressions))
+
+    def test_budget(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(budget=123.45678)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        account = Account.objects.create(id=next(int_iterator))
+        Campaign.objects.create(account=account, salesforce_placement=placement)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header_value = get_title_cell(sheet).value
+        self.assertIn("Client Budget: ${}".format(opportunity.budget), header_value)
+
+    def test_contracted_rate(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(contracted_cpm=.2, contracted_cpv=.5)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        account = Account.objects.create(id=next(int_iterator))
+        Campaign.objects.create(account=account, salesforce_placement=placement)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header_value = get_title_cell(sheet).value
+        expected_rates = "Contracted Rates: CPV ${} / CPM ${}".format(opportunity.contracted_cpv,
+                                                                      opportunity.contracted_cpm)
+        self.assertIn(expected_rates, header_value)
+
+    def test_contracted_units(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create(video_views=1234, impressions=6432)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        account = Account.objects.create(id=next(int_iterator))
+        Campaign.objects.create(account=account, salesforce_placement=placement)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header_value = get_title_cell(sheet).value
+        expected_units = "Contracted Units: ordered CPV units = {} views / ordered CPM units = {} impressions".format(
+            opportunity.video_views,
+            opportunity.impressions,
+        )
+        self.assertIn(expected_units, header_value)
 
 
 def get_sheet_from_response(response):
