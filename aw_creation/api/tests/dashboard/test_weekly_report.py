@@ -12,12 +12,18 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
+from aw_reporting.models import AgeRange
+from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models import Gender
+from aw_reporting.models import GenderStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import age_range_str
+from aw_reporting.models import gender_str
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
@@ -29,28 +35,32 @@ from utils.utils_tests import reverse
 
 
 class SectionName:
-    PLACEMENT = "Placement"
-    VIDEOS = "Video"
     AD_GROUPS = "Ad Groups"
-    INTERESTS = "Interests"
-    TOPICS = "Topics"
-    KEYWORDS = "Keywords"
-    DEVICES = "Device"
+    AGES = "Ages"
     CREATIVES = "Creatives"
+    DEVICES = "Device"
+    GENDERS = "Genders"
+    INTERESTS = "Interests"
+    KEYWORDS = "Keywords"
+    PLACEMENT = "Placement"
+    TOPICS = "Topics"
+    VIDEOS = "Video"
 
 
 SECTIONS_WITH_CTA = (
-    SectionName.PLACEMENT,
     SectionName.AD_GROUPS,
-    SectionName.INTERESTS,
-    SectionName.TOPICS,
-    SectionName.KEYWORDS,
+    SectionName.AGES,
     SectionName.DEVICES,
+    SectionName.GENDERS,
+    SectionName.INTERESTS,
+    SectionName.KEYWORDS,
+    SectionName.PLACEMENT,
+    SectionName.TOPICS,
 )
 
 REGULAR_STATISTIC_SECTIONS = (
-    SectionName.VIDEOS,
     SectionName.CREATIVES,
+    SectionName.VIDEOS,
 )
 
 COLUMN_SET_REGULAR = (
@@ -204,6 +214,70 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data_row[1].value, video_title)
         self.assertEqual(data_row[2].value, sum(impressions))
 
+    def test_ages_section(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        today = max(any_date_1, any_date_2)
+        self.create_test_user()
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        age_range_id = AgeRange.AGE_45_54
+        common = dict(
+            age_range_id=age_range_id,
+            ad_group=ad_group,
+        )
+        age_range_name = age_range_str(age_range_id)
+
+        impressions = (2, 3)
+        AgeRangeStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
+        AgeRangeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with patch_now(today), \
+             self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, SectionName.AGES)
+        data_row = sheet[row_index + 1]
+        self.assertEqual(data_row[1].value, age_range_name)
+        self.assertEqual(data_row[2].value, sum(impressions))
+
+    def test_genders_section(self):
+        any_date_1 = date(2018, 1, 1)
+        any_date_2 = any_date_1 + timedelta(days=1)
+        today = max(any_date_1, any_date_2)
+        self.create_test_user()
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        gender_id = Gender.MALE
+        common = dict(
+            gender_id=gender_id,
+            ad_group=ad_group,
+        )
+        gender_name = gender_str(gender_id)
+
+        impressions = (2, 3)
+        GenderStatistic.objects.create(date=any_date_1, impressions=impressions[0], **common)
+        GenderStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with patch_now(today), \
+             self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, SectionName.GENDERS)
+        data_row = sheet[row_index + 1]
+        self.assertEqual(data_row[1].value, gender_name)
+        self.assertEqual(data_row[2].value, sum(impressions))
+
     def test_budget(self):
         self.create_test_user()
         opportunity = Opportunity.objects.create(budget=123.45678)
@@ -300,6 +374,8 @@ def are_all_sections_empty(sheet):
         (SectionName.AD_GROUPS, None),
         (SectionName.INTERESTS, None),
         (SectionName.TOPICS, None),
+        (SectionName.AGES, None),
+        (SectionName.GENDERS, None),
 
         (SectionName.KEYWORDS, None),
         (SectionName.DEVICES, FOOTER_ANNOTATION),
