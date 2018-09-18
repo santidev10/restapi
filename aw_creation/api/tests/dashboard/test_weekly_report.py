@@ -11,9 +11,23 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.models import UserSettingsKey
+from utils.utils import get_all_class_constants
 from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
+
+
+class SectionName:
+    PLACEMENT = "Placement"
+    AD_GROUPS = "Ad Groups"
+    INTERESTS = "Interests"
+    TOPICS = "Topics"
+    KEYWORDS = "Keywords"
+    DEVICES = "Device"
+
+
+ALL_SECTIONS = get_all_class_constants(SectionName)
 
 
 class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
@@ -42,6 +56,43 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_report_empty(sheet))
+
+    @generic_test([
+        (section, (section,), dict())
+        for section in ALL_SECTIONS
+    ])
+    def test_column_set(self, section):
+        shared_columns = (
+            "Impressions",
+            "Views",
+            "View Rate",
+            "Clicks",
+            "Call-to-Action overlay",
+            "Website",
+            "App Store",
+            "Cards",
+            "End cap",
+            "CTR",
+            "Video played to: 25%",
+            "Video played to: 50%",
+            "Video played to: 75%",
+            "Video played to: 100%",
+            "Viewable Impressions",
+            "Viewability",
+        )
+        self.create_test_user()
+        account = Account.objects.create(id=next(int_iterator))
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, section)
+        title_values = tuple(cell.value for cell in sheet[row_index][1:])
+        self.assertEqual(title_values, (section,) + shared_columns)
 
 
 def get_sheet_from_response(response):
@@ -76,13 +127,13 @@ def is_report_empty(sheet):
 
 def are_all_sections_empty(sheet):
     section_names = (
-        ("Placement", "Total"),
-        ("Ad Groups", None),
-        ("Interests", None),
-        ("Topics", None),
+        (SectionName.PLACEMENT, "Total"),
+        (SectionName.AD_GROUPS, None),
+        (SectionName.INTERESTS, None),
+        (SectionName.TOPICS, None),
 
-        ("Keywords", None),
-        ("Device", FOOTER_ANNOTATION),
+        (SectionName.KEYWORDS, None),
+        (SectionName.DEVICES, FOOTER_ANNOTATION),
     )
     return all([
         is_section_empty(sheet, section_name, next_value)
