@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
@@ -169,7 +170,13 @@ class AnalyzeExportWeeklyReportApiView:
                     filters['campaigns'], filters['ad_groups'],
                 )
                 report = DemoAnalyzeWeeklyReport(account)
-                title = "Channel Factory {} Weekly Report {}".format(
+                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+                    .get(request.user.email.lower(), {}) \
+                    .get("hide_brand_name", False)
+                report.hide_logo = hide_brand_name
+                brand_name = "" if hide_brand_name else "Channel Factory "
+                title = "{}{} Weekly Report {}".format(
+                    brand_name,
                     account.name,
                     datetime.now().date().strftime("%m.%d.%y")
                 )
