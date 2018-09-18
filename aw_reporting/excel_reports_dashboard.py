@@ -8,7 +8,7 @@ import xlsxwriter
 from django.conf import settings
 from django.db.models import Sum
 
-from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AdGroupStatistic, YTChannelStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CLICKS_STATS
@@ -83,17 +83,17 @@ class PerformanceWeeklyReport:
         "Viewability",
     )
 
-    def _extract_data_row_with_cta(self, row, default=None):
+    def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
         return (
             row["impressions"] or default,
             row["video_views"] or default,
             div_by_100(row["video_view_rate"]) or default,
             row["clicks"] or default,
-            row["clicks_call_to_action_overlay"] or default,
-            row["clicks_website"] or default,
-            row["clicks_app_store"] or default,
-            row["clicks_cards"] or default,
-            row["clicks_end_cap"] or default,
+            row.get("clicks_call_to_action_overlay") or default if with_cta else None,
+            row.get("clicks_website") or default if with_cta else None,
+            row.get("clicks_app_store") or default if with_cta else None,
+            row.get("clicks_cards") or default if with_cta else None,
+            row.get("clicks_end_cap") or default if with_cta else None,
             div_by_100(row["ctr"]),
             div_by_100(row["video25rate"]),
             div_by_100(row["video50rate"]),
@@ -334,6 +334,7 @@ class PerformanceWeeklyReport:
         next_row = self.prepare_genders_section(next_row)
         next_row = self.prepare_creatives_section(next_row)
         next_row = self.prepare_ad_group_section(next_row)
+        next_row = self.prepare_targeting_section(next_row)
         next_row = self.prepare_interest_section(next_row)
         next_row = self.prepare_topic_section(next_row)
         next_row = self.prepare_keyword_section(next_row)
@@ -485,7 +486,7 @@ class PerformanceWeeklyReport:
             ))
         start_row = self.write_rows(rows, start_row)
 
-        start_row = self._prepare_total_data(
+        start_row = self._prepare_total_row(
             start_row,
             AdGroupStatistic.objects.filter(**self.get_filters()),
             get_all_stats_aggregate_with_clicks_stats,
@@ -553,16 +554,19 @@ class PerformanceWeeklyReport:
             dict_quartiles_to_rates(item)
         return videos_data
 
-    def _prepare_total_data(self, start_row, queryset, aggregator, extractor):
+    def _get_total_data(self, queryset, aggregator, extractor):
         total_data = queryset.aggregate(
             **aggregator()
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
+        return extractor(total_data, default=0)
+
+    def _prepare_total_row(self, start_row, queryset, aggregator, extractor):
         total_row = [(
             "Total",
-            *extractor(total_data, default=0),
+            *self._get_total_data(queryset, aggregator, extractor),
         )]
         start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
         return start_row
@@ -588,7 +592,7 @@ class PerformanceWeeklyReport:
             for obj in self.get_video_data()
         ]
         start_row = self.write_rows(rows, start_row)
-        start_row = self._prepare_total_data(
+        start_row = self._prepare_total_row(
             start_row,
             YTVideoStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
@@ -624,7 +628,7 @@ class PerformanceWeeklyReport:
             for obj in self.get_ages_data()
         ]
         start_row = self.write_rows(rows, start_row)
-        start_row = self._prepare_total_data(
+        start_row = self._prepare_total_row(
             start_row,
             AgeRangeStatistic.objects.filter(**self.get_filters()),
             get_all_stats_aggregate_with_clicks_stats,
@@ -659,7 +663,7 @@ class PerformanceWeeklyReport:
             for obj in self.get_genders_data()
         ]
         start_row = self.write_rows(rows, start_row)
-        start_row = self._prepare_total_data(
+        start_row = self._prepare_total_row(
             start_row,
             GenderStatistic.objects.filter(**self.get_filters()),
             get_all_stats_aggregate_with_clicks_stats,
@@ -705,12 +709,40 @@ class PerformanceWeeklyReport:
             for obj in self.get_creatives_data()
         ]
         start_row = self.write_rows(rows, start_row)
-        start_row = self._prepare_total_data(
+        start_row = self._prepare_total_row(
             start_row,
             VideoCreativeStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
             self._extract_data_row_without_cta
         )
+        return start_row + 1
+
+    def prepare_targeting_section(self, start_row):
+        headers = [(
+            "Targeting Tactic",
+            *self._with_cta_columns,
+        )]
+        start_row = self.write_rows(headers, start_row, self.header_format)
+
+        targeting_data = [
+            ("Topics", TopicStatistic, True),
+            ("Interests", AudienceStatistic, True),
+            ("Keywords", KeywordStatistic, True),
+            ("Channels", YTChannelStatistic, False),
+            ("Videos", YTVideoStatistic, False),
+        ]
+        rows = [
+            (
+                name,
+                *self._get_total_data(
+                    model.objects.filter(**self.get_filters()),
+                    get_all_stats_aggregate_with_clicks_stats if with_cta else all_stats_aggregation,
+                    partial(self._extract_data_row_with_cta, default=0, with_cta=with_cta)
+                )
+            )
+            for name, model, with_cta in targeting_data
+        ]
+        start_row = self.write_rows(rows, start_row)
         return start_row + 1
 
     def get_interest_data(self):

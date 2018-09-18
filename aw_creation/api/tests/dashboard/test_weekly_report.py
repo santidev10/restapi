@@ -14,13 +14,19 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRange
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import Gender
 from aw_reporting.models import GenderStatistic
+from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import age_range_str
 from aw_reporting.models import gender_str
@@ -45,6 +51,7 @@ class SectionName:
     PLACEMENT = "Placement"
     TOPICS = "Topics"
     VIDEOS = "Video"
+    TARGETING_TACTICS = "Targeting Tactic"
 
 
 SECTIONS_WITH_CTA = (
@@ -55,6 +62,7 @@ SECTIONS_WITH_CTA = (
     SectionName.INTERESTS,
     SectionName.KEYWORDS,
     SectionName.PLACEMENT,
+    SectionName.TARGETING_TACTICS,
     SectionName.TOPICS,
 )
 
@@ -278,6 +286,45 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data_row[1].value, gender_name)
         self.assertEqual(data_row[2].value, sum(impressions))
 
+    def test_targeting_section(self):
+        today = any_date = date(2018, 1, 1)
+        self.create_test_user()
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+
+        common = dict(
+            ad_group=ad_group,
+            date=any_date,
+        )
+        TopicStatistic.objects.create(topic=Topic.objects.create(), impressions=2, **common)
+        AudienceStatistic.objects.create(audience=Audience.objects.create(), impressions=3, **common)
+        KeywordStatistic.objects.create(keyword="1", impressions=4, **common)
+        YTChannelStatistic.objects.create(yt_id="1", impressions=5, **common)
+        YTVideoStatistic.objects.create(yt_id="1", impressions=6, **common)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with patch_now(today), \
+             self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        start_row_index = get_section_start_row(sheet, SectionName.TARGETING_TACTICS)
+        rows = [
+            ("Topics", 2),
+            ("Interests", 3),
+            ("Keywords", 4),
+            ("Channels", 5),
+            ("Videos", 6),
+        ]
+        for index, data in enumerate(rows):
+            name, value = data
+            row_index = start_row_index + index + 1
+            self.assertEqual(sheet[row_index][1].value, name, name)
+            self.assertEqual(sheet[row_index][2].value, value, name)
+
     def test_budget(self):
         self.create_test_user()
         opportunity = Opportunity.objects.create(budget=123.45678)
@@ -368,6 +415,7 @@ def is_report_empty(sheet):
 
 def are_all_sections_empty(sheet):
     total_row = ("Total", 0)
+    targeting_rows = ["Topics", "Interests", "Keywords", "Channels", "Videos"]
     section_names = (
         (SectionName.PLACEMENT, [total_row]),
         (SectionName.VIDEOS, [total_row]),
@@ -377,6 +425,7 @@ def are_all_sections_empty(sheet):
         (SectionName.TOPICS, []),
         (SectionName.AGES, [total_row]),
         (SectionName.GENDERS, [total_row]),
+        (SectionName.TARGETING_TACTICS, [(name, 0) for name in targeting_rows]),
 
         (SectionName.KEYWORDS, []),
         (SectionName.DEVICES, [(FOOTER_ANNOTATION, None)]),
@@ -405,9 +454,14 @@ def is_section_empty(sheet, section_name, static_rows):
            and sheet[next_row_number][TITLE_COLUMN].value is None
 
 
+def is_section_header(cell):
+    return cell.alignment.horizontal == "center"
+
+
 def get_section_start_row(sheet, section_name):
     data_rows_numbers = range(FIRST_SECTION_ROW_NUMBER, sheet.max_row)
     for row_number in data_rows_numbers:
-        if sheet[row_number][TITLE_COLUMN].value == section_name:
+        cell = sheet[row_number][TITLE_COLUMN]
+        if is_section_header(cell) and cell.value == section_name:
             return row_number
     raise ValueError
