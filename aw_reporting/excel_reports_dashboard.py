@@ -49,6 +49,7 @@ FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected T
 
 
 class PerformanceWeeklyReport:
+    hide_logo = False
     _with_cta_columns = (
         "Impressions",
         "Views",
@@ -376,9 +377,11 @@ class PerformanceWeeklyReport:
         Filling overview section
         :return: None
         """
-        logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
-        self.worksheet.insert_image(
-            'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+        if not self.hide_logo:
+            logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
+            self.worksheet.insert_image(
+                'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+
         opportunity = Opportunity.objects.filter(placements__adwords_campaigns__account=self.account).first()
         # TODO replace N/A
         # campaign
