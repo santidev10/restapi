@@ -106,7 +106,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     keyword_count = StruckField()
     # opportunity data
     brand = SerializerMethodField()
-    agency = SerializerMethodField()
+    sf_account = SerializerMethodField()
 
     average_cpv = StatField()
     average_cpm = StatField()
@@ -120,15 +120,36 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "account",
-            "thumbnail", "is_changed", "weekly_chart",
-            # delivered stats
-            "clicks", "cost", "impressions", "video_views", "video_view_rate",
-            "ad_count", "channel_count", "video_count", "interest_count",
-            "topic_count", "keyword_count", "is_disapproved", "updated_at",
-            "brand", "agency", "cost_method", "average_cpv",
-            "average_cpm", "ctr", "ctr_v", "plan_cpm",
-            "plan_cpv"
+            "account",
+            "ad_count",
+            "average_cpm",
+            "average_cpv",
+            "brand",
+            "channel_count",
+            "clicks",
+            "cost",
+            "cost_method",
+            "ctr",
+            "ctr_v",
+            "end",
+            "id",
+            "impressions",
+            "interest_count",
+            "is_changed",
+            "is_disapproved",
+            "keyword_count",
+            "name",
+            "plan_cpm",
+            "plan_cpv",
+            "sf_account",
+            "start",
+            "thumbnail",
+            "topic_count",
+            "updated_at",
+            "video_count",
+            "video_view_rate",
+            "video_views",
+            "weekly_chart",
         )
 
     def __init__(self, *args, **kwargs):
@@ -376,11 +397,11 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         opportunity = self._get_opportunity(obj)
         return opportunity.brand if opportunity is not None else None
 
-    def get_agency(self, obj):
+    def get_sf_account(self, obj):
         opportunity = self._get_opportunity(obj)
-        if opportunity is None or opportunity.agency is None:
+        if opportunity is None or opportunity.account is None:
             return None
-        return opportunity.agency.name
+        return opportunity.account.name
 
     def get_cost_method(self, obj):
         opportunity = self._get_opportunity(obj)
