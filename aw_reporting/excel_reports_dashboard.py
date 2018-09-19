@@ -8,7 +8,7 @@ import xlsxwriter
 from django.conf import settings
 from django.db.models import Sum
 
-from aw_reporting.models import AdGroupStatistic, YTChannelStatistic
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import CLICKS_STATS
@@ -18,6 +18,7 @@ from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import age_range_str
 from aw_reporting.models import all_stats_aggregator
