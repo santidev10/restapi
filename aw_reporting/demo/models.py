@@ -20,7 +20,7 @@ DEMO_AD_GROUPS = (
 TOTAL_DEMO_AD_GROUPS_COUNT = len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT
 DEMO_BRAND = "Demo Brand"
 DEMO_COST_METHOD = ["CPM", "CPV"]
-DEMO_AGENCY = "Initiative LA"
+DEMO_SF_ACCOUNT = "Initiative LA"
 
 IMPRESSIONS = 150000
 VIDEO_VIEWS = 53000
@@ -952,18 +952,23 @@ class DemoAccount(BaseDemo):
         data = dict(
             account=self.id,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
-            agency=DEMO_AGENCY,
             average_cpm=10,
             average_cpv=.10782609,
             brand=DEMO_BRAND,
             channel_count=12,
             clicks=self.clicks,
+            clicks_app_store=100,
+            clicks_call_to_action_overlay=250,
+            clicks_cards=110,
+            clicks_end_cap=140,
+            clicks_website=350,
             cost=self.cost,
             cost_method=DEMO_COST_METHOD,
             ctr=self.ctr,
             ctr_v=self.ctr_v,
             end=self.end_date,
             from_aw=False,
+            hide_click_types=False,
             id=self.id,
             impressions=self.impressions,
             interest_count=10,
@@ -975,6 +980,7 @@ class DemoAccount(BaseDemo):
             name=self.name,
             plan_cpm=11,
             plan_cpv=.3,
+            sf_account=DEMO_SF_ACCOUNT,
             start=self.start_date,
             status="Running",
             thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
@@ -984,12 +990,6 @@ class DemoAccount(BaseDemo):
             video_view_rate=self.video_view_rate,
             video_views=self.video_views,
             weekly_chart=chart_lines[0]['trend'],
-            clicks_website=350,
-            clicks_call_to_action_overlay=250,
-            clicks_app_store=100,
-            clicks_cards=110,
-            clicks_end_cap=140,
-            hide_click_types=False,
         )
         return data
 
@@ -1023,15 +1023,15 @@ class DemoAccount(BaseDemo):
         "weekly_chart",
     }
     _dashboard_specific_keys = {
-        "agency",
         "brand",
-        "cost_method",
-        "clicks_website",
-        "clicks_call_to_action_overlay",
         "clicks_app_store",
+        "clicks_call_to_action_overlay",
         "clicks_cards",
         "clicks_end_cap",
+        "clicks_website",
+        "cost_method",
         "hide_click_types",
+        "sf_account",
     }
     _analytics_specific_keys = {
         "from_aw",
