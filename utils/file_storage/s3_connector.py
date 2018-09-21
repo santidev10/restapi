@@ -13,7 +13,3 @@ def upload_file(filename, data, content_type):
         ContentType=content_type,
     )
     return "https://{bucket}.s3.amazonaws.com/{filename}".format(bucket=bucket, filename=filename)
-
-
-def remove_file(filename):
-    raise NotImplementedError
