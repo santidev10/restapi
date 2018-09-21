@@ -13,6 +13,8 @@ from django.core.management import BaseCommand
 from django.db import transaction
 from django.http import QueryDict
 
+import boto3
+
 from audit_tool.adwords import AdWords
 from audit_tool.dmo import AccountDMO
 from audit_tool.dmo import VideoDMO
@@ -28,6 +30,7 @@ from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
+
 class Command(BaseCommand):
     # CL arguments --->
     date_start = None
@@ -37,6 +40,8 @@ class Command(BaseCommand):
 
     accounts = None
     accounts_dict = None
+
+    s3_folder = "daily-audit-reports"
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
@@ -82,7 +87,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         self.load_arguments(*args, **options)
-
 
         logger.info("Starting daily audit")
         VideoAudit.objects.cleanup()
@@ -377,25 +381,40 @@ class Command(BaseCommand):
             ("VideoUrl", 40),
             ("ChannelTitle", 45),
             ("ChannelUrl", 55),
+            ("Google Preferred", 14),
             ("Impressions", 10),
+            ("Sentiment Analysis", 16),
+            ("Hits", 10),
+            ("Words that hit", 20),
+            ("Account Info", 200),
         )
         for x, field in enumerate(fields):
             worksheet.write(0, x, field[0], header_format)
             worksheet.set_column(x, x, field[1])
 
-        sorted_videos = sorted(videos, key=lambda x: -len(x.found))
-        y = 0
-        for item in sorted_videos:
-            if item.channel_id not in preferred_channels:
-                continue
+        sorted_videos = sorted(videos, key=lambda _: -len(_.found))
+        for y, item in enumerate(sorted_videos):
+            hits = len(item.found)
+            if hits < 5 and item.channel_id in preferred_channels:
+                break
             data = reports[item.id]
             impressions = sum([int(r.get("Impressions")) for r in data])
+            words = ",".join(item.found)
             worksheet.write(y+1, 0, item.title)
-            worksheet.write(y+1, 1, item.url)
+            worksheet.write(y+1, 1, "'" + item.url)
             worksheet.write(y+1, 2, item.channel_title)
-            worksheet.write(y+1, 3, item.channel_url)
-            worksheet.write(y+1, 4, impressions, numberic_format)
-            y += 1
+            worksheet.write(y+1, 3, "'" + item.channel_url)
+            worksheet.write(y+1, 4, "YES")
+            worksheet.write(y+1, 5, impressions, numberic_format)
+            worksheet.write(y+1, 6, item.sentiment, percentage_format)
+            worksheet.write(y+1, 7, hits, numberic_format)
+            worksheet.write(y+1, 8, words)
+
+            account_info = self._get_account_info(data)
+            text_account_info = "\n".join(account_info)
+            worksheet.write(y+1, 9, text_account_info, text_format)
+            if len(account_info) > 1:
+                worksheet.set_row(y+1, 15*len(account_info))
 
         # close workbook
         workbook.worksheets_objs[0], workbook.worksheets_objs[1] =\
@@ -415,6 +434,11 @@ class Command(BaseCommand):
         totals["new_videos"] = len(new_videos)
         totals["channels"] = len(set(_.channel_id for _ in videos))
 
+        filename = "daily_audit_{}.xlsx".format(date)
+
+        # Save to S3
+        self.save_se(filename, xlsx_data)
+
         # prepare E-mail
         subject = "Daily Audit {}".format(date)
         body = "Total impressions: {impressions}\n" \
@@ -428,7 +452,6 @@ class Command(BaseCommand):
         bcc = []
         replay_to = ""
 
-        filename = "daily_audit_{}.xlsx".format(date)
         content_type = "application" \
                        "/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         email = EmailMessage(
@@ -468,3 +491,13 @@ class Command(BaseCommand):
                     lines.append(line)
         return lines
 
+    def save_s3(self, filename, data, content_type):
+        s3 = boto3.client("s3",
+                          aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
+                          aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY)
+
+        s3.put_object(Bucket=settings.AMAZON_S3_BUCKET_NAME,
+                      Key=self.s3_folder + "/" + filename,
+                      Body=data,
+                      ContentType=content_type)
+        s3.close()
