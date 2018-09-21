@@ -9,11 +9,11 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase, Account, \
     AWConnection, AWAccountPermission, \
     AWConnectionToUserRelation, Campaign, Ad, AdGroup
 from saas.urls.namespaces import Namespace
-from userprofile.api.urls.names import Name
+from userprofile.api.urls.names import UserprofilePathName
 
 
 class AuthAPITestCase(AwReportingAPITestCase):
-    _url = reverse(Namespace.USER_PROFILE + ":" + Name.AUTH)
+    _url = reverse(Namespace.USER_PROFILE + ":" + UserprofilePathName.AUTH)
 
     def test_success(self):
         user = self.create_test_user()

@@ -118,3 +118,6 @@ def _period_to_year(period, year):
 
 def _date_to_year(d, year):
     return date(year, d.month, d.day)
+
+
+TIMESTAMP_FORMAT = "%Y%m%d%H%M"
