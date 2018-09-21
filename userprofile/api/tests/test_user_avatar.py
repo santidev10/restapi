@@ -106,3 +106,12 @@ class UserAvatarDeleteTestCase(BaseAvatarTestCase):
         self.create_test_user()
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_set_none(self):
+        user = self.create_test_user()
+        user.profile_image_url = "test_url"
+        user.save()
+
+        self._request()
+        user.refresh_from_db()
+        self.assertIsNone(user.profile_image_url)

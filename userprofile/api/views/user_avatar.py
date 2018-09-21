@@ -34,4 +34,7 @@ class UserAvatarApiView(APIView):
         return Response(data=avatar_url)
 
     def delete(self, request):
+        user = request.user
+        user.profile_image_url = None
+        user.save()
         return Response()
