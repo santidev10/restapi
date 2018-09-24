@@ -1,13 +1,15 @@
-"""
-Userprofile api urls module
-"""
 from django.conf.urls import url
 
 from userprofile.api.urls.names import Name
-from userprofile.api.views import UserCreateApiView, UserAuthApiView, \
-    UserProfileApiView, UserPasswordResetApiView, UserPasswordSetApiView, \
-    ContactFormApiView, ErrorReportApiView, UserProfileSharedListApiView
+from userprofile.api.views import ContactFormApiView
+from userprofile.api.views import ErrorReportApiView
+from userprofile.api.views import UserAuthApiView
+from userprofile.api.views import UserCreateApiView
 from userprofile.api.views import UserPasswordChangeApiView
+from userprofile.api.views import UserPasswordResetApiView
+from userprofile.api.views import UserPasswordSetApiView
+from userprofile.api.views import UserProfileApiView
+from userprofile.api.views import UserProfileSharedListApiView
 
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name="user_create"),
