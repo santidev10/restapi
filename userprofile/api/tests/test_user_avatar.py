@@ -5,8 +5,10 @@ from datetime import datetime
 
 from PIL import Image
 from django.conf import settings
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_413_REQUEST_ENTITY_TOO_LARGE
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
@@ -30,7 +32,7 @@ class UserAvatarUploadTestCase(BaseAvatarTestCase):
 
     @contextmanager
     def temp_image(self):
-        image = Image.new("RGB", (100, 100))
+        image = Image.new("RGB", (2, 2))
         tmp_file = tempfile.NamedTemporaryFile(suffix=".png")
         image.save(tmp_file)
         with open(tmp_file.name, "rb") as data:
@@ -91,6 +93,15 @@ class UserAvatarUploadTestCase(BaseAvatarTestCase):
 
         stored_image = io.BytesIO(stored_object["Body"].read())
         self.assertEqual(stored_image.getvalue(), image_bytes.getvalue())
+
+    @mock_s3
+    def test_bad_request_on_too_large_file(self):
+        self.create_test_user()
+        test_avatar_size_limit = 1 / 1024 / 1024  # 1 byte
+        with self.temp_image() as image, \
+                override_settings(MAX_AVATAR_SIZE_MB=test_avatar_size_limit):
+            response = self._request(image)
+        self.assertEqual(response.status_code, HTTP_413_REQUEST_ENTITY_TOO_LARGE)
 
 
 class UserAvatarDeleteTestCase(BaseAvatarTestCase):
