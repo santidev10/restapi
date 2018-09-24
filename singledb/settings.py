@@ -50,10 +50,7 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "title_bad_statuses",
     "video_title_safety_status",
     "cms__title",
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "has_adwords_data",
 )
 
 DEFAULT_VIDEO_DETAILS_FIELDS = (
@@ -112,10 +109,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "title_bad_statuses",
     "video_title_safety_status",
     "cms__title",
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "has_adwords_data",
 )
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
@@ -274,4 +268,3 @@ DEFAULT_KEYWORD_LIST_SOURCES = (
 
 DEFAULT_KEYWORD_DETAILS_SOURCES = (
 )
-
