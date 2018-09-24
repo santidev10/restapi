@@ -1,15 +1,20 @@
-from rest_framework.parsers import FileUploadParser
+from django.conf import settings
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from utils.api.parsers.file_size_limited_parser import FileSizeLimitedParser
 from utils.datetime import TIMESTAMP_FORMAT
 from utils.datetime import now_in_default_tz
 from utils.file_storage import upload_file
 
 
-class ImageUploadParser(FileUploadParser):
+class ImageUploadParser(FileSizeLimitedParser):
     media_type = "image/png"
+
+    @property
+    def size_limit_mb(self):
+        return settings.MAX_AVATAR_SIZE_MB
 
     def get_filename(self, stream, media_type, parser_context):
         return "temp.png"
