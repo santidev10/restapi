@@ -57,7 +57,7 @@ class UserAvatarUploadTestCase(BaseAvatarTestCase):
             response = self._request(image)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        expected_avatar_url = "https://{bucket}.s3.amazonaws.com/user/{user_id}/avatar-{timestamp}.png".format(
+        expected_avatar_url = "https://{bucket}.s3.amazonaws.com/user/{user_id}/avatar.png?t={timestamp}".format(
             bucket=S3_BUCKET,
             user_id=user.id,
             timestamp=now.strftime(TIMESTAMP_FORMAT)
@@ -77,9 +77,8 @@ class UserAvatarUploadTestCase(BaseAvatarTestCase):
             response = self._request(image)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        expected_key = "user/{user_id}/avatar-{timestamp}.png".format(
+        expected_key = "user/{user_id}/avatar.png".format(
             user_id=user.id,
-            timestamp=now.strftime(TIMESTAMP_FORMAT)
         )
         s3 = get_s3_client()
         s3_objects = s3.list_objects(Bucket=S3_BUCKET)["Contents"]
