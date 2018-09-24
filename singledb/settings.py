@@ -202,12 +202,7 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "bad_percents",
     "bad_statuses",
     "cms__title",
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "score",
-    # "score_total",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "has_adwords_data",
 )
 
 DEFAULT_KEYWORD_LIST_FIELDS = (
