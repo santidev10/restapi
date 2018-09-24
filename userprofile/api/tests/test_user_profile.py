@@ -6,13 +6,13 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 
 from aw_reporting.models import AWConnectionToUserRelation, AWConnection
 from saas.urls.namespaces import Namespace
-from userprofile.api.urls.names import Name
+from userprofile.api.urls.names import UserprofilePathName
 from userprofile.models import UserProfile
 from utils.utils_tests import ExtendedAPITestCase
 
 
 class UserProfileTestCase(ExtendedAPITestCase):
-    _url = reverse(Namespace.USER_PROFILE + ":" + Name.USER_PROFILE)
+    _url = reverse(Namespace.USER_PROFILE + ":" + UserprofilePathName.USER_PROFILE)
 
     def _update(self, data):
         return self.client.put(self._url, json.dumps(data),

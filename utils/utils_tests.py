@@ -5,18 +5,22 @@ import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime, date
+from functools import wraps
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse as django_reverse
 from django.db import transaction
+from moto import mock_s3 as moto_mock_s3
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
+from utils.aws.s3 import get_s3_client
 from utils.datetime import Time
 
 logger = logging.getLogger(__name__)
@@ -271,3 +275,20 @@ def reverse(view_name, namespaces, **kwargs):
         ":".join(namespaces + [view_name]),
         **kwargs
     )
+
+
+@contextmanager
+def with_default_bucket():
+    s3 = get_s3_client()
+    s3.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
+    yield
+
+
+def mock_s3(fn):
+    @moto_mock_s3
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        with with_default_bucket():
+            return fn(*args, **kwargs)
+
+    return wrapper
