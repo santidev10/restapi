@@ -171,7 +171,7 @@ class PerformanceWeeklyReport:
             "border": True,
             "num_format": "0.00%",
         })
-        self.footer_format = {
+        self.footer_format_with_click_types = {
             1: footer_text_format,
             2: footer_text_format,
             3: footer_text_format,
@@ -190,7 +190,20 @@ class PerformanceWeeklyReport:
             16: footer_text_format,
             17: footer_text_format,
         }
-
+        self.footer_format = {
+            1: footer_text_format,
+            2: footer_text_format,
+            3: footer_text_format,
+            4: footer_percent_format,
+            5: footer_text_format,
+            6: footer_percent_format,
+            7: footer_percent_format,
+            8: footer_percent_format,
+            9: footer_percent_format,
+            10: footer_percent_format,
+            11: footer_text_format,
+            12: footer_text_format,
+        }
         # First column cell
         first_column_cell_options = {
             "border": True,
@@ -582,12 +595,13 @@ class PerformanceWeeklyReport:
         dict_quartiles_to_rates(total_data)
         return extractor(total_data, default=0)
 
-    def _prepare_total_row(self, start_row, queryset, aggregator, extractor):
+    def _prepare_total_row(self, start_row, queryset, aggregator, extractor, data_cell_options=None):
         total_row = [(
             "Total",
             *self._get_total_data(queryset, aggregator, extractor),
         )]
-        start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
+        data_cell_options = data_cell_options or self.footer_format_with_click_types
+        start_row = self.write_rows(total_row, start_row, data_cell_options=data_cell_options)
         return start_row
 
     def prepare_video_section(self, start_row):
@@ -615,7 +629,8 @@ class PerformanceWeeklyReport:
             start_row,
             YTVideoStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
-            self._extract_data_row_without_cta
+            self._extract_data_row_without_cta,
+            data_cell_options=self.footer_format
         )
 
         return start_row + 1
@@ -732,7 +747,8 @@ class PerformanceWeeklyReport:
             start_row,
             VideoCreativeStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
-            self._extract_data_row_without_cta
+            self._extract_data_row_without_cta,
+            data_cell_options=self.footer_format
         )
         return start_row + 1
 
