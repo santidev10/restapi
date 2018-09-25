@@ -235,7 +235,7 @@ class PerformanceWeeklyReport:
             last_columns_cell_options
         )
 
-        self.data_cell_options = {
+        self.data_cell_options_with_click_types = {
             1: first_column_cell_format,
             2: middle_columns_cell_format,
             3: middle_columns_cell_format,
@@ -254,6 +254,22 @@ class PerformanceWeeklyReport:
             # TODO We don't collect the statistic for those two columns yet
             16: middle_columns_cell_format,
             17: last_columns_cell_format,
+
+        }
+        self.data_cell_options = {
+            1: first_column_cell_format,
+            2: middle_columns_cell_format,
+            3: middle_columns_cell_format,
+            4: middle_columns_percentage_cell_format,
+            5: middle_columns_cell_format,
+            6: middle_columns_percentage_cell_format,
+            7: last_columns_percentage_cell_format,
+            8: last_columns_percentage_cell_format,
+            9: last_columns_percentage_cell_format,
+            10: last_columns_percentage_cell_format,
+            # TODO We don't collect the statistic for those two columns yet
+            11: middle_columns_cell_format,
+            12: last_columns_cell_format,
 
         }
 
@@ -345,8 +361,7 @@ class PerformanceWeeklyReport:
         self.workbook.close()
         return self.output.getvalue()
 
-    def write_rows(self, data, start_row, default_format=None,
-                   data_cell_options=None):
+    def write_rows(self, data, start_row, default_format=None, data_cell_options=None):
         """
         Writing document rows
         :param data: list of lists
@@ -354,7 +369,7 @@ class PerformanceWeeklyReport:
         :param default_format: use default format for all cells
         :return: int
         """
-        data_cell_options = data_cell_options or self.data_cell_options
+        data_cell_options = data_cell_options or self.data_cell_options_with_click_types
         for row in data:
             for column, value in enumerate(row):
                 current_column = self.start_column + column
@@ -595,7 +610,7 @@ class PerformanceWeeklyReport:
             )
             for obj in self.get_video_data()
         ]
-        start_row = self.write_rows(rows, start_row)
+        start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options)
         start_row = self._prepare_total_row(
             start_row,
             YTVideoStatistic.objects.filter(**self.get_filters()),
@@ -712,7 +727,7 @@ class PerformanceWeeklyReport:
             )
             for obj in self.get_creatives_data()
         ]
-        start_row = self.write_rows(rows, start_row)
+        start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options)
         start_row = self._prepare_total_row(
             start_row,
             VideoCreativeStatistic.objects.filter(**self.get_filters()),
