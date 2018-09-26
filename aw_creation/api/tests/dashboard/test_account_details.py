@@ -51,7 +51,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "ctr_v",
         "details",
         "end",
-        "hide_click_types",
         "id",
         "impressions",
         "interest_count",

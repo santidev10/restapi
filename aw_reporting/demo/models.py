@@ -968,7 +968,6 @@ class DemoAccount(BaseDemo):
             ctr_v=self.ctr_v,
             end=self.end_date,
             from_aw=False,
-            hide_click_types=False,
             id=self.id,
             impressions=self.impressions,
             interest_count=10,
@@ -1030,7 +1029,6 @@ class DemoAccount(BaseDemo):
         "clicks_end_cap",
         "clicks_website",
         "cost_method",
-        "hide_click_types",
         "sf_account",
     }
     _analytics_specific_keys = {
