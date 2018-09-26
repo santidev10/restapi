@@ -155,7 +155,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
-        dashboard_specific_keys = CLICKS_STATS + ("hide_click_types",)
+        dashboard_specific_keys = CLICKS_STATS
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
