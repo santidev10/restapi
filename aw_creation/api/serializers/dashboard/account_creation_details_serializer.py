@@ -41,6 +41,9 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
                 clicks_cards=Sum("clicks_cards"),
                 clicks_end_cap=Sum("clicks_end_cap")
             )
+            for key, value in clicks_data.items():
+                if value is None:
+                    clicks_data[key] = 0
             stats_value.update(clicks_data)
         return stats
 
