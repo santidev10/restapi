@@ -255,10 +255,6 @@ class PerformanceWeeklyReport:
             8: last_columns_percentage_cell_format,
             9: last_columns_percentage_cell_format,
             10: last_columns_percentage_cell_format,
-            # TODO We don't collect the statistic for those two columns yet
-            11: middle_columns_cell_format,
-            12: last_columns_cell_format,
-
         }
 
     def _prepare_empty_document(self):
