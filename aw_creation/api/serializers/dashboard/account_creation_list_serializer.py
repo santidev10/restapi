@@ -225,11 +225,11 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         def accumulate(res, item):
             acc_data = res[item.account_creation_id]
             if item.goal_type_id == SalesForceGoalType.CPV:
-                acc_data["cpv_total_cost"] += item.total_cost
-                acc_data["cpv_ordered_units"] += item.ordered_units
+                acc_data["cpv_total_cost"] += item.total_cost or 0
+                acc_data["cpv_ordered_units"] += item.ordered_units or 0
             elif item.goal_type_id == SalesForceGoalType.CPM:
-                acc_data["cpm_total_cost"] += item.total_cost
-                acc_data["cpm_ordered_units"] += item.ordered_units
+                acc_data["cpm_total_cost"] += item.total_cost or 0
+                acc_data["cpm_ordered_units"] += item.ordered_units or 0
             res[item.account_creation_id] = acc_data
             return res
 
