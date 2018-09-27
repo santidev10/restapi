@@ -15,7 +15,7 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.demo.models import DEMO_AGENCY
+from aw_reporting.demo.models import DEMO_SF_ACCOUNT
 from aw_reporting.demo.models import DEMO_BRAND
 from aw_reporting.demo.models import DEMO_COST_METHOD
 from aw_reporting.models import AWAccountPermission
@@ -25,9 +25,9 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Campaign
-from aw_reporting.models import Contact
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
@@ -43,7 +43,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     details_keys = {
         "account",
         "ad_count",
-        "agency",
         "average_cpm",
         "average_cpv",
         "brand",
@@ -64,6 +63,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "name",
         "plan_cpm",
         "plan_cpv",
+        "sf_account",
         "start",
         "thumbnail",
         "topic_count",
@@ -155,7 +155,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
-        dashboard_specific_keys = CLICKS_STATS + ("hide_click_types",)
+        dashboard_specific_keys = CLICKS_STATS
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -207,9 +207,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(accounts[managed_account.account_creation.id]["brand"], test_brand)
 
-    def test_agency(self):
-        agency = Contact.objects.create(first_name="first", last_name="last")
-        opportunity = Opportunity.objects.create(agency=agency)
+    def test_sf_account(self):
+        sf_account = SFAccount.objects.create(name="test name")
+        opportunity = Opportunity.objects.create(account=sf_account)
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
@@ -225,7 +225,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
-        self.assertEqual(accounts[managed_account.account_creation.id]["agency"], agency.name)
+        self.assertEqual(accounts[managed_account.account_creation.id]["sf_account"], sf_account.name)
 
     def test_cost_method(self):
         opportunity = Opportunity.objects.create()
@@ -393,7 +393,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(len(accounts), 1)
-        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["agency"], DEMO_AGENCY)
+        self.assertEqual(accounts[DEMO_ACCOUNT_ID]["sf_account"], DEMO_SF_ACCOUNT)
 
     def test_list_only_chf_accounts(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)

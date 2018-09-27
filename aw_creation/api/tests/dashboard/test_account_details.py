@@ -12,13 +12,12 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnection, SFAccount
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
-from aw_reporting.models import Contact
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
@@ -36,12 +35,16 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     _keys = {
         "account",
         "ad_count",
-        "agency",
         "average_cpm",
         "average_cpv",
         "brand",
         "channel_count",
         "clicks",
+        "clicks_app_store",
+        "clicks_call_to_action_overlay",
+        "clicks_cards",
+        "clicks_end_cap",
+        "clicks_website",
         "cost",
         "cost_method",
         "ctr",
@@ -57,6 +60,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "name",
         "plan_cpm",
         "plan_cpv",
+        "sf_account",
         "start",
         "thumbnail",
         "topic_count",
@@ -65,12 +69,6 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "video_view_rate",
         "video_views",
         "weekly_chart",
-        "clicks_website",
-        "clicks_end_cap",
-        "clicks_cards",
-        "clicks_call_to_action_overlay",
-        "clicks_app_store",
-        "hide_click_types",
     }
 
     def _get_url(self, account_creation_id):
@@ -364,9 +362,9 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             response = self._request(managed_account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_agency(self):
-        agency = Contact.objects.create(first_name="first", last_name="last")
-        opportunity = Opportunity.objects.create(agency=agency)
+    def test_sf_account(self):
+        sf_account = SFAccount.objects.create(name="test account")
+        opportunity = Opportunity.objects.create(account=sf_account)
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
@@ -380,7 +378,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self._request(managed_account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["agency"], agency.name)
+        self.assertEqual(response.data["sf_account"], sf_account.name)
 
     def test_cost_method(self):
         opportunity = Opportunity.objects.create()

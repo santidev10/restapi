@@ -161,7 +161,7 @@ class PerformanceWeeklyReport:
             "border": True,
             "num_format": "0.00%",
         })
-        self.footer_format = {
+        self.footer_format_with_click_types = {
             1: footer_text_format,
             2: footer_text_format,
             3: footer_text_format,
@@ -178,7 +178,20 @@ class PerformanceWeeklyReport:
             14: footer_percent_format,
             15: footer_percent_format,
         }
-
+        self.footer_format = {
+            1: footer_text_format,
+            2: footer_text_format,
+            3: footer_text_format,
+            4: footer_percent_format,
+            5: footer_text_format,
+            6: footer_percent_format,
+            7: footer_percent_format,
+            8: footer_percent_format,
+            9: footer_percent_format,
+            10: footer_percent_format,
+            11: footer_text_format,
+            12: footer_text_format,
+        }
         # First column cell
         first_column_cell_options = {
             "border": True,
@@ -214,7 +227,7 @@ class PerformanceWeeklyReport:
             last_columns_percentage_cell_options
         )
 
-        self.data_cell_options = {
+        self.data_cell_options_with_click_types = {
             1: first_column_cell_format,
             2: middle_columns_cell_format,
             3: middle_columns_cell_format,
@@ -230,6 +243,22 @@ class PerformanceWeeklyReport:
             13: last_columns_percentage_cell_format,
             14: last_columns_percentage_cell_format,
             15: last_columns_percentage_cell_format,
+        }
+        self.data_cell_options = {
+            1: first_column_cell_format,
+            2: middle_columns_cell_format,
+            3: middle_columns_cell_format,
+            4: middle_columns_percentage_cell_format,
+            5: middle_columns_cell_format,
+            6: middle_columns_percentage_cell_format,
+            7: last_columns_percentage_cell_format,
+            8: last_columns_percentage_cell_format,
+            9: last_columns_percentage_cell_format,
+            10: last_columns_percentage_cell_format,
+            # TODO We don't collect the statistic for those two columns yet
+            11: middle_columns_cell_format,
+            12: last_columns_cell_format,
+
         }
 
     def _prepare_empty_document(self):
@@ -317,8 +346,7 @@ class PerformanceWeeklyReport:
         self.workbook.close()
         return self.output.getvalue()
 
-    def write_rows(self, data, start_row, default_format=None,
-                   data_cell_options=None):
+    def write_rows(self, data, start_row, default_format=None, data_cell_options=None):
         """
         Writing document rows
         :param data: list of lists
@@ -326,7 +354,7 @@ class PerformanceWeeklyReport:
         :param default_format: use default format for all cells
         :return: int
         """
-        data_cell_options = data_cell_options or self.data_cell_options
+        data_cell_options = data_cell_options or self.data_cell_options_with_click_types
         for row in data:
             for column, value in enumerate(row):
                 current_column = self.start_column + column
@@ -539,12 +567,13 @@ class PerformanceWeeklyReport:
         dict_quartiles_to_rates(total_data)
         return extractor(total_data, default=0)
 
-    def _prepare_total_row(self, start_row, queryset, aggregator, extractor):
+    def _prepare_total_row(self, start_row, queryset, aggregator, extractor, data_cell_options=None):
         total_row = [(
             "Total",
             *self._get_total_data(queryset, aggregator, extractor),
         )]
-        start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
+        data_cell_options = data_cell_options or self.footer_format_with_click_types
+        start_row = self.write_rows(total_row, start_row, data_cell_options=data_cell_options)
         return start_row
 
     def prepare_video_section(self, start_row):
@@ -567,12 +596,13 @@ class PerformanceWeeklyReport:
             )
             for obj in self.get_video_data()
         ]
-        start_row = self.write_rows(rows, start_row)
+        start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options)
         start_row = self._prepare_total_row(
             start_row,
             YTVideoStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
-            self._extract_data_row_without_cta
+            self._extract_data_row_without_cta,
+            data_cell_options=self.footer_format
         )
 
         return start_row + 1
@@ -684,12 +714,13 @@ class PerformanceWeeklyReport:
             )
             for obj in self.get_creatives_data()
         ]
-        start_row = self.write_rows(rows, start_row)
+        start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options)
         start_row = self._prepare_total_row(
             start_row,
             VideoCreativeStatistic.objects.filter(**self.get_filters()),
             all_stats_aggregation,
-            self._extract_data_row_without_cta
+            self._extract_data_row_without_cta,
+            data_cell_options=self.footer_format
         )
         return start_row + 1
 
