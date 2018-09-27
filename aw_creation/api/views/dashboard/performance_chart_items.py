@@ -53,10 +53,13 @@ class DashboardPerformanceChartItemsApiView(APIView):
         accounts = []
         if item.account:
             accounts.append(item.account.id)
+        show_conversions = user_settings.get(UserSettingsKey.SHOW_CONVERSIONS)
+        show_aw_costs = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         chart = DeliveryChart(
             accounts=accounts,
             dimension=dimension,
-            show_conversions=user_settings.get(UserSettingsKey.SHOW_CONVERSIONS),
+            show_conversions=show_conversions,
+            show_aw_costs=show_aw_costs,
             **filters)
         data = chart.get_items()
         return Response(data=data)
