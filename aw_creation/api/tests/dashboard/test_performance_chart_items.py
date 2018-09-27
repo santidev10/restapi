@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 
+from django.db.models import Sum
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -196,3 +197,25 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 self.assertIsNotNone(item["conversions"])
                 self.assertIsNotNone(item["all_conversions"])
                 self.assertIsNotNone(item["view_through"])
+
+    def test_shows_real_aw_cost_gender(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        self._hide_demo_data(user)
+        account = Account.objects.create(id=next(int_iterator))
+        self.create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+        }
+        expected_cost = GenderStatistic.objects \
+            .filter(ad_group__campaign__account=account) \
+            .aggregate(cost=Sum("cost"))["cost"]
+        url = self._get_url(account.account_creation.id, Dimension.GENDER)
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url, dict())
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            items = response.data["items"]
+            self.assertEqual(len(items), 1)
+            item = items[0]
+            self.assertEqual(item["cost"], expected_cost)
