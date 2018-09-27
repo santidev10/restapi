@@ -90,8 +90,6 @@ class PerformanceWeeklyReport:
             8: footer_percent_format,
             9: footer_percent_format,
             10: footer_percent_format,
-            11: footer_text_format,
-            12: footer_text_format,
         }
 
         # First column cell
@@ -129,15 +127,6 @@ class PerformanceWeeklyReport:
             last_columns_percentage_cell_options
         )
 
-        # 12 column cell options
-        last_columns_cell_options = {
-            "border": True,
-            "align": "center",
-        }
-        last_columns_cell_format = self.workbook.add_format(
-            last_columns_cell_options
-        )
-
         self.data_cell_options = {
             1: first_column_cell_format,
             2: middle_columns_cell_format,
@@ -149,9 +138,6 @@ class PerformanceWeeklyReport:
             8: last_columns_percentage_cell_format,
             9: last_columns_percentage_cell_format,
             10: last_columns_percentage_cell_format,
-            # TODO We don't collect the statistic for those two columns yet
-            11: middle_columns_cell_format,
-            12: last_columns_cell_format,
 
         }
 
@@ -184,9 +170,6 @@ class PerformanceWeeklyReport:
             8: 25,
             9: 25,
             10: 25,
-            # TODO We don't collect the statistic for those two columns yet
-            11: 25,
-            12: 25,
         }
         for key, value in columns_width.items():
             self.worksheet.set_column(key, key, value)
@@ -365,10 +348,6 @@ class PerformanceWeeklyReport:
             "Video played to: 50%",
             "Video played to: 75%",
             "Video played to: 100%",
-
-            # TODO We don't collect the statistic for those two columns yet
-            "Viewable Impressions",
-            "Viewability"
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -385,11 +364,6 @@ class PerformanceWeeklyReport:
                 div_by_100(obj["video50rate"]),
                 div_by_100(obj["video75rate"]),
                 div_by_100(obj["video100rate"]),
-                # TODO We don't collect the statistic for those two columns yet
-                # viewable impressions
-                "",
-                # viewability
-                ""
             ))
         start_row = self.write_rows(rows, start_row)
         # Write total
@@ -406,11 +380,6 @@ class PerformanceWeeklyReport:
             div_by_100(total_data["video50rate"]),
             div_by_100(total_data["video75rate"]),
             div_by_100(total_data["video100rate"]),
-            # TODO We don't collect the statistic for those two columns yet
-            # viewable impressions
-            "",
-            # viewability
-            ""
         )]
         start_row = self.write_rows(
             total_row, start_row, data_cell_options=self.footer_format)
@@ -444,8 +413,6 @@ class PerformanceWeeklyReport:
             "Clicks",
             "CTR",
             "Video played to: 100%",
-            "Viewable Impressions",
-            "Viewability"
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -459,7 +426,6 @@ class PerformanceWeeklyReport:
                 obj["clicks"],
                 div_by_100(obj["ctr"]),
                 div_by_100(obj["video100rate"]),
-                "", "",
             )
             for obj in self.get_ad_group_data()
         ]
