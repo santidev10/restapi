@@ -52,7 +52,7 @@ class UserAvatarUploadTestCase(BaseAvatarTestCase):
 
     @mock_s3
     def test_store_valid_profile_image_url(self):
-        now = datetime(2018, 1, 1, 2, 3, 4)
+        now = datetime(2018, 1, 2, 14, 30, 44, 123456)
         user = self.create_test_user()
         with patch_now(now), \
              self.temp_image() as image:
