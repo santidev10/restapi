@@ -81,8 +81,6 @@ COLUMN_SET_REGULAR = (
     "Video played to: 50%",
     "Video played to: 75%",
     "Video played to: 100%",
-    "Viewable Impressions",
-    "Viewability",
 )
 
 COLUMN_SET_WITH_CTA = (
@@ -100,8 +98,6 @@ COLUMN_SET_WITH_CTA = (
     "Video played to: 50%",
     "Video played to: 75%",
     "Video played to: 100%",
-    "Viewable Impressions",
-    "Viewability",
 )
 
 COLUMN_SET_BY_SECTION_NAME = {

@@ -65,9 +65,6 @@ class PerformanceWeeklyReport:
         "Video played to: 50%",
         "Video played to: 75%",
         "Video played to: 100%",
-        # TODO We don't collect the statistic for those two columns yet
-        "Viewable Impressions",
-        "Viewability",
     )
 
     _general_columns = (
@@ -80,9 +77,6 @@ class PerformanceWeeklyReport:
         "Video played to: 50%",
         "Video played to: 75%",
         "Video played to: 100%",
-        # TODO We don't collect the statistic for those two columns yet
-        "Viewable Impressions",
-        "Viewability",
     )
 
     def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
@@ -101,8 +95,6 @@ class PerformanceWeeklyReport:
             div_by_100(row["video50rate"]),
             div_by_100(row["video75rate"]),
             div_by_100(row["video100rate"]),
-            "",
-            ""
         )
 
     def _extract_data_row_without_cta(self, row, default=None):
@@ -116,8 +108,6 @@ class PerformanceWeeklyReport:
             div_by_100(row["video50rate"]) or default,
             div_by_100(row["video75rate"]) or default,
             div_by_100(row["video100rate"]) or default,
-            "",
-            ""
         )
 
     def _set_format_options(self):
@@ -187,8 +177,6 @@ class PerformanceWeeklyReport:
             13: footer_percent_format,
             14: footer_percent_format,
             15: footer_percent_format,
-            16: footer_text_format,
-            17: footer_text_format,
         }
 
         # First column cell
@@ -226,15 +214,6 @@ class PerformanceWeeklyReport:
             last_columns_percentage_cell_options
         )
 
-        # 12 column cell options
-        last_columns_cell_options = {
-            "border": True,
-            "align": "center",
-        }
-        last_columns_cell_format = self.workbook.add_format(
-            last_columns_cell_options
-        )
-
         self.data_cell_options = {
             1: first_column_cell_format,
             2: middle_columns_cell_format,
@@ -251,10 +230,6 @@ class PerformanceWeeklyReport:
             13: last_columns_percentage_cell_format,
             14: last_columns_percentage_cell_format,
             15: last_columns_percentage_cell_format,
-            # TODO We don't collect the statistic for those two columns yet
-            16: middle_columns_cell_format,
-            17: last_columns_cell_format,
-
         }
 
     def _prepare_empty_document(self):
@@ -291,9 +266,6 @@ class PerformanceWeeklyReport:
             13: 25,
             14: 25,
             15: 25,
-            # TODO We don't collect the statistic for those two columns yet
-            16: 25,
-            17: 25,
         }
         for key, value in columns_width.items():
             self.worksheet.set_column(key, key, value)
