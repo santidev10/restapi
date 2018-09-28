@@ -5,7 +5,6 @@ from django.db import models
 from userprofile.models import UserProfile
 from userprofile.models import UserSettingsKey
 from userprofile.models import get_default_settings
-from userprofile.models import logger
 
 
 class UserRelatedManagerMixin:
