@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports_dashboard import PerformanceWeeklyReport
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.views import xlsx_response
 
 

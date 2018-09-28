@@ -9,7 +9,7 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from userprofile.models import UserProfile
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from userprofile.models import get_default_settings
 from userprofile.permissions import Permissions
 from userprofile.permissions import PermissionGroupNames

@@ -6,7 +6,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account, AdGroup, Campaign, Opportunity, OpPlacement, AdGroupStatistic
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 
 

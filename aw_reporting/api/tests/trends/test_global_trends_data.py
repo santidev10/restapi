@@ -7,10 +7,10 @@ from django.utils.http import urlencode
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
-from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.api.urls.names import Name
 from aw_reporting.analytics_charts import Breakdown
 from aw_reporting.analytics_charts import Indicator
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -22,7 +22,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
@@ -379,3 +379,24 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(len(response.data), items_count)
+
+    @generic_test([
+        ("Visible all accounts is ON", (True, 1), dict()),
+        ("Visible all accounts is OFF", (False, 0), dict()),
+    ])
+    def test_visible_all_accounts(self, visible_all_accounts, expected_count):
+        account, campaign = self._create_ad_group_statistic("rel_1")
+        manager = account.managers.first()
+        self._create_opportunity(campaign)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: visible_all_accounts,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+        with self.patch_user_settings(**user_settings), \
+             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(len(response.data), expected_count)

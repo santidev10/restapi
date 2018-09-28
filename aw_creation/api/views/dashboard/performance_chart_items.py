@@ -9,7 +9,7 @@ from aw_creation.models import AccountCreation
 from aw_reporting.dashboard_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
 
 

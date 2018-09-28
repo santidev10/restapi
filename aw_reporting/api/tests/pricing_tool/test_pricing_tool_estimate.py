@@ -11,7 +11,7 @@ from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
     Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
 from aw_reporting.tasks import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase, patch_now
 

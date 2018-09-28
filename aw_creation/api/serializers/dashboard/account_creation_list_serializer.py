@@ -34,7 +34,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.utils import safe_max
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
 from utils.serializers import ExcludeFieldsMixin

@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.demo.models import *
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher, generic_test
 from .base import AwReportingAPITestCase
 

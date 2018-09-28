@@ -8,7 +8,8 @@ from rest_framework.views import APIView
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account, campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile, UserSettingsKey
+from userprofile.models import UserProfile
+from userprofile.constants import UserSettingsKey
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 

@@ -49,7 +49,7 @@ from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten

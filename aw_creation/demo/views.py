@@ -2,7 +2,6 @@ import json
 from datetime import datetime
 
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -23,8 +22,7 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import VIEW_RATE_STATS
-from userprofile.models import UserSettingsKey
-from userprofile.models import get_default_settings
+from userprofile.constants import UserSettingsKey
 from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
@@ -57,9 +55,7 @@ class DashboardAccountCreationListApiView:
             response = original_method(view, request, **kwargs)
             if response.status_code == HTTP_200_OK:
                 user = request.user
-                user_settings = user.aw_settings \
-                    if hasattr(user, "aw_settings") \
-                    else get_default_settings()
+                user_settings = user.get_aw_settings()
                 demo_account_visible = user_settings.get(
                     UserSettingsKey.DEMO_ACCOUNT_VISIBLE,
                     False

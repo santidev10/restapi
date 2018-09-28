@@ -28,7 +28,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import dict_quartiles_to_rates
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.permissions import UserHasDashboardPermission
 

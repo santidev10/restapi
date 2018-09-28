@@ -7,7 +7,7 @@ from aw_reporting.models import *
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 # pylint: enable=import-error
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.lang import pick_dict
 
 logger = logging.getLogger(__name__)

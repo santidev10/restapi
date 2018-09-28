@@ -5,7 +5,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.models import Account, Campaign, AdGroup
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
 from utils.utils_tests import ExtendedAPITestCase
 

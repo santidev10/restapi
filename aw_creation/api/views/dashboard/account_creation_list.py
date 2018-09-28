@@ -10,7 +10,7 @@ from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import BASE_STATS
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import UserHasDashboardPermission
 

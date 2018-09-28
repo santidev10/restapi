@@ -7,7 +7,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
     Campaign, Audience, AudienceStatistic, Category
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 
 

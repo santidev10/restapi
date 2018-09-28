@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from aw_reporting.models import Account
 from aw_reporting.models import DATE_FORMAT
 
