@@ -28,8 +28,10 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
 
@@ -1254,3 +1256,19 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["margin"], -100)
+
+    @generic_test([
+        (global_account_visibility, (global_account_visibility, count), dict())
+        for global_account_visibility, count in ((True, 0), (False, 1))
+    ])
+    def test_global_account_visibility(self, global_account_visibility, expected_count):
+        Opportunity.objects.create(id=next(int_iterator), probability=100)
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_count)
