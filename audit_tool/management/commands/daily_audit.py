@@ -15,7 +15,7 @@ from django.http import QueryDict
 
 import boto3
 
-from audit_tool.adwords import AdWords
+from audit_tool.adwords import AdwordsReports
 from audit_tool.dmo import AccountDMO
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
@@ -97,7 +97,7 @@ class Command(BaseCommand):
 
         for date in self.get_dates():
             # get data from AdWords API
-            adwords = AdWords(accounts=self.accounts, date=date, download=True)
+            adwords = AdwordsReports(accounts=self.accounts, date=date, download=True)
             reports = adwords.get_video_reports()
             video_ids = reports.keys()
 
