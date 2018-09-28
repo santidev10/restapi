@@ -98,7 +98,10 @@ class DashboardPerformanceExportApiView(APIView):
         aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
         for field in CLICKS_STATS:
             aggregation["sum_{}".format(field)] = Sum(field)
-        if not user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES):
+
+        user_settings = user.get_aw_settings()
+        show_aw_rates = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        if not show_aw_rates:
             aggregation["sum_cost"] = get_client_cost_aggregation()
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(**aggregation)
 
@@ -117,7 +120,7 @@ class DashboardPerformanceExportApiView(APIView):
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
-                show_aw_costs=False,
+                show_aw_costs=show_aw_rates,
                 **filters
             )
             items = chart.get_items()

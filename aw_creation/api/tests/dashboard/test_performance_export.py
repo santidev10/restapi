@@ -183,13 +183,84 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         header_row_number = 1
         headers = tuple(cell.value for cell in sheet[header_row_number])
         expected_headers = (
-            None, "Name", "Impressions", "Views", "Clicks", "Call-to-Action overlay", "Website", "App Store", "Cards", "End cap",
-            "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
+            None, "Name", "Impressions", "Views", "Clicks", "Call-to-Action overlay", "Website", "App Store", "Cards",
+            "End cap", "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
 
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
         self.assertEqual(len(PerformanceReport.columns), total_columns_count)
+
+    def test_show_real_costs(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
+                                               goal_type_id=SalesForceGoalType.CPM)
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        aw_cost = 123
+        AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=aw_cost, impressions=1, video_views=1)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        header_row_number = 1
+        headers = tuple(cell.value for cell in sheet[header_row_number])
+        cost_column_index = headers.index("Cost")
+        single_data_row_index = 3
+        self.assertEqual(sheet[single_data_row_index][cost_column_index].value, aw_cost)
+
+    def test_hide_real_costs(self):
+        user = self.create_test_user()
+        any_date = date(2018, 1, 1)
+        user.add_custom_user_permission("view_dashboard")
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
+                                               goal_type_id=SalesForceGoalType.CPM)
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        stats = AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
+                                        cost=123, impressions=1, video_views=1)
+        client_cost = get_client_cost(
+            goal_type_id=placement.goal_type_id,
+            dynamic_placement=placement.dynamic_placement,
+            placement_type=placement.placement_type,
+            ordered_rate=placement.ordered_rate,
+            impressions=stats.impressions,
+            video_views=stats.video_views,
+            aw_cost=stats.cost,
+            total_cost=placement.total_cost,
+            tech_fee=placement.tech_fee,
+            start=any_date,
+            end=any_date,
+        )
+        self.assertGreater(client_cost, 0)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        header_row_number = 1
+        headers = tuple(cell.value for cell in sheet[header_row_number])
+        cost_column_index = headers.index("Cost")
+        single_data_row_index = 3
+        self.assertEqual(sheet[single_data_row_index][cost_column_index].value, client_cost)
 
 
 def get_sheet_from_response(response):

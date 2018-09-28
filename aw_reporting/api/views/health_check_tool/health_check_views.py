@@ -18,14 +18,18 @@ class HealthCheckPaginator(CustomPageNumberPaginator):
 
 
 class HealthCheckApiView(ListAPIView):
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
     paginator = HealthCheckPaginator()
 
     def get_queryset(self):
-        queryset = Opportunity.objects.filter(
-            probability=100
-        ).select_related("ad_ops_manager", "ad_ops_qa_manager",
-                         "account_manager").order_by("name", "-start")
+        queryset = Opportunity.objects.get_queryset_for_user(self.request.user) \
+            .filter(probability=100) \
+            .select_related(
+                "ad_ops_manager",
+                "ad_ops_qa_manager",
+                "account_manager"
+            ) \
+            .order_by("name", "-start")
         return queryset
 
     def filter_queryset(self, queryset):
@@ -90,7 +94,7 @@ class HealthCheckApiView(ListAPIView):
 
 
 class HealthCheckFiltersApiView(APIView):
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         queryset = Opportunity.objects.all()
