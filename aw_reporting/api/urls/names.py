@@ -39,3 +39,7 @@ class Name:
 
     class WebHook:
         ACCOUNTS_LIST = "webhook_accounts_list"
+
+    class HealthCheck:
+        LIST = "health_check_tool_list"
+        FILTERS = "health_check_tool_filters"

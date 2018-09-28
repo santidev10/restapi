@@ -105,10 +105,10 @@ urlpatterns = [
     # Health check tool
     url(r'^setup_health_check_list/$',
         views.HealthCheckApiView.as_view(),
-        name="health_check_tool"),
+        name=Name.HealthCheck.LIST),
     url(r'^setup_health_check_filters/$',
         views.HealthCheckFiltersApiView.as_view(),
-        name="health_check_tool_filters"),
+        name=Name.HealthCheck.FILTERS),
 
     # Pricing tool
     url(r'^pricing_tool/filters/$',
