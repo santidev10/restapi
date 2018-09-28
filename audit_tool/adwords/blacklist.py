@@ -159,7 +159,7 @@ class AdwordsBlackList(AdwordsBase):
         logging.info("Get campaigns")
         offset = 0
         selector = {
-            'fields': ['Id', 'Name', 'Labels', 'Status', 'Type'],
+            'fields': ['Id', 'Name', 'Labels', 'Status'],
             'ordering': {
                 'field': 'Name',
                 'sortOrder': 'ASCENDING'
