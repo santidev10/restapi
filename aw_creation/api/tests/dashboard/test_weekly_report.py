@@ -31,7 +31,7 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import age_range_str
 from aw_reporting.models import gender_str
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test

@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 
 
 class AccountCreationByAccountAPIView(APIView):

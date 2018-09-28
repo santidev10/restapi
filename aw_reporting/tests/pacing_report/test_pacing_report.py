@@ -12,7 +12,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
 from aw_reporting.reports.pacing_report import PacingReport
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
 

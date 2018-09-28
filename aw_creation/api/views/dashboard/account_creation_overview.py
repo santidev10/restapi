@@ -30,7 +30,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.constants import CONVERSIONS
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 
 
 @demo_view_decorator

@@ -10,7 +10,7 @@ from aw_reporting.analytics_charts import Indicator, Breakdown
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import generic_test, patch_now
 
 

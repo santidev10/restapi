@@ -25,7 +25,7 @@ from aw_reporting.models import User
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher

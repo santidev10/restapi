@@ -2,9 +2,7 @@ from typing import List
 
 from django.db import models
 
-from userprofile.models import UserProfile
-from userprofile.models import UserSettingsKey
-from userprofile.models import get_default_settings
+from userprofile.constants import UserSettingsKey
 
 
 class UserRelatedManagerMixin:
@@ -17,16 +15,15 @@ class UserRelatedManagerMixin:
         queryset = self.__filter_by_user(queryset, user)
         return queryset
 
-    def __filter_by_user(self, queryset: models.QuerySet, user: UserProfile):
+    def __filter_by_user(self, queryset: models.QuerySet, user):
         if self.__is_account_filter_applicable(user):
             account_ids = user.get_aw_settings() \
                 .get(UserSettingsKey.VISIBLE_ACCOUNTS)
             queryset = self.__filter_by_account_ids(queryset, account_ids)
         return queryset
 
-    def __is_account_filter_applicable(self, user: UserProfile):
-        user_settings = user.aw_settings \
-            if hasattr(user, "aw_settings") else get_default_settings()
+    def __is_account_filter_applicable(self, user):
+        user_settings = user.get_aw_settings()
         global_visibility = user_settings.get(
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY, False)
         visible_all_accounts = user_settings.get(

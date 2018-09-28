@@ -15,7 +15,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator

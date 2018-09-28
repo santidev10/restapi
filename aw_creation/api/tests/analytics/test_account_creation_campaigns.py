@@ -16,7 +16,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse

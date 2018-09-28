@@ -22,7 +22,7 @@ from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
 
@@ -33,7 +33,7 @@ class DashboardPerformanceExportApiView(APIView):
 
     def post(self, request, pk, **_):
         filters = {}
-        user_settings = request.user.aw_settings
+        user_settings = request.user.get_aw_settings()
         visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
         if not visible_all_accounts:
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []

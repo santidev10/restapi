@@ -6,7 +6,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 
 
