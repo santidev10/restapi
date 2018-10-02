@@ -503,23 +503,6 @@ class DeliveryChart:
         return {key: value for key, value in item.items()
                 if key in allowed_keys}
 
-    def get_external_cost(self, stat):
-        external_rates = self.params['external_rates']
-        external_cpv = external_rates['contracted_cpv']
-        external_cpm = external_rates['contracted_cpm']
-        cost = 0
-        if external_cpv and stat['sum_video_views']:
-            cost += float(external_cpv) * stat['sum_video_views']
-
-        if external_cpm:
-            if 'cpm_impressions' in stat:
-                impressions = stat['cpm_impressions']
-            else:
-                impressions = stat['sum_impressions']
-            if impressions:
-                cost += float(external_cpm) / 1000 * impressions
-        return cost
-
     # common ---
     @staticmethod
     def get_camp_link(queryset):
