@@ -86,8 +86,8 @@ class Connection:
                 'CPM_Impression_Units_Purchased__c',
                 'CPV_Total_Client_Cost__c',
                 'CPM_Total_Client_Cost__c',
-                'Quoted_CPM_Price__c',
-                'Avg_Cost_Per_Unit__c',
+                'Quoted_CPM_Price__c',  # CPM Price Per Unit
+                'Avg_Cost_Per_Unit__c',  # CPV Price Per Unit
 
                 'StageName',
                 'Ad_Ops_Campaign_Manager_UPDATE__c', 'Ad_Ops_QA_Manager__c',
@@ -96,7 +96,6 @@ class Connection:
                 'OPP_ID_Number__c',
                 'AdWords_CID__c',
                 'Agency_Contact__c', 'AccountId', 'Brand_Test__c',
-                'CPM_Rate__c', 'CPV_Rate__c',
                 'DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c',
                 'Probability', 'CreatedDate', 'CloseDate',
                 'Renewal_Approved__c', 'Reason_for_Close_Lost__c',
