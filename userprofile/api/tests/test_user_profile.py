@@ -24,6 +24,38 @@ class UserProfileTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
+    def test_success(self):
+        self.create_test_user()
+        response = self._update(dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                "access",
+                "annual_ad_spend",
+                "aw_settings",
+                "can_access_media_buying",
+                "company",
+                "date_joined",
+                "email",
+                "first_name",
+                "google_account_id",
+                "has_aw_accounts",
+                "has_disapproved_ad",
+                "historical_aw_account",
+                "id",
+                "is_staff",
+                "is_subscribed",
+                "last_login",
+                "last_name",
+                "logo_url",
+                "phone_number",
+                "profile_image_url",
+                "token",
+                "user_type",
+            }
+        )
+
     def test_set_default_aw_account_error_on_wrong_connection(self):
         user = self.create_test_user()
         any_user = UserProfile.objects.create()
