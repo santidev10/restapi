@@ -7,8 +7,9 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 from aw_reporting.models import AWConnectionToUserRelation, AWConnection
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
+from userprofile.constants import UserType
 from userprofile.models import UserProfile
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, generic_test
 
 
 class UserProfileTestCase(ExtendedAPITestCase):
@@ -70,3 +71,44 @@ class UserProfileTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
         self.assertIsNone(user.historical_aw_account)
+
+    @generic_test([
+        (user_type, (user_type.value,), dict())
+        for user_type in UserType
+    ])
+    def test_user_type_valid(self, user_type):
+        user = self.create_test_user()
+        self.assertIsNone(user.user_type)
+        self.assertNotEqual(user.user_type, user_type)
+        response = self.client.put(self._url, data=dict(user_type=user_type))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.user_type, user_type)
+
+    def test_user_type_allow_unset(self):
+        user = self.create_test_user()
+        user.user_type = UserType.AGENCY.value
+        user.save()
+        response = self.client.put(self._url, data=json.dumps(dict(user_type=None)), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertIsNone(user.user_type)
+
+    def test_user_type_not_required(self):
+        user = self.create_test_user()
+        user.user_type = UserType.AGENCY.value
+        user.save()
+        response = self.client.put(self._url, data=json.dumps(dict()), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_user_type_invalid(self):
+        pre_user_type = UserType.AGENCY.value
+        test_value = "invalid_value"
+        self.assertFalse(UserType.has_value(test_value))
+        user = self.create_test_user()
+        user.user_type = pre_user_type
+        user.save()
+        response = self.client.put(self._url, data=dict(user_type=test_value))
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertEqual(user.user_type, pre_user_type)

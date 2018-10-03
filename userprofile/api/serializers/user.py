@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -9,21 +10,25 @@ from rest_framework.serializers import ValidationError
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserType
 
 
 class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
-    first_name = CharField(max_length=255, required=True)
-    last_name = CharField(max_length=255, required=True)
+    annual_ad_spend = CharField(max_length=255, required=False)
+    can_access_media_buying = SerializerMethodField()
     company = CharField(max_length=255, required=True)
-    phone_number = CharField(
-        max_length=15, required=True, validators=[phone_validator])
-    token = SerializerMethodField()
+    first_name = CharField(max_length=255, required=True)
     has_aw_accounts = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
-    can_access_media_buying = SerializerMethodField()
+    is_subscribed = BooleanField()
+    last_name = CharField(max_length=255, required=True)
+    phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
+    token = SerializerMethodField()
+    user_type = CharField(max_length=255, required=True, allow_null=True, validators=[extended_enum(UserType)])
 
     class Meta:
         """
@@ -31,25 +36,28 @@ class UserSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "id",
-            "first_name",
-            "last_name",
-            "company",
-            "phone_number",
-            "email",
-            "is_staff",
-            "last_login",
-            "date_joined",
-            "token",
             "access",
+            "annual_ad_spend",
             "aw_settings",
-            "has_aw_accounts",
-            "profile_image_url",
             "can_access_media_buying",
+            "company",
+            "date_joined",
+            "email",
+            "first_name",
+            "google_account_id",
+            "has_aw_accounts",
             "has_disapproved_ad",
             "historical_aw_account",
-            "google_account_id",
+            "id",
+            "is_staff",
+            "is_subscribed",
+            "last_login",
+            "last_name",
             "logo_url",
+            "phone_number",
+            "profile_image_url",
+            "token",
+            "user_type",
         )
         read_only_fields = (
             "is_staff",
