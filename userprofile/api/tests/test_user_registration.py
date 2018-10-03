@@ -109,3 +109,30 @@ class UserRegistrationTestCase(APITestCase):
         response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(UserProfile.objects.count(), 0)
+
+    @generic_test([
+        (is_subscribed, (is_subscribed,), dict())
+        for is_subscribed in (True, False)
+    ])
+    def test_is_subscribed_valid(self, is_subscribed):
+        user_data = self._user_data(is_subscribed=is_subscribed)
+        response = self.client.post(self.registration_url, data=user_data)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(UserProfile.objects.first().is_subscribed, is_subscribed)
+
+    def test_is_subscribed_optional(self):
+        user_data = self._user_data()
+        response = self.client.post(self.registration_url, data=user_data)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertFalse(UserProfile.objects.first().is_subscribed)
+
+    @generic_test([
+        ("Null", (None,), dict()),
+        ("Number", (123,), dict()),
+        ("String", ("qwer",), dict()),
+    ])
+    def test_is_subscribed_invalid(self, is_subscribed):
+        user_data = self._user_data(is_subscribed=is_subscribed)
+        response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.count(), 0)
