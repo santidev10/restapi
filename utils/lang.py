@@ -34,4 +34,4 @@ class ExtendedEnum(Enum):
 
     @classmethod
     def has_value(cls, value):
-        return any(value == item.value for item in cls)
+        return value in cls.values()

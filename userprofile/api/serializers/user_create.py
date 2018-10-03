@@ -36,8 +36,9 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
-    user_type = CharField(max_length=255, required=True, validators=[extended_enum(UserType)])
-    annual_ad_spend = CharField(max_length=255, required=False, validators=[extended_enum(UserAnnualAdSpend)])
+    user_type = CharField(max_length=255, required=True, allow_null=True, validators=[extended_enum(UserType)])
+    annual_ad_spend = CharField(max_length=255, required=False, allow_blank=True, allow_null=True,
+                                validators=[extended_enum(UserAnnualAdSpend)])
 
     class Meta:
         """
