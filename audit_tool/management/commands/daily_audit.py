@@ -15,6 +15,7 @@ from django.http import QueryDict
 
 import boto3
 
+from audit_tool.adwords import AdwordsBlackList
 from audit_tool.adwords import AdwordsReports
 from audit_tool.dmo import AccountDMO
 from audit_tool.dmo import VideoDMO
@@ -114,6 +115,10 @@ class Command(BaseCommand):
 
             # save results and send report
             self.save_and_send(date, videos, reports, preferred_channels)
+
+        logger.info("Refreshing blacklists")
+        blacklist = AdwordsBlackList(accounts=self.accounts)
+        blacklist.upload_master_blacklist()
 
         logger.info("Done")
 
@@ -435,9 +440,11 @@ class Command(BaseCommand):
         totals["channels"] = len(set(_.channel_id for _ in videos))
 
         filename = "daily_audit_{}.xlsx".format(date)
+        content_type = "application" \
+                       "/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
         # Save to S3
-        self.save_se(filename, xlsx_data)
+        self.save_s3(filename, xlsx_data, content_type)
 
         # prepare E-mail
         subject = "Daily Audit {}".format(date)
@@ -452,8 +459,6 @@ class Command(BaseCommand):
         bcc = []
         replay_to = ""
 
-        content_type = "application" \
-                       "/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         email = EmailMessage(
             subject=subject,
             body=body,
@@ -500,4 +505,3 @@ class Command(BaseCommand):
                       Key=self.s3_folder + "/" + filename,
                       Body=data,
                       ContentType=content_type)
-        s3.close()

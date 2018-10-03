@@ -1,44 +1,45 @@
+from django.conf import settings
+
 from .base import AdwordsBase
 from utils.utils import chunks_generator
 
+from time import sleep
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-#FIXME: The following code is used only for debug purposes and must me removed before the merge --->
-def run():
-    from audit_tool.management.commands.daily_audit import Command
-    cmd = Command()
-    cmd.account_ids = AdwordsBlackList.PERMMITTED_ACCOUNTS_IDS
-    accounts = cmd.load_accounts()
-    bl = AdwordsBlackList(accounts=accounts)
-    bl.upload_master_blacklist()
-    return bl
-#FIXME: <---
+SLEEP_TIME = 5
+RETRIES_COUNT = 5
+
+
+def safe_run(method, *args, **kwargs):
+    for i in range(RETRIES_COUNT):
+        try:
+            return method(*args, **kwargs)
+        except Exception as e:
+            logger.error("Error on try {} of {}: ".format(i+1, RETRIES_COUNT))
+            logger.error(e)
+            if i < RETRIES_COUNT-1:
+                logger.error("Sleeping for {} sec".format(SLEEP_TIME))
+                sleep(SLEEP_TIME)
 
 
 class AdwordsBlackList(AdwordsBase):
     API_VERSION = "v201809"
     PAGE_SIZE = 500
 
-    PERMMITTED_ACCOUNTS_IDS = (
-        "4050523811",  # FDA: General Markets FY Q2-Q4 2018 OP002689
-        "5111891998",  # FDA GM Smokeless USA Q2-Q4 2018 OP002690
-        "7561321550",  # Jelly Belly Sports Beans Nice & Company US Q2 - Q4 '18 OP002664
-    )
-
+    PERMITTED_ACCOUNTS_IDS = settings.AUDIT_TOOL_BLACKLIST_PERMITTED_ACCOUNTS
     SHARED_SET_NAME = "Blacklist - Audit Tool"
 
     def __init__(self, *args, **kwargs):
         accounts = kwargs.pop("accounts")
         assert accounts is not None
-        kwargs["accounts"] = [dmo for dmo in accounts if dmo.account_id in self.PERMMITTED_ACCOUNTS_IDS]
+        kwargs["accounts"] = [dmo for dmo in accounts if dmo.account_id in self.PERMITTED_ACCOUNTS_IDS]
 
         super().__init__(*args, **kwargs)
 
     def _create_shared_set(self, service):
-        logging.info("Create Shared Set")
         shared_set = {
             "name": self.SHARED_SET_NAME,
             "type": "NEGATIVE_PLACEMENTS",
@@ -49,11 +50,10 @@ class AdwordsBlackList(AdwordsBase):
             'operand': shared_set
         }]
 
-        result = service.mutate(operations)
+        result = safe_run(service.mutate, operations)
         return result["value"][0]["sharedSetId"]
 
     def _get_shared_set_id(self, service):
-        logging.info("Get Shared Set ID")
         selector = {
             "fields": ["SharedSetId", "Name", "Type", "Status"],
             "predicates": [
@@ -74,7 +74,7 @@ class AdwordsBlackList(AdwordsBase):
                 "numberResults": self.PAGE_SIZE,
             }
         }
-        page = service.get(selector)
+        page = safe_run(service.get, selector)
         entries = page["entries"] if "entries" in page else []
         for entry in entries:
             if entry["name"] == self.SHARED_SET_NAME and entry["status"] == "ENABLED":
@@ -82,7 +82,6 @@ class AdwordsBlackList(AdwordsBase):
         return None
 
     def _remove_shared_set(self, service, shared_set_id):
-        logging.info("Remove Shared Set")
         operations = [
             {
                 "operator": "REMOVE",
@@ -91,10 +90,9 @@ class AdwordsBlackList(AdwordsBase):
                 }
             }
         ]
-        service.mutate(operations)
+        safe_run(service.mutate(operations))
 
     def _retrieve_shared_set_video_ids(self, service, shared_set_id):
-        logging.info("Retrieve Videos from Shared Set")
         video_ids = set()
         selector = {
             "fields": ["SharedSetId", "Id", "PlacementUrl"],
@@ -113,7 +111,7 @@ class AdwordsBlackList(AdwordsBase):
         offset = 0
         page = {"totalNumEntries": 1}
         while page["totalNumEntries"] > offset:
-            page = service.get(selector)
+            page = safe_run(service.get, selector)
             if "entries" in page:
                 for shared_criterion in page["entries"]:
                     if shared_criterion["criterion"]["type"] == "YOUTUBE_VIDEO":
@@ -123,7 +121,6 @@ class AdwordsBlackList(AdwordsBase):
         return video_ids
 
     def _add_shared_set_video_ids(self, service, shared_set_id, video_ids):
-        logging.info("Add Videos into Shared Set")
         shared_criteria = [
             {
                 "criterion": {
@@ -140,10 +137,9 @@ class AdwordsBlackList(AdwordsBase):
                 "operand": criterion,
             } for criterion in shared_criteria
         ]
-        service.mutate(operations)
+        safe_run(service.mutate, operations)
 
     def _attach_shared_set_to_campaign(self, service, shared_set_id, campaign_id):
-        logging.info("Add Shared Set to Campaign:", campaign_id)
         operations = [
             {
                 'operator': 'ADD',
@@ -153,10 +149,9 @@ class AdwordsBlackList(AdwordsBase):
                 }
             }
         ]
-        service.mutate(operations)
+        safe_run(service.mutate, operations)
 
     def _get_campaigns(self, service):
-        logging.info("Get campaigns")
         offset = 0
         selector = {
             'fields': ['Id', 'Name', 'Labels', 'Status'],
@@ -173,7 +168,7 @@ class AdwordsBlackList(AdwordsBase):
         more_pages = True
         campaigns_ids = set()
         while more_pages:
-            page = service.get(selector)
+            page = safe_run(service.get, selector)
             if "entries" in page:
                 for entry in page["entries"]:
                     campaigns_ids.add(entry["id"])
@@ -193,6 +188,7 @@ class AdwordsBlackList(AdwordsBase):
             # get campaigns
             campaign_service = client.GetService("CampaignService")
             campaigns_ids = self._get_campaigns(campaign_service)
+            logger.info("Found {} campaign(s) for account: {}".format(len(campaigns_ids), account.account_id))
 
             # get or create shared set
             shared_set_service = client.GetService("SharedSetService")

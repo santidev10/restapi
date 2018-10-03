@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 class AdwordsReports(AdwordsBase):
     date = None
 
-    REPORT_FIELDS = (
+    REPORT_FIELDS = [
         "Url",
         "Date",
         "Impressions",
         "CampaignName",
         "AdGroupName",
-    )
+    ]
 
     def __init__(self, *args, **kwargs):
         self.date = kwargs.pop("date")
