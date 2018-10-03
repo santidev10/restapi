@@ -1,3 +1,5 @@
+import json
+
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -5,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import UserType
+from userprofile.constants import UserType, UserAnnualAdSpend
 from userprofile.models import UserProfile
 from utils.utils_tests import generic_test
 from utils.utils_tests import reverse
@@ -62,6 +64,28 @@ class UserRegistrationTestCase(APITestCase):
     def test_user_type_invalid(self, user_type):
         self.assertFalse(UserType.has_value(user_type))
         user_data = self._user_data(user_type=user_type)
+        response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.count(), 0)
+
+    @generic_test([
+        (annual_ad_spend, (annual_ad_spend.value,), dict())
+        for annual_ad_spend in UserAnnualAdSpend
+    ])
+    def test_annual_ad_spend_valid(self, annual_ad_spend):
+        self.assertTrue(UserAnnualAdSpend.has_value(annual_ad_spend))
+        user_data = self._user_data(annual_ad_spend=annual_ad_spend)
         response = self.client.post(self.registration_url, data=user_data)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(UserProfile.objects.first().annual_ad_spend, annual_ad_spend)
+
+    @generic_test([
+        ("Empty", (None,), dict()),
+        ("Invalid", ("some value",), dict()),
+    ])
+    def test_annual_ad_spend_invalid(self, annual_ad_spend):
+        self.assertFalse(UserAnnualAdSpend.has_value(annual_ad_spend))
+        user_data = self._user_data(annual_ad_spend=annual_ad_spend)
+        response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(UserProfile.objects.count(), 0)

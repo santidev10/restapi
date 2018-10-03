@@ -13,12 +13,8 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email
 from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
-from userprofile.constants import UserType
-
-
-def user_type(value):
-    if not UserType.has_value(value):
-        raise ValidationError("Invalid value for property 'user_type'")
+from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserType, UserAnnualAdSpend
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -40,7 +36,8 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
-    user_type = CharField(max_length=255, required=True, validators=[user_type])
+    user_type = CharField(max_length=255, required=True, validators=[extended_enum(UserType)])
+    annual_ad_spend = CharField(max_length=255, required=False, validators=[extended_enum(UserAnnualAdSpend)])
 
     class Meta:
         """
@@ -48,6 +45,7 @@ class UserCreateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
+            "annual_ad_spend",
             "company",
             "email",
             "first_name",

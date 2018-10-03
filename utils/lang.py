@@ -29,5 +29,9 @@ def deep_getattr(obj, attr, default=None):
 
 class ExtendedEnum(Enum):
     @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
     def has_value(cls, value):
         return any(value == item.value for item in cls)
