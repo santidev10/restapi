@@ -64,8 +64,6 @@ class AnnualAdSpend(Enum):
 
 USER_TYPE_CHOICES = [(tag, tag.value) for tag in UserType]
 ANNUAL_AD_SPEND_CHOICES = [(tag, tag.value) for tag in AnnualAdSpend]
-print(USER_TYPE_CHOICES)
-print(ANNUAL_AD_SPEND_CHOICES)
 
 
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
