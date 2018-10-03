@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 from aw_reporting.models import AWConnectionToUserRelation, AWConnection
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import UserType
+from userprofile.constants import UserType, UserAnnualAdSpend
 from userprofile.models import UserProfile
 from utils.utils_tests import ExtendedAPITestCase, generic_test
 
@@ -80,7 +80,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         self.assertIsNone(user.user_type)
         self.assertNotEqual(user.user_type, user_type)
-        response = self.client.put(self._url, data=dict(user_type=user_type))
+        response = self._update(dict(user_type=user_type))
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
         self.assertEqual(user.user_type, user_type)
@@ -89,16 +89,14 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         user.user_type = UserType.AGENCY.value
         user.save()
-        response = self.client.put(self._url, data=json.dumps(dict(user_type=None)), content_type="application/json")
+        response = self._update(dict(user_type=None))
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
         self.assertIsNone(user.user_type)
 
     def test_user_type_not_required(self):
-        user = self.create_test_user()
-        user.user_type = UserType.AGENCY.value
-        user.save()
-        response = self.client.put(self._url, data=json.dumps(dict()), content_type="application/json")
+        self.create_test_user()
+        response = self._update(dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_user_type_invalid(self):
@@ -108,7 +106,46 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         user.user_type = pre_user_type
         user.save()
-        response = self.client.put(self._url, data=dict(user_type=test_value))
+        response = self._update(dict(user_type=test_value))
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         user.refresh_from_db()
         self.assertEqual(user.user_type, pre_user_type)
+
+    @generic_test([
+        (annual_ad_spend, (annual_ad_spend.value,), dict())
+        for annual_ad_spend in UserAnnualAdSpend
+    ])
+    def test_annual_ad_spend_valid(self, annual_ad_spend):
+        user = self.create_test_user()
+        self.assertIsNone(user.annual_ad_spend)
+        self.assertNotEqual(user.annual_ad_spend, annual_ad_spend)
+        response = self._update(dict(annual_ad_spend=annual_ad_spend))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.annual_ad_spend, annual_ad_spend)
+
+    def test_annual_ad_spend_allow_unset(self):
+        user = self.create_test_user()
+        user.annual_ad_spend = UserAnnualAdSpend.SPEND_100K_250K.value
+        user.save()
+        response = self._update(dict(annual_ad_spend=None))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertIsNone(user.annual_ad_spend)
+
+    def test_annual_ad_spend_not_required(self):
+        self.create_test_user()
+        response = self._update(dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_annual_ad_spend_invalid(self):
+        pre_user_annual_ad_spend = UserAnnualAdSpend.SPEND_100K_250K.value
+        test_value = "invalid_value"
+        self.assertFalse(UserAnnualAdSpend.has_value(test_value))
+        user = self.create_test_user()
+        user.annual_ad_spend = pre_user_annual_ad_spend
+        user.save()
+        response = self._update(dict(annual_ad_spend=test_value))
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertEqual(user.annual_ad_spend, pre_user_annual_ad_spend)

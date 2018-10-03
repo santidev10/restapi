@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserType
 
 
@@ -18,7 +19,8 @@ class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
-    annual_ad_spend = CharField(max_length=255, required=False)
+    annual_ad_spend = CharField(max_length=255, required=False, allow_null=True,
+                                validators=[extended_enum(UserAnnualAdSpend)])
     can_access_media_buying = SerializerMethodField()
     company = CharField(max_length=255, required=True)
     first_name = CharField(max_length=255, required=True)
