@@ -2,6 +2,7 @@
 Userprofile models module
 """
 import logging
+from enum import Enum
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
@@ -48,6 +49,23 @@ class LowercaseEmailField(models.EmailField):
     def get_prep_value(self, value):
         value = super(LowercaseEmailField, self).get_prep_value(value)
         return value.lower() if isinstance(value, str) else value
+
+
+class UserType(Enum):
+    CREATOR = "creator"
+    BRAND = "brand"
+
+
+class AnnualAdSpend(Enum):
+    SPEND_0_100K = "$0-$100K"
+    SPEND_100K_250K = "$100K-$250K"
+    SPEND_250K_AND_MODE = "$250k+"
+
+
+USER_TYPE_CHOICES = [(tag, tag.value) for tag in UserType]
+ANNUAL_AD_SPEND_CHOICES = [(tag, tag.value) for tag in AnnualAdSpend]
+print(USER_TYPE_CHOICES)
+print(ANNUAL_AD_SPEND_CHOICES)
 
 
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
@@ -115,6 +133,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
                                               null=True, default=None,
                                               related_name="user_aw_historical",
                                               on_delete=SET_NULL)
+
+    user_type = models.CharField(max_length=255, choices=USER_TYPE_CHOICES, blank=True, null=True)
+    annual_ad_spend = models.CharField(max_length=255, choices=ANNUAL_AD_SPEND_CHOICES, blank=True, null=True)
+    is_subscribed = models.BooleanField(default=False, null=False, blank=False)
 
     objects = UserProfileManager()
 
