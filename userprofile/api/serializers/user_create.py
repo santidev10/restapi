@@ -13,6 +13,12 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email
 from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.constants import UserType
+
+
+def user_type(value):
+    if not UserType.has_value(value):
+        raise ValidationError("Invalid value for property 'user_type'")
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -34,6 +40,7 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
+    user_type = CharField(max_length=255, required=True, validators=[user_type])
 
     class Meta:
         """
@@ -41,13 +48,14 @@ class UserCreateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
+            "company",
+            "email",
             "first_name",
             "last_name",
-            "company",
-            "phone_number",
-            "email",
             "password",
-            "verify_password"
+            "phone_number",
+            "user_type",
+            "verify_password",
         )
         read_only_fields = (
             "verify_password",
