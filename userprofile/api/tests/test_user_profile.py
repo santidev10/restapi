@@ -149,3 +149,33 @@ class UserProfileTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         user.refresh_from_db()
         self.assertEqual(user.annual_ad_spend, pre_user_annual_ad_spend)
+
+    @generic_test([
+        (is_subscribed, (is_subscribed,), dict())
+        for is_subscribed in (True, False)
+    ])
+    def test_is_subscribed_valid(self, is_subscribed):
+        user = self.create_test_user()
+        UserProfile.objects.filter(id=user.id).update(is_subscribed=not is_subscribed)
+        user.refresh_from_db()
+        self.assertNotEqual(user.is_subscribed, is_subscribed)
+
+        response = self._update(dict(is_subscribed=is_subscribed))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.is_subscribed, is_subscribed)
+
+    def test_is_subscribed_optional(self):
+        self.create_test_user()
+        response = self._update(dict())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @generic_test([
+        ("Null", (None,), dict()),
+        ("Number", (123,), dict()),
+        ("String", ("qwer",), dict()),
+    ])
+    def test_is_subscribed_invalid(self, is_subscribed):
+        self.create_test_user()
+        response = self._update(dict(is_subscribed=is_subscribed))
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
