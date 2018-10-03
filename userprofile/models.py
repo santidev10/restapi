@@ -2,7 +2,6 @@
 Userprofile models module
 """
 import logging
-from enum import Enum
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
