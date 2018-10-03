@@ -51,21 +51,6 @@ class LowercaseEmailField(models.EmailField):
         return value.lower() if isinstance(value, str) else value
 
 
-class UserType(Enum):
-    CREATOR = "creator"
-    BRAND = "brand"
-
-
-class AnnualAdSpend(Enum):
-    SPEND_0_100K = "$0-$100K"
-    SPEND_100K_250K = "$100K-$250K"
-    SPEND_250K_AND_MODE = "$250k+"
-
-
-USER_TYPE_CHOICES = [(tag, tag.value) for tag in UserType]
-ANNUAL_AD_SPEND_CHOICES = [(tag, tag.value) for tag in AnnualAdSpend]
-
-
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
@@ -132,8 +117,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
                                               related_name="user_aw_historical",
                                               on_delete=SET_NULL)
 
-    user_type = models.CharField(max_length=255, choices=USER_TYPE_CHOICES, blank=True, null=True)
-    annual_ad_spend = models.CharField(max_length=255, choices=ANNUAL_AD_SPEND_CHOICES, blank=True, null=True)
+    user_type = models.CharField(max_length=255, blank=True, null=True)
+    annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     is_subscribed = models.BooleanField(default=False, null=False, blank=False)
 
     objects = UserProfileManager()
