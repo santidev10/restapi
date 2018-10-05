@@ -1,9 +1,11 @@
+import pytz
 from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 
 from aw_reporting.models import Account
 from userprofile.models import UserProfile
 from utils.csv_export import BaseCSVStreamResponseGenerator
+from utils.datetime import now_in_default_tz
 
 
 class UserExportColumn:
@@ -58,7 +60,10 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
             }
 
     def get_filename(self):
-        return "users_list.csv"
+        now = now_in_default_tz()
+        now_utc = now.astimezone(pytz.utc)
+        timestamp = now_utc.strftime("%Y%m%d %H%M%S")
+        return "User List {}.csv".format(timestamp)
 
 
 class UserListExportApiView(APIView):

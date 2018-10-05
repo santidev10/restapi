@@ -1,14 +1,23 @@
 import csv
+from datetime import datetime
 
-from rest_framework.status import HTTP_401_UNAUTHORIZED, HTTP_200_OK
+import pytz
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from administration.api.urls.names import AdministrationPathName
-from administration.api.views.user_list_export import UserExportColumn, CSV_COLUMN_ORDER
-from aw_reporting.models import Account, AWConnectionToUserRelation, AWConnection, AWAccountPermission
+from administration.api.views.user_list_export import CSV_COLUMN_ORDER
+from administration.api.views.user_list_export import UserExportColumn
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserProfile
-from utils.utils_tests import ExtendedAPITestCase, int_iterator
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 from utils.utils_tests import reverse
 
 
@@ -31,7 +40,19 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response["Content-Type"], "text/csv")
-        self.assertEqual(response["Content-Disposition"], "attachment; filename='users_list.csv'")
+
+    def test_filename(self):
+        hour_in_the_tz = 12
+        test_now_in_the_tz = datetime(2018, 2, 3, hour_in_the_tz, 23, 14, tzinfo=pytz.timezone("America/Los_Angeles"))
+        test_now_in_utc = test_now_in_the_tz.astimezone(pytz.utc)
+        self.assertNotEqual(test_now_in_the_tz.hour, test_now_in_utc.hour)
+        expected_timestamp = test_now_in_utc.strftime("%Y%m%d %H%M%S")
+        expected_filename = "User List {}.csv".format(expected_timestamp)
+        self.create_admin_user()
+        with patch_now(test_now_in_the_tz):
+            response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response["Content-Disposition"], "attachment; filename='{}'".format(expected_filename))
 
     def test_headers(self):
         self.create_admin_user()
