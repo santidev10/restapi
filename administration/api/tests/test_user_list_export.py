@@ -155,6 +155,21 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         aw_accounts = get_value(user_row, UserExportColumn.AW_ACCOUNTS)
         self.assertEqual(aw_accounts, expected_aw_accounts)
 
+    def test_order_by_email(self):
+        user = self.create_admin_user()
+        UserProfile.objects.create(email="test+1@mail.com")
+        UserProfile.objects.create(email="test+4@mail.com")
+        UserProfile.objects.create(email="test+3@mail.com")
+        users = UserProfile.objects.all()
+        sorted_users = sorted(users, key=lambda u: u.email)
+        self.assertNotEqual(user, sorted_users)
+
+        response = self._request()
+        rows = get_data_rows(response)
+        user_emails = [get_value(row, UserExportColumn.EMAIL) for row in rows]
+        expected_emails = [user.email for user in sorted_users]
+        self.assertEqual(user_emails, expected_emails)
+
 
 def get_data_from_csv_response(response):
     return csv.reader((row.decode("utf-8") for row in response.streaming_content))
