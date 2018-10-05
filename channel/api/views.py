@@ -245,7 +245,7 @@ class ChannelListApiView(
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            query_params.update(text_search__match=text_search)
+            query_params.update(text_search__match_phrase=text_search)
 
         # channel_group
         make("term", "channel_group")
