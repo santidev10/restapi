@@ -41,4 +41,4 @@ class UserCreateApiView(APIView):
             shared_with__contains=[user.email]).exists()
         if any([channel_segment_email_lists, video_segment_email_lists,
                 keyword_segment_email_lists]):
-            user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
+            user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING)

@@ -37,7 +37,7 @@ from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission, OrPermissionsBase
+    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
 
 
 # pylint: enable=import-error
@@ -500,7 +500,7 @@ class ChannelAuthenticationApiView(APIView):
         video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
         keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
         if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
-            user.add_custom_user_group(PermissionGroupNames.SEGMENTS)
+            user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING)
 
     @staticmethod
     def obtain_extra_user_data(token, user_id):
