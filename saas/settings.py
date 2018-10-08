@@ -320,13 +320,6 @@ AUDIT_TOOL_BLACKLIST_PERMITTED_ACCOUNTS = [
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
-DEFAULT_PERMISSIONS_GROUP_NAMES = (
-    "Highlights",
-    "Research",
-    "Segments",
-    "Dashboard",
-)
-
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
