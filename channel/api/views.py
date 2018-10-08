@@ -8,7 +8,6 @@ from datetime import datetime
 
 import requests
 from dateutil import parser
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import QueryDict
@@ -32,7 +31,7 @@ from segment.models import SegmentVideo
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from userprofile.models import UserChannel
+from userprofile.models import UserChannel, get_default_accesses
 from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
@@ -485,7 +484,7 @@ class ChannelAuthenticationApiView(APIView):
             user.set_password(user.password)
 
             # new default access implementation
-            for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+            for group_name in get_default_accesses(via_google=True):
                 user.add_custom_user_group(group_name)
 
             # Get or create auth token instance for user
