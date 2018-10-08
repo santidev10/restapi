@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
+from django.http import HttpResponseBadRequest
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -32,6 +33,10 @@ class DashboardPerformanceExportApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def post(self, request, pk, **_):
+        try:
+            self._validate_request_payload()
+        except ValueError as ex:
+            return HttpResponseBadRequest(ex)
         filters = {}
         user_settings = request.user.get_aw_settings()
         visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
@@ -116,7 +121,7 @@ class DashboardPerformanceExportApiView(APIView):
         if account:
             accounts.append(account.id)
 
-        for dimension in self.tabs:
+        for dimension in self._get_tabs():
             chart = DeliveryChart(
                 accounts=accounts,
                 dimension=dimension,
@@ -126,3 +131,33 @@ class DashboardPerformanceExportApiView(APIView):
             items = chart.get_items()
             for data in items["items"]:
                 yield {**{"tab": dimension}, **data}
+
+    def _get_tabs(self):
+        metric = self._get_metric()
+        if metric is None:
+            return self.tabs
+        return [METRIC_MAP[metric]]
+
+    def _validate_request_payload(self):
+        metric = self._get_metric()
+        if metric is not None and metric not in METRIC_MAP:
+            raise ValueError("Wrong metric")
+
+    def _get_metric(self):
+        return self.request.data.get("metric")
+
+
+METRIC_MAP = {
+    "gender": "gender",
+    "age": "age",
+    "location": "location",
+    "device": "device",
+    "topic": "topic",
+    "interest": "interest",
+    "keyword": "keyword",
+    "channel": "channel",
+    "video": "video",
+    "creative": "creative",
+    "ad_group": "ad",
+    "audience": "remarketing"
+}
