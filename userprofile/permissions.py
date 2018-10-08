@@ -1,7 +1,7 @@
-from django.db import models
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 
 class GlobalPermissionManager(models.Manager):
@@ -85,12 +85,15 @@ class PermissionHandler:
 class PermissionGroupNames:
     HIGHLIGHTS = "Highlights"
     RESEARCH = "Research"
-    SEGMENTS = "Segments"
+    MEDIA_PLANNING = "Media Planning"
     SEGMENTS_PRE_BAKES = "Segments - pre-baked segments"
     MEDIA_BUYING = "Media buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
-    DASHBOARD = "Dashboard"
+    MANAGED_SERVICE = "Managed Service"
+    SELF_SERVICE = "Self Service"
+    SELF_SERVICE_TRENDS = "Self Service Trends"
+    FORECASTING = "Forecasting"
 
 
 class Permissions:
@@ -110,7 +113,7 @@ class Permissions:
             "keyword_details",
             "keyword_filter",
         )),
-        (PermissionGroupNames.SEGMENTS, (
+        (PermissionGroupNames.MEDIA_PLANNING, (
             "segment_video_private",
             "segment_channel_private",
             "segment_keyword_private",
@@ -122,8 +125,7 @@ class Permissions:
             "view_pre_baked_segments",
         )),
         (PermissionGroupNames.MEDIA_BUYING, (
-            "view_media_buying",
-            "settings_my_aw_accounts",
+            "view_buying",
         )),
         (PermissionGroupNames.AUTH_CHANNELS, (
             "channel_audience",
@@ -135,13 +137,22 @@ class Permissions:
             "view_pacing_report",
             "view_pricing_tool",
             "view_health_check",
-            "view_trends",
+            "view_chf_trends",
             "view_health_check",
+        )),
+        (PermissionGroupNames.MANAGED_SERVICE, (
             "view_dashboard",
         )),
-        (PermissionGroupNames.DASHBOARD, (
-            "view_dashboard",
-        ))
+        (PermissionGroupNames.SELF_SERVICE, (
+            "view_media_buying",
+            "settings_my_aw_accounts",
+        )),
+        (PermissionGroupNames.SELF_SERVICE_TRENDS, (
+            "view_trends",
+        )),
+        (PermissionGroupNames.FORECASTING, (
+            "forecasting",
+        )),
     )
 
     PERM_LIST = (
@@ -191,13 +202,10 @@ class Permissions:
     @staticmethod
     def sync_groups():
         """
-        sync permission groups
+        Sync groups and groups permissions
         """
-        perm_set_data = dict(Permissions.PERMISSION_SETS)
-        for k, v in perm_set_data.items():
-            group_name = k
-            raw_group_permissions = v
-
+        permissions_set_data = dict(Permissions.PERMISSION_SETS)
+        for group_name, raw_group_permissions in permissions_set_data.items():
             group, _ = Group.objects.get_or_create(name=group_name)
             group_permissions = tuple([get_custom_permission(perm) for perm in raw_group_permissions])
             group.permissions.set(group_permissions)
