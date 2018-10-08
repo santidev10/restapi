@@ -10,11 +10,11 @@ from administration.api.views import UserActionDeleteAdminApiView
 from administration.api.views import UserActionListCreateApiView
 from administration.api.views import UserListAdminApiView
 from administration.api.views import UserRetrieveUpdateDeleteAdminApiView
-from administration.api.views import UsersExport
+from administration.api.views import UserListExportApiView
 
 urlpatterns = [
     url(r"^users/$", UserListAdminApiView.as_view(), name=Names.USER_LIST),
-    url(r"^users/export/$", UsersExport.as_view(), name=Names.EXPORT_USERS),
+    url(r"^users/export/$", UserListExportApiView.as_view(), name=Names.USER_LIST_EXPORT),
     url(r"^users/(?P<pk>\d+)/$", UserRetrieveUpdateDeleteAdminApiView.as_view(), name=Names.USER_DETAILS),
     url(r"^users/(?P<pk>\d+)/auth/$", AuthAsAUserAdminApiView.as_view(), name=Names.USER_AUTH_ADMIN),
     url(r"^user_actions/$", UserActionListCreateApiView.as_view(), name=Names.USER_ACTION_LIST),
