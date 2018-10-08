@@ -17,6 +17,7 @@ class Command(BaseCommand):
         logger.info("Start renaming groups")
         Group.objects.filter(name="Dashboard").update(name="Managed Service")
         Group.objects.filter(name="Segments").update(name="Media Planning")
+        Group.objects.filter(name="Media buying").update(name="Media Buying")
         logger.info("Done")
         logger.info("Start syncing groups")
         Permissions.sync_groups()
