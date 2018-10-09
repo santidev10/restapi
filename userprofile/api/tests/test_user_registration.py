@@ -1,4 +1,5 @@
 import json
+from unittest import skip
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
@@ -46,6 +47,7 @@ class UserRegistrationTestCase(APITestCase):
             self.auth_url, data={"username": email, "password": password})
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @skip("User Type disabled")
     @generic_test([
         (user_type, (user_type.value,), dict())
         for user_type in UserType
@@ -63,6 +65,7 @@ class UserRegistrationTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertIsNone(UserProfile.objects.first().user_type)
 
+    @skip("User Type disabled")
     def test_user_type_is_required(self):
         user_data = self._user_data()
         user_data.pop("user_type")
@@ -70,6 +73,7 @@ class UserRegistrationTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(UserProfile.objects.count(), 0)
 
+    @skip("User Type disabled")
     def test_user_type_invalid(self):
         user_type = "some value"
         self.assertFalse(UserType.has_value(user_type))

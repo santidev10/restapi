@@ -12,7 +12,6 @@ from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
-from userprofile.constants import UserType
 
 
 class UserSerializer(ModelSerializer):
@@ -30,7 +29,6 @@ class UserSerializer(ModelSerializer):
     last_name = CharField(max_length=255, required=True)
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     token = SerializerMethodField()
-    user_type = CharField(max_length=255, required=True, allow_null=True, validators=[extended_enum(UserType)])
 
     class Meta:
         """
@@ -59,7 +57,6 @@ class UserSerializer(ModelSerializer):
             "phone_number",
             "profile_image_url",
             "token",
-            "user_type",
         )
         read_only_fields = (
             "is_staff",

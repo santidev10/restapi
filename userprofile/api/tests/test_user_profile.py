@@ -1,4 +1,5 @@
 import json
+from unittest import skip
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
@@ -52,7 +53,6 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "phone_number",
                 "profile_image_url",
                 "token",
-                "user_type",
             }
         )
 
@@ -104,6 +104,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user.refresh_from_db()
         self.assertIsNone(user.historical_aw_account)
 
+    @skip("User Type disabled")
     @generic_test([
         (user_type, (user_type.value,), dict())
         for user_type in UserType
@@ -117,6 +118,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user.refresh_from_db()
         self.assertEqual(user.user_type, user_type)
 
+    @skip("User Type disabled")
     def test_user_type_allow_unset(self):
         user = self.create_test_user()
         user.user_type = UserType.AGENCY.value
@@ -131,6 +133,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
         response = self._update(dict())
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @skip("User Type disabled")
     def test_user_type_invalid(self):
         pre_user_type = UserType.AGENCY.value
         test_value = "invalid_value"

@@ -117,7 +117,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
                                               on_delete=SET_NULL)
 
     user_type = models.CharField(max_length=255, blank=True, null=True)
-    annual_ad_spend = models.CharField(max_length=255, blank=True, null=True, default=None)
+    annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     is_subscribed = models.BooleanField(default=False)
 
     objects = UserProfileManager()

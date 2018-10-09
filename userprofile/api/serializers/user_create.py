@@ -16,7 +16,6 @@ from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
-from userprofile.constants import UserType
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -38,7 +37,6 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
-    user_type = CharField(max_length=255, required=True, allow_null=True, validators=[extended_enum(UserType)])
     annual_ad_spend = CharField(max_length=255, required=False, allow_blank=True, allow_null=True,
                                 validators=[extended_enum(UserAnnualAdSpend)])
     is_subscribed = BooleanField(required=False)
@@ -57,7 +55,6 @@ class UserCreateSerializer(ModelSerializer):
             "last_name",
             "password",
             "phone_number",
-            "user_type",
             "verify_password",
         )
         read_only_fields = (
