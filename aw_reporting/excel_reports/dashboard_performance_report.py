@@ -1,24 +1,29 @@
+from datetime import date
+from datetime import datetime
+from functools import partial
 from io import BytesIO
 
 import xlsxwriter
 
 
 class PerformanceReportColumn:
-    IMPRESSIONS = 2
-    VIEWS = 3
-    COST = 4
-    AVERAGE_CPM = 5
-    AVERAGE_CPV = 6
-    CLICKS = 7
-    CTR_I = 8
-    CTR_V = 9
-    VIEW_RATE = 10
-    QUARTERS = range(11, 15)
+    DATE_SEGMENT = 1
+    IMPRESSIONS = 3
+    VIEWS = 4
+    COST = 5
+    AVERAGE_CPM = 6
+    AVERAGE_CPV = 7
+    CLICKS = 8
+    CTR_I = 9
+    CTR_V = 10
+    VIEW_RATE = 11
+    QUARTERS = range(12, 16)
 
 
 class DashboardPerformanceReport:
     columns = (
         ("tab", ""),
+        ("date_segment", "Date"),
         ("name", "Name"),
         ("impressions", "Impressions"),
         ("video_views", "Views"),
@@ -39,10 +44,11 @@ class DashboardPerformanceReport:
         ("video75rate", "75%"),
         ("video100rate", "100%"),
     )
-    columns_width = (10, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
+    columns_width = (10, 25, 40, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10)
 
-    def __init__(self, columns_to_hide=None):
+    def __init__(self, columns_to_hide=None, date_format_str=""):
         self._exclude_columns(columns_to_hide or [])
+        self.date_format_str = date_format_str
 
     @property
     def column_names(self):
@@ -69,14 +75,16 @@ class DashboardPerformanceReport:
         percent_format = workbook.add_format({
             "num_format": "0.00%",
         })
+
         cell_formats = {
-            14: dict(format=percent_format, fn=div_by_100),
+            1: dict(fn=partial(safe_date_format, strftime_format=self.date_format_str)),
             15: dict(format=percent_format, fn=div_by_100),
             16: dict(format=percent_format, fn=div_by_100),
             17: dict(format=percent_format, fn=div_by_100),
             18: dict(format=percent_format, fn=div_by_100),
             19: dict(format=percent_format, fn=div_by_100),
             20: dict(format=percent_format, fn=div_by_100),
+            21: dict(format=percent_format, fn=div_by_100),
         }
 
         self._write_rows(worksheet, data_generator(), 1, 0, cell_formats)
@@ -113,3 +121,9 @@ class DashboardPerformanceReport:
 
 def div_by_100(value):
     return value / 100. if value is not None else ""
+
+
+def safe_date_format(value, strftime_format):
+    if not isinstance(value, (date, datetime)):
+        return str(value)
+    return value.strftime(strftime_format)

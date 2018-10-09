@@ -12,6 +12,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
 from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.dashboard_charts import DateSegment
 from aw_reporting.excel_reports import DashboardPerformanceReport
 from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
 from aw_reporting.models import Account
@@ -56,13 +57,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         url = self._get_url(account_creation_id)
         return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
 
-    def _create_stats(self, account):
+    def _create_stats(self, account, statistic_date=None):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
         campaign2 = Campaign.objects.create(id=2, name="#2", account=account)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
-        date = datetime.now().date() - timedelta(days=1)
-        base_stats = dict(date=date, impressions=100, video_views=10, cost=1)
+        statistic_date = statistic_date or (datetime.now().date() - timedelta(days=1))
+        base_stats = dict(date=statistic_date, impressions=100, video_views=10, cost=1)
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
@@ -158,10 +159,10 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
 
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][PerformanceReportColumn.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.COST].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX + 1][PerformanceReportColumn.COST].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
 
     def test_hide_costs(self):
         user = self.create_test_user()
@@ -186,8 +187,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
-        header_row_number = 1
-        headers = tuple(cell.value for cell in sheet[header_row_number])
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         expected_headers = (
             None, "Name", "Impressions", "Views", "Clicks", "Call-to-Action overlay", "Website", "App Store", "Cards",
             "End cap", "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
@@ -220,8 +220,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
-        header_row_number = 1
-        headers = tuple(cell.value for cell in sheet[header_row_number])
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         cost_column_index = headers.index("Cost")
         single_data_row_index = 3
         self.assertEqual(sheet[single_data_row_index][cost_column_index].value, aw_cost)
@@ -262,8 +261,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
-        header_row_number = 1
-        headers = tuple(cell.value for cell in sheet[header_row_number])
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         cost_column_index = headers.index("Cost")
         single_data_row_index = 3
         self.assertEqual(sheet[single_data_row_index][cost_column_index].value, client_cost)
@@ -289,7 +287,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
-        data_rows = list(sheet.rows)[2:]
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(len(data_rows), 1)
         self.assertEqual(data_rows[0][0].value, METRIC_MAP[metric])
 
@@ -307,6 +305,115 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             response = self._request(account.account_creation.id, metric="overview")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_date_segment_invalid(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        test_segment = "invalid"
+        self.assertFalse(DateSegment.has_value(test_segment))
+        account = Account.objects.create(id=next(int_iterator), name="")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=test_segment)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_date_segment_day(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
+        self._create_stats(account, test_date)
+        expected_date_label = test_date.strftime("%m/%d/%Y")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+
+        self.assertEqual(headers[1], "Date")
+        for row in sheet.rows:
+            print(" | ".join([str(cell.value) for cell in row]))
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(data_rows[0][1].value, expected_date_label)
+
+    def test_date_segment_week(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
+        self._create_stats(account, test_date)
+        expected_date_label = test_date.strftime("%V")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.WEEK.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+
+        self.assertEqual(headers[1], "Date")
+        for row in sheet.rows:
+            print(" | ".join([str(cell.value) for cell in row]))
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(data_rows[0][1].value, expected_date_label)
+
+    def test_date_segment_month(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
+        self._create_stats(account, test_date)
+        expected_date_label = test_date.strftime("%b-%y")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.MONTH.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+
+        self.assertEqual(headers[1], "Date")
+        for row in sheet.rows:
+            print(" | ".join([str(cell.value) for cell in row]))
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(data_rows[0][1].value, expected_date_label)
+
+    def test_date_segment_year(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
+        self._create_stats(account, test_date)
+        expected_date_label = test_date.strftime("%Y")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.YEAR.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+
+        self.assertEqual(headers[1], "Date")
+        for row in sheet.rows:
+            print(" | ".join([str(cell.value) for cell in row]))
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(data_rows[0][1].value, expected_date_label)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
@@ -315,12 +422,13 @@ def get_sheet_from_response(response):
     return book.worksheets[single_sheet_index]
 
 
-SUMMARY_ROW_NUMBER = 2
+HEADER_ROW_INDEX = 1
+SUMMARY_ROW_INDEX = 2
 
 
 def is_summary_empty(sheet):
     values_columns_indexes = range(2, 15)
-    return all([sheet[SUMMARY_ROW_NUMBER][column].value is None for column in values_columns_indexes])
+    return all([sheet[SUMMARY_ROW_INDEX][column].value is None for column in values_columns_indexes])
 
 
 def is_empty_report(sheet):

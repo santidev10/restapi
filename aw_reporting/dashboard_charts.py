@@ -10,6 +10,7 @@ from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.functions import TruncYear, ExtractWeek, TruncMonth
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
@@ -49,10 +50,9 @@ from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
-from utils.lang import flatten
+from utils.lang import flatten, ExtendedEnum
 from utils.utils import get_all_class_constants
 
 logger = logging.getLogger(__name__)
@@ -103,6 +103,13 @@ class Breakdown:
     DAILY = "daily"
 
 
+class DateSegment(ExtendedEnum):
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
                            Indicator.VIEWS, Indicator.COST)
 
@@ -125,7 +132,7 @@ class DeliveryChart:
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
                  region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
-                 apex_deal=None, **_):
+                 apex_deal=None, date_segment=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -158,6 +165,7 @@ class DeliveryChart:
             show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
             apex_deal=apex_deal,
+            date_segment=date_segment,
         )
 
         self.with_plan = with_plan
@@ -454,6 +462,8 @@ class DeliveryChart:
                 if v is not None and type(v) is not str and n != 'id':
                     if n == 'average_position':
                         average_positions.append(v)
+                    elif n == "date_segment":
+                        pass
                     else:
                         response['summary'][n] += v
 
@@ -492,7 +502,7 @@ class DeliveryChart:
 
     def _serialize_item(self, item):
         allowed_keys = {
-            "all_conversions", "average_cpm", "average_cpv",
+            "all_conversions", "average_cpm", "average_cpv", "date_segment",
             "average_position", "clicks", "conversions", "cost", "ctr",
             "ctr_v", "duration", "id", "impressions", "name", "status",
             "thumbnail", "video100rate", "video25rate", "video50rate",
@@ -626,9 +636,20 @@ class DeliveryChart:
 
         return queryset
 
+    def _get_date_segment_annotations(self):
+        date_segment = self.params["date_segment"]
+        if date_segment == DateSegment.DAY.value:
+            return F("date")
+        if date_segment == DateSegment.WEEK.value:
+            return ExtractWeek("date")
+        if date_segment == DateSegment.MONTH.value:
+            return TruncMonth("date")
+        if date_segment == DateSegment.YEAR.value:
+            return TruncYear("date")
+
     def add_annotate(self, queryset):
         if not self.params["date"]:
-            kwargs = dict(**all_stats_aggregator())
+            kwargs = all_stats_aggregator()
             if queryset.model is AdStatistic:
                 kwargs["average_position"] = Avg(
                     Case(
@@ -751,7 +772,16 @@ class DeliveryChart:
             date = self.params['date']
         if date:
             group_by.append('date')
+
+        date_segment = self.params["date_segment"]
+        if date_segment:
+            group_by.append("date_segment")
+
         queryset = self.filter_queryset(queryset)
+        date_segment_annotation = self._get_date_segment_annotations()
+        if date_segment_annotation:
+            queryset = queryset.annotate(date_segment=date_segment_annotation)
+            # kwargs["date_segment"] = date_segment_annotation
         queryset = queryset.values(*group_by).order_by(*group_by)
         return self.add_annotate(queryset)
 
