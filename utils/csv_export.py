@@ -7,7 +7,7 @@ from urllib.parse import unquote
 
 from django.http import StreamingHttpResponse
 from django.utils import timezone
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_200_OK
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
@@ -19,59 +19,72 @@ class CSVExportException(Exception):
     pass
 
 
-class CSVExport(object):
-    """
-    Class for csv export
-    """
-    def __init__(self, fields, data, file_title):
-        """
-        Set up params
-        """
-        self.fields = fields
-        self.data = data
-        self.file_title = file_title
+class BaseCSVStreamResponseGenerator(object):
+    def __init__(self, columns, data_generator, headers_map):
+        self.columns = columns
+        self.data_generator = data_generator
+        self.headers_map = headers_map
 
-    def export_generator(self):
-        """
-        Export data generator
-        """
-        yield self.fields
-        for obj in self.data:
-            row = []
-            for field in self.fields:
-                row.append(obj.get(field))
-            yield row
+    def _map_row(self, row):
+        return [row.get(column) for column in self.columns]
+
+    def get_filename(self):
+        return "report.csv"
 
     def prepare_csv_file_response(self):
         """
         Prepare streaming response obj
         :return: file response
         """
-        def stream_generator():
-            for row in self.export_generator():
-                output = StringIO()
-                writer = csv.writer(output)
-                writer.writerow(row)
-                yield output.getvalue()
-
         response = StreamingHttpResponse(
-            stream_generator(),
+            self.stream_generator(),
             content_type="text/csv",
-            status=HTTP_201_CREATED
+            status=HTTP_200_OK,
         )
-        filename = "{title}_export_report {date}.csv".format(
+        filename = self.get_filename()
+        response["Content-Disposition"] = "attachment; filename='{}'".format(filename)
+        return response
+
+    def export_generator(self):
+        """
+        Export data generator
+        """
+        yield self._map_row(self.headers_map)
+        for row in self.data_generator:
+            yield self._map_row(row)
+
+    def stream_generator(self):
+        for row in self.export_generator():
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(row)
+            yield output.getvalue()
+
+
+class CSVExport(BaseCSVStreamResponseGenerator):
+    """
+    Class for csv export
+    """
+
+    def __init__(self, fields, data, file_title):
+        """
+        Set up params
+        """
+        super(CSVExport, self).__init__(fields, data, {f: f for f in fields})
+        self.file_title = file_title
+
+    def get_filename(self):
+        return "{title}_export_report {date}.csv".format(
             title=self.file_title,
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
-        response["Content-Disposition"] = "attachment; filename='{}'".format(
-            filename)
-        return response
 
 
 class CassandraExportMixin(object):
     """
     Export mixin for cassandra data
     """
+
     def post(self, request):
         """
         Export mechanism

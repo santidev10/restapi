@@ -181,7 +181,7 @@ class SendDailyEmailsTestCase(APITestCase):
         account = Account.objects.create(id="12341")
         Campaign.objects.create(salesforce_placement=placement, account=account)
         test_host = "https://host.test"
-        expected_account_link = "{host}/dashboard/{account_id}/?should_redirect=true" \
+        expected_account_link = "{host}/analytics/managed_service/{account_id}/?should_redirect=true" \
             .format(host=test_host, account_id=account.id)
 
         with patch_now(now), override_settings(HOST=test_host):
