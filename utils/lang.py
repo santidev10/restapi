@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import reduce
 from typing import List
 
@@ -24,3 +25,13 @@ def deep_getattr(obj, attr, default=None):
         return reduce(getattr, attr.split("."), obj)
     except AttributeError:
         return default
+
+
+class ExtendedEnum(Enum):
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls.values()
