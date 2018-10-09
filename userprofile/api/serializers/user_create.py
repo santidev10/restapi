@@ -4,6 +4,7 @@ from django.contrib.auth.models import update_last_login
 from django.core.validators import EmailValidator
 from django.core.validators import MaxLengthValidator
 from rest_framework.authtoken.models import Token
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import EmailField
 from rest_framework.serializers import ModelSerializer
@@ -13,6 +14,9 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email
 from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserAnnualAdSpend
+from userprofile.constants import UserType
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -34,6 +38,10 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
+    user_type = CharField(max_length=255, required=True, allow_null=True, validators=[extended_enum(UserType)])
+    annual_ad_spend = CharField(max_length=255, required=False, allow_blank=True, allow_null=True,
+                                validators=[extended_enum(UserAnnualAdSpend)])
+    is_subscribed = BooleanField(required=False)
 
     class Meta:
         """
@@ -41,13 +49,16 @@ class UserCreateSerializer(ModelSerializer):
         """
         model = get_user_model()
         fields = (
-            "first_name",
-            "last_name",
+            "annual_ad_spend",
             "company",
-            "phone_number",
             "email",
+            "first_name",
+            "is_subscribed",
+            "last_name",
             "password",
-            "verify_password"
+            "phone_number",
+            "user_type",
+            "verify_password",
         )
         read_only_fields = (
             "verify_password",
