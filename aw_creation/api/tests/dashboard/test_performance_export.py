@@ -6,10 +6,11 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from openpyxl import load_workbook
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
+from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.excel_reports_dashboard import PerformanceReport
 from aw_reporting.excel_reports_dashboard import PerformanceReportColumn
@@ -28,6 +29,8 @@ from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import RemarkList
+from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
@@ -39,6 +42,7 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import reverse
 
@@ -63,6 +67,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         audience, _ = Audience.objects.get_or_create(id=1,
                                                      defaults=dict(name="boo",
                                                                    type="A"))
+        remark, _ = RemarkList.objects.get_or_create(name="test")
         creative, _ = VideoCreative.objects.get_or_create(id=1)
         city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
             name="bobruisk"))
@@ -81,6 +86,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             YTVideoStatistic.objects.create(yt_id="123", **stats)
             KeywordStatistic.objects.create(keyword="123", **stats)
             CityStatistic.objects.create(city=city, **stats)
+            RemarkStatistic.objects.create(remark=remark, **stats)
 
     def test_success_for_chf_dashboard(self):
         user = self.create_test_user()
@@ -232,7 +238,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         campaign = Campaign.objects.create(name="", account=account, salesforce_placement=placement)
         ad_group = AdGroup.objects.create(campaign=campaign)
         stats = AdGroupStatistic.objects.create(date=any_date, ad_group=ad_group, average_position=1,
-                                        cost=123, impressions=1, video_views=1)
+                                                cost=123, impressions=1, video_views=1)
         client_cost = get_client_cost(
             goal_type_id=placement.goal_type_id,
             dynamic_placement=placement.dynamic_placement,
@@ -261,6 +267,45 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         cost_column_index = headers.index("Cost")
         single_data_row_index = 3
         self.assertEqual(sheet[single_data_row_index][cost_column_index].value, client_cost)
+
+    @generic_test([
+        (metric, (metric,), dict())
+        for metric in
+        ["gender", "age", "location", "device", "topic", "interest", "keyword", "channel", "video", "creative",
+         "ad_group", "audience"]
+    ])
+    def test_metric(self, metric):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, metric=metric)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        data_rows = list(sheet.rows)[2:]
+        self.assertEqual(len(data_rows), 1)
+        self.assertEqual(data_rows[0][0].value, METRIC_MAP[metric])
+
+    def test_bad_request_on_wrong_metric(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, metric="overview")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
 
 def get_sheet_from_response(response):
