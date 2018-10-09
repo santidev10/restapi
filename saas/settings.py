@@ -312,15 +312,13 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
 ]
+AUDIT_TOOL_BLACKLIST_PERMITTED_ACCOUNTS = [
+    "4050523811",  # FDA: General Markets FY Q2-Q4 2018 OP002689
+    "5111891998",  # FDA GM Smokeless USA Q2-Q4 2018 OP002690
+    "7561321550",  # Jelly Belly Sports Beans Nice & Company US Q2 - Q4 '18 OP002664
+]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
-
-DEFAULT_PERMISSIONS_GROUP_NAMES = (
-    "Highlights",
-    "Research",
-    "Segments",
-    "Dashboard",
-)
 
 DEFAULT_ACCESS_PLAN_NAME = 'free'
 CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'

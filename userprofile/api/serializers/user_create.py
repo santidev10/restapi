@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.core.validators import EmailValidator
@@ -14,6 +13,7 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email
 from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.models import get_default_accesses
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
 
@@ -79,7 +79,7 @@ class UserCreateSerializer(ModelSerializer):
         user.save(update_fields=["password"])
 
         # new default access implementation
-        for group_name in settings.DEFAULT_PERMISSIONS_GROUP_NAMES:
+        for group_name in get_default_accesses():
             user.add_custom_user_group(group_name)
 
         # set token

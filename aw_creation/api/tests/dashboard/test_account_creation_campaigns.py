@@ -27,7 +27,7 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         user.aw_settings[UserSettingsKey.HIDDEN_CAMPAIGN_TYPES] = {
             "".format(account.id): []
         }
-        user.update_access([{"name": "Tools", "value": True}])
+        user.update_access([{"name": "Managed Service", "value": True}])
         user.save()
         campaign_id = "1"
         ad_group_id = "1"

@@ -16,7 +16,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionHandler
+from userprofile.permissions import PermissionHandler, PermissionGroupNames
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,18 @@ def get_default_settings():
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
+
+
+def get_default_accesses(via_google=False):
+    default_accesses_group_names = [
+        PermissionGroupNames.HIGHLIGHTS,
+        PermissionGroupNames.RESEARCH,
+        PermissionGroupNames.MEDIA_PLANNING,
+        PermissionGroupNames.FORECASTING,
+    ]
+    if not via_google:
+        default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
+    return default_accesses_group_names
 
 
 class UserProfileManager(UserManager):
