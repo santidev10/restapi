@@ -12,7 +12,7 @@ from userprofile.models import UserProfile, UserChannel
 
 class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
     def test_remove_auth_channel(self):
-        user = self.create_test_user(True)
+        user = self.create_test_user()
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel_id = channels["items"][0]["id"]
@@ -28,7 +28,7 @@ class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
         self.assertFalse(UserChannel.objects.filter(pk=channel.pk).exists())
 
     def test_remove_success_on_404_from_sdb(self):
-        user = self.create_test_user(True)
+        user = self.create_test_user()
         response = MockResponse(HTTP_404_NOT_FOUND)
         with open('saas/fixtures/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
