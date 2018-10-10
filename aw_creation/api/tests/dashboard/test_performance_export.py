@@ -406,6 +406,36 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
+    def test_date_segment_split_by_day(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        test_date_1 = datetime(2018, 4, 5, 6, 7, 8, 9)
+        test_date_2 = test_date_1 + timedelta(days=1)
+        impressions = (2, 3)
+        common = dict(
+            average_position=1,
+            ad_group=ad_group,
+        )
+        AdGroupStatistic.objects.create(date=test_date_1, impressions=impressions[0], **common)
+        AdGroupStatistic.objects.create(date=test_date_2, impressions=impressions[1], **common)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        impressions_column = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+
+        self.assertEqual(data_rows[0][impressions_column].value, impressions[0])
+        self.assertEqual(data_rows[1][impressions_column].value, impressions[1])
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0

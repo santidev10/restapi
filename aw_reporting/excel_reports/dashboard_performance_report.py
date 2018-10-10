@@ -57,8 +57,6 @@ COLUMN_NAME = {
 }
 
 COLUMN_WIDTH = {
-    DashboardPerformanceReportColumn.TAB: 10,
-    DashboardPerformanceReportColumn.DATE_SEGMENT: 25,
     DashboardPerformanceReportColumn.NAME: 40,
 }
 DEFAULT_WIDTH = 10

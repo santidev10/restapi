@@ -455,30 +455,30 @@ class DeliveryChart:
         for label, stats in data.items():
             if not stats:
                 continue
-            stat = stats[0]
-            dict_norm_base_stats(stat)
+            for stat in stats:
+                dict_norm_base_stats(stat)
 
-            for n, v in stat.items():
-                if v is not None and type(v) is not str and n != 'id':
-                    if n == 'average_position':
-                        average_positions.append(v)
-                    elif n == "date_segment":
-                        pass
-                    else:
-                        response['summary'][n] += v
+                for n, v in stat.items():
+                    if v is not None and type(v) is not str and n != 'id':
+                        if n == 'average_position':
+                            average_positions.append(v)
+                        elif n == "date_segment":
+                            pass
+                        else:
+                            response['summary'][n] += v
 
-            dict_add_calculated_stats(stat)
-            dict_quartiles_to_rates(stat)
-            del stat['video_impressions']
+                dict_add_calculated_stats(stat)
+                dict_quartiles_to_rates(stat)
+                del stat['video_impressions']
 
-            if 'label' in stat:
-                stat['name'] = stat['label']
-                del stat['label']
-            else:
-                stat['name'] = label
-            response['items'].append(
-                stat
-            )
+                if 'label' in stat:
+                    stat['name'] = stat['label']
+                    del stat['label']
+                else:
+                    stat['name'] = label
+                response['items'].append(
+                    stat
+                )
 
         dict_add_calculated_stats(response['summary'])
         if 'video_impressions' in response['summary']:
@@ -488,11 +488,11 @@ class DeliveryChart:
                 average_positions) / len(average_positions)
         dict_quartiles_to_rates(response['summary'])
 
-        top_by = self.get_top_by()
+        top_by, reverse = self.get_top_by()
         response['items'] = sorted(
             response['items'],
             key=lambda i: i[top_by] if i[top_by] else 0,
-            reverse=True,
+            reverse=reverse,
         )
         response["items"] = self._serialize_items(response["items"])
         return response
@@ -740,16 +740,18 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == Indicator.COST:
-            return 'cost'
-        return 'impressions'
+        if self.params["indicator"] == Indicator.COST:
+            return "cost", True
+        if self.params["date_segment"] is not None:
+            return "date_segment", False
+        return "impressions", True
 
     def get_top_data(self, queryset, key):
         group_by = [key]
 
         date = self.params['date']
         if date:
-            top_by = self.get_top_by()
+            top_by, _ = self.get_top_by()
             top_data = self.filter_queryset(queryset).values(key).annotate(
                 top_by=Sum(top_by)
             ).order_by('-top_by')[:TOP_LIMIT]
@@ -781,7 +783,6 @@ class DeliveryChart:
         date_segment_annotation = self._get_date_segment_annotations()
         if date_segment_annotation:
             queryset = queryset.annotate(date_segment=date_segment_annotation)
-            # kwargs["date_segment"] = date_segment_annotation
         queryset = queryset.values(*group_by).order_by(*group_by)
         return self.add_annotate(queryset)
 
