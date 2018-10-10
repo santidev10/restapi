@@ -154,6 +154,8 @@ class DashboardPerformanceReport:
 
 
 def safe_date_format(value, strftime_format):
+    if value is None:
+        return value
     if not isinstance(value, (date, datetime)):
         return str(value)
     return value.strftime(strftime_format)

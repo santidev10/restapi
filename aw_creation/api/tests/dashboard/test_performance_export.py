@@ -436,6 +436,23 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data_rows[0][impressions_column].value, impressions[0])
         self.assertEqual(data_rows[1][impressions_column].value, impressions[1])
 
+    def test_date_segment_empty_in_summary(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        date_column = get_column_index(headers, DashboardPerformanceReportColumn.DATE_SEGMENT)
+        summary_row = sheet[SUMMARY_ROW_INDEX]
+        self.assertIsNone(summary_row[date_column].value)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
