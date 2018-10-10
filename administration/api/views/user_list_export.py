@@ -11,6 +11,7 @@ from utils.datetime import now_in_default_tz
 class UserExportColumn:
     USERNAME = "username"
     COMPANY = "company"
+    PHONE = "phone_number"
     EMAIL = "email"
     REGISTERED_DATE = "registered_date"
     LAST_LOGIN_DATE = "last_login_date"
@@ -22,6 +23,7 @@ class UserExportColumn:
 CSV_COLUMN_ORDER = (
     UserExportColumn.USERNAME,
     UserExportColumn.COMPANY,
+    UserExportColumn.PHONE,
     UserExportColumn.EMAIL,
     UserExportColumn.REGISTERED_DATE,
     UserExportColumn.LAST_LOGIN_DATE,
@@ -33,6 +35,7 @@ CSV_COLUMN_ORDER = (
 REPORT_HEADERS = {
     UserExportColumn.USERNAME: "Username",
     UserExportColumn.COMPANY: "Company",
+    UserExportColumn.PHONE: "Phone",
     UserExportColumn.EMAIL: "Email",
     UserExportColumn.REGISTERED_DATE: "Registered date",
     UserExportColumn.LAST_LOGIN_DATE: "Last login date",
@@ -51,6 +54,7 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
             yield {
                 UserExportColumn.USERNAME: user.get_full_name(),
                 UserExportColumn.COMPANY: user.company,
+                UserExportColumn.PHONE: user.phone_number,
                 UserExportColumn.EMAIL: user.email,
                 UserExportColumn.REGISTERED_DATE: user.date_joined.date() if user.date_joined else None,
                 UserExportColumn.LAST_LOGIN_DATE: user.last_login.date() if user.last_login else None,

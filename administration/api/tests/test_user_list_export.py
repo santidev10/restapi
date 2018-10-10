@@ -62,6 +62,7 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers, [
             "Username",
             "Company",
+            "Phone",
             "Email",
             "Registered date",
             "Last login date",
