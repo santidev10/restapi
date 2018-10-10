@@ -15,7 +15,7 @@ from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.dashboard_charts import DeliveryChart, DateSegment
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import DashboardPerformanceReport
-from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
+from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import DATE_FORMAT
@@ -73,11 +73,12 @@ class DashboardPerformanceExportApiView(APIView):
         columns_to_hide = []
         hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
         if hide_costs:
-            columns_to_hide = columns_to_hide + [PerformanceReportColumn.COST, PerformanceReportColumn.AVERAGE_CPM,
-                                                 PerformanceReportColumn.AVERAGE_CPV]
+            columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.COST,
+                                                 DashboardPerformanceReportColumn.AVERAGE_CPM,
+                                                 DashboardPerformanceReportColumn.AVERAGE_CPV]
         date_segment = self._get_date_segment()
         if not date_segment:
-            columns_to_hide = columns_to_hide + [PerformanceReportColumn.DATE_SEGMENT]
+            columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.DATE_SEGMENT]
 
         return columns_to_hide
 

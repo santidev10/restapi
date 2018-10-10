@@ -16,12 +16,6 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 
 all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
-
-
-def div_by_100(value):
-    return value / 100. if value is not None else ""
-
-
 FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected TV Devices, Non-smart phones etc."
 
 
@@ -590,3 +584,5 @@ class AnalyticsPerformanceWeeklyReport:
         self.write_rows(annotation_row, start_row, self.annotation_format)
 
 
+def div_by_100(value):
+    return value / 100. if value is not None else ""

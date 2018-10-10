@@ -13,8 +13,7 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.excel_reports import DashboardPerformanceReport
-from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
+from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn, COLUMN_NAME
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
@@ -158,16 +157,18 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
-
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX + 1][PerformanceReportColumn.COST].value, client_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        cost_index = get_column_index(headers, DashboardPerformanceReportColumn.COST)
+        cpm_index = get_column_index(headers, DashboardPerformanceReportColumn.AVERAGE_CPM)
+        cpv_index = get_column_index(headers, DashboardPerformanceReportColumn.AVERAGE_CPV)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][cost_index].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX + 1][cost_index].value, client_cost)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][cpm_index].value, average_cpm)
+        self.assertAlmostEqual(sheet[SUMMARY_ROW_INDEX][cpv_index].value, average_cpv)
 
     def test_hide_costs(self):
         user = self.create_test_user()
         any_date = date(2018, 1, 1)
-        total_columns_count = len(DashboardPerformanceReport.columns)
         user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
@@ -195,7 +196,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
-        self.assertEqual(len(DashboardPerformanceReport.columns), total_columns_count)
 
     def test_show_real_costs(self):
         user = self.create_test_user()
@@ -337,8 +337,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
 
         self.assertEqual(headers[1], "Date")
-        for row in sheet.rows:
-            print(" | ".join([str(cell.value) for cell in row]))
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
@@ -361,8 +359,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
 
         self.assertEqual(headers[1], "Date")
-        for row in sheet.rows:
-            print(" | ".join([str(cell.value) for cell in row]))
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
@@ -385,8 +381,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
 
         self.assertEqual(headers[1], "Date")
-        for row in sheet.rows:
-            print(" | ".join([str(cell.value) for cell in row]))
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
@@ -409,8 +403,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
 
         self.assertEqual(headers[1], "Date")
-        for row in sheet.rows:
-            print(" | ".join([str(cell.value) for cell in row]))
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
@@ -434,3 +426,7 @@ def is_summary_empty(sheet):
 def is_empty_report(sheet):
     min_rows_count = 2
     return sheet.max_row <= min_rows_count and is_summary_empty(sheet)
+
+
+def get_column_index(headers, column):
+    return headers.index(COLUMN_NAME[column])
