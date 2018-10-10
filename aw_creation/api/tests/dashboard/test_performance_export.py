@@ -12,8 +12,8 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.excel_reports_dashboard import PerformanceReport
-from aw_reporting.excel_reports_dashboard import PerformanceReportColumn
+from aw_reporting.excel_reports import DashboardPerformanceReport
+from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
@@ -166,7 +166,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_hide_costs(self):
         user = self.create_test_user()
         any_date = date(2018, 1, 1)
-        total_columns_count = len(PerformanceReport.columns)
+        total_columns_count = len(DashboardPerformanceReport.columns)
         user.add_custom_user_permission("view_dashboard")
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
@@ -195,7 +195,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
-        self.assertEqual(len(PerformanceReport.columns), total_columns_count)
+        self.assertEqual(len(DashboardPerformanceReport.columns), total_columns_count)
 
     def test_show_real_costs(self):
         user = self.create_test_user()

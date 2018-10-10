@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_reporting.excel_reports_dashboard import FOOTER_ANNOTATION
+from aw_reporting.excel_reports.analytics_performance_weekly_report import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRange
@@ -173,7 +173,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.excel_reports_dashboard.SingleDatabaseApiConnector",
+             patch("aw_reporting.excel_reports.dashboard_performance_weekly_report.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -208,7 +208,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.excel_reports_dashboard.SingleDatabaseApiConnector",
+             patch("aw_reporting.excel_reports.dashboard_performance_weekly_report.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
