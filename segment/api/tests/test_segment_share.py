@@ -1,19 +1,18 @@
 import json
 
 from django.contrib.auth.models import Group
-from django.core.urlresolvers import reverse
 
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
 from userprofile.permissions import PermissionGroupNames, Permissions
 from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import reverse
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type, segment_pk):
-        return reverse(Namespace.SEGMENT + ":" + Name.SEGMENT_SHARE,
-                       kwargs=dict(segment_type=segment_type, pk=segment_pk))
+        return reverse(Name.SEGMENT_SHARE, [Namespace.SEGMENT], kwargs=dict(segment_type=segment_type, pk=segment_pk))
 
     def test_access_for_collaborator(self):
         collaborator_email = "collaborator@example.com"
