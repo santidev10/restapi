@@ -13,7 +13,10 @@ from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import get_user_model
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import int_iterator, reverse
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 from .base import AwReportingAPITestCase
 
 
@@ -130,6 +133,42 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(Account.objects.filter(id=account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=account_id).exists())
+
+    def test_grant_user_permissions(self):
+        user = self.user
+        Permissions.sync_groups()
+        self.assertFalse(self.user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
+        self.assertFalse(self.user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
+        url = "{}?{}".format(
+            self._url,
+            urlencode(dict(
+                redirect_url="https://saas.channelfactory.com"
+            ))
+        )
+        account_id = next(int_iterator)
+        test_email = "test@mail.com"
+        view_path = "aw_reporting.api.views.connect_aw_account"
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=account_id,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
+                patch(view_path + ".upload_initial_aw_data") as initial_upload_task:
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
+            response = self.client.post(url, dict(code="1111"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
+        self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
 
 
 class AccountConnectionAPITestCase(AwReportingAPITestCase):
