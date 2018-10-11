@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import UserType, UserAnnualAdSpend
+from userprofile.constants import UserTypeRegular, UserAnnualAdSpend
 from userprofile.models import UserProfile
 from utils.utils_tests import generic_test
 from utils.utils_tests import reverse
@@ -27,7 +27,7 @@ class UserRegistrationTestCase(APITestCase):
             "phone_number": "+380000000000",
             "password": password,
             "verify_password": password,
-            "user_type": UserType.AGENCY.value,
+            "user_type": UserTypeRegular.AGENCY.value,
             "annual_ad_spend": UserAnnualAdSpend.SPEND_0_100K.value,
         }
         return {**default_data, **kwargs}
@@ -49,10 +49,10 @@ class UserRegistrationTestCase(APITestCase):
 
     @generic_test([
         (user_type, (user_type.value,), dict())
-        for user_type in UserType
+        for user_type in UserTypeRegular
     ])
     def test_user_type_valid(self, user_type):
-        self.assertTrue(UserType.has_value(user_type))
+        self.assertTrue(UserTypeRegular.has_value(user_type))
         user_data = self._user_data(user_type=user_type)
         response = self.client.post(self.registration_url, data=user_data)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
@@ -72,7 +72,7 @@ class UserRegistrationTestCase(APITestCase):
 
     def test_user_type_invalid(self):
         user_type = "some value"
-        self.assertFalse(UserType.has_value(user_type))
+        self.assertFalse(UserTypeRegular.has_value(user_type))
         user_data = self._user_data(user_type=user_type)
         response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

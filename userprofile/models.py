@@ -21,8 +21,6 @@ from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
-GOOGLE_USER_TYPE = "creator"
-
 
 def get_default_settings():
     return {
