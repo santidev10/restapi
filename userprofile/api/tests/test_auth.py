@@ -1,19 +1,24 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.api.tests.base import AwReportingAPITestCase, Account, \
-    AWConnection, AWAccountPermission, \
-    AWConnectionToUserRelation, Campaign, Ad, AdGroup
+from aw_reporting.api.tests.base import AWAccountPermission
+from aw_reporting.api.tests.base import AWConnection
+from aw_reporting.api.tests.base import AWConnectionToUserRelation
+from aw_reporting.api.tests.base import Account
+from aw_reporting.api.tests.base import Ad
+from aw_reporting.api.tests.base import AdGroup
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
+from utils.utils_tests import reverse
 
 
 class AuthAPITestCase(AwReportingAPITestCase):
-    _url = reverse(Namespace.USER_PROFILE + ":" + UserprofilePathName.AUTH)
+    _url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
 
     def test_success(self):
         user = self.create_test_user()
@@ -25,12 +30,24 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(response.data),
             {
-                "id", "profile_image_url", "company", "phone_number",
-                "is_staff", "last_name", "has_aw_accounts", "date_joined",
-                "last_login", "email", "first_name", "token",
-                "can_access_media_buying", "has_disapproved_ad", "access",
-                "aw_settings", "historical_aw_account",
-                "google_account_id", "logo_url"
+                "access",
+                "aw_settings",
+                "can_access_media_buying",
+                "company",
+                "date_joined",
+                "email",
+                "first_name",
+                "google_account_id",
+                "has_aw_accounts",
+                "has_disapproved_ad",
+                "historical_aw_account",
+                "id", "profile_image_url",
+                "is_staff",
+                "last_login",
+                "last_name",
+                "logo_url",
+                "phone_number",
+                "token",
             }
         )
 

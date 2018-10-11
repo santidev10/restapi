@@ -35,28 +35,22 @@ class TestUserMixin:
         "password": "test",
     }
 
-    def create_test_user(self, auth=True) -> UserProfile:
+    def create_test_user(self, **kwargs) -> UserProfile:
         """
         Make test user
         """
         get_user_model().objects.filter(email=self.test_user_data["email"]) \
             .delete()
+        user_data = {**self.test_user_data, **kwargs}
         user = get_user_model().objects.create(
-            **self.test_user_data,
+            **user_data,
         )
         user.set_password(user.password)
         user.save()
-
-        if auth:
-            Token.objects.get_or_create(user=user)
         return user
 
-    def create_admin_user(self):
-        user = self.create_test_user()
-        user.is_staff = True
-        user.is_superuser = True
-        user.save()
-        return user
+    def create_admin_user(self, **kwargs):
+        return self.create_test_user(is_staff=True, is_superuser=True, **kwargs)
 
     def fill_all_groups(self, user):
         all_perm_groups = Group.objects.values_list('name', flat=True)
@@ -64,15 +58,32 @@ class TestUserMixin:
             user.add_custom_user_group(perm_group)
 
 
-class APITestUserMixin(TestUserMixin):
-    def create_test_user(self, auth=True):
-        user = super(APITestUserMixin, self).create_test_user(auth)
-        if Token.objects.filter(user=user).exists():
-            self.request_user = user
-            self.client.credentials(
+def with_authorized(create_user_fn):
+    @wraps(create_user_fn)
+    def wrapper(test_case_instance, auth=True, **kwargs):
+        user = create_user_fn(test_case_instance, **kwargs)
+        if auth:
+            Token.objects.get_or_create(user=user)
+            test_case_instance.request_user = user
+            test_case_instance.client.credentials(
                 HTTP_AUTHORIZATION='Token {}'.format(user.token)
             )
         return user
+
+    return wrapper
+
+
+class APITestUserMixin(TestUserMixin):
+    def __init__(self):
+        self.request_user = None
+
+    @with_authorized
+    def create_test_user(self, **kwargs):
+        return super(APITestUserMixin, self).create_test_user(**kwargs)
+
+    @with_authorized
+    def create_admin_user(self, **kwargs):
+        return super(APITestUserMixin, self).create_admin_user(**kwargs)
 
 
 class ExtendedAPITestCase(APITestCase, APITestUserMixin):

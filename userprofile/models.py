@@ -128,6 +128,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
                                               related_name="user_aw_historical",
                                               on_delete=SET_NULL)
 
+    user_type = models.CharField(max_length=255, blank=True, null=True)
+    annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
+    is_subscribed = models.BooleanField(default=False)
+
     objects = UserProfileManager()
 
     USERNAME_FIELD = 'email'

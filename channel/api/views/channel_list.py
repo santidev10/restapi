@@ -16,12 +16,8 @@ from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 
 
-class ChannelListApiView(
-    APIView,
-    PermissionRequiredMixin,
-    CassandraExportMixin,
-    ChannelYoutubeSearchMixin,
-    SegmentFilterMixin):
+class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin, ChannelYoutubeSearchMixin,
+                         SegmentFilterMixin):
     """
     Proxy view for channel list
     """
@@ -257,10 +253,6 @@ class ChannelListApiView(
 
             if not user.is_staff:
                 item.pop("cms__title", None)
-
-            if not user.has_perm('userprofile.channel_aw_performance') \
-                    and not is_own:
-                item.pop('aw_data', None)
 
             for field in ["youtube_published_at", "updated_at"]:
                 if field in item and item[field]:

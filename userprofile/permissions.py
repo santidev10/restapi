@@ -90,7 +90,7 @@ class PermissionGroupNames:
     RESEARCH = "Research"
     MEDIA_PLANNING = "Media Planning"
     SEGMENTS_PRE_BAKES = "Segments - pre-baked segments"
-    MEDIA_BUYING = "Media buying"
+    MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
     MANAGED_SERVICE = "Managed Service"

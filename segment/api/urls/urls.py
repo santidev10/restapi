@@ -22,7 +22,7 @@ urlpatterns = [
         name="segment_details"),
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/share/$'.format(segment_types),
         SegmentShareApiView.as_view(),
-        name="segment_share"),
+        name=Name.SEGMENT_SHARE),
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(segment_types),
         SegmentDuplicateApiView.as_view(),
         name=Name.SEGMENT_DUPLICATE),

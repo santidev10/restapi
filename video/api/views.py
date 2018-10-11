@@ -274,10 +274,6 @@ class VideoListApiView(
             if not user.is_staff:
                 item.pop("cms__title", None)
 
-            if not user.has_perm('userprofile.video_aw_performance') \
-                    and not is_own:
-                item.pop('aw_data', None)
-
             if "country" in item and item["country"] is None:
                 item["country"] = ""
 

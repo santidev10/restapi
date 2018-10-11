@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info("Start renaming groups")
-        Group.objects.filter(name="Dashboard").update(name="Managed Service")
-        Group.objects.filter(name="Segments").update(name="Media Planning")
+        Group.objects.filter(name="Dashboard").update(name=PermissionGroupNames.MANAGED_SERVICE)
+        Group.objects.filter(name="Segments").update(name=PermissionGroupNames.MEDIA_PLANNING)
+        Group.objects.filter(name="Media buying").update(name=PermissionGroupNames.MEDIA_BUYING)
         logger.info("Done")
         logger.info("Start syncing groups")
         Permissions.sync_groups()
