@@ -14,7 +14,8 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserProfile, UserChannel
+from userprofile.models import UserChannel
+from userprofile.models import UserProfile
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
@@ -99,7 +100,7 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(last_name, expected_last_name)
 
     def test_has_oauth_youtube_channel_true(self):
-        expected_value = 'True'
+        expected_value = str(True)
         user = self.create_admin_user()
         UserChannel.objects.create(channel_id="test", user=user)
         response = self._request()
@@ -108,7 +109,7 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(has_oauth_youtube_channel, expected_value)
 
     def test_has_oauth_youtube_channel_false(self):
-        expected_value = 'False'
+        expected_value = str(False)
         self.create_admin_user()
         response = self._request()
         user_row = get_data_rows(response)[0]
