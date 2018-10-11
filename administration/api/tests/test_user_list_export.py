@@ -81,6 +81,22 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         data_rows = get_data_rows(response)
         self.assertEqual(len(data_rows), user_count)
 
+    def test_first_name(self):
+        expected_first_name = "First Name"
+        self.create_admin_user(first_name=expected_first_name)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        first_name = get_value(user_row, UserExportColumn.FIRST_NAME)
+        self.assertEqual(first_name, expected_first_name)
+
+    def test_last_name(self):
+        expected_last_name = "Last Name"
+        self.create_admin_user(last_name=expected_last_name)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        last_name = get_value(user_row, UserExportColumn.LAST_NAME)
+        self.assertEqual(last_name, expected_last_name)
+
     def test_company(self):
         expected_company = "Some company name"
         self.create_admin_user(company=expected_company)
