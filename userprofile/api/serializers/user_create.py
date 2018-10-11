@@ -96,7 +96,10 @@ class UserCreateSerializer(ModelSerializer):
             "company": user.company,
             "phone": user.phone_number,
             "first_name": user.first_name,
-            "last_name": user.last_name
+            "last_name": user.last_name,
+            "annual_ad_spend": user.annual_ad_spend,
+            "user_type": user.user_type,
+            "is_subscribed": user.is_subscribed
         }
         send_new_registration_email(email_data)
         send_welcome_email(user, self.context.get("request"))
