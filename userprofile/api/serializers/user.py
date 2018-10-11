@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
-from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -10,22 +9,17 @@ from rest_framework.serializers import ValidationError
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
-from userprofile.api.serializers.validators.extended_enum import extended_enum
-from userprofile.constants import UserAnnualAdSpend
 
 
 class UserSerializer(ModelSerializer):
     """
     Serializer for update/retrieve user
     """
-    annual_ad_spend = CharField(max_length=255, required=False, allow_null=True,
-                                validators=[extended_enum(UserAnnualAdSpend)])
     can_access_media_buying = SerializerMethodField()
     company = CharField(max_length=255, required=True)
     first_name = CharField(max_length=255, required=True)
     has_aw_accounts = SerializerMethodField()
     has_disapproved_ad = SerializerMethodField()
-    is_subscribed = BooleanField()
     last_name = CharField(max_length=255, required=True)
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     token = SerializerMethodField()
@@ -37,7 +31,6 @@ class UserSerializer(ModelSerializer):
         model = get_user_model()
         fields = (
             "access",
-            "annual_ad_spend",
             "aw_settings",
             "can_access_media_buying",
             "company",
@@ -50,7 +43,6 @@ class UserSerializer(ModelSerializer):
             "historical_aw_account",
             "id",
             "is_staff",
-            "is_subscribed",
             "last_login",
             "last_name",
             "logo_url",
