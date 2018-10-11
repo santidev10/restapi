@@ -14,8 +14,8 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.dashboard_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports_dashboard import PerformanceReport
-from aw_reporting.excel_reports_dashboard import PerformanceReportColumn
+from aw_reporting.excel_reports import DashboardPerformanceReport
+from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import DATE_FORMAT
@@ -67,7 +67,7 @@ class DashboardPerformanceExportApiView(APIView):
                            PerformanceReportColumn.AVERAGE_CPV] \
             if hide_costs \
             else []
-        xls_report = PerformanceReport(columns_to_hide=columns_to_hide)
+        xls_report = DashboardPerformanceReport(columns_to_hide=columns_to_hide)
         return xlsx_response(title, xls_report.generate(data_generator))
 
     def get_filters(self):

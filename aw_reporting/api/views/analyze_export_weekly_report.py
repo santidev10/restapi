@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport
+from aw_reporting.excel_reports import AnalyticsPerformanceWeeklyReport
 from aw_reporting.models import Account
 from utils.views import xlsx_response
 
@@ -36,7 +36,7 @@ class AnalyzeExportWeeklyReportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         filters = self.get_filters()
-        report = PerformanceWeeklyReport(item, **filters)
+        report = AnalyticsPerformanceWeeklyReport(item, **filters)
         hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
             .get(request.user.email.lower(), {}) \
             .get("hide_brand_name", False)
