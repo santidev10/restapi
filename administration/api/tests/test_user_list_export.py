@@ -60,7 +60,8 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         csv_data = get_data_from_csv_response(response)
         headers = next(csv_data)
         self.assertEqual(headers, [
-            "Username",
+            "First name",
+            "Last name",
             "Company",
             "Phone",
             "Email",
@@ -79,16 +80,6 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         response = self._request()
         data_rows = get_data_rows(response)
         self.assertEqual(len(data_rows), user_count)
-
-    def test_user_name(self):
-        first_name = "Firstname"
-        last_name = "Lastname"
-        expected_username = "{} {}".format(first_name, last_name)
-        self.create_admin_user(first_name=first_name, last_name=last_name)
-        response = self._request()
-        user_row = get_data_rows(response)[0]
-        username = get_value(user_row, UserExportColumn.USERNAME)
-        self.assertEqual(username, expected_username)
 
     def test_company(self):
         expected_company = "Some company name"

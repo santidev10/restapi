@@ -9,7 +9,8 @@ from utils.datetime import now_in_default_tz
 
 
 class UserExportColumn:
-    USERNAME = "username"
+    FIRST_NAME = "first_name"
+    LAST_NAME = "last_name"
     COMPANY = "company"
     PHONE = "phone_number"
     EMAIL = "email"
@@ -21,7 +22,8 @@ class UserExportColumn:
 
 
 CSV_COLUMN_ORDER = (
-    UserExportColumn.USERNAME,
+    UserExportColumn.FIRST_NAME,
+    UserExportColumn.LAST_NAME,
     UserExportColumn.COMPANY,
     UserExportColumn.PHONE,
     UserExportColumn.EMAIL,
@@ -33,7 +35,8 @@ CSV_COLUMN_ORDER = (
 )
 
 REPORT_HEADERS = {
-    UserExportColumn.USERNAME: "Username",
+    UserExportColumn.FIRST_NAME: "First name",
+    UserExportColumn.LAST_NAME: "Last name",
     UserExportColumn.COMPANY: "Company",
     UserExportColumn.PHONE: "Phone",
     UserExportColumn.EMAIL: "Email",
@@ -52,7 +55,8 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
     def users_list(self):
         for user in UserProfile.objects.all().order_by("email"):
             yield {
-                UserExportColumn.USERNAME: user.get_full_name(),
+                UserExportColumn.FIRST_NAME: user.first_name,
+                UserExportColumn.LAST_NAME: user.last_name,
                 UserExportColumn.COMPANY: user.company,
                 UserExportColumn.PHONE: user.phone_number,
                 UserExportColumn.EMAIL: user.email,
