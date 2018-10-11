@@ -31,7 +31,7 @@ from segment.models import SegmentVideo
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector, \
     SingleDatabaseApiConnectorException
-from userprofile.models import UserChannel, get_default_accesses
+from userprofile.models import UserChannel, get_default_accesses, GOOGLE_USER_TYPE
 from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
@@ -474,6 +474,7 @@ class ChannelAuthenticationApiView(APIView):
             # Create new user
             user_data["email"] = email
             user_data["google_account_id"] = google_id
+            user_data["user_type"] = GOOGLE_USER_TYPE
             user_data["password"] = hashlib.sha1(str(
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)
