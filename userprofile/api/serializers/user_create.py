@@ -13,9 +13,9 @@ from rest_framework.validators import UniqueValidator
 from administration.notifications import send_new_registration_email
 from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
-from userprofile.models import get_default_accesses
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
+from userprofile.models import get_default_accesses
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -37,7 +37,7 @@ class UserCreateSerializer(ModelSerializer):
             MaxLengthValidator,
             EmailValidator]
     )
-    annual_ad_spend = CharField(max_length=255, required=False, allow_blank=True, allow_null=True,
+    annual_ad_spend = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                                 validators=[extended_enum(UserAnnualAdSpend)])
     is_subscribed = BooleanField(required=False)
 
