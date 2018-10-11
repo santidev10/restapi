@@ -60,6 +60,7 @@ COLUMN_WIDTH = {
     DashboardPerformanceReportColumn.NAME: 40,
 }
 DEFAULT_WIDTH = 10
+FILTER_ROW_HEIGHT = 50
 
 ALL_COLUMNS = (
     DashboardPerformanceReportColumn.TAB,
@@ -129,11 +130,9 @@ class DashboardPerformanceReport:
         return output.getvalue()
 
     def _put_custom_headers(self, worksheet, start_from):
-        worksheet.write(
-            start_from,
-            0,
-            self.custom_header
-        )
+        worksheet.set_row(start_from, FILTER_ROW_HEIGHT)
+        worksheet.write(start_from, 1, "Filters:")
+        worksheet.write(start_from, 2, self.custom_header)
         return start_from + 1
 
     def _put_table_header(self, worksheet, start_from):

@@ -572,4 +572,4 @@ def get_column_index(headers, column):
 
 
 def get_custom_header(sheet):
-    return sheet[CUSTOM_HEADER_ROW_INDEX][0].value
+    return sheet[CUSTOM_HEADER_ROW_INDEX][2].value
