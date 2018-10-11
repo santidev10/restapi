@@ -3,19 +3,23 @@ from unittest.mock import patch
 
 import requests
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from channel.api.urls.names import ChannelPathName
+from saas.urls.namespaces import Namespace
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, reverse
 from utils.utils_tests import MockResponse
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
+    def _get_url(self, channel_id):
+        return reverse(ChannelPathName.CHANNEL, [Namespace.CHANNEL], args=(channel_id,))
+
     @classmethod
     def setUpClass(cls):
         super(ChannelRetrieveUpdateTestCase, cls).setUpClass()
@@ -28,9 +32,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
         UserChannel.objects.create(channel_id=channel_id, user=user)
 
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
-        with patch("channel.api.views.Connector",
+        url = self._get_url(channel_id)
+        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.put(url, dict())
 
@@ -44,9 +47,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
 
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
-        with patch("channel.api.views.Connector",
+        url = self._get_url(channel_id)
+        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.put(url, dict())
 
@@ -58,9 +60,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
 
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
-        with patch("channel.api.views.Connector",
+        url = self._get_url(channel_id)
+        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.put(url, dict())
 
@@ -74,9 +75,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
 
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
-        with patch("channel.api.views.Connector",
+        url = self._get_url(channel_id)
+        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 
@@ -93,9 +93,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
 
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
-        with patch("channel.api.views.Connector",
+        url = self._get_url(channel_id)
+        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 
@@ -109,8 +108,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
         UserChannel.objects.create(user=user, channel_id=channel_id)
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
+        url = self._get_url(channel_id)
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -125,8 +123,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
         UserChannel.objects.create(user=user, channel_id=channel_id)
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
+        url = self._get_url(channel_id)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -141,8 +138,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
         UserChannel.objects.create(user=user_1, channel_id=channel_id)
         UserChannel.objects.create(user=user_2, channel_id=channel_id)
-        url = reverse("channel_api_urls:channel",
-                      args=(channel_id,))
+        url = self._get_url(channel_id)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 

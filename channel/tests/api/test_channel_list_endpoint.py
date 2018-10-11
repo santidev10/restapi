@@ -1,19 +1,23 @@
 from unittest import skip
 
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, \
-    HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from segment.models import SegmentChannel, SegmentRelatedChannel, SegmentVideo, \
-    SegmentRelatedVideo
-from utils.utils_tests import ExtendedAPITestCase, SegmentFunctionalityMixin, \
-    SingleDBMixin
+from channel.api.urls.names import ChannelPathName
+from saas.urls.namespaces import Namespace
+from segment.models import SegmentChannel
+from segment.models import SegmentRelatedChannel
+from segment.models import SegmentRelatedVideo
+from segment.models import SegmentVideo
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import SegmentFunctionalityMixin
+from utils.utils_tests import SingleDBMixin
+from utils.utils_tests import reverse
 
 
-class ChannelListTestCase(
-        ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDBMixin):
-    def setUp(self):
-        self.url = reverse("channel_api_urls:channel_list")
+class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDBMixin):
+    url = reverse(ChannelPathName.CHANNEL_LIST, [Namespace.CHANNEL])
 
     def test_channel_segment_filter_does_not_exists(self):
         self.create_admin_user()
