@@ -12,10 +12,10 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.dashboard_charts import DeliveryChart
+from aw_reporting.dashboard_charts import DeliveryChart, DateSegment
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import DashboardPerformanceReport
-from aw_reporting.excel_reports.dashboard_performance_report import PerformanceReportColumn
+from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import DATE_FORMAT
@@ -62,13 +62,29 @@ class DashboardPerformanceExportApiView(APIView):
             timestamp=datetime.now().strftime("%Y%m%d"),
         )
         user = self.request.user
-        hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
-        columns_to_hide = [PerformanceReportColumn.COST, PerformanceReportColumn.AVERAGE_CPM,
-                           PerformanceReportColumn.AVERAGE_CPV] \
-            if hide_costs \
-            else []
-        xls_report = DashboardPerformanceReport(columns_to_hide=columns_to_hide)
+
+        xls_report = DashboardPerformanceReport(
+            columns_to_hide=self._get_columns_to_hide(user),
+            date_format_str=self._get_date_segment_format()
+        )
         return xlsx_response(title, xls_report.generate(data_generator))
+
+    def _get_columns_to_hide(self, user):
+        columns_to_hide = []
+        hide_costs = user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN)
+        if hide_costs:
+            columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.COST,
+                                                 DashboardPerformanceReportColumn.AVERAGE_CPM,
+                                                 DashboardPerformanceReportColumn.AVERAGE_CPV]
+        date_segment = self._get_date_segment()
+        if not date_segment:
+            columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.DATE_SEGMENT]
+
+        return columns_to_hide
+
+    def _get_date_segment_format(self):
+        date_segment = self._get_date_segment()
+        return DATE_SEGMENT_STRFTIME_FORMAT.get(date_segment)
 
     def get_filters(self):
         data = self.request.data
@@ -126,6 +142,7 @@ class DashboardPerformanceExportApiView(APIView):
                 accounts=accounts,
                 dimension=dimension,
                 show_aw_costs=show_aw_rates,
+                date_segment=self._get_date_segment(),
                 **filters
             )
             items = chart.get_items()
@@ -140,11 +157,17 @@ class DashboardPerformanceExportApiView(APIView):
 
     def _validate_request_payload(self):
         metric = self._get_metric()
-        if metric is not None and metric not in METRIC_MAP:
+        if metric not in ALLOWED_METRICS:
             raise ValueError("Wrong metric")
+        date_segment = self._get_date_segment()
+        if date_segment not in ALLOWED_DATE_SEGMENT:
+            raise ValueError("Wrong date_segment")
 
     def _get_metric(self):
         return self.request.data.get("metric")
+
+    def _get_date_segment(self):
+        return self.request.data.get("date_segment")
 
 
 METRIC_MAP = {
@@ -160,4 +183,12 @@ METRIC_MAP = {
     "creative": "creative",
     "ad_group": "ad",
     "audience": "remarketing"
+}
+ALLOWED_METRICS = tuple(METRIC_MAP.keys()) + (None,)
+ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)
+DATE_SEGMENT_STRFTIME_FORMAT = {
+    DateSegment.DAY.value: "%m/%d/%Y",
+    DateSegment.WEEK.value: "%w",
+    DateSegment.MONTH.value: "%b-%y",
+    DateSegment.YEAR.value: "%Y",
 }
