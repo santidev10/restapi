@@ -9,7 +9,8 @@ from utils.datetime import now_in_default_tz
 
 
 class UserExportColumn:
-    USERNAME = "username"
+    FIRST_NAME = "first_name"
+    LAST_NAME = "last_name"
     COMPANY = "company"
     PHONE = "phone_number"
     EMAIL = "email"
@@ -18,10 +19,12 @@ class UserExportColumn:
     AW_ACCOUNTS = "aw_accounts"
     USER_TYPE = "user_type"
     ANNUAL_AD_SPEND = "annual_ad_spend"
+    HAS_OAUTH_YOUTUBE_CHANNEL = "has_oauth_youtube_channel"
 
 
 CSV_COLUMN_ORDER = (
-    UserExportColumn.USERNAME,
+    UserExportColumn.FIRST_NAME,
+    UserExportColumn.LAST_NAME,
     UserExportColumn.COMPANY,
     UserExportColumn.PHONE,
     UserExportColumn.EMAIL,
@@ -30,10 +33,12 @@ CSV_COLUMN_ORDER = (
     UserExportColumn.AW_ACCOUNTS,
     UserExportColumn.USER_TYPE,
     UserExportColumn.ANNUAL_AD_SPEND,
+    UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL,
 )
 
 REPORT_HEADERS = {
-    UserExportColumn.USERNAME: "Username",
+    UserExportColumn.FIRST_NAME: "First name",
+    UserExportColumn.LAST_NAME: "Last name",
     UserExportColumn.COMPANY: "Company",
     UserExportColumn.PHONE: "Phone",
     UserExportColumn.EMAIL: "Email",
@@ -42,6 +47,7 @@ REPORT_HEADERS = {
     UserExportColumn.AW_ACCOUNTS: "AW accounts",
     UserExportColumn.USER_TYPE: "User Type",
     UserExportColumn.ANNUAL_AD_SPEND: "Annual Ad Spend",
+    UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: "Has Oauth youtube channel",
 }
 
 
@@ -52,7 +58,8 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
     def users_list(self):
         for user in UserProfile.objects.all().order_by("email"):
             yield {
-                UserExportColumn.USERNAME: user.get_full_name(),
+                UserExportColumn.FIRST_NAME: user.first_name,
+                UserExportColumn.LAST_NAME: user.last_name,
                 UserExportColumn.COMPANY: user.company,
                 UserExportColumn.PHONE: user.phone_number,
                 UserExportColumn.EMAIL: user.email,
@@ -61,6 +68,7 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
                 UserExportColumn.USER_TYPE: user.user_type,
                 UserExportColumn.ANNUAL_AD_SPEND: user.annual_ad_spend,
                 UserExportColumn.AW_ACCOUNTS: ",".join(Account.user_mcc_objects(user).values_list("name", flat=True)),
+                UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: user.channels.exists()
             }
 
     def get_filename(self):

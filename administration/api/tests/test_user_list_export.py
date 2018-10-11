@@ -14,6 +14,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
+from userprofile.models import UserChannel
 from userprofile.models import UserProfile
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import int_iterator
@@ -60,7 +61,8 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         csv_data = get_data_from_csv_response(response)
         headers = next(csv_data)
         self.assertEqual(headers, [
-            "Username",
+            "First name",
+            "Last name",
             "Company",
             "Phone",
             "Email",
@@ -69,6 +71,7 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
             "AW accounts",
             "User Type",
             "Annual Ad Spend",
+            "Has Oauth youtube channel",
         ])
 
     def test_users_count(self):
@@ -80,15 +83,38 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         data_rows = get_data_rows(response)
         self.assertEqual(len(data_rows), user_count)
 
-    def test_user_name(self):
-        first_name = "Firstname"
-        last_name = "Lastname"
-        expected_username = "{} {}".format(first_name, last_name)
-        self.create_admin_user(first_name=first_name, last_name=last_name)
+    def test_first_name(self):
+        expected_first_name = "First Name"
+        self.create_admin_user(first_name=expected_first_name)
         response = self._request()
         user_row = get_data_rows(response)[0]
-        username = get_value(user_row, UserExportColumn.USERNAME)
-        self.assertEqual(username, expected_username)
+        first_name = get_value(user_row, UserExportColumn.FIRST_NAME)
+        self.assertEqual(first_name, expected_first_name)
+
+    def test_last_name(self):
+        expected_last_name = "Last Name"
+        self.create_admin_user(last_name=expected_last_name)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        last_name = get_value(user_row, UserExportColumn.LAST_NAME)
+        self.assertEqual(last_name, expected_last_name)
+
+    def test_has_oauth_youtube_channel_true(self):
+        expected_value = str(True)
+        user = self.create_admin_user()
+        UserChannel.objects.create(channel_id="test", user=user)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        has_oauth_youtube_channel = get_value(user_row, UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL)
+        self.assertEqual(has_oauth_youtube_channel, expected_value)
+
+    def test_has_oauth_youtube_channel_false(self):
+        expected_value = str(False)
+        self.create_admin_user()
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        has_oauth_youtube_channel = get_value(user_row, UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL)
+        self.assertEqual(has_oauth_youtube_channel, expected_value)
 
     def test_company(self):
         expected_company = "Some company name"
