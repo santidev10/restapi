@@ -6,14 +6,18 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from openpyxl import load_workbook
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
+from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTATION
+from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn, COLUMN_NAME
+from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
+from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
@@ -268,9 +272,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
 
     @generic_test([
         (metric, (metric,), dict())
-        for metric in
-        ["gender", "age", "location", "device", "topic", "interest", "keyword", "channel", "video", "creative",
-         "ad_group", "audience"]
+        for metric in Metric
     ])
     def test_metric(self, metric):
         user = self.create_test_user()
@@ -283,7 +285,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric=metric)
+            response = self._request(account.account_creation.id, metric=metric.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
@@ -453,6 +455,95 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         summary_row = sheet[SUMMARY_ROW_INDEX]
         self.assertIsNone(summary_row[date_column].value)
 
+    def test_filters_header_metric(self):
+        user = self.create_test_user()
+        test_metric = Metric.AD_GROUP
+        test_metric_repr = METRIC_REPRESENTATION[test_metric]
+        test_metric_value = test_metric.value
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, metric=test_metric_value)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertIn("Group By: {}".format(test_metric_repr), header)
+
+    def test_filters_header_date(self):
+        user = self.create_test_user()
+        test_start_date = "2018-01-01"
+        test_end_date = "2018-01-02"
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, start_date=test_start_date, end_date=test_end_date)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertIn("Date: {} - {}".format(test_start_date, test_end_date), header)
+
+    def test_filters_header_campaigns(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaigns = [
+            Campaign.objects.create(id=next(int_iterator), name="test name 1", account=account),
+            Campaign.objects.create(id=next(int_iterator), name="test name 2", account=account),
+        ]
+        campaign_ids = [campaign.id for campaign in campaigns]
+        campaign_names = [campaign.name for campaign in campaigns]
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, campaigns=campaign_ids)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertIn("Campaigns: {}".format(", ".join(campaign_names)), header)
+
+    def test_filters_header_ad_groups(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_groups = [
+            AdGroup.objects.create(id=next(int_iterator), name="test name 1", campaign=campaign),
+            AdGroup.objects.create(id=next(int_iterator), name="test name 2", campaign=campaign),
+        ]
+        ad_group_ids = [ad_group.id for ad_group in ad_groups]
+        ad_group_names = [ad_group.name for ad_group in ad_groups]
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, ad_groups=ad_group_ids)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertIn("Ad Groups: {}".format(", ".join(ad_group_names)), header)
+
+    def test_filters_no_filters(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        expected_header = "\n".join([
+            "Date: None - None",
+            "Group By: None",
+            "Campaigns: ",
+            "Ad Groups: ",
+        ])
+        account = Account.objects.create(id=next(int_iterator), name="")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertEqual(header, expected_header)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
@@ -461,8 +552,9 @@ def get_sheet_from_response(response):
     return book.worksheets[single_sheet_index]
 
 
-HEADER_ROW_INDEX = 1
-SUMMARY_ROW_INDEX = 2
+CUSTOM_HEADER_ROW_INDEX = 1
+HEADER_ROW_INDEX = 2
+SUMMARY_ROW_INDEX = 3
 
 
 def is_summary_empty(sheet):
@@ -471,9 +563,13 @@ def is_summary_empty(sheet):
 
 
 def is_empty_report(sheet):
-    min_rows_count = 2
+    min_rows_count = SUMMARY_ROW_INDEX
     return sheet.max_row <= min_rows_count and is_summary_empty(sheet)
 
 
 def get_column_index(headers, column):
     return headers.index(COLUMN_NAME[column])
+
+
+def get_custom_header(sheet):
+    return sheet[CUSTOM_HEADER_ROW_INDEX][0].value
