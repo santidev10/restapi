@@ -29,14 +29,18 @@ from segment.models import SegmentKeyword
 from segment.models import SegmentVideo
 # pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector, \
-    SingleDatabaseApiConnectorException
-from userprofile.models import UserChannel, get_default_accesses
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.constants import UserTypeCreator
+from userprofile.models import UserChannel
+from userprofile.models import get_default_accesses
 from userprofile.permissions import PermissionGroupNames
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete, \
-    or_permission_classes, OnlyAdminUserOrSubscriber, user_has_permission
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+from utils.permissions import OnlyAdminUserOrSubscriber
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 # pylint: enable=import-error
@@ -474,6 +478,7 @@ class ChannelAuthenticationApiView(APIView):
             # Create new user
             user_data["email"] = email
             user_data["google_account_id"] = google_id
+            user_data["user_type"] = UserTypeCreator.CREATOR
             user_data["password"] = hashlib.sha1(str(
                 timezone.now().timestamp()).encode()).hexdigest()
             user = get_user_model().objects.create(**user_data)

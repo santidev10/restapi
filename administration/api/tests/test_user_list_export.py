@@ -72,6 +72,7 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
             "User Type",
             "Annual Ad Spend",
             "Has Oauth youtube channel",
+            "Is subscribed",
         ])
 
     def test_users_count(self):
@@ -98,6 +99,22 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         user_row = get_data_rows(response)[0]
         last_name = get_value(user_row, UserExportColumn.LAST_NAME)
         self.assertEqual(last_name, expected_last_name)
+
+    def test_is_subscribed_true(self):
+        expected_value = str(True)
+        self.create_admin_user(is_subscribed=True)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        last_name = get_value(user_row, UserExportColumn.IS_SUBSCRIBED)
+        self.assertEqual(last_name, expected_value)
+
+    def test_is_subscribed_false(self):
+        expected_value = str(False)
+        self.create_admin_user(is_subscribed=False)
+        response = self._request()
+        user_row = get_data_rows(response)[0]
+        last_name = get_value(user_row, UserExportColumn.IS_SUBSCRIBED)
+        self.assertEqual(last_name, expected_value)
 
     def test_has_oauth_youtube_channel_true(self):
         expected_value = str(True)

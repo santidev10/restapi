@@ -14,9 +14,13 @@ class UserSettingsKey:
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
 
 
-class UserType(ExtendedEnum):
+class UserTypeRegular(ExtendedEnum):
     AGENCY = "agency"
     BRAND = "brand"
+
+
+class UserTypeCreator(ExtendedEnum):
+    CREATOR = "creator"
 
 
 class UserAnnualAdSpend(ExtendedEnum):
