@@ -74,8 +74,3 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         welcome_emails = [m for m in mail.outbox
                           if m.subject.startswith("Welcome")]
         self.assertEqual(len(welcome_emails), 1)
-
-    @patch("singledb.connector.requests")
-    def test_add_permissions(self, request_mock):
-        response = self.client.post(self.url, dict(), )
-        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
