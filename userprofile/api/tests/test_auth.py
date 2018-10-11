@@ -31,7 +31,6 @@ class AuthAPITestCase(AwReportingAPITestCase):
             set(response.data),
             {
                 "access",
-                "annual_ad_spend",
                 "aw_settings",
                 "can_access_media_buying",
                 "company",
@@ -44,7 +43,6 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "historical_aw_account",
                 "id", "profile_image_url",
                 "is_staff",
-                "is_subscribed",
                 "last_login",
                 "last_name",
                 "logo_url",
