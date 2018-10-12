@@ -12,7 +12,6 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
-from aw_creation.api.views.dashboard.performance_export import METRIC_MAP
 from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTATION
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
@@ -292,7 +291,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(is_empty_report(sheet))
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(len(data_rows), 1)
-        self.assertEqual(data_rows[0][0].value, METRIC_MAP[metric])
+        self.assertEqual(data_rows[0][0].value, METRIC_REPRESENTATION[metric])
 
     def test_bad_request_on_wrong_metric(self):
         user = self.create_test_user()

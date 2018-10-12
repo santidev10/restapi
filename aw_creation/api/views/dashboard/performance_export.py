@@ -175,7 +175,9 @@ class DashboardPerformanceExportApiView(APIView):
             )
             items = chart.get_items()
             for data in items["items"]:
-                yield {**{"tab": dimension}, **data}
+                metric = DIMENSION_MAP[dimension]
+                tab_name = METRIC_REPRESENTATION[metric]
+                yield {**{"tab": tab_name}, **data}
 
     def _get_tabs(self):
         metric = self._get_metric()
@@ -233,19 +235,20 @@ METRIC_MAP = {
     Metric.AD_GROUP: "ad",
     Metric.AUDIENCE: "remarketing"
 }
+DIMENSION_MAP = {value: key for key, value in METRIC_MAP.items()}
 METRIC_REPRESENTATION = {
-    Metric.GENDER: "Genders",
-    Metric.AGE: "Ages",
-    Metric.LOCATION: "Locations",
-    Metric.DEVICE: "Devices",
-    Metric.TOPIC: "Topics",
-    Metric.INTEREST: "Interests",
-    Metric.KEYWORD: "Keywords",
-    Metric.CHANNEL: "Channels",
-    Metric.VIDEO: "Videos",
-    Metric.CREATIVE: "Creatives",
-    Metric.AD_GROUP: "Ad Groups",
-    Metric.AUDIENCE: "Audiences"
+    Metric.GENDER: "Gender",
+    Metric.AGE: "Age",
+    Metric.LOCATION: "Location",
+    Metric.DEVICE: "Device",
+    Metric.TOPIC: "Topic",
+    Metric.INTEREST: "Interest",
+    Metric.KEYWORD: "Keyword",
+    Metric.CHANNEL: "Channel",
+    Metric.VIDEO: "Video",
+    Metric.CREATIVE: "Creative",
+    Metric.AD_GROUP: "Ad Group",
+    Metric.AUDIENCE: "Audience"
 }
 ALLOWED_METRICS = tuple(Metric.values()) + (None,)
 ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)
