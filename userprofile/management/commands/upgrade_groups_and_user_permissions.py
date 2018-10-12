@@ -18,6 +18,8 @@ class Command(BaseCommand):
         Group.objects.filter(name="Dashboard").update(name=PermissionGroupNames.MANAGED_SERVICE)
         Group.objects.filter(name="Segments").update(name=PermissionGroupNames.MEDIA_PLANNING)
         Group.objects.filter(name="Media buying").update(name=PermissionGroupNames.MEDIA_BUYING)
+        Group.objects.filter(name="Segments - pre-baked segments").update(
+            name=PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES)
         logger.info("Done")
         logger.info("Start syncing groups")
         Permissions.sync_groups()
