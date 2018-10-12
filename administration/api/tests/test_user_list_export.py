@@ -184,18 +184,17 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
 
     def test_order_by_email(self):
         user = self.create_admin_user()
-        UserProfile.objects.create(email="test+1@mail.com")
-        UserProfile.objects.create(email="test+4@mail.com")
-        UserProfile.objects.create(email="test+3@mail.com")
+        UserProfile.objects.create(email="test+1@mail.com", last_name="test+1")
+        UserProfile.objects.create(email="test+4@mail.com", last_name="test+4")
+        UserProfile.objects.create(email="test+3@mail.com", last_name="test+3")
         users = UserProfile.objects.all()
         sorted_users = sorted(users, key=lambda u: u.email)
         self.assertNotEqual(user, sorted_users)
-
         response = self._request()
         rows = get_data_rows(response)
-        user_emails = [get_value(row, UserExportColumn.EMAIL) for row in rows]
-        expected_emails = [user.email for user in sorted_users]
-        self.assertEqual(user_emails, expected_emails)
+        user_last_names = [get_value(row, UserExportColumn.LAST_NAME) for row in rows]
+        expected_last_names = [user.last_name for user in sorted_users]
+        self.assertEqual(user_last_names, expected_last_names)
 
 
 def get_data_from_csv_response(response):
