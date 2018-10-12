@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.test import override_settings
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -16,7 +17,7 @@ from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTA
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
+from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME, TOO_MUCH_DATA_MESSAGE
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -543,6 +544,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertEqual(header, expected_header)
+
+    def test_too_much_data(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        test_data_limit = 1
+        test_limit = SUMMARY_ROW_INDEX + test_data_limit
+        account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             override_settings(DASHBOARD_PERFORMANCE_REPORT_LIMIT=test_limit):
+            response = self._request(account.account_creation.id)
+        sheet = get_sheet_from_response(response)
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(len(data_rows), test_data_limit + 1)
+        self.assertEqual(data_rows[test_data_limit][0].value, TOO_MUCH_DATA_MESSAGE)
 
 
 def get_sheet_from_response(response):
