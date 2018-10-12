@@ -4,8 +4,12 @@ from functools import partial
 from io import BytesIO
 
 import xlsxwriter
+from django.conf import settings
 
 from utils.lang import ExtendedEnum
+
+TOO_MUCH_DATA_MESSAGE = "The list is too long to be shown entirely. " \
+                        "Try to change the time range or particular metrics."
 
 
 class DashboardPerformanceReportColumn(ExtendedEnum):
@@ -142,9 +146,18 @@ class DashboardPerformanceReport:
 
     def _write_rows(self, worksheet, data, start_row, start_column=0,
                     cell_formats=None):
-        for index, row in enumerate(data):
-            self._write_row(worksheet, row, start_row + index, start_column,
-                            cell_formats)
+
+        rows_limit = settings.DASHBOARD_PERFORMANCE_REPORT_LIMIT
+        current_row_index = start_row
+        for row, index in zip(data, range(start_row, rows_limit)):
+            current_row_index = index
+            self._write_row(worksheet, row, current_row_index, start_column, cell_formats)
+
+        if current_row_index == rows_limit - 1:
+            current_row_index += 1
+            worksheet.write(current_row_index, 0, TOO_MUCH_DATA_MESSAGE)
+
+        return current_row_index
 
     def _write_row(self, worksheet, row, start_row, start_column=0,
                    cell_formats=None):
