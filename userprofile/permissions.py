@@ -89,7 +89,7 @@ class PermissionGroupNames:
     HIGHLIGHTS = "Highlights"
     RESEARCH = "Research"
     MEDIA_PLANNING = "Media Planning"
-    SEGMENTS_PRE_BAKES = "Segments - pre-baked segments"
+    MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
     MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
@@ -121,7 +121,7 @@ class Permissions:
             "segment_channel_private",
             "segment_keyword_private",
         )),
-        (PermissionGroupNames.SEGMENTS_PRE_BAKES, (
+        (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "segment_video_all",
             "segment_channel_all",
             "segment_keyword_all",
