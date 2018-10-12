@@ -56,7 +56,7 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
         super(UserListCSVExport, self).__init__(CSV_COLUMN_ORDER, self.users_list(), REPORT_HEADERS)
 
     def users_list(self):
-        for user in UserProfile.objects.all().order_by("email"):
+        for user in UserProfile.objects.all().order_by("last_name"):
             yield {
                 UserExportColumn.FIRST_NAME: user.first_name,
                 UserExportColumn.LAST_NAME: user.last_name,
