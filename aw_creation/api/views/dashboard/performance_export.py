@@ -12,18 +12,22 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
-from aw_reporting.dashboard_charts import DeliveryChart, DateSegment
+from aw_reporting.dashboard_charts import DateSegment
+from aw_reporting.dashboard_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import DashboardPerformanceReport
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
+from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import CLICKS_STATS
+from aw_reporting.models import Campaign
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
+from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
 
@@ -64,10 +68,34 @@ class DashboardPerformanceExportApiView(APIView):
         user = self.request.user
 
         xls_report = DashboardPerformanceReport(
+            custom_header=self._get_custom_header(),
             columns_to_hide=self._get_columns_to_hide(user),
             date_format_str=self._get_date_segment_format()
         )
         return xlsx_response(title, xls_report.generate(data_generator))
+
+    def _get_custom_header(self):
+        filters = self.get_filters()
+        campaign_names = Campaign.objects \
+            .filter(id__in=filters.get("campaigns") or []) \
+            .values_list("name", flat=True)
+        ad_group_names = AdGroup.objects \
+            .filter(id__in=filters.get("ad_groups") or []) \
+            .values_list("name", flat=True)
+        header_rows = [
+            "Date: {start_date} - {end_date}",
+            "Group By: {metric}",
+            "Campaigns: {campaigns}",
+            "Ad Groups: {ad_groups}",
+        ]
+        header_date = dict(
+            metric=METRIC_REPRESENTATION.get(self._get_metric()),
+            start_date=filters.get("start_date"),
+            end_date=filters.get("end_date"),
+            campaigns=", ".join(campaign_names),
+            ad_groups=", ".join(ad_group_names),
+        )
+        return "\n".join(header_rows).format(**header_date)
 
     def _get_columns_to_hide(self, user):
         columns_to_hide = []
@@ -156,7 +184,7 @@ class DashboardPerformanceExportApiView(APIView):
         return [METRIC_MAP[metric]]
 
     def _validate_request_payload(self):
-        metric = self._get_metric()
+        metric = self._get_metric_parameter()
         if metric not in ALLOWED_METRICS:
             raise ValueError("Wrong metric")
         date_segment = self._get_date_segment()
@@ -164,27 +192,62 @@ class DashboardPerformanceExportApiView(APIView):
             raise ValueError("Wrong date_segment")
 
     def _get_metric(self):
+        metric_parameter = self._get_metric_parameter()
+        return Metric(metric_parameter) \
+            if metric_parameter \
+            else None
+
+    def _get_metric_parameter(self):
         return self.request.data.get("metric")
 
     def _get_date_segment(self):
         return self.request.data.get("date_segment")
 
 
+class Metric(ExtendedEnum):
+    GENDER = "gender"
+    AGE = "age"
+    LOCATION = "location"
+    DEVICE = "device"
+    TOPIC = "topic"
+    INTEREST = "interest"
+    KEYWORD = "keyword"
+    CHANNEL = "channel"
+    VIDEO = "video"
+    CREATIVE = "creative"
+    AD_GROUP = "ad_group"
+    AUDIENCE = "audience"
+
+
 METRIC_MAP = {
-    "gender": "gender",
-    "age": "age",
-    "location": "location",
-    "device": "device",
-    "topic": "topic",
-    "interest": "interest",
-    "keyword": "keyword",
-    "channel": "channel",
-    "video": "video",
-    "creative": "creative",
-    "ad_group": "ad",
-    "audience": "remarketing"
+    Metric.GENDER: "gender",
+    Metric.AGE: "age",
+    Metric.LOCATION: "location",
+    Metric.DEVICE: "device",
+    Metric.TOPIC: "topic",
+    Metric.INTEREST: "interest",
+    Metric.KEYWORD: "keyword",
+    Metric.CHANNEL: "channel",
+    Metric.VIDEO: "video",
+    Metric.CREATIVE: "creative",
+    Metric.AD_GROUP: "ad",
+    Metric.AUDIENCE: "remarketing"
 }
-ALLOWED_METRICS = tuple(METRIC_MAP.keys()) + (None,)
+METRIC_REPRESENTATION = {
+    Metric.GENDER: "Genders",
+    Metric.AGE: "Ages",
+    Metric.LOCATION: "Locations",
+    Metric.DEVICE: "Devices",
+    Metric.TOPIC: "Topics",
+    Metric.INTEREST: "Interests",
+    Metric.KEYWORD: "Keywords",
+    Metric.CHANNEL: "Channels",
+    Metric.VIDEO: "Videos",
+    Metric.CREATIVE: "Creatives",
+    Metric.AD_GROUP: "Ad Groups",
+    Metric.AUDIENCE: "Audiences"
+}
+ALLOWED_METRICS = tuple(Metric.values()) + (None,)
 ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)
 DATE_SEGMENT_STRFTIME_FORMAT = {
     DateSegment.DAY.value: "%m/%d/%Y",

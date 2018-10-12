@@ -60,6 +60,7 @@ COLUMN_WIDTH = {
     DashboardPerformanceReportColumn.NAME: 40,
 }
 DEFAULT_WIDTH = 10
+FILTER_ROW_HEIGHT = 50
 
 ALL_COLUMNS = (
     DashboardPerformanceReportColumn.TAB,
@@ -88,7 +89,8 @@ ALL_COLUMNS = (
 
 class DashboardPerformanceReport:
 
-    def __init__(self, columns_to_hide=None, date_format_str=""):
+    def __init__(self, custom_header, columns_to_hide=None, date_format_str=""):
+        self.custom_header = custom_header
         self.columns = []
         self._exclude_columns(columns_to_hide or [])
         self.date_format_str = date_format_str
@@ -105,7 +107,8 @@ class DashboardPerformanceReport:
             width = COLUMN_WIDTH.get(column, DEFAULT_WIDTH)
             worksheet.set_column(index, index, width)
 
-        self._put_header(worksheet)
+        current_row = self._put_custom_headers(worksheet, 0)
+        current_row = self._put_table_header(worksheet, current_row)
 
         percent_format = workbook.add_format({
             "num_format": "0.00%",
@@ -120,15 +123,22 @@ class DashboardPerformanceReport:
             DashboardPerformanceReportColumn.VIDEO_QUARTILE_100: dict(format=percent_format, fn=div_by_100),
         }
 
-        self._write_rows(worksheet, data_generator(), 1, 0, cell_formats)
+        self._write_rows(worksheet, data_generator(), current_row, 0, cell_formats)
 
         workbook.close()
 
         return output.getvalue()
 
-    def _put_header(self, worksheet):
+    def _put_custom_headers(self, worksheet, start_from):
+        worksheet.set_row(start_from, FILTER_ROW_HEIGHT)
+        worksheet.write(start_from, 1, "Filters:")
+        worksheet.write(start_from, 2, self.custom_header)
+        return start_from + 1
+
+    def _put_table_header(self, worksheet, start_from):
         header_row = {column.value: value for column, value in COLUMN_NAME.items()}
-        self._write_row(worksheet, header_row, 0, 0)
+        self._write_row(worksheet, header_row, start_from, 0)
+        return start_from + 1
 
     def _write_rows(self, worksheet, data, start_row, start_column=0,
                     cell_formats=None):
