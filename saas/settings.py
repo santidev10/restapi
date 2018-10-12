@@ -369,7 +369,7 @@ AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/
 
 MAX_AVATAR_SIZE_MB = 10.
 
-DASHBOARD_PERFORMANCE_REPORT_LIMIT = 65000
+DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
 
 try:
     from .local_settings import *
