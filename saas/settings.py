@@ -284,9 +284,9 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    #    "yuriy.matso@channelfactory.com",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
