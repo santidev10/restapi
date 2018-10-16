@@ -78,6 +78,9 @@ class BaseDemo:
     def __getitem__(self, name):
         return getattr(self, name)
 
+    def get(self, attr):
+        return self[attr]
+
     video_criteria = dict(
         is_safe=True,
         lang_code='en',
@@ -634,6 +637,26 @@ class DemoAdGroup(BaseDemo):
             ),
         )
         return data
+
+    @property
+    def clicks_call_to_action_overlay(self):
+        return 1
+
+    @property
+    def clicks_website(self):
+        return 2
+
+    @property
+    def clicks_app_store(self):
+        return 3
+
+    @property
+    def clicks_cards(self):
+        return 4
+
+    @property
+    def clicks_end_cap(self):
+        return 5
 
 
 class DemoCampaign(BaseDemo):
