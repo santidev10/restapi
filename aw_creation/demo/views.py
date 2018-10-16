@@ -17,7 +17,8 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
+from aw_reporting.demo.excel_reports import DemoAnalyticsWeeklyReport
+from aw_reporting.demo.excel_reports import DemoDashboardWeeklyReport
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import CONVERSIONS
@@ -692,7 +693,7 @@ class AnalyticsPerformanceExportWeeklyReportApiView:
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                report = DemoAnalyzeWeeklyReport(account)
+                report = DemoAnalyticsWeeklyReport(account)
                 hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)
@@ -721,7 +722,7 @@ class DashboardPerformanceExportWeeklyReportApiView:
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                report = DemoAnalyzeWeeklyReport(account)
+                report = DemoDashboardWeeklyReport(account)
                 hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)
