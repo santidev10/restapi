@@ -149,16 +149,18 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(email, user.email)
 
     def test_date_joined(self):
-        date_joined = "2018-10-01"
-        self.create_admin_user(date_joined=date_joined)
+        test_date_join = datetime(2018, 10, 1, tzinfo=pytz.utc)
+        date_joined = str(test_date_join.date())
+        self.create_admin_user(date_joined=test_date_join)
         response = self._request()
         user_row = get_data_rows(response)[0]
         registered_date = get_value(user_row, UserExportColumn.REGISTERED_DATE)
         self.assertEqual(registered_date, date_joined)
 
     def test_last_login(self):
-        expected_last_login = "2018-10-01"
-        self.create_admin_user(last_login=expected_last_login)
+        test_last_login = datetime(2018, 10, 1, tzinfo=pytz.utc)
+        expected_last_login = str(test_last_login.date())
+        self.create_admin_user(last_login=test_last_login)
         response = self._request()
         user_row = get_data_rows(response)[0]
         last_login = get_value(user_row, UserExportColumn.LAST_LOGIN_DATE)
