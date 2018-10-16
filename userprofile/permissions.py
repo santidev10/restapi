@@ -6,9 +6,9 @@ from django.db import models
 
 class GlobalPermissionManager(models.Manager):
     def get_queryset(self):
-        queryset = super(GlobalPermissionManager, self)\
-                   .get_queryset()\
-                   .filter(content_type__model="userprofile")
+        queryset = super(GlobalPermissionManager, self) \
+            .get_queryset() \
+            .filter(content_type__model="userprofile")
         return queryset
 
 
@@ -56,6 +56,9 @@ class PermissionHandler:
         except Group.DoesNotExist:
             pass
 
+    def has_custom_user_group(self, group_name):
+        return self.groups.filter(name=group_name).exists()
+
     def remove_custom_user_group(self, group_name):
         try:
             group = Group.objects.get(name=group_name)
@@ -86,7 +89,7 @@ class PermissionGroupNames:
     HIGHLIGHTS = "Highlights"
     RESEARCH = "Research"
     MEDIA_PLANNING = "Media Planning"
-    SEGMENTS_PRE_BAKES = "Segments - pre-baked segments"
+    MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
     MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
@@ -118,7 +121,7 @@ class Permissions:
             "segment_channel_private",
             "segment_keyword_private",
         )),
-        (PermissionGroupNames.SEGMENTS_PRE_BAKES, (
+        (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "segment_video_all",
             "segment_channel_all",
             "segment_keyword_all",

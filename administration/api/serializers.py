@@ -128,6 +128,9 @@ class UserSerializer(ModelSerializer):
             "access",
             "google_account_id",
             "can_access_media_buying",
+            "annual_ad_spend",
+            "user_type",
+            "is_subscribed",
         )
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):

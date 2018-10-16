@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.demo.excel_reports import DemoAnalyzeWeeklyReport
+from aw_reporting.demo.excel_reports import DemoAnalyticsWeeklyReport
 from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from utils.views import xlsx_response
 
@@ -169,7 +169,7 @@ class AnalyzeExportWeeklyReportApiView:
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                report = DemoAnalyzeWeeklyReport(account)
+                report = DemoAnalyticsWeeklyReport(account)
                 hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)

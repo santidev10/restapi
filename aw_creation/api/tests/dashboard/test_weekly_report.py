@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.excel_reports.analytics_performance_weekly_report import FOOTER_ANNOTATION
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
@@ -377,6 +378,25 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
             opportunity.impressions,
         )
         self.assertIn(expected_units, header_value)
+
+    @generic_test([
+        (section, (section,), dict())
+        for section in SECTIONS_WITH_CTA
+    ])
+    def test_demo_account_cta(self, section):
+        shared_columns = COLUMN_SET_BY_SECTION_NAME.get(section)
+        self.create_test_user()
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, section)
+        title_values = tuple(cell.value for cell in sheet[row_index][1:])
+        self.assertEqual(title_values, (section,) + shared_columns)
 
 
 def get_sheet_from_response(response):

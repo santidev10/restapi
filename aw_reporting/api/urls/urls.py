@@ -52,7 +52,7 @@ urlpatterns = [
         name=Name.AWAccounts.LIST),
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
-        name=Name.AWAccounts.ACCOUNT),
+        name=Name.AWAccounts.CONNECTION_LIST),
     url(r'^connect_aw_account/(?P<email>[^/]+)/$',
         views.ConnectAWAccountApiView.as_view(),
         name=Name.AWAccounts.CONNECTION),

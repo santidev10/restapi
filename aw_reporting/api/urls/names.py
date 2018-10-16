@@ -34,7 +34,7 @@ class Name:
 
     class AWAccounts:
         LIST = "connect_aw_account_list"
-        ACCOUNT = "connect_aw_account"
+        CONNECTION_LIST = "connect_aw_account"
         CONNECTION = "aw_account_connection"
 
     class WebHook:

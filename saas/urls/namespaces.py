@@ -5,4 +5,4 @@ class Namespace:
     SEGMENT = "segment_api_urls"
     USER_PROFILE = "userprofile_api_urls"
     VIDEO = "video_api_urls"
-#
+    CHANNEL = "channel_api_urls"

@@ -9,36 +9,48 @@ from utils.datetime import now_in_default_tz
 
 
 class UserExportColumn:
-    USERNAME = "username"
+    FIRST_NAME = "first_name"
+    LAST_NAME = "last_name"
     COMPANY = "company"
+    PHONE = "phone_number"
     EMAIL = "email"
     REGISTERED_DATE = "registered_date"
     LAST_LOGIN_DATE = "last_login_date"
     AW_ACCOUNTS = "aw_accounts"
     USER_TYPE = "user_type"
     ANNUAL_AD_SPEND = "annual_ad_spend"
+    HAS_OAUTH_YOUTUBE_CHANNEL = "has_oauth_youtube_channel"
+    IS_SUBSCRIBED = "is_subscribed"
 
 
 CSV_COLUMN_ORDER = (
-    UserExportColumn.USERNAME,
+    UserExportColumn.FIRST_NAME,
+    UserExportColumn.LAST_NAME,
     UserExportColumn.COMPANY,
+    UserExportColumn.PHONE,
     UserExportColumn.EMAIL,
     UserExportColumn.REGISTERED_DATE,
     UserExportColumn.LAST_LOGIN_DATE,
     UserExportColumn.AW_ACCOUNTS,
     UserExportColumn.USER_TYPE,
     UserExportColumn.ANNUAL_AD_SPEND,
+    UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL,
+    UserExportColumn.IS_SUBSCRIBED,
 )
 
 REPORT_HEADERS = {
-    UserExportColumn.USERNAME: "Username",
+    UserExportColumn.FIRST_NAME: "First name",
+    UserExportColumn.LAST_NAME: "Last name",
     UserExportColumn.COMPANY: "Company",
+    UserExportColumn.PHONE: "Phone",
     UserExportColumn.EMAIL: "Email",
     UserExportColumn.REGISTERED_DATE: "Registered date",
     UserExportColumn.LAST_LOGIN_DATE: "Last login date",
     UserExportColumn.AW_ACCOUNTS: "AW accounts",
     UserExportColumn.USER_TYPE: "User Type",
     UserExportColumn.ANNUAL_AD_SPEND: "Annual Ad Spend",
+    UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: "Has Oauth youtube channel",
+    UserExportColumn.IS_SUBSCRIBED: "Is subscribed",
 }
 
 
@@ -47,16 +59,20 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
         super(UserListCSVExport, self).__init__(CSV_COLUMN_ORDER, self.users_list(), REPORT_HEADERS)
 
     def users_list(self):
-        for user in UserProfile.objects.all().order_by("email"):
+        for user in UserProfile.objects.all().order_by("last_name"):
             yield {
-                UserExportColumn.USERNAME: user.get_full_name(),
+                UserExportColumn.FIRST_NAME: user.first_name,
+                UserExportColumn.LAST_NAME: user.last_name,
                 UserExportColumn.COMPANY: user.company,
+                UserExportColumn.PHONE: user.phone_number,
                 UserExportColumn.EMAIL: user.email,
                 UserExportColumn.REGISTERED_DATE: user.date_joined.date() if user.date_joined else None,
                 UserExportColumn.LAST_LOGIN_DATE: user.last_login.date() if user.last_login else None,
                 UserExportColumn.USER_TYPE: user.user_type,
                 UserExportColumn.ANNUAL_AD_SPEND: user.annual_ad_spend,
                 UserExportColumn.AW_ACCOUNTS: ",".join(Account.user_mcc_objects(user).values_list("name", flat=True)),
+                UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: user.channels.exists(),
+                UserExportColumn.IS_SUBSCRIBED: user.is_subscribed
             }
 
     def get_filename(self):

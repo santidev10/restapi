@@ -13,7 +13,7 @@ from userprofile.api.views import UserProfileApiView
 from userprofile.api.views import UserProfileSharedListApiView
 
 urlpatterns = [
-    url(r'^users/$', UserCreateApiView.as_view(), name="user_create"),
+    url(r'^users/$', UserCreateApiView.as_view(), name=UserprofilePathName.CREATE_USER),
     url(r'^auth/$', UserAuthApiView.as_view(), name=UserprofilePathName.AUTH, ),
     url(r'^users/me/$', UserProfileApiView.as_view(), name=UserprofilePathName.USER_PROFILE),
     url(r'^users/me/avatar/$', UserAvatarApiView.as_view(), name=UserprofilePathName.AVATAR),

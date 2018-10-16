@@ -21,6 +21,7 @@ from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
+from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -245,7 +246,7 @@ class SegmentShareApiView(DynamicModelViewMixin, RetrieveUpdateDestroyAPIView):
                 )
                 self.send_email(html_content, subject, sender, to)
                 # provide access to segments for collaborator
-                user.add_custom_user_group('Segments')
+                user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING)
 
             except UserProfile.DoesNotExist:
                 to = email

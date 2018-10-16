@@ -38,7 +38,7 @@ urlpatterns = [
                              namespace='keyword_tool_urls')),
 
     # Channel api urls
-    url(r'^api/v1/', include(channel_api_urls, namespace='channel_api_urls')),
+    url(r'^api/v1/', include(channel_api_urls, namespace=Namespace.CHANNEL)),
 
     # Video api urls
     url(r'^api/v1/', include(video_api_urls, namespace=Namespace.VIDEO)),

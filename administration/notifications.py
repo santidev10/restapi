@@ -29,7 +29,10 @@ def send_new_registration_email(email_data):
            "User first_name: {first_name} \n" \
            "User last_name: {last_name} \n" \
            "User company: {company}\n" \
-           "User phone: {phone} \n\n".format(**email_data)
+           "User phone: {phone} \n"\
+           "Annual ad spend: {annual_ad_spend} \n"\
+           "User type: {user_type} \n"\
+           "Is subscribed: {is_subscribed} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
 

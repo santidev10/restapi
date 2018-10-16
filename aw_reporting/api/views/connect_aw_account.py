@@ -2,17 +2,21 @@ from django.db import transaction
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 from suds import WebFault
 
-from aw_creation.models import AccountCreation
-from aw_reporting.adwords_api import get_customers, load_web_app_settings
+from aw_reporting.adwords_api import get_customers
+from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer
-from aw_reporting.models import AWConnection, AWConnectionToUserRelation, \
-    Account, AWAccountPermission
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
 from aw_reporting.tasks import upload_initial_aw_data
 from aw_reporting.utils import get_google_access_token_info
+from userprofile.permissions import PermissionGroupNames
 
 
 class ConnectAWAccountApiView(APIView):
@@ -154,10 +158,13 @@ class ConnectAWAccountApiView(APIView):
                         data=dict(error=self.no_mcc_error)
                     )
                 with transaction.atomic():
+                    user = self.request.user
                     relation = AWConnectionToUserRelation.objects.create(
-                        user=self.request.user,
+                        user=user,
                         connection=connection,
                     )
+                    user.add_custom_user_group(PermissionGroupNames.SELF_SERVICE)
+                    user.add_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS)
 
                     for ac_data in mcc_accounts:
                         data = dict(
