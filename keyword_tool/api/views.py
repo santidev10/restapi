@@ -223,15 +223,6 @@ class BaseOptimizeQueryApiView(ListAPIView):
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 
 
-class ViralKeywordsApiView(BaseOptimizeQueryApiView):
-    def get_queryset(self):
-        viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
-        queryset = KeyWord.objects.filter(text__in=viral_list)
-        queryset = self.filter(queryset)
-        queryset = self.sort(queryset)
-        return queryset
-
-
 class ListParentApiView(APIView):
     pagination_class = KWPaginator
 
