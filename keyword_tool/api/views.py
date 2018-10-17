@@ -34,17 +34,6 @@ class PredefinedQueriesApiView(APIView):
         return Response(data=PREDEFINED_QUERIES)
 
 
-class KeywordCategoriesApiView(APIView):
-    permission_classes = tuple()
-
-    @staticmethod
-    def get(*_):
-        return Response(data=KeyWord.objects
-                        .filter(category__isnull=False)
-                        .distinct('category')
-                        .values_list('category', flat=True))
-
-
 class KWPaginator(CustomPageNumberPaginator):
     page_size = 20
 
