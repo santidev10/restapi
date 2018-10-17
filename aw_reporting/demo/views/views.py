@@ -10,39 +10,6 @@ from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from utils.views import xlsx_response
 
 
-class AnalyzeExportApiView:
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                filters = view.get_filters()
-                account = DemoAccount()
-                account.set_period_proportion(filters['start_date'],
-                                              filters['end_date'])
-                account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
-                )
-
-                def data_generator():
-                    data = account.details
-                    yield view.column_names
-                    yield ['Summary'] + [data.get(n)
-                                         for n in view.column_keys]
-                    for dimension in view.tabs:
-                        filters['dimension'] = dimension
-                        charts_obj = DemoChart(account, filters)
-                        items = charts_obj.chart_items
-                        for data in items['items']:
-                            yield [dimension.capitalize()] + \
-                                  [data[n] for n in view.column_keys]
-
-                return view.stream_response(account.name, data_generator)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
-        return method
-
-
 class AnalyzeExportWeeklyReportApiView:
     @staticmethod
     def post(original_method):
