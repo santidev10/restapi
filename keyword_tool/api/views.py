@@ -1,21 +1,16 @@
 import logging
 
 from django.contrib.auth.models import AnonymousUser
-from django.core.management import call_command
 from django.db.models import Count
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
-from rest_framework.response import Response
-from rest_framework.status import HTTP_202_ACCEPTED
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import optimize_keyword
 from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
 from keyword_tool.models import Query
-from keyword_tool.models import ViralKeywords
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
 
@@ -327,12 +322,3 @@ class ListParentApiView(APIView):
         if category:
             filters["category"] = category
         return queryset.filter(**filters)
-
-
-class ViralListBuildView(APIView):
-    def post(self, *args, **kwargs):
-        uc = dict(self.request.data).get('update_complete')
-        if uc:
-            call_command('generate_viral_keywords_list')
-            return Response(status=HTTP_202_ACCEPTED)
-        return Response(status=HTTP_400_BAD_REQUEST)

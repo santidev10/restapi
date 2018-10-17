@@ -264,8 +264,6 @@ CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
-KW_TOOL_KEY = "Qi3mxPnm"
-
 # landing page settings
 LANDING_SUBJECT = [
     "General",
