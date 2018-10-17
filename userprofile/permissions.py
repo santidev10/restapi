@@ -107,7 +107,6 @@ class Permissions:
         )),
         (PermissionGroupNames.RESEARCH, (
             "channel_list",
-            "channel_filter",
             "channel_details",
             "video_list",
             "video_filter",
@@ -174,7 +173,6 @@ class Permissions:
         "video_aw_performance",
         # channel section
         "channel_list",
-        "channel_filter",
         "channel_details",
         "channel_audience",
         "channel_aw_performance",
