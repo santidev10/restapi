@@ -10,7 +10,9 @@ from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
-from django.db.models.functions import TruncYear, ExtractWeek, TruncMonth
+from django.db.models.functions import ExtractWeek
+from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncYear
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
@@ -52,7 +54,9 @@ from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
-from utils.lang import flatten, ExtendedEnum
+from utils.db.functions import TruncQuarter
+from utils.lang import ExtendedEnum
+from utils.lang import flatten
 from utils.utils import get_all_class_constants
 
 logger = logging.getLogger(__name__)
@@ -107,6 +111,7 @@ class DateSegment(ExtendedEnum):
     DAY = "day"
     WEEK = "week"
     MONTH = "month"
+    QUARTER = "quarter"
     YEAR = "year"
 
 
@@ -636,16 +641,25 @@ class DeliveryChart:
 
         return queryset
 
+    def _get_date_segment(self):
+        try:
+            return DateSegment(self.params["date_segment"])
+        except ValueError:
+            return None
+
     def _get_date_segment_annotations(self):
-        date_segment = self.params["date_segment"]
-        if date_segment == DateSegment.DAY.value:
+        date_segment = self._get_date_segment()
+
+        if date_segment == DateSegment.DAY:
             return F("date")
-        if date_segment == DateSegment.WEEK.value:
+        if date_segment == DateSegment.WEEK:
             return ExtractWeek("date")
-        if date_segment == DateSegment.MONTH.value:
+        if date_segment == DateSegment.MONTH:
             return TruncMonth("date")
-        if date_segment == DateSegment.YEAR.value:
+        if date_segment == DateSegment.YEAR:
             return TruncYear("date")
+        if date_segment == DateSegment.QUARTER:
+            return TruncQuarter("date")
 
     def add_annotate(self, queryset):
         if not self.params["date"]:
@@ -742,7 +756,7 @@ class DeliveryChart:
     def get_top_by(self):
         if self.params["indicator"] == Indicator.COST:
             return "cost", True
-        if self.params["date_segment"] is not None:
+        if self._get_date_segment() is not None:
             return "date_segment", False
         return "impressions", True
 
@@ -775,8 +789,7 @@ class DeliveryChart:
         if date:
             group_by.append('date')
 
-        date_segment = self.params["date_segment"]
-        if date_segment:
+        if self._get_date_segment():
             group_by.append("date_segment")
 
         queryset = self.filter_queryset(queryset)

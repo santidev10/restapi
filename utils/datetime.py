@@ -1,4 +1,6 @@
-from datetime import datetime, date, time
+from datetime import date
+from datetime import datetime
+from datetime import time
 
 import pytz
 from django.conf import settings
@@ -121,3 +123,20 @@ def _date_to_year(d, year):
 
 
 TIMESTAMP_FORMAT = "%Y%m%d%H%M%S.%f"
+
+
+def get_quarter(dt: datetime):
+    return dt.month // 3 + 1
+
+
+_STRFTIME_EXTENSIONS = {
+    "Q": get_quarter
+}
+
+
+def strftime_extended(dt: datetime, strftime_format):
+    for template, fn in _STRFTIME_EXTENSIONS.items():
+        persented_template = "%{}".format(template)
+        if persented_template in strftime_format:
+            strftime_format = strftime_format.replace(persented_template, str(fn(dt)))
+    return dt.strftime(strftime_format)

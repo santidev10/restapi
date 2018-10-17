@@ -16,7 +16,8 @@ from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTA
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME, TOO_MUCH_DATA_MESSAGE
+from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
+from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -44,6 +45,7 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
+from utils.datetime import get_quarter
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
@@ -385,6 +387,69 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers[1], "Date")
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(data_rows[0][1].value, expected_date_label)
+
+    @generic_test([
+        ("Q{}".format(quarter_number), (quarter_number,), dict())
+        for quarter_number in range(1, 5)
+    ])
+    def test_date_segment_quarter(self, quarter_number):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        test_date_1 = datetime(2018, quarter_number * 3 - 1, 5, 6, 7, 8, 9)
+        expected_date_label = "{year} Q{quarter_number}".format(
+            quarter_number=quarter_number,
+            year=test_date_1.year,
+        )
+        self._create_stats(account, test_date_1)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+
+        self.assertEqual(headers[1], "Date")
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(data_rows[0][1].value, expected_date_label)
+
+    def test_date_segment_grouped_by_quarter(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(account=account)
+        ad_group = AdGroup.objects.create(campaign=campaign)
+        test_date_1 = datetime(2018, 5, 31, 6, 7, 8, 9)
+        test_date_2 = test_date_1 + timedelta(days=7)
+        self.assertNotEqual(test_date_1.day, test_date_2.day)
+        self.assertNotEqual(test_date_1.isocalendar()[1], test_date_2.isocalendar()[1])
+        self.assertNotEqual(test_date_1.month, test_date_2.month)
+        self.assertNotEqual(get_quarter(test_date_1), get_quarter(test_date_2))
+        impressions = (2, 3)
+        common = dict(
+            average_position=1,
+            ad_group=ad_group,
+        )
+        AdGroupStatistic.objects.create(date=test_date_1, impressions=impressions[0], **common)
+        AdGroupStatistic.objects.create(date=test_date_2, impressions=impressions[1], **common)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        impressions_column = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
+        data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
+        self.assertEqual(len(data_rows), 1)
+        self.assertEqual(data_rows[0][impressions_column].value, sum(impressions))
 
     def test_date_segment_year(self):
         user = self.create_test_user()
