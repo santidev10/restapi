@@ -6,20 +6,21 @@ from django.db.models import Count
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import ListAPIView, GenericAPIView
+from rest_framework.generics import GenericAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, \
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import optimize_keyword
-from keyword_tool.api.utils import get_keywords_aw_stats, \
-    get_keywords_aw_top_bottom_stats
-from keyword_tool.models import Query, ViralKeywords
+from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
+from keyword_tool.models import Query
+from keyword_tool.models import ViralKeywords
 from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.csv_export import CSVExport
 from .serializers import *
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class InterestsApiView(ListAPIView):
         if 'ids' in self.request.query_params:
             queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
         return queryset
+
 
 class PredefinedQueriesApiView(APIView):
     permission_classes = tuple()
@@ -272,33 +274,6 @@ class KeywordGetApiView(APIView):
         OptimizeQueryApiView.add_ad_words_data(request=self.request,
                                                items=[result, ])
         return Response(result)
-
-
-class KeywordsListApiView(OptimizeQueryApiView):
-    def get_queryset(self):
-        queryset = KeyWord.objects.all()
-        queryset = self.filter(queryset)
-        queryset = self.sort(queryset)
-        limit = self.request.query_params.get("limit")
-        if limit and limit.isdigit():
-            queryset = queryset[:int(limit)]
-        return queryset
-
-    def post(self, *args, **kwargs):
-        """
-        Keywords export procedure
-        """
-        data = self.serializer_class(self.get_queryset(), many=True).data
-        file_fields = [
-            "keyword_text",
-            "average_cpc",
-            "competition",
-            "search_volume"
-        ]
-        csv_generator = CSVExport(
-            fields=file_fields, data=data, file_title="keyword")
-        response = csv_generator.prepare_csv_file_response()
-        return response
 
 
 class ViralKeywordsApiView(OptimizeQueryApiView):
