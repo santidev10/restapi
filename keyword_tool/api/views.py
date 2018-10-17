@@ -6,7 +6,6 @@ from django.db.models import Count
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
@@ -146,9 +145,9 @@ class BaseOptimizeQueryApiView(ListAPIView):
                 text__in=query_params.get("ids").split(",")
             )
         if 'category' in query_params:
-                queryset = queryset.filter(
-                    category=query_params['category']
-                )
+            queryset = queryset.filter(
+                category=query_params['category']
+            )
         return queryset
 
     def get_queryset(self):
@@ -305,6 +304,7 @@ class ListParentApiView(APIView):
             if ascending == "1":
                 reverse = ""
             return reverse
+
         sort_by = self.request.query_params.get("sort_by")
         if sort_by not in allowed_sorts:
             return queryset
@@ -380,55 +380,6 @@ class SavedListsGetOrCreateApiView(ListParentApiView):
         update_kw_list_stats.delay(new_list, KeyWord)
         serializer = SavedListNameSerializer(new_list, request=request)
         return Response(status=HTTP_202_ACCEPTED, data=serializer.data)
-
-
-class SavedListApiView(ListParentApiView):
-    def get(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        try:
-            obj = KeywordsList.objects.get(pk=pk)
-        except KeywordsList.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        return Response(data=SavedListNameSerializer(obj, request=request).data)
-
-    def put(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        email = self.request.user.email
-        try:
-            obj = KeywordsList.objects.get(
-                pk=pk,
-                user_email=email,
-            )
-        except KeywordsList.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        else:
-            serializer = SavedListUpdateSerializer(
-                instance=obj,
-                data=request.data,
-                partial=True,
-                request=request
-            )
-            if not serializer.is_valid():
-                return Response(data=serializer.errors,
-                                status=HTTP_400_BAD_REQUEST)
-            obj = serializer.save()
-
-            return Response(data=SavedListNameSerializer(
-                obj, request=request).data,
-                            status=HTTP_202_ACCEPTED)
-
-    def delete(self, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        try:
-            obj = KeywordsList.objects.get(
-                pk=pk,
-            )
-        except KeywordsList.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        else:
-            res = obj.delete()
-            return Response(data=res[0],
-                            status=HTTP_202_ACCEPTED)
 
 
 class SavedListKeywordsApiView(BaseOptimizeQueryApiView, ListParentApiView):
@@ -511,40 +462,6 @@ class SavedListKeywordsApiView(BaseOptimizeQueryApiView, ListParentApiView):
             ).delete()
         update_kw_list_stats.delay(obj, KeyWord)
         return Response(status=HTTP_202_ACCEPTED, data=dict(count=count))
-
-
-class ListsDuplicateApiView(GenericAPIView):
-    def get_queryset(self):
-        if self.request.user.is_staff:
-            queryset = KeywordsList.objects.all()
-        else:
-            queryset = KeywordsList.objects.filter(
-                Q(user_email=self.request.user.email) |
-                ~Q(category="private"))
-        return queryset
-
-    def post(self, request, *args, **kwargs):
-        kw_list = self.get_object()
-        # pylint: disable=no-member
-        keywords = kw_list.keywords.through.objects.filter(
-            keywordslist_id=kw_list.id).values_list('keyword_id', flat=True)
-        new_list = KeywordsList.objects.create(
-            user_email=self.request.user.email,
-            name='{} (copy)'.format(kw_list.name),
-            category="private"
-        )
-        keywords_relation = KeywordsList.keywords.through
-        # pylint: enable=no-member
-        kw_relations = [keywords_relation(keyword_id=kw_id,
-                                          keywordslist_id=new_list.id)
-                        for kw_id in keywords]
-        keywords_relation.objects.bulk_create(kw_relations)
-
-        update_kw_list_stats.delay(new_list, KeyWord)
-
-        return Response(status=HTTP_202_ACCEPTED,
-                        data=SavedListNameSerializer(
-                            new_list, request=request).data)
 
 
 class ViralListBuildView(APIView):

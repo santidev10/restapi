@@ -1,11 +1,17 @@
-from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
-from keyword_tool.models import *
-from unittest.mock import patch
-from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.models import Campaign, AdGroup, KeywordStatistic
 from datetime import datetime
+from unittest.mock import patch
+
+from django.core.urlresolvers import reverse
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
+
+from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import KeywordStatistic
+from keyword_tool.models import *
 
 
 class KWToolSavedListTestCase(AwReportingAPITestCase):
@@ -110,75 +116,6 @@ class KWToolSavedListTestCase(AwReportingAPITestCase):
             self.assertEqual(response.data['name'], name)
             self.assertEqual(response.data['category'], category)
             self.assertEqual(patched_task.delay.call_count, 1)
-
-    def test_get_saved_list(self):
-        saved_list = KeywordsList.objects.create(
-            user_email=self.user.email,
-            name="My list",
-            category="private"
-        )
-        url = reverse(
-            "keyword_tool_urls:kw_tool_saved_list",
-            args=(saved_list.id,),
-        )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            set(response.data.keys()),
-            {
-                'id', 'name',
-                'category',
-                'average_cpc',
-                'is_editable',
-                'average_volume',
-                'num_keywords',
-                'top_keywords_data',
-                'competition',
-                'owner',
-                'created_at',
-                'is_owner',
-
-                'average_cpv',
-                'video_view_rate',
-                'ctr_v',
-            }
-        )
-
-    def test_update_saved_list(self):
-        saved_list = KeywordsList.objects.create(
-            user_email=self.user.email,
-            name="My list",
-            category="private"
-        )
-
-        url = reverse(
-            "keyword_tool_urls:kw_tool_saved_list",
-            args=(saved_list.id,),
-        )
-        another_user = get_user_model().objects.create(
-            email="donald.trump@mail.kz",
-        )
-        updates = dict(
-            name="New name"
-        )
-        response = self.client.put(url, updates)
-        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        self.assertEqual(response.data['name'], updates['name'])
-
-    def test_delete_saved_list(self):
-        saved_list = KeywordsList.objects.create(
-            user_email=self.user.email,
-            name="My list",
-            category="private"
-        )
-        url = reverse(
-            "keyword_tool_urls:kw_tool_saved_list",
-            args=(saved_list.id,),
-        )
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        self.assertRaises(KeywordsList.DoesNotExist,
-                          saved_list.refresh_from_db)
 
     def test_get_keywords_list(self):
         my_list = KeywordsList.objects.create(
