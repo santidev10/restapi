@@ -65,6 +65,7 @@ class DashboardPerformanceWeeklyReport:
         "Video played to: 50%",
         "Video played to: 75%",
         "Video played to: 100%",
+        "All Conversions",
     )
 
     _general_columns = (
@@ -77,6 +78,7 @@ class DashboardPerformanceWeeklyReport:
         "Video played to: 50%",
         "Video played to: 75%",
         "Video played to: 100%",
+        "All Conversions",
     )
 
     def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
@@ -95,6 +97,7 @@ class DashboardPerformanceWeeklyReport:
             div_by_100(row["video50rate"]),
             div_by_100(row["video75rate"]),
             div_by_100(row["video100rate"]),
+            row["all_conversions"],
         )
 
     def _extract_data_row_without_cta(self, row, default=None):
@@ -108,6 +111,7 @@ class DashboardPerformanceWeeklyReport:
             div_by_100(row["video50rate"]) or default,
             div_by_100(row["video75rate"]) or default,
             div_by_100(row["video100rate"]) or default,
+            row["all_conversions"],
         )
 
     def _set_format_options(self):
@@ -161,6 +165,13 @@ class DashboardPerformanceWeeklyReport:
             "border": True,
             "num_format": "0.00%",
         })
+        footer_last_column_text_format = self.workbook.add_format({
+            "bold": True,
+            "align": "center",
+            "bg_color": "#808080",
+            "border": True,
+            "num_format": "0.0",
+        })
         self.footer_format_with_click_types = {
             1: footer_text_format,
             2: footer_text_format,
@@ -177,6 +188,7 @@ class DashboardPerformanceWeeklyReport:
             13: footer_percent_format,
             14: footer_percent_format,
             15: footer_percent_format,
+            16: footer_last_column_text_format,
         }
         self.footer_format = {
             1: footer_text_format,
@@ -191,6 +203,7 @@ class DashboardPerformanceWeeklyReport:
             10: footer_percent_format,
             11: footer_text_format,
             12: footer_text_format,
+            13: footer_last_column_text_format,
         }
         # First column cell
         first_column_cell_options = {
@@ -226,6 +239,14 @@ class DashboardPerformanceWeeklyReport:
         last_columns_percentage_cell_format = self.workbook.add_format(
             last_columns_percentage_cell_options
         )
+        last_columns_cell_options = {
+            "border": True,
+            "align": "center",
+            "num_format": "0.0",
+        }
+        last_columns_cell_format = self.workbook.add_format(
+            last_columns_cell_options
+        )
 
         self.data_cell_options_with_click_types = {
             1: first_column_cell_format,
@@ -243,6 +264,7 @@ class DashboardPerformanceWeeklyReport:
             13: last_columns_percentage_cell_format,
             14: last_columns_percentage_cell_format,
             15: last_columns_percentage_cell_format,
+            16: last_columns_cell_format,
         }
         self.data_cell_options = {
             1: first_column_cell_format,
@@ -255,6 +277,7 @@ class DashboardPerformanceWeeklyReport:
             8: last_columns_percentage_cell_format,
             9: last_columns_percentage_cell_format,
             10: last_columns_percentage_cell_format,
+            11: last_columns_cell_format,
         }
 
     def _prepare_empty_document(self):
@@ -291,6 +314,7 @@ class DashboardPerformanceWeeklyReport:
             13: 25,
             14: 25,
             15: 25,
+            16: 25,
         }
         for key, value in columns_width.items():
             self.worksheet.set_column(key, key, value)
