@@ -1,2 +1,2 @@
-from .views import AnalyzeExportWeeklyReportApiView, TrackFiltersListApiView, \
+from .views import TrackFiltersListApiView, \
     GlobalTrendsFiltersApiView, TrackChartApiView, TrackAccountsDataApiView

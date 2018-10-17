@@ -1,6 +1,5 @@
 from .visible_accounts_api_view import VisibleAccountsApiView
 from .visible_accounts_api_view import UserAWSettingsApiView
-from .analyze_export_weekly_report import AnalyzeExportWeeklyReportApiView
 from .benchmark_filters_list import BenchmarkFiltersListApiView
 from .connect_aw_account import ConnectAWAccountApiView
 from .connect_aw_account_list import ConnectAWAccountListApiView

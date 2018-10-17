@@ -1,42 +1,8 @@
-from datetime import datetime
-
-from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.demo.excel_reports import DemoAnalyticsWeeklyReport
-from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
-from utils.views import xlsx_response
-
-
-class AnalyzeExportWeeklyReportApiView:
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                filters = view.get_filters()
-                account = DemoAccount()
-                account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
-                )
-                report = DemoAnalyticsWeeklyReport(account)
-                hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
-                    .get(request.user.email.lower(), {}) \
-                    .get("hide_brand_name", False)
-                report.hide_logo = hide_brand_name
-                brand_name = "" if hide_brand_name else "Channel Factory"
-                title = " ".join([f for f in [
-                    brand_name,
-                    account.name,
-                    "Weekly Report",
-                    datetime.now().date().strftime("%m.%d.%y")
-                ] if f])
-                return xlsx_response(title, report.get_content())
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
-        return method
+from aw_reporting.demo.models import DemoAccount
 
 
 def get_demo_account_data():

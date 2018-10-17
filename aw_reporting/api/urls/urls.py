@@ -4,10 +4,6 @@ from aw_reporting.api import views
 from aw_reporting.api.urls.names import Name
 
 urlpatterns = [
-    # analyze
-    url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
-        views.AnalyzeExportWeeklyReportApiView.as_view(),
-        name="analyze_export_weekly_report"),
 
     # Admin
     url(r'^visible_accounts/$',
