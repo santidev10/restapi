@@ -223,25 +223,6 @@ class AccountConnectionAPITestCase(AwReportingAPITestCase):
         self.assertRaises(AWConnectionToUserRelation.DoesNotExist,
                           connection_to_user.refresh_from_db)
 
-    def test_does_not_remove_user_through_historical_account_relation(self):
-        connection_1 = AWConnection.objects.create(
-            email="you@mail.kz",
-            refresh_token="",
-        )
-        user_connection = AWConnectionToUserRelation.objects.create(
-            connection=connection_1,
-            user=self.user,
-        )
-        self.user.historical_aw_account = user_connection
-        self.user.save()
-
-        url = self._get_url(connection_1.email)
-        response = self.client.delete(url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        user_exists = get_user_model().objects.filter(id=self.user.id).exists()
-        self.assertTrue(user_exists)
-
     def test_leaves_account_creation_on_unlink(self):
         user = self.user
         manager = Account.objects.create(id=next(int_iterator))

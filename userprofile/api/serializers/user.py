@@ -40,7 +40,6 @@ class UserSerializer(ModelSerializer):
             "google_account_id",
             "has_aw_accounts",
             "has_disapproved_ad",
-            "historical_aw_account",
             "id",
             "is_staff",
             "last_login",
