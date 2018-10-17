@@ -10,22 +10,6 @@ from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from utils.views import xlsx_response
 
 
-class AnalyzeAccountsListApiView:
-    @staticmethod
-    def get(original_method):
-        def method(view, request, **kwargs):
-            response = original_method(view, request, **kwargs)
-            if response.status_code == HTTP_200_OK:
-                demo = DemoAccount()
-                filters = view.get_filters()
-                if demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.account_details)
-                    response.data['items_count'] += 1
-            return response
-
-        return method
-
-
 class AnalyzeDetailsApiView:
     @staticmethod
     def post(original_method):

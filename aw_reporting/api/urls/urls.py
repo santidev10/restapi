@@ -5,9 +5,6 @@ from aw_reporting.api.urls.names import Name
 
 urlpatterns = [
     # analyze
-    url(r'^analyze_accounts_list/$',
-        views.AnalyzeAccountsListApiView.as_view(),
-        name="analyze_accounts_list"),
     url(r'^analyze_details/(?P<pk>\w+)/$',
         views.AnalyzeDetailsApiView.as_view(),
         name="analyze_details"),
