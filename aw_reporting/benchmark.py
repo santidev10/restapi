@@ -417,15 +417,6 @@ class ChartsHandler:
     def __init__(self, request):
         self.request = request
 
-    def base_charts(self):
-        views_chart = ViewsBasedChart(self.request, None, annotate=True, aggregate=False,
-                                      product_type=False).get_chart()
-        impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
-                                           product_type=False).get_chart()
-        result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
-        result = self.prepare_view_quartile(result)
-        return result
-
     def product_charts(self):
         timing = self.request.query_params.get('sort_by')
         ad_group_ids = FiltersHandler(self.request.query_params).main()

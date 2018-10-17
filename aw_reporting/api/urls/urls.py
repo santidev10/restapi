@@ -36,9 +36,6 @@ urlpatterns = [
         name=Name.AWAccounts.CONNECTION),
 
     # benchmark
-    url(r'^benchmarks/base_charts/$',
-        views.BenchmarkBaseChartsApiView.as_view(),
-        name="benchmarks_base_charts"),
     url(r'^benchmarks/product_charts/$',
         views.BenchmarkProductChartsApiView.as_view(),
         name="benchmarks_product_charts$"),
