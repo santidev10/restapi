@@ -6,6 +6,7 @@ from io import BytesIO
 import xlsxwriter
 from django.conf import settings
 
+from utils.datetime import strftime_extended
 from utils.lang import ExtendedEnum
 
 TOO_MUCH_DATA_MESSAGE = "The list is too long to be shown entirely. " \
@@ -181,7 +182,7 @@ def safe_date_format(value, strftime_format):
         return value
     if not isinstance(value, (date, datetime)):
         return str(value)
-    return value.strftime(strftime_format)
+    return strftime_extended(value, strftime_format)
 
 
 def div_by_100(value):

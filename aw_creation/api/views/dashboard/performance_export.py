@@ -256,5 +256,6 @@ DATE_SEGMENT_STRFTIME_FORMAT = {
     DateSegment.DAY.value: "%m/%d/%Y",
     DateSegment.WEEK.value: "%w",
     DateSegment.MONTH.value: "%b-%y",
+    DateSegment.QUARTER.value: "%Y Q%Q",
     DateSegment.YEAR.value: "%Y",
 }
