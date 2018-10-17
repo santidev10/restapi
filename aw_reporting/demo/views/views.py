@@ -38,29 +38,6 @@ class AnalyzeDetailsApiView:
         return method
 
 
-class AnalyzeChartItemsApiView:
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, dimension, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                filters = view.get_filters()
-                account = DemoAccount()
-                account.set_period_proportion(filters['start_date'],
-                                              filters['end_date'])
-                account.filter_out_items(
-                    filters['campaigns'], filters['ad_groups'],
-                )
-                filters['dimension'] = dimension
-                charts_obj = DemoChart(account, filters)
-                return Response(status=HTTP_200_OK,
-                                data=charts_obj.chart_items)
-            else:
-                return original_method(view, request, pk=pk,
-                                       dimension=dimension, **kwargs)
-
-        return method
-
-
 class AnalyzeExportApiView:
     @staticmethod
     def post(original_method):

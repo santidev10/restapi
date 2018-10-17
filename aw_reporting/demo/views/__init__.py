@@ -1,4 +1,4 @@
 from .views import AnalyzeDetailsApiView, \
-    AnalyzeChartItemsApiView, AnalyzeExportApiView, \
+    AnalyzeExportApiView, \
     AnalyzeExportWeeklyReportApiView, TrackFiltersListApiView, \
     GlobalTrendsFiltersApiView, TrackChartApiView, TrackAccountsDataApiView
