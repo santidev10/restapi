@@ -10,34 +10,6 @@ from aw_reporting.demo.models import DemoAccount, DEMO_ACCOUNT_ID
 from utils.views import xlsx_response
 
 
-class AnalyzeDetailsApiView:
-    @staticmethod
-    def post(original_method):
-        def method(view, request, pk, **kwargs):
-            if pk == DEMO_ACCOUNT_ID:
-                filters = view.get_filters()
-
-                account = DemoAccount()
-                data = account.account_details
-                data["details"] = account.details
-
-                account.set_period_proportion(filters["start_date"],
-                                              filters["end_date"])
-                account.filter_out_items(
-                    filters["campaigns"], filters["ad_groups"],
-                )
-                data["overview"] = account.overview
-                for key in ("plan_video_views", "delivered_video_views",
-                            "plan_cost", "delivered_cost",
-                            "delivered_impressions", "plan_impressions"):
-                    del data["overview"][key]
-                return Response(status=HTTP_200_OK, data=data)
-            else:
-                return original_method(view, request, pk=pk, **kwargs)
-
-        return method
-
-
 class AnalyzeExportApiView:
     @staticmethod
     def post(original_method):
