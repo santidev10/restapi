@@ -38,7 +38,7 @@ class KWPaginator(CustomPageNumberPaginator):
     page_size = 20
 
 
-class OptimizeQueryApiView(ListAPIView):
+class BaseOptimizeQueryApiView(ListAPIView):
     page_size = 20
     serializer_class = KeywordSerializer
     pagination_class = KWPaginator
@@ -179,7 +179,7 @@ class OptimizeQueryApiView(ListAPIView):
         return queryset
 
     def get(self, *args, **kwargs):
-        response = super(OptimizeQueryApiView, self).get(*args, **kwargs)
+        response = super(BaseOptimizeQueryApiView, self).get(*args, **kwargs)
         if response.status_code == 200:
             flat = self.request.query_params.get("flat")
             fields = self.request.query_params.get("fields")
@@ -235,7 +235,7 @@ class OptimizeQueryApiView(ListAPIView):
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 
 
-class ViralKeywordsApiView(OptimizeQueryApiView):
+class ViralKeywordsApiView(BaseOptimizeQueryApiView):
     def get_queryset(self):
         viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
         queryset = KeyWord.objects.filter(text__in=viral_list)
@@ -440,7 +440,7 @@ class SavedListApiView(ListParentApiView):
                             status=HTTP_202_ACCEPTED)
 
 
-class SavedListKeywordsApiView(OptimizeQueryApiView, ListParentApiView):
+class SavedListKeywordsApiView(BaseOptimizeQueryApiView, ListParentApiView):
     def get_queryset(self):
         pk = self.kwargs.get('pk')
         queryset = KeyWord.objects.filter(lists__pk=pk)
