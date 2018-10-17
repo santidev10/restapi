@@ -109,7 +109,6 @@ class Permissions:
             "channel_list",
             "channel_details",
             "video_list",
-            "video_filter",
             "video_details",
             "keyword_list",
             "keyword_details",
@@ -167,7 +166,6 @@ class Permissions:
         "view_create_and_manage_campaigns",
         # video section
         "video_list",
-        "video_filter",
         "video_details",
         "video_audience",
         "video_aw_performance",

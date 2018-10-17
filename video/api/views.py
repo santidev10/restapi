@@ -298,12 +298,6 @@ class VideoListApiView(
         return response_data
 
 
-class VideoListFiltersApiView(SingledbApiView):
-    permission_required = ('userprofile.video_filter',)
-
-    connector_get = Connector().get_video_filters_list
-
-
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.video_details',)
