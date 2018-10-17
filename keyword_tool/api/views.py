@@ -285,14 +285,6 @@ class ViralKeywordsApiView(OptimizeQueryApiView):
         return queryset
 
 
-class KeywordHighlights(OptimizeQueryApiView):
-    def get_queryset(self):
-        queryset = KeyWord.objects.all()
-        queryset = self.filter(queryset)
-        queryset = self.sort(queryset)
-        return queryset[:100]
-
-
 class ListParentApiView(APIView):
     pagination_class = KWPaginator
 
