@@ -246,25 +246,6 @@ class OptimizeQueryApiView(ListAPIView):
                 item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
 
 
-class KeywordGetApiView(APIView):
-    queryset = KeyWord.objects.all()
-    serializer_class = KeywordSerializer
-
-    def get(self, *args, **kwargs):
-        pk = self.kwargs.get('pk')
-        try:
-            obj = self.queryset.get(text=pk)
-        except KeywordsList.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-        serializer = self.serializer_class(obj)
-        result = serializer.data
-
-        # add ad words data for received keyword
-        OptimizeQueryApiView.add_ad_words_data(request=self.request,
-                                               items=[result, ])
-        return Response(result)
-
-
 class ViralKeywordsApiView(OptimizeQueryApiView):
     def get_queryset(self):
         viral_list = ViralKeywords.objects.all().values_list('keyword', flat=True)
