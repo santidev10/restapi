@@ -8,6 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('userprofile', '0021_remove_plan_subsciption'),
         ('payments', '0002_event'),
     ]
 

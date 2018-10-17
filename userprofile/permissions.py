@@ -112,17 +112,10 @@ class Permissions:
             "video_details",
             "keyword_list",
             "keyword_details",
-            "keyword_filter",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
-            "segment_video_private",
-            "segment_channel_private",
-            "segment_keyword_private",
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
-            "segment_video_all",
-            "segment_channel_all",
-            "segment_keyword_all",
             "view_pre_baked_segments",
         )),
         (PermissionGroupNames.MEDIA_BUYING, (
@@ -130,16 +123,11 @@ class Permissions:
         )),
         (PermissionGroupNames.AUTH_CHANNELS, (
             "channel_audience",
-            "channel_aw_performance",
             "video_audience",
-            "video_aw_performance",
         )),
         (PermissionGroupNames.TOOLS, (
-            "view_pacing_report",
             "view_pricing_tool",
-            "view_health_check",
             "view_chf_trends",
-            "view_health_check",
         )),
         (PermissionGroupNames.MANAGED_SERVICE, (
             "view_dashboard",
@@ -149,7 +137,6 @@ class Permissions:
             "settings_my_aw_accounts",
         )),
         (PermissionGroupNames.SELF_SERVICE_TRENDS, (
-            "view_trends",
         )),
         (PermissionGroupNames.FORECASTING, (
             "forecasting",
@@ -158,40 +145,23 @@ class Permissions:
 
     PERM_LIST = (
         # view section
-        "view_benchmarks",
         "view_highlights",
-        "view_performance",
         "view_media_buying",
         "view_pre_baked_segments",
-        "view_create_and_manage_campaigns",
         # video section
         "video_list",
         "video_details",
         "video_audience",
-        "video_aw_performance",
         # channel section
         "channel_list",
         "channel_details",
         "channel_audience",
-        "channel_aw_performance",
         # keyword section
         "keyword_list",
         "keyword_details",
-        "keyword_filter",
-        # segment section
-        "segment_video_all",
-        "segment_video_private",
-        "segment_channel_all",
-        "segment_channel_private",
-        "segment_keyword_all",
-        "segment_keyword_private",
         # tools section
-        "view_pacing_report",
         "view_pricing_tool",
-        "view_trends",
-        "view_health_check",
-        "view_dashboard",
-        # dashboard sectipn
+        # dashboard section
         "view_dashboard",
         # settings section
         "settings_my_aw_accounts",
@@ -204,11 +174,25 @@ class Permissions:
         Sync groups and groups permissions
         """
         permissions_set_data = dict(Permissions.PERMISSION_SETS)
+        groups_names = set()
+        permissions_codenames = set()
         for group_name, raw_group_permissions in permissions_set_data.items():
             group, _ = Group.objects.get_or_create(name=group_name)
             group_permissions = tuple([get_custom_permission(perm) for perm in raw_group_permissions])
             group.permissions.set(group_permissions)
             group.save()
+
+            groups_names.add(group_name)
+            permissions_codenames |= set(raw_group_permissions)
+
+        cleanup_groups_permissions(groups_names, permissions_codenames)
+
+
+def cleanup_groups_permissions(groups_names, permissions_codenames):
+    Group.objects.all().exclude(name__in=groups_names) \
+        .delete()
+    GlobalPermission.objects.all().exclude(codename__in=permissions_codenames) \
+        .delete()
 
 
 def get_custom_permission(perm):
