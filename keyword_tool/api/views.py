@@ -26,17 +26,6 @@ from .serializers import *
 logger = logging.getLogger(__name__)
 
 
-class InterestsApiView(ListAPIView):
-    permission_classes = tuple()
-    serializer_class = InterestsSerializer
-
-    def get_queryset(self):
-        queryset = Interest.objects.all().order_by('name')
-        if 'ids' in self.request.query_params:
-            queryset = queryset.filter(id__in=self.request.query_params['ids'].split(','))
-        return queryset
-
-
 class PredefinedQueriesApiView(APIView):
     permission_classes = tuple()
 

@@ -25,16 +25,6 @@ class KWToolAPITestCase(APITransactionTestCase, APITestUserMixin):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data, PREDEFINED_QUERIES)
 
-    def test_interests_list(self):
-        call_command("load_product_and_services")
-        self.url = reverse("keyword_tool_urls:kw_tool_interests")
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            response.data,
-            list(Interest.objects.values('id', 'name').order_by('name'))
-        )
-
     @patch("keyword_tool.api.views.optimize_keyword")
     def test_optimize_query(self, optimize_keyword):
         call_command("load_product_and_services")
