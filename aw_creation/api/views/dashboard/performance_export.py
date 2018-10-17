@@ -107,7 +107,7 @@ class DashboardPerformanceExportApiView(APIView):
         date_segment = self._get_date_segment()
         if not date_segment:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.DATE_SEGMENT]
-        show_conversions = user.get_aw_settings().get("show_conversions")
+        show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
         if not show_conversions:
             columns_to_hide = columns_to_hide + [DashboardPerformanceReportColumn.ALL_CONVERSIONS]
         return columns_to_hide
