@@ -971,12 +971,10 @@ class AdCreationAvailableAdFormatsApiView(APIView):
             ad_creation.ad_group_creation.get_available_ad_formats())
 
 
-@demo_view_decorator
-class AccountCreationDuplicateApiView(APIView):
+class BaseCreationDuplicateApiView(APIView):
     serializer_class = AccountCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
-    account_fields = ("is_paused", "is_ended")
     campaign_fields = (
         "name", "start", "end", "budget", "devices_raw", "delivery_method",
         "type", "bid_strategy_type",
@@ -1014,11 +1012,7 @@ class AccountCreationDuplicateApiView(APIView):
     targeting_fields = ("criteria", "type", "is_negative")
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            owner=self.request.user,
-            is_managed=True,
-        )
-        return queryset
+        raise NotImplementedError
 
     def post(self, request, pk, **kwargs):
         try:
@@ -1036,11 +1030,7 @@ class AccountCreationDuplicateApiView(APIView):
         return Response(data=response)
 
     def duplicate_item(self, item, bulk_items, to_parent):
-        if isinstance(item, AccountCreation):
-            return self.duplicate_account(item, bulk_items,
-                                          all_names=self.get_queryset().values_list(
-                                              "name", flat=True))
-        elif isinstance(item, CampaignCreation):
+        if isinstance(item, CampaignCreation):
             parent = item.account_creation
             return self.duplicate_campaign(parent, item, bulk_items,
                                            all_names=parent.campaign_creations.values_list(
@@ -1079,20 +1069,6 @@ class AccountCreationDuplicateApiView(APIView):
         else:
             raise NotImplementedError(
                 "Unknown item type: {}".format(type(item)))
-
-    def duplicate_account(self, account, bulk_items, all_names):
-        account_data = dict(
-            name=self.increment_name(account.name, all_names),
-            owner=self.request.user,
-        )
-        for f in self.account_fields:
-            account_data[f] = getattr(account, f)
-        acc_duplicate = AccountCreation.objects.create(**account_data)
-
-        for c in account.campaign_creations.filter(is_deleted=False):
-            self.duplicate_campaign(acc_duplicate, c, bulk_items)
-
-        return acc_duplicate
 
     def duplicate_campaign(self, account, campaign, bulk_items,
                            all_names=None):
@@ -1225,7 +1201,7 @@ class AccountCreationDuplicateApiView(APIView):
 
 
 @demo_view_decorator
-class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class CampaignCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1237,7 +1213,7 @@ class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 
 @demo_view_decorator
-class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class AdGroupCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdGroupCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1249,7 +1225,7 @@ class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 
 @demo_view_decorator
-class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class AdCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
