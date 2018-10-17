@@ -26,34 +26,6 @@ class AnalyzeAccountsListApiView:
         return method
 
 
-class AnalyzeAccountCampaignsListApiView:
-    @staticmethod
-    def get(original_method):
-        def method(*args, pk, **kwargs):
-
-            if pk == DEMO_ACCOUNT_ID:
-                account = DemoAccount()
-                campaigns = [
-                    dict(
-                        id=c.id,
-                        name=c.name,
-                        start_date=c.start_date,
-                        end_date=c.end_date,
-                        status=c.status,
-                        ad_groups=[
-                            dict(id=a.id, name=a.name, status=a.status)
-                            for a in c.children
-                        ],
-                    )
-                    for c in account.children
-                ]
-                return Response(status=HTTP_200_OK, data=campaigns)
-            else:
-                return original_method(*args, pk=pk, **kwargs)
-
-        return method
-
-
 class AnalyzeDetailsApiView:
     @staticmethod
     def post(original_method):
