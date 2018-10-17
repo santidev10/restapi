@@ -243,10 +243,6 @@ PASSWORD_RESET_TIMEOUT_DAYS = 1
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
-# stripe user keys
-STRIPE_PUBLIC_KEY = None
-STRIPE_SECRET_KEY = None
-
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 IQ_API_URL = "https://iq.channelfactory.com/api/v1/"

@@ -11,7 +11,6 @@ from email_reports import urls as email_reports_api_urls
 from keyword_tool.api import urls as keyword_tool_urls
 from keywords.api import urls as keyword_api_urls
 from landing.api import urls as landing_api_urls
-from payments.api import urls as stripe_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api import urls as segment_api_urls
 # pylint: disable=import-error
@@ -52,10 +51,6 @@ urlpatterns = [
     # Userprofile api urls
     url(r'^api/v1/', include(userprofile_api_urls,
                              namespace=Namespace.USER_PROFILE)),
-
-    # Stripe api urls
-    url(r'^api/v1/', include(stripe_api_urls,
-                             namespace="stripe_api_urls")),
 
     # Singledb api urls
     url(r'^api/v1/', include(singledb_api_urls, namespace="singledb_api_urls")),
