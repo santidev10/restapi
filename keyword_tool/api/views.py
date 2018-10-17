@@ -18,20 +18,11 @@ from aw_reporting.adwords_api import optimize_keyword
 from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
 from keyword_tool.models import Query
 from keyword_tool.models import ViralKeywords
-from keyword_tool.settings import PREDEFINED_QUERIES
 from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
 
 logger = logging.getLogger(__name__)
-
-
-class PredefinedQueriesApiView(APIView):
-    permission_classes = tuple()
-
-    @staticmethod
-    def get(*_):
-        return Response(data=PREDEFINED_QUERIES)
 
 
 class KWPaginator(CustomPageNumberPaginator):
