@@ -10,14 +10,12 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import optimize_keyword
 from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
 from keyword_tool.models import Query
 from keyword_tool.models import ViralKeywords
-from keyword_tool.tasks import update_kw_list_stats
 from utils.api_paginator import CustomPageNumberPaginator
 from .serializers import *
 
@@ -338,48 +336,6 @@ class ListParentApiView(APIView):
         if category:
             filters["category"] = category
         return queryset.filter(**filters)
-
-
-class SavedListsGetOrCreateApiView(ListParentApiView):
-    def get(self, request, *args, **kwargs):
-        queryset = self.visible_list_qs
-        queryset = self.sort_list(queryset)
-        queryset = self.filter_list(queryset)
-        fields = self.request.query_params.get("fields")
-        page = self.paginate_queryset(queryset)
-
-        if fields:
-            kwargs["fields"] = set(fields.split(","))
-
-        if page is not None:
-            serializer = SavedListNameSerializer(page, many=True, request=request, **kwargs)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = SavedListNameSerializer(queryset, many=True, request=request, **kwargs)
-        return Response(serializer.data)
-
-    def post(self, request, *args, **kwargs):
-        keywords = self.request.data.get('keywords')
-        if not keywords:
-            return Response(status=HTTP_400_BAD_REQUEST,
-                            data="'keywords' is a required param")
-
-        request.data['user_email'] = self.request.user.email
-        serializer = SavedListCreateSerializer(data=request.data, request=request)
-        serializer.is_valid(raise_exception=True)
-        new_list = serializer.save()
-
-        # pylint: disable=no-member
-        keywords_relation = KeywordsList.keywords.through
-        # pylint: enable=no-member
-        kw_relations = [keywords_relation(keyword_id=kw_id,
-                                          keywordslist_id=new_list.id)
-                        for kw_id in keywords]
-        keywords_relation.objects.bulk_create(kw_relations)
-
-        update_kw_list_stats.delay(new_list, KeyWord)
-        serializer = SavedListNameSerializer(new_list, request=request)
-        return Response(status=HTTP_202_ACCEPTED, data=serializer.data)
 
 
 class ViralListBuildView(APIView):
