@@ -18,7 +18,6 @@ from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.test import APITestCase
 
-from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from utils.aws.s3 import get_s3_client
 from utils.datetime import Time
@@ -176,24 +175,6 @@ class SegmentFunctionalityMixin(object):
         for related_id in related_ids:
             relation_model.objects.create(
                 segment=segment, related_id=related_id)
-
-
-class SingleDBMixin(object):
-    def obtain_channels_ids(self, size=50):
-        size = min(size, 50)
-        connector = SingleDatabaseApiConnector()
-        params = {"fields": "channel_id", "size": size}
-        response = connector.get_channel_list(params)
-        return {obj["channel_id"] for obj in response["items"]}
-
-    def obtain_videos_data(self, fields=None, size=50):
-        if fields is None:
-            fields = "channel_id,video_id"
-        size = min(size, 50)
-        connector = SingleDatabaseApiConnector()
-        params = {"fields": fields, "size": size}
-        response = connector.get_video_list(params)
-        return response
 
 
 def test_instance_settings(**kwargs):

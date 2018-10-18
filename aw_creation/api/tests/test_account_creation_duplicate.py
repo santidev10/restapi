@@ -1,14 +1,6 @@
-from datetime import timedelta, datetime
-from unittest.mock import patch
-
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
