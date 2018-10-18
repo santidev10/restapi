@@ -8,5 +8,4 @@ from .creation import Language
 from .creation import LocationRule
 from .creation import default_languages
 from .creation import get_uid
-from .creation import get_version
 from .targeting import TargetingItem
