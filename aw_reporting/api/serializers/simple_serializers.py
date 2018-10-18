@@ -13,6 +13,7 @@ class CategorySerializer(ModelSerializer):
 class AdGroupListSerializer(ModelSerializer):
     def get_queryset(self, *args, **kwargs):
         raise KeyError
+
     class Meta:
         model = AdGroup
         fields = ("id", "name", "status")

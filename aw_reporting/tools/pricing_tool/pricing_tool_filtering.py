@@ -570,15 +570,6 @@ class PricingToolFiltering:
         queryset = queryset.filter(creative_length_annotate__gt=0)
         return queryset
 
-    def _filter_demo_fields(self, queryset, items, fields):
-        demographic_condition = self.kwargs.get("demographic_condition",
-                                                self.default_condition)
-        is_or_condition = demographic_condition == "or"
-        filtered_fields = [fields[g] for g in items]
-        queryset = self._get_filter_true(queryset, filtered_fields,
-                                         is_or_condition)
-        return queryset
-
     @staticmethod
     def _get_filter_true(queryset, filtered_fields, is_or_condition):
         condition = Q(**{filtered_fields[0]: True})

@@ -8,11 +8,6 @@ from aw_reporting.tools.forecast_tool.forecast_tool_filtering import ForecastToo
 from utils.datetime import now_in_default_tz, build_periods
 
 
-def model_to_filter(mod):
-    return [dict(id=i.pk, name=str(i.name))
-            for i in mod.objects.all().order_by("name")]
-
-
 DATE_FORMAT = "%Y-%m-%d"
 
 

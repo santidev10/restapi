@@ -76,18 +76,6 @@ class PacingReport:
             timestamp=self.today.strftime("%Y%m%d"),
         )
 
-    def get_goal_items_factor(self, budget):
-        """
-        Add 2(or 1)% to overall views goal which would trickle down
-        to the lower levels (placements, flights, etc.)
-        :param budget:
-        :return:
-        """
-        if budget > self.big_budget_border:
-            return self.big_goal_factor
-        else:
-            return self.goal_factor
-
     def get_days_run_and_total_days(self, f):
         return get_days_run_and_total_days(f, self.yesterday)
 

@@ -1072,38 +1072,6 @@ class DemoAccount(BaseDemo):
         return pick_dict(self._base_header_data, keys)
 
     @property
-    def account_details(
-            self):  # TODO: remove this after we get rid of Track page
-        from aw_reporting.demo.charts import DemoChart
-        filters = dict(
-            start_date=self.today - timedelta(days=7),
-            end_date=self.today - timedelta(days=1),
-            indicator="video_views",
-        )
-        new_demo = DemoAccount()
-        new_demo.set_period_proportion(filters['start_date'],
-                                       filters['end_date'])
-        charts_obj = DemoChart(new_demo, filters)
-        chart_lines = charts_obj.chart_lines(new_demo, filters)
-
-        data = dict(
-            id=self.id,
-            name=self.name,
-            account_creation=self.id,
-            end=self.end_date,
-            start=self.start_date,
-            status="Eligible",
-            weekly_chart=chart_lines[0]['trend'],
-            clicks=self.clicks,
-            cost=self.cost,
-            impressions=self.impressions,
-            video_views=self.video_views,
-            video_view_rate=self.video_view_rate,
-            ctr_v=self.ctr_v,
-        )
-        return data
-
-    @property
     def creation_details(self):
         from aw_reporting.demo.charts import DemoChart
 

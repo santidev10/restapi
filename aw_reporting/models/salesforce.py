@@ -67,13 +67,6 @@ class User(BaseModel):
         return "{}.jpg".format(self.photo_id)
 
     @property
-    def photo_path(self):
-        if self.photo_id:
-            return os.path.join(
-                'static', 'img', 'sf', self.photo_name
-            )
-
-    @property
     def photo_url(self):
         if self.photo_id:
             return static('/'.join(('img', 'sf', self.photo_name)))
@@ -242,17 +235,6 @@ class Opportunity(models.Model):
         return self.video_views
 
     @property
-    def views_budget(self):
-        return self.budget if self.goal_type_id else 0
-
-    @property
-    def impressions_budget(self):
-        if self.goal_type_id in (SalesForceGoalType.CPM,
-                                 SalesForceGoalType.CPM_AND_CPV):
-            return self.budget
-        return 0
-
-    @property
     def goal_type(self):
         return ", ".join(self.goal_types)
 
@@ -269,11 +251,6 @@ class Opportunity(models.Model):
             goal_type_str(goal_type_id) for goal_type_id in goal_type_ids]
         goal_types = filter(lambda x: x is not None, types_str)
         return goal_types
-
-    @property
-    def region(self):
-        return None if self.region_id is None \
-            else SalesForceRegions[int(self.region_id)]
 
     @classmethod
     def email_from_sf_id(cls, sf_id):
@@ -413,15 +390,6 @@ class OpPlacement(BaseModel):
 
     def __str__(self):
         return "%s" % self.name
-
-    @property
-    def ordered_cost(self):
-        if self.ordered_units is not None \
-                and self.ordered_rate is not None:
-            value = self.ordered_units * self.ordered_rate
-            if self.goal_type_id == SalesForceGoalType.CPM:
-                value /= 1000
-            return value
 
     @property
     def goal_type(self):

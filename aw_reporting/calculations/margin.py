@@ -43,24 +43,6 @@ def get_margin_from_flights(flights, cost, plan_cost,
     return margin
 
 
-def margin_for_opportunity(opportunity):
-    flights = Flight.objects.filter(placement__opportunity=opportunity) \
-        .annotate(delivery=flight_delivery_annotate) \
-        .values(
-        "id", "name", "start", "end", "total_cost", "ordered_units",
-        "cost", "placement_id", "delivery",
-        "placement__goal_type_id", "placement__placement_type",
-        "placement__opportunity_id",
-        "placement__opportunity__cannot_roll_over",
-        "placement__opportunity__budget",
-        "placement__dynamic_placement", "placement__ordered_rate",
-        "placement__tech_fee", "placement__tech_fee_type",
-    )
-    cost = sum((f["cost"] or 0) for f in flights)
-    plan_cost = sum((f["total_cost"] or 0) for f in flights)
-    return get_margin_from_flights(flights, cost, plan_cost)
-
-
 def get_days_run_and_total_days(flight, yesterday):
     days_run, total_days = None, None
     start, end = flight["start"], flight["end"]
