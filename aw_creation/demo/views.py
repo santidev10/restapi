@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 
 from django.conf import settings
@@ -7,15 +6,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_creation.models import AccountCreation
-from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
-from aw_creation.models import AdScheduleRule
-from aw_creation.models import CampaignCreation
-from aw_creation.models import FrequencyCap
-from aw_creation.models import Language
-from aw_creation.models import LocationRule
-from aw_creation.models import TargetingItem
 from aw_reporting.demo.charts import DemoChart
 from aw_reporting.demo.excel_reports import DemoAnalyticsWeeklyReport
 from aw_reporting.demo.excel_reports import DemoDashboardWeeklyReport
