@@ -162,7 +162,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         Campaign.objects.create(name=campaign_name)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -181,7 +181,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True
+            UserSettingsKey.SHOW_CONVERSIONS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -227,7 +227,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         YTVideoStatistic.objects.create(date=any_date_2, ad_group=ad_group, yt_id=video_id, impressions=impressions[1])
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings), \
@@ -262,7 +262,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         VideoCreativeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings), \
@@ -296,7 +296,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         AgeRangeStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings):
@@ -328,7 +328,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         GenderStatistic.objects.create(date=any_date_2, impressions=impressions[1], **common)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings):
@@ -358,7 +358,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         YTVideoStatistic.objects.create(yt_id="1", impressions=6, **common)
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
              self.patch_user_settings(**user_settings):
@@ -386,7 +386,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         with self.patch_user_settings(**user_settings):
@@ -403,7 +403,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         with self.patch_user_settings(**user_settings):
@@ -422,7 +422,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator))
         Campaign.objects.create(account=account, salesforce_placement=placement)
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
         with self.patch_user_settings(**user_settings):
@@ -446,7 +446,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
 
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
-            UserSettingsKey.SHOW_CONVERSIONS: True
+            UserSettingsKey.SHOW_CONVERSIONS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(DEMO_ACCOUNT_ID)
