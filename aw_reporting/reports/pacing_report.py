@@ -659,6 +659,7 @@ class PacingReport:
         if category:
             queryset = queryset.filter(
                 category_id__in=category)
+        # fixme: remove Opportunity.goal_type_id
         goal_type = get.getlist("goal_type")
         if goal_type:
             queryset = queryset.filter(
