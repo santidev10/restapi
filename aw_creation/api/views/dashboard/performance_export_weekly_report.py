@@ -42,7 +42,8 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         filters = self.get_filters()
-        report = DashboardPerformanceWeeklyReport(item.account, **filters)
+        show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        report = DashboardPerformanceWeeklyReport(item.account, show_conversions, **filters)
         hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
             .get(request.user.email.lower(), {}) \
             .get("hide_brand_name", False)
