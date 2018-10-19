@@ -55,11 +55,6 @@ class DashboardPerformanceExportApiView(APIView):
         data_generator = partial(self.get_export_data, item, request.user)
         return self.build_response(item.name, data_generator)
 
-    tabs = (
-        "device", "gender", "age", "topic", "interest", "remarketing",
-        "keyword", "location", "creative", "ad", "channel", "video",
-    )
-
     def build_response(self, account_name, data_generator):
         title = "{title}-analyze-{timestamp}".format(
             title=re.sub(r"\W", account_name, "-"),
@@ -186,10 +181,21 @@ class DashboardPerformanceExportApiView(APIView):
                 yield {**{"tab": tab_name}, **data}
 
     def _get_tabs(self):
+        metrics = self._get_metrics_to_display()
+        return [METRIC_MAP[metric] for metric in metrics]
+
+    def _get_metrics_to_display(self):
         metric = self._get_metric()
-        if metric is None:
-            return self.tabs
-        return [METRIC_MAP[metric]]
+        if metric is not None:
+            return [metric]
+
+        metrics = list(ALL_METRICS)
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            metrics.remove(Metric.CAMPAIGN)
+        if user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+            metrics.remove(Metric.AUDIENCE)
+        return metrics
 
     def _validate_request_payload(self):
         metric = self._get_metric_parameter()
@@ -213,48 +219,67 @@ class DashboardPerformanceExportApiView(APIView):
 
 
 class Metric(ExtendedEnum):
-    GENDER = "gender"
+    AD_GROUP = "ad_group"
     AGE = "age"
-    LOCATION = "location"
+    AUDIENCE = "audience"
+    CAMPAIGN = "campaign"
+    CHANNEL = "channel"
+    CREATIVE = "creative"
     DEVICE = "device"
-    TOPIC = "topic"
+    GENDER = "gender"
     INTEREST = "interest"
     KEYWORD = "keyword"
-    CHANNEL = "channel"
+    LOCATION = "location"
+    TOPIC = "topic"
     VIDEO = "video"
-    CREATIVE = "creative"
-    AD_GROUP = "ad_group"
-    AUDIENCE = "audience"
 
+
+ALL_METRICS = (
+    Metric.CAMPAIGN,
+    Metric.DEVICE,
+    Metric.GENDER,
+    Metric.AGE,
+    Metric.TOPIC,
+    Metric.INTEREST,
+    Metric.AUDIENCE,
+    Metric.KEYWORD,
+    Metric.LOCATION,
+    Metric.CREATIVE,
+    Metric.AD_GROUP,
+    Metric.CHANNEL,
+    Metric.VIDEO,
+)
 
 METRIC_MAP = {
-    Metric.GENDER: "gender",
+    Metric.AD_GROUP: "ad",
     Metric.AGE: "age",
-    Metric.LOCATION: "location",
+    Metric.AUDIENCE: "remarketing",
+    Metric.CAMPAIGN: "campaign",
+    Metric.CHANNEL: "channel",
+    Metric.CREATIVE: "creative",
     Metric.DEVICE: "device",
-    Metric.TOPIC: "topic",
+    Metric.GENDER: "gender",
     Metric.INTEREST: "interest",
     Metric.KEYWORD: "keyword",
-    Metric.CHANNEL: "channel",
+    Metric.LOCATION: "location",
+    Metric.TOPIC: "topic",
     Metric.VIDEO: "video",
-    Metric.CREATIVE: "creative",
-    Metric.AD_GROUP: "ad",
-    Metric.AUDIENCE: "remarketing"
 }
 DIMENSION_MAP = {value: key for key, value in METRIC_MAP.items()}
 METRIC_REPRESENTATION = {
-    Metric.GENDER: "Gender",
+    Metric.AD_GROUP: "Ad Group",
     Metric.AGE: "Age",
-    Metric.LOCATION: "Location",
+    Metric.AUDIENCE: "Audience",
+    Metric.CAMPAIGN: "Campaign",
+    Metric.CHANNEL: "Channel",
+    Metric.CREATIVE: "Creative",
     Metric.DEVICE: "Device",
-    Metric.TOPIC: "Topic",
+    Metric.GENDER: "Gender",
     Metric.INTEREST: "Interest",
     Metric.KEYWORD: "Keyword",
-    Metric.CHANNEL: "Channel",
+    Metric.LOCATION: "Location",
+    Metric.TOPIC: "Topic",
     Metric.VIDEO: "Video",
-    Metric.CREATIVE: "Creative",
-    Metric.AD_GROUP: "Ad Group",
-    Metric.AUDIENCE: "Audience"
 }
 ALLOWED_METRICS = tuple(Metric.values()) + (None,)
 ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)
