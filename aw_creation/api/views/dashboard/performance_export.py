@@ -85,9 +85,13 @@ class DashboardPerformanceExportApiView(APIView):
         header_rows = [
             "Date: {start_date} - {end_date}",
             "Group By: {metric}",
-            "Campaigns: {campaigns}",
-            "Ad Groups: {ad_groups}",
         ]
+        user_settings = self.request.user.get_aw_settings()
+        if user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            header_rows += [
+                "Campaigns: {campaigns}",
+                "Ad Groups: {ad_groups}",
+            ]
         header_date = dict(
             metric=METRIC_REPRESENTATION.get(self._get_metric()),
             start_date=filters.get("start_date"),

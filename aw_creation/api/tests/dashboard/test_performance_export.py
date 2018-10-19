@@ -17,8 +17,8 @@ from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
-from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
+from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
@@ -593,6 +593,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         campaign_names = [campaign.name for campaign in campaigns]
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, campaigns=campaign_ids)
@@ -613,6 +614,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         ad_group_names = [ad_group.name for ad_group in ad_groups]
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, ad_groups=ad_group_ids)
@@ -632,6 +634,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator), name="")
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED:True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -656,6 +659,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(len(data_rows), test_data_limit + 1)
         self.assertEqual(data_rows[test_data_limit][0].value, TOO_MUCH_DATA_MESSAGE)
+
+    def test_hide_campaigns_from_header_if_it_shown_for_user(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        expected_header = "\n".join([
+            "Date: None - None",
+            "Group By: None",
+        ])
+        account = Account.objects.create(id=next(int_iterator))
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertEqual(header, expected_header)
 
 
 def get_sheet_from_response(response):
