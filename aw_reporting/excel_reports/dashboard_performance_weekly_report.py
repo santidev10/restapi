@@ -50,39 +50,48 @@ FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected T
 
 class DashboardPerformanceWeeklyReport:
     hide_logo = False
-    _with_cta_columns = (
-        "Impressions",
-        "Views",
-        "View Rate",
-        "Clicks",
-        "Call-to-Action overlay",
-        "Website",
-        "App Store",
-        "Cards",
-        "End cap",
-        "CTR",
-        "Video played to: 25%",
-        "Video played to: 50%",
-        "Video played to: 75%",
-        "Video played to: 100%",
-        "All Conversions",
-    )
 
-    _general_columns = (
-        "Impressions",
-        "Views",
-        "View Rate",
-        "Clicks",
-        "CTR",
-        "Video played to: 25%",
-        "Video played to: 50%",
-        "Video played to: 75%",
-        "Video played to: 100%",
-        "All Conversions",
-    )
+    @property
+    def _with_cta_columns(self):
+        columns = [
+            "Impressions",
+            "Views",
+            "View Rate",
+            "Clicks",
+            "Call-to-Action overlay",
+            "Website",
+            "App Store",
+            "Cards",
+            "End cap",
+            "CTR",
+            "Video played to: 25%",
+            "Video played to: 50%",
+            "Video played to: 75%",
+            "Video played to: 100%",
+        ]
+        if self.show_conversions:
+            columns.append("All Conversions")
+        return columns
+
+    @property
+    def _general_columns(self):
+        columns = [
+            "Impressions",
+            "Views",
+            "View Rate",
+            "Clicks",
+            "CTR",
+            "Video played to: 25%",
+            "Video played to: 50%",
+            "Video played to: 75%",
+            "Video played to: 100%",
+        ]
+        if self.show_conversions:
+            columns.append("All Conversions")
+        return columns
 
     def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
-        return (
+        rows = [
             row["impressions"] or default,
             row["video_views"] or default,
             div_by_100(row["video_view_rate"]) or default,
@@ -97,11 +106,13 @@ class DashboardPerformanceWeeklyReport:
             div_by_100(row["video50rate"]),
             div_by_100(row["video75rate"]),
             div_by_100(row["video100rate"]),
-            row["all_conversions"],
-        )
+        ]
+        if self.show_conversions:
+            rows.append(row["all_conversions"])
+        return rows
 
     def _extract_data_row_without_cta(self, row, default=None):
-        return (
+        rows = [
             row["impressions"] or default,
             row["video_views"] or default,
             div_by_100(row["video_view_rate"]) or default,
@@ -111,8 +122,10 @@ class DashboardPerformanceWeeklyReport:
             div_by_100(row["video50rate"]) or default,
             div_by_100(row["video75rate"]) or default,
             div_by_100(row["video100rate"]) or default,
-            row["all_conversions"],
-        )
+        ]
+        if self.show_conversions:
+            rows.append(row["all_conversions"])
+        return rows
 
     def _set_format_options(self):
         """
@@ -337,12 +350,13 @@ class DashboardPerformanceWeeklyReport:
 
         return filters
 
-    def __init__(self, account, campaigns=None, ad_groups=None):
+    def __init__(self, account, show_conversions, campaigns=None, ad_groups=None):
         # Obtain visible campaigns
         self.account = account
         self.campaigns = campaigns or []
         self.ad_groups = ad_groups or []
         self.date_delta = now_in_default_tz().date() - timedelta(days=7)
+        self.show_conversions = show_conversions
 
     def get_content(self):
         # Init document

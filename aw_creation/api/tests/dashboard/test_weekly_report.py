@@ -85,6 +85,18 @@ COLUMN_SET_REGULAR = (
     "All Conversions",
 )
 
+COLUMN_SET_REGULAR_NO_CONVERSIONS = (
+    "Impressions",
+    "Views",
+    "View Rate",
+    "Clicks",
+    "CTR",
+    "Video played to: 25%",
+    "Video played to: 50%",
+    "Video played to: 75%",
+    "Video played to: 100%",
+)
+
 COLUMN_SET_WITH_CTA = (
     "Impressions",
     "Views",
@@ -103,9 +115,31 @@ COLUMN_SET_WITH_CTA = (
     "All Conversions",
 )
 
+COLUMN_SET_WITH_CTA_NO_CONVERSIONS = (
+    "Impressions",
+    "Views",
+    "View Rate",
+    "Clicks",
+    "Call-to-Action overlay",
+    "Website",
+    "App Store",
+    "Cards",
+    "End cap",
+    "CTR",
+    "Video played to: 25%",
+    "Video played to: 50%",
+    "Video played to: 75%",
+    "Video played to: 100%",
+)
+
 COLUMN_SET_BY_SECTION_NAME = {
     **{section_name: COLUMN_SET_REGULAR for section_name in REGULAR_STATISTIC_SECTIONS},
     **{section_name: COLUMN_SET_WITH_CTA for section_name in SECTIONS_WITH_CTA},
+}
+
+COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS = {
+    **{section_name: COLUMN_SET_REGULAR_NO_CONVERSIONS for section_name in REGULAR_STATISTIC_SECTIONS},
+    **{section_name: COLUMN_SET_WITH_CTA_NO_CONVERSIONS for section_name in SECTIONS_WITH_CTA},
 }
 
 
@@ -146,7 +180,28 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator))
 
         user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, section)
+        title_values = tuple(cell.value for cell in sheet[row_index][1:])
+        self.assertEqual(title_values, (section,) + shared_columns)
+
+    @generic_test([
+        (section, (section,), dict())
+        for section in SECTIONS_WITH_CTA
+    ])
+    def test_column_set_no_conversions(self, section):
+        shared_columns = COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS.get(section)
+        self.create_test_user()
+        account = Account.objects.create(id=next(int_iterator))
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -390,7 +445,27 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.create_test_user()
 
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        row_index = get_section_start_row(sheet, section)
+        title_values = tuple(cell.value for cell in sheet[row_index][1:])
+        self.assertEqual(title_values, (section,) + shared_columns)
+
+    @generic_test([
+        (section, (section,), dict())
+        for section in SECTIONS_WITH_CTA
+    ])
+    def test_demo_account_cta_no_conversions(self, section):
+        shared_columns = COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS.get(section)
+        self.create_test_user()
+
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(DEMO_ACCOUNT_ID)

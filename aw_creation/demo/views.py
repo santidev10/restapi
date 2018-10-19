@@ -722,7 +722,8 @@ class DashboardPerformanceExportWeeklyReportApiView:
                 account.filter_out_items(
                     filters['campaigns'], filters['ad_groups'],
                 )
-                report = DemoDashboardWeeklyReport(account)
+                show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+                report = DemoDashboardWeeklyReport(account, show_conversions)
                 hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
                     .get(request.user.email.lower(), {}) \
                     .get("hide_brand_name", False)
