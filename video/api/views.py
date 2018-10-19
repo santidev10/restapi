@@ -3,33 +3,33 @@ Video api views module
 """
 import re
 from copy import deepcopy
-from datetime import timedelta, timezone
+from datetime import timedelta
+from datetime import timezone
 
 from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT, \
-    HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
 from segment.models import SegmentChannel
-# pylint: disable=import-error
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector, \
-    SingleDatabaseApiConnectorException
-from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
-    DEFAULT_VIDEO_DETAILS_FIELDS
-# pylint: enable=import-error
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
+from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
+from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(
-        APIView,
-        PermissionRequiredMixin,
-        CassandraExportMixin,
-        SegmentFilterMixin):
+    APIView,
+    PermissionRequiredMixin,
+    CassandraExportMixin,
+    SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -69,7 +69,7 @@ class VideoListApiView(
         if not request.user.has_perm("userprofile.video_list") and \
                 not request.user.has_perm("userprofile.view_highlights"):
             user_channels_ids = set(request.user.channels.values_list(
-                                        "channel_id", flat=True))
+                "channel_id", flat=True))
             if channel_id and (channel_id not in user_channels_ids):
                 return Response(empty_response)
             query_params.update(**{"channel": ",".join(user_channels_ids)})

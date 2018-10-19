@@ -1,12 +1,11 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
 from django.utils import timezone
 
 from aw_reporting.models import *
-# pylint: disable=import-error
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
-# pylint: enable=import-error
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.constants import UserSettingsKey
 from utils.lang import pick_dict
 

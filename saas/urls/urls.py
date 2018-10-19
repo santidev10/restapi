@@ -12,9 +12,7 @@ from keywords.api import urls as keyword_api_urls
 from landing.api import urls as landing_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api import urls as segment_api_urls
-# pylint: disable=import-error
 from singledb.api import urls as singledb_api_urls
-# pylint: enable=import-error
 from userprofile.api import urls as userprofile_api_urls
 from video.api import urls as video_api_urls
 

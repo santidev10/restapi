@@ -36,10 +36,8 @@ class Query(models.Model):
     @classmethod
     def create_from_aw_response(cls, query, response):
         # models
-        # pylint: disable=no-member
         interest_relation = KeyWord.interests.through
         query_relation = KeyWord.queries.through
-        # pylint: enable=no-member
 
         # get ids
         interest_ids = set(
