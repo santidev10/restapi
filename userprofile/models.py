@@ -131,6 +131,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     is_subscribed = models.BooleanField(default=False)
+    synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
 
     objects = UserProfileManager()
 
