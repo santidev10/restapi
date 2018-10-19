@@ -258,7 +258,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_channel_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
             channel_ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -292,7 +292,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def test_success_dimension_video(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_video_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
             ids = [i['id'] for i in data['items']]
         test_days = 10

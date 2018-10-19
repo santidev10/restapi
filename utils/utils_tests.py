@@ -99,7 +99,7 @@ class SingleDatabaseApiConnectorPatcher:
 
     @staticmethod
     def get_channel_list(*args, **kwargs):
-        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
             data = json.load(data_file)
         for i in data["items"]:
             i["channel_id"] = i["id"]
@@ -107,7 +107,7 @@ class SingleDatabaseApiConnectorPatcher:
 
     @staticmethod
     def get_video_list(*args, **kwargs):
-        with open('saas/fixtures/singledb_video_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
@@ -121,7 +121,7 @@ class SingleDatabaseApiConnectorPatcher:
         return data
 
     def get_keyword_list(*args, **kwargs):
-        with open('saas/fixtures/singledb_keyword_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_keyword_list.json') as data_file:
             data = json.load(data_file)
         return data
 
@@ -142,13 +142,13 @@ class SingleDatabaseApiConnectorPatcher:
         return channel
 
     def get_channel(self, query_params, pk):
-        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel = next(filter(lambda c: c["id"] == pk, channels["items"]))
         return channel
 
     def get_video(self, query_params, pk):
-        with open('saas/fixtures/singledb_video_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             videos = json.load(data_file)
         video = next(filter(lambda c: c["id"] == pk, videos["items"]))
         return video
