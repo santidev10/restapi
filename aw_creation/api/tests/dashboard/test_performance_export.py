@@ -46,10 +46,11 @@ from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
-from utils.utils_tests import ExtendedAPITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 from utils.utils_tests import reverse
 
 
