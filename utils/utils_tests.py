@@ -177,15 +177,6 @@ class SegmentFunctionalityMixin(object):
                 segment=segment, related_id=related_id)
 
 
-def test_instance_settings(**kwargs):
-    data = kwargs
-
-    def get_settings(key):
-        return data.get(key)
-
-    return get_settings
-
-
 @contextmanager
 def patch_user_settings(user, **kwargs):
     user_settings_backup = user.aw_settings
@@ -202,10 +193,6 @@ def patch_now(now):
         now = datetime.combine(now, datetime.min.time())
     with patch.object(Time, "now", return_value=now):
         yield
-
-
-class SettingDoesNotExist:
-    pass
 
 
 def build_csv_byte_stream(headers, rows):

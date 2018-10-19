@@ -17,6 +17,7 @@ from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
+from utils.datetime import quarter_days
 
 CREATIVE_LENGTH_FILTERS = {
     1: [0, 6000],
@@ -60,12 +61,6 @@ class BenchMarkChart:
     def get_quarters_date(self, quarters):
         year = datetime.now().date().year
         quarters = quarters.split(',')
-        quarter_days = dict(
-            Q1=((1, 1), (3, 31)),
-            Q2=((4, 1), (6, 30)),
-            Q3=((7, 1), (9, 30)),
-            Q4=((10, 1), (12, 31)),
-        )
         first, *rest, last = list((itertools.chain(*[quarter_days[q] for q in quarters])))
         return datetime(year, *first).date(), datetime(year, *last).date()
 

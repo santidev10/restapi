@@ -1,6 +1,5 @@
 from datetime import timedelta, date, datetime
 from itertools import product
-from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -15,8 +14,7 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
-    get_current_release
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
 
 
 class PacingReportFlightsTestCase(APITestCase):
