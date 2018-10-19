@@ -1,11 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
-from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
-from rest_framework.serializers import ValidationError
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator

@@ -1,5 +1,6 @@
-from django.db.models import F
 import logging
+
+from django.db.models import F
 
 logger = logging.getLogger(__name__)
 

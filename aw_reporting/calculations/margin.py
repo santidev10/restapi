@@ -1,8 +1,7 @@
 from django.db.models import Sum, When, Case, Value, F, FloatField
 
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import SalesForceGoalType, Flight, \
-    get_margin
+from aw_reporting.models import SalesForceGoalType, get_margin
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 
 

@@ -11,7 +11,6 @@ from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from aw_reporting.models import get_user_model
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions

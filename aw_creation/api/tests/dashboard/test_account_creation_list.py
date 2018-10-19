@@ -15,9 +15,9 @@ from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.demo.models import DEMO_SF_ACCOUNT
 from aw_reporting.demo.models import DEMO_BRAND
 from aw_reporting.demo.models import DEMO_COST_METHOD
+from aw_reporting.demo.models import DEMO_SF_ACCOUNT
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation

@@ -7,7 +7,6 @@ from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastTool
 from aw_reporting.tools.forecast_tool.forecast_tool_filtering import ForecastToolFiltering
 from utils.datetime import now_in_default_tz, build_periods
 
-
 DATE_FORMAT = "%Y-%m-%d"
 
 

@@ -6,9 +6,9 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from saas.urls.namespaces import Namespace

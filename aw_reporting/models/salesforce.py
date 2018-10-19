@@ -1,5 +1,4 @@
 import logging
-import os
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static

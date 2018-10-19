@@ -11,7 +11,6 @@ from aw_reporting.tools.pricing_tool.pricing_tool_serializer import \
     PricingToolSerializer
 from utils.datetime import now_in_default_tz, build_periods
 
-
 DATE_FORMAT = "%Y-%m-%d"
 
 

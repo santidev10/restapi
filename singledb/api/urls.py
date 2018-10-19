@@ -1,13 +1,14 @@
 from django.conf.urls import url
+
 from channel.api.country_view import CountryListApiView
 from singledb.api.views.augmentation import AugmentationChannelSegmentListApiView
+from singledb.api.views.bad_words import BadWordCategoriesListApiView
+from singledb.api.views.bad_words import BadWordHistoryListApiView
 from singledb.api.views.bad_words import BadWordListApiView
 from singledb.api.views.bad_words import BadWordRetrieveUpdateDeleteApiView
-from singledb.api.views.bad_words import BadWordHistoryListApiView
-from singledb.api.views.bad_words import BadWordCategoriesListApiView
 from singledb.api.views.highlights import HighlightChannelsListApiView
-from singledb.api.views.highlights import HighlightVideosListApiView
 from singledb.api.views.highlights import HighlightKeywordsListApiView
+from singledb.api.views.highlights import HighlightVideosListApiView
 
 urlpatterns = [
     url(r'^countries/$', CountryListApiView.as_view(), name="countries_list"),

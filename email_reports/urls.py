@@ -1,4 +1,5 @@
 from django.conf.urls import url
+
 from .views import email_report_web_view
 
 urlpatterns = [

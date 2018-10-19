@@ -3,7 +3,6 @@ import logging
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db import transaction
 
 from aw_reporting.models.base import BaseModel
 from .tasks import update_keywords_stats

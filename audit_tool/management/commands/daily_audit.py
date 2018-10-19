@@ -6,14 +6,13 @@ from typing import Dict
 from typing import List
 from typing import Set
 
+import boto3
 import xlsxwriter
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.core.management import BaseCommand
 from django.db import transaction
 from django.http import QueryDict
-
-import boto3
 
 from audit_tool.adwords import AdwordsBlackList
 from audit_tool.adwords import AdwordsReports
@@ -22,7 +21,6 @@ from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
 from audit_tool.models import KeywordAudit
 from audit_tool.models import VideoAudit
-
 from audit_tool.youtube import Youtube
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account

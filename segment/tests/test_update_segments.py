@@ -1,6 +1,6 @@
 from contextlib import contextmanager
-from datetime import datetime
 from datetime import date
+from datetime import datetime
 from unittest.mock import patch
 
 from django.core.management import call_command
@@ -8,21 +8,21 @@ from django.test import TransactionTestCase
 from pytz import timezone
 
 from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.models import Account
-from aw_reporting.models import AWConnection
 from aw_reporting.models import AWAccountPermission
-from aw_reporting.models import Campaign
+from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
 from segment.models import SegmentChannel
-from segment.models import SegmentRelatedChannel
-from segment.models import SegmentVideo
 from segment.models import SegmentKeyword
-from segment.models import SegmentRelatedVideo
+from segment.models import SegmentRelatedChannel
 from segment.models import SegmentRelatedKeyword
+from segment.models import SegmentRelatedVideo
+from segment.models import SegmentVideo
 from userprofile.models import UserProfile
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher as ConnectionPatch
-from utils.utils_tests import patch_now
 from utils.utils_tests import generic_test
+from utils.utils_tests import patch_now
 
 
 @contextmanager

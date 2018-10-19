@@ -1,13 +1,10 @@
 import json
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
-from aw_reporting.models import AWConnectionToUserRelation, AWConnection
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.models import UserProfile
 from utils.utils_tests import ExtendedAPITestCase
 
 

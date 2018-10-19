@@ -1,10 +1,10 @@
+import logging
+from time import sleep
+
 from django.conf import settings
 
-from .base import AdwordsBase
 from utils.utils import chunks_generator
-
-from time import sleep
-import logging
+from .base import AdwordsBase
 
 logger = logging.getLogger(__name__)
 

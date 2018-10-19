@@ -1,8 +1,10 @@
 from urllib.parse import urlencode
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
-from aw_reporting.demo.models import DemoAccount
+
 from aw_creation.models import *
+from aw_reporting.demo.models import DemoAccount
 from utils.utils_tests import ExtendedAPITestCase
 
 

@@ -1,6 +1,6 @@
 from functools import reduce
 
-from django.db.models import Q, When, Count, QuerySet
+from django.db.models import Q, When, QuerySet
 
 
 class Operator:

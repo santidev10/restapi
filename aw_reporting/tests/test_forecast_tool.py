@@ -3,7 +3,7 @@ from datetime import date, datetime
 from django.test import TestCase
 
 from aw_reporting.models import Opportunity, Campaign, AdGroup, \
-    CampaignStatistic, AdGroupStatistic, OpPlacement, Category
+    CampaignStatistic, AdGroupStatistic, OpPlacement
 from aw_reporting.tasks import recalculate_de_norm_fields
 from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
 from userprofile.models import UserProfile

@@ -9,7 +9,6 @@ from aw_reporting.adwords_api import optimize_keyword, get_client
 from keyword_tool.models import Query, KeyWord, ViralKeywords
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -1,19 +1,19 @@
 from collections import defaultdict
 from functools import reduce
 
-from django.db.models import Count, FloatField, CharField, BooleanField, \
+from django.db.models import Count, BooleanField, \
     QuerySet
-from django.db.models import Q, F, Min, When, Case, Max, \
-    Sum, IntegerField
+from django.db.models import Q, Min, When, Case, Max, \
+    IntegerField
 from django.db.models.expressions import CombinedExpression, Value, Combinable
 
 from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
-    TopicStatistic, Topic, Audience, Opportunity, AgeRanges, \
-    Genders, SalesForceGoalType, Devices
+    TopicStatistic, Topic, Audience, AgeRanges, \
+    Genders, Devices
 from aw_reporting.tools.forecast_tool.constants import GENDER_FIELDS, \
     AGE_FIELDS, PARENT_FIELDS, DEVICE_FIELDS, VIDEO_LENGTHS, TARGETING_TYPES
 from utils.datetime import now_in_default_tz, quarter_days
-from utils.query import build_query_bool, split_request, merge_when, Operator
+from utils.query import build_query_bool, split_request, Operator
 
 CONDITIONS = [
     dict(id="or", name="Or"),
