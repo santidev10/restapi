@@ -27,6 +27,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
+from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
@@ -53,7 +54,8 @@ class DashboardPerformanceExportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(item.name, data_generator)
+        account_name = item.account.name if item.account is not None else item.name
+        return self.build_response(account_name, data_generator)
 
     tabs = (
         "device", "gender", "age", "topic", "interest", "remarketing",
@@ -61,9 +63,9 @@ class DashboardPerformanceExportApiView(APIView):
     )
 
     def build_response(self, account_name, data_generator):
-        title = "{title}-analyze-{timestamp}".format(
-            title=re.sub(r"\W", account_name, "-"),
-            timestamp=datetime.now().strftime("%Y%m%d"),
+        title = "Segmented report {account_name} {timestamp}".format(
+            account_name=re.sub(r"\W", account_name, "-"),
+            timestamp=now_in_default_tz().strftime("%Y%m%d"),
         )
         user = self.request.user
 
