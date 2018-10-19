@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import reduce
 from typing import List
 
 
@@ -27,3 +28,7 @@ class ExtendedEnum(Enum):
     @classmethod
     def has_value(cls, value):
         return value in cls.values()
+
+
+def merge_dicts(*dicts):
+    return reduce(lambda res, item: {**res, **item}, dicts, {})
