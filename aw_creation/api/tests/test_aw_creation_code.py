@@ -46,7 +46,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             final_url="https://www.nasdaq.com",
             companion_banner=SimpleUploadedFile(
                 name='video_thumbnail.png',
-                content=open("aw_creation/fixtures/video_thumbnail.png",
+                content=open("aw_creation/fixtures/tests/video_thumbnail.png",
                              'rb').read(),
                 content_type='image/png',
             ),
