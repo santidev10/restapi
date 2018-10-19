@@ -83,11 +83,3 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
-
-    def validate_historical_aw_account(self, connection):
-        if connection is None:
-            return connection
-        if not self.instance.aw_connections.filter(id=connection.id).exists():
-            raise ValidationError(
-                _("Historical account should be listed in user connections"))
-        return connection

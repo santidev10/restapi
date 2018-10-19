@@ -1,6 +1,5 @@
 from .contact_form import ContactFormSerializer
 from .error_report import ErrorReportSerializer
-from .group import GroupSerializer
 from .user import UserSerializer
 from .user_change_password import UserChangePasswordSerializer
 from .user_create import UserCreateSerializer
