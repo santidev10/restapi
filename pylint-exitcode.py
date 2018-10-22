@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-import sys
 import fileinput
-import errno
-
+import sys
 
 if __name__ == "__main__":
     f = fileinput.input()

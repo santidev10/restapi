@@ -8,7 +8,4 @@ from .creation import Language
 from .creation import LocationRule
 from .creation import default_languages
 from .creation import get_uid
-from .creation import get_version
-from .optimization import AccountOptimizationSetting
-from .optimization import CampaignOptimizationSetting
 from .targeting import TargetingItem

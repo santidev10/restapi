@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-182,6e9390dd23d2653c4dad28ea58d2c513ff3dbb9b,2017-03-06 17:53:21.883807+00,f,,Ryan,Gawartin,f,t,2017-03-05 00:25:22.002443+00,rgawartin@gmail.com,,0,t,,,f,,,,,,t,f,f,,t

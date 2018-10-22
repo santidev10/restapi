@@ -11,10 +11,10 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.analytics_charts import Dimension
 from aw_reporting.analytics_charts import Indicator
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection

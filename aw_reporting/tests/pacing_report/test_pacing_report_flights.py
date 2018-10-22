@@ -4,10 +4,9 @@ from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Campaign, CampaignStatistic
-from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):

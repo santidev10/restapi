@@ -6,9 +6,9 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from saas.urls.namespaces import Namespace
@@ -119,7 +119,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_channel_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
             channel_ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -152,7 +152,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
 
     def test_success_dimension_video(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_video_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
             ids = [i['id'] for i in data['items']]
         test_days = 10

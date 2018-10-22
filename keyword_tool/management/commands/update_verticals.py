@@ -38,9 +38,7 @@ class Command(BaseCommand):
 
     def create_or_update_keywords(self, response):
         # models
-        # pylint: disable=no-member
         interest_relation = KeyWord.interests.through
-        # pylint: enable=no-member
 
         # get ids
         interest_ids = set(
@@ -98,9 +96,7 @@ class Command(BaseCommand):
             name=name,
             category=category
         )
-        # pylint: disable=no-member
         keywords_relation = KeywordsList.keywords.through
-        # pylint: enable=no-member
         if new:
             kw_relations = [keywords_relation(keyword_id=kw_id,
                                               keywordslist_id=kw_list.id)

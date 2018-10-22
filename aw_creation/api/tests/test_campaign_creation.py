@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta, date, datetime
+from datetime import timedelta, datetime
 from unittest.mock import patch
 
 import pytz

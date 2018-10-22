@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-329,pbkdf2_sha256$24000$ZFCEfVC832wp$+PECVmOOMsj45RxVCF0wZ+HhfQzi1Q10/m2A79bK914=,2017-11-06 23:37:45.073026+00,f,,Juan,Rodriguez,f,t,2017-11-06 22:48:54.7217+00,j.rodriguez@sizmek.com,,0,t,,,f,,,,,,t,f,f,,t

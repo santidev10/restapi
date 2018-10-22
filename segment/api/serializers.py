@@ -1,13 +1,12 @@
 """
 Segment api serializers module
 """
+from rest_framework.serializers import CharField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
-from rest_framework.serializers import CharField
 
-from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector
 
 

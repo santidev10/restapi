@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,is_subscribed_to_campaign_notifications,facebook_id
-4,pbkdf2_sha256$24000$5aJ3rQQAd73y$exaSoUX/swzim6iabMCPKAxTSYpKkdvzCr0w/7zk1fs=,2018-09-05 07:59:51.866258+00,f,,Ellen,Andersson,f,t,2018-08-24 06:58:27.219015+00,ellen.andersson@phdmedia.com,,0,t,,,f,,,,,,t,f,f,t,

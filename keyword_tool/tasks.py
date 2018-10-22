@@ -7,9 +7,7 @@ from django.db.models import Avg
 @task
 def update_keywords_stats(data):
     from .models import KeyWord, Interest
-    # pylint: disable=no-member
     interest_relation = KeyWord.interests.through
-    # pylint: enable=no-member
 
     for k in data:
         try:
@@ -60,13 +58,11 @@ def update_keywords_stats(data):
 @task
 def update_kw_list_stats(obj, _kw_class):
     cum_counter = Counter()
-    # pylint: disable=no-member
-    kw_querry = obj.keywords.through.objects.filter(keywordslist_id=obj.id)
-    # pylint: enable=no-member
-    kw_ids = kw_querry.values_list('keyword__text', flat=True)
-    count_data = kw_querry.aggregate(average_volume=Avg('keyword__search_volume'),
-                                     average_cpc=Avg('keyword__average_cpc'),
-                                     competition=Avg('keyword__competition'))
+    kw_query = obj.keywords.through.objects.filter(keywordslist_id=obj.id)
+    kw_ids = kw_query.values_list('keyword__text', flat=True)
+    count_data = kw_query.aggregate(average_volume=Avg('keyword__search_volume'),
+                                    average_cpc=Avg('keyword__average_cpc'),
+                                    competition=Avg('keyword__competition'))
     obj_kw = _kw_class.objects.filter(text__in=kw_ids).order_by('-search_volume')
     for item in obj_kw:
         if item.monthly_searches:
@@ -74,7 +70,7 @@ def update_kw_list_stats(obj, _kw_class):
                 cum_counter.update(**{date_search['label']: date_search['value']})
     top_keywords = obj_kw[:10]
 
-    obj.num_keywords = kw_querry.count()
+    obj.num_keywords = kw_query.count()
     obj.average_volume = count_data['average_volume'] or 0
     obj.average_cpc = count_data['average_cpc'] or 0
     obj.competition = count_data['competition'] or 0

@@ -1,9 +1,11 @@
 from urllib.parse import urlencode
+
 from django.core.urlresolvers import reverse
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_401_UNAUTHORIZED
-from rest_framework.authtoken.models import Token
+
 from aw_creation.models import *
 from aw_reporting.models import Audience
 from utils.utils_tests import ExtendedAPITestCase
