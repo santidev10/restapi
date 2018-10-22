@@ -43,6 +43,7 @@ class Command(BaseCommand):
             }}
             r = requests.post('https://%s/v1/contact' % self.server, headers=self.headers, data=json.dumps(values))
             if r.status_code == 200:
-                user.update(synced_with_email_campaign=True)
+                user.synced_with_email_campaign=True
+                user.save(update_fields=['synced_with_email_campaign'])
             count+=1
         return count
