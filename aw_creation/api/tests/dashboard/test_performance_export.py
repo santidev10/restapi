@@ -79,7 +79,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                                    type="A"))
         remark, _ = RemarkList.objects.get_or_create(name="test")
         creative, _ = VideoCreative.objects.get_or_create(id=1)
-        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="bobruisk"))
+        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="Babruysk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
         CampaignStatistic.objects.create(campaign=campaign1, **base_stats)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
