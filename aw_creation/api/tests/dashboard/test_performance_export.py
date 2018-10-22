@@ -3,7 +3,6 @@ import json
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from unittest import SkipTest
 from unittest.mock import patch
 
 from django.test import override_settings
@@ -31,6 +30,7 @@ from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
@@ -79,9 +79,9 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                                    type="A"))
         remark, _ = RemarkList.objects.get_or_create(name="test")
         creative, _ = VideoCreative.objects.get_or_create(id=1)
-        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
-            name="bobruisk"))
+        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="bobruisk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
+        CampaignStatistic.objects.create(campaign=campaign1, **base_stats)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 
         for ad_group in (ad_group1, ad_group2):
@@ -322,9 +322,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         for metric in Metric
     ])
     def test_metric(self, metric):
-        # fixme: remove this skip in scope of Campaigns implementation
-        if metric == Metric.CAMPAIGN:
-            raise SkipTest("Campaigns metric is not implemented yet")
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
 
@@ -332,7 +329,8 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self._create_stats(account)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
+            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, metric=metric.value)

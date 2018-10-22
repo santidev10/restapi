@@ -27,6 +27,7 @@ from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
@@ -120,10 +121,11 @@ INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
 
 CLICK_STATS_TYPES_IGNORE_MODELS = (
     CampaignHourlyStatistic,
-    YTVideoStatistic,
+    CampaignStatistic,
     CityStatistic,
-    YTChannelStatistic,
     VideoCreativeStatistic,
+    YTChannelStatistic,
+    YTVideoStatistic,
 )
 
 
@@ -532,6 +534,8 @@ class DeliveryChart:
 
     @staticmethod
     def get_ad_group_link(queryset):
+        if queryset.model is CampaignStatistic:
+            return "campaign__ad_groups"
         if queryset.model is AdStatistic:
             return "ad__ad_group"
         else:
@@ -597,7 +601,7 @@ class DeliveryChart:
 
         if self.params['ad_groups']:
             ad_group_link = self.get_ad_group_link(queryset)
-            filters["%s_id__in" % ad_group_link] = self.params['ad_groups']
+            filters["%s__id__in" % ad_group_link] = self.params['ad_groups']
 
         if self.params['campaigns']:
             filters["%s_id__in" % camp_link] = self.params['campaigns']
@@ -699,7 +703,7 @@ class DeliveryChart:
 
     def _get_campaign_ref(self, queryset):
         model = queryset.model
-        if model is CampaignHourlyStatistic:
+        if model in (CampaignHourlyStatistic, CampaignStatistic):
             return "campaign"
         if model is AdStatistic:
             return "ad__ad_group__campaign"
@@ -840,7 +844,17 @@ class DeliveryChart:
         return result
 
     def _get_campaign_data(self):
-        return dict()
+        group_by = ["campaign_id", "campaign__name"]
+        raw_stats = self.get_raw_stats(
+            CampaignStatistic.objects.all(), group_by,
+            self.params["date"],
+        )
+        result = defaultdict(list)
+        for item in raw_stats:
+            uid = item["campaign_id"]
+            item["label"] = item["campaign__name"]
+            result[uid].append(item)
+        return result
 
     def _get_ad_data(self):
         group_by = ['ad__creative_name', 'ad_id', 'ad__status']
