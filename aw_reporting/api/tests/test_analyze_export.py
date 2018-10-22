@@ -29,7 +29,7 @@ class AnalyzeExportAPITestCase(AwReportingAPITestCase):
         topic, _ = Topic.objects.get_or_create(id=1, defaults=dict(name="boo"))
         audience, _ = Audience.objects.get_or_create(id=1, defaults=dict(name="boo", type="A"))
         creative, _ = VideoCreative.objects.get_or_create(id=1)
-        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="bobruisk"))
+        city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="Babruysk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 
