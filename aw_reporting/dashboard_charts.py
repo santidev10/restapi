@@ -643,7 +643,7 @@ class DeliveryChart:
         if filters:
             queryset = queryset.filter(**filters)
 
-        return queryset
+        return queryset.model.objects.filter(pk__in=queryset.values_list("pk", flat=True))
 
     def _get_date_segment(self):
         try:
