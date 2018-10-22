@@ -750,7 +750,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         (Metric.CAMPAIGN, (Metric.CAMPAIGN,), dict()),
         (Metric.AUDIENCE, (Metric.AUDIENCE,), dict()),
     ])
-    def test_forbidden_if_user_has_no_permissions_for_the_mertic(self, metric):
+    def test_forbidden_if_user_has_no_permissions_for_the_metric(self, metric):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
 
