@@ -1,6 +1,3 @@
-from datetime import datetime
-from datetime import timedelta
-
 from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 

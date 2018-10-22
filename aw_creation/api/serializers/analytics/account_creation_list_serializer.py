@@ -142,27 +142,6 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             self.daily_chart = self._get_daily_chart(ids)
             self.video_ads_data = self._get_video_ads_data(ids)
 
-    def _get_client_cost_by_account(self, campaign_filter):
-        account_client_cost = defaultdict(float)
-        campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
-            .values(self.CAMPAIGN_ACCOUNT_ID_KEY, "impressions", "video_views") \
-            .annotate(aw_cost=F("cost"),
-                      start=F("start_date"), end=F("end_date"),
-                      **client_cost_campaign_required_annotation)
-
-        keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
-                           "aw_cost", "dynamic_placement", "placement_type",
-                           "tech_fee", "impressions", "video_views",
-                           "start", "end")
-
-        for campaign_data in campaigns_with_cost:
-            account_id = campaign_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
-            kwargs = {key: campaign_data.get(key) for key in keys_to_extract}
-            client_cost = get_client_cost(**kwargs)
-            account_client_cost[account_id] = account_client_cost[account_id] \
-                                              + client_cost
-        return dict(account_client_cost)
-
     def _get_stats(self, account_creation_ids):
         stats = {}
         campaign_filter = {
@@ -314,15 +293,6 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         if obj.account is not None:
             return safe_max(
                 (obj.account.update_time, obj.account.hourly_updated_at))
-
-    def _get_opportunity(self, obj):
-        opportunities = Opportunity.objects.filter(
-            placements__adwords_campaigns__account__account_creation=obj)
-        if opportunities.count() > 1:
-            logger.warning(
-                "AccountCreation (id: ) has more then one opportunity".format(
-                    obj.id))
-        return opportunities.first()
 
     def get_is_editable(self, obj):
         return obj.owner == self.user

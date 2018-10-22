@@ -3,7 +3,6 @@ from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
 from aw_reporting.models.ad_words.statistic import BaseStatisticModel
-
 from aw_reporting.models.base import BaseModel
 
 DEFAULT_TIMEZONE = settings.DEFAULT_TIMEZONE
@@ -42,7 +41,6 @@ class GeoTarget(models.Model):
     country_code = models.CharField(max_length=2)
     target_type = models.CharField(max_length=50)
     status = models.CharField(max_length=20)
-
 
     def __str__(self):
         return "%s" % self.canonical_name

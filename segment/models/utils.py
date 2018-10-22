@@ -79,7 +79,4 @@ def count_segment_adwords_statistics(segment: BaseSegment):
 
 
 def get_mcc_to_update(user: UserProfile):
-    if user is not None and user.historical_aw_account_id is not None:
-        return user.historical_aw_account.connection.mcc_permissions.first().account, False
-    return Account.objects.get(
-        id=load_web_app_settings()["cf_account_id"]), True
+    return Account.objects.get(id=load_web_app_settings()["cf_account_id"]), True

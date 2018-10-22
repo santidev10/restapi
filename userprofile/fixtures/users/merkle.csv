@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-248,pbkdf2_sha256$24000$N2vQgZ36Sfj5$M3jC4+5SoPDfE15yvfLU3E9RiJ9rqfqWDvS6JM99Gnw=,2017-07-07 17:52:15.444033+00,f,,Brendan,Dimitri,f,t,2017-07-07 17:52:15.418869+00,bdimitri@merkleinc.com,,0,t,,,f,,,,,,t,f,f,,t

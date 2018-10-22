@@ -1,8 +1,9 @@
-from suds import WebFault
-from oauth2client.client import HttpAccessTokenRefreshError
-from googleads import adwords, oauth2
 import logging
+
 import yaml
+from googleads import adwords, oauth2
+from oauth2client.client import HttpAccessTokenRefreshError
+from suds import WebFault
 
 logger = logging.getLogger(__name__)
 API_VERSION = 'v201802'

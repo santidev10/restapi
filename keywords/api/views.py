@@ -3,17 +3,19 @@ from copy import deepcopy
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import load_web_app_settings
-from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
 from keywords.api.utils import get_keywords_aw_stats
+from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from segment.models import SegmentKeyword
 from singledb.api.views import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector, \
-    SingleDatabaseApiConnectorException
-from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
+from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
+from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 

@@ -2,7 +2,6 @@ from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
 from userprofile.constants import UserSettingsKey
 

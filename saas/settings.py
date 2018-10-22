@@ -243,13 +243,8 @@ PASSWORD_RESET_TIMEOUT_DAYS = 1
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
-# stripe user keys
-STRIPE_PUBLIC_KEY = None
-STRIPE_SECRET_KEY = None
-
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
-IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
 
 import djcelery
 
@@ -267,8 +262,6 @@ CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
-
-KW_TOOL_KEY = "Qi3mxPnm"
 
 # landing page settings
 LANDING_SUBJECT = [
@@ -317,9 +310,6 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
-DEFAULT_ACCESS_PLAN_NAME = 'free'
-CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
-
 TESTIMONIALS = {
     "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
@@ -365,6 +355,8 @@ AMAZON_S3_SECRET_ACCESS_KEY = "<put_aws_secret_access_key>"
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 
 MAX_AVATAR_SIZE_MB = 10.
+
+DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
 
 try:
     from .local_settings import *

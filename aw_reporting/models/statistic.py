@@ -2,12 +2,9 @@ from django.db import models
 
 from aw_reporting.models.ad_words import Ad
 from aw_reporting.models.ad_words import AdGroup
-from aw_reporting.models.ad_words import AgeRanges
 from aw_reporting.models.ad_words import Audience
 from aw_reporting.models.ad_words import BaseStatisticModel
 from aw_reporting.models.ad_words import Campaign
-from aw_reporting.models.ad_words import Devices
-from aw_reporting.models.ad_words import Genders
 from aw_reporting.models.ad_words import GeoTarget
 from aw_reporting.models.ad_words import RemarkList
 from aw_reporting.models.ad_words import Topic
@@ -29,10 +26,6 @@ class DeviceDailyStatisticModel(DailyStatisticModel):
 
     class Meta:
         abstract = True
-
-    @property
-    def device(self):
-        return Devices[int(self.device_id)]
 
 
 class AdGroupStatistic(DeviceDailyStatisticModel, BaseClicksTypesStatisticsModel):
@@ -107,10 +100,6 @@ class AgeRangeStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
         unique_together = (("age_range_id", "ad_group", "date"),)
         ordering = ['-date']
 
-    @property
-    def age_range(self):
-        return AgeRanges[int(self.age_range_id)]
-
 
 class GenderStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     gender_id = models.SmallIntegerField(default=0, db_index=True)
@@ -119,10 +108,6 @@ class GenderStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     class Meta:
         unique_together = (("gender_id", "ad_group", "date"),)
         ordering = ['-date']
-
-    @property
-    def gender(self):
-        return Genders[int(self.gender_id)]
 
 
 class CityStatistic(DailyStatisticModel):

@@ -1,6 +1,6 @@
 from functools import reduce
 
-from django.db.models import Q, When, Count, QuerySet
+from django.db.models import Q, When, QuerySet
 
 
 class Operator:
@@ -15,18 +15,6 @@ def build_query(expressions, condition):
     elif condition_upper == Operator.OR:
         return OR(*expressions)
     return Q()
-
-
-def build_query_value(queryset, field, values, condition):
-    in_query = Q(**{field + "__in": values})
-    if condition == Operator.OR:
-        return queryset.filter(in_query)
-    elif condition == Operator.AND:
-        temp_queryset = queryset.annotate(count=Count(in_query)) \
-            .filter(count=len(values))
-        pks = temp_queryset.values_list("pk", flat=True)
-
-        return queryset.filter(pk__in=pks)
 
 
 def build_query_bool(fields, condition, value=True):

@@ -1,11 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
-from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.models import Token
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
-from rest_framework.serializers import ValidationError
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
@@ -40,7 +38,6 @@ class UserSerializer(ModelSerializer):
             "google_account_id",
             "has_aw_accounts",
             "has_disapproved_ad",
-            "historical_aw_account",
             "id",
             "is_staff",
             "last_login",
@@ -84,11 +81,3 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
-
-    def validate_historical_aw_account(self, connection):
-        if connection is None:
-            return connection
-        if not self.instance.aw_connections.filter(id=connection.id).exists():
-            raise ValidationError(
-                _("Historical account should be listed in user connections"))
-        return connection

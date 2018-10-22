@@ -75,21 +75,6 @@ def send_welcome_email(user, request):
     send_html_email(subject, to, text_header, text_content, request.get_host())
 
 
-def send_plan_changed_email(user, request):
-    """
-    Send email with new plan to user
-    """
-    subject = "Access on {} changed".format(request.get_host())
-    to = user.email
-    text_header = "Dear {},\n".format(user.get_full_name())
-    text_content = "Your access was changed. " \
-                   "Currently, you have an \"{}\".\n\n" \
-                   "Kind regards\n" \
-                   "Channel Factory Team" \
-        .format(user.plan.name)
-    send_html_email(subject, to, text_header, text_content, request.get_host())
-
-
 def send_html_email(subject, to, text_header, text_content, host):
     """
     Send email with html

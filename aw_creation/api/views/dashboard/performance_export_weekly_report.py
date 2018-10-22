@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports_dashboard import PerformanceWeeklyReport
+from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 from userprofile.constants import UserSettingsKey
 from utils.views import xlsx_response
 
@@ -42,10 +42,11 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
             return Response(status=HTTP_404_NOT_FOUND)
 
         filters = self.get_filters()
-        report = PerformanceWeeklyReport(item.account, **filters)
-        hide_brand_name = settings.CUSTOM_AUTH_FLAGS\
-                                  .get(request.user.email.lower(), {})\
-                                  .get("hide_brand_name", False)
+        show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
+        report = DashboardPerformanceWeeklyReport(item.account, show_conversions, **filters)
+        hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
+            .get(request.user.email.lower(), {}) \
+            .get("hide_brand_name", False)
         report.hide_logo = hide_brand_name
         brand_name = "" if hide_brand_name else "Channel Factory"
         title = " ".join([f for f in [

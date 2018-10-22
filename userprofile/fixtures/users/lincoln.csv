@@ -1,3 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-101,pbkdf2_sha256$20000$Y34sLbCSnN18$rDCg+ezD8ekr2qTuFG7TzNen95imrE7BvIa3OxS/Tco=,2016-07-29 13:10:31.565444+00,f,,Jose,Parlade,f,t,2016-07-29 13:10:31.53845+00,jparlade@zubiad.com,,0,t,,,f,,,,,,t,f,f,,t
-53,4upKpet9tCWYdbDUMHdZ6Q,,f,,Ray,Kim,f,t,2016-03-14 21:53:57.997729+00,ray.kim@channelfactory.com,,"",t,,,f,,,,,,t,f,f,,t

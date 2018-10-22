@@ -10,6 +10,9 @@ from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.functions import ExtractWeek
+from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncYear
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
@@ -24,6 +27,7 @@ from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
@@ -49,9 +53,10 @@ from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
+from utils.db.functions import TruncQuarter
+from utils.lang import ExtendedEnum
 from utils.lang import flatten
 from utils.utils import get_all_class_constants
 
@@ -103,15 +108,24 @@ class Breakdown:
     DAILY = "daily"
 
 
+class DateSegment(ExtendedEnum):
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+    QUARTER = "quarter"
+    YEAR = "year"
+
+
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
                            Indicator.VIEWS, Indicator.COST)
 
 CLICK_STATS_TYPES_IGNORE_MODELS = (
     CampaignHourlyStatistic,
-    YTVideoStatistic,
+    CampaignStatistic,
     CityStatistic,
-    YTChannelStatistic,
     VideoCreativeStatistic,
+    YTChannelStatistic,
+    YTVideoStatistic,
 )
 
 
@@ -125,7 +139,7 @@ class DeliveryChart:
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
                  region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
-                 apex_deal=None, **_):
+                 apex_deal=None, date_segment=None, **_):
         if account and account in accounts:
             accounts = [account]
 
@@ -158,6 +172,7 @@ class DeliveryChart:
             show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
             apex_deal=apex_deal,
+            date_segment=date_segment,
         )
 
         self.with_plan = with_plan
@@ -447,28 +462,30 @@ class DeliveryChart:
         for label, stats in data.items():
             if not stats:
                 continue
-            stat = stats[0]
-            dict_norm_base_stats(stat)
+            for stat in stats:
+                dict_norm_base_stats(stat)
 
-            for n, v in stat.items():
-                if v is not None and type(v) is not str and n != 'id':
-                    if n == 'average_position':
-                        average_positions.append(v)
-                    else:
-                        response['summary'][n] += v
+                for n, v in stat.items():
+                    if v is not None and type(v) is not str and n != 'id':
+                        if n == 'average_position':
+                            average_positions.append(v)
+                        elif n == "date_segment":
+                            pass
+                        else:
+                            response['summary'][n] += v
 
-            dict_add_calculated_stats(stat)
-            dict_quartiles_to_rates(stat)
-            del stat['video_impressions']
+                dict_add_calculated_stats(stat)
+                dict_quartiles_to_rates(stat)
+                del stat['video_impressions']
 
-            if 'label' in stat:
-                stat['name'] = stat['label']
-                del stat['label']
-            else:
-                stat['name'] = label
-            response['items'].append(
-                stat
-            )
+                if 'label' in stat:
+                    stat['name'] = stat['label']
+                    del stat['label']
+                else:
+                    stat['name'] = label
+                response['items'].append(
+                    stat
+                )
 
         dict_add_calculated_stats(response['summary'])
         if 'video_impressions' in response['summary']:
@@ -478,11 +495,11 @@ class DeliveryChart:
                 average_positions) / len(average_positions)
         dict_quartiles_to_rates(response['summary'])
 
-        top_by = self.get_top_by()
+        top_by, reverse = self.get_top_by()
         response['items'] = sorted(
             response['items'],
             key=lambda i: i[top_by] if i[top_by] else 0,
-            reverse=True,
+            reverse=reverse,
         )
         response["items"] = self._serialize_items(response["items"])
         return response
@@ -492,7 +509,7 @@ class DeliveryChart:
 
     def _serialize_item(self, item):
         allowed_keys = {
-            "all_conversions", "average_cpm", "average_cpv",
+            "all_conversions", "average_cpm", "average_cpv", "date_segment",
             "average_position", "clicks", "conversions", "cost", "ctr",
             "ctr_v", "duration", "id", "impressions", "name", "status",
             "thumbnail", "video100rate", "video25rate", "video50rate",
@@ -517,6 +534,8 @@ class DeliveryChart:
 
     @staticmethod
     def get_ad_group_link(queryset):
+        if queryset.model is CampaignStatistic:
+            return "campaign__ad_groups"
         if queryset.model is AdStatistic:
             return "ad__ad_group"
         else:
@@ -582,7 +601,7 @@ class DeliveryChart:
 
         if self.params['ad_groups']:
             ad_group_link = self.get_ad_group_link(queryset)
-            filters["%s_id__in" % ad_group_link] = self.params['ad_groups']
+            filters["%s__id__in" % ad_group_link] = self.params['ad_groups']
 
         if self.params['campaigns']:
             filters["%s_id__in" % camp_link] = self.params['campaigns']
@@ -624,11 +643,31 @@ class DeliveryChart:
         if filters:
             queryset = queryset.filter(**filters)
 
-        return queryset
+        return queryset.model.objects.filter(pk__in=queryset.values_list("pk", flat=True))
+
+    def _get_date_segment(self):
+        try:
+            return DateSegment(self.params["date_segment"])
+        except ValueError:
+            return None
+
+    def _get_date_segment_annotations(self):
+        date_segment = self._get_date_segment()
+
+        if date_segment == DateSegment.DAY:
+            return F("date")
+        if date_segment == DateSegment.WEEK:
+            return ExtractWeek("date")
+        if date_segment == DateSegment.MONTH:
+            return TruncMonth("date")
+        if date_segment == DateSegment.YEAR:
+            return TruncYear("date")
+        if date_segment == DateSegment.QUARTER:
+            return TruncQuarter("date")
 
     def add_annotate(self, queryset):
         if not self.params["date"]:
-            kwargs = dict(**all_stats_aggregator())
+            kwargs = all_stats_aggregator()
             if queryset.model is AdStatistic:
                 kwargs["average_position"] = Avg(
                     Case(
@@ -664,7 +703,7 @@ class DeliveryChart:
 
     def _get_campaign_ref(self, queryset):
         model = queryset.model
-        if model is CampaignHourlyStatistic:
+        if model in (CampaignHourlyStatistic, CampaignStatistic):
             return "campaign"
         if model is AdStatistic:
             return "ad__ad_group__campaign"
@@ -719,16 +758,18 @@ class DeliveryChart:
         return fields
 
     def get_top_by(self):
-        if self.params['indicator'] == Indicator.COST:
-            return 'cost'
-        return 'impressions'
+        if self.params["indicator"] == Indicator.COST:
+            return "cost", True
+        if self._get_date_segment() is not None:
+            return "date_segment", False
+        return "impressions", True
 
     def get_top_data(self, queryset, key):
         group_by = [key]
 
         date = self.params['date']
         if date:
-            top_by = self.get_top_by()
+            top_by, _ = self.get_top_by()
             top_data = self.filter_queryset(queryset).values(key).annotate(
                 top_by=Sum(top_by)
             ).order_by('-top_by')[:TOP_LIMIT]
@@ -751,7 +792,14 @@ class DeliveryChart:
             date = self.params['date']
         if date:
             group_by.append('date')
+
+        if self._get_date_segment():
+            group_by.append("date_segment")
+
         queryset = self.filter_queryset(queryset)
+        date_segment_annotation = self._get_date_segment_annotations()
+        if date_segment_annotation:
+            queryset = queryset.annotate(date_segment=date_segment_annotation)
         queryset = queryset.values(*group_by).order_by(*group_by)
         return self.add_annotate(queryset)
 
@@ -793,6 +841,19 @@ class DeliveryChart:
                 item['label'] = uid
                 del item['ad__creative_name']
                 result[uid].append(item)
+        return result
+
+    def _get_campaign_data(self):
+        group_by = ["campaign_id", "campaign__name"]
+        raw_stats = self.get_raw_stats(
+            CampaignStatistic.objects.all(), group_by,
+            self.params["date"],
+        )
+        result = defaultdict(list)
+        for item in raw_stats:
+            uid = item["campaign_id"]
+            item["label"] = item["campaign__name"]
+            result[uid].append(item)
         return result
 
     def _get_ad_data(self):

@@ -11,10 +11,10 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.analytics_charts import Dimension
 from aw_reporting.analytics_charts import Indicator
+from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
@@ -93,7 +93,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
                                                                    type="A"))
         creative, _ = VideoCreative.objects.get_or_create(id=1)
         city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
-            name="bobruisk"))
+            name="Babruysk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 

@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
+from aw_creation.models import CampaignCreation, \
     default_languages, AdGroupCreation, AdCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
 
@@ -46,7 +46,7 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             final_url="https://www.nasdaq.com",
             companion_banner=SimpleUploadedFile(
                 name='video_thumbnail.png',
-                content=open("aw_creation/fixtures/video_thumbnail.png",
+                content=open("aw_creation/fixtures/tests/video_thumbnail.png",
                              'rb').read(),
                 content_type='image/png',
             ),

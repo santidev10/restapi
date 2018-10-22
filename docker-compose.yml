@@ -6,6 +6,8 @@ services:
     environment:
       POSTGRES_DB: saas
       POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
   api:
     build: .
     volumes:
@@ -32,7 +34,7 @@ services:
       - redis
       - es
   es:
-    image: elasticsearch
+    image: elasticsearch:6.4.2
   cassandra:
     image: cassandra
     expose:

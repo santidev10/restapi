@@ -1,6 +1,6 @@
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.excel_reports_analytics import PerformanceWeeklyReport as AnalyticsWeeklyReport
-from aw_reporting.excel_reports_dashboard import PerformanceWeeklyReport as DashboardWeeklyReport
+from aw_reporting.excel_reports import AnalyticsPerformanceWeeklyReport
+from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 
 
 class DemoAnalyzeWeeklyReportMixin:
@@ -51,9 +51,9 @@ class DemoAnalyzeWeeklyReportMixin:
         return data['items']
 
 
-class DemoAnalyticsWeeklyReport(DemoAnalyzeWeeklyReportMixin, AnalyticsWeeklyReport):
+class DemoAnalyticsWeeklyReport(DemoAnalyzeWeeklyReportMixin, AnalyticsPerformanceWeeklyReport):
     pass
 
 
-class DemoDashboardWeeklyReport(DemoAnalyzeWeeklyReportMixin, DashboardWeeklyReport):
+class DemoDashboardWeeklyReport(DemoAnalyzeWeeklyReportMixin, DashboardPerformanceWeeklyReport):
     pass

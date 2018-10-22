@@ -1,3 +1,6 @@
+import logging
+from time import sleep
+
 from django.conf import settings
 
 from utils.utils import chunks_generator

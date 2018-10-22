@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from aw_creation.models import AccountCreation
 from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.excel_reports_analytics import PerformanceReport
+from aw_reporting.excel_reports import AnalyticsPerformanceReport
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import all_stats_aggregator
@@ -45,7 +45,7 @@ class AnalyticsPerformanceExportApiView(APIView):
             timestamp=datetime.now().strftime("%Y%m%d"),
         )
         columns_to_hide = []
-        xls_report = PerformanceReport(columns_to_hide=columns_to_hide)
+        xls_report = AnalyticsPerformanceReport(columns_to_hide=columns_to_hide)
         return xlsx_response(title, xls_report.generate(data_generator))
 
     def get_filters(self):

@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-339,pbkdf2_sha256$24000$w09UM51gJ0l3$lxdhsbbWdvXdUjGqe0jTih08fbSv9mSD4QjtfWMyATk=,2018-06-19 14:36:36.603744+00,f,,Sean,Lacson,f,t,2018-06-19 14:36:36.577886+00,sean.lacson@starcomww.com,,"",f,,,f,,,,,,t,f,f,,t

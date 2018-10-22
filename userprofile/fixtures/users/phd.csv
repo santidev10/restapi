@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-220,pbkdf2_sha256$24000$AXRh65O1Csit$eY0ZCNi/icQTfYjbC5c+sbow72zOzPA2KhDnmZEM/Jg=,2017-07-12 18:42:44.451009+00,f,,Sara,Swanson,f,t,2017-07-12 18:42:44.424365+00,sara.swanson@phdmedia.com,,0,t,,,f,,,,,,t,f,f,,t

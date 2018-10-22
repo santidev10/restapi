@@ -1,4 +1,3 @@
-# pylint: disable=import-error
 import calendar
 import csv
 import itertools
@@ -12,68 +11,65 @@ from io import StringIO
 import isodate
 from apiclient.discovery import build
 from django.conf import settings
-# pylint: enable=import-error
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Value
 from django.db.models import Case
-from django.db.models import Q
-from django.db.models import When
 from django.db.models import F
 from django.db.models import IntegerField as AggrIntegerField
-from django.db.models import Min
 from django.db.models import Max
-from django.http import StreamingHttpResponse
+from django.db.models import Min
+from django.db.models import Value
+from django.db.models import When
 from django.http import Http404
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import ListAPIView
-from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.generics import GenericAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.generics import UpdateAPIView
 from rest_framework.parsers import FileUploadParser
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
 from aw_creation.models import AccountCreation
-from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
 from aw_creation.models import FrequencyCap
 from aw_creation.models import Language
 from aw_creation.models import LocationRule
-from aw_creation.models import AdScheduleRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import Account
-from aw_reporting.models import BASE_STATS
-from aw_reporting.models import GeoTarget
-from aw_reporting.models import Topic
-from aw_reporting.models import Audience
 from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BASE_STATS
+from aw_reporting.models import Campaign
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import TopicStatistic
 from aw_reporting.models import base_stats_aggregator
-from aw_reporting.models import Campaign
-from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_add_calculated_stats
+from aw_reporting.models import dict_norm_base_stats
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
-from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 from utils.views import XLSX_CONTENT_TYPE
 
 logger = logging.getLogger(__name__)
@@ -971,12 +967,10 @@ class AdCreationAvailableAdFormatsApiView(APIView):
             ad_creation.ad_group_creation.get_available_ad_formats())
 
 
-@demo_view_decorator
-class AccountCreationDuplicateApiView(APIView):
+class BaseCreationDuplicateApiView(APIView):
     serializer_class = AccountCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
-    account_fields = ("is_paused", "is_ended")
     campaign_fields = (
         "name", "start", "end", "budget", "devices_raw", "delivery_method",
         "type", "bid_strategy_type",
@@ -1014,11 +1008,7 @@ class AccountCreationDuplicateApiView(APIView):
     targeting_fields = ("criteria", "type", "is_negative")
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(
-            owner=self.request.user,
-            is_managed=True,
-        )
-        return queryset
+        raise NotImplementedError
 
     def post(self, request, pk, **kwargs):
         try:
@@ -1036,11 +1026,7 @@ class AccountCreationDuplicateApiView(APIView):
         return Response(data=response)
 
     def duplicate_item(self, item, bulk_items, to_parent):
-        if isinstance(item, AccountCreation):
-            return self.duplicate_account(item, bulk_items,
-                                          all_names=self.get_queryset().values_list(
-                                              "name", flat=True))
-        elif isinstance(item, CampaignCreation):
+        if isinstance(item, CampaignCreation):
             parent = item.account_creation
             return self.duplicate_campaign(parent, item, bulk_items,
                                            all_names=parent.campaign_creations.values_list(
@@ -1079,20 +1065,6 @@ class AccountCreationDuplicateApiView(APIView):
         else:
             raise NotImplementedError(
                 "Unknown item type: {}".format(type(item)))
-
-    def duplicate_account(self, account, bulk_items, all_names):
-        account_data = dict(
-            name=self.increment_name(account.name, all_names),
-            owner=self.request.user,
-        )
-        for f in self.account_fields:
-            account_data[f] = getattr(account, f)
-        acc_duplicate = AccountCreation.objects.create(**account_data)
-
-        for c in account.campaign_creations.filter(is_deleted=False):
-            self.duplicate_campaign(acc_duplicate, c, bulk_items)
-
-        return acc_duplicate
 
     def duplicate_campaign(self, account, campaign, bulk_items,
                            all_names=None):
@@ -1225,7 +1197,7 @@ class AccountCreationDuplicateApiView(APIView):
 
 
 @demo_view_decorator
-class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class CampaignCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1237,7 +1209,7 @@ class CampaignCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 
 @demo_view_decorator
-class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class AdGroupCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdGroupCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1249,7 +1221,7 @@ class AdGroupCreationDuplicateApiView(AccountCreationDuplicateApiView):
 
 
 @demo_view_decorator
-class AdCreationDuplicateApiView(AccountCreationDuplicateApiView):
+class AdCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
 

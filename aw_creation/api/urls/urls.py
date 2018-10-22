@@ -71,9 +71,6 @@ urlpatterns = [
         views.TargetingItemsImportApiView.as_view(),
         name="targeting_items_import"),
 
-    url(r'^account_creation_duplicate/(?P<pk>\w+)/$',
-        views.AccountCreationDuplicateApiView.as_view(),
-        name="account_creation_duplicate"),
     url(r'^campaign_creation_duplicate/(?P<pk>\w+)/$',
         views.CampaignCreationDuplicateApiView.as_view(),
         name="campaign_creation_duplicate"),
