@@ -360,6 +360,7 @@ AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/
 MAX_AVATAR_SIZE_MB = 10.
 
 DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
+AUTOPILOT_API_KEY = "dd069a2d588d4dce95fe134b553ca5df"
 
 try:
     from .local_settings import *
