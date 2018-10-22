@@ -9,7 +9,6 @@ __pycache__/
 *.so
 
 .DS_Store
-.gitignore
 
 # Distribution / packaging
 .Python
