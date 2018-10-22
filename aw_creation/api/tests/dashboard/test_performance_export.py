@@ -53,6 +53,7 @@ from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 from utils.utils_tests import reverse
 
 
@@ -676,6 +677,26 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
         self.assertEqual(len(data_rows), test_data_limit + 1)
         self.assertEqual(data_rows[test_data_limit][0].value, TOO_MUCH_DATA_MESSAGE)
+
+    def test_filename(self):
+        user = self.create_test_user()
+        test_now = datetime(2018, 6, 24)
+        user.add_custom_user_permission("view_dashboard")
+        test_account_name = "Test Account"
+        account = Account.objects.create(id=next(int_iterator), name=test_account_name)
+        expected_filename = "Segmented report {account_name} {year}{month}{day}.xlsx".format(
+            account_name=test_account_name,
+            year=test_now.year,
+            month=("0" + str(test_now.month))[-2:],
+            day=("0" + str(test_now.day))[-2:],
+        )
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(test_now):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response["content-disposition"], "attachment; filename=\"{}\"".format(expected_filename))
 
     def test_hide_campaigns_from_header_if_it_shown_for_user(self):
         user = self.create_test_user()

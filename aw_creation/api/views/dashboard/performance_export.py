@@ -26,6 +26,7 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
 from utils.api.exceptions import PermissionsError, BadRequestError
+from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
@@ -38,8 +39,9 @@ class DashboardPerformanceExportApiView(APIView):
     def post(self, request, pk, **_):
         self._validate_request_payload()
         item = self._get_account_creation(request, pk)
+        account_name = (item.account.name if item.account is not None else item.name) or ""
         data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(item.name, data_generator)
+        return self.build_response(account_name, data_generator)
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
@@ -54,9 +56,9 @@ class DashboardPerformanceExportApiView(APIView):
             raise Http404
 
     def build_response(self, account_name, data_generator):
-        title = "{title}-analyze-{timestamp}".format(
-            title=re.sub(r"\W", account_name, "-"),
-            timestamp=datetime.now().strftime("%Y%m%d"),
+        title = "Segmented report {account_name} {timestamp}".format(
+            account_name=re.sub(r"\W", account_name, "-"),
+            timestamp=now_in_default_tz().strftime("%Y%m%d"),
         )
         user = self.request.user
 
