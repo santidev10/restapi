@@ -763,6 +763,33 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             response = self._request(account.account_creation.id, metric=metric.value)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    def test_campaign_no_valid_stats(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        impressions = 123
+        CampaignStatistic.objects.create(campaign=campaign, date="2018-01-01", impressions=impressions)
+        ad_groups = [
+            AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+            for _ in range(5)
+        ]
+        ad_group_ids = [ad_group.id for ad_group in ad_groups]
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id,
+                                     metric=Metric.CAMPAIGN.value,
+                                     ad_groups=ad_group_ids)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        impressions_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
+        self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
