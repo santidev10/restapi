@@ -1,10 +1,10 @@
 from datetime import date
-from django.db.models import Sum, Q
-from rest_framework.fields import SerializerMethodField
+
+from django.db.models import Sum
 
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.models import AdGroup, Opportunity, OpPlacement
+from aw_reporting.models import AdGroup
 from utils.serializers.fields import StatField
 
 

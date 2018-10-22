@@ -1,3 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-91,cafbe8919ac258838f72dcacbdd4e632c2d9773e,2017-04-17 16:17:57.917155+00,f,,Joey,Hendler,f,t,2016-07-01 14:28:05.537022+00,joey.hendler@channelfactory.com,,0123456789a,t,,,f,,,,,,t,f,f,,t
-200,pbkdf2_sha256$24000$IvUAgSt87ax8$gPwn0G0hlzaSXJduzGjRdW0xt69z7TW+wKcFiQVZ4+o=,2017-04-25 16:45:03.479764+00,f,,Kim,Harrison,f,t,2017-04-25 16:45:03.435385+00,kharrison@jacksonspalding.com,,0,f,,,f,,,,,,t,f,f,,t

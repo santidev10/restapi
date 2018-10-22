@@ -1,8 +1,7 @@
 from django.db.models import Sum, When, Case, Value, F, FloatField
 
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import SalesForceGoalType, Flight, \
-    get_margin
+from aw_reporting.models import SalesForceGoalType, get_margin
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 
 
@@ -41,24 +40,6 @@ def get_margin_from_flights(flights, cost, plan_cost,
         margin = get_margin(plan_cost=plan_cost, cost=cost,
                             client_cost=sum_client_cost)
     return margin
-
-
-def margin_for_opportunity(opportunity):
-    flights = Flight.objects.filter(placement__opportunity=opportunity) \
-        .annotate(delivery=flight_delivery_annotate) \
-        .values(
-        "id", "name", "start", "end", "total_cost", "ordered_units",
-        "cost", "placement_id", "delivery",
-        "placement__goal_type_id", "placement__placement_type",
-        "placement__opportunity_id",
-        "placement__opportunity__cannot_roll_over",
-        "placement__opportunity__budget",
-        "placement__dynamic_placement", "placement__ordered_rate",
-        "placement__tech_fee", "placement__tech_fee_type",
-    )
-    cost = sum((f["cost"] or 0) for f in flights)
-    plan_cost = sum((f["total_cost"] or 0) for f in flights)
-    return get_margin_from_flights(flights, cost, plan_cost)
 
 
 def get_days_run_and_total_days(flight, yesterday):

@@ -11,12 +11,6 @@ from aw_reporting.tools.pricing_tool.pricing_tool_serializer import \
     PricingToolSerializer
 from utils.datetime import now_in_default_tz, build_periods
 
-
-def model_to_filter(mod):
-    return [dict(id=i.pk, name=str(i.name))
-            for i in mod.objects.all().order_by('name')]
-
-
 DATE_FORMAT = "%Y-%m-%d"
 
 

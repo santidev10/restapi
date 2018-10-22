@@ -3,9 +3,10 @@
 from __future__ import unicode_literals
 
 import datetime
+
 import django.core.validators
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 from django.utils.timezone import utc
 
 

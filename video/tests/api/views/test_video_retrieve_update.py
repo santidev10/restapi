@@ -34,7 +34,7 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
 
         self.fill_all_groups(user)
 
-        with open('saas/fixtures/singledb_video_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             data = json.load(data_file)
         video_id = data["items"][0]["id"]
 

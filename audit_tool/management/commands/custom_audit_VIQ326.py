@@ -5,17 +5,13 @@ from typing import Dict
 from typing import List
 
 import xlsxwriter
-
 from django.core.management import BaseCommand
 from django.http import QueryDict
 
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
-
 from audit_tool.youtube import Youtube
-
 from singledb.connector import SingleDatabaseApiConnector
-
 
 logger = logging.getLogger(__name__)
 

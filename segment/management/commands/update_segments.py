@@ -2,6 +2,7 @@
 Command to update segments data
 """
 import logging
+
 from django.core.management import BaseCommand
 
 from segment.utils import total_update_segments

@@ -1,9 +1,10 @@
-from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from aw_reporting.demo.models import DemoAccount
+
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo.models import DemoAccount
 
 
 class AccountAPITestCase(AwReportingAPITestCase):

@@ -246,7 +246,6 @@ class AnalyticsPerformanceWeeklyReport:
             logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
             self.worksheet.insert_image(
                 'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
-        # TODO replace N/A
         # campaign
         campaign_title = "Campaign: "
         campaign_data = "{}\n".format(
@@ -273,10 +272,8 @@ class AnalyticsPerformanceWeeklyReport:
             self.date_delta.strftime("%m/%d/%y"),
             (datetime.now().date() - timedelta(days=1)).strftime("%m/%d/%y"))
         # Set merge area
-        # pylint: disable=no-value-for-parameter
         self.worksheet.merge_range('B1:D4', "")
         self.worksheet.merge_range('B5:D11', "", self.merge_format)
-        # pylint: enable=no-value-for-parameter
         self.worksheet.write_rich_string(
             "B5",
             self.bold_format,
@@ -299,7 +296,6 @@ class AnalyticsPerformanceWeeklyReport:
             reporting_date_range_data,
             self.merge_format
         )
-        # TODO add brand image
 
     def get_campaign_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
@@ -410,7 +406,6 @@ class AnalyticsPerformanceWeeklyReport:
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
-        # TODO We don't collect this statistic yet.
         ad_group_info = [
             (
                 obj["name"],

@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-141,pbkdf2_sha256$24000$NxY6NVL5mVOR$w/owMlBEk1VhsM21xOuY2kxzOudXLBqfTNZPwjkAnkU=,2017-01-10 16:26:10.70858+00,f,,Demo,Universal,f,t,2016-11-07 19:18:29.666094+00,demo.universal@gmail.com,,"",t,,,f,,,,,,t,f,f,,t

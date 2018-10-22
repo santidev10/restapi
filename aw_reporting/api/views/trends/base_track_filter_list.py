@@ -1,8 +1,6 @@
-from django.db.models import Sum
 from rest_framework.response import Response
 
 from aw_reporting.api.views.trends.base_track import TrackApiBase
-from aw_reporting.models import Account
 
 
 class BaseTrackFiltersListApiView(TrackApiBase):

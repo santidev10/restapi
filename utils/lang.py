@@ -20,13 +20,6 @@ def pick_dict(item: dict, keys: List[str]):
             if key in keys}
 
 
-def deep_getattr(obj, attr, default=None):
-    try:
-        return reduce(getattr, attr.split("."), obj)
-    except AttributeError:
-        return default
-
-
 class ExtendedEnum(Enum):
     @classmethod
     def values(cls):
@@ -35,3 +28,7 @@ class ExtendedEnum(Enum):
     @classmethod
     def has_value(cls, value):
         return value in cls.values()
+
+
+def merge_dicts(*dicts):
+    return reduce(lambda res, item: {**res, **item}, dicts, {})

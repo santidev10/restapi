@@ -149,7 +149,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))
-        with open('aw_creation/fixtures/video_thumbnail.png', 'rb') as fp:
+        with open('aw_creation/fixtures/tests/video_thumbnail.png', 'rb') as fp:
             data = dict(
                 name="Ad Group  1",
                 final_url="https://wtf.com",
