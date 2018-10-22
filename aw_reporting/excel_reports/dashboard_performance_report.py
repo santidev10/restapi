@@ -6,6 +6,7 @@ from io import BytesIO
 import xlsxwriter
 from django.conf import settings
 
+from utils.datetime import strftime_extended
 from utils.lang import ExtendedEnum
 
 TOO_MUCH_DATA_MESSAGE = "The list is too long to be shown entirely. " \
@@ -34,6 +35,7 @@ class DashboardPerformanceReportColumn(ExtendedEnum):
     VIDEO_QUARTILE_50 = "video50rate"
     VIDEO_QUARTILE_75 = "video75rate"
     VIDEO_QUARTILE_100 = "video100rate"
+    ALL_CONVERSIONS = "all_conversions"
 
 
 COLUMN_NAME = {
@@ -58,6 +60,7 @@ COLUMN_NAME = {
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_50: "50%",
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_75: "75%",
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_100: "100%",
+    DashboardPerformanceReportColumn.ALL_CONVERSIONS: "All conversions",
 }
 
 COLUMN_WIDTH = {
@@ -88,6 +91,7 @@ ALL_COLUMNS = (
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_50,
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_75,
     DashboardPerformanceReportColumn.VIDEO_QUARTILE_100,
+    DashboardPerformanceReportColumn.ALL_CONVERSIONS,
 )
 
 
@@ -181,7 +185,7 @@ def safe_date_format(value, strftime_format):
         return value
     if not isinstance(value, (date, datetime)):
         return str(value)
-    return value.strftime(strftime_format)
+    return strftime_extended(value, strftime_format)
 
 
 def div_by_100(value):
