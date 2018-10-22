@@ -13,3 +13,11 @@ class PayloadTooLarge(APIException):
         if detail is None:
             detail = force_text(self.default_detail).format(payload_size=payload_size, limit_size=limit_size)
         super(PayloadTooLarge, self).__init__(detail, code)
+
+
+class PermissionsError(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
+
+
+class BadRequestError(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
