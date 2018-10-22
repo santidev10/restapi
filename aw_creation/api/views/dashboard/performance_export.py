@@ -4,10 +4,8 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
-from django.http import HttpResponseBadRequest
+from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
@@ -27,6 +25,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
+from utils.api.exceptions import PermissionsError, BadRequestError
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
@@ -37,28 +36,22 @@ class DashboardPerformanceExportApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def post(self, request, pk, **_):
-        try:
-            self._validate_request_payload()
-        except ValueError as ex:
-            return HttpResponseBadRequest(ex)
-        filters = {}
+        self._validate_request_payload()
+        item = self._get_account_creation(request, pk)
+        data_generator = partial(self.get_export_data, item, request.user)
+        return self.build_response(item.name, data_generator)
+
+    def _get_account_creation(self, request, pk):
+        queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
         visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
         if not visible_all_accounts:
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
-            filters["account__id__in"] = visible_accounts
+            queryset = queryset.filter(account__id__in=visible_accounts)
         try:
-            item = AccountCreation.objects.filter(**filters).get(pk=pk)
+            return queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(item.name, data_generator)
-
-    tabs = (
-        "device", "gender", "age", "topic", "interest", "remarketing",
-        "keyword", "location", "creative", "ad", "channel", "video",
-    )
+            raise Http404
 
     def build_response(self, account_name, data_generator):
         title = "{title}-analyze-{timestamp}".format(
@@ -85,9 +78,13 @@ class DashboardPerformanceExportApiView(APIView):
         header_rows = [
             "Date: {start_date} - {end_date}",
             "Group By: {metric}",
-            "Campaigns: {campaigns}",
-            "Ad Groups: {ad_groups}",
         ]
+        user_settings = self.request.user.get_aw_settings()
+        if user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            header_rows += [
+                "Campaigns: {campaigns}",
+                "Ad Groups: {ad_groups}",
+            ]
         header_date = dict(
             metric=METRIC_REPRESENTATION.get(self._get_metric()),
             start_date=filters.get("start_date"),
@@ -182,75 +179,117 @@ class DashboardPerformanceExportApiView(APIView):
                 yield {**{"tab": tab_name}, **data}
 
     def _get_tabs(self):
+        metrics = self._get_metrics_to_display()
+        return [METRIC_MAP[metric] for metric in metrics]
+
+    def _get_metrics_to_display(self):
         metric = self._get_metric()
-        if metric is None:
-            return self.tabs
-        return [METRIC_MAP[metric]]
+        if metric is not None:
+            return [metric]
+
+        metrics = list(ALL_METRICS)
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            metrics.remove(Metric.CAMPAIGN)
+        if user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+            metrics.remove(Metric.AUDIENCE)
+        return metrics
 
     def _validate_request_payload(self):
-        metric = self._get_metric_parameter()
-        if metric not in ALLOWED_METRICS:
-            raise ValueError("Wrong metric")
+        self._validate_metric()
+        self._validate_date_segment()
+
+    def _validate_metric(self):
+        metric = self._get_metric()
+        if metric is None:
+            return
+        wrong_metric_error = PermissionsError("Wrong metric")
+        user_settings = self.request.user.get_aw_settings()
+        if metric == Metric.AUDIENCE and user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+            raise wrong_metric_error
+        if metric == Metric.CAMPAIGN and not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            raise wrong_metric_error
+
+    def _validate_date_segment(self):
         date_segment = self._get_date_segment()
         if date_segment not in ALLOWED_DATE_SEGMENT:
-            raise ValueError("Wrong date_segment")
+            raise BadRequestError("Wrong date_segment")
 
     def _get_metric(self):
-        metric_parameter = self._get_metric_parameter()
-        return Metric(metric_parameter) \
-            if metric_parameter \
-            else None
-
-    def _get_metric_parameter(self):
-        return self.request.data.get("metric")
+        metric_parameter = self.request.data.get("metric")
+        try:
+            return Metric(metric_parameter) \
+                if metric_parameter \
+                else None
+        except ValueError as ex:
+            raise BadRequestError(ex)
 
     def _get_date_segment(self):
         return self.request.data.get("date_segment")
 
 
 class Metric(ExtendedEnum):
-    GENDER = "gender"
+    AD_GROUP = "ad_group"
     AGE = "age"
-    LOCATION = "location"
+    AUDIENCE = "audience"
+    CAMPAIGN = "campaign"
+    CHANNEL = "channel"
+    CREATIVE = "creative"
     DEVICE = "device"
-    TOPIC = "topic"
+    GENDER = "gender"
     INTEREST = "interest"
     KEYWORD = "keyword"
-    CHANNEL = "channel"
+    LOCATION = "location"
+    TOPIC = "topic"
     VIDEO = "video"
-    CREATIVE = "creative"
-    AD_GROUP = "ad_group"
-    AUDIENCE = "audience"
 
+
+ALL_METRICS = (
+    Metric.CAMPAIGN,
+    Metric.DEVICE,
+    Metric.GENDER,
+    Metric.AGE,
+    Metric.TOPIC,
+    Metric.INTEREST,
+    Metric.AUDIENCE,
+    Metric.KEYWORD,
+    Metric.LOCATION,
+    Metric.CREATIVE,
+    Metric.AD_GROUP,
+    Metric.CHANNEL,
+    Metric.VIDEO,
+)
 
 METRIC_MAP = {
-    Metric.GENDER: "gender",
+    Metric.AD_GROUP: "ad",
     Metric.AGE: "age",
-    Metric.LOCATION: "location",
+    Metric.AUDIENCE: "remarketing",
+    Metric.CAMPAIGN: "campaign",
+    Metric.CHANNEL: "channel",
+    Metric.CREATIVE: "creative",
     Metric.DEVICE: "device",
-    Metric.TOPIC: "topic",
+    Metric.GENDER: "gender",
     Metric.INTEREST: "interest",
     Metric.KEYWORD: "keyword",
-    Metric.CHANNEL: "channel",
+    Metric.LOCATION: "location",
+    Metric.TOPIC: "topic",
     Metric.VIDEO: "video",
-    Metric.CREATIVE: "creative",
-    Metric.AD_GROUP: "ad",
-    Metric.AUDIENCE: "remarketing"
 }
 DIMENSION_MAP = {value: key for key, value in METRIC_MAP.items()}
 METRIC_REPRESENTATION = {
-    Metric.GENDER: "Gender",
+    Metric.AD_GROUP: "Ad Group",
     Metric.AGE: "Age",
-    Metric.LOCATION: "Location",
+    Metric.AUDIENCE: "Audience",
+    Metric.CAMPAIGN: "Campaign",
+    Metric.CHANNEL: "Channel",
+    Metric.CREATIVE: "Creative",
     Metric.DEVICE: "Device",
-    Metric.TOPIC: "Topic",
+    Metric.GENDER: "Gender",
     Metric.INTEREST: "Interest",
     Metric.KEYWORD: "Keyword",
-    Metric.CHANNEL: "Channel",
+    Metric.LOCATION: "Location",
+    Metric.TOPIC: "Topic",
     Metric.VIDEO: "Video",
-    Metric.CREATIVE: "Creative",
-    Metric.AD_GROUP: "Ad Group",
-    Metric.AUDIENCE: "Audience"
 }
 ALLOWED_METRICS = tuple(Metric.values()) + (None,)
 ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)

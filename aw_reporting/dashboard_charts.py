@@ -839,6 +839,9 @@ class DeliveryChart:
                 result[uid].append(item)
         return result
 
+    def _get_campaign_data(self):
+        return dict()
+
     def _get_ad_data(self):
         group_by = ['ad__creative_name', 'ad_id', 'ad__status']
         raw_stats = self.get_raw_stats(
