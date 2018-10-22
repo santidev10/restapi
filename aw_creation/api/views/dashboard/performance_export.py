@@ -27,6 +27,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
+from utils.api.exceptions import PermissionsError
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
@@ -198,21 +199,30 @@ class DashboardPerformanceExportApiView(APIView):
         return metrics
 
     def _validate_request_payload(self):
-        metric = self._get_metric_parameter()
-        if metric not in ALLOWED_METRICS:
-            raise ValueError("Wrong metric")
+        self._validate_metric()
+        self._validate_date_segment()
+
+    def _validate_metric(self):
+        metric = self._get_metric()
+        if metric is None:
+            return
+        wrong_metric_error = PermissionsError("Wrong metric")
+        user_settings = self.request.user.get_aw_settings()
+        if metric == Metric.AUDIENCE and user_settings.get(UserSettingsKey.HIDE_REMARKETING):
+            raise wrong_metric_error
+        if metric == Metric.CAMPAIGN and not user_settings.get(UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED):
+            raise wrong_metric_error
+
+    def _validate_date_segment(self):
         date_segment = self._get_date_segment()
         if date_segment not in ALLOWED_DATE_SEGMENT:
             raise ValueError("Wrong date_segment")
 
     def _get_metric(self):
-        metric_parameter = self._get_metric_parameter()
+        metric_parameter = self.request.data.get("metric")
         return Metric(metric_parameter) \
             if metric_parameter \
             else None
-
-    def _get_metric_parameter(self):
-        return self.request.data.get("metric")
 
     def _get_date_segment(self):
         return self.request.data.get("date_segment")

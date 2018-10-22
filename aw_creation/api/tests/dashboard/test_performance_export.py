@@ -10,6 +10,7 @@ from django.test import override_settings
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
@@ -340,7 +341,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, metric="overview")
+            response = self._request(account.account_creation.id, metric="invalid_metric")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_date_segment_invalid(self):
@@ -638,7 +639,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator), name="")
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED:True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
@@ -711,6 +712,25 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         sheet = get_sheet_from_response(response)
         metrics = {row[0].value for row in sheet}
         self.assertNotIn(METRIC_REPRESENTATION[Metric.CAMPAIGN], metrics)
+
+    @generic_test([
+        (Metric.CAMPAIGN, (Metric.CAMPAIGN,), dict()),
+        (Metric.AUDIENCE, (Metric.AUDIENCE,), dict()),
+    ])
+    def test_forbidden_if_user_has_no_permissions_for_the_mertic(self, metric):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
+            UserSettingsKey.HIDE_REMARKETING: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, metric=metric.value)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
 
 def get_sheet_from_response(response):
