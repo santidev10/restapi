@@ -1,12 +1,10 @@
 import calendar
 import json
 import logging
-import re
 import uuid
 from decimal import Decimal
 
 from PIL import Image
-from django.conf import settings
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.core.validators import RegexValidator
@@ -23,8 +21,6 @@ from utils.datetime import now_in_default_tz
 logger = logging.getLogger(__name__)
 
 VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
-BULK_CREATE_CAMPAIGNS_COUNT = 5
-BULK_CREATE_AD_GROUPS_COUNT = 5
 
 WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
@@ -40,16 +36,6 @@ TrackingTemplateValidator = RegexValidator(
 
 def get_uid(length=12):
     return str(uuid.uuid4()).replace('-', '')[:length]
-
-
-def get_version():
-    return get_uid(8)
-
-
-def get_yt_id_from_url(url):
-    match = re.match(YT_VIDEO_REGEX, url)
-    if match:
-        return match.group(1)
 
 
 class CreationItemQueryset(models.QuerySet):

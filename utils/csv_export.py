@@ -12,13 +12,6 @@ from rest_framework.status import HTTP_200_OK
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
-class CSVExportException(Exception):
-    """
-    Exception class from csv export
-    """
-    pass
-
-
 class BaseCSVStreamResponseGenerator(object):
     def __init__(self, columns, data_generator, headers_map):
         self.columns = columns

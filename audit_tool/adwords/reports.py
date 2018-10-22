@@ -7,7 +7,6 @@ from typing import Iterator
 
 from audit_tool.dmo import AccountDMO
 from utils.utils import safe_exception
-
 from .base import AdwordsBase
 
 logger = logging.getLogger(__name__)

@@ -1,24 +1,31 @@
-from datetime import timedelta, date
+from datetime import date
+from datetime import timedelta
 from itertools import product
-from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
-    Account
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
+from aw_reporting.reports.pacing_report import DefaultRate
+from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
-    get_current_release
+from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utils_tests import patch_now
 
 
 class PacingReportPlacementsTestCase(APITestCase):

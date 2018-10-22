@@ -1,4 +1,3 @@
-from functools import wraps
 from hashlib import md5
 
 from django.conf import settings
@@ -14,18 +13,6 @@ def registry(key, value=None):
         _registry[key] = value
         cache.set(settings.CACHE_MAIN_KEY, _registry)
     return _registry[key]
-
-
-def rated_pages():
-    history = registry('history')
-    pages = {}
-    for path in history:
-        if path not in pages:
-            pages[path] = 0
-        pages[path] += 1
-
-    return sorted(pages.items(),
-                  key=lambda x: -x[1])[:settings.CACHE_PAGES_LIMIT]
 
 
 def cache_reset():
@@ -105,20 +92,3 @@ def cached_view_decorator(method):
     assert method.__name__ in wrapped, \
         "Unsupported method name: '{}'".format(method.__name__)
     return wrapped[method.__name__]
-
-
-def cached_fn(fn):
-    invoked = False
-    result = None
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        global invoked
-        global result
-
-        if not invoked:
-            result = fn(*args, **kwargs)
-            invoked = True
-        return result
-
-    return wrapper

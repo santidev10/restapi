@@ -100,7 +100,5 @@ ENV/
 media
 dump.rdb
 iq_errors.*
-/aw_reporting/settings/instance.yml
-/aw_reporting/settings/test_instance.yml
 
 *.pid

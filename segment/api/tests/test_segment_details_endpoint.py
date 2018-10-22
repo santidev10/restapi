@@ -1,7 +1,7 @@
 from django.core.urlresolvers import reverse
 
-from utils.utils_tests import ExtendedAPITestCase
 from segment.models import SegmentChannel, SegmentKeyword, SegmentVideo
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class SegmentDetailsApiViewTestCase(ExtendedAPITestCase):

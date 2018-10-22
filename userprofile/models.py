@@ -4,19 +4,20 @@ Userprofile models module
 import logging
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
-    UserManager
+from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import UserManager
 from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import SET_NULL
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import UserSettingsKey
-from userprofile.permissions import PermissionHandler, PermissionGroupNames
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
@@ -123,10 +124,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
     aw_settings = JSONField(default=get_default_settings)
-    historical_aw_account = models.ForeignKey(AWConnectionToUserRelation,
-                                              null=True, default=None,
-                                              related_name="user_aw_historical",
-                                              on_delete=SET_NULL)
 
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)

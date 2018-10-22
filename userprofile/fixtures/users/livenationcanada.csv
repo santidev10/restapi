@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,is_subscribed_to_campaign_notifications,facebook_id
-3,pbkdf2_sha256$24000$viJcczaZ8bZY$9zuOH2hDzy02oGMeI6MGwL1/x7Z0pqo/jJ6D6gSwGy0=,2018-03-29 23:51:03.126674+00,f,,Miranda,Liu,f,t,2018-03-29 23:51:03.097438+00,Mirandaliu@livenation.com,,"",f,,,f,,,,,,t,f,f,t,

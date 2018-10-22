@@ -1,2 +1,0 @@
-id,password,last_login,is_superuser,username,first_name,last_name,is_staff,is_active,date_joined,email,profile_image_url,features_available,is_verified,address,date_of_birth,is_influencer,paypal_email,price_range,strong_beliefs,vertical,worked_with,is_tos_signed,is_comparison_tool_available,is_password_generated,facebook_id,is_subscribed_to_campaign_notifications
-219,pbkdf2_sha256$24000$9QRkB5tkteoo$onqZDrp9ii1PVbF1Ue1b7U6LX1pdWtrRGFpx1erCbZ8=,2017-06-07 17:52:55.317752+00,f,,Vizio,Instance,f,t,2017-06-07 17:52:02.012568+00,vizio@channelfactory.com,,0,t,,,f,,,,,,t,f,f,,t

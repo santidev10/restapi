@@ -1,16 +1,16 @@
 import csv
-from django.core.management import BaseCommand
 import logging
 from typing import List
 
+from django.core.management import BaseCommand
+
 from audit_tool.adwords import AdWords
-from audit_tool.youtube import Youtube
-from audit_tool.keywords import Keywords
 from audit_tool.dmo import AccountDMO
 from audit_tool.dmo import VideoDMO
-from aw_reporting.models import Account
+from audit_tool.keywords import Keywords
+from audit_tool.youtube import Youtube
 from aw_reporting.models import AWConnection
-
+from aw_reporting.models import Account
 
 logger = logging.getLogger(__name__)
 

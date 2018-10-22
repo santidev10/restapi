@@ -1,16 +1,16 @@
 from datetime import datetime
 from datetime import timedelta
-import pytz
 
+import pytz
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity
-from aw_reporting.models import OpPlacement
-from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz

@@ -85,12 +85,3 @@ def user_has_permission(perm):
     """
     return type("UserHasPermission", (UserHasPermissionBase,),
                 dict(permission=perm))
-
-
-def user_has_any_permission(*perms):
-    """
-    Create permission class which allows action
-    if user has any of listed permission
-    """
-    classes = map(lambda p: user_has_permission(p), perms)
-    return or_permission_classes(*classes)

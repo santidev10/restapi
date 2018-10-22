@@ -3,8 +3,8 @@ from urllib.parse import urlencode
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utils_tests import ExtendedAPITestCase
 from segment.models import SegmentKeyword, SegmentChannel, SegmentVideo
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):

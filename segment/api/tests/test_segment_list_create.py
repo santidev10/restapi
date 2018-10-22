@@ -7,13 +7,14 @@ from django.http import QueryDict
 from rest_framework.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, \
     HTTP_200_OK, HTTP_400_BAD_REQUEST
 
+from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import YTVideoStatistic, AWConnection, \
-    AWConnectionToUserRelation, Account, AWAccountPermission, Campaign, AdGroup
+    Account, AWAccountPermission, Campaign, AdGroup
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
 from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+    SingleDatabaseApiConnectorPatcher, int_iterator
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
@@ -23,20 +24,14 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
 
     def test_create_calculates_ctr_v(self):
         any_date = date(2018, 1, 1)
-        user = self.create_test_user()
-        manager = Account.objects.create(id=1)
-        account = Account.objects.create(id=2)
+        self.create_test_user()
+        manager = Account.objects.create(id=load_web_app_settings()["cf_account_id"])
+        account = Account.objects.create(id=next(int_iterator))
         account.managers.add(manager)
         account.save()
         connection = AWConnection.objects.create(
             email="email@mail.com", refresh_token="****",
         )
-        historical_aw_account = AWConnectionToUserRelation.objects.create(
-            user=user,
-            connection=connection,
-        )
-        user.historical_aw_account = historical_aw_account
-        user.save()
         AWAccountPermission.objects.get_or_create(
             aw_connection=connection, account=manager,
         )
