@@ -17,3 +17,7 @@ class PayloadTooLarge(APIException):
 
 class PermissionsError(APIException):
     status_code = status.HTTP_403_FORBIDDEN
+
+
+class BadRequestError(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST

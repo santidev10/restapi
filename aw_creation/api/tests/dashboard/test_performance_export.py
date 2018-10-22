@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
@@ -125,6 +126,17 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         self.assertTrue(is_empty_report(sheet))
+
+    def test_visible_accounts(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = Account.objects.create(id=next(int_iterator), name="")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_sf_data_in_summary_row(self):
         user = self.create_test_user()
@@ -311,7 +323,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_metric(self, metric):
         # fixme: remove this skip in scope of Campaigns implementation
         if metric == Metric.CAMPAIGN:
-            raise SkipTest("Campaigns metric is not implemented")
+            raise SkipTest("Campaigns metric is not implemented yet")
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
 

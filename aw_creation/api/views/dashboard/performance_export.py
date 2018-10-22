@@ -4,10 +4,8 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
-from django.http import HttpResponseBadRequest
+from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
@@ -27,7 +25,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
-from utils.api.exceptions import PermissionsError
+from utils.api.exceptions import PermissionsError, BadRequestError
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
@@ -38,23 +36,22 @@ class DashboardPerformanceExportApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def post(self, request, pk, **_):
-        try:
-            self._validate_request_payload()
-        except ValueError as ex:
-            return HttpResponseBadRequest(ex)
-        filters = {}
+        self._validate_request_payload()
+        item = self._get_account_creation(request, pk)
+        data_generator = partial(self.get_export_data, item, request.user)
+        return self.build_response(item.name, data_generator)
+
+    def _get_account_creation(self, request, pk):
+        queryset = AccountCreation.objects.all()
         user_settings = request.user.get_aw_settings()
         visible_all_accounts = user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS)
         if not visible_all_accounts:
             visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS) or []
-            filters["account__id__in"] = visible_accounts
+            queryset = queryset.filter(account__id__in=visible_accounts)
         try:
-            item = AccountCreation.objects.filter(**filters).get(pk=pk)
+            return queryset.get(pk=pk)
         except AccountCreation.DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
-
-        data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(item.name, data_generator)
+            raise Http404
 
     def build_response(self, account_name, data_generator):
         title = "{title}-analyze-{timestamp}".format(
@@ -216,13 +213,16 @@ class DashboardPerformanceExportApiView(APIView):
     def _validate_date_segment(self):
         date_segment = self._get_date_segment()
         if date_segment not in ALLOWED_DATE_SEGMENT:
-            raise ValueError("Wrong date_segment")
+            raise BadRequestError("Wrong date_segment")
 
     def _get_metric(self):
         metric_parameter = self.request.data.get("metric")
-        return Metric(metric_parameter) \
-            if metric_parameter \
-            else None
+        try:
+            return Metric(metric_parameter) \
+                if metric_parameter \
+                else None
+        except ValueError as ex:
+            raise BadRequestError(ex)
 
     def _get_date_segment(self):
         return self.request.data.get("date_segment")
