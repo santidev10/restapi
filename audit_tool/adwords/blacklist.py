@@ -1,7 +1,8 @@
 from django.conf import settings
 
-from .base import AdwordsBase
 from utils.utils import chunks_generator
+from audit_tool.dmo import AccountDMO
+from .base import AdwordsBase
 
 from time import sleep
 import logging
@@ -18,6 +19,9 @@ def safe_run(method, *args, **kwargs):
         try:
             return method(*args, **kwargs)
         except Exception as e:
+            if "OperationAccessDenied.ACTION_NOT_PERMITTED" in str(e):
+                logger.error("Skipping operation (OperationAccessDenied)")
+                break
             logger.error("Error on try {} of {}: ".format(i+1, RETRIES_COUNT))
             logger.error(e)
             if i < RETRIES_COUNT-1:
@@ -29,15 +33,12 @@ class AdwordsBlackList(AdwordsBase):
     API_VERSION = "v201809"
     PAGE_SIZE = 500
 
-    PERMITTED_ACCOUNTS_IDS = settings.AUDIT_TOOL_BLACKLIST_PERMITTED_ACCOUNTS
     SHARED_SET_NAME = "Blacklist - Audit Tool"
 
-    def __init__(self, *args, **kwargs):
-        accounts = kwargs.pop("accounts")
-        assert accounts is not None
-        kwargs["accounts"] = [dmo for dmo in accounts if dmo.account_id in self.PERMITTED_ACCOUNTS_IDS]
-
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        self.load_client_options()
+        self.accounts = self.get_accounts()
+        self.resolve_clients()
 
     def _create_shared_set(self, service):
         shared_set = {
@@ -183,23 +184,68 @@ class AdwordsBlackList(AdwordsBase):
         videos_ids = set(queryset)
 
         for account in self.accounts:
-            client = account.client
+            try:
+                client = account.client
 
-            # get campaigns
-            campaign_service = client.GetService("CampaignService")
-            campaigns_ids = self._get_campaigns(campaign_service)
-            logger.info("Found {} campaign(s) for account: {}".format(len(campaigns_ids), account.account_id))
+                # get campaigns
+                campaign_service = client.GetService("CampaignService")
+                campaigns_ids = self._get_campaigns(campaign_service)
+                logger.info("Found {} campaign(s) for account: {}".format(len(campaigns_ids), account.account_id))
 
-            # get or create shared set
-            shared_set_service = client.GetService("SharedSetService")
-            shared_set_id = self._get_shared_set_id(shared_set_service) or self._create_shared_set(shared_set_service)
-            shared_criterion_service = client.GetService("SharedCriterionService")
+                # get or create shared set
+                shared_set_service = client.GetService("SharedSetService")
+                shared_set_id = self._get_shared_set_id(shared_set_service) or self._create_shared_set(shared_set_service)
+                shared_criterion_service = client.GetService("SharedCriterionService")
 
-            # add all negative videos into the shared set
-            for chunk in chunks_generator(videos_ids, self.PAGE_SIZE):
-                self._add_shared_set_video_ids(shared_criterion_service, shared_set_id, chunk)
+                # add all negative videos into the shared set
+                for chunk in chunks_generator(videos_ids, self.PAGE_SIZE):
+                    self._add_shared_set_video_ids(shared_criterion_service, shared_set_id, chunk)
 
-            # attach the shared set to every campaign
-            campaign_shared_set_service = client.GetService("CampaignSharedSetService")
-            for campaign_id in campaigns_ids:
-                self._attach_shared_set_to_campaign(campaign_shared_set_service, shared_set_id, campaign_id)
+                # attach the shared set to every campaign
+                campaign_shared_set_service = client.GetService("CampaignSharedSetService")
+                for campaign_id in campaigns_ids:
+                    self._attach_shared_set_to_campaign(campaign_shared_set_service, shared_set_id, campaign_id)
+            except Exception as e:
+                logger.error(e)
+
+    def get_accounts(self):
+        from aw_reporting.models import AWConnection
+
+        cf_mcc_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+
+        tokens = AWConnection.objects.filter(mcc_permissions__account_id=cf_mcc_account_id,
+                                             mcc_permissions__can_read=True,
+                                             revoked_access=False) \
+                                     .values_list("refresh_token", flat=True)
+
+        cf_mcc_account = AccountDMO(account_id=cf_mcc_account_id, refresh_tokens=tokens)
+        self._resolve_client(cf_mcc_account)
+        client = cf_mcc_account.client
+
+        service = client.GetService("ManagedCustomerService")
+        offset = 0
+        selector = {
+            'fields': ['CustomerId'],
+            'paging': {
+                'startIndex': str(offset),
+                'numberResults': str(self.PAGE_SIZE)
+            },
+        }
+
+        more_pages = True
+        managed_accounts_ids = set()
+        while more_pages:
+            page = safe_run(service.get, selector)
+            if "entries" in page:
+                for entry in page["entries"]:
+                    managed_accounts_ids.add(entry.customerId)
+            offset += self.PAGE_SIZE
+            selector['paging']['startIndex'] = str(offset)
+            more_pages = offset < int(page['totalNumEntries'])
+
+        accounts = [
+            AccountDMO(account_id=account_id, refresh_tokens=tokens)
+            for account_id in managed_accounts_ids
+        ]
+
+        return accounts
