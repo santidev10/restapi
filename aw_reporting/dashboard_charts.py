@@ -458,7 +458,6 @@ class DeliveryChart:
             'summary': defaultdict(float)
         }
         average_positions = []
-
         for label, stats in data.items():
             if not stats:
                 continue
@@ -469,7 +468,7 @@ class DeliveryChart:
                     if v is not None and type(v) is not str and n != 'id':
                         if n == 'average_position':
                             average_positions.append(v)
-                        elif n == "date_segment":
+                        elif n in ("date_segment", "date"):
                             pass
                         else:
                             response['summary'][n] += v
@@ -841,6 +840,19 @@ class DeliveryChart:
                 item['label'] = uid
                 del item['ad__creative_name']
                 result[uid].append(item)
+        return result
+
+    def _get_overview_data(self):
+        group_by = ["campaign__account_id", "campaign__account__name"]
+        raw_stats = self.get_raw_stats(
+            CampaignStatistic.objects.all(), group_by,
+            self.params["date"],
+        )
+        result = defaultdict(list)
+        for item in raw_stats:
+            uid = "campaign__account_id"
+            item["label"] = item["campaign__account__name"]
+            result[uid].append(item)
         return result
 
     def _get_campaign_data(self):
