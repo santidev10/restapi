@@ -242,6 +242,7 @@ class Metric(ExtendedEnum):
     INTEREST = "interest"
     KEYWORD = "keyword"
     LOCATION = "location"
+    OVERVIEW = "overview"
     TOPIC = "topic"
     VIDEO = "video"
 
@@ -274,6 +275,7 @@ METRIC_MAP = {
     Metric.INTEREST: "interest",
     Metric.KEYWORD: "keyword",
     Metric.LOCATION: "location",
+    Metric.OVERVIEW: "overview",
     Metric.TOPIC: "topic",
     Metric.VIDEO: "video",
 }
@@ -290,6 +292,7 @@ METRIC_REPRESENTATION = {
     Metric.INTEREST: "Interest",
     Metric.KEYWORD: "Keyword",
     Metric.LOCATION: "Location",
+    Metric.OVERVIEW: "Overview",
     Metric.TOPIC: "Topic",
     Metric.VIDEO: "Video",
 }
