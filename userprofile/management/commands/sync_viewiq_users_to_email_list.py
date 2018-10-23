@@ -28,7 +28,7 @@ class Command(BaseCommand):
         logger.info("Start")
         query = self.model.objects.filter(synced_with_email_campaign=False, user_type__isnull=False)
         count = self.add_contacts_to_autopilot(query)
-        logger.info("DONE %s users processed." % count)
+        logger.info("DONE {} users processed.".format(count))
 
     def add_contacts_to_autopilot(self, users):
         count = 0
@@ -39,9 +39,9 @@ class Command(BaseCommand):
               "FirstName": user.first_name,
               "LastName": user.last_name,
               "Email": user.email,
-              "_autopilot_list": "contactlist_%s" % self.lists[user.user_type],
+              "_autopilot_list": "contactlist_{}".format(self.lists[user.user_type]),
             }}
-            r = requests.post('https://%s/v1/contact' % self.server, headers=self.headers, data=json.dumps(values))
+            r = requests.post('https://{}/v1/contact'.format(self.server), headers=self.headers, data=json.dumps(values))
             if r.status_code == 200:
                 user.synced_with_email_campaign=True
                 user.save(update_fields=['synced_with_email_campaign'])
