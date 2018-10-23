@@ -277,15 +277,16 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    #    "yuriy.matso@channelfactory.com",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
@@ -297,18 +298,14 @@ PAYMENT_ACTION_EMAIL_ADDRESSES = [
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
-]
-AUDIT_TOOL_BLACKLIST_PERMITTED_ACCOUNTS = [
-    "4050523811",  # FDA: General Markets FY Q2-Q4 2018 OP002689
-    "5111891998",  # FDA GM Smokeless USA Q2-Q4 2018 OP002690
-    "7561321550",  # Jelly Belly Sports Beans Nice & Company US Q2 - Q4 '18 OP002664
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"

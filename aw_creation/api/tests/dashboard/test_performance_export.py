@@ -20,6 +20,7 @@ from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTA
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -791,6 +792,19 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         impressions_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
+
+    def test_success_for_demo_account(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
 
     def test_metric_overview_grouped(self):
         user = self.create_test_user()

@@ -259,6 +259,16 @@ class BaseDemo:
         {'label': 'San Antonio,Texas'},
     )
 
+    campaign = (
+        {'label': 'Campaign 1'},
+        {'label': 'Campaign 2'},
+        {'label': 'Campaign 3'},
+        {'label': 'Campaign 4'},
+        {'label': 'Campaign 5'},
+        {'label': 'Campaign 6'},
+        {'label': 'Campaign 7'},
+    )
+
     @property
     def device(self):
         return tuple({'label': d} for d in Devices)
