@@ -4,13 +4,14 @@ from __future__ import unicode_literals
 
 from django.apps import apps
 from django.contrib.contenttypes.management import create_contenttypes
-from django.core.management import call_command
 from django.db import migrations
 
+from userprofile.permissions import Permissions
 
-def sync_permissions(*_):
+
+def sync_permissions(apps_config, *_):
     create_contenttypes(apps.get_app_config("userprofile"))
-    call_command("upgrade_groups_and_user_permissions")
+    Permissions.sync_groups(apps_config)
 
 
 class Migration(migrations.Migration):
