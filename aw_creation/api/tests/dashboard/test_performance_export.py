@@ -797,15 +797,21 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user.add_custom_user_permission("view_dashboard")
 
         account = Account.objects.create(id=next(int_iterator), name="Test account")
-        campaigns = [Campaign.objects.create(id=next(int_iterator), account=account) for _ in range(3)]
+        campaign_count = 3
+        ad_group_count = 4
+        campaigns = [Campaign.objects.create(id=next(int_iterator), account=account) for _ in range(campaign_count)]
+        ad_groups = [AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+                     for campaign, _ in product(campaigns, range(ad_group_count))]
         dates = [date(2018, 1, 1) + timedelta(days=i) for i in range(40)]
         impressions_generator = cycle([234, 124, 12436])
         expected_impressions = 0
-        for campaign, stats_date in product(campaigns, dates):
+        for ad_group, stats_date in product(ad_groups, dates):
             impressions = next(impressions_generator)
             expected_impressions += impressions
-            CampaignStatistic.objects.create(date=stats_date, campaign=campaign,
-                                             impressions=impressions)
+
+            AdGroupStatistic.objects.create(date=stats_date, ad_group=ad_group,
+                                            average_position=1,
+                                            impressions=impressions)
 
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -822,6 +828,25 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][name_index].value, account.name)
         self.assertGreater(expected_impressions, 0)
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, expected_impressions)
+
+    def test_metric_overview_cta(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator), name="Test account")
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id,
+                                     metric=Metric.OVERVIEW.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertEqual(sheet.max_row, SUMMARY_ROW_INDEX + 1)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        cta_index = get_column_index(headers, DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE)
+        self.assertIsNotNone(sheet[SUMMARY_ROW_INDEX + 1][cta_index].value)
 
 
 def get_sheet_from_response(response):

@@ -843,15 +843,15 @@ class DeliveryChart:
         return result
 
     def _get_overview_data(self):
-        group_by = ["campaign__account_id", "campaign__account__name"]
+        group_by = ["ad_group__campaign__account_id", "ad_group__campaign__account__name"]
         raw_stats = self.get_raw_stats(
-            CampaignStatistic.objects.all(), group_by,
+            AdGroupStatistic.objects.all(), group_by,
             self.params["date"],
         )
         result = defaultdict(list)
         for item in raw_stats:
-            uid = "campaign__account_id"
-            item["label"] = item["campaign__account__name"]
+            uid = "ad_group__campaign__account_id"
+            item["label"] = item["ad_group__campaign__account__name"]
             result[uid].append(item)
         return result
 
