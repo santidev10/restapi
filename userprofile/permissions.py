@@ -1,3 +1,4 @@
+from django.apps import apps
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -169,36 +170,51 @@ class Permissions:
     )
 
     @staticmethod
-    def sync_groups():
+    def sync_groups(apps_config=None):
         """
         Sync groups and groups permissions
         """
+        apps_config = apps_config or apps
         permissions_set_data = dict(Permissions.PERMISSION_SETS)
         groups_names = set()
         permissions_codenames = set()
+        group_model = apps_config.get_model("auth", "group")
         for group_name, raw_group_permissions in permissions_set_data.items():
-            group, _ = Group.objects.get_or_create(name=group_name)
-            group_permissions = tuple([get_custom_permission(perm) for perm in raw_group_permissions])
+            group, _ = group_model.objects.get_or_create(name=group_name)
+            group_permissions = tuple([
+                get_custom_permission(perm, apps_config)
+                for perm in raw_group_permissions
+            ])
             group.permissions.set(group_permissions)
             group.save()
 
             groups_names.add(group_name)
             permissions_codenames |= set(raw_group_permissions)
 
-        cleanup_groups_permissions(groups_names, permissions_codenames)
+        cleanup_groups_permissions(apps_config, groups_names, permissions_codenames)
 
 
-def cleanup_groups_permissions(groups_names, permissions_codenames):
-    Group.objects.all().exclude(name__in=groups_names) \
+def cleanup_groups_permissions(apps_config, groups_names, permissions_codenames):
+    group_model = apps_config.get_model("auth", "group")
+    global_permissions_model = apps_config.get_model("userprofile", "globalpermission")
+
+    group_model.objects.all().exclude(name__in=groups_names) \
         .delete()
-    GlobalPermission.objects.all().exclude(codename__in=permissions_codenames) \
+    global_permissions_model.objects.all().exclude(codename__in=permissions_codenames) \
         .delete()
 
 
-def get_custom_permission(perm):
+def get_custom_permission(perm, apps_config=None):
     """
     :param perm: str, permission name
     :return: GlobalPermission object
     """
-    permission, _ = GlobalPermission.objects.get_or_create(codename=perm)
+    apps_config = apps_config or apps
+    global_permission_model = apps_config.get_model("userprofile", "globalpermission")
+    content_type_model = apps_config.get_model("contenttypes", "contenttype")
+    userprofile_contenttype = content_type_model.objects.get(app_label="userprofile", model="userprofile")
+    permission, _ = global_permission_model.objects.filter(content_type__model="userprofile").get_or_create(
+        codename=perm,
+        defaults=dict(content_type=userprofile_contenttype)
+    )
     return permission

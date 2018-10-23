@@ -4,13 +4,33 @@ from __future__ import unicode_literals
 
 from django.apps import apps
 from django.contrib.contenttypes.management import create_contenttypes
-from django.core.management import call_command
 from django.db import migrations
 
+from userprofile.permissions import PermissionGroupNames, Permissions
 
-def make_groups_and_accesses_data_migration(*_):
+
+def make_groups_and_accesses_data_migration(apps_config, *_):
     create_contenttypes(apps.get_app_config("userprofile"))
-    call_command("upgrade_groups_and_user_permissions")
+    group_model = apps_config.get_model("auth", "group")
+    user_model = apps_config.get_model("userprofile", "userprofile")
+    group_model.objects.filter(name="Dashboard").update(name=PermissionGroupNames.MANAGED_SERVICE)
+    group_model.objects.filter(name="Segments").update(name=PermissionGroupNames.MEDIA_PLANNING)
+    group_model.objects.filter(name="Media buying").update(name=PermissionGroupNames.MEDIA_BUYING)
+    group_model.objects.filter(name="Segments - pre-baked segments").update(
+        name=PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES)
+    Permissions.sync_groups(apps_config)
+    users = user_model.objects.all()
+    media_buying_group = group_model.objects.get(name=PermissionGroupNames.MEDIA_BUYING)
+    groups_to_add = group_model.objects.filter(
+        name__in=[
+            PermissionGroupNames.SELF_SERVICE,
+            PermissionGroupNames.SELF_SERVICE_TRENDS,
+            PermissionGroupNames.FORECASTING,
+        ])
+    for user in users:
+        if media_buying_group in user.groups.all():
+            for group in groups_to_add:
+                user.groups.add(group)
 
 
 class Migration(migrations.Migration):
