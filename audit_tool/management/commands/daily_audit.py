@@ -115,7 +115,7 @@ class Command(BaseCommand):
             self.save_and_send(date, videos, reports, preferred_channels)
 
         logger.info("Refreshing blacklists")
-        blacklist = AdwordsBlackList(accounts=self.accounts)
+        blacklist = AdwordsBlackList()
         blacklist.upload_master_blacklist()
 
         logger.info("Done")
@@ -431,7 +431,7 @@ class Command(BaseCommand):
         logger.info("Calculating totals")
         totals = {"impressions": 0}
         for report in reports.values():
-            impressions = sum([int(_.get("Impressions")) for _ in report])
+            impressions = sum([int(_.get("Impressions", 0)) for _ in report])
             totals["impressions"] += impressions
         totals["videos"] = len(set(_.id for _ in videos))
         totals["new_videos"] = len(new_videos)
