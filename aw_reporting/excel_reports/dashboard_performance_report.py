@@ -25,7 +25,7 @@ class DashboardPerformanceReportColumn(ExtendedEnum):
     CLICKS = "clicks"
     CTR_I = "ctr"
     CTR_V = "ctr_v"
-    VIEW_RATE = "view_rate"
+    VIEW_RATE = "video_view_rate"
     CLICKS_CTA_OVERLAY = "clicks_call_to_action_overlay"
     CLICKS_CTA_WEBSITE = "clicks_website"
     CLICKS_CTA_APP_STORE = "clicks_app_store"
