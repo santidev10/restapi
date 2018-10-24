@@ -70,9 +70,9 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
 
     def _create_stats(self, account, statistic_date=None):
-        campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
+        campaign1 = Campaign.objects.create(id=1, name="#1", account=account, video_views=1)
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1)
-        campaign2 = Campaign.objects.create(id=2, name="#2", account=account)
+        campaign2 = Campaign.objects.create(id=2, name="#2", account=account, video_views=1)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2)
         statistic_date = statistic_date or (datetime.now().date() - timedelta(days=1))
         base_stats = dict(date=statistic_date, impressions=100, video_views=10, cost=1)
@@ -861,6 +861,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         cta_index = get_column_index(headers, DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE)
         self.assertIsNotNone(sheet[SUMMARY_ROW_INDEX + 1][cta_index].value)
+
+    def test_view_rate(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator))
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        view_rate_index = get_column_index(headers, DashboardPerformanceReportColumn.VIEW_RATE)
+        view_rate = float(sheet[SUMMARY_ROW_INDEX][view_rate_index].value)
+        self.assertGreater(view_rate, 0)
 
 
 def get_sheet_from_response(response):
