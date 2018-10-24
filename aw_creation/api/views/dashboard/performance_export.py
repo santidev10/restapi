@@ -256,11 +256,6 @@ class DashboardPerformanceExportApiView(APIView):
         return self.request.data.get("date_segment")
 
 
-def _dict_defaults(d: dict, defaults: dict):
-    all_keys = set(d.keys()) | set(defaults.keys())
-    return {key: (d.get(key) or defaults.get(key)) for key in all_keys}
-
-
 class Metric(ExtendedEnum):
     AD_GROUP = "ad_group"
     AGE = "age"
