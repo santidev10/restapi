@@ -300,7 +300,7 @@ ALLOWED_METRICS = tuple(Metric.values()) + (None,)
 ALLOWED_DATE_SEGMENT = tuple(DateSegment.values()) + (None,)
 DATE_SEGMENT_STRFTIME_FORMAT = {
     DateSegment.DAY.value: "%m/%d/%Y",
-    DateSegment.WEEK.value: "%w",
+    DateSegment.WEEK.value: "Week %V",
     DateSegment.MONTH.value: "%b-%y",
     DateSegment.QUARTER.value: "%Y Q%Q",
     DateSegment.YEAR.value: "%Y",

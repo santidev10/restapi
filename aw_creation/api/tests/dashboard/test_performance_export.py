@@ -399,7 +399,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=next(int_iterator), name="")
         test_date = datetime(2018, 4, 5, 6, 7, 8, 9)
         self._create_stats(account, test_date)
-        expected_date_label = test_date.strftime("%V")
+        expected_date_label = test_date.strftime("Week %V")
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
