@@ -608,8 +608,8 @@ class DashboardPerformanceExportApiView:
     @staticmethod
     def _get_header_data_ad_groups(original_method):
         def method(view, account):
-            ad_groups = flatten([campaign.children for campaign in account.children])
             if isinstance(account, DemoAccount):
+                ad_groups = flatten([campaign.children for campaign in account.children])
                 return dict(
                     ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
                 )
@@ -617,6 +617,7 @@ class DashboardPerformanceExportApiView:
                 return original_method(view, account)
 
         return method
+
 
 class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod
