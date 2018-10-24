@@ -3,7 +3,9 @@ from copy import copy
 from datetime import datetime
 from functools import partial
 
-from django.db.models import Sum, Min, Max
+from django.db.models import Sum
+from django.db.models import Min
+from django.db.models import Max
 from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -15,7 +17,7 @@ from aw_reporting.dashboard_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import DashboardPerformanceReport
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
-from aw_reporting.models import AdGroup, CampaignStatistic
+from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Campaign
@@ -25,7 +27,8 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
-from utils.api.exceptions import PermissionsError, BadRequestError
+from utils.api.exceptions import PermissionsError
+from utils.api.exceptions import BadRequestError
 from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
@@ -39,8 +42,12 @@ class DashboardPerformanceExportApiView(APIView):
     def post(self, request, pk, **_):
         self._validate_request_payload()
         item = self._get_account_creation(request, pk)
-        data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(data_generator, item.account)
+        account = item.account
+        data_generator = partial(self.get_export_data, account, request.user)
+        return self.build_response(data_generator, account)
+
+    def _get_account_name(self, account):
+        return (account.name if account is not None else account.name) or ""
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
@@ -55,7 +62,7 @@ class DashboardPerformanceExportApiView(APIView):
             raise Http404
 
     def build_response(self, data_generator, account):
-        account_name = (account.name if account is not None else account.name) or ""
+        account_name = self._get_account_name(account)
         title = "Segmented report {account_name} {timestamp}".format(
             account_name=re.sub(r"\W", account_name, "-"),
             timestamp=now_in_default_tz().strftime("%Y%m%d"),
@@ -147,11 +154,9 @@ class DashboardPerformanceExportApiView(APIView):
         )
         return filters
 
-    def get_export_data(self, item, user):
+    def get_export_data(self, account, user):
         filters = self.get_filters()
-        data = dict(name=item.name)
-
-        account = item.account
+        data = dict(name=account.name)
 
         aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
         for field in CLICKS_STATS:

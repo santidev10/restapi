@@ -15,6 +15,7 @@ from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import VIEW_RATE_STATS
 from userprofile.constants import UserSettingsKey
+from utils.lang import flatten
 from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
@@ -580,6 +581,42 @@ class DashboardPerformanceExportApiView:
 
         return method
 
+    @staticmethod
+    def _get_header_data_start_end(original_method):
+        def method(view, account):
+            if isinstance(account, DemoAccount):
+                return dict(
+                    start_date=account.start_date,
+                    end_date=account.end_date,
+                )
+            else:
+                return original_method(view, account)
+        return method
+
+    @staticmethod
+    def _get_header_data_campaigns(original_method):
+        def method(view, account):
+            if isinstance(account, DemoAccount):
+                return dict(
+                    campaigns=", ".join([campaign.name for campaign in account.children]),
+                )
+            else:
+                return original_method(view, account)
+
+        return method
+
+    @staticmethod
+    def _get_header_data_ad_groups(original_method):
+        def method(view, account):
+            ad_groups = flatten([campaign.children for campaign in account.children])
+            if isinstance(account, DemoAccount):
+                return dict(
+                    ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
+                )
+            else:
+                return original_method(view, account)
+
+        return method
 
 class AnalyticsPerformanceExportWeeklyReportApiView:
     @staticmethod

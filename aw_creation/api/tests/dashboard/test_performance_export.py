@@ -21,6 +21,7 @@ from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -52,6 +53,7 @@ from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
+from utils.lang import flatten
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
@@ -815,6 +817,35 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             response = self._request(DEMO_ACCOUNT_ID)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_demo_header(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = DemoAccount()
+        campaigns = account.children
+        ad_groups = flatten(campaign.children for campaign in campaigns)
+        expected_header = "\n".join([
+            "Date: {start} - {end}",
+            "Group By: None",
+            "Campaigns: {campaigns}",
+            "Ad Groups: {ad_groups}",
+        ]).format(
+            start=account.start_date,
+            end=account.end_date,
+            campaigns=", ".join([campaign.name for campaign in campaigns]),
+            ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
+        )
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertEqual(header, expected_header)
 
     def test_metric_overview_grouped(self):
         user = self.create_test_user()
