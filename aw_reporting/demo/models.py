@@ -259,16 +259,6 @@ class BaseDemo:
         {'label': 'San Antonio,Texas'},
     )
 
-    campaign = (
-        {'label': 'Campaign 1'},
-        {'label': 'Campaign 2'},
-        {'label': 'Campaign 3'},
-        {'label': 'Campaign 4'},
-        {'label': 'Campaign 5'},
-        {'label': 'Campaign 6'},
-        {'label': 'Campaign 7'},
-    )
-
     @property
     def device(self):
         return tuple({'label': d} for d in Devices)
@@ -957,6 +947,16 @@ class DemoAccount(BaseDemo):
         "video_views_last_week",
         "video_views_this_week",
     }
+
+    @property
+    def campaign(self):
+        return [
+            dict(
+                id=campaign.id,
+                label=campaign.name,
+            )
+            for campaign in self.children
+        ]
 
     @property
     def overview_analytics(self):
