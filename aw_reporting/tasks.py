@@ -4,13 +4,13 @@ import logging
 import re
 from collections import defaultdict
 from collections import namedtuple
-from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from functools import reduce
 
 import pytz
 from celery import task
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Case
 from django.db.models import Count
@@ -19,6 +19,7 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.functions import Coalesce
 from pytz import timezone
 
 from aw_reporting.adwords_api import get_all_customers
@@ -34,10 +35,11 @@ from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
+from utils.lang import pick_dict
 
 logger = logging.getLogger(__name__)
 
-MIN_FETCH_DATE = date(2012, 1, 1)
+MIN_FETCH_DATE = settings.MIN_AW_FETCH_DATE
 
 TRACKING_CLICK_TYPES = (
     ("Website", "clicks_website"),
@@ -60,10 +62,10 @@ DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS = (
 
 #  helpers --
 def update_stats_with_click_type_data(
-        stats, click_type_data, row_obj, report_unique_field_name, ignore_a_few_records=False):
+        stats, click_type_data, row_obj, unique_field_name, ignore_a_few_records=False,
+        ref_id_name="AdGroupId"):
     if click_type_data:
-        key = prepare_click_type_report_key(
-            row_obj.AdGroupId, getattr(row_obj, report_unique_field_name), row_obj.Date)
+        key = prepare_click_type_report_key(row_obj, ref_id_name, unique_field_name)
         if ignore_a_few_records:
             try:
                 key_data = click_type_data.pop(key)
@@ -77,11 +79,11 @@ def update_stats_with_click_type_data(
     return stats
 
 
-def prepare_click_type_report_key(ad_group_id, unique_field_name, row_date):
-    return "{}{}{}".format(ad_group_id, unique_field_name, row_date)
+def prepare_click_type_report_key(row, ref_id_name, unique_field_name):
+    return "{}{}{}".format(getattr(row, ref_id_name), getattr(row, unique_field_name), row.Date)
 
 
-def format_click_types_report(report, unique_field_name):
+def format_click_types_report(report, unique_field_name, ref_id_name="AdGroupId"):
     """
     :param report: click types report
     :param unique_field_name: Device, Age, Gender, Location, etc.
@@ -91,17 +93,11 @@ def format_click_types_report(report, unique_field_name):
         return {}
     tracking_click_types = dict(TRACKING_CLICK_TYPES)
     report = [row for row in report if row.ClickType in tracking_click_types.keys()]
-    result = dict()
+    result = defaultdict(list)
     for row in report:
-        key = prepare_click_type_report_key(row.AdGroupId, getattr(row, unique_field_name), row.Date)
+        key = prepare_click_type_report_key(row, ref_id_name, unique_field_name)
         value = {"click_type": tracking_click_types.get(row.ClickType), "clicks": int(row.Clicks)}
-        try:
-            prev_value = result[key]
-        except KeyError:
-            result[key] = [value]
-        else:
-            prev_value.append(value)
-            result[key] = prev_value
+        result[key] = result[key] + [value]
     return result
 
 
@@ -336,7 +332,6 @@ def get_campaigns(client, account, *_):
     from aw_reporting.models import CampaignStatistic
     from aw_reporting.models import Devices
 
-    min_fetch_date = datetime(2012, 1, 1).date()
     now = now_in_default_tz()
     today = now.date()
 
@@ -349,7 +344,7 @@ def get_campaigns(client, account, *_):
     dates = stats_queryset.aggregate(max_date=Max('date'))
     min_date = dates['max_date'] + timedelta(days=1) \
         if dates['max_date'] \
-        else min_fetch_date
+        else MIN_FETCH_DATE
     max_date = max_ready_date(now, tz_str=account.timezone)
 
     report = campaign_performance_report(client,
@@ -357,6 +352,16 @@ def get_campaigns(client, account, *_):
                                          include_zero_impressions=False,
                                          additional_fields=('Device', 'Date')
                                          )
+    click_type_fields = (
+        "CampaignId",
+        "Date",
+        "Clicks",
+        "ClickType",
+    )
+    click_type_report = campaign_performance_report(client, dates=(min_date, max_date),
+                                                    fields=click_type_fields, include_zero_impressions=False)
+
+    click_type_data = format_click_types_report(click_type_report, "CampaignId", "CampaignId")
     insert_stat = []
     for row_obj in report:
         campaign_id = row_obj.CampaignId
@@ -394,6 +399,8 @@ def get_campaigns(client, account, *_):
             'video_views_100_quartile': quart_views(row_obj, 100),
         }
         statistic_data.update(get_base_stats(row_obj))
+        update_stats_with_click_type_data(
+            statistic_data, click_type_data, row_obj, unique_field_name="CampaignId", ref_id_name="CampaignId")
 
         insert_stat.append(CampaignStatistic(**statistic_data))
 
@@ -411,8 +418,7 @@ def get_campaigns(client, account, *_):
 
 
 def get_ad_groups_and_stats(client, account, *_):
-    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices, \
-        SUM_STATS
+    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices
     from aw_reporting.adwords_reports import ad_group_performance_report
     click_type_report_fields = (
         "AdGroupId",
@@ -509,22 +515,22 @@ def get_ad_groups_and_stats(client, account, *_):
         if create_stats:
             AdGroupStatistic.objects.safe_bulk_create(create_stats)
 
-        SUM_STATS += (
-            'engagements',
-            'active_view_impressions',
-            "clicks_website",
-            "clicks_call_to_action_overlay",
-            "clicks_app_store",
-            "clicks_cards",
-            "clicks_end_cap")
-        stats = stats_queryset.values("ad_group_id").order_by(
-            "ad_group_id").annotate(
-            **{s: Sum(s) for s in SUM_STATS}
-        )
-        for ag_stats in stats:
-            AdGroup.objects.filter(
-                id=ag_stats['ad_group_id']
-            ).update(**{s: ag_stats[s] for s in SUM_STATS})
+        # SUM_STATS += (
+        #     'engagements',
+        #     'active_view_impressions',
+        #     "clicks_website",
+        #     "clicks_call_to_action_overlay",
+        #     "clicks_app_store",
+        #     "clicks_cards",
+        #     "clicks_end_cap")
+        # stats = stats_queryset.values("ad_group_id").order_by(
+        #     "ad_group_id").annotate(
+        #     **{s: Sum(s) for s in SUM_STATS}
+        # )
+        # for ag_stats in stats:
+        #     AdGroup.objects.filter(
+        #         id=ag_stats['ad_group_id']
+        #     ).update(**{s: ag_stats[s] for s in SUM_STATS})
 
 
 def get_videos(client, account, today):
@@ -706,7 +712,8 @@ def get_genders(client, account, today):
         )
         click_type_report = gender_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        click_type_data = format_click_types_report(click_type_report,
+                                                    DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         bulk_data = []
         for row_obj in report:
             stats = {
@@ -805,7 +812,8 @@ def get_age_ranges(client, account, today):
         bulk_data = []
         click_type_report = age_range_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        click_type_data = format_click_types_report(click_type_report,
+                                                    DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         for row_obj in report:
             stats = {
                 'age_range_id': AgeRanges.index(row_obj.Criteria),
@@ -947,7 +955,8 @@ def get_keywords(client, account, today):
         )
         click_type_report = keywords_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        click_type_data = format_click_types_report(click_type_report,
+                                                    DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         bulk_data = []
         for row_obj in report:
             keyword = row_obj.Criteria
@@ -990,7 +999,7 @@ def get_topics(client, account, today):
         min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        report = topics_performance_report(client, dates=(min_date, max_date),)
+        report = topics_performance_report(client, dates=(min_date, max_date), )
 
         click_type_report = topics_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
@@ -1065,7 +1074,8 @@ def get_interests(client, account, today):
             client, dates=(min_date, max_date))
         click_type_report = audience_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-        click_type_data = format_click_types_report(click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        click_type_data = format_click_types_report(click_type_report,
+                                                    DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         remark_ids = set(RemarkList.objects.values_list('id', flat=True))
         interest_ids = set(Audience.objects.values_list('id', flat=True))
         bulk_aud_stats = []
@@ -1433,7 +1443,6 @@ def recalculate_de_norm_fields(*args, **kwargs):
             de_norm_fields_are_recalculated=False).order_by("id")
         iterations = ceil(queryset.count() / batch_size)
         if not settings.IS_TEST:
-            model = queryset.model
             logger.info(
                 "Calculating de-norm fields: {}.{} {}".format(model.__module__,
                                                               model.__name__,
@@ -1450,14 +1459,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
                 min_date=Min("statistics__date"),
                 max_date=Max("statistics__date"),
             )
-            sum_statistic = items.annotate(
-                sum_cost=Sum("statistics__cost"),
-                sum_impressions=Sum("statistics__impressions"),
-                sum_video_views=Sum("statistics__video_views"),
-                sum_clicks=Sum("statistics__clicks"),
-            )
-            sum_statistic_map = {s["id"]: s for s in sum_statistic}
-
+            sum_statistic_map = _get_sum_statistic_map(items)
             device_data = items.annotate(**_device_annotation())
             gender_data = items.annotate(**_gender_annotation(ag_link))
             age_data = items.annotate(**_age_annotation(ag_link))
@@ -1516,11 +1518,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
                     min_stat_date=i["min_date"],
                     max_stat_date=i["max_date"],
 
-                    cost=sum_stats.get("sum_cost") or 0,
-                    impressions=sum_stats.get("sum_impressions") or 0,
-                    video_views=sum_stats.get("sum_video_views") or 0,
-                    clicks=sum_stats.get("sum_clicks") or 0,
-
+                    **sum_stats,
                     **stats,
 
                     has_interests=bool(audience_data.get(uid)),
@@ -1583,3 +1581,26 @@ def _device_annotation():
     device_ref = "statistics__device_id"
 
     return _build_group_aggregation_map(device_ref, ALL_DEVICES, ModelDenormalizedFields.DEVICES)
+
+
+def _get_sum_fields(model):
+    fields = ("cost", "impressions", "video_views", "clicks", "clicks_website")
+    if model is AdGroup:
+        fields = fields + ("engagements", "active_view_impressions")
+    return fields
+
+
+def _get_sum_statistic_map(queryset):
+    sum_fields = _get_sum_fields(queryset.model)
+    sum_statistic = queryset.annotate(
+        **{
+            field: Coalesce(Sum("statistics__" + field), 0)
+            for field in sum_fields
+        }
+    )
+
+    sum_statistic_map = {
+        stats["id"]: pick_dict(stats, sum_fields)
+        for stats in sum_statistic
+    }
+    return sum_statistic_map

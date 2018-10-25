@@ -1,6 +1,7 @@
 from django.db import models
 
 from aw_reporting.models.ad_words.account import Account
+from aw_reporting.models.ad_words.statistic import BaseClicksTypesStatisticsModel
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
 from aw_reporting.models.salesforce import OpPlacement
 from userprofile.managers import UserRelatedManagerMixin
@@ -10,7 +11,7 @@ class CampaignManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "account_id"
 
 
-class Campaign(ModelPlusDeNormFields):
+class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = CampaignManager()
 
     id = models.CharField(max_length=15, primary_key=True)

@@ -165,7 +165,7 @@ class CampaignHourlyStatistic(models.Model):
         ordering = ["campaign", "date", "hour"]
 
 
-class CampaignStatistic(DeviceDailyStatisticModel):
+class CampaignStatistic(DeviceDailyStatisticModel, BaseClicksTypesStatisticsModel):
     campaign = models.ForeignKey(Campaign, related_name='statistics')
 
     class Meta:

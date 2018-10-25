@@ -1,6 +1,6 @@
 from enum import Enum
 from functools import reduce
-from typing import List
+from typing import Sequence
 
 
 def flatten(l):
@@ -14,7 +14,7 @@ def safe_index(l, item, default=None):
         return default
 
 
-def pick_dict(item: dict, keys: List[str]):
+def pick_dict(item: dict, keys: Sequence[str]) -> dict:
     return {key: value
             for key, value in item.items()
             if key in keys}
