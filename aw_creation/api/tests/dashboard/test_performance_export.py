@@ -921,6 +921,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         view_rate = float(sheet[SUMMARY_ROW_INDEX][view_rate_index].value)
         self.assertGreater(view_rate, 0)
 
+    def test_demo_account_campaigns(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        expected_campaigns_names = set([campaign.name for campaign in DemoAccount().children])
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        name_index = get_column_index(headers, DashboardPerformanceReportColumn.NAME)
+        campaigns_names = set([row[name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        self.assertEqual(campaigns_names, expected_campaigns_names)
+
     def test_campaigns_cta(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
