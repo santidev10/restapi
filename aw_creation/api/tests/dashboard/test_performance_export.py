@@ -499,8 +499,9 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
         impressions_column = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         data_rows = list(sheet.rows)[SUMMARY_ROW_INDEX:]
-        self.assertEqual(len(data_rows), 1)
+        self.assertEqual(len(data_rows), 2)
         self.assertEqual(data_rows[0][impressions_column].value, sum(impressions))
+        self.assertEqual(data_rows[1][impressions_column].value, sum(impressions))
 
     def test_date_segment_year(self):
         user = self.create_test_user()
