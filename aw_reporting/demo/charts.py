@@ -67,11 +67,7 @@ class DemoChart:
         if dimension in CLICKS_TYPES_DIMENSIONS:
             all_stats += CLICKS_STATS
         summary = {}
-        try:
-            items = {i['label']: i for i in dimensions}
-        except:
-            print(dimensions)
-            return
+        items = {i['label']: i for i in dimensions}
         dim_len = len(dimensions)
         for stat in all_stats:
             value = getattr(item, stat)
