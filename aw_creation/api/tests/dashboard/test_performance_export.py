@@ -84,7 +84,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         creative, _ = VideoCreative.objects.get_or_create(id=1)
         city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(name="Babruysk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
-        CampaignStatistic.objects.create(campaign=campaign1, **base_stats)
+        CampaignStatistic.objects.create(campaign=campaign1, clicks_website=1, **base_stats)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 
         for ad_group in (ad_group1, ad_group2):
@@ -879,6 +879,27 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         view_rate_index = get_column_index(headers, DashboardPerformanceReportColumn.VIEW_RATE)
         view_rate = float(sheet[SUMMARY_ROW_INDEX][view_rate_index].value)
         self.assertGreater(view_rate, 0)
+
+    def test_campaigns_cta(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator))
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id, metric=Metric.CAMPAIGN.value)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        cta_website_index = get_column_index(headers, DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE)
+        cta_website = [row[cta_website_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]]
+        self.assertGreater(len(cta_website), 0)
+        self.assertFalse(any([cta is None for cta in cta_website]))
+        self.assertTrue(any([cta > 0 for cta in cta_website]))
 
 
 def get_sheet_from_response(response):
