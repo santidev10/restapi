@@ -17,6 +17,7 @@ from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -118,15 +119,6 @@ class DateSegment(ExtendedEnum):
 
 INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
                            Indicator.VIEWS, Indicator.COST)
-
-CLICK_STATS_TYPES_IGNORE_MODELS = (
-    CampaignHourlyStatistic,
-    CampaignStatistic,
-    CityStatistic,
-    VideoCreativeStatistic,
-    YTChannelStatistic,
-    YTVideoStatistic,
-)
 
 
 class DeliveryChart:
@@ -695,7 +687,7 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
-        if queryset.model not in CLICK_STATS_TYPES_IGNORE_MODELS:
+        if issubclass(queryset.model, BaseClicksTypesStatisticsModel):
             for field in CLICKS_STATS:
                 kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)

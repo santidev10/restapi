@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import socket
+from datetime import date
 
 from teamcity import is_running_under_teamcity, teamcity_presence_env_var
 
@@ -259,6 +260,7 @@ CELERY_ACKS_LATE = True
 CELERYD_PREFETCH_MULTIPLIER = 1
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
