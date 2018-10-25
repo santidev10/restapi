@@ -84,32 +84,35 @@ class PullAWDataTestCase(TransactionTestCase):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
         account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1,
-                                           account=account,
-                                           de_norm_fields_are_recalculated=True,
-                                           start_date=today - timedelta(
-                                               days=5),
-                                           end_date=today + timedelta(days=5),
-                                           cost=1,
-                                           budget=1,
-                                           impressions=1,
-                                           video_views=1,
-                                           clicks=1)
+        campaign = Campaign.objects.create(
+            id=1,
+            account=account,
+            de_norm_fields_are_recalculated=True,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+            cost=1,
+            budget=1,
+            impressions=1,
+            video_views=1,
+            clicks=1
+        )
         costs = (2, 3)
         impressions = (4, 5)
         views = (6, 7)
         clicks = (8, 9)
+        cta_website = (10, 11)
         self.assertNotEqual(campaign.cost, sum(costs))
         self.assertNotEqual(campaign.impressions, sum(impressions))
         self.assertNotEqual(campaign.video_views, sum(views))
         self.assertNotEqual(campaign.clicks, sum(clicks))
         dates = (today - timedelta(days=2), today - timedelta(days=1))
         statistic = zip(dates, costs, impressions, views, clicks)
-        test_report_data = [
+        cta = zip(dates, cta_website)
+        test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
                 Cost=cost * 10 ** 6,
-                Date=str(date),
+                Date=str(dt),
                 StartDate=str(campaign.start_date),
                 EndDate=str(campaign.end_date),
                 Amount=campaign.budget * 10 ** 6,
@@ -125,14 +128,32 @@ class PullAWDataTestCase(TransactionTestCase):
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
             )
-            for date, cost, impressions, views, clicks in statistic
+            for dt, cost, impressions, views, clicks in statistic
         ]
 
-        fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
-        test_stream = build_csv_byte_stream(fields, test_report_data)
+        test_cta_data = [
+            dict(
+                CampaignId=campaign.id,
+                Date=str(dt),
+                Clicks=clicks,
+                ClickType="Website",
+            )
+            for dt, clicks in cta
+        ]
+
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        cta_fields = ("CampaignId", "Date", "Clicks", "ClickType")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        test_stream_cta = build_csv_byte_stream(cta_fields, test_cta_data)
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        def test_router(selector, *args, **kwargs):
+            if "ClickType" in selector["selector"]["fields"]:
+                return test_stream_cta
+            return test_stream_statistic
+
+        downloader_mock.DownloadReportAsStream = test_router
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
@@ -143,6 +164,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(campaign.impressions, sum(impressions))
         self.assertEqual(campaign.video_views, sum(views))
         self.assertEqual(campaign.clicks, sum(clicks))
+        self.assertEqual(campaign.clicks_website, sum(cta_website))
 
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -164,6 +186,7 @@ class PullAWDataTestCase(TransactionTestCase):
         clicks = (8, 9)
         engagements = (10, 11)
         active_view_impressions = (12, 13)
+        cta_website = (14, 15)
         self.assertNotEqual(ad_group.cost, sum(costs))
         self.assertNotEqual(ad_group.impressions, sum(impressions))
         self.assertNotEqual(ad_group.video_views, sum(views))
@@ -174,13 +197,14 @@ class PullAWDataTestCase(TransactionTestCase):
         dates = (today - timedelta(days=2), today - timedelta(days=1))
         statistic = zip(dates, costs, impressions, views, clicks, engagements,
                         active_view_impressions)
-        test_report_data = [
+        cta = zip(dates, cta_website)
+        test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
                 AdGroupId=ad_group.id,
                 AveragePosition=1,
                 Cost=cost * 10 ** 6,
-                Date=str(date),
+                Date=str(dt),
                 Impressions=impressions,
                 VideoViews=views,
                 Clicks=clicks,
@@ -195,14 +219,33 @@ class PullAWDataTestCase(TransactionTestCase):
                 Engagements=engs,
                 ActiveViewImpressions=avi,
             )
-            for date, cost, impressions, views, clicks, engs, avi in statistic
+            for dt, cost, impressions, views, clicks, engs, avi in statistic
+        ]
+        test_cta_data = [
+            dict(
+                AdGroupId=ad_group.id,
+                Date=str(dt),
+                Device=Devices[0],
+                Clicks=clicks,
+                ClickType="Website"
+            )
+            for dt, clicks in cta
         ]
 
-        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
-        test_stream = build_csv_byte_stream(fields, test_report_data)
+        statistics_fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        cta_fields = ("AdGroupId", "Date", "Device", "Clicks", "ClickType")
+
+        test_statistic_stream = build_csv_byte_stream(statistics_fields, test_statistic_data)
+        test_cta_stream = build_csv_byte_stream(cta_fields, test_cta_data)
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        def test_router(selector, *args, **kwargs):
+            if "ClickType" in selector["selector"]["fields"]:
+                return test_cta_stream
+            return test_statistic_stream
+
+        downloader_mock.DownloadReportAsStream = test_router
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
@@ -217,6 +260,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(ad_group.engagements, sum(engagements))
         self.assertEqual(ad_group.active_view_impressions,
                          sum(active_view_impressions))
+        self.assertEqual(ad_group.clicks_website, sum(cta_website))
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)

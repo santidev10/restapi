@@ -8,6 +8,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
@@ -48,20 +49,22 @@ class Command(BaseCommand):
         self._reset_update_time(accounts)
 
     def _remove_statistic_records(self, accounts):
+        ad_group_ref = "ad_group__campaign__account__in"
         models = (
-            (AdGroupStatistic, ""),
-            (AdStatistic, "ad__"),
-            (AgeRangeStatistic, ""),
-            (AudienceStatistic, ""),
-            (GenderStatistic, ""),
-            (KeywordStatistic, ""),
-            (RemarkStatistic, ""),
-            (TopicStatistic, ""),
+            (AdGroupStatistic, ad_group_ref),
+            (AdStatistic, "ad__" + ad_group_ref),
+            (AgeRangeStatistic, ad_group_ref),
+            (AudienceStatistic, ad_group_ref),
+            (GenderStatistic, ad_group_ref),
+            (KeywordStatistic, ad_group_ref),
+            (RemarkStatistic, ad_group_ref),
+            (TopicStatistic, ad_group_ref),
+            (CampaignStatistic, "campaign__account_id"),
         )
 
-        for model, prefix in models:
+        for model, key in models:
             queryset = model.objects.filter(**{
-                prefix + "ad_group__campaign__account__in": accounts
+                key: accounts
             })
             queryset.delete()
 
