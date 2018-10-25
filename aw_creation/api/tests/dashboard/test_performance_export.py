@@ -960,6 +960,23 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(any([cta is None for cta in cta_website]))
         self.assertTrue(any([cta > 0 for cta in cta_website]))
 
+    def test_overview_is_always_visible(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+
+        account = Account.objects.create(id=next(int_iterator))
+        self._create_stats(account)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        section_name_index = 0
+        section_names = set([row[section_name_index].value for row in list(sheet.rows)[SUMMARY_ROW_INDEX:]])
+        self.assertIn(METRIC_REPRESENTATION[Metric.OVERVIEW], section_names)
+
 
 def get_sheet_from_response(response):
     single_sheet_index = 0
