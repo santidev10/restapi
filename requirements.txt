@@ -4,7 +4,6 @@ billiard==3.3.0.23
 boto3==1.7.84
 boto==2.49.0
 botocore==1.10.84
-celery-with-redis==3.0
 celery==3.1.23
 django-celery==3.1.17
 Django==1.11.13
@@ -29,7 +28,6 @@ PySocks==1.6.7
 python-dateutil==2.6.0
 pytz==2018.4
 PyYAML==3.12
-redis==2.10.5
 requests==2.19.1
 rsa==3.4.2
 simple-salesforce==0.68.1

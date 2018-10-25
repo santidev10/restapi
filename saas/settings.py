@@ -252,18 +252,11 @@ import djcelery
 djcelery.setup_loader()
 CELERY_TASK_RESULT_EXPIRES = 18000
 CELERYD_TASK_ERROR_EMAILS = False
-CELERY_RESULT_BACKEND = "redis://"
-CELERY_REDIS_HOST = "localhost"
-CELERY_REDIS_PORT = 6379
-CELERY_REDIS_DB = 0
 CELERY_ACKS_LATE = True
 CELERYD_PREFETCH_MULTIPLIER = 1
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
 # landing page settings
 LANDING_SUBJECT = [

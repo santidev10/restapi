@@ -16,12 +16,10 @@ services:
       - "5000:5000"
     environment:
       SINGLE_DATABASE_API_HOST: sdb
-      REDIS_HOST: redis
       ALLOWED_HOSTS: api
     depends_on:
       - pg
       - sdb
-      - redis
       - web
   web:
     image: saas-ui
@@ -31,7 +29,6 @@ services:
     image: saas-sdb
     depends_on:
       - cassandra
-      - redis
       - es
   es:
     image: elasticsearch:6.4.2
@@ -39,5 +36,3 @@ services:
     image: cassandra
     expose:
     - "9042"
-  redis:
-    image: redis
