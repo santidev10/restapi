@@ -21,6 +21,7 @@ from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.models import DemoAccount
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -52,6 +53,7 @@ from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
+from utils.lang import flatten
 from utils.utils_tests import ExtendedAPITestCase
 from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 from utils.utils_tests import generic_test
@@ -569,7 +571,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         summary_row = sheet[SUMMARY_ROW_INDEX]
         self.assertIsNone(summary_row[date_column].value)
 
-    def test_filters_header_metric(self):
+    def test_header_metric(self):
         user = self.create_test_user()
         test_metric = Metric.AD_GROUP
         test_metric_repr = METRIC_REPRESENTATION[test_metric]
@@ -585,22 +587,27 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         header = get_custom_header(sheet)
         self.assertIn("Group By: {}".format(test_metric_repr), header)
 
-    def test_filters_header_date(self):
+    def test_header_date(self):
         user = self.create_test_user()
-        test_start_date = "2018-01-01"
-        test_end_date = "2018-01-02"
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=next(int_iterator), name="")
+        self._create_stats(account)
+        statistic_dates = CampaignStatistic.objects.all().values_list("date", flat=True)
+        start = min(statistic_dates)
+        end = max(statistic_dates)
+
+        expected_date = "Date: {start} - {end}".format(start=start, end=end)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, start_date=test_start_date, end_date=test_end_date)
+            response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
-        header = get_custom_header(sheet)
-        self.assertIn("Date: {} - {}".format(test_start_date, test_end_date), header)
+        filters_header = get_custom_header(sheet)
+        self.assertIn(expected_date, filters_header)
 
-    def test_filters_header_campaigns(self):
+    def test_header_campaigns(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=next(int_iterator), name="")
@@ -608,19 +615,24 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             Campaign.objects.create(id=next(int_iterator), name="test name 1", account=account),
             Campaign.objects.create(id=next(int_iterator), name="test name 2", account=account),
         ]
-        campaign_ids = [campaign.id for campaign in campaigns]
+        ad_groups = [
+            AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+            for campaign in campaigns
+        ]
+        for ad_group in ad_groups:
+            AdGroupStatistic.objects.create(date="2018-01-01", ad_group=ad_group, average_position=1, impressions=1)
         campaign_names = [campaign.name for campaign in campaigns]
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, campaigns=campaign_ids)
+            response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertIn("Campaigns: {}".format(", ".join(campaign_names)), header)
 
-    def test_filters_header_ad_groups(self):
+    def test_header_ad_groups(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         account = Account.objects.create(id=next(int_iterator), name="")
@@ -629,14 +641,15 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             AdGroup.objects.create(id=next(int_iterator), name="test name 1", campaign=campaign),
             AdGroup.objects.create(id=next(int_iterator), name="test name 2", campaign=campaign),
         ]
-        ad_group_ids = [ad_group.id for ad_group in ad_groups]
+        for ad_group in ad_groups:
+            AdGroupStatistic.objects.create(date="2018-01-01", ad_group=ad_group, average_position=1, impressions=1)
         ad_group_names = [ad_group.name for ad_group in ad_groups]
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id, ad_groups=ad_group_ids)
+            response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
         self.assertIn("Ad Groups: {}".format(", ".join(ad_group_names)), header)
@@ -804,7 +817,35 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             response = self._request(DEMO_ACCOUNT_ID)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_demo_header(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        account = DemoAccount()
+        campaigns = account.children
+        ad_groups = flatten(campaign.children for campaign in campaigns)
+        expected_header = "\n".join([
+            "Date: {start} - {end}",
+            "Group By: None",
+            "Campaigns: {campaigns}",
+            "Ad Groups: {ad_groups}",
+        ]).format(
+            start=account.start_date,
+            end=account.end_date,
+            campaigns=", ".join([campaign.name for campaign in campaigns]),
+            ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
+        )
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
+        header = get_custom_header(sheet)
+        self.assertEqual(header, expected_header)
 
     def test_metric_overview_grouped(self):
         user = self.create_test_user()
@@ -929,4 +970,4 @@ def get_column_index(headers, column):
 
 
 def get_custom_header(sheet):
-    return sheet[CUSTOM_HEADER_ROW_INDEX][2].value
+    return sheet[CUSTOM_HEADER_ROW_INDEX][1].value

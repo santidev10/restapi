@@ -4,6 +4,8 @@ from datetime import datetime
 from functools import partial
 
 from django.db.models import Sum
+from django.db.models import Min
+from django.db.models import Max
 from django.http import Http404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -25,7 +27,8 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from userprofile.constants import UserSettingsKey
-from utils.api.exceptions import PermissionsError, BadRequestError
+from utils.api.exceptions import PermissionsError
+from utils.api.exceptions import BadRequestError
 from utils.datetime import now_in_default_tz
 from utils.lang import ExtendedEnum
 from utils.permissions import UserHasDashboardPermission
@@ -39,9 +42,12 @@ class DashboardPerformanceExportApiView(APIView):
     def post(self, request, pk, **_):
         self._validate_request_payload()
         item = self._get_account_creation(request, pk)
-        account_name = (item.account.name if item.account is not None else item.name) or ""
-        data_generator = partial(self.get_export_data, item, request.user)
-        return self.build_response(account_name, data_generator)
+        account = item.account
+        data_generator = partial(self.get_export_data, account, request.user)
+        return self.build_response(data_generator, account)
+
+    def _get_account_name(self, account):
+        return (account.name if account is not None else account.name) or ""
 
     def _get_account_creation(self, request, pk):
         queryset = AccountCreation.objects.all()
@@ -55,7 +61,8 @@ class DashboardPerformanceExportApiView(APIView):
         except AccountCreation.DoesNotExist:
             raise Http404
 
-    def build_response(self, account_name, data_generator):
+    def build_response(self, data_generator, account):
+        account_name = self._get_account_name(account)
         title = "Segmented report {account_name} {timestamp}".format(
             account_name=re.sub(r"\W", account_name, "-"),
             timestamp=now_in_default_tz().strftime("%Y%m%d"),
@@ -63,20 +70,13 @@ class DashboardPerformanceExportApiView(APIView):
         user = self.request.user
 
         xls_report = DashboardPerformanceReport(
-            custom_header=self._get_custom_header(),
+            custom_header=self._get_custom_header(account),
             columns_to_hide=self._get_columns_to_hide(user),
             date_format_str=self._get_date_segment_format()
         )
         return xlsx_response(title, xls_report.generate(data_generator))
 
-    def _get_custom_header(self):
-        filters = self.get_filters()
-        campaign_names = Campaign.objects \
-            .filter(id__in=filters.get("campaigns") or []) \
-            .values_list("name", flat=True)
-        ad_group_names = AdGroup.objects \
-            .filter(id__in=filters.get("ad_groups") or []) \
-            .values_list("name", flat=True)
+    def _get_custom_header(self, account):
         header_rows = [
             "Date: {start_date} - {end_date}",
             "Group By: {metric}",
@@ -87,14 +87,39 @@ class DashboardPerformanceExportApiView(APIView):
                 "Campaigns: {campaigns}",
                 "Ad Groups: {ad_groups}",
             ]
-        header_date = dict(
+
+        return "\n".join(header_rows) \
+            .format(**self._get_header_data(account))
+
+    def _get_header_data(self, account):
+        return dict(
             metric=METRIC_REPRESENTATION.get(self._get_metric()),
-            start_date=filters.get("start_date"),
-            end_date=filters.get("end_date"),
-            campaigns=", ".join(campaign_names),
-            ad_groups=", ".join(ad_group_names),
+            **self._get_header_data_start_end(account),
+            **self._get_header_data_campaigns(account),
+            **self._get_header_data_ad_groups(account),
         )
-        return "\n".join(header_rows).format(**header_date)
+
+    def _get_header_data_start_end(self, account):
+        start_end_aggregation = dict(
+            start_date=Min("date"),
+            end_date=Max("date"),
+        )
+        return self._get_summary_queryset(account) \
+            .aggregate(**start_end_aggregation)
+
+    def _get_header_data_campaigns(self, account):
+        campaign_ids = set(self._get_summary_queryset(account).values_list("ad_group__campaign_id", flat=True))
+        campaigns_names = Campaign.objects.filter(id__in=campaign_ids).values_list("name", flat=True)
+        return dict(
+            campaigns=", ".join(campaigns_names),
+        )
+
+    def _get_header_data_ad_groups(self, account):
+        ad_group_ids = set(self._get_summary_queryset(account).values_list("ad_group_id", flat=True))
+        ad_groups_names = AdGroup.objects.filter(id__in=ad_group_ids).values_list("name", flat=True)
+        return dict(
+            ad_groups=", ".join(ad_groups_names),
+        )
 
     def _get_columns_to_hide(self, user):
         columns_to_hide = []
@@ -129,21 +154,9 @@ class DashboardPerformanceExportApiView(APIView):
         )
         return filters
 
-    def get_export_data(self, item, user):
+    def get_export_data(self, account, user):
         filters = self.get_filters()
-        data = dict(name=item.name)
-
-        account = item.account
-
-        fs = {"ad_group__campaign__account": account}
-        if filters["start_date"]:
-            fs["date__gte"] = filters["start_date"]
-        if filters["end_date"]:
-            fs["date__lte"] = filters["end_date"]
-        if filters["ad_groups"]:
-            fs["ad_group_id__in"] = filters["ad_groups"]
-        elif filters["campaigns"]:
-            fs["ad_group__campaign_id__in"] = filters["campaigns"]
+        data = dict(name=account.name)
 
         aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
         for field in CLICKS_STATS:
@@ -153,7 +166,7 @@ class DashboardPerformanceExportApiView(APIView):
         show_aw_rates = user_settings.get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         if not show_aw_rates:
             aggregation["sum_cost"] = get_client_cost_aggregation()
-        stats = AdGroupStatistic.objects.filter(**fs).aggregate(**aggregation)
+        stats = self._get_summary_queryset(account).aggregate(**aggregation)
 
         dict_norm_base_stats(stats)
         dict_quartiles_to_rates(stats)
@@ -179,6 +192,19 @@ class DashboardPerformanceExportApiView(APIView):
                 metric = DIMENSION_MAP[dimension]
                 tab_name = METRIC_REPRESENTATION[metric]
                 yield {**{"tab": tab_name}, **data}
+
+    def _get_summary_queryset(self, account):
+        filters = self.get_filters()
+        fs = {"ad_group__campaign__account": account}
+        if filters["start_date"]:
+            fs["date__gte"] = filters["start_date"]
+        if filters["end_date"]:
+            fs["date__lte"] = filters["end_date"]
+        if filters["ad_groups"]:
+            fs["ad_group_id__in"] = filters["ad_groups"]
+        elif filters["campaigns"]:
+            fs["ad_group__campaign_id__in"] = filters["campaigns"]
+        return AdGroupStatistic.objects.filter(**fs)
 
     def _get_tabs(self):
         metrics = self._get_metrics_to_display()

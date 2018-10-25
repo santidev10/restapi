@@ -139,8 +139,7 @@ class DashboardPerformanceReport:
 
     def _put_custom_headers(self, worksheet, start_from):
         worksheet.set_row(start_from, FILTER_ROW_HEIGHT)
-        worksheet.write(start_from, 1, "Filters:")
-        worksheet.write(start_from, 2, self.custom_header)
+        worksheet.write(start_from, 1, self.custom_header)
         return start_from + 1
 
     def _put_table_header(self, worksheet, start_from):
