@@ -17,8 +17,9 @@ from requests import HTTPError
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
-from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS, AWErrorType
+from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DateRangeType
@@ -51,8 +52,11 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.tasks import AudienceAWType, max_ready_datetime, max_ready_date, MIN_UPDATE_HOUR
-from aw_reporting.tasks import MIN_FETCH_DATE
+from aw_reporting.update.tasks import AudienceAWType
+from aw_reporting.update.tasks import MIN_FETCH_DATE
+from aw_reporting.update.tasks import MIN_UPDATE_HOUR
+from aw_reporting.update.tasks import max_ready_date
+from aw_reporting.update.tasks import max_ready_datetime
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
@@ -918,7 +922,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
 
-    def test_creates_account_Creation_for_customer_accounts(self):
+    def test_creates_account_creation_for_customer_accounts(self):
         self._create_account().delete()
         test_account_id = next(int_iterator)
         self.assertFalse(Account.objects.filter(id=test_account_id).exists())

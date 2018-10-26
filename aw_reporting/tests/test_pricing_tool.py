@@ -4,7 +4,7 @@ from django.test import TestCase
 
 from aw_reporting.models import Opportunity, Campaign, AdGroup, \
     CampaignStatistic, AdGroupStatistic, OpPlacement, Category
-from aw_reporting.tasks import recalculate_de_norm_fields
+from aw_reporting.update.tasks import recalculate_de_norm_fields
 from aw_reporting.tools.pricing_tool import PricingTool
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz

@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_200_OK, \
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
     Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
-from aw_reporting.tasks import recalculate_de_norm_fields
+from aw_reporting.update.tasks import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
