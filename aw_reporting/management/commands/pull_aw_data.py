@@ -11,14 +11,6 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            '--forced',
-            dest='forced',
-            default=False,
-            action='store_true',
-            help='Forced update of all accounts'
-        )
-
-        parser.add_argument(
             '--detach',
             dest='detach',
             default=False,
@@ -49,14 +41,12 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        forced = options.get("forced")
         detach = options.get("detach")
         start = options.get("start")
         end = options.get("end")
         account_ids_str = options.get("account_ids")
         account_ids = account_ids_str.split(",") if account_ids_str is not None else None
-
         if detach:
-            update_aw_accounts.delay(account_ids, start, end, forced)
+            update_aw_accounts.delay(account_ids, start, end)
         else:
-            update_aw_accounts(account_ids, start, end, forced)
+            update_aw_accounts(account_ids, start, end)

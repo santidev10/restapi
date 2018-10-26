@@ -1,19 +1,18 @@
 import logging
 from functools import partial
 
+from celery import group
 from celery.task import task
 from django.conf import settings
-from pytz import timezone
 from pytz import utc
 from suds import WebFault
 
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
-from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.update.tasks import detect_success_aw_read_permissions
-from aw_reporting.update.tasks import max_ready_date
 from aw_reporting.update.tasks import recalculate_de_norm_fields
+from aw_reporting.update.update_aw_account import update_aw_account
 from aw_reporting.utils import command_single_process_lock
 from utils.datetime import now_in_default_tz
 
@@ -24,12 +23,12 @@ logger = logging.getLogger(__name__)
 
 @task
 @command_single_process_lock("aw_main_update")
-def update_aw_accounts(account_ids=None, start=None, end=None, forced=False):
+def update_aw_accounts(account_ids=None, start=None, end=None):
     pre_process()
 
     now = now_in_default_tz(utc)
     today = now.date()
-    update_account_fn = partial(update_accounts, today=today, forced=forced, start=start, end=end,
+    update_account_fn = partial(update_accounts, today=today, start=start, end=end,
                                 account_ids=account_ids)
     update_account_fn(is_mcc=True)
     update_account_fn(is_mcc=False)
@@ -87,30 +86,18 @@ def create_cf_account_connection():
                 )
 
 
-def update_accounts(today, forced, start, end, account_ids, is_mcc: bool):
+def update_accounts(today, start, end, account_ids, is_mcc: bool):
     from aw_reporting.models import Account
-    updater = AWDataLoader(today, start=start, end=end)
     accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
     if account_ids is not None:
         accounts = accounts.filter(id__in=account_ids)
-    accounts_to_update = list(filtered_accounts_generator(accounts, forced))
-    count = len(accounts_to_update)
-    for index, account in enumerate(accounts_to_update):
-        logger.info("%d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
-        updater.full_update(account)
+    count = len(accounts)
+    tasks_signatures = [
+        update_aw_account.si(account.id, today, start, end, index, count)
+        for index, account in enumerate(accounts)
+    ]
+    job = group(tasks_signatures)
+    result = job.apply_async()
+    result.get()
 
 
-def filtered_accounts_generator(queryset, forced):
-    now = now_in_default_tz(utc)
-    for account in queryset:
-        tz = timezone(account.timezone)
-        if forced or update_account(account, now, tz):
-            yield account
-
-
-def update_account(account, now, tz):
-    return not account.update_time or max_ready_date(account.update_time, tz) < max_ready_date(now, tz)
-
-
-def get_account_type_str(is_mcc):
-    return "MCC" if is_mcc else "Customer"

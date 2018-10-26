@@ -27,3 +27,4 @@ for logger_config in LOGGING["handlers"].values():
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-test/logos/{}.png"
 
 CELERY_BEAT_SCHEDULE = {}
+CELERY_TASK_ALWAYS_EAGER = True
