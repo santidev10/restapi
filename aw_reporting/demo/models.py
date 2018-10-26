@@ -849,7 +849,7 @@ class DemoAccount(BaseDemo):
         return details
 
     @property
-    def overview(self):
+    def overview_data(self):
         data = dict(
             age=[dict(name=e, value=i + 1) for i, e in enumerate(reversed(AgeRanges))],
             all_conversions=self.all_conversions,
@@ -959,12 +959,16 @@ class DemoAccount(BaseDemo):
         ]
 
     @property
+    def overview(self):
+        return [dict(id=self.id, label=self.name)]
+
+    @property
     def overview_analytics(self):
-        return pick_dict(self.overview, self._overview_keys_analytics)
+        return pick_dict(self.overview_data, self._overview_keys_analytics)
 
     @property
     def overview_dashboard(self):
-        return pick_dict(self.overview, self._overview_keys_dashboard)
+        return pick_dict(self.overview_data, self._overview_keys_dashboard)
 
     @property
     def _base_header_data(self):

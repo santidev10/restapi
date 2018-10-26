@@ -274,6 +274,7 @@ class Metric(ExtendedEnum):
 
 
 ALL_METRICS = (
+    Metric.OVERVIEW,
     Metric.CAMPAIGN,
     Metric.DEVICE,
     Metric.GENDER,
