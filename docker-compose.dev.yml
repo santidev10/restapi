@@ -7,3 +7,15 @@ services:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
     depends_on:
       - pg
+
+  web:
+    image: busybox
+  sdb:
+    image: busybox
+  es:
+    image: busybox
+  cassandra:
+    image: busybox
+  rabbitmq:
+    image: busybox
+

@@ -107,6 +107,6 @@ class SegmentSerializer(ModelSerializer):
             sdb_connector.post_channels(self.ids_to_create)
             segment.add_related_ids(self.ids_to_create)
         if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create)):
-            segment.update_statistics(segment)
+            segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
         return segment

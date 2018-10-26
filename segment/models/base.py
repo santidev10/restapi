@@ -34,7 +34,7 @@ class SegmentManager(Manager):
                 'Updating statistics for {}-segment [{} ids]: {}'.format(
                     segment.segment_type, len(segment.related_ids_list),
                     segment.title))
-            segment.update_statistics(segment)
+            segment.update_statistics()
 
 
 class BaseSegment(Timestampable):
