@@ -4,7 +4,6 @@ BaseSegment models module
 import logging
 from itertools import chain
 
-from celery.task import task
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
@@ -106,7 +105,6 @@ class BaseSegment(Timestampable):
         if ids:
             self.related.model.objects.filter(related_id__in=ids).delete()
 
-    @task
     def update_statistics(self):
         """
         Process segment statistics fields

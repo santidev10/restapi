@@ -1,3 +1,5 @@
+from builtins import ValueError
+
 from django.db import transaction
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
@@ -14,7 +16,7 @@ from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from aw_reporting.tasks import upload_initial_aw_data
+from aw_reporting.update.tasks import upload_initial_aw_data
 from aw_reporting.utils import get_google_access_token_info
 from userprofile.permissions import PermissionGroupNames
 

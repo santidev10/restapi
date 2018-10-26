@@ -12,7 +12,6 @@ MIGRATION_MODULES = {
     "aw_creation": None,
     "aw_reporting": None,
     "contenttypes": None,
-    "djcelery": None,
     "keyword_tool": None,
     "landing": None,
     "payments": None,

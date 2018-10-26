@@ -60,7 +60,6 @@ PROJECT_APPS = (
 THIRD_PARTY_APPS = (
     "rest_framework",
     "rest_framework.authtoken",
-    "djcelery",
 )
 
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -247,13 +246,7 @@ YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
-import djcelery
-
-djcelery.setup_loader()
-CELERY_TASK_RESULT_EXPIRES = 18000
-CELERYD_TASK_ERROR_EMAILS = False
-CELERY_ACKS_LATE = True
-CELERYD_PREFETCH_MULTIPLIER = 1
+from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
