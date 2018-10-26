@@ -23,11 +23,21 @@ services:
     - sdb
     - web
     - celery_worker
+  celery_beat:
+    build: .
+    volumes:
+    - .:/code
+    command: ["celery", "-A", "saas", "beat", "-l", "info"]
+    depends_on:
+    - rabbitmq
+    - api
+    environment:
+      CELERY_BROKER_HOST: rabbitmq
   celery_worker:
     build: .
     volumes:
     - .:/code
-    command: ["celery", "-A", "saas", "worker", "-c", "4", "-E", "-l", "info"]
+    command: ["celery", "-A", "saas", "worker", "-c", "4", "-l", "info"]
     depends_on:
     - rabbitmq
     environment:

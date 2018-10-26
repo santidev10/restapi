@@ -14,6 +14,7 @@ from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.update.tasks import detect_success_aw_read_permissions
 from aw_reporting.update.tasks import max_ready_date
 from aw_reporting.update.tasks import recalculate_de_norm_fields
+from aw_reporting.utils import command_single_process_lock
 from utils.datetime import now_in_default_tz
 
 __all__ = ["update_aw_accounts"]
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @task
+@command_single_process_lock("aw_main_update")
 def update_aw_accounts(account_ids=None, start=None, end=None, forced=False):
     pre_process()
 

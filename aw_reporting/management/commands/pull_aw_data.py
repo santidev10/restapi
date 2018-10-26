@@ -4,7 +4,6 @@ from django.core.management.base import BaseCommand
 
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.tasks import update_aw_accounts
-from aw_reporting.utils import command_single_process_lock
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,6 @@ class Command(BaseCommand):
             default=None,
         )
 
-    @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
         forced = options.get("forced")
         detach = options.get("detach")
