@@ -54,6 +54,7 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.update.tasks import AudienceAWType
 from aw_reporting.update.tasks import MIN_FETCH_DATE
 from aw_reporting.update.tasks import max_ready_date
+from utils.filelock import FileLock
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
@@ -80,6 +81,16 @@ class PullAWDataTestCase(TransactionTestCase):
         account.managers.add(mcc_account)
         account.save()
         return account
+
+    def setUp(self):
+        self.acquire_mock = patch.object(FileLock, "acquire", return_value=None)
+        self.release_mock = patch.object(FileLock, "release", return_value=None)
+        self.acquire_mock.start()
+        self.release_mock.start()
+
+    def tearDown(self):
+        self.acquire_mock.stop()
+        self.release_mock.stop()
 
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
