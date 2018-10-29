@@ -11,3 +11,4 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="5,13,21"),  # each 8 hours including 6AM in LA
     }
 }
+CELERY_RESULT_BACKEND = "django-db"

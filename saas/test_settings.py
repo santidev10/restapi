@@ -12,13 +12,14 @@ MIGRATION_MODULES = {
     "aw_creation": None,
     "aw_reporting": None,
     "contenttypes": None,
+    "django_celery_results": None,
+    "email_reports": None,
     "keyword_tool": None,
     "landing": None,
     "payments": None,
     "segment": None,
     "sessions": None,
     "userprofile": None,
-    "email_reports": None,
 }
 for logger_config in LOGGING["handlers"].values():
     logger_config["filters"] = ["hide_all"] \

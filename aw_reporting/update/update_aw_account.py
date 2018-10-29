@@ -1,20 +1,23 @@
 import logging
 
-from celery import task
+from dateutil.parser import parse
 
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
+from saas import celery_app
 
 logger = logging.getLogger(__name__)
 
 
-@task
-def update_aw_account(account_id, today, start, end, index, count):
+@celery_app.task(trail=True)
+def update_aw_account(account_id, today_str: str, start, end, index, count):
+    today = parse(today_str).date()
     account = Account.objects.get(id=account_id)
     is_mcc = account.can_manage_clients
-    logger.info("%d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
+    logger.info("START %d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
     updater = AWDataLoader(today, start=start, end=end)
     updater.full_update(account)
+    logger.info("FINISH %d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
 
 
 def get_account_type_str(is_mcc):
