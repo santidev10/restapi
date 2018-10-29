@@ -14,10 +14,10 @@ def update_aw_account(account_id, today_str: str, start, end, index, count):
     today = parse(today_str).date()
     account = Account.objects.get(id=account_id)
     is_mcc = account.can_manage_clients
-    logger.info("START %d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
+    logger.info("START {}/{}: {} update: {}".format(index, count, get_account_type_str(is_mcc), account))
     updater = AWDataLoader(today, start=start, end=end)
     updater.full_update(account)
-    logger.info("FINISH %d/%d: %s update: %s", index, count, get_account_type_str(is_mcc), account)
+    logger.info("FINISH {}/{}: {} update: {}".format(index, count, get_account_type_str(is_mcc), account))
 
 
 def get_account_type_str(is_mcc):
