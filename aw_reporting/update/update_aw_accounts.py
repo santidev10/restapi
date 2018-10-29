@@ -9,7 +9,8 @@ from suds import WebFault
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
-from aw_reporting.update.tasks import recalculate_de_norm_fields, detect_success_aw_read_permissions
+from aw_reporting.update.tasks import detect_success_aw_read_permissions
+from aw_reporting.update.tasks import recalculate_de_norm_fields
 from aw_reporting.update.update_aw_account import update_aw_account
 from saas import celery_app
 from utils.celery import group_chorded
