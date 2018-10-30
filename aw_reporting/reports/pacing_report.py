@@ -253,6 +253,7 @@ class PacingReport:
         for fl in data:
             start, end = fl["start"], fl["end"]
             fl["days"] = (end - start).days + 1 if end and start else 0
+            fl["timezone"] = fl.get("timezone")
 
             if fl["placement__opportunity__budget"] > self.big_budget_border:
                 goal_factor = self.big_goal_factor
@@ -295,8 +296,7 @@ class PacingReport:
                 diff = f["delivery"] - f["plan_units"]
                 if diff > 0:  # over-delivery
                     over_delivery += diff
-                elif diff < 0 and f[
-                    "end"] <= self.yesterday:  # under delivery for an ended flight
+                elif diff < 0 and f["end"] <= self.yesterday:  # under delivery for an ended flight
                     # if we have an ended under-delivered flight,
                     # it can consume his under-delivery from the total over-delivery amount
                     abs_diff = abs(diff)
@@ -431,32 +431,6 @@ class PacingReport:
             current_cost_limit=current_cost_limit
         )
         return result
-
-    def get_pacing_from_flights(self, flights, allocation_ko=1,
-                                campaign_id=None):
-        goal_type_ids = list(set(f["placement__goal_type_id"] for f in flights))
-        dynamic_placements = list(
-            set(f["placement__dynamic_placement"] for f in flights))
-        if len(goal_type_ids) == 1 \
-                and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
-                and len(dynamic_placements) == 1 and \
-                dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
-            pacing = 1
-        else:
-            units_planned = sum_delivery = 0
-            for f in flights:
-                if f["placement__placement_type"] == OpPlacement.OUTGOING_FEE_TYPE:
-                    continue
-                stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
-                    if campaign_id else f
-                sum_delivery += stats["delivery"] or 0
-                minutes_run, total_minutes = get_minutes_run_and_total_minutes(f)
-                if minutes_run and total_minutes:
-                    plan_units = f["plan_units"] * allocation_ko
-                    units_planned += plan_units * minutes_run / total_minutes
-            pacing = sum_delivery / units_planned \
-                if units_planned else None
-        return pacing
 
     def get_margin_from_flights(self, flights, cost, plan_cost,
                                 allocation_ko=1, campaign_id=None):
@@ -599,7 +573,7 @@ class PacingReport:
             plan_stats = self.get_plan_stats_from_flights(flights)
             o.update(plan_stats)
 
-            o["pacing"] = self.get_pacing_from_flights(flights)
+            o["pacing"] = get_pacing_from_flights(flights)
             o["margin"] = self.get_margin_from_flights(flights, o["cost"],
                                                        o["current_cost_limit"])
 
@@ -839,7 +813,7 @@ class PacingReport:
             plan_stats = self.get_plan_stats_from_flights(flights)
             p.update(plan_stats)
 
-            p["pacing"] = self.get_pacing_from_flights(flights)
+            p["pacing"] = get_pacing_from_flights(flights)
             p["margin"] = self.get_margin_from_flights(flights, p["cost"],
                                                        p["current_cost_limit"])
 
@@ -892,7 +866,7 @@ class PacingReport:
             delivery_stats = self.get_delivery_stats_from_flights(f_data)
             flight.update(delivery_stats)
 
-            flight["pacing"] = self.get_pacing_from_flights(f_data)
+            flight["pacing"] = get_pacing_from_flights(f_data)
             flight["margin"] = self.get_margin_from_flights(f_data,
                                                             flight["cost"],
                                                             flight["current_cost_limit"])
@@ -948,7 +922,7 @@ class PacingReport:
                                                                   c["id"])
             c.update(delivery_stats)
 
-            c["pacing"] = self.get_pacing_from_flights(flights_data, **kwargs)
+            c["pacing"] = get_pacing_from_flights(flights_data, **kwargs)
             c["margin"] = self.get_margin_from_flights(flights_data, c["cost"],
                                                        c["current_cost_limit"],
                                                        **kwargs)

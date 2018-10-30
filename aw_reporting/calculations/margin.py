@@ -60,9 +60,11 @@ def get_minutes_run_and_total_minutes(flight):
         timezone = pytz.timezone(flight["timezone"] or settings.DEFAULT_TIMEZONE)
         start = datetime.combine(flight["start"], time.min).replace(tzinfo=timezone)
         end = datetime.combine(flight["end"] + timedelta(days=1), time.min).replace(tzinfo=timezone)
-        last_update = flight["last_update"]
+        last_update = flight.get("last_update")
         if last_update is not None:
             last_update = last_update.astimezone(timezone)
+        else:
+            last_update = start
         total_seconds = (end - start).total_seconds()
         latest_datetime = end if end < last_update else last_update
         seconds_run = max((latest_datetime - start).total_seconds(), 0)
