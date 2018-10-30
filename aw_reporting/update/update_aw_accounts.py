@@ -3,7 +3,6 @@ from functools import partial
 
 from celery.task import task
 from django.conf import settings
-from pytz import timezone
 from pytz import utc
 from suds import WebFault
 
@@ -12,7 +11,6 @@ from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.update.tasks import detect_success_aw_read_permissions
-from aw_reporting.update.tasks import max_ready_date
 from aw_reporting.update.tasks import recalculate_de_norm_fields
 from aw_reporting.utils import command_single_process_lock
 from utils.datetime import now_in_default_tz
@@ -101,15 +99,9 @@ def update_accounts(today, forced, start, end, account_ids, is_mcc: bool):
 
 
 def filtered_accounts_generator(queryset, forced):
-    now = now_in_default_tz(utc)
     for account in queryset:
-        tz = timezone(account.timezone)
-        if forced or update_account(account, now, tz):
+        if forced or not account.update_time:
             yield account
-
-
-def update_account(account, now, tz):
-    return not account.update_time or max_ready_date(account.update_time, tz) < max_ready_date(now, tz)
 
 
 def get_account_type_str(is_mcc):

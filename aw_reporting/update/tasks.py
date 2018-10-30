@@ -20,7 +20,6 @@ from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions import Coalesce
-from pytz import timezone
 
 from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_api import get_web_app_client
@@ -126,18 +125,6 @@ def get_base_stats(row, quartiles=False):
             video_views_100_quartile=quart_views(row, 100),
         )
     return stats
-
-
-MIN_UPDATE_HOUR = 6
-
-
-def max_ready_datetime(dt: datetime):
-    return dt - timedelta(hours=MIN_UPDATE_HOUR)
-
-
-def max_ready_date(dt: datetime, tz=None, tz_str="UTC"):
-    tz = tz or timezone(tz_str)
-    return max_ready_datetime(dt).astimezone(tz).date() - timedelta(days=1)
 
 
 def extract_placement_code(name):
@@ -332,7 +319,7 @@ def get_campaigns(client, account, *_):
     from aw_reporting.models import CampaignStatistic
     from aw_reporting.models import Devices
 
-    now = now_in_default_tz()
+    max_date = now = now_in_default_tz()
     today = now.date()
 
     stats_queryset = CampaignStatistic.objects.filter(
@@ -345,22 +332,16 @@ def get_campaigns(client, account, *_):
     min_date = dates['max_date'] + timedelta(days=1) \
         if dates['max_date'] \
         else MIN_FETCH_DATE
-    max_date = max_ready_date(now, tz_str=account.timezone)
-
-    report = campaign_performance_report(client,
-                                         dates=(min_date, max_date),
-                                         include_zero_impressions=False,
-                                         additional_fields=('Device', 'Date')
-                                         )
+    report = campaign_performance_report(
+        client, dates=(min_date, max_date), include_zero_impressions=False, additional_fields=('Device', 'Date'))
     click_type_fields = (
         "CampaignId",
         "Date",
         "Clicks",
         "ClickType",
     )
-    click_type_report = campaign_performance_report(client, dates=(min_date, max_date),
-                                                    fields=click_type_fields, include_zero_impressions=False)
-
+    click_type_report = campaign_performance_report(
+        client, dates=(min_date, max_date), fields=click_type_fields, include_zero_impressions=False)
     click_type_data = format_click_types_report(click_type_report, "CampaignId", "CampaignId")
     insert_stat = []
     for row_obj in report:
@@ -429,10 +410,8 @@ def get_ad_groups_and_stats(client, account, *_):
     )
     report_unique_field_name = "Device"
 
-    now = now_in_default_tz()
+    max_available_date = now = now_in_default_tz()
     today = now.date()
-    max_available_date = max_ready_date(now, tz_str=account.timezone)
-
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
     )
@@ -443,6 +422,7 @@ def get_ad_groups_and_stats(client, account, *_):
     dates = (max_date + timedelta(days=1), max_available_date) \
         if max_date \
         else (MIN_FETCH_DATE, max_available_date)
+
     report = ad_group_performance_report(
         client, dates=dates)
     if report:
