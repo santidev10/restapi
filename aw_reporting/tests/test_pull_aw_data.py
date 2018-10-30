@@ -55,6 +55,7 @@ from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
+from utils.filelock import FileLock
 
 
 class PullAWDataTestCase(TransactionTestCase):
@@ -77,6 +78,16 @@ class PullAWDataTestCase(TransactionTestCase):
         account.managers.add(mcc_account)
         account.save()
         return account
+
+    def setUp(self):
+        self.acquire_mock = patch.object(FileLock, "acquire", return_value=None)
+        self.release_mock = patch.object(FileLock, "release", return_value=None)
+        self.acquire_mock.start()
+        self.release_mock.start()
+
+    def tearDown(self):
+        self.acquire_mock.stop()
+        self.release_mock.stop()
 
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -724,8 +735,6 @@ class PullAWDataTestCase(TransactionTestCase):
     def test_ad_group_update_requests_again_recent_statistic(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        # last_statistic_date = today - timedelta(weeks=54)
-        # request_start_date = last_statistic_date + timedelta(days=1)
         yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -802,7 +811,31 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
-                                                     max=date_formatted(today)))
+                                                     max=date_formatted(yesterday)))
+
+    @generic_test([
+        ("Updating 6am", (time(5, 59),), {}),
+        ("Updating at 6am", (time(6, 0),), {}),
+    ])
+    def test_should_not_be_updated_until_6am(self, time_now):
+        test_timezone_str = "America/Los_Angeles"
+        test_timezone = timezone(test_timezone_str)
+        today = date(2018, 2, 2)
+        yesterday = today - timedelta(days=1)
+        last_update = datetime.combine(yesterday, datetime.max.time()).replace(tzinfo=utc)
+        account = self._create_account(tz=test_timezone_str, account_update_time=last_update)
+
+        now = datetime.combine(today, time_now).replace(tzinfo=test_timezone)
+        now_utc = now.astimezone(tz=utc)
+        expected_update_time = now_utc
+
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.timezone.now", return_value=now_utc), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client"):
+            self._call_command(empty=True)
+
+        account.refresh_from_db()
+        self.assertEqual(account.update_time, expected_update_time)
 
     @generic_test([
         ("Yesterday", (3, "Etc/GMT+10", lambda utc_date, local_date: local_date < utc_date), {}),
@@ -880,7 +913,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
 
     def test_get_topics_success(self):
-        now = datetime(2018, 2, 3, 4, 5)
+        now = datetime(2018, 2, 3, 4, 5, tzinfo=utc)
         today = now.date()
         last_update = today - timedelta(days=3)
         aw_client_mock = MagicMock()

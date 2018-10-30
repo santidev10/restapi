@@ -8,6 +8,12 @@ services:
     depends_on:
       - pg
 
+  celery_beat:
+    image: busybox
+    command: ["pwd"]
+  celery_worker:
+    image: busybox
+    command: ["pwd"]
   web:
     image: busybox
   sdb:

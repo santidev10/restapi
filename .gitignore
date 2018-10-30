@@ -104,3 +104,6 @@ dump.rdb
 iq_errors.*
 
 *.pid
+
+locks/*
+!locks/.gitkeep
