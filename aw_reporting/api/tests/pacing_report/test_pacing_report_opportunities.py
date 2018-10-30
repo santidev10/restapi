@@ -1,10 +1,12 @@
 import logging
 from datetime import date
 from datetime import datetime
+from datetime import time
 from datetime import timedelta
 from itertools import product
 from urllib.parse import urlencode
 
+import pytz
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
@@ -14,7 +16,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Campaign
+from aw_reporting.models import Campaign, Account
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Category
 from aw_reporting.models import Flight
@@ -596,6 +598,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today + timedelta(days=3)
         total_days = (end - start).days + 1
@@ -617,7 +621,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
@@ -1176,6 +1182,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def test_outgoing_fee_pacing(self):
         today = date(2018, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         total_cost = 6543
         our_cost = 1234
         days_pass, days_left = 3, 6
@@ -1209,10 +1217,17 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id=next(int_iterator),
             start=start, end=end, total_cost=total_cost, ordered_units=plan_units,
             placement=placement_cpv, cost=1)
+        account = Account.objects.create(timezone=tz, update_time=last_update)
         campaign_outgoing_fee = Campaign.objects.create(
-            salesforce_placement=placement_outgoing_fee)
-        campaign_cpv = Campaign.objects.create(id=next(int_iterator),
-                                               salesforce_placement=placement_cpv)
+            id=next(int_iterator),
+            account=account,
+            salesforce_placement=placement_outgoing_fee
+        )
+        campaign_cpv = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            salesforce_placement=placement_cpv
+        )
         CampaignStatistic.objects.create(date=start, campaign=campaign_outgoing_fee,
                                          cost=our_cost)
         CampaignStatistic.objects.create(
@@ -1223,10 +1238,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(response.data["items"][0]["pacing"], expected_pacing)
+        self.assertAlmostEqual(response.data["items"][0]["pacing"], expected_pacing)
 
     def test_outgoing_fee_margin(self):
         today = date(2018, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         our_cost = 1234
         days_pass, days_left = 3, 6
         self.assertGreater(days_pass, 0)
@@ -1247,8 +1264,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             delivered=2100,
             placement=placement_outgoing_fee, cost=87)
 
+        account = Account.objects.create(timezone=tz, update_time=last_update)
         campaign_outgoing_fee = Campaign.objects.create(
-            salesforce_placement=placement_outgoing_fee)
+            account=account,
+            salesforce_placement=placement_outgoing_fee
+        )
         CampaignStatistic.objects.create(date=start, campaign=campaign_outgoing_fee,
                                          cost=our_cost, video_views=13)
         with patch_now(today):
