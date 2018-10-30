@@ -1,5 +1,6 @@
-from datetime import date, time
+from datetime import date
 from datetime import datetime
+from datetime import time
 from datetime import timedelta
 from unittest.mock import ANY
 from unittest.mock import MagicMock
@@ -50,7 +51,7 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.update.tasks import AudienceAWType
+from aw_reporting.update.tasks import AudienceAWType, max_ready_date
 from aw_reporting.update.tasks import MIN_FETCH_DATE
 from utils.filelock import FileLock
 from utils.utils_tests import build_csv_byte_stream
@@ -859,7 +860,7 @@ class PullAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertEqual(account.update_time.astimezone(utc), now)
 
-        expected_max_date = now
+        expected_max_date = max_ready_date(now, tz_str=account.timezone)
         for call in downloader_mock.DownloadReportAsStream.mock_calls:
             payload = call[1][0]
             selector = payload["selector"]

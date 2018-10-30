@@ -158,6 +158,11 @@ def get_account_border_dates(account):
     return dates['min_date'], dates['max_date']
 
 
+def max_ready_date(dt: datetime, tz=None, tz_str="UTC"):
+    tz = tz or pytz.timezone(tz_str)
+    return dt.astimezone(tz).date()
+
+
 GET_DF = '%Y-%m-%d'
 
 
@@ -319,8 +324,9 @@ def get_campaigns(client, account, *_):
     from aw_reporting.models import CampaignStatistic
     from aw_reporting.models import Devices
 
-    max_date = now = now_in_default_tz()
+    now = now_in_default_tz()
     today = now.date()
+    max_date = max_ready_date(now, tz_str=account.timezone)
 
     stats_queryset = CampaignStatistic.objects.filter(
         campaign__account=account
@@ -333,7 +339,11 @@ def get_campaigns(client, account, *_):
         if dates['max_date'] \
         else MIN_FETCH_DATE
     report = campaign_performance_report(
-        client, dates=(min_date, max_date), include_zero_impressions=False, additional_fields=('Device', 'Date'))
+        client,
+        dates=(min_date, max_date),
+        include_zero_impressions=False,
+        additional_fields=('Device', 'Date'),
+    )
     click_type_fields = (
         "CampaignId",
         "Date",
@@ -410,7 +420,8 @@ def get_ad_groups_and_stats(client, account, *_):
     )
     report_unique_field_name = "Device"
 
-    max_available_date = now = now_in_default_tz()
+    now = now_in_default_tz()
+    max_available_date = max_ready_date(now, tz_str=account.timezone)
     today = now.date()
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
