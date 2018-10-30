@@ -58,6 +58,7 @@ PROJECT_APPS = (
 )
 
 THIRD_PARTY_APPS = (
+    "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
 )
@@ -192,6 +193,22 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
+        'file_googleads': {
+            'filename': os.path.join(LOGS_DIRECTORY, "googleads.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'file_updates': {
+            'filename': os.path.join(LOGS_DIRECTORY, "aw_update.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
         'mail_developers': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -200,6 +217,14 @@ LOGGING = {
         }
     },
     'loggers': {
+        "googleads": {
+            "handlers": ["file_googleads"],
+            "level": "WARNING",
+        },
+        "aw_reporting.update": {
+            "handlers": ["file_updates"],
+            "level": "INFO",
+        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),

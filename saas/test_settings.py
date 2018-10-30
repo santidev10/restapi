@@ -12,13 +12,14 @@ MIGRATION_MODULES = {
     "aw_creation": None,
     "aw_reporting": None,
     "contenttypes": None,
+    "django_celery_results": None,
+    "email_reports": None,
     "keyword_tool": None,
     "landing": None,
     "payments": None,
     "segment": None,
     "sessions": None,
     "userprofile": None,
-    "email_reports": None,
 }
 for logger_config in LOGGING["handlers"].values():
     logger_config["filters"] = ["hide_all"] \
@@ -27,3 +28,4 @@ for logger_config in LOGGING["handlers"].values():
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-test/logos/{}.png"
 
 CELERY_BEAT_SCHEDULE = {}
+CELERY_TASK_ALWAYS_EAGER = True
