@@ -3,7 +3,6 @@ from django.contrib.auth.models import update_last_login
 from django.core.validators import EmailValidator
 from django.core.validators import MaxLengthValidator
 from rest_framework.authtoken.models import Token
-from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import EmailField
 from rest_framework.serializers import ModelSerializer
@@ -42,7 +41,6 @@ class UserCreateSerializer(ModelSerializer):
                                 validators=[extended_enum(UserAnnualAdSpend)])
     user_type = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                           validators=[extended_enum(UserTypeRegular)])
-    is_subscribed = BooleanField(required=False)
 
     class Meta:
         """
@@ -54,7 +52,6 @@ class UserCreateSerializer(ModelSerializer):
             "company",
             "email",
             "first_name",
-            "is_subscribed",
             "last_name",
             "password",
             "phone_number",
@@ -100,7 +97,6 @@ class UserCreateSerializer(ModelSerializer):
             "last_name": user.last_name,
             "annual_ad_spend": user.annual_ad_spend,
             "user_type": user.user_type,
-            "is_subscribed": user.is_subscribed
         }
         send_new_registration_email(email_data)
         send_welcome_email(user, self.context.get("request"))
