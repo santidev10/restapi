@@ -1,13 +1,23 @@
+from datetime import datetime
+from datetime import time
 from datetime import timedelta
 
+import pytz
+from django.conf import settings
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Flight, Campaign, CampaignStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
 from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import patch_now
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
@@ -77,7 +87,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(first_op_data['plan_cost'], opportunity.budget)
         total_ordered_units = flight.ordered_units + flight2.ordered_units
         self.assertEqual(first_op_data['plan_cpv'], (
-                    flight.total_cost + flight2.total_cost) / total_ordered_units)
+                flight.total_cost + flight2.total_cost) / total_ordered_units)
         self.assertEqual(first_op_data['plan_video_views'],
                          total_ordered_units * 1.02)
         self.assertEqual(first_op_data["margin"], 0,
@@ -252,3 +262,38 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
                           DynamicPlacementType.SERVICE_FEE}
         actual_types = set(opportunity_data["dynamic_placements_types"])
         self.assertEqual(actual_types, expected_types)
+
+    def test_pacing_calculated_by_minutes(self):
+        test_timezone_str = settings.DEFAULT_TIMEZONE
+        test_timezone = pytz.timezone(test_timezone_str)
+        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
+        test_last_update = test_now - timedelta(hours=3)
+        self.assertEqual(test_now.date(), test_last_update.date())
+        start = (test_now - timedelta(days=5)).date()
+        end = (test_now + timedelta(days=2)).date()
+        ordered_units = 1234
+        delivered_units = 345
+
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(placement=placement, start=start, end=end, ordered_units=ordered_units)
+
+        account = Account.objects.create(update_time=test_last_update, timezone=test_timezone_str)
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units)
+
+        start_time = datetime.combine(start, time.min).replace(tzinfo=test_timezone)
+        end_time = datetime.combine(end + timedelta(days=1), time.min).replace(tzinfo=test_timezone)
+        total_minutes = (end_time - start_time).total_seconds() // 60
+        minutes_passed = (test_last_update - start_time).total_seconds() // 60
+        total_plan_units = ordered_units * PacingReport.goal_factor
+        planned_units = total_plan_units / total_minutes * minutes_passed
+        expected_pacing = delivered_units / planned_units
+
+        with patch_now(test_now):
+            report = PacingReport()
+            opportunities = report.get_opportunities({})
+        self.assertEqual(len(opportunities), 1)
+
+        first_op_data = opportunities[0]
+        self.assertAlmostEqual(first_op_data["pacing"], expected_pacing)
