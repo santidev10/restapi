@@ -1,3 +1,4 @@
+from datetime import date, time
 from datetime import datetime
 from datetime import timedelta
 from unittest.mock import ANY
@@ -51,11 +52,11 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.update.tasks import AudienceAWType
 from aw_reporting.update.tasks import MIN_FETCH_DATE
+from utils.filelock import FileLock
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
-from utils.filelock import FileLock
 
 
 class PullAWDataTestCase(TransactionTestCase):
@@ -696,7 +697,6 @@ class PullAWDataTestCase(TransactionTestCase):
     def test_first_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         AdGroup.objects.create(id=1,
@@ -777,7 +777,6 @@ class PullAWDataTestCase(TransactionTestCase):
         today = now.date()
         last_statistic_date = today - timedelta(weeks=54)
         request_start_date = last_statistic_date + timedelta(days=1)
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         ad_group = AdGroup.objects.create(id=1,
@@ -811,7 +810,7 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     @generic_test([
         ("Updating 6am", (time(5, 59),), {}),
