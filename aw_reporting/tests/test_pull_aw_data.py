@@ -699,7 +699,6 @@ class PullAWDataTestCase(TransactionTestCase):
     def test_first_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         AdGroup.objects.create(id=1,
@@ -733,7 +732,7 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     def test_ad_group_update_requests_again_recent_statistic(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -773,14 +772,13 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
         last_statistic_date = today - timedelta(weeks=54)
         request_start_date = last_statistic_date + timedelta(days=1)
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         ad_group = AdGroup.objects.create(id=1,
@@ -814,7 +812,7 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     @generic_test([
         ("Updating 6am", (time(5, 59),), {}),
@@ -863,7 +861,7 @@ class PullAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertEqual(account.update_time.astimezone(utc), now)
 
-        expected_max_date = max_ready_date(now, test_timezone)
+        expected_max_date = max_ready_date(now, tz_str=account.timezone)
         for call in downloader_mock.DownloadReportAsStream.mock_calls:
             payload = call[1][0]
             selector = payload["selector"]
