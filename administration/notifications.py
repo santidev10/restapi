@@ -31,8 +31,7 @@ def send_new_registration_email(email_data):
            "User company: {company}\n" \
            "User phone: {phone} \n"\
            "Annual ad spend: {annual_ad_spend} \n"\
-           "User type: {user_type} \n"\
-           "Is subscribed: {is_subscribed} \n\n".format(**email_data)
+           "User type: {user_type} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
 
