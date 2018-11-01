@@ -119,7 +119,6 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "annual_ad_spend",
             "user_type",
-            "is_subscribed",
         )
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):

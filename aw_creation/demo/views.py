@@ -566,7 +566,7 @@ class DashboardPerformanceExportApiView:
                 )
 
                 def data_generator():
-                    yield {**{"tab": "Summary"}, **account.details, **account.overview}
+                    yield {**{"tab": "Summary"}, **account.details, **account.overview_dashboard}
 
                     for dimension in view._get_tabs():
                         filters['dimension'] = dimension

@@ -20,7 +20,6 @@ class UserExportColumn:
     USER_TYPE = "user_type"
     ANNUAL_AD_SPEND = "annual_ad_spend"
     HAS_OAUTH_YOUTUBE_CHANNEL = "has_oauth_youtube_channel"
-    IS_SUBSCRIBED = "is_subscribed"
 
 
 CSV_COLUMN_ORDER = (
@@ -35,7 +34,6 @@ CSV_COLUMN_ORDER = (
     UserExportColumn.USER_TYPE,
     UserExportColumn.ANNUAL_AD_SPEND,
     UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL,
-    UserExportColumn.IS_SUBSCRIBED,
 )
 
 REPORT_HEADERS = {
@@ -50,7 +48,6 @@ REPORT_HEADERS = {
     UserExportColumn.USER_TYPE: "User Type",
     UserExportColumn.ANNUAL_AD_SPEND: "Annual Ad Spend",
     UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: "Has Oauth youtube channel",
-    UserExportColumn.IS_SUBSCRIBED: "Is subscribed",
 }
 
 
@@ -72,7 +69,6 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
                 UserExportColumn.ANNUAL_AD_SPEND: user.annual_ad_spend,
                 UserExportColumn.AW_ACCOUNTS: ",".join(Account.user_mcc_objects(user).values_list("name", flat=True)),
                 UserExportColumn.HAS_OAUTH_YOUTUBE_CHANNEL: user.channels.exists(),
-                UserExportColumn.IS_SUBSCRIBED: user.is_subscribed
             }
 
     def get_filename(self):
