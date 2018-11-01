@@ -15,6 +15,7 @@ from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import get_margin
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from utils.datetime import now_in_default_tz
 
 
 def get_margin_from_flights(flights, cost, plan_cost,
@@ -55,16 +56,16 @@ def get_margin_from_flights(flights, cost, plan_cost,
 
 def get_minutes_run_and_total_minutes(flight):
     minutes_run, total_minutes = None, None
-    start_date, start_date = flight["start"], flight["end"]
-    if start_date and start_date:
+    start_date, end_date = flight["start"], flight["end"]
+    if start_date and end_date:
         timezone = pytz.timezone(flight["timezone"] or settings.DEFAULT_TIMEZONE)
-        start = datetime.combine(flight["start"], time.min).replace(tzinfo=timezone)
-        end = datetime.combine(flight["end"] + timedelta(days=1), time.min).replace(tzinfo=timezone)
-        last_update = flight.get("last_update")
+        start = datetime.combine(start_date, time.min).replace(tzinfo=timezone)
+        end = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=timezone)
+        last_update = flight.get("update_time")
         if last_update is not None:
             last_update = last_update.astimezone(timezone)
         else:
-            last_update = start
+            last_update = now_in_default_tz()
         total_seconds = (end - start).total_seconds()
         latest_datetime = end if end < last_update else last_update
         seconds_run = max((latest_datetime - start).total_seconds(), 0)

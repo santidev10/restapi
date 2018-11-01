@@ -77,9 +77,6 @@ class PacingReport:
             timestamp=self.today.strftime("%Y%m%d"),
         )
 
-    def get_minutes_run_and_total_minutes(self, f):
-        return get_minutes_run_and_total_minutes(f)
-
     def get_flights_delivery_annotate(self):
         flights_delivery_annotate = dict(
             delivery=Sum(
@@ -186,8 +183,6 @@ class PacingReport:
                     ),
                 ),
             ),
-            last_update=Max("placement__adwords_campaigns__account__update_time"),
-            timezone=Max("placement__adwords_campaigns__account__timezone"),
         )
         return flights_delivery_annotate
 
@@ -221,6 +216,7 @@ class PacingReport:
             "placement__dynamic_placement", "placement__ordered_rate",
             "placement__tech_fee", "placement__tech_fee_type",
             "placement__total_cost", "placement__ordered_rate",
+            "update_time", "timezone",
         )
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -229,6 +225,13 @@ class PacingReport:
             start__isnull=False,
             end__isnull=False,
             **filters
+        ).annotate(
+            update_time=Case(
+                When(placement__placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+                     then=Value(now_in_default_tz())),
+                default=Max("placement__adwords_campaigns__account__update_time")
+            ),
+            timezone=Max("placement__adwords_campaigns__account__timezone"),
         ).values(
             *flight_fields)
 
@@ -237,8 +240,6 @@ class PacingReport:
         for row in raw_data:
             fl_data = data[row["id"]]
             fl_data["campaigns"] = fl_data.get("campaigns") or {}
-            fl_data["last_update"] = row.get("last_update") or None
-            fl_data["timezone"] = row.get("timezone") or None
 
             fl_data["campaigns"][row[campaign_id_key]] = {
                 k: row.get(k) or 0
@@ -253,7 +254,6 @@ class PacingReport:
         for fl in data:
             start, end = fl["start"], fl["end"]
             fl["days"] = (end - start).days + 1 if end and start else 0
-            fl["timezone"] = fl.get("timezone")
 
             if fl["placement__opportunity__budget"] > self.big_budget_border:
                 goal_factor = self.big_goal_factor
@@ -397,7 +397,7 @@ class PacingReport:
             if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
                 sum_spent_cost += aw_cost
             elif placement_type == OpPlacement.OUTGOING_FEE_TYPE:
-                minutes_run, total_minutes = self.get_minutes_run_and_total_minutes(f)
+                minutes_run, total_minutes = get_minutes_run_and_total_minutes(f)
                 if minutes_run and total_minutes and f["cost"]:
                     cost = f["cost"] or 0
                     sum_spent_cost += cost * minutes_run / total_minutes

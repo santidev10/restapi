@@ -1,12 +1,14 @@
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, time
 
+import pytz
+from django.conf import settings
 from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Campaign, CampaignStatistic
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase, patch_now
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -74,8 +76,14 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(first_data['cost'], flight.cost)
 
     def test_cost_hard_cost_outgoing_fee_running(self):
-        today = now_in_default_tz().date()
-        yesterday = today - timedelta(days=1)
+        tz_str = settings.DEFAULT_TIMEZONE
+        tz = pytz.timezone(tz_str)
+        now = datetime(2018, 1, 2, 3, 4, 5, tzinfo=tz)
+        today = now.date()
+        start = today - timedelta(days=2)
+        end = today + timedelta(days=7)
+        start_time = datetime.combine(start, time.min).replace(tzinfo=tz)
+        end_time = datetime.combine(end + timedelta(days=1), time.min).replace(tzinfo=tz)
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today, end=today, probability=100,
             budget=500001,
@@ -86,20 +94,21 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         flight = Flight.objects.create(
             id="2", name="", placement=placement, ordered_units=1,
-            start=today - timedelta(days=2), end=today + timedelta(days=7),
+            start=start, end=end,
             cost=10
         )
 
         report = PacingReport()
-        flights = report.get_flights(placement)
+        with patch_now(now):
+            flights = report.get_flights(placement)
         self.assertEqual(len(flights), 1)
 
         first_data = flights[0]
 
-        flight_total_days = (flight.end - flight.start).days + 1
-        flight_run = (yesterday - flight.start).days + 1
+        flight_total_minutes = (end_time - start_time).total_seconds() // 60
+        flight_run_minutes = (now - start_time).total_seconds() // 60
 
-        expected_cost = flight.cost * flight_run / flight_total_days
+        expected_cost = flight.cost * flight_run_minutes / flight_total_minutes
         self.assertEqual(first_data['cost'], expected_cost)
 
     def test_cost_hard_cost_outgoing_fee_upcoming(self):

@@ -117,24 +117,32 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
                          flight.ordered_units * 1.01)
 
     def test_margin_opportunity_hard_cost_outgoing_fee(self):
-        today = now_in_default_tz().date()
-        yesterday = today - timedelta(days=1)
+        tz_str = settings.DEFAULT_TIMEZONE
+        tz = pytz.timezone(tz_str)
+        now = datetime(2018, 1, 2, 3, 4, 5, tzinfo=tz)
+        today = now.date()
+        start = today - timedelta(days=2)
+        end = today + timedelta(days=7)
+        start_time = datetime.combine(start, time.min).replace(tzinfo=tz)
+        end_time = datetime.combine(end + timedelta(days=1), time.min).replace(tzinfo=tz)
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today, end=today, probability=100,
             budget=500001,
         )
+        account = Account.objects.create(timezone=tz_str, update_time=now)
         cpv_placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=.01,
         )
         campaign = Campaign.objects.create(id="1", name="",
+                                           account=account,
                                            salesforce_placement=cpv_placement,
                                            video_views=1000, cost=5)
-        CampaignStatistic.objects.create(date=yesterday, campaign=campaign,
+        CampaignStatistic.objects.create(date=start, campaign=campaign,
                                          video_views=1000, cost=5)
         Flight.objects.create(id="0", name="CPV Flight",
                               placement=cpv_placement,
-                              start=yesterday, end=yesterday, cost=1)
+                              start=start, end=end, cost=1)
 
         placement = OpPlacement.objects.create(
             id="2", name="", opportunity=opportunity,
@@ -148,7 +156,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
         flight = Flight.objects.create(
             id="2", name="", placement=placement,
-            start=today - timedelta(days=2), end=today + timedelta(days=7),
+            start=start, end=end,
             cost=10, total_cost=opportunity.budget / 3,
         )
         Flight.objects.create(
@@ -158,15 +166,16 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        with patch_now(now):
+            opportunities = report.get_opportunities({})
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
 
-        flight_total_days = (flight.end - flight.start).days + 1
-        flight_run = (yesterday - flight.start).days + 1
+        flight_total_minutes = (end_time - start_time).total_seconds() // 60
+        flight_run_minutes = (now - start_time).total_seconds() // 60
 
-        expected_cost = campaign.cost + prev_flight.cost + flight.cost * flight_run / flight_total_days
+        expected_cost = campaign.cost + prev_flight.cost + flight.cost * flight_run_minutes / flight_total_minutes
         self.assertEqual(first_op_data['cost'], expected_cost)
 
         expected_ordered_cost = cpv_placement.ordered_rate * campaign.video_views
@@ -178,7 +187,13 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         Hard cost placements shouldn't affect Pacing
         :return:
         """
-        today = now_in_default_tz().date()
+        tz_str = settings.DEFAULT_TIMEZONE
+        tz = pytz.timezone(tz_str)
+        now = datetime(2018, 3, 4, 5, 6, 7, tzinfo=tz)
+        today = now.date()
+        start = today - timedelta(days=2)
+        end = today + timedelta(days=7)
+        update_time = datetime.combine(today, time.min).replace(tzinfo=tz)
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today, end=today, probability=100,
             budget=1000,
@@ -189,10 +204,11 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         )
         flight = Flight.objects.create(
             id="1", name="", placement=cpv_placement,
-            start=today - timedelta(days=2), end=today + timedelta(days=7),
+            start=start, end=end,
             ordered_units=1000,
         )
-        campaign = Campaign.objects.create(id="1", name="",
+        account = Account.objects.create(update_time=update_time)
+        campaign = Campaign.objects.create(id="1", name="", account=account,
                                            salesforce_placement=cpv_placement,
                                            video_views=204)
         CampaignStatistic.objects.create(date=flight.start, campaign=campaign,
@@ -210,8 +226,9 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             ordered_units=10000,
         )
 
-        report = PacingReport()
-        opportunities = report.get_opportunities({})
+        with patch_now(now):
+            report = PacingReport()
+            opportunities = report.get_opportunities({})
         self.assertEqual(len(opportunities), 1)
 
         first_op_data = opportunities[0]
