@@ -2008,9 +2008,12 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
         ).update(sync_at=updated_at)
 
         # save campaigns and ad_groups
-        campaigns = [json.loads(campaign) for campaign in request.data.get("campaigns", [])]
-        existed_c_ids = set(Campaign.objects.filter(account_id=account_id).values_list("id",flat=True))
-        existed_a_ids = set(AdGroup.objects.filter(campaign__account_id=account_id).values_list("id", flat=True))
+        campaigns = request.data.get("campaigns", [])
+        existed_c_ids = set(
+            Campaign.objects.filter(account_id=account_id).values_list("id",
+                                                                       flat=True))
+        existed_a_ids = set(AdGroup.objects.filter(
+            campaign__account_id=account_id).values_list("id", flat=True))
         c_bulk = [Campaign(id=c['id'], name=c['name'], account_id=account_id)
                   for c in campaigns if c['id'] not in existed_c_ids]
         if c_bulk:
