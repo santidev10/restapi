@@ -5,12 +5,13 @@ from datetime import timedelta
 
 from django.db.models import Avg
 from django.db.models import Case
+from django.db.models import DateField
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
-from django.db.models.expressions import RawSQL
+from django.db.models.expressions import ExpressionWrapper
 from django.db.models.functions import TruncMonth
 from django.db.models.functions import TruncYear
 from django.db.models.sql.query import get_field_names_from_opts
@@ -57,6 +58,7 @@ from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.db.functions import TruncQuarter
+from utils.db.functions import TruncWeek
 from utils.lang import ExtendedEnum
 from utils.lang import flatten
 from utils.utils import get_all_class_constants
@@ -648,9 +650,11 @@ class DeliveryChart:
         if date_segment == DateSegment.DAY:
             return F("date")
         if date_segment == DateSegment.WEEK:
-            # fixme: make it through the Django ORM
-            return RawSQL("date_trunc('week', \"date\" + '1 day'::interval) - '1 day'::interval", ())
-            # return TruncWeek(ExpressionWrapper(F("date") + timedelta(days=1), output_field=DateField()))
+            to_date = lambda e: ExpressionWrapper(e, output_field=DateField())
+            next_date = to_date(F("date") + timedelta(days=1))
+            start_of_the_week = TruncWeek(next_date)
+            shift_back = to_date(start_of_the_week - timedelta(days=1))
+            return shift_back
         if date_segment == DateSegment.MONTH:
             return TruncMonth("date")
         if date_segment == DateSegment.YEAR:
