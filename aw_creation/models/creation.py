@@ -119,7 +119,7 @@ class AccountCreation(UniqueCreationItem):
             for c in self.campaign_creations.not_empty().changed():
                 lines.append(c.get_aws_code(request))
             lines.append(
-                "sendChangesStatus('{}');".format(self.account_id)
+                "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
             )
             return "\n".join(lines)
 
