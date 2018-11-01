@@ -10,18 +10,19 @@ from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.expressions import RawSQL
 from django.db.models.functions import TruncMonth
 from django.db.models.functions import TruncYear
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import CALCULATED_STATS
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
@@ -56,7 +57,6 @@ from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.db.functions import TruncQuarter
-from utils.db.functions import TruncWeek
 from utils.lang import ExtendedEnum
 from utils.lang import flatten
 from utils.utils import get_all_class_constants
@@ -648,7 +648,9 @@ class DeliveryChart:
         if date_segment == DateSegment.DAY:
             return F("date")
         if date_segment == DateSegment.WEEK:
-            return TruncWeek("date")
+            # fixme: make it through the Django ORM
+            return RawSQL("date_trunc('week', \"date\" + '1 day'::interval) - '1 day'::interval", ())
+            # return TruncWeek(ExpressionWrapper(F("date") + timedelta(days=1), output_field=DateField()))
         if date_segment == DateSegment.MONTH:
             return TruncMonth("date")
         if date_segment == DateSegment.YEAR:
