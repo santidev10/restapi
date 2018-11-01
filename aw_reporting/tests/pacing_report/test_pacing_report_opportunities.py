@@ -314,3 +314,34 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
 
         first_op_data = opportunities[0]
         self.assertAlmostEqual(first_op_data["pacing"], expected_pacing)
+
+    def test_aggregates_latest_data(self):
+        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
+        start = (test_now - timedelta(days=5)).date()
+        end = (test_now + timedelta(days=2)).date()
+        ordered_units = 1234
+        delivered_units = 345
+        cost = 123
+
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+                                               ordered_rate=12.2)
+        Flight.objects.create(placement=placement, start=start, end=end,
+                              ordered_units=ordered_units, total_cost=9999)
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units, cost=cost)
+
+        client_cost = delivered_units * placement.ordered_rate / 1000
+        expected_margin = 1 - cost / client_cost
+
+        with patch_now(test_now):
+            report = PacingReport()
+            opportunities = report.get_opportunities({})
+        self.assertEqual(len(opportunities), 1)
+
+        first_op_data = opportunities[0]
+        self.assertEqual(first_op_data["impressions"], delivered_units)
+        self.assertEqual(first_op_data["cost"], cost)
+        self.assertAlmostEqual(first_op_data["margin"], expected_margin)
