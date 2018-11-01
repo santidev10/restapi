@@ -1990,10 +1990,15 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
 
     @staticmethod
     def patch(request, account_id, **_):
-        updated_at = request.data.get("updated_at")
-        AccountCreation.objects.filter(
-            account_id=account_id, is_managed=True,
-        ).update(sync_at=updated_at)
+        try:
+            account_creation = AccountCreation.objects.get(
+                account_id=account_id, is_managed=True,
+            )
+        except AccountCreation.DoesNotExist:
+            return Response(status=HTTP_404_NOT_FOUND, data={"error": "account creation not found"})
+        updated_at = account_creation.updated_at
+        account_creation.sync_at = updated_at
+        account_creation.save()
         CampaignCreation.objects.not_empty().filter(
             account_creation__account_id=account_id,
             account_creation__is_managed=True,
