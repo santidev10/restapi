@@ -513,7 +513,7 @@ function getBaseCampaignsInfo() {
     return campaigns;
 }
 
-function sendChangesStatus(account_id, updated_at){
+function sendChangesStatus(account_id){
     if (!AdWordsApp.getExecutionInfo().isPreview()) {
         var options = {
             muteHttpExceptions : true,
