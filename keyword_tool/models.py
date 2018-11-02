@@ -3,9 +3,8 @@ import logging
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db import transaction
-from django.db.utils import IntegrityError
 
+from aw_reporting.models.base import BaseModel
 from .tasks import update_keywords_stats
 
 logger = logging.getLogger(__name__)
@@ -16,42 +15,6 @@ AVAILABLE_KEYWORD_LIST_CATEGORIES = (
     "chf",
     "blacklist"
 )
-
-
-class BaseQueryset(models.QuerySet):
-    def safe_bulk_create(self, objs, batch_size=None):
-        """
-        In case of Duplicates Integrity Error,
-        tries to insert all objects one by one
-        :param objs:
-        :param batch_size:
-        :return:
-        """
-        error_msg = "duplicate key value violates unique constraint"
-        try:
-            with transaction.atomic():
-                self.bulk_create(objs, batch_size=batch_size)
-        except IntegrityError as e:
-            if e.args and error_msg in e.args[0]:
-                logger.info(e)
-                for obj in objs:
-                    try:
-                        with transaction.atomic():
-                            obj.save()
-                    except IntegrityError as e:
-                        if e.args and error_msg in e.args[0]:
-                            logger.info(e)
-                        else:
-                            raise
-            else:
-                raise
-
-
-class BaseModel(models.Model):
-    objects = BaseQueryset.as_manager()
-
-    class Meta:
-        abstract = True
 
 
 class Interest(models.Model):
@@ -72,10 +35,8 @@ class Query(models.Model):
     @classmethod
     def create_from_aw_response(cls, query, response):
         # models
-        # pylint: disable=no-member
         interest_relation = KeyWord.interests.through
         query_relation = KeyWord.queries.through
-        # pylint: enable=no-member
 
         # get ids
         interest_ids = set(
@@ -123,15 +84,14 @@ class Query(models.Model):
                 )
             )
 
-        with transaction.atomic():
-            query_obj = cls.objects.create(text=query)
+        query_obj = cls.objects.create(text=query)
 
-            if kws:
-                KeyWord.objects.safe_bulk_create(kws)
-            if interest_relations:
-                interest_relation.objects.bulk_create(interest_relations)
-            if query_relations:
-                query_relation.objects.bulk_create(query_relations)
+        if kws:
+            KeyWord.objects.safe_bulk_create(kws)
+        if interest_relations:
+            interest_relation.objects.bulk_create(interest_relations)
+        if query_relations:
+            query_relation.objects.bulk_create(query_relations)
 
         if update_kws:
             update_keywords_stats.delay(update_kws)
@@ -150,7 +110,8 @@ class KeyWord(BaseModel):
     updated_at = models.DateTimeField(auto_now=True)
     _monthly_searches = models.TextField(null=True)
     search_volume = models.IntegerField(null=True)
-    category = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    category = models.CharField(max_length=255, null=True, blank=True,
+                                db_index=True)
     daily_views = models.BigIntegerField(default=0, db_index=True)
     weekly_views = models.BigIntegerField(default=0, db_index=True)
     thirty_days_views = models.BigIntegerField(default=0, db_index=True)
@@ -174,10 +135,14 @@ class KeyWord(BaseModel):
         top_kw_interests = {}
         interests_ids = self.interests.all().values_list('id', flat=True)
         for interests_id in interests_ids:
-            keywords = Interest.objects.get(id=interests_id).keyword_set.all().exclude(text=self.text).order_by(
+            keywords = Interest.objects.get(id=interests_id).keyword_set.all() \
+                           .exclude(text=self.text).order_by(
                 '-search_volume').values_list('text', flat=True)[:5]
             top_kw_interests[interests_id] = keywords
         return top_kw_interests
+
+    class Meta:
+        ordering = ["pk"]
 
 
 class KeywordsList(BaseModel):

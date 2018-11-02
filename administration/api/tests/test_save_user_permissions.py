@@ -1,11 +1,10 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.core import mail
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class PermissionsAPITestCase(ExtendedAPITestCase):
@@ -18,7 +17,8 @@ class PermissionsAPITestCase(ExtendedAPITestCase):
         allowed_user = get_user_model().objects.create(
             email="mr_bond_james_bond@mail.kz"
         )
-        self.add_custom_user_permission(allowed_user, "view_media_buying")
+
+        allowed_user.add_custom_user_permission("view_media_buying")
         get_user_model().objects.create(
             email="an_ordinary_beggar@mail.ru"
         )

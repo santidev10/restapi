@@ -1,4 +1,17 @@
-from .base import *
+from django.db import models
+
+from aw_reporting.models.ad_words import Ad
+from aw_reporting.models.ad_words import AdGroup
+from aw_reporting.models.ad_words import Audience
+from aw_reporting.models.ad_words import BaseStatisticModel
+from aw_reporting.models.ad_words import Campaign
+from aw_reporting.models.ad_words import GeoTarget
+from aw_reporting.models.ad_words import RemarkList
+from aw_reporting.models.ad_words import Topic
+from aw_reporting.models.ad_words import VideoCreative
+from aw_reporting.models.ad_words.statistic import BaseClicksTypesStatisticsModel
+
+ParentStatuses = ('Parent', 'Not a parent', 'Undetermined')
 
 
 class DailyStatisticModel(BaseStatisticModel):
@@ -14,12 +27,8 @@ class DeviceDailyStatisticModel(DailyStatisticModel):
     class Meta:
         abstract = True
 
-    @property
-    def device(self):
-        return Devices[int(self.device_id)]
 
-
-class AdGroupStatistic(DeviceDailyStatisticModel):
+class AdGroupStatistic(DeviceDailyStatisticModel, BaseClicksTypesStatisticsModel):
     ad_group = models.ForeignKey(AdGroup, related_name='statistics')
     ad_network = models.CharField(max_length=20, db_index=True)
     average_position = models.DecimalField(max_digits=6, decimal_places=2)
@@ -33,7 +42,7 @@ class AdGroupStatistic(DeviceDailyStatisticModel):
         ordering = ["ad_group", "date", "device_id", "ad_network"]
 
 
-class AdStatistic(DailyStatisticModel):
+class AdStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     ad = models.ForeignKey(Ad, related_name='statistics')
     average_position = models.DecimalField(max_digits=6, decimal_places=2)
 
@@ -42,7 +51,7 @@ class AdStatistic(DailyStatisticModel):
         ordering = ['-date']
 
 
-class KeywordStatistic(DailyStatisticModel):
+class KeywordStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     keyword = models.CharField(max_length=150, db_index=True)
     ad_group = models.ForeignKey(AdGroup, related_name='keywords')
 
@@ -51,7 +60,7 @@ class KeywordStatistic(DailyStatisticModel):
         ordering = ['-date']
 
 
-class TopicStatistic(DailyStatisticModel):
+class TopicStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     topic = models.ForeignKey(Topic)
     ad_group = models.ForeignKey(AdGroup, related_name='topics')
 
@@ -63,7 +72,7 @@ class TopicStatistic(DailyStatisticModel):
         return "%s %s" % (self.topic_id, self.date)
 
 
-class AudienceStatistic(DailyStatisticModel):
+class AudienceStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     audience = models.ForeignKey(Audience)
     ad_group = models.ForeignKey(AdGroup, related_name='audiences')
 
@@ -72,7 +81,7 @@ class AudienceStatistic(DailyStatisticModel):
         ordering = ['-date']
 
 
-class RemarkStatistic(DailyStatisticModel):
+class RemarkStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     remark = models.ForeignKey(RemarkList)
     ad_group = models.ForeignKey(
         AdGroup, related_name='remark_statistic'
@@ -83,7 +92,7 @@ class RemarkStatistic(DailyStatisticModel):
         ordering = ['-date']
 
 
-class AgeRangeStatistic(DailyStatisticModel):
+class AgeRangeStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     age_range_id = models.SmallIntegerField(default=0, db_index=True)
     ad_group = models.ForeignKey(AdGroup, related_name='age_statistics')
 
@@ -91,22 +100,14 @@ class AgeRangeStatistic(DailyStatisticModel):
         unique_together = (("age_range_id", "ad_group", "date"),)
         ordering = ['-date']
 
-    @property
-    def age_range(self):
-        return AgeRanges[int(self.age_range_id)]
 
-
-class GenderStatistic(DailyStatisticModel):
+class GenderStatistic(DailyStatisticModel, BaseClicksTypesStatisticsModel):
     gender_id = models.SmallIntegerField(default=0, db_index=True)
     ad_group = models.ForeignKey(AdGroup, related_name='gender_statistics')
 
     class Meta:
         unique_together = (("gender_id", "ad_group", "date"),)
         ordering = ['-date']
-
-    @property
-    def gender(self):
-        return Genders[int(self.gender_id)]
 
 
 class CityStatistic(DailyStatisticModel):
@@ -162,3 +163,46 @@ class CampaignHourlyStatistic(models.Model):
     class Meta:
         unique_together = (("campaign", "date", "hour"),)
         ordering = ["campaign", "date", "hour"]
+
+
+class CampaignStatistic(DeviceDailyStatisticModel, BaseClicksTypesStatisticsModel):
+    campaign = models.ForeignKey(Campaign, related_name='statistics')
+
+    class Meta:
+        unique_together = (("campaign", "date", "device_id"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.campaign.name, self.date)
+
+
+class ParentStatistic(DailyStatisticModel):
+    parent_status_id = models.SmallIntegerField(default=0, db_index=True)
+    ad_group = models.ForeignKey(AdGroup, related_name='parent_statistics')
+
+    class Meta:
+        unique_together = (("parent_status_id", "ad_group", "date"),)
+        ordering = ['-date']
+
+    def __str__(self):
+        return "%s %s" % (self.parent_status, self.date)
+
+    @property
+    def parent_status(self):
+        return ParentStatuses[int(self.parent_status_id)]
+
+
+class GeoTargeting(BaseStatisticModel):
+    """
+    A model for geo targeting settings at the campaign level
+    """
+    campaign = models.ForeignKey(Campaign, related_name='geo_performance')
+    geo_target = models.ForeignKey(GeoTarget, related_name='geo_performance')
+    is_negative = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (("campaign", "geo_target"),)
+        ordering = ["campaign", "geo_target"]
+
+    def __str__(self):
+        return "%s %s" % (self.campaign, self.geo_target)

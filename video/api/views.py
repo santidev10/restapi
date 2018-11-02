@@ -3,29 +3,33 @@ Video api views module
 """
 import re
 from copy import deepcopy
-from datetime import timedelta, timezone
+from datetime import timedelta
+from datetime import timezone
 
 from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_408_REQUEST_TIMEOUT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
-from segment.models import SegmentVideo
-# pylint: disable=import-error
+from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector, \
-    SingleDatabaseApiConnectorException
-from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS, \
-    DEFAULT_VIDEO_DETAILS_FIELDS
-# pylint: enable=import-error
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
+from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
+from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
+from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
 class VideoListApiView(
-    APIView, PermissionRequiredMixin, CassandraExportMixin):
+    APIView,
+    PermissionRequiredMixin,
+    CassandraExportMixin,
+    SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -35,7 +39,6 @@ class VideoListApiView(
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
     )
-
     fields_to_export = [
         "title",
         "url",
@@ -48,66 +51,67 @@ class VideoListApiView(
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
-    def obtain_segment(self, segment_id):
-        """
-        Try to get segment from db
-        """
-        try:
-            if self.request.user.is_staff:
-                segment = SegmentVideo.objects.get(id=segment_id)
-            else:
-                segment = SegmentVideo.objects.filter(
-                    Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
-        except SegmentVideo.DoesNotExist:
-            return None
-        return segment
-
     def get(self, request):
-        connector = Connector()
-        # prepare query params
-        query_params = deepcopy(request.query_params)
-        query_params._mutable = True
+        is_query_params_valid, error = self._validate_query_params()
+        if not is_query_params_valid:
+            return Response({"error": error}, HTTP_400_BAD_REQUEST)
         empty_response = {
             "max_page": 1,
             "items_count": 0,
             "items": [],
             "current_page": 1,
         }
-
+        # prepare query params
+        query_params = deepcopy(request.query_params)
+        query_params._mutable = True
+        # channel
+        channel_id = query_params.get("channel")
+        if not request.user.has_perm("userprofile.video_list") and \
+                not request.user.has_perm("userprofile.view_highlights"):
+            user_channels_ids = set(request.user.channels.values_list(
+                "channel_id", flat=True))
+            if channel_id and (channel_id not in user_channels_ids):
+                return Response(empty_response)
+            query_params.update(**{"channel": ",".join(user_channels_ids)})
+        # set up connector
+        connector = Connector()
         # segment
-        segment = query_params.get("segment")
-        if segment is not None:
+        channel_segment_id = self.request.query_params.get("channel_segment")
+        video_segment_id = self.request.query_params.get("video_segment")
+        if any((channel_segment_id, video_segment_id)):
             # obtain segment
-            segment = self.obtain_segment(segment)
+            segment = self._obtain_segment()
             if segment is None:
                 return Response(status=HTTP_404_NOT_FOUND)
-            # obtain channels ids
+            if isinstance(segment, SegmentChannel):
+                segment_channels_ids = segment.get_related_ids()
+                try:
+                    ids_hash = connector.store_ids(list(segment_channels_ids))
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                query_params["hashed_channel_id__terms"] = ids_hash
+                query_params.pop("channel_segment")
+                self.adapt_query_params(query_params)
+                try:
+                    response_data = connector.get_video_list(query_params)
+                except SingleDatabaseApiConnectorException as e:
+                    return Response(data={"error": " ".join(e.args)},
+                                    status=HTTP_408_REQUEST_TIMEOUT)
+                self.adapt_response_data(response_data, request.user)
+                return Response(response_data)
             videos_ids = segment.get_related_ids()
+            query_params.pop("video_segment")
             if not videos_ids:
                 return Response(empty_response)
-            query_params.pop("segment")
             try:
                 ids_hash = connector.store_ids(list(videos_ids))
             except SingleDatabaseApiConnectorException as e:
                 return Response(data={"error": " ".join(e.args)},
                                 status=HTTP_408_REQUEST_TIMEOUT)
             query_params.update(ids_hash=ids_hash)
-
-        channel = query_params.get("channel")
-        if not request.user.has_perm("userprofile.video_list"):
-            user_channels = set(
-                request.user.channels.values_list(
-                    "channel_id", flat=True))
-            if channel:
-                if channel not in user_channels:
-                    return Response(empty_response)
-            else:
-                query_params.update(**{'channel': ','.join(user_channels)})
-
         # adapt the request params
         self.adapt_query_params(query_params)
-
         # make call
         try:
             response_data = connector.get_video_list(query_params)
@@ -115,7 +119,6 @@ class VideoListApiView(
             return Response(
                 data={"error": " ".join(e.args)},
                 status=HTTP_408_REQUEST_TIMEOUT)
-
         # adapt the response data
         self.adapt_response_data(response_data, request.user)
         return Response(response_data)
@@ -176,7 +179,7 @@ class VideoListApiView(
         # text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
-            query_params.update(text_search__match=text_search)
+            query_params.update(text_search__match_phrase=text_search)
 
         # channel
         make("terms", "channel_id", "channel")
@@ -231,12 +234,6 @@ class VideoListApiView(
         trending = query_params.pop("trending", [None])[0]
         if trending is not None and trending != "all":
             query_params.update(trends_list__term=trending)
-
-        # verified
-        verified = query_params.pop("verified", [None])[0]
-        if verified is not None:
-            query_params.update(
-                has_audience__term="false" if verified == "0" else "true")
         # <--- filters
 
     @staticmethod
@@ -263,18 +260,19 @@ class VideoListApiView(
 
             is_own = item.get("is_owner", False)
             if user.has_perm('userprofile.video_audience') or is_own:
-                if "has_audience" in item:
-                    item["verified"] = item["has_audience"]
+                pass
             else:
                 item['has_audience'] = False
+                item["verified"] = False
                 item.pop('audience', None)
                 item['brand_safety'] = None
                 item['safety_chart_data'] = None
                 item.pop('traffic_sources', None)
+                item.pop("channel__verified", None)
+                item.pop("channel__has_audience", None)
 
-            if not user.has_perm('userprofile.video_aw_performance') \
-                    and not is_own:
-                item.pop('aw_data', None)
+            if not user.is_staff:
+                item.pop("cms__title", None)
 
             if "country" in item and item["country"] is None:
                 item["country"] = ""
@@ -298,12 +296,6 @@ class VideoListApiView(
                     {"items": [channel_item]}, user)["items"][0]
 
         return response_data
-
-
-class VideoListFiltersApiView(SingledbApiView):
-    permission_required = ('userprofile.video_filter',)
-
-    connector_get = Connector().get_video_filters_list
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):

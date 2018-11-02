@@ -1,12 +1,10 @@
 import logging
 import sys
+
 from django.core.management.base import BaseCommand
 
 from segment.utils import get_segment_model_by_type
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level='INFO')
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +56,6 @@ class Command(BaseCommand):
     def save_data(self, title, ids):
         logger.info('Saving {} ids for segment: {}'.format(len(ids), title))
         segment_data = dict(title=title, category=self.category)
-        segment, created = self.model.objects.get_or_create(title=title, category=self.category)
+        segment, created = self.model.objects.get_or_create(**segment_data)
         segment.add_related_ids(ids)
         segment.update_statistics(segment)

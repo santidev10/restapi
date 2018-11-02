@@ -1,68 +1,111 @@
+import logging
+from functools import partial
+
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db.models import Q
-from aw_reporting.aw_data_loader import AWDataLoader
-from aw_reporting.tasks import detect_success_aw_read_permissions
-from aw_reporting.utils import command_single_process_lock
-from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
+from pytz import timezone
+from pytz import utc
+from suds import WebFault
+
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
-from suds import WebFault
-from datetime import datetime
-from pytz import timezone, utc
-import logging
+from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
+from aw_reporting.aw_data_loader import AWDataLoader
+from aw_reporting.tasks import detect_success_aw_read_permissions
+from aw_reporting.tasks import max_ready_date
+from aw_reporting.tasks import recalculate_de_norm_fields
+from aw_reporting.utils import command_single_process_lock
+from utils.datetime import now_in_default_tz
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+
+        parser.add_argument(
+            '--forced',
+            dest='forced',
+            default=False,
+            action='store_true',
+            help='Forced update of all accounts'
+        )
+
+        parser.add_argument(
+            '--start',
+            dest='start',
+            help='Start from... options: %s' % ", ".join(
+                m.__name__ for m in AWDataLoader.advertising_update_tasks)
+        )
+
+        parser.add_argument(
+            '--end',
+            dest='end',
+            help='Last method... options: %s' % ", ".join(
+                m.__name__ for m in AWDataLoader.advertising_update_tasks)
+        )
+
+        parser.add_argument(
+            "--account_ids",
+            dest="account_ids",
+            help="Account IDs to update as a comma separated string",
+            type=str,
+            default=None,
+        )
 
     def pre_process(self):
+        if not settings.IS_TEST:
+            self.create_cf_account_connection()
         detect_success_aw_read_permissions()
-        self.create_cf_account_connection()
 
     @staticmethod
     def post_process():
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()
         add_relation_between_report_and_creation_ads()
+        recalculate_de_norm_fields()
 
     @command_single_process_lock("aw_main_update")
     def handle(self, *args, **options):
-        from aw_reporting.models import Account
-        timezones = Account.objects.filter(timezone__isnull=False).values_list(
-            "timezone", flat=True).order_by("timezone").distinct()
+        self.pre_process()
 
-        now = datetime.now(tz=utc)
+        now = now_in_default_tz(utc)
         today = now.date()
-        timezones = [
-            t for t in timezones
-            if now.astimezone(timezone(t)).hour > 5
-        ]
-        logger.info("Timezones: {}".format(timezones))
+        forced = options.get("forced")
+        start = options.get("start")
+        end = options.get("end")
+        account_ids_str = options.get("account_ids")
+        account_ids = account_ids_str.split(",") if account_ids_str is not None else None
 
-        # first we will update accounts based on MCC timezone
-        mcc_to_update = Account.objects.filter(
-            timezone__in=timezones,
-            can_manage_clients=True,
-        ).filter(
-            Q(update_time__date__lt=today) | Q(update_time__isnull=True)
-        )
-        updater = AWDataLoader(today)
-        for mcc in mcc_to_update:
-            logger.info("MCC update: {}".format(mcc))
-            updater.full_update(mcc)
+        update_account_fn = partial(self._update_accounts, today=today, forced=forced, start=start, end=end,
+                                    account_ids=account_ids)
 
-        # 2) update all the advertising accounts
-        accounts_to_update = Account.objects.filter(
-            timezone__in=timezones,
-            can_manage_clients=False,
-        ).filter(
-           Q(update_time__date__lt=today) | Q(update_time__isnull=True)
-        )
-        for account in accounts_to_update:
-            logger.info("Customer account update: {}".format(account))
+        update_account_fn(is_mcc=True)
+        update_account_fn(is_mcc=False)
+
+        self.post_process()
+
+    def _update_accounts(self, today, forced, start, end, account_ids, is_mcc: bool):
+        from aw_reporting.models import Account
+        updater = AWDataLoader(today, start=start, end=end)
+        accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
+        if account_ids is not None:
+            accounts = accounts.filter(id__in=account_ids)
+        accounts_to_update = list(self._filtered_accounts_generator(accounts, forced))
+        count = len(accounts_to_update)
+        for index, account in enumerate(accounts_to_update):
+            logger.info("%d/%d: %s update: %s", index, count, self._get_account_type_str(is_mcc), account)
             updater.full_update(account)
+
+    def _get_account_type_str(self, is_mcc):
+        return "MCC" if is_mcc else "Customer"
+
+    def _filtered_accounts_generator(self, queryset, forced):
+        now = now_in_default_tz(utc)
+        for account in queryset:
+            tz = timezone(account.timezone)
+            if forced or _update_account(account, now, tz):
+                yield account
 
     @staticmethod
     def create_cf_account_connection():
@@ -83,10 +126,8 @@ class Command(BaseCommand):
             except WebFault as e:
                 logger.critical(e)
             else:
-                mcc_accounts = list(filter(
-                    lambda i: i['canManageClients'] and not i['testAccount'],
-                    customers,
-                ))
+                mcc_accounts = [c for c in customers
+                                if c['canManageClients'] and not c['testAccount']]
                 for ac_data in mcc_accounts:
                     data = dict(
                         id=ac_data['customerId'],
@@ -103,3 +144,6 @@ class Command(BaseCommand):
                         aw_connection=connection, account=obj,
                     )
 
+
+def _update_account(account, now, tz):
+    return not account.update_time or max_ready_date(account.update_time, tz) < max_ready_date(now, tz)

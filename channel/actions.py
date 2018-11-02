@@ -1,7 +1,8 @@
 import logging
 
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
+from django.http import Http404
+
+from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile, UserChannel
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ def remove_auth_channel(email):
     for channel in user_channels:
         try:
             connector.delete_channel_test(channel.channel_id)
-        except SingleDatabaseApiConnectorException:
+        except Http404:
             logger.warning(
                 "Failed to remove channel {channel_id} from single DB".format(
                     channel_id=channel.channel_id))

@@ -1,24 +1,58 @@
+import json
+from datetime import datetime
 from datetime import timedelta
-from unittest.mock import patch, Mock
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from django.core import mail
-from django.core.urlresolvers import reverse
 from oauth2client.client import HttpAccessTokenRefreshError
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 from suds import WebFault
 
-from aw_creation.models import *
+from aw_creation.api.urls.names import Name
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
+from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import Ad
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import GeoTarget
+from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utils_tests import int_iterator
+from utils.utils_tests import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(AccountCreationSetupAPITestCase, cls).setUpClass()
+        Permissions.sync_groups()
+
+    def _get_url(self, account_id):
+        return reverse(Name.CreationSetup.ACCOUNT,
+                       [Namespace.AW_CREATION],
+                       args=(account_id,))
+
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     @staticmethod
     def create_account_creation(owner, start=None, end=None, is_managed=True):
@@ -70,7 +104,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         return account_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         today = datetime.now().date()
         defaults = dict(
@@ -79,8 +113,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
@@ -93,8 +126,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -102,8 +134,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.perform_details_check(data)
 
     def test_success_get_demo(self):
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
@@ -241,8 +272,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
         ac = self.create_account_creation(**defaults)
 
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         request_data = dict(
             name="New 3344334 name",
@@ -258,8 +288,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_fail_approve(self):
         ac = self.create_account_creation(self.user)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         request_data = dict(
             is_approved=True,
@@ -272,36 +301,38 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
     def test_success_approve(self):
         # creating of a MCC account
         manager = Account.objects.create(id="11", name="Management Account")
-        connection = AWConnection.objects.create(
-            email="email@mail.com", refresh_token="****",
-        )
-        AWConnectionToUserRelation.objects.create(
-            connection=connection,
-            user=self.user,
-        )
-        AWAccountPermission.objects.create(
-            aw_connection=connection,
-            account=manager,
-        )
-
+        connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****")
+        AWConnectionToUserRelation.objects.create(connection=connection, user=self.user)
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager)
         # account creation to approve it
         ac = self.create_account_creation(self.user)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
-
-        request_data = dict(
-            is_approved=True,
-        )
-        with patch("aw_creation.api.views.create_customer_account",
+        url = self._get_url(ac.id)
+        request_data = dict(is_approved=True, mcc_account_id=manager.id)
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: "uid_from_aw"):
-            response = self.client.patch(
-                url, json.dumps(request_data), content_type='application/json',
-            )
-
+            response = self.client.patch(url, json.dumps(request_data), content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         ac.refresh_from_db()
         self.assertEqual(ac.account.id, "uid_from_aw")
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_wrong_mcc_account_id(self):
+        manager_one = Account.objects.create(id="11", name="Management Account")
+        manager_two = Account.objects.create(id="12", name="Management Account")
+        wrong_id = "wron_id"
+        connection_one = AWConnection.objects.create(email="email@mail.com", refresh_token="****")
+        AWConnectionToUserRelation.objects.create(connection=connection_one, user=self.user)
+        AWAccountPermission.objects.create(aw_connection=connection_one, account=manager_one)
+        connection_two = AWConnection.objects.create(email="email2@mail.com", refresh_token="****")
+        AWConnectionToUserRelation.objects.create(connection=connection_two, user=self.user)
+        AWAccountPermission.objects.create(aw_connection=connection_two, account=manager_two)
+        ac = self.create_account_creation(self.user)
+        url = self._get_url(ac.id)
+        request_data = dict(is_approved=True, mcc_account_id=wrong_id)
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
+                   new=lambda *_: "uid_from_aw"):
+            response = self.client.patch(url, json.dumps(request_data), content_type='application/json')
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_approve_and_send_tags(self):
         manager = Account.objects.create(id="11", name="Management Account")
@@ -317,7 +348,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             account=manager,
         )
         # creating of a MCC account
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id="1", name="Hi",
                                                           account=account,
                                                           owner=self.user)
@@ -349,8 +381,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
 
         # account creation to approve it
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
             content_type='application/json',
@@ -386,7 +417,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             account=manager,
         )
         # creating of a MCC account
-        account = Account.objects.create(id="1", name="")
+        account = Account.objects.create(id="1", name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id="1", name="Hi",
                                                           account=account,
                                                           owner=self.user)
@@ -398,8 +430,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                                   ad_group_creation=ad_group_creation)
 
         # account creation to approve it
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         response = self.client.patch(
             url, json.dumps(dict(is_approved=True)),
             content_type='application/json',
@@ -427,13 +458,12 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         ac = self.create_account_creation(self.user,
                                           start=today - timedelta(days=2),
                                           end=today)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         request_data = dict(
             is_approved=True,
         )
-        with patch("aw_creation.api.views.create_customer_account",
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: "uid_from_aw"):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
@@ -456,8 +486,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         # account creation to approve it
         ac = self.create_account_creation(self.user)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         request_data = dict(
             is_approved=True,
@@ -465,7 +494,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         fault = Mock()
         fault.faultstring = "[ManagedCustomerServiceError.NOT_AUTHORIZED @ operations[0]]"
         write_operation = Mock(side_effect=WebFault(fault, None))
-        with patch("aw_creation.api.views.create_customer_account",
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=write_operation):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
@@ -489,8 +518,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         # account creation to approve it
         ac = self.create_account_creation(self.user)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         request_data = dict(
             is_approved=True,
@@ -499,7 +527,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             side_effect=HttpAccessTokenRefreshError(
                 "invalid_grant: Token has been expired or revoked.")
         )
-        with patch("aw_creation.api.views.create_customer_account",
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=write_operation):
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
@@ -523,7 +551,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             aw_connection=connection,
             account=manager,
         )
-        account = Account.objects.create(id="7514485750", name="@")
+        account = Account.objects.create(id="7514485750", name="@",
+                                         skip_creating_account_creation=True)
         account.managers.add(manager)
         account_creation = AccountCreation.objects.create(
             name="Pep",
@@ -532,12 +561,11 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
 
         # account creation to approve it
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         request_data = dict(name="Account 15")
         with patch(
-                "aw_creation.api.views.update_customer_account") as update_method:
+                "aw_creation.api.views.account_creation_setup.update_customer_account") as update_method:
             response = self.client.patch(
                 url, json.dumps(request_data), content_type='application/json',
             )
@@ -545,13 +573,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             self.assertEqual(update_method.call_count, 1)
 
     def test_fail_disapprove(self):
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         ac = self.create_account_creation(self.user)
         ac.account = account
         ac.is_approved = True
         ac.save()
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
         request_data = dict(
             is_approved=False,
         )
@@ -561,8 +589,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_demo(self):
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.patch(
             url, json.dumps(dict(is_paused=True)),
             content_type='application/json',
@@ -577,8 +604,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
         data = dict(
             name="Campaign '",
         )
@@ -599,8 +625,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             end=today + timedelta(days=10),
         )
         ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(ac.id,))
+        url = self._get_url(ac.id)
 
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
@@ -609,13 +634,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertIs(ac.is_deleted, True)
 
     def test_fail_delete_demo(self):
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(DEMO_ACCOUNT_ID,))
+        url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_marked_is_disapproved_account(self):
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="",
                                                           owner=self.user,
                                                           account=account, )
@@ -637,8 +662,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         ad_creation_2 = AdCreation.objects.create(ad=ad_2,
                                                   ad_group_creation=ad_group_creation)
 
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -659,16 +683,37 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_account_creation(self):
         user = self.user
-        self.remove_custom_user_permission(user, "view_media_buying")
-        user.update_permissions_from_plan('enterprise')
-        user.save()
-        account = Account.objects.create(id=1, name="")
+        user.remove_custom_user_permission("view_media_buying")
+
+        self.fill_all_groups(user)
+
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects \
             .create(name="", owner=user, account=account, )
 
-        url = reverse("aw_creation_urls:account_creation_setup",
-                      args=(account_creation.id,))
+        url = self._get_url(account_creation.id)
 
         response = self.client.put(url, dict(name="test name"))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_creates_customer_account(self):
+        user = self.user
+        test_aw_id = "test_aw_id"
+        manager = Account.objects.create(id=next(int_iterator))
+        connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****", )
+        AWConnectionToUserRelation.objects.create(connection=connection, user=user, )
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager, )
+        self.assertEqual(Account.objects.all().count(), 1)
+        self.assertEqual(AccountCreation.objects.all().count(), 1)
+        account_creation = AccountCreation.objects.create(account=None, owner=user, name="any")
+        url = self._get_url(account_creation.id)
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account", return_value=test_aw_id):
+            response = self.client.put(
+                url, dict(name=account_creation.name, is_approved=True, mcc_account_id=manager.id))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account_creation.refresh_from_db()
+        self.assertIsNotNone(account_creation.account)
+        self.assertEqual(Account.objects.all().count(), 2)
+        self.assertEqual(AccountCreation.objects.all().count(), 2)

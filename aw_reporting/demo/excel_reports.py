@@ -1,8 +1,9 @@
 from aw_reporting.demo.charts import DemoChart
-from aw_reporting.excel_reports import AnalyzeWeeklyReport
+from aw_reporting.excel_reports import AnalyticsPerformanceWeeklyReport
+from aw_reporting.excel_reports import DashboardPerformanceWeeklyReport
 
 
-class DemoAnalyzeWeeklyReport(AnalyzeWeeklyReport):
+class DemoAnalyzeWeeklyReportMixin:
 
     def get_campaign_data(self):
         return self.account.children
@@ -48,3 +49,11 @@ class DemoAnalyzeWeeklyReport(AnalyzeWeeklyReport):
         charts_obj = DemoChart(self.account, filters)
         data = charts_obj.chart_items
         return data['items']
+
+
+class DemoAnalyticsWeeklyReport(DemoAnalyzeWeeklyReportMixin, AnalyticsPerformanceWeeklyReport):
+    pass
+
+
+class DemoDashboardWeeklyReport(DemoAnalyzeWeeklyReportMixin, DashboardPerformanceWeeklyReport):
+    pass

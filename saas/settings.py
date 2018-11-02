@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import socket
+from datetime import date
+
+from teamcity import is_running_under_teamcity, teamcity_presence_env_var
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +28,11 @@ SECRET_KEY = '%ics*w%224v(ymhbgk4rpsqhs0ss7r(pxel%n(1fko6*5$-1=8'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS_ENV = os.getenv("ALLOWED_HOSTS")
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
+else:
+    ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -44,7 +52,9 @@ PROJECT_APPS = (
     "landing",
     "administration",
     "payments",
-    "channel"
+    "channel",
+    "email_reports",
+    "audit_tool",
 )
 
 THIRD_PARTY_APPS = (
@@ -62,6 +72,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'utils.index_middleware.IndexMiddleware',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -138,10 +149,13 @@ USE_L10N = True
 
 USE_TZ = True
 
+DEFAULT_TIMEZONE = 'America/Los_Angeles'
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 AUTH_USER_MODEL = "userprofile.UserProfile"
+USER_DEFAULT_LOGO = "viewiq"
 GOOGLE_APP_AUD = "832846444492-9j4sj19tkkrd3tpg7s8j5910l7kprg45.apps.googleusercontent.com"
 
 REST_FRAMEWORK = {
@@ -156,7 +170,11 @@ REST_FRAMEWORK = {
     )
 }
 
-LOGS_DIRECTORY = '.'
+LOGS_DIRECTORY = 'logs'
+
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+hostname = socket.gethostname()
+ip = socket.gethostbyname(hostname)
 
 LOGGING = {
     'version': 1,
@@ -165,10 +183,10 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'main_formatter',
+            'filters': ['require_debug_true']
         },
         'file': {
-            'level': 'ERROR',
-            'filename': os.path.join(LOGS_DIRECTORY, 'iq_errors.log'),
+            'filename': os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'when': 'midnight',
             'interval': 1,
@@ -176,21 +194,16 @@ LOGGING = {
             'formatter': 'main_formatter',
         },
         'mail_developers': {
-            'level': 'CRITICAL',
+            'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
         }
     },
     'loggers': {
-        'segment_creating': {
-            'handlers': ['console', 'file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-            'propagate': False
-        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
     'formatters': {
@@ -199,33 +212,40 @@ LOGGING = {
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
         'detail_formatter': {
-            'format': '%(asctime)s %(levelname)s %(filename)s '
-                      'line %(lineno)d: %(message)s',
+            'format': 'HOST: {host}\nCWD: {cwd}\nIP: {ip}\n%(asctime)s '
+                      '%(levelname)s %(filename)s line %(lineno)d: %(message)s'
+                      ''.format(host=hostname,
+                                cwd=os.getcwd(),
+                                ip=ip),
             'datefmt': "%Y-%m-%d %H:%M:%S",
         },
     },
     'filters': {
         'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
-            'callback': lambda r: not DEBUG,
+            'callback': lambda r: 0,
         }
     }
 }
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
 EMAIL_HOST = "localhost"
-EMAIL_PORT = 1025
+EMAIL_PORT = os.getenv("EMAIL_PORT", None) or 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+PASSWORD_RESET_TIMEOUT_DAYS = 1
 
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
-# stripe user keys
-STRIPE_PUBLIC_KEY = None
-STRIPE_SECRET_KEY = None
-
-SINGLE_DATABASE_API_URL = "http://10.0.2.39:10500/api/v1/"
-IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
+SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
+SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 import djcelery
 
@@ -239,9 +259,11 @@ CELERY_REDIS_DB = 0
 CELERY_ACKS_LATE = True
 CELERYD_PREFETCH_MULTIPLIER = 1
 
-BROKER_URL = "redis://localhost:6379/0"
+CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
-KW_TOOL_KEY = "Qi3mxPnm"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
 # landing page settings
 LANDING_SUBJECT = [
@@ -257,170 +279,87 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    "yuriy.matso@channelfactory.com",
-    "aleksandr.yakovenko@sigma.software",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "aleksandr.yakovenko@sigma.software",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 PAYMENT_ACTION_EMAIL_ADDRESSES = [
     "alexander.dobrzhansky@sigma.software",
-    "aleksandr.yakovenko@sigma.software",
     "anna.chumak@sigma.software",
     "maria.konareva@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    # "yuriy.matso@channelfactory.com",
-    "aleksandr.yakovenko@sigma.software",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
-MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
-
-ACCESS_PLANS = {
-    'free': {
-        'hidden': False,
-        'permissions': {
-            'channel': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False,'details': False},
-            'video': {'list': False, 'filter': False, 'audience': False, 'aw_performance': False, 'details': False},
-            'keyword': {'list': False, 'details': False, },
-            'segment': {
-                'channel': {'all': False, 'private': False},
-                'video': {'all': False, 'private': False},
-                'keyword': {'all': False, 'private': False},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-                'pre_baked_segments': False,
-                'media_buying': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-            },
-        },
-    },
-    'professional': {
-        'hidden': False,
-        'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': False, 'aw_performance': True, 'details': True},
-            'keyword': {'list': True, 'details': True, },
-            'segment': {
-                'channel': {'all': False, 'private': True},
-                'video': {'all': False, 'private': True},
-                'keyword': {'all': False, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': False,
-                'performance': False,
-                'trends': False,
-                'benchmarks': False,
-                'highlights': True,
-                'pre_baked_segments': False,
-                'media_buying': False,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': False,
-            },
-        },
-    },
-    'enterprise': {
-        'hidden': True,
-        'permissions': {
-            'channel': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
-            'video': {'list': True, 'filter': True, 'audience': True, 'aw_performance': True, 'details': True},
-            'keyword': {'list': True, 'details': True},
-            'segment': {
-                'channel': {'all': True, 'private': True},
-                'video': {'all': True, 'private': True},
-                'keyword': {'all': True, 'private': True},
-            },
-            'view': {
-                'create_and_manage_campaigns': True,
-                'performance': True,
-                'trends': True,
-                'benchmarks': True,
-                'highlights': True,
-                'pre_baked_segments': True,
-                'media_buying': True,
-            },
-            'settings': {
-                'my_yt_channels': True,
-                'my_aw_accounts': True,
-            }
-        },
-    },
-}
-
-DEFAULT_USER_ACCESS = [
-    {'name': 'Highlights', 'value': True, },
-    {'name': 'Research', 'value': False, },
-    {'name': 'Segments', 'value': False, },
-    {'name': 'Segments - pre-baked segments', 'value': False, },
-    {'name': 'Media buying', 'value': False, },
-    {'name': 'Auth channels and audience data', 'value': False, },
+AUDIT_TOOL_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software",
 ]
 
-USER_ACCESS_LOGIC = {
-    'Highlights': {
-        'view': {'highlights': True, },
-    },
-    'Research': {
-        'channel': {'list': True, 'filter': True, 'details': True, },
-        'video': {'list': True, 'filter': True, 'details': True, },
-        'keyword': {'list': True, 'filter': True, },
-    },
-    'Segments': {
-        'segment': {
-            'channel': {'private': True, },
-            'video': {'private': True, },
-            'keyword': {'private': True, },
-        },
-    },
-    'Segments - pre-baked segments': {
-        'actions': [{'input': False, 'action_type': 'post', 'access': ['Research'], }, ],
-        'view': {'pre_baked_segments': True, },
-        'channel': {'list': True, },
-        'video': {'list': True, },
-        'keyword': {'list': True, },
-    },
-    'Media buying': {
-        'view': {'media_buying': True, },
-        'settings': {'my_aw_accounts': True, },
-    },
-    'Auth channels and audience data': {
-        'channel': {'audience': True, 'aw_performance': True, },
-        'video': {'audience': True, 'aw_performance': True, },
-    },
-}
-
-DEFAULT_ACCESS_PLAN_NAME = 'free'
-CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
-
-VENDOR = 'viewiq'
+MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
 TESTIMONIALS = {
     "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
 }
+
+IS_TEST = False
+
+CACHE_ENABLED = False
+CACHE_MAIN_KEY = 'http_cache_requests_history'
+CACHE_KEY_PREFIX = 'http_cache_path_'
+CACHE_TIMEOUT = 1800
+CACHE_HISTORY_LIMIT = 5000
+CACHE_PAGES_LIMIT = 500
+CACHE_BASE_URL = 'http://localhost:8000'
+CACHE_AUTH_TOKEN = 'put_auth_token_here'
+
+HOST = "https://viewiq.com"
+
+CF_AD_OPS_DIRECTORS = [
+    ('Kim, John', "john.kim@channelfactory.com"),
+]
+
+CUSTOM_AUTH_FLAGS = {
+    # "user@example.com": {
+    #    "hide_something": True,
+    #    "show_something_else": True,
+    #    "logo_url": "https://s3.amazonaws.com/viewiq-prod/logos/super_user.png",
+    # },
+}
+
+
+# patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
+def is_running_under_teamcity():
+    return bool(os.getenv(teamcity_presence_env_var))
+
+
+if is_running_under_teamcity():
+    TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
+
+AMAZON_S3_BUCKET_NAME = "viewiq-dev"
+AMAZON_S3_ACCESS_KEY_ID = "<put_aws_access_key_id_here>"
+AMAZON_S3_SECRET_ACCESS_KEY = "<put_aws_secret_access_key>"
+AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
+
+MAX_AVATAR_SIZE_MB = 10.
+
+DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
+AUTOPILOT_API_KEY = "dd069a2d588d4dce95fe134b553ca5df"
 
 try:
     from .local_settings import *

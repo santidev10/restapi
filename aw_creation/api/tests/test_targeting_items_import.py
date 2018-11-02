@@ -1,20 +1,22 @@
+from unittest.mock import patch
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+
 from aw_creation.models import *
 from aw_reporting.models import Topic
-from saas.utils_tests import ExtendedAPITestCase, \
+from utils.utils_tests import ExtendedAPITestCase, \
     SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
 
 
 class TargetingImportTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         topics = ((3, "Arts & Entertainment"),)
         for uid, name in topics:
@@ -22,7 +24,7 @@ class TargetingImportTestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:targeting_items_import",
                       args=(TargetingItem.TOPIC_TYPE,))
-        with open('aw_creation/fixtures/topic_list_tool.csv',
+        with open('aw_creation/fixtures/tests/topic_list_tool.csv',
                   'rb') as fp:
             response = self.client.post("{}?is_negative=1".format(url), {'file': fp},
                                         format='multipart')
@@ -38,7 +40,7 @@ class TargetingImportTestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:targeting_items_import",
                       args=(TargetingItem.TOPIC_TYPE,))
-        with open('aw_creation/fixtures/topic_list_tool.csv',
+        with open('aw_creation/fixtures/tests/topic_list_tool.csv',
                   'rb') as fp:
             response = self.client.post("{}?is_negative=1".format(url), {'file': fp},
                                         format='multipart')
@@ -53,7 +55,7 @@ class TargetingImportTestCase(ExtendedAPITestCase):
             "aw_creation_urls:targeting_items_import",
             args=(TargetingItem.KEYWORD_TYPE,),
         )
-        with open('aw_creation/fixtures/keywords.csv', 'rb') as fp:
+        with open('aw_creation/fixtures/tests/keywords.csv', 'rb') as fp:
             response = self.client.post(url, {'file': fp},
                                         format='multipart')
 
@@ -70,7 +72,7 @@ class TargetingImportTestCase(ExtendedAPITestCase):
         )
         with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
-            with open('aw_creation/fixtures/import_channels_list.csv',
+            with open('aw_creation/fixtures/tests/import_channels_list.csv',
                       'rb') as fp:
                 response = self.client.post(url, {'file': fp},
                                             format='multipart')
@@ -91,8 +93,7 @@ class TargetingImportTestCase(ExtendedAPITestCase):
             "aw_creation_urls:targeting_items_import",
             args=(TargetingItem.INTEREST_TYPE,),
         )
-        with open('aw_creation/fixtures/'
-                  'import_topics_list.csv', 'rb') as fp:
+        with open('aw_creation/fixtures/tests/import_topics_list.csv', 'rb') as fp:
             response = self.client.post(url, {'file': fp},
                                         format='multipart')
 

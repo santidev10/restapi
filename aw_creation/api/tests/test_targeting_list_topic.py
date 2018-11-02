@@ -1,11 +1,12 @@
 from urllib.parse import urlencode
-from django.utils import timezone
+
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
 from aw_reporting.models import Topic
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class TopicTargetingListTestCase(ExtendedAPITestCase):

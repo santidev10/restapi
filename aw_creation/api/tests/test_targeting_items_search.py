@@ -1,18 +1,19 @@
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-from saas.utils_tests import ExtendedAPITestCase, SingleDatabaseApiConnectorPatcher
 from unittest.mock import patch
 
+from django.core.urlresolvers import reverse
+from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
-class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
+from utils.utils_tests import ExtendedAPITestCase, SingleDatabaseApiConnectorPatcher
+
+
+class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
-
+        self.user.remove_custom_user_permission("view_media_buying")
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "gangnam"))
         response = self.client.get(url)
@@ -21,7 +22,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
     def test_success_video(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "gangnam"))
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -31,7 +32,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
     def test_success_channel(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "smthing"))
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

@@ -29,7 +29,9 @@ def send_new_registration_email(email_data):
            "User first_name: {first_name} \n" \
            "User last_name: {last_name} \n" \
            "User company: {company}\n" \
-           "User phone: {phone} \n\n".format(**email_data)
+           "User phone: {phone} \n"\
+           "Annual ad spend: {annual_ad_spend} \n"\
+           "User type: {user_type} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
 
@@ -69,21 +71,6 @@ def send_welcome_email(user, request):
                    " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
-    send_html_email(subject, to, text_header, text_content, request.get_host())
-
-
-def send_plan_changed_email(user, request):
-    """
-    Send email with new plan to user
-    """
-    subject = "Access on {} changed".format(request.get_host())
-    to = user.email
-    text_header = "Dear {},\n".format(user.get_full_name())
-    text_content = "Your access was changed. " \
-                   "Currently, you have an \"{}\".\n\n" \
-                   "Kind regards\n" \
-                   "Channel Factory Team" \
-        .format(user.plan.name)
     send_html_email(subject, to, text_header, text_content, request.get_host())
 
 

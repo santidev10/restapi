@@ -1,16 +1,17 @@
-from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
-from aw_reporting.demo.models import DemoAccount
+
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo.models import DemoAccount
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     @staticmethod
     def create_ad_creation(owner):
@@ -38,7 +39,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         return ad_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
         ad = self.create_ad_creation(owner=self.user)
         url = reverse("aw_creation_urls:ad_creation_duplicate",

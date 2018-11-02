@@ -1,25 +1,29 @@
-from aw_reporting.adwords_api import get_web_app_client, get_all_customers
-from django.utils import timezone
-from aw_reporting.models import Account
-from suds import WebFault
-from oauth2client.client import HttpAccessTokenRefreshError
-import aw_reporting.tasks as aw_tasks
 import logging
+
+from django.utils import timezone
+from oauth2client.client import HttpAccessTokenRefreshError
+from suds import WebFault
+
+import aw_reporting.tasks as aw_tasks
+from aw_reporting.adwords_api import get_web_app_client, get_all_customers
+from aw_reporting.adwords_reports import AccountInactiveError
+from aw_reporting.models import Account
+from utils.lang import safe_index
+
 logger = logging.getLogger(__name__)
 
 
 class AWDataLoader:
-
     advertising_update_tasks = (
         # get campaigns, ad-groups and ad-group daily stats
         aw_tasks.get_campaigns,
         aw_tasks.get_ad_groups_and_stats,
 
-
         aw_tasks.get_videos,
         aw_tasks.get_ads,
         #
         aw_tasks.get_genders,
+        aw_tasks.get_parents,
         aw_tasks.get_age_ranges,
         #
         aw_tasks.get_placements,
@@ -28,11 +32,19 @@ class AWDataLoader:
         aw_tasks.get_interests,
         #
         aw_tasks.get_cities,
+        aw_tasks.get_geo_targeting
     )
 
-    def __init__(self, today):
+    def __init__(self, today, start=None, end=None):
         self.today = today
         self.aw_cached_clients = {}
+        self.update_tasks = self._get_update_tasks(start, end)
+
+    def _get_update_tasks(self, start, end):
+        all_names = [m.__name__ for m in self.advertising_update_tasks]
+        start_index = safe_index(all_names, start, 0)
+        end_index = safe_index(all_names, end, len(all_names))
+        return self.advertising_update_tasks[start_index:end_index + 1]
 
     def get_aw_client(self, refresh_token, client_customer_id):
         if refresh_token in self.aw_cached_clients:
@@ -67,7 +79,7 @@ class AWDataLoader:
         accounts = get_all_customers(client)
         if accounts:
             for e in accounts:
-                a, created = Account.objects.update_or_create(
+                a, _ = Account.objects.update_or_create(
                     id=e['customerId'],
                     defaults=dict(
                         name=e['name'],
@@ -90,13 +102,16 @@ class AWDataLoader:
                 client = self.get_aw_client(aw_connection.refresh_token,
                                             account.id)
                 result = task(client, account)
+            except AccountInactiveError:
+                account.is_active = False
+                account.save()
             except HttpAccessTokenRefreshError as e:
                 logger.warning((permission, e))
                 aw_connection.revoked_access = True
                 aw_connection.save()
 
             except WebFault as e:
-                if "AuthorizationError.USER_PERMISSION_DENIED" in\
+                if "AuthorizationError.USER_PERMISSION_DENIED" in \
                         e.fault.faultstring:
                     logger.warning((permission, e))
                     permission.can_read = False
@@ -117,12 +132,9 @@ class AWDataLoader:
 
     def advertising_account_update(self, client, account):
         today = self.today
-        for task in self.advertising_update_tasks:
-            logger.debug(task, account)
+        for task in self.update_tasks:
+            logger.debug("Task: %s, account: %s", task.__name__, account)
             task(client, account, today)
 
         account.update_time = timezone.now()
         account.save()
-
-
-

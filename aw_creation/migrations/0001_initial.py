@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
                 ('is_ended', models.BooleanField(default=False)),
                 ('is_approved', models.BooleanField(default=False)),
                 ('is_changed', models.BooleanField(default=True)),
-                ('version', models.CharField(default=aw_creation.models.get_version, max_length=8)),
+                ('version', models.CharField(default="", max_length=8)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('type', models.CharField(choices=[('VIDEO', 'Video'), ('DISPLAY', 'Display')], default='VIDEO', max_length=15)),
                 ('goal_type', models.CharField(choices=[('GOAL_VIDEO_VIEWS', 'Views'), ('GOAL_IMPRESSIONS', 'Impressions')], default='GOAL_VIDEO_VIEWS', max_length=20)),

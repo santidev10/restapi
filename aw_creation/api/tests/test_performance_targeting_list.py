@@ -1,25 +1,62 @@
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 
-from aw_creation.models import *
+from aw_creation.models import AccountCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.models import *
-from saas.utils_tests import SingleDatabaseApiConnectorPatcher
+from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import AWConnection
+from aw_reporting.models import AWConnectionToUserRelation
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from userprofile.constants import UserSettingsKey
+from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
     details_keys = {
-        'id', 'name', 'account', 'status', 'start', 'end', 'is_managed',
-        'is_changed', 'weekly_chart', 'thumbnail',
-        'video_views', 'cost', 'video_view_rate', 'ctr_v', 'impressions', 'clicks',
-        "ad_count", "channel_count", "video_count", "interest_count", "topic_count", "keyword_count",
-        "is_disapproved", "from_aw"
+        "account",
+        "ad_count",
+        "average_cpm",
+        "average_cpv",
+        "channel_count",
+        "clicks",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "end",
+        "from_aw",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
+        "is_editable",
+        "is_managed",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "status",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
+        "video_view_rate",
+        "video_views",
+        "weekly_chart",
     }
 
     def setUp(self):
         self.user = self.create_test_user()
+        self.mcc_account = Account.objects.create(can_manage_clients=True)
+        aw_connection = AWConnection.objects.create(refresh_token="token")
+        AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
+        AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
 
     def test_fail_post(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
@@ -27,13 +64,16 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_success_get(self):
-        account = Account.objects.create(id="123", name="")
+        account = Account.objects.create(id="123", name="",
+                                         skip_creating_account_creation=True)
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         ac_creation = AccountCreation.objects.create(
             name="This is a visible account on Performance list", owner=self.user, account=account,
         )
         AccountCreation.objects.create(name="No account", owner=self.user)
-        no_delivery_account = Account.objects.create(id="321", name="")
+        no_delivery_account = Account.objects.create(id="321", name="",
+                                                     skip_creating_account_creation=True)
         Campaign.objects.create(id=2, name="", account=no_delivery_account, cost=0)
         AccountCreation.objects.create(name="No delivery account", owner=self.user, account=no_delivery_account)
 
@@ -68,7 +108,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_filter_campaign_count(self):
-        account = Account.objects.create(id="123", name="")
+        account = Account.objects.create(id="123", name="",
+                                         skip_creating_account_creation=True)
+        account.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, name="", account=account, cost=100)
         Campaign.objects.create(id=2, name="", account=account, cost=200)
         ac_creation = AccountCreation.objects.create(
@@ -96,8 +138,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:performance_targeting_list")
+        user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+        }
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+                   new=SingleDatabaseApiConnectorPatcher), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -120,9 +166,12 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(len(item['weekly_chart']), 7)
 
     def test_success_from_aw(self):
-        account_1 = Account.objects.create(id=1)
-        account_2 = Account.objects.create(id=2
-                                           )
+        account_1 = Account.objects.create(id=1,
+                                           skip_creating_account_creation=True)
+        account_1.managers.add(self.mcc_account)
+        account_2 = Account.objects.create(id=2,
+                                           skip_creating_account_creation=True)
+        account_2.managers.add(self.mcc_account)
         Campaign.objects.create(id=1, account=account_1, cost=1)
         aw_account = AccountCreation.objects.create(name="From AdWords", owner=self.user, is_managed=False,
                                                     account=account_1)

@@ -1,23 +1,30 @@
-from datetime import timedelta
+import json
+from datetime import timedelta, datetime
 from unittest.mock import patch
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 
-from aw_creation.models import *
+from aw_creation.api.urls.names import Name
+from aw_creation.models import AccountCreation, CampaignCreation, Language, \
+    LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import *
-from saas.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from aw_reporting.models import GeoTarget
+from saas.urls.namespaces import Namespace
+from utils.datetime import now_in_default_tz
+from utils.utils_tests import ExtendedAPITestCase, \
+    SingleDatabaseApiConnectorPatcher, patch_now
 
 
 class CampaignAPITestCase(ExtendedAPITestCase):
+    _url_path = Namespace.AW_CREATION + ":" + Name.CreationSetup.CAMPAIGN
 
     def setUp(self):
         self.user = self.create_test_user()
-        self.add_custom_user_permission(self.user, "view_media_buying")
+        self.user.add_custom_user_permission("view_media_buying")
 
     def create_campaign(self, owner, start=None, end=None):
         account_creation = AccountCreation.objects.create(
@@ -58,30 +65,30 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         return campaign_creation
 
     def test_success_fail_has_no_permission(self):
-        self.remove_custom_user_permission(self.user, "view_media_buying")
+        self.user.remove_custom_user_permission("view_media_buying")
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
             end=today + timedelta(days=10),
         )
         ac = self.create_campaign(**defaults)
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(ac.id,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_get(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
             end=today + timedelta(days=10),
         )
         ac = self.create_campaign(**defaults)
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(ac.id,))
 
         response = self.client.get(url)
@@ -118,7 +125,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         ac = DemoAccount()
         campaign = ac.children[0]
 
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign.id,))
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
@@ -130,7 +137,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         ac = DemoAccount()
         campaign = ac.children[0]
 
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign.id,))
 
         response = self.client.patch(
@@ -139,7 +146,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         defaults = dict(
             owner=self.user,
             start=today,
@@ -150,7 +157,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation.is_deleted = True
         account_creation.save()
 
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign.id,))
 
         content_exclusions = [CampaignCreation.CONTENT_LABELS[1][0]]
@@ -195,7 +202,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation.refresh_from_db()
         self.assertIs(account_creation.is_deleted, True)
 
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign.id,))
 
         request_data = {
@@ -234,10 +241,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             start=str(today + timedelta(days=1)),
             end=str(today),
@@ -255,10 +262,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             start=str(today - timedelta(days=2)),
         )
@@ -278,7 +285,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
             start=today - timedelta(days=3),
             end=today - timedelta(days=2),
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
         campaign_creation.refresh_from_db()
@@ -301,10 +308,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         request_data = dict(
             end=str(today - timedelta(days=2)),
         )
@@ -318,13 +325,13 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today - timedelta(days=10),
             end=today - timedelta(days=2),
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
         request_data = dict(
@@ -339,13 +346,13 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
             start=today - timedelta(days=10),
             end=today - timedelta(days=2),
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
         request_data = dict(
@@ -364,7 +371,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
         response = self.client.delete(url)
@@ -380,7 +387,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         campaign_creation = CampaignCreation.objects.create(
             name="2", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign_creation.id,))
 
         response = self.client.delete(url)
@@ -391,7 +398,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
     def test_enterprise_user_should_be_able_to_edit_campaign_creation(self):
         user = self.user
-        user.update_permissions_from_plan('enterprise')
+        self.fill_all_groups(user)
         campaign = self.create_campaign(owner=self.user)
         update_data = {
             "name": "Campaign 12",
@@ -402,10 +409,129 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                                "VIDEO_PARTNER_ON_THE_DISPLAY_NETWORK"]
         }
 
-        url = reverse("aw_creation_urls:campaign_creation_setup",
+        url = reverse(self._url_path,
                       args=(campaign.id,))
 
         response = self.client.put(url, json.dumps(update_data),
                                    content_type='application/json')
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_update_rejected_if_campaign_started(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        tomorrow = today + timedelta(days=1)
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=today,
+                                                 end=today)
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
+        campaign_creation.save()
+
+        self.assertTrue(campaign_creation.is_pulled_to_aw)
+
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=str(tomorrow),
+            end=str(tomorrow))
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_update_success_if_start_not_changed(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=today,
+                                                 end=today)
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
+        campaign_creation.save()
+
+        self.assertTrue(campaign_creation.is_pulled_to_aw)
+
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=str(today),
+            end=str(today))
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_update_reject_on_change_start_to_null(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=today,
+                                                 end=today)
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
+        campaign_creation.save()
+
+        self.assertTrue(campaign_creation.is_pulled_to_aw)
+
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=None,
+            end=str(today))
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_update_reject_on_change_start_from_null(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        tomorrow = today + timedelta(days=1)
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=None,
+                                                 end=None)
+        campaign_creation.sync_at = now
+        campaign_creation.created_at = now
+        campaign_creation.save()
+
+        self.assertTrue(campaign_creation.is_pulled_to_aw)
+
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=str(tomorrow),
+            end=None
+        )
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

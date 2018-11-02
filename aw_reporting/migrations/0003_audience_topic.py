@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0002_load_geo_targets_from_fixture'),
+        ('aw_reporting', '0001_initial'),
     ]
 
     operations = [

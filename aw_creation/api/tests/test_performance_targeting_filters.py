@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, AWConnectionToUserRelation, AWConnection
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class AccountNamesAPITestCase(ExtendedAPITestCase):
@@ -16,7 +16,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=user,
         )
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
                                                           is_approved=True)
         start = datetime(2009, 3, 10).date()
@@ -64,7 +65,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             connection=AWConnection.objects.create(email="me@mail.kz", refresh_token=""),
             user=user,
         )
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user, account=account, is_managed=False,
                                                           is_approved=True)
         Campaign.objects.create(id=1, name="", account=account)
@@ -96,9 +98,8 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_demo_data(self):
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
         url = reverse("aw_creation_urls:performance_targeting_filters",
-                      args=(account_creation.id,))
+                      args=("demo",))
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(

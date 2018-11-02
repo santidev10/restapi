@@ -38,16 +38,19 @@ DEFAULT_VIDEO_LIST_FIELDS = (
     "youtube_published_at",
     "duration",
     "has_audience",
+    "verified",
     "transcript",
     "bad_words",
     "url",
     "ptk",
     "license",
-    "channel__channel_id"
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "channel__channel_id",
+    "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
+    "cms__title",
+    "has_adwords_data",
 )
 
 DEFAULT_VIDEO_DETAILS_FIELDS = (
@@ -81,6 +84,7 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "bad_words",
     "ptk",
     "has_audience",
+    "verified",
     "channel__category",
     "channel__channel_group",
     "channel__country",
@@ -94,15 +98,18 @@ DEFAULT_VIDEO_DETAILS_FIELDS = (
     "channel__thumbnail_image_url",
     "channel__title",
     "channel__has_audience",
+    "channel__verified",
     "channel__views_per_video",
     "aw_data",
     "license",
     "weekly_views",
-    "daily_views"
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "daily_views",
+    "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+    "video_title_safety_status",
+    "cms__title",
+    "has_adwords_data",
 )
 
 DEFAULT_CHANNEL_LIST_FIELDS = (
@@ -142,18 +149,18 @@ DEFAULT_CHANNEL_LIST_FIELDS = (
     "views_per_video_history",
     "channel_group",
     "has_audience",
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "score",
-    # "score_total",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "verified",
+    "bad_percents",
+    "bad_statuses",
+    "cms__title",
+    "has_adwords_data",
 )
 
 DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "channel_id",
     "title",
     "ptk_value",
+    "daily_views",
     "thumbnail_image_url",
     "subscribers",
     "thirty_days_subscribers",
@@ -183,15 +190,13 @@ DEFAULT_CHANNEL_DETAILS_FIELDS = (
     "audience",
     "traffic_sources",
     "has_audience",
+    "verified",
     "aw_data",
     "weekly_views",
-    "daily_views"
-    # --> disabled SAAS-1584
-    # "sentiment",
-    # "score",
-    # "score_total",
-    # "engage_rate",
-    # <-- disabled SAAS-1584
+    "bad_percents",
+    "bad_statuses",
+    "cms__title",
+    "has_adwords_data",
 )
 
 DEFAULT_KEYWORD_LIST_FIELDS = (
@@ -263,4 +268,3 @@ DEFAULT_KEYWORD_LIST_SOURCES = (
 
 DEFAULT_KEYWORD_DETAILS_SOURCES = (
 )
-

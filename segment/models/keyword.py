@@ -2,6 +2,7 @@
 SegmentKeyword models module
 """
 import logging
+
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
 from django.db.models import CharField
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentKeywordManager(SegmentManager):
-    def update_youtube_segments(self):
+    def update_youtube_segments(self, force_creation=False):
         query_params = {
             'size': 0,
             'aggregations': 'category',
@@ -30,6 +31,19 @@ class SegmentKeywordManager(SegmentManager):
         categories = [k for k, v in filters_categories.items()]
         for category in categories:
             logger.info('Updating youtube keyword segment by category: {}'.format(category))
+            try:
+                segment = self.get(title=category, category=self.model.CHF)
+            except SegmentKeyword.DoesNotExist:
+                if force_creation:
+                    logger.info("Creating new segment '{}'".format(category))
+                    segment = self.create(title=category, category=self.model.CHF)
+                else:
+                    logger.warning(
+                        "Skipped category '{}' - related segment not found".format(
+                            category)
+                    )
+                    continue
+
             query_params = {
                 'sort': 'views:desc',
                 'fields': 'keyword',
@@ -40,7 +54,7 @@ class SegmentKeywordManager(SegmentManager):
             result = Connector().get_keyword_list(query_params=query_params)
             items = result.get('items', [])
             ids = [i['keyword'] for i in items]
-            segment, created = self.get_or_create(title=category, category=self.model.CHF)
+
             segment.replace_related_ids(ids)
             segment.update_statistics(segment)
             logger.info('   ... keywords: {}'.format(len(ids)))
@@ -67,7 +81,10 @@ class SegmentKeyword(BaseSegment):
     top_keywords = JSONField(null=True, blank=True)
 
     related_aw_statistics_model = KeywordStatistic
-    singledb_method = Connector().get_keyword_list
+
+    @property
+    def singledb_method(self):
+        return Connector().get_keyword_list
 
     segment_type = 'keyword'
 
@@ -101,21 +118,16 @@ class SegmentKeyword(BaseSegment):
         """
         Update segment statistics fields
         """
-
         self.keywords = data.get('data', {}).get('items_count')
-
         average_volume = data.get('data', {}).get('aggregations', {}).get('avg_search_volume')
         if average_volume:
-            self.average_volume = average_volume[0].get('value')
-
+            self.average_volume = average_volume[0].get('value') or 0
         average_cpc = data.get('data', {}).get('aggregations', {}).get('avg_average_cpc')
         if average_cpc:
-            self.average_cpc = average_cpc[0].get('value')
-
+            self.average_cpc = average_cpc[0].get('value') or 0
         competition = data.get('data', {}).get('aggregations', {}).get('avg_competition')
         if competition:
-            self.competition = competition[0].get('value')
-
+            self.competition = competition[0].get('value') or 0
         keywords = data['top_keywords']['items']
         if keywords:
             self.top_keywords = [{'keyword': kw['keyword'], 'value': kw['search_volume']} for kw in keywords]

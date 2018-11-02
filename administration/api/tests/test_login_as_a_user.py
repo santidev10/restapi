@@ -1,8 +1,9 @@
+from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
-from saas.utils_tests import ExtendedAPITestCase
-from django.contrib.auth import get_user_model
+
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class LoginAsAUserAPITestCase(ExtendedAPITestCase):

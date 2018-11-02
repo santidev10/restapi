@@ -2,7 +2,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import GeoTarget
-from saas.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import ExtendedAPITestCase
 
 
 class DocumentsTestCase(ExtendedAPITestCase):
@@ -60,7 +60,7 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/example_zip_codes.xlsx',
+        with open('aw_creation/fixtures/tests/example_zip_codes.xlsx',
                   'rb') as fp:
             response = self.client.post(url, {'file': fp},
                                         format='multipart')
@@ -92,7 +92,7 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/example_zip_codes.xls', 'rb') as fp:
+        with open('aw_creation/fixtures/tests/example_zip_codes.xls', 'rb') as fp:
             response = self.client.post(url, {'file': fp}, format='multipart')
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -120,7 +120,7 @@ class DocumentsTestCase(ExtendedAPITestCase):
             "aw_creation_urls:document_to_changes",
             args=("postal_codes",)
         )
-        with open('aw_creation/fixtures/zip_codes.csv', 'rb') as fp:
+        with open('aw_creation/fixtures/tests/zip_codes.csv', 'rb') as fp:
             response = self.client.post(url, {'file': fp},
                                         format='multipart')
 

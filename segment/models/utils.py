@@ -6,44 +6,46 @@ from django.db.models import Sum, Case, When, IntegerField
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import Account, dict_add_calculated_stats, \
     dict_norm_base_stats
+from segment.models import BaseSegment
+from userprofile.models import UserProfile
+from utils.datetime import now_in_default_tz
 
 
-def count_segment_adwords_statistics(segment, **kwargs):
+def count_segment_adwords_statistics(segment: BaseSegment):
     """
     Prepare adwords statistics for segment
     """
-    # obtain user from kwargs -> serializer context -> request
+    # obtain user from segment owner field
     try:
-        user = kwargs.get("request").user
-    except AttributeError:
-        raise AttributeError(
-            "Serializer context with request is required in kwargs")
+        user = segment.owner
+    except Exception:
+        return {}
+
     # obtain related to segments related ids
-    related_ids = segment.related.model.objects.filter(
-        segment_id=segment.id).values_list("related_id", flat=True)
-    # obtain aw account
-    accounts = Account.user_objects(user)
+    related_ids = segment.related.model.objects \
+        .filter(segment_id=segment.id) \
+        .values_list("related_id", flat=True)
     # prepare queryset
+
+    mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
-        "ad_group__campaign__account__in": accounts,
+        "ad_group__campaign__account__managers": mcc_acc,
     }
 
-    if segment.segment_type == 'keyword':
-        filters['keyword__in'] = related_ids
+    if segment.segment_type == "keyword":
+        filters["keyword__in"] = related_ids
     else:
-        filters['yt_id__in'] = related_ids
+        filters["yt_id__in"] = related_ids
 
     queryset = segment.related_aw_statistics_model.objects.filter(**filters)
-    # if no queryset is empty - show CHF data
-    if not queryset.exists():
-        accounts = Account.objects.filter(
-            managers__id=load_web_app_settings()['cf_account_id'])
-        filters['ad_group__campaign__account__in'] = accounts
-        queryset = queryset.model.objects.filter(**filters)
     # prepare aggregated statistics
     aggregated_data = queryset.aggregate(
         sum_cost=Sum("cost"), sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"), sum_impressions=Sum("impressions"),
+        sum_video_clicks=Sum(Case(When(
+            ad_group__video_views__gt=0,
+            then="clicks",
+        ), output_field=IntegerField())),
         sum_video_impressions=Sum(Case(When(
             ad_group__video_views__gt=0,
             then="impressions",
@@ -58,8 +60,23 @@ def count_segment_adwords_statistics(segment, **kwargs):
         "clicks",
         "impressions",
         "video_impressions",
+        "video_clicks",
         "average_cpm"
     ]
-    [aggregated_data.pop(key, None) for key in fields_to_clean_up]
-    # finalize statistics data
-    return aggregated_data
+    aggregated_data = {key: value
+                       for key, value in aggregated_data.items()
+                       if key not in fields_to_clean_up}
+
+    return dict(
+        stats=aggregated_data,
+        meta=dict(
+            account_id=mcc_acc.id,
+            account_name=mcc_acc.name,
+            updated_at=str(now_in_default_tz()),
+            is_chf=is_chf
+        )
+    )
+
+
+def get_mcc_to_update(user: UserProfile):
+    return Account.objects.get(id=load_web_app_settings()["cf_account_id"]), True

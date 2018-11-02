@@ -3,17 +3,19 @@ from copy import deepcopy
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
 from aw_reporting.adwords_api import load_web_app_settings
-from keyword_tool.api.utils import get_keywords_aw_top_bottom_stats
 from keywords.api.utils import get_keywords_aw_stats
+from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from segment.models import SegmentKeyword
 from singledb.api.views import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector, \
-    SingleDatabaseApiConnectorException
-from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS
+from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.connector import SingleDatabaseApiConnectorException
+from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
+from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
@@ -28,8 +30,17 @@ class KeywordListApiView(APIView,
     permission_required = (
         "userprofile.keyword_list",
     )
-    fields_to_export = DEFAULT_KEYWORD_LIST_FIELDS
     export_file_title = "keyword"
+
+    fields_to_export = [
+        "keyword",
+        "search_volume",
+        "average_cpc",
+        "competition",
+        "video_count",
+        "views",
+    ]
+
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
     def obtain_segment(self, segment_id):
@@ -42,7 +53,9 @@ class KeywordListApiView(APIView,
             else:
                 segment = SegmentKeyword.objects.filter(
                     Q(owner=self.request.user) |
-                    ~Q(category="private")).get(id=segment_id)
+                    ~Q(category="private") |
+                    Q(shared_with__contains=[self.request.user.email])
+                ).get(id=segment_id)
         except SegmentKeyword.DoesNotExist:
             return None
         return segment
@@ -59,6 +72,14 @@ class KeywordListApiView(APIView,
             "items": [],
             "current_page": 1,
         }
+
+        if query_params.get("from_channel"):
+            channel = query_params.get("from_channel")
+            channel_data = connector.get_channel(query_params=EmptyQueryDict(), pk=channel)
+            if channel_data.get('tags'):
+                keyword_ids = channel_data.get('tags').split(',')
+                ids_hash = connector.store_ids(keyword_ids)
+                query_params.update(ids_hash=ids_hash)
 
         # segment
         segment = query_params.get("segment")
@@ -160,7 +181,7 @@ class KeywordListApiView(APIView,
         """
         items = response_data.get("items", [])
         from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
-            dict_norm_base_stats, dict_calculate_stats
+            dict_norm_base_stats, dict_add_calculated_stats
 
         accounts = Account.user_objects(request.user)
         cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
@@ -180,7 +201,7 @@ class KeywordListApiView(APIView,
             item_stats = stats.get(item['keyword'])
             if item_stats:
                 dict_norm_base_stats(item_stats)
-                dict_calculate_stats(item_stats)
+                dict_add_calculated_stats(item_stats)
                 del item_stats['keyword']
                 item.update(item_stats)
 
@@ -201,3 +222,7 @@ class KeywordRetrieveUpdateApiView(SingledbApiView):
         if not response.data.get('error'):
             KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
         return response
+
+
+class EmptyQueryDict(dict):
+    pass
