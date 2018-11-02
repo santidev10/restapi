@@ -4,7 +4,7 @@ from django.utils import timezone
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
-import aw_reporting.tasks as aw_tasks
+import aw_reporting.update.tasks as aw_tasks
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.models import Account

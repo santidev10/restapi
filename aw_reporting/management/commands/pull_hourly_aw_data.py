@@ -11,9 +11,9 @@ from django.utils import timezone
 
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
-from aw_reporting.tasks import get_ad_groups_and_stats
-from aw_reporting.tasks import get_campaigns
-from aw_reporting.tasks import load_hourly_stats
+from aw_reporting.update.tasks import get_ad_groups_and_stats
+from aw_reporting.update.tasks import get_campaigns
+from aw_reporting.update.tasks import load_hourly_stats
 from aw_reporting.utils import command_single_process_lock
 
 logger = logging.getLogger(__name__)

@@ -1,9 +1,13 @@
+import logging
 import os
 from datetime import timedelta
+from functools import wraps
 from time import sleep
 
 import requests
 from psutil import NoSuchProcess, Process
+
+logger = logging.getLogger(__name__)
 
 
 def get_dates_range(date_from, date_to):
@@ -67,6 +71,7 @@ def command_single_process_lock(name, max_sleep=3600, sleep_interval=10):
     """
 
     def decorator(command):
+        @wraps(command)
         def decorated_command(*args, **kwargs):
             f_name = "{}.pid".format(name)
             sleep_time = 0
@@ -75,12 +80,12 @@ def command_single_process_lock(name, max_sleep=3600, sleep_interval=10):
                     create_pid_file(f_name)
                 except ProcessIsRunningError:
                     sleep_time += sleep_interval
+                    logger.info("Process locked. Sleeping {} seconds".format(sleep_interval))
                     sleep(sleep_interval)
                 else:
                     break  # success
             else:
-                raise Exception(
-                    "Lock hasn't been released during the wait period")
+                raise Exception("Lock hasn't been released during the wait period")
 
             try:
                 result = command(*args, **kwargs)

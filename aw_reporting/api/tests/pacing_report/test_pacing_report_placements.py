@@ -1,10 +1,12 @@
+import pytz
 from datetime import date
+from datetime import datetime
+from datetime import time
 from datetime import timedelta
-from itertools import product
-
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.utils import timezone
+from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -285,6 +287,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today + timedelta(days=3)
         total_days = (end - start).days + 1
@@ -307,7 +311,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
@@ -334,6 +340,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
         end = today + timedelta(days=5)
@@ -365,7 +373,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today - timedelta(days=1),
                                          campaign=campaign,

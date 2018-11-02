@@ -58,9 +58,9 @@ PROJECT_APPS = (
 )
 
 THIRD_PARTY_APPS = (
+    "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
-    "djcelery",
 )
 
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -193,6 +193,22 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
+        'file_googleads': {
+            'filename': os.path.join(LOGS_DIRECTORY, "googleads.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'file_updates': {
+            'filename': os.path.join(LOGS_DIRECTORY, "aw_update.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
         'mail_developers': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -201,6 +217,14 @@ LOGGING = {
         }
     },
     'loggers': {
+        "googleads": {
+            "handlers": ["file_googleads"],
+            "level": "WARNING",
+        },
+        "aw_reporting.update": {
+            "handlers": ["file_updates"],
+            "level": "INFO",
+        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
@@ -247,23 +271,10 @@ YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
-import djcelery
-
-djcelery.setup_loader()
-CELERY_TASK_RESULT_EXPIRES = 18000
-CELERYD_TASK_ERROR_EMAILS = False
-CELERY_RESULT_BACKEND = "redis://"
-CELERY_REDIS_HOST = "localhost"
-CELERY_REDIS_PORT = 6379
-CELERY_REDIS_DB = 0
-CELERY_ACKS_LATE = True
-CELERYD_PREFETCH_MULTIPLIER = 1
+from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
 # landing page settings
 LANDING_SUBJECT = [

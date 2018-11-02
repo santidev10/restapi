@@ -1,11 +1,10 @@
 from datetime import date, datetime
-
 from django.test import TestCase
 
 from aw_reporting.models import Opportunity, Campaign, AdGroup, \
     CampaignStatistic, AdGroupStatistic, OpPlacement
-from aw_reporting.tasks import recalculate_de_norm_fields
 from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
+from aw_reporting.update.tasks import recalculate_de_norm_fields
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 
@@ -113,7 +112,7 @@ class ForecastToolTestCase(TestCase):
         recalculate_de_norm_fields()
 
         p_tool = ForecastTool(quarters=['Q1', 'Q2'], today=today,
-                             compare_yoy=True)
+                              compare_yoy=True)
         data = p_tool.estimate
 
         chart_data = [c for c in data["charts"]["cpm"]['data']
