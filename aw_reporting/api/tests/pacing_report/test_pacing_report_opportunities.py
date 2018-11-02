@@ -1,22 +1,22 @@
 import logging
+import pytz
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from itertools import product
-from urllib.parse import urlencode
-
-import pytz
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.http import QueryDict
 from django.utils import timezone
+from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
+from urllib.parse import urlencode
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Campaign, Account
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Category
 from aw_reporting.models import Flight

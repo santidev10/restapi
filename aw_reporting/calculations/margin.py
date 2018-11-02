@@ -57,7 +57,7 @@ def get_margin_from_flights(flights, cost, plan_cost,
 def get_minutes_run_and_total_minutes(flight):
     minutes_run, total_minutes = None, None
     start_date, end_date = flight["start"], flight["end"]
-    if start_date and end_date:
+    if all([start_date, end_date]):
         timezone = pytz.timezone(flight["timezone"] or settings.DEFAULT_TIMEZONE)
         start = datetime.combine(start_date, time.min).replace(tzinfo=timezone)
         end = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=timezone)

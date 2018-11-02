@@ -1,7 +1,5 @@
 from collections import defaultdict
 from datetime import timedelta
-from math import ceil
-
 from django.contrib.auth import get_user_model
 from django.db.models import Case
 from django.db.models import F
@@ -12,6 +10,7 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
+from math import ceil
 
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
@@ -46,6 +45,30 @@ class DefaultRate:
     CPM = 6.25
     CPV = .04
 
+
+FLIGHT_FIELDS = (
+    "cost",
+    "end",
+    "id",
+    "name",
+    "ordered_units",
+    "placement__dynamic_placement",
+    "placement__goal_type_id",
+    "placement__opportunity__budget",
+    "placement__opportunity__cannot_roll_over",
+    "placement__opportunity_id",
+    "placement__ordered_rate",
+    "placement__ordered_rate",
+    "placement__placement_type",
+    "placement__tech_fee",
+    "placement__tech_fee_type",
+    "placement__total_cost",
+    "placement_id",
+    "start",
+    "timezone",
+    "total_cost",
+    "update_time",
+)
 
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
@@ -206,18 +229,7 @@ class PacingReport:
         group_by = ("id", campaign_id_key)
 
         annotate = self.get_flights_delivery_annotate()
-        flight_fields = (
-            "id", "name", "start", "end", "total_cost", "ordered_units",
-            "cost", "placement_id",
-            "placement__goal_type_id", "placement__placement_type",
-            "placement__opportunity_id",
-            "placement__opportunity__cannot_roll_over",
-            "placement__opportunity__budget",
-            "placement__dynamic_placement", "placement__ordered_rate",
-            "placement__tech_fee", "placement__tech_fee_type",
-            "placement__total_cost", "placement__ordered_rate",
-            "update_time", "timezone",
-        )
+        
         raw_data = queryset.values(
             *group_by  # segment by campaigns
         ).order_by(*group_by).annotate(**annotate)
@@ -233,7 +245,7 @@ class PacingReport:
             ),
             timezone=Max("placement__adwords_campaigns__account__timezone"),
         ).values(
-            *flight_fields)
+            *FLIGHT_FIELDS)
 
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
@@ -1250,9 +1262,9 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
 
 def get_pacing_from_flights(flights, allocation_ko=1,
                             campaign_id=None):
-    goal_type_ids = list(set(f["placement__goal_type_id"] for f in flights))
+    goal_type_ids = list(set(flight["placement__goal_type_id"] for flight in flights))
     dynamic_placements = list(
-        set(f["placement__dynamic_placement"] for f in flights))
+        set(flight["placement__dynamic_placement"] for flight in flights))
     if len(goal_type_ids) == 1 \
             and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
             and len(dynamic_placements) == 1 and \
