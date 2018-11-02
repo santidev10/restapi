@@ -1,6 +1,5 @@
 import csv
 import io
-import itertools
 import json
 import logging
 from contextlib import contextmanager
@@ -8,6 +7,8 @@ from datetime import datetime, date
 from functools import wraps
 from unittest.mock import patch
 
+import itertools
+import pytz
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -191,6 +192,8 @@ def patch_user_settings(user, **kwargs):
 def patch_now(now):
     if type(now) == date:
         now = datetime.combine(now, datetime.min.time())
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=pytz.timezone(settings.DEFAULT_TIMEZONE))
     with patch.object(Time, "now", return_value=now):
         yield
 
