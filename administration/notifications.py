@@ -114,14 +114,14 @@ class SlackAWUpdateLoggingHandler(Handler):
     def emit(self, record):
         webhook_name = settings.AW_UPDATE_SLACK_WEBHOOK_NAME
         level_name = record.levelname
-        slack_level_name = self.slack_color_map[level_name]
+        slack_message_color = self.slack_color_map[level_name]
         log_entry = self.format(record)
         payload = {
             "attachments": [
                 {
                     "pretext": "AdWords update on host: {}".format(settings.HOST),
                     "text": log_entry,
-                    "color": slack_level_name,
+                    "color": slack_message_color,
                 }
             ]
         }

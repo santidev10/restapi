@@ -302,7 +302,7 @@ def detect_success_aw_read_permissions():
                 client_customer_id=permission.account_id,
             )
         except Exception as e:
-            logger.debug(e)
+            logger.error(e)
         else:
             try:
                 get_all_customers(client, page_size=1, limit=1)
@@ -311,7 +311,7 @@ def detect_success_aw_read_permissions():
                 account.is_active = False
                 account.save()
             except Exception as e:
-                logger.debug(e)
+                logger.error(e)
             else:
                 permission.can_read = True
                 permission.save()
