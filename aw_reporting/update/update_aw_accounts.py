@@ -27,6 +27,7 @@ LOCK_FILE_NAME = "update_aw_accounts"
 
 @celery_app.task
 def update_aw_accounts(account_ids=None, start=None, end=None):
+    logger.info("Start AW update procedure")
     now = now_in_default_tz(utc)
     today = now.date()
     kwargs = dict(
@@ -55,7 +56,7 @@ def pre_process_finished(**kwargs):
 
 @celery_app.task
 def mcc_update_finished(**kwargs):
-    logger.info("MCC Update finished")
+    logger.debug("MCC Update finished")
     job = chain(
         group_chorded(update_accounts_group(**kwargs)),
         post_process.si(),
@@ -66,21 +67,22 @@ def mcc_update_finished(**kwargs):
 
 @celery_app.task
 def pre_process():
-    logger.info("pre process start")
+    logger.debug("pre process start")
     if not settings.IS_TEST:
         create_cf_account_connection()
     detect_success_aw_read_permissions()
-    logger.info("pre process finished")
+    logger.debug("pre process finished")
 
 
 @celery_app.task
 def post_process():
-    logger.info("post process start")
+    logger.debug("post process start")
     add_relation_between_report_and_creation_campaigns()
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
     recalculate_de_norm_fields()
-    logger.info("post process finished")
+    logger.debug("post process finished")
+    logger.info("End of AW update procedure")
 
 
 def create_cf_account_connection():

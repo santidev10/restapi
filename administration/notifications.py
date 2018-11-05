@@ -1,9 +1,12 @@
 """
 Administration notifications module
 """
+import json
 import os
 from email.mime.image import MIMEImage
+from logging import Handler
 
+import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
@@ -98,3 +101,30 @@ def send_html_email(subject, to, text_header, text_content, host):
         msg.attach(msg_img)
 
     msg.send(fail_silently=True)
+
+
+class SlackAWUpdateLoggingHandler(Handler):
+    def emit(self, record):
+        webhook_name = settings.AW_UPDATE_SLACK_WEBHOOK_NAME
+        levels = {
+            "INFO": "good",
+            "WARNING": "warning",
+            "ERROR": "danger",
+            "CRITICAL": "danger"
+        }
+        level_name = record.levelname
+        slack_level_name = levels[level_name]
+        log_entry = self.format(record)
+        payload = {
+            "attachments": [
+                {
+                    "pretext": "AdWords update on host: {}".format(settings.HOST),
+                    "text": log_entry,
+                    "color": slack_level_name,
+                }
+            ]
+        }
+        headers = {"Content-Type": "application/json"}
+        timeout = 60
+        requests.post(
+            settings.SLACK_WEBHOOKS.get(webhook_name), data=json.dumps(payload), timeout=timeout, headers=headers)
