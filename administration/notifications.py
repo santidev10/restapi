@@ -104,16 +104,17 @@ def send_html_email(subject, to, text_header, text_content, host):
 
 
 class SlackAWUpdateLoggingHandler(Handler):
+    slack_color_map = {
+        "INFO": "good",
+        "WARNING": "warning",
+        "ERROR": "danger",
+        "CRITICAL": "danger",
+    }
+
     def emit(self, record):
         webhook_name = settings.AW_UPDATE_SLACK_WEBHOOK_NAME
-        levels = {
-            "INFO": "good",
-            "WARNING": "warning",
-            "ERROR": "danger",
-            "CRITICAL": "danger"
-        }
         level_name = record.levelname
-        slack_level_name = levels[level_name]
+        slack_level_name = self.slack_color_map[level_name]
         log_entry = self.format(record)
         payload = {
             "attachments": [
@@ -127,4 +128,8 @@ class SlackAWUpdateLoggingHandler(Handler):
         headers = {"Content-Type": "application/json"}
         timeout = 60
         requests.post(
-            settings.SLACK_WEBHOOKS.get(webhook_name), data=json.dumps(payload), timeout=timeout, headers=headers)
+            settings.SLACK_WEBHOOKS.get(webhook_name),
+            data=json.dumps(payload),
+            timeout=timeout,
+            headers=headers,
+        )
