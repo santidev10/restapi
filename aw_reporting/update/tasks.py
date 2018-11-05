@@ -302,7 +302,7 @@ def detect_success_aw_read_permissions():
                 client_customer_id=permission.account_id,
             )
         except Exception as e:
-            logger.info(e)
+            logger.error(e)
         else:
             try:
                 get_all_customers(client, page_size=1, limit=1)
@@ -311,7 +311,7 @@ def detect_success_aw_read_permissions():
                 account.is_active = False
                 account.save()
             except Exception as e:
-                logger.info(e)
+                logger.error(e)
             else:
                 permission.can_read = True
                 permission.save()
@@ -1317,7 +1317,7 @@ def load_google_categories(skip_audiences=False, skip_topics=False):
 
     if not Audience.objects.count() and not skip_audiences:
 
-        logger.info('Loading audiences...')
+        logger.debug('Loading audiences...')
         files = (
             ('affinity_categories.csv', ("ID", "Category")),
             ('in-market_categories.csv', ("ID", "Category")),
@@ -1350,7 +1350,7 @@ def load_google_categories(skip_audiences=False, skip_topics=False):
         categories_define_parents()
 
     if not Topic.objects.count() and not skip_topics:
-        logger.info('Loading topics...')
+        logger.debug('Loading topics...')
         bulk_data = []
         # topics
         fields = ("Category", "ID", "ParentID")
@@ -1376,7 +1376,7 @@ def load_google_geo_targets():
     from aw_reporting.models import GeoTarget
 
     ids = set(GeoTarget.objects.values_list('id', flat=True))
-    logger.info('Loading google geo targets...')
+    logger.debug('Loading google geo targets...')
     bulk_data = []
     with open('aw_campaign/fixtures/google/geo_locations.csv') as f:
         reader = csv.reader(f, delimiter=',')
@@ -1401,7 +1401,7 @@ def load_google_geo_targets():
                     )
                 )
     if bulk_data:
-        logger.info('Saving %d new geo targets...' % len(bulk_data))
+        logger.debug('Saving %d new geo targets...' % len(bulk_data))
         GeoTarget.objects.bulk_create(bulk_data)
 
 
@@ -1417,7 +1417,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
             de_norm_fields_are_recalculated=False).order_by("id")
         iterations = ceil(queryset.count() / batch_size)
         if not settings.IS_TEST:
-            logger.info(
+            logger.debug(
                 "Calculating de-norm fields: {}.{} {}".format(model.__module__,
                                                               model.__name__,
                                                               iterations))
@@ -1425,7 +1425,7 @@ def recalculate_de_norm_fields(*args, **kwargs):
         ag_link = "ad_groups__" if model is Campaign else ""
         for i in range(iterations):
             if not settings.IS_TEST:
-                logger.info("./Iteration: {}".format(i + 1))
+                logger.debug("./Iteration: {}".format(i + 1))
             queryset = queryset[:batch_size]
             items = queryset.values("id")
 

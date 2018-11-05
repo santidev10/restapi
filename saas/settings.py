@@ -214,6 +214,10 @@ LOGGING = {
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
+        },
+        'slack_aw_update': {
+            'level': 'INFO',
+            'class': 'administration.notifications.SlackAWUpdateLoggingHandler',
         }
     },
     'loggers': {
@@ -222,8 +226,8 @@ LOGGING = {
             "level": "WARNING",
         },
         "aw_reporting.update": {
-            "handlers": ["file_updates"],
-            "level": "INFO",
+            "handlers": ["file_updates", "slack_aw_update"],
+            "level": "DEBUG",
         },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
@@ -339,7 +343,7 @@ CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
-HOST = "https://viewiq.com"
+HOST = "https://viewiq.channelfactory.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
@@ -371,6 +375,12 @@ MAX_AVATAR_SIZE_MB = 10.
 
 DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
 AUTOPILOT_API_KEY = "dd069a2d588d4dce95fe134b553ca5df"
+
+AW_UPDATE_SLACK_WEBHOOK_NAME = "aw_update"
+
+SLACK_WEBHOOKS = {
+    AW_UPDATE_SLACK_WEBHOOK_NAME: "https://hooks.slack.com/services/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",
+}
 
 try:
     from .local_settings import *
