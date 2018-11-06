@@ -34,35 +34,37 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
         account.save()
         return account
 
-    def test_skip_not_existing_campaign(self):
+    def test_create_campaign(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1, account=account)
-
-        common = dict(
-            AveragePosition=1,
-            Cost=10 ** 6,
-            Date=str(today),
-            Impressions=1,
-            VideoViews=1,
-            Clicks=1,
-            Conversions=0,
-            AllConversions=0,
-            ViewThroughConversions=0,
-            Device=Devices[0],
-            VideoQuartile25Rate=0,
-            VideoQuartile50Rate=0,
-            VideoQuartile75Rate=0,
-            VideoQuartile100Rate=0,
-            Engagements=1,
-            ActiveViewImpressions=1
-        )
+        self._create_account(now)
+        campaign_id = next(int_iterator)
+        self.assertFalse(Campaign.objects.filter(id=campaign_id).exists())
 
         test_report_data = [
-            dict(CampaignId=campaign.id, AdGroupId=1, **common),
-            dict(CampaignId="missed", AdGroupId=2, **common),
-            dict(CampaignId=campaign.id, AdGroupId=3, **common),
+            dict(
+                CampaignId=campaign_id,
+                AveragePosition=1,
+                Cost=10 ** 6,
+                Date=str(today),
+                Amount=1,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=Devices[0],
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+                Engagements=1,
+                ActiveViewImpressions=1,
+                StartDate=str(today),
+                EndDate=str(today),
+                HourOfDay=0,
+            ),
         ]
 
         aw_client_mock = MagicMock()
@@ -70,9 +72,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
 
         def mock_download(report, *_, **__):
             fields = report["selector"]["fields"]
-            if report["reportType"] == "ADGROUP_PERFORMANCE_REPORT":
-                return build_csv_byte_stream(fields, test_report_data)
-            return build_csv_byte_stream(fields, [])
+            return build_csv_byte_stream(fields, test_report_data)
 
         downloader_mock.DownloadReportAsStream.side_effect = mock_download
 
@@ -80,8 +80,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
                    return_value=aw_client_mock):
             self._call_command()
 
-        self.assertEqual(AdGroup.objects.all().count(), 2)
-        self.assertEqual(campaign.ad_groups.count(), 2)
+        self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
 
     def test_should_not_change_update_time(self):
         test_timezone_str = "America/Los_Angeles"

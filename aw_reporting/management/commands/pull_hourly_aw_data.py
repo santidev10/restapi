@@ -11,8 +11,6 @@ from django.utils import timezone
 
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
-from aw_reporting.update.tasks import get_ad_groups_and_stats
-from aw_reporting.update.tasks import get_campaigns
 from aw_reporting.update.tasks import load_hourly_stats
 from aw_reporting.utils import command_single_process_lock
 
@@ -41,8 +39,6 @@ class Command(BaseCommand):
         progress = 0
         updater = AWDataLoader(datetime.now().date())
         for account in accounts:
-            updater.run_task_with_any_manager(get_campaigns, account)
-            updater.run_task_with_any_manager(get_ad_groups_and_stats, account)
             updater.run_task_with_any_manager(load_hourly_stats, account)
             account.hourly_updated_at = timezone.now()
             account.save()
