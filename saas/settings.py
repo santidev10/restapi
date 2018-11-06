@@ -218,6 +218,7 @@ LOGGING = {
         'slack_aw_update': {
             'level': 'INFO',
             'class': 'administration.notifications.SlackAWUpdateLoggingHandler',
+            'filters': ['slack_aw_update_filter'],
         }
     },
     'loggers': {
@@ -258,7 +259,10 @@ LOGGING = {
         "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: 0,
-        }
+        },
+        "slack_aw_update_filter": {
+          "()": "administration.notifications.SlackAWUpdateLoggingFilter",
+        },
     }
 }
 

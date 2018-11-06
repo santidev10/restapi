@@ -3,7 +3,9 @@ Administration notifications module
 """
 import json
 import os
+import re
 from email.mime.image import MIMEImage
+from logging import Filter
 from logging import Handler
 
 import requests
@@ -133,3 +135,19 @@ class SlackAWUpdateLoggingHandler(Handler):
             timeout=timeout,
             headers=headers,
         )
+
+
+class SlackAWUpdateLoggingFilter(Filter):
+    warning_log_level = "WARNING"
+
+    def filter(self, record):
+        if not record.levelname == self.warning_log_level:
+            return True
+        message = record.msg
+        topic_warning_pattern = "topic not found: \D+"
+        topic_warning = bool(re.search(topic_warning_pattern, message))
+        audience_warning_pattern = "Audience \d+ not found"
+        audience_warning = bool(re.search(audience_warning_pattern, message))
+        undefined_criteria_warning_pattern = "Undefined criteria = \D+\d+"
+        undefined_criteria_warning = bool(re.search(undefined_criteria_warning_pattern, message))
+        return not any((topic_warning, audience_warning, undefined_criteria_warning))
