@@ -27,7 +27,6 @@ LOCK_FILE_NAME = "update_aw_accounts"
 
 @celery_app.task
 def update_aw_accounts(account_ids=None, start=None, end=None):
-    logger.info("Start AW update procedure")
     now = now_in_default_tz(utc)
     today = now.date()
     kwargs = dict(
@@ -36,7 +35,6 @@ def update_aw_accounts(account_ids=None, start=None, end=None):
         end=end,
         account_ids=account_ids
     )
-
     job = chain(
         lock.si(lock_name=LOCK_FILE_NAME, countdown=60, max_retries=60),
         pre_process.si(),
@@ -67,6 +65,7 @@ def mcc_update_finished(**kwargs):
 
 @celery_app.task
 def pre_process():
+    logger.info("Start AW update procedure")
     logger.debug("pre process start")
     if not settings.IS_TEST:
         create_cf_account_connection()

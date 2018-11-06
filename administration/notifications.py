@@ -3,7 +3,9 @@ Administration notifications module
 """
 import json
 import os
+import re
 from email.mime.image import MIMEImage
+from logging import Filter
 from logging import Handler
 
 import requests
@@ -133,3 +135,28 @@ class SlackAWUpdateLoggingHandler(Handler):
             timeout=timeout,
             headers=headers,
         )
+
+
+class Levels:
+    WARNING = "WARNING"
+
+
+class NotFoundWarningLoggingFilter(Filter):
+    pattern = None
+
+    def filter(self, record):
+        assert self.pattern is not None,\
+            "You must set sting with a regular expression in the 'patter' attribute of a child class"
+        return not (record.levelname == Levels.WARNING and bool(re.match(self.pattern, record.msg)))
+
+
+class AudienceNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "Audience \d+ not found"
+
+
+class TopicNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "topic not found: \D+"
+
+
+class UndefinedCriteriaWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "Undefined criteria = \D+\d+"
