@@ -215,9 +215,14 @@ LOGGING = {
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
         },
-        'slack_aw_update': {
-            'level': 'INFO',
-            'class': 'administration.notifications.SlackAWUpdateLoggingHandler',
+        "slack_aw_update": {
+            "level": "INFO",
+            "class": "administration.notifications.SlackAWUpdateLoggingHandler",
+            "filters": [
+                "audience_not_found_warning_filter",
+                "topic_not_found_warning_filter",
+                "undefined_criteria_warning_filter",
+            ],
         }
     },
     'loggers': {
@@ -258,7 +263,16 @@ LOGGING = {
         "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: 0,
-        }
+        },
+        "audience_not_found_warning_filter": {
+          "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
+        },
+        "topic_not_found_warning_filter": {
+          "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
+        },
+        "undefined_criteria_warning_filter": {
+          "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
+        },
     }
 }
 
