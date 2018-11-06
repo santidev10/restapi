@@ -9,14 +9,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('payments', '0002_event'),
         ('userprofile', '0007_auto_20171110_0928'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='plan',
-            name='payments_plan',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='payments.Plan'),
-        ),
     ]
