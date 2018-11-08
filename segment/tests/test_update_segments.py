@@ -142,3 +142,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                account_name=mcc_account.name,
                                                updated_at=str(test_now),
                                                is_chf=True))
+
+    def test_success_on_force(self):
+        test_now = datetime(2018, 1, 1).replace(tzinfo=pytz.utc)
+        with patch_sdb(), patch_now(test_now):
+            call_command("update_segments", force_creation=True)
