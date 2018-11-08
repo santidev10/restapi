@@ -1,5 +1,3 @@
-from builtins import ValueError
-
 from django.db import transaction
 from oauth2client import client
 from oauth2client.client import HttpAccessTokenRefreshError
