@@ -1,19 +1,28 @@
 import json
-from datetime import timedelta, datetime, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 from django.utils import timezone
 from rest_framework.reverse import reverse
-from rest_framework.status import HTTP_200_OK, \
-    HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import AdGroupStatistic, CampaignStatistic, AdGroup, \
-    Campaign, Account, Opportunity, OpPlacement, SalesForceGoalType
-from aw_reporting.update.tasks import recalculate_de_norm_fields
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase
+from utils.utils_tests import patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):
