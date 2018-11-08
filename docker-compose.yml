@@ -59,4 +59,6 @@ services:
     expose:
     - "9042"
   rabbitmq:
-    image: rabbitmq:3.7.8
+    image: rabbitmq:3.7.8-management
+    ports:
+      - "15672:15672"
