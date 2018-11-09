@@ -18,7 +18,6 @@ from aw_reporting.models import AdGroupStatistic, device_str
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import CONVERSIONS
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import QUARTILE_STATS

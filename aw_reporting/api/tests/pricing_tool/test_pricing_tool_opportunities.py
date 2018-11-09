@@ -9,7 +9,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
     TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Devices, Genders, AgeRanges, \
+    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
     Flight, GeoTargeting, device_str, Device
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey

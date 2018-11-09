@@ -128,7 +128,6 @@ Genders = list(
 )
 
 
-# todo: remove
 Devices = list(
     device_str(device_id)
     for device_id in ALL_DEVICES

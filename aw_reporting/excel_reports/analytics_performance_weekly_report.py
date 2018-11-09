@@ -6,13 +6,11 @@ import xlsxwriter
 from django.conf import settings
 
 from aw_reporting.models import AdGroupStatistic
-
-from aw_reporting.models import device_str
 from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import all_stats_aggregator
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates

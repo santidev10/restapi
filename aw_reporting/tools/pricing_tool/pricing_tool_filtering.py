@@ -121,7 +121,6 @@ class PricingToolFiltering:
                                                              'topic_id').distinct()
             ],
             topics_condition=CONDITIONS,
-
             devices=list_to_filter(Devices),
             devices_condition=CONDITIONS,
 
