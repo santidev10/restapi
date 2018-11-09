@@ -7,14 +7,11 @@ from django.test import TransactionTestCase
 from pytz import utc
 
 from aw_reporting.models import AWAccountPermission
-
-from aw_reporting.models import device_str
-
-from aw_reporting.models import Device
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
-from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import Device
+from aw_reporting.models import device_str
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
@@ -44,29 +41,30 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
         campaign_id = next(int_iterator)
         self.assertFalse(Campaign.objects.filter(id=campaign_id).exists())
 
-        common = dict(
-            AveragePosition=1,
-            Cost=10 ** 6,
-            Date=str(today),
-            Impressions=1,
-            VideoViews=1,
-            Clicks=1,
-            Conversions=0,
-            AllConversions=0,
-            ViewThroughConversions=0,
-            Device=device_str(Device.COMPUTER),
-            VideoQuartile25Rate=0,
-            VideoQuartile50Rate=0,
-            VideoQuartile75Rate=0,
-            VideoQuartile100Rate=0,
-            Engagements=1,
-            ActiveViewImpressions=1
-        )
-
         test_report_data = [
-            dict(CampaignId=campaign.id, AdGroupId=1, **common),
-            dict(CampaignId="missed", AdGroupId=2, **common),
-            dict(CampaignId=campaign.id, AdGroupId=3, **common),
+            dict(
+                CampaignId=campaign_id,
+                AveragePosition=1,
+                Cost=10 ** 6,
+                Date=str(today),
+                Amount=1,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+                Engagements=1,
+                ActiveViewImpressions=1,
+                StartDate=str(today),
+                EndDate=str(today),
+                HourOfDay=0,
+            ),
         ]
 
         aw_client_mock = MagicMock()
