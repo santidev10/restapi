@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from aw_creation.api.serializers import AnalyticsAccountCreationListSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import AdGroupStatistic, device_str
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import CONVERSIONS
@@ -22,6 +22,7 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import QUARTILE_STATS
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_quartiles_to_rates
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
