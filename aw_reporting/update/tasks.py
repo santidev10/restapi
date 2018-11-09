@@ -31,6 +31,7 @@ from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import get_device_id_by_name
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
@@ -322,7 +323,6 @@ def get_campaigns(client, account, *_):
     from aw_reporting.models import ACTION_STATUSES
     from aw_reporting.models import Campaign
     from aw_reporting.models import CampaignStatistic
-    from aw_reporting.models import Devices
 
     now = now_in_default_tz()
     today = now.date()
@@ -382,7 +382,7 @@ def get_campaigns(client, account, *_):
         statistic_data = {
             'date': row_obj.Date,
             'campaign_id': row_obj.CampaignId,
-            'device_id': Devices.index(row_obj.Device),
+            'device_id': get_device_id_by_name(row_obj.Device),
 
             'video_views_25_quartile': quart_views(row_obj, 25),
             'video_views_50_quartile': quart_views(row_obj, 50),
@@ -409,7 +409,7 @@ def get_campaigns(client, account, *_):
 
 
 def get_ad_groups_and_stats(client, account, *_):
-    from aw_reporting.models import AdGroup, AdGroupStatistic, Devices
+    from aw_reporting.models import AdGroup, AdGroupStatistic
     from aw_reporting.adwords_reports import ad_group_performance_report
     click_type_report_fields = (
         "AdGroupId",
@@ -485,7 +485,7 @@ def get_ad_groups_and_stats(client, account, *_):
             stats = {
                 'date': row_obj.Date,
                 'ad_network': row_obj.AdNetworkType1,
-                'device_id': Devices.index(row_obj.Device),
+                'device_id': get_device_id_by_name(row_obj.Device),
                 'ad_group_id': ad_group_id,
                 'average_position': row_obj.AveragePosition,
                 'engagements': row_obj.Engagements,
@@ -809,8 +809,7 @@ def get_age_ranges(client, account, today):
 
 
 def get_placements(client, account, today):
-    from aw_reporting.models import YTVideoStatistic, YTChannelStatistic, \
-        Devices
+    from aw_reporting.models import YTVideoStatistic, YTChannelStatistic
     from aw_reporting.adwords_reports import placement_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
@@ -859,7 +858,7 @@ def get_placements(client, account, today):
                     'yt_id': criteria,
                     'date': row_obj.Date,
                     'ad_group_id': row_obj.AdGroupId,
-                    'device_id': Devices.index(row_obj.Device),
+                    'device_id': get_device_id_by_name(row_obj.Device),
                     'video_views_25_quartile': quart_views(
                         row_obj, 25),
                     'video_views_50_quartile': quart_views(
@@ -881,7 +880,7 @@ def get_placements(client, account, today):
                     'yt_id': criteria,
                     'date': row_obj.Date,
                     'ad_group_id': row_obj.AdGroupId,
-                    'device_id': Devices.index(row_obj.Device),
+                    'device_id': get_device_id_by_name(row_obj.Device),
                     'video_views_25_quartile': quart_views(
                         row_obj, 25),
                     'video_views_50_quartile': quart_views(
