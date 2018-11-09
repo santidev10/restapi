@@ -39,7 +39,7 @@ from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import Devices
+from aw_reporting.models import Device
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
@@ -51,6 +51,12 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.tasks import AudienceAWType
+from aw_reporting.tasks import MIN_FETCH_DATE
+from utils.utils_tests import build_csv_byte_stream
+from utils.utils_tests import generic_test
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 from aw_reporting.update.tasks import AudienceAWType
 from aw_reporting.update.tasks import MIN_FETCH_DATE
 from aw_reporting.update.tasks import max_ready_date
@@ -59,7 +65,16 @@ from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
-
+from aw_reporting.models import device_str
+from aw_reporting.tasks import AudienceAWType
+from aw_reporting.tasks import MIN_FETCH_DATE
+from aw_reporting.tasks import MIN_UPDATE_HOUR
+from aw_reporting.tasks import max_ready_date
+from aw_reporting.tasks import max_ready_datetime
+from utils.utils_tests import build_csv_byte_stream
+from utils.utils_tests import generic_test
+from utils.utils_tests import int_iterator
+from utils.utils_tests import patch_now
 
 class PullAWDataTestCase(TransactionTestCase):
     def _call_command(self, empty=False, **kwargs):
@@ -134,7 +149,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
@@ -223,7 +238,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
@@ -237,7 +252,7 @@ class PullAWDataTestCase(TransactionTestCase):
             dict(
                 AdGroupId=ad_group.id,
                 Date=str(dt),
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 Clicks=clicks,
                 ClickType="Website"
             )
@@ -338,7 +353,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,

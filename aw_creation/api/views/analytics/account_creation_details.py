@@ -14,11 +14,10 @@ from rest_framework.views import APIView
 from aw_creation.api.serializers import AnalyticsAccountCreationListSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
-from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AdGroupStatistic, device_str
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import CONVERSIONS
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import QUARTILE_STATS
@@ -108,7 +107,7 @@ class AnalyticsAccountCreationDetailsAPIView(APIView):
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
                   device]
         data.update(gender=gender, age=age, device=device)
 
