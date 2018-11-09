@@ -6,6 +6,8 @@ import xlsxwriter
 from django.conf import settings
 
 from aw_reporting.models import AdGroupStatistic
+
+from aw_reporting.models import device_str
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Devices
 from aw_reporting.models import KeywordStatistic
@@ -534,7 +536,7 @@ class AnalyticsPerformanceWeeklyReport:
             **all_stats_aggregate
         ).order_by("device_id")
         for i in device_data:
-            i['name'] = Devices[i['device_id']]
+            i['name'] = device_str(i['device_id'])
             dict_norm_base_stats(i)
             dict_add_calculated_stats(i)
             dict_quartiles_to_rates(i)

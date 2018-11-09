@@ -16,6 +16,7 @@ from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import device_str
 from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
@@ -883,7 +884,7 @@ class DeliveryChart:
         )
         result = defaultdict(list)
         for item in raw_stats:
-            label = Devices[item['device_id']]
+            label = device_str(item['device_id'])
             del item['device_id']
             result[label].append(item)
 

@@ -17,8 +17,9 @@ from requests import HTTPError
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
-from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS, AWErrorType
+from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DateRangeType
@@ -39,7 +40,7 @@ from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import Devices
+from aw_reporting.models import Device
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
@@ -51,8 +52,12 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.tasks import AudienceAWType, max_ready_datetime, max_ready_date, MIN_UPDATE_HOUR
+from aw_reporting.models import device_str
+from aw_reporting.tasks import AudienceAWType
 from aw_reporting.tasks import MIN_FETCH_DATE
+from aw_reporting.tasks import MIN_UPDATE_HOUR
+from aw_reporting.tasks import max_ready_date
+from aw_reporting.tasks import max_ready_datetime
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
 from utils.utils_tests import int_iterator
@@ -122,7 +127,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
@@ -211,7 +216,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,
@@ -225,7 +230,7 @@ class PullAWDataTestCase(TransactionTestCase):
             dict(
                 AdGroupId=ad_group.id,
                 Date=str(dt),
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 Clicks=clicks,
                 ClickType="Website"
             )
@@ -326,7 +331,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,

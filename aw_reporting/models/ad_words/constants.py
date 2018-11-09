@@ -1,4 +1,8 @@
+import logging
+
 from utils.utils import get_all_class_constants
+
+logger = logging.getLogger(__name__)
 
 BASE_STATS = ("impressions", "video_views", "clicks", "cost")
 CLICKS_STATS = (
@@ -45,6 +49,7 @@ class Parent:
 
 
 class Device:
+    _UNDETERMINED = -1
     COMPUTER = 0
     MOBILE = 1
     TABLET = 2
@@ -89,7 +94,7 @@ def gender_str(gender_id: int) -> str:
 
 
 def device_str(device_id: int) -> str:
-    return _DEVICE_REPRESENTATION.get(device_id)
+    return _DEVICE_REPRESENTATION.get(device_id, "Undetermined")
 
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -122,7 +127,17 @@ Genders = list(
     for gender_id in ALL_GENDERS
 )
 
+
+# todo: remove
 Devices = list(
     device_str(device_id)
     for device_id in ALL_DEVICES
 )
+
+
+def get_device_id_by_name(device_str):
+    for device_id, device_name in _DEVICE_REPRESENTATION.items():
+        if device_str == device_str:
+            return device_id
+    logger.debug("Undefined device name <{}>".format(device_str))
+    return Device._UNDETERMINED
