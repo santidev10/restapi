@@ -6,8 +6,8 @@ from django.db.models import Q, F, Min, Value, When, Case, Max, \
     BooleanField, Sum, IntegerField
 
 from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
-    SalesForceGoalType, Devices, VideoCreative, get_margin, GeoTarget, \
-    CampaignStatistic, AdGroup
+    SalesForceGoalType, VideoCreative, get_margin, GeoTarget, \
+    CampaignStatistic, AdGroup, device_str
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
     AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
 from userprofile.models import UserProfile
@@ -107,7 +107,7 @@ class PricingToolSerializer:
                     campaigns_data.get(a)])
         genders = set([Genders[i] for i, g in enumerate(GENDER_FIELDS) if
                        campaigns_data.get(g)])
-        devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
+        devices = set([device_str(i) for i, d in enumerate(DEVICE_FIELDS)
                        if campaigns_data.get(d)])
         margin = get_margin(plan_cost=total_cost, cost=aw_cost,
                             client_cost=client_cost)
@@ -199,7 +199,7 @@ class PricingToolSerializer:
         if margin is not None:
             margin *= 100
 
-        devices = set([Devices[i] for i, d in enumerate(DEVICE_FIELDS)
+        devices = set([device_str(i) for i, d in enumerate(DEVICE_FIELDS)
                        if campaign[d]])
         targeting = [t for t in TARGETING_TYPES
                      if campaign["has_" + t]]
@@ -364,7 +364,6 @@ class PricingToolSerializer:
         campaign_map = {o["id"]: o for o in opportunities}
         return {uid: campaign_map.get(uid, dict()) for uid in opportunity_ids}
 
-
     def _prepare_campaigns(self, opportunity_ids, user):
         opp_id_key = "salesforce_placement__opportunity_id"
         campaigns = Campaign.objects.get_queryset_for_user(user) \
@@ -436,28 +435,36 @@ def flight_date_filter(periods, max_start_date=None):
 class Aggregation:
     TARGETING = dict(
         ("has_" + t, Max(Case(When(
-            **{"placements__adwords_campaigns__has_" + t: True,
-               "then": Value(1)}),
+            **{
+                "placements__adwords_campaigns__has_" + t: True,
+                "then": Value(1)
+            }),
             output_field=BooleanField(),
             default=Value(0))))
         for t in TARGETING_TYPES)
     AGES = dict(
-        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                             "then": Value(1)}),
+        (a, Max(Case(When(**{
+            "placements__adwords_campaigns__" + a: True,
+            "then": Value(1)
+        }),
                      output_field=BooleanField(),
                      default=Value(0))))
         for a in AGE_FIELDS)
 
     GENDERS = dict(
-        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                             "then": Value(1)}),
+        (a, Max(Case(When(**{
+            "placements__adwords_campaigns__" + a: True,
+            "then": Value(1)
+        }),
                      output_field=BooleanField(),
                      default=Value(0))))
         for a in GENDER_FIELDS)
 
     DEVICES = dict(
-        (a, Max(Case(When(**{"placements__adwords_campaigns__" + a: True,
-                             "then": Value(1)}),
+        (a, Max(Case(When(**{
+            "placements__adwords_campaigns__" + a: True,
+            "then": Value(1)
+        }),
                      output_field=BooleanField(),
                      default=Value(0))))
         for a in DEVICE_FIELDS)

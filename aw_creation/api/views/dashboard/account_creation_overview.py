@@ -19,13 +19,13 @@ from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import DATE_FORMAT
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import client_cost_ad_group_statistic_required_annotation
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -111,7 +111,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
                age]
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
                   device]
         location = CityStatistic.objects.filter(**fs).values(
             "city_id", "city__name").annotate(**annotate).order_by('v')[:6]
