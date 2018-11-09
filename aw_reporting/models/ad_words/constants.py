@@ -127,16 +127,15 @@ Genders = list(
     for gender_id in ALL_GENDERS
 )
 
-
 Devices = list(
     device_str(device_id)
     for device_id in ALL_DEVICES
 )
 
 
-def get_device_id_by_name(device_str):
+def get_device_id_by_name(device_repr):
     for device_id, device_name in _DEVICE_REPRESENTATION.items():
-        if device_str == device_str:
+        if device_repr == device_name:
             return device_id
-    logger.debug("Undefined device name <{}>".format(device_str))
+    logger.debug("Undefined device name <{}>".format(device_repr))
     return Device._UNDETERMINED
