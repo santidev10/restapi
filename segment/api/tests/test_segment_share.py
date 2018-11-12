@@ -6,8 +6,8 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
 from userprofile.permissions import PermissionGroupNames, Permissions
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.reverse import reverse
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):

@@ -3,7 +3,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class LoginAsAUserAPITestCase(ExtendedAPITestCase):

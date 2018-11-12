@@ -4,7 +4,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class WebHookAWAccountsListTestCase(ExtendedAPITestCase):

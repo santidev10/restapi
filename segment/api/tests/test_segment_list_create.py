@@ -13,8 +13,9 @@ from aw_reporting.models import YTVideoStatistic, AWConnection, \
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher, int_iterator
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):

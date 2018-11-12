@@ -28,10 +28,10 @@ from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class GlobalTrendsChartsTestCase(AwReportingAPITestCase):

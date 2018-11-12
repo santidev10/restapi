@@ -21,8 +21,8 @@ from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_f
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):

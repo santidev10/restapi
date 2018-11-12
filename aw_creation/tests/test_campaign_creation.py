@@ -4,7 +4,7 @@ from time import sleep
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class CampaignCreationTestCase(ExtendedAPITestCase):

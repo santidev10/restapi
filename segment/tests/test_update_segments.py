@@ -21,9 +21,9 @@ from segment.models import SegmentRelatedKeyword
 from segment.models import SegmentRelatedVideo
 from segment.models import SegmentVideo
 from userprofile.models import UserProfile
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher as ConnectionPatch
-from utils.utils_tests import generic_test
-from utils.utils_tests import patch_now
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher as ConnectionPatch
+from utils.utittests.generic_test import generic_test
+from utils.utittests.patch_now import patch_now
 
 
 @contextmanager

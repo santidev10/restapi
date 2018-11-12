@@ -9,8 +9,8 @@ from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from userprofile.constants import UserTypeRegular, UserAnnualAdSpend
 from userprofile.models import UserProfile
-from utils.utils_tests import generic_test
-from utils.utils_tests import reverse
+from utils.utittests.generic_test import generic_test
+from utils.utittests.reverse import reverse
 
 
 class UserRegistrationTestCase(APITestCase):
