@@ -1,18 +1,19 @@
 import logging
-import pytz
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from itertools import product
+from urllib.parse import urlencode
+
+import pytz
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.http import QueryDict
 from django.utils import timezone
-from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
-from urllib.parse import urlencode
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Account
@@ -89,22 +90,49 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
-                "id", "name", "start", "end", "thumbnail", "cannot_roll_over",
-                "status", "is_upcoming", "is_completed",
-
-                "pacing", "pacing_quality", "pacing_direction",
-                "margin", "margin_quality", "margin_direction",
-                "video_view_rate_quality", "ctr_quality",
-
-                "plan_video_views", "plan_impressions", "plan_cpm", "plan_cpv",
-                "goal_type", "plan_cost", "cost", "cpv", "cpm", "impressions",
-                "video_views", "video_view_rate", "ctr", "chart_data",
-
-                "ad_ops", "am", "sales", "category", "region", "notes",
-                "has_dynamic_placements", "dynamic_placements_types",
-                "apex_deal", "bill_of_third_party_numbers",
-
-                "goal_type_ids"
+                "ad_ops",
+                "am",
+                "apex_deal",
+                "aw_update_time",
+                "bill_of_third_party_numbers",
+                "cannot_roll_over",
+                "category",
+                "chart_data",
+                "cost",
+                "cpm",
+                "cpv",
+                "ctr",
+                "ctr_quality",
+                "dynamic_placements_types",
+                "end",
+                "goal_type",
+                "goal_type_ids",
+                "has_dynamic_placements",
+                "id",
+                "impressions",
+                "is_completed",
+                "is_upcoming",
+                "margin",
+                "margin_direction",
+                "margin_quality",
+                "name",
+                "notes",
+                "pacing",
+                "pacing_direction",
+                "pacing_quality",
+                "plan_cost",
+                "plan_cpm",
+                "plan_cpv",
+                "plan_impressions",
+                "plan_video_views",
+                "region",
+                "sales",
+                "start",
+                "status",
+                "thumbnail",
+                "video_view_rate",
+                "video_view_rate_quality",
+                "video_views",
             }
         )
         self.assertEqual(item["id"], current_op.id)
@@ -1292,3 +1320,20 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_count)
+
+    def test_shows_last_account_update_time(self):
+        test_update_time = datetime(2018, 10, 11, 12, 13, 14, tzinfo=pytz.utc)
+        any_date = date(2018, 1, 1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        Flight.objects.create(placement=placement, start=any_date, end=any_date)
+        account = Account.objects.create(update_time=test_update_time)
+        Campaign.objects.create(account=account, salesforce_placement=placement)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        opportunity_data = response.data["items"][0]
+        self.assertEqual(opportunity_data["aw_update_time"], test_update_time.strftime("%Y-%m-%dT%H:%M:%SZ"))
