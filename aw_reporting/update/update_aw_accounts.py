@@ -12,7 +12,6 @@ from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_reports import AccountInactiveError
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields
 from aw_reporting.update.update_aw_account import update_aw_account
 from saas import celery_app
 from utils.celery import group_chorded
@@ -81,7 +80,6 @@ def post_process():
     add_relation_between_report_and_creation_campaigns()
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    recalculate_de_norm_fields()
     logger.debug("post process finished")
     logger.info("End of AW update procedure")
 
