@@ -13,9 +13,9 @@ from aw_reporting.update.tasks import detect_success_aw_read_permissions
 from aw_reporting.update.tasks import recalculate_de_norm_fields
 from aw_reporting.update.update_aw_account import update_aw_account
 from saas import celery_app
-from utils.celery import group_chorded
-from utils.celery import lock
-from utils.celery import unlock
+from utils.celery.tasks import group_chorded
+from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
 from utils.datetime import now_in_default_tz
 
 __all__ = ["update_aw_accounts"]

@@ -209,7 +209,7 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
-        'mail_developers': {
+        'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
@@ -232,11 +232,11 @@ LOGGING = {
             "level": "WARNING",
         },
         "aw_reporting.update": {
-            "handlers": ["file_updates", "slack_aw_update"],
+            "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
             "level": "DEBUG",
         },
         '': {
-            'handlers': ['console', 'file', 'mail_developers'],
+            'handlers': ['console', 'file', "mail_admins"],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
