@@ -129,14 +129,14 @@ def _get_report(client, name, selector, date_range_type=None,
             if "invalid_grant" in error_str:
                 logger.error("Invalid grant faced. Skipping")
                 return
-            logger.error("Error: %s" % error_str)
+            logger.debug("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1
                 seconds = try_num ** 3
                 logger.info("Sleep for %d seconds" % seconds)
                 sleep(seconds)
             else:
-                return
+                raise e
         else:
             return stream_iterator(result)
 
@@ -284,7 +284,6 @@ def geo_location_report(client):
 
 def _daily_statistic_performance_report(
         client, name, dates=None, additional_fields=None, fields=None):
-
     if fields is None:
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 

@@ -129,7 +129,14 @@ def update_accounts_group(today_str: str, start, end, account_ids, is_mcc: bool)
     count = len(accounts)
 
     tasks_signatures = [
-        update_aw_account.si(account.id, today_str, start, end, index, count)
+        update_aw_account.si(
+            account_id=account.id,
+            today_str=today_str,
+            start=start,
+            end=end,
+            index=index,
+            count=count,
+        )
         for index, account in enumerate(accounts)
     ]
     return group(tasks_signatures)

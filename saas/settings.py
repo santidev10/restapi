@@ -266,13 +266,13 @@ LOGGING = {
             'callback': lambda r: 0,
         },
         "audience_not_found_warning_filter": {
-          "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
+            "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
         },
         "topic_not_found_warning_filter": {
-          "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
+            "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
         },
         "undefined_criteria_warning_filter": {
-          "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
+            "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
         },
     }
 }
