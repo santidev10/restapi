@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_reporting.models import Audience
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class AudienceFlatListTestCase(ExtendedAPITestCase):

@@ -23,10 +23,10 @@ from aw_reporting.tools.health_check_tool import AGE_RANGES
 from aw_reporting.tools.health_check_tool import GENDERS
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AWSetupHealthCheckListTestCase(APITestCase):

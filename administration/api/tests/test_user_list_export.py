@@ -16,10 +16,10 @@ from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserChannel
 from userprofile.models import UserProfile
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import int_iterator
-from utils.utils_tests import patch_now
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
+from utils.utittests.reverse import reverse
 
 
 class UserListExportAPITestCase(ExtendedAPITestCase):

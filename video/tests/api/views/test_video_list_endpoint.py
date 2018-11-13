@@ -4,9 +4,9 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SegmentFunctionalityMixin
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):

@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class UserProfileTestCase(ExtendedAPITestCase):

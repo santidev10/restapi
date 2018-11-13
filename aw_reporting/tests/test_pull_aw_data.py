@@ -51,14 +51,14 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.update.tasks import AudienceAWType
-from aw_reporting.update.tasks import MIN_FETCH_DATE
-from aw_reporting.update.tasks import max_ready_date
+from aw_reporting.update.tasks.get_interests import AudienceAWType
+from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
+from aw_reporting.update.tasks.utils.max_ready_date import max_ready_date
 from utils.filelock import FileLock
-from utils.utils_tests import build_csv_byte_stream
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import patch_now
+from utils.utittests.csv import build_csv_byte_stream
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 
 
 class PullAWDataTestCase(TransactionTestCase):

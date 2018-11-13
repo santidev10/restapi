@@ -7,7 +7,7 @@ from aw_reporting.models import Account, Campaign, AdGroup
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):

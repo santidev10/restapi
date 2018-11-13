@@ -17,9 +17,9 @@ from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):

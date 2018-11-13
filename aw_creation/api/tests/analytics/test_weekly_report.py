@@ -13,9 +13,9 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):

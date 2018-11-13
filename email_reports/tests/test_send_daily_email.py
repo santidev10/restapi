@@ -20,8 +20,8 @@ from aw_reporting.models import User
 from aw_reporting.models import UserRole
 from email_reports.models import SavedEmail
 from email_reports.reports.daily_campaign_report import OpportunityManager
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
-from utils.utils_tests import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class SendDailyEmailsTestCase(APITestCase):

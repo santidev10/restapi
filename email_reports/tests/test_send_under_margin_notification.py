@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from aw_reporting.models import User, Opportunity, OpPlacement, \
     SalesForceGoalType, Flight, Account, Campaign, CampaignStatistic
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):

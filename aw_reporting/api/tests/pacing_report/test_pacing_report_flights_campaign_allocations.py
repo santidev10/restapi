@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED, \
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
