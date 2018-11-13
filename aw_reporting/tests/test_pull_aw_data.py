@@ -54,6 +54,7 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.update.tasks import AudienceAWType
 from aw_reporting.update.tasks import MIN_FETCH_DATE
 from aw_reporting.update.tasks import max_ready_date
+from utils.exception import ExceptionWithArgs
 from utils.filelock import FileLock
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import generic_test
@@ -76,7 +77,8 @@ class PullAWDataTestCase(TransactionTestCase):
                                            aw_connection=AWConnection.objects.create(),
                                            can_read=True)
 
-        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time,
+        account_id = kwargs.pop("id", next(int_iterator))
+        account = Account.objects.create(id=account_id, timezone=tz, update_time=account_update_time,
                                          **kwargs)
         account.managers.add(mcc_account)
         account.save()
@@ -959,3 +961,46 @@ class PullAWDataTestCase(TransactionTestCase):
 
         account.refresh_from_db()
         self.assertFalse(account.is_active)
+
+    def test_success_on_account_update_error(self):
+        self._create_account(is_active=True)
+
+        exception = ValueError("Test error")
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(FileLock, "release") as release_mock, \
+                patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0):
+            self._call_command()
+
+        release_mock.assert_called_with()
+
+    def test_emails_error(self):
+        test_account_id = "test_account_id"
+        self._create_account(id=test_account_id, is_active=True)
+
+        exception = ValueError("Test error")
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        from aw_reporting.update.update_aw_account import logger
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
+             patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0), \
+             patch.object(logger, "exception") as exception_mock:
+            self._call_command(account_ids=test_account_id)
+
+        exception_mock.assert_called_with(FakeExceptionWithArgs(test_account_id))
+
+
+class FakeExceptionWithArgs:
+    def __init__(self, search_string):
+        self.search_string = search_string
+
+    def __eq__(self, other):
+        return isinstance(other, ExceptionWithArgs) and self.search_string in other.args[0]
