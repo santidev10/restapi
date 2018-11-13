@@ -5,11 +5,13 @@ from dateutil.parser import parse
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
 from saas import celery_app
+from utils.exception import ignore_on_error
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(trail=True)
+@celery_app.task()
+@ignore_on_error(logger=logger)
 def update_aw_account(account_id, today_str: str, start, end, index, count):
     today = parse(today_str).date()
     account = Account.objects.get(id=account_id)
