@@ -1,6 +1,7 @@
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import DateField
+from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import FloatField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
@@ -59,6 +60,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     video_view_rate = PercentField()
     video_view_rate_quality = IntegerField()
     video_views = IntegerField()
+    aw_update_time = DateTimeField()
 
     def __init__(self, *args, **kwargs):
         super(PacingReportOpportunitiesSerializer, self).__init__(*args,
