@@ -16,10 +16,10 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):

@@ -11,9 +11,10 @@ from saas.urls.namespaces import Namespace
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
-from utils.utils_tests import ExtendedAPITestCase, reverse
-from utils.utils_tests import MockResponse
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.reverse import reverse
+from utils.utittests.response import MockResponse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):

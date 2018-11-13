@@ -221,6 +221,7 @@ LOGGING = {
                 "audience_not_found_warning_filter",
                 "topic_not_found_warning_filter",
                 "undefined_criteria_warning_filter",
+                "require_debug_false",
             ],
         }
     },

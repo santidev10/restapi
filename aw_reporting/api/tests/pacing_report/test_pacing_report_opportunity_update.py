@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
 
 from aw_reporting.models import Opportunity, OpPlacement, Campaign, Account, \
     Category, User
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportTestCase(APITestCase):

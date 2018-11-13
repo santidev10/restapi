@@ -33,7 +33,6 @@ from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
-from aw_reporting.utils import safe_max
 from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
@@ -389,9 +388,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
-        if obj.account is not None:
-            return safe_max(
-                (obj.account.update_time, obj.account.hourly_updated_at))
+        return obj.account.update_time if obj.account else None
 
     def get_brand(self, obj: AccountCreation):
         opportunity = self._get_opportunity(obj)

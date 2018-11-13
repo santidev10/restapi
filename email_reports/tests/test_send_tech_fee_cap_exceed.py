@@ -8,7 +8,7 @@ from django.utils import timezone
 from aw_reporting.models import User, Opportunity, \
     OpPlacement, Flight, Campaign, Account
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):

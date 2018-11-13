@@ -13,7 +13,7 @@ from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):

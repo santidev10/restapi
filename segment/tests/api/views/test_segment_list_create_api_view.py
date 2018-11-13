@@ -4,7 +4,7 @@ from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
 from segment.models import SegmentKeyword, SegmentChannel, SegmentVideo
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):

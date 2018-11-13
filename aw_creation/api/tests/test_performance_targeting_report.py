@@ -21,8 +21,8 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class PerformanceReportAPITestCase(ExtendedAPITestCase):

@@ -11,7 +11,8 @@ from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import generic_test, patch_now
+from utils.utittests.generic_test import generic_test
+from utils.utittests.patch_now import patch_now
 
 
 class TrackAccountsDataAPITestCase(AwReportingAPITestCase):

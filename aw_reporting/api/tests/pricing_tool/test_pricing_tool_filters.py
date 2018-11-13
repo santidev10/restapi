@@ -8,7 +8,7 @@ from aw_reporting.models import AdGroup, Opportunity, OpPlacement, Account, \
     Campaign, Audience, AudienceStatistic, Category
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PricingToolTestCase(ExtendedAPITestCase):
