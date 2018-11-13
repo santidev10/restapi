@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from functools import reduce
 
+from django.conf import settings
 from django.db.models import Case
 from django.db.models import Count
 from django.db.models import IntegerField
@@ -16,114 +17,114 @@ from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from utils.lang import flatten
 from utils.lang import pick_dict
 
 logger = logging.getLogger(__name__)
 
+MODELS_WITH_ACCOUNT_ID_REF = (
+    (Campaign, "account_id"),
+    (AdGroup, "campaign__account_id"),
+)
 
-def recalculate_de_norm_fields(*args, **kwargs):
-    from aw_reporting.models import Campaign
-    from aw_reporting.models import AdGroup
-    from math import ceil
-    from django.conf import settings
 
-    batch_size = 100
-
-    for model in (Campaign, AdGroup):
-        queryset = model.objects.filter(
-            de_norm_fields_are_recalculated=False).order_by("id")
-        iterations = ceil(queryset.count() / batch_size)
+def recalculate_de_norm_fields_for_account(account_id):
+    for model, account_ref in MODELS_WITH_ACCOUNT_ID_REF:
+        filter_dict = {
+            "de_norm_fields_are_recalculated": False,
+            account_ref: account_id,
+        }
+        queryset = model.objects \
+            .filter(**filter_dict) \
+            .order_by("id")
         if not settings.IS_TEST:
             logger.debug(
-                "Calculating de-norm fields: {}.{} {}".format(model.__module__,
-                                                              model.__name__,
-                                                              iterations))
+                "Calculating de-norm fields. Model={}, account_id={}".format(
+                    model.__name__,
+                    account_id
+                ))
 
         ag_link = "ad_groups__" if model is Campaign else ""
-        for i in range(iterations):
-            if not settings.IS_TEST:
-                logger.debug("./Iteration: {}".format(i + 1))
-            queryset = queryset[:batch_size]
-            items = queryset.values("id")
+        items = queryset.values("id")
 
-            data = items.annotate(
-                min_date=Min("statistics__date"),
-                max_date=Max("statistics__date"),
+        data = items.annotate(
+            min_date=Min("statistics__date"),
+            max_date=Max("statistics__date"),
+        )
+        sum_statistic_map = _get_sum_statistic_map(items)
+        device_data = items.annotate(**_device_annotation())
+        gender_data = items.annotate(**_gender_annotation(ag_link))
+        age_data = items.annotate(**_age_annotation(ag_link))
+        parent_data = items.annotate(**_parent_annotation(ag_link))
+
+        def update_key(aggregator, item, key):
+            current_value = aggregator[key]
+            current_value.update(item)
+            return aggregator
+
+        stats_by_id = reduce(
+            lambda res, i: update_key(res, i, i["id"]),
+            flatten([device_data, gender_data, age_data, parent_data]),
+            defaultdict(dict)
+        )
+
+        # Targeting data
+        audience_data = items.annotate(
+            count=Count("{}audiences__audience_id".format(ag_link)),
+        )
+        audience_data = {e["id"]: e["count"] for e in audience_data}
+
+        keyword_data = items.annotate(
+            count=Count("{}keywords__keyword".format(ag_link)),
+        )
+        keyword_data = {e["id"]: e["count"] for e in keyword_data}
+
+        channel_data = items.annotate(
+            count=Count("{}channel_statistics__id".format(ag_link)),
+        )
+        channel_data = {e["id"]: e["count"] for e in channel_data}
+
+        video_data = items.annotate(
+            count=Count("{}managed_video_statistics__id".format(ag_link)),
+        )
+        video_data = {e["id"]: e["count"] for e in video_data}
+
+        rem_data = items.annotate(
+            count=Count("{}remark_statistic__remark_id".format(ag_link)),
+        )
+        rem_data = {e["id"]: e["count"] for e in rem_data}
+
+        topic_data = items.annotate(
+            count=Count("{}topics__topic_id".format(ag_link)),
+        )
+        topic_data = {e["id"]: e["count"] for e in topic_data}
+
+        update = {}
+        for i in data:
+            uid = i["id"]
+            sum_stats = sum_statistic_map.get(uid, {})
+            stats = stats_by_id[uid]
+            update[uid] = dict(
+                de_norm_fields_are_recalculated=True,
+
+                min_stat_date=i["min_date"],
+                max_stat_date=i["max_date"],
+
+                **sum_stats,
+                **stats,
+
+                has_interests=bool(audience_data.get(uid)),
+                has_keywords=bool(keyword_data.get(uid)),
+                has_channels=bool(channel_data.get(uid)),
+                has_videos=bool(video_data.get(uid)),
+                has_remarketing=bool(rem_data.get(uid)),
+                has_topics=bool(topic_data.get(uid)),
             )
-            sum_statistic_map = _get_sum_statistic_map(items)
-            device_data = items.annotate(**_device_annotation())
-            gender_data = items.annotate(**_gender_annotation(ag_link))
-            age_data = items.annotate(**_age_annotation(ag_link))
-            parent_data = items.annotate(**_parent_annotation(ag_link))
 
-            def update_key(aggregator, item, key):
-                current_value = aggregator[key]
-                current_value.update(item)
-                return aggregator
-
-            stats_by_id = reduce(
-                lambda res, i: update_key(res, i, i["id"]),
-                flatten([device_data, gender_data, age_data, parent_data]),
-                defaultdict(dict)
-            )
-
-            # Targeting data
-            audience_data = items.annotate(
-                count=Count("{}audiences__audience_id".format(ag_link)),
-            )
-            audience_data = {e["id"]: e["count"] for e in audience_data}
-
-            keyword_data = items.annotate(
-                count=Count("{}keywords__keyword".format(ag_link)),
-            )
-            keyword_data = {e["id"]: e["count"] for e in keyword_data}
-
-            channel_data = items.annotate(
-                count=Count("{}channel_statistics__id".format(ag_link)),
-            )
-            channel_data = {e["id"]: e["count"] for e in channel_data}
-
-            video_data = items.annotate(
-                count=Count("{}managed_video_statistics__id".format(ag_link)),
-            )
-            video_data = {e["id"]: e["count"] for e in video_data}
-
-            rem_data = items.annotate(
-                count=Count("{}remark_statistic__remark_id".format(ag_link)),
-            )
-            rem_data = {e["id"]: e["count"] for e in rem_data}
-
-            topic_data = items.annotate(
-                count=Count("{}topics__topic_id".format(ag_link)),
-            )
-            topic_data = {e["id"]: e["count"] for e in topic_data}
-
-            update = {}
-            for i in data:
-                uid = i["id"]
-                sum_stats = sum_statistic_map.get(uid, {})
-                stats = stats_by_id[uid]
-                update[uid] = dict(
-                    de_norm_fields_are_recalculated=True,
-
-                    min_stat_date=i["min_date"],
-                    max_stat_date=i["max_date"],
-
-                    **sum_stats,
-                    **stats,
-
-                    has_interests=bool(audience_data.get(uid)),
-                    has_keywords=bool(keyword_data.get(uid)),
-                    has_channels=bool(channel_data.get(uid)),
-                    has_videos=bool(video_data.get(uid)),
-                    has_remarketing=bool(rem_data.get(uid)),
-                    has_topics=bool(topic_data.get(uid)),
-                )
-
-            for uid, updates in update.items():
-                model.objects.filter(id=uid).update(**updates)
+        for uid, updates in update.items():
+            model.objects.filter(id=uid).update(**updates)
 
 
 def _build_boolean_case(ref, value):

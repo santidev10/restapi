@@ -17,10 +17,10 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.utittests.recalculate_de_norm_fields import recalculate_de_norm_fields
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.patch_now import patch_now
 
