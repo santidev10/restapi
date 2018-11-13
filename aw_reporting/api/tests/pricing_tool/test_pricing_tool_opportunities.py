@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta, datetime, date
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -15,7 +16,7 @@ from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, int_iterator
 
 
 class PricingToolTestCase(APITestCase):
@@ -3036,6 +3037,45 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["products"], [test_type])
+
+    def test_aggregates_latest_data(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-760
+        Summary: Pricing Tool > Margin doesn't match with Margin on Pacing report (which is correct)
+        Root cause 1: Different calculation of client cost for Hard Cost
+        Root cause 2: Pacing report uses statistic filtered by flight dates, pricing tool does not.
+        """
+        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
+        start = (test_now - timedelta(days=5)).date()
+        end = (test_now + timedelta(days=2)).date()
+        ordered_units = 1234
+        delivered_units = 345
+        cost = 123
+
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(id=next(int_iterator),
+                                               opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+                                               ordered_rate=12.2, total_cost=9999)
+
+        Flight.objects.create(id=next(int_iterator),
+                              placement=placement, start=start, end=end,
+                              ordered_units=ordered_units, total_cost=9999)
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units, cost=cost)
+
+        client_cost = delivered_units * placement.ordered_rate / 1000
+        expected_margin = (1 - cost / client_cost) * 100
+
+        with patch_now(test_now):
+            response = self._request()
+        opportunities = response.data["items"]
+        self.assertEqual(len(opportunities), 1)
+
+        opp_data = opportunities[0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+        self.fail("Test not covers the issue yet.")
 
 
 def generate_campaign_statistic(
