@@ -172,7 +172,7 @@ REST_FRAMEWORK = {
 
 LOGS_DIRECTORY = 'logs'
 
-DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
 ip = socket.gethostbyname(hostname)
 
@@ -209,6 +209,14 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
+        'file_celery': {
+            'filename': os.path.join(LOGS_DIRECTORY, "celery_info.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -234,6 +242,10 @@ LOGGING = {
         "aw_reporting.update": {
             "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
             "level": "DEBUG",
+        },
+        "celery": {
+            "handlers": ["file_celery"],
+            "level": "INFO",
         },
         '': {
             'handlers': ['console', 'file', "mail_admins"],
