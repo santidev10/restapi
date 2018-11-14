@@ -9,9 +9,9 @@ from pytz import utc
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
-from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
-from aw_reporting.models import Devices
+from aw_reporting.models import Device
+from aw_reporting.models import device_str
 from utils.utils_tests import build_csv_byte_stream
 from utils.utils_tests import int_iterator
 from utils.utils_tests import patch_now
@@ -54,7 +54,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase):
                 Conversions=0,
                 AllConversions=0,
                 ViewThroughConversions=0,
-                Device=Devices[0],
+                Device=device_str(Device.COMPUTER),
                 VideoQuartile25Rate=0,
                 VideoQuartile50Rate=0,
                 VideoQuartile75Rate=0,

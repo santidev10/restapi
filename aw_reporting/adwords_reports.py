@@ -127,7 +127,7 @@ def _get_report(client, name, selector, date_range_type=None,
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise
             if "invalid_grant" in error_str:
-                logger.debug("(Error) Invalid grant faced. Skipping. Error:{}".format(error_str))
+                logger.debug("(Error) Invalid grant faced. Skipping. Msg: {}".format(error_str))
                 return
             logger.debug("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:

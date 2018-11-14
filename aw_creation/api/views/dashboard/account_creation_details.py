@@ -20,11 +20,11 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import CONVERSIONS
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import QUARTILE_STATS
 from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_quartiles_to_rates
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
@@ -122,7 +122,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
 
         device = AdGroupStatistic.objects.filter(**fs).values(
             "device_id").order_by("device_id").annotate(**annotate)
-        device = [dict(name=Devices[i['device_id']], value=i['v']) for i in
+        device = [dict(name=device_str(i['device_id']), value=i['v']) for i in
                   device]
         data.update(gender=gender, age=age, device=device)
 
