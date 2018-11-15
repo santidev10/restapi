@@ -79,7 +79,8 @@ class UserCreateSerializer(ModelSerializer):
         # set password
         user.set_password(user.password)
         user.status = UserStatuses.PENDING.name
-        user.save(update_fields=["password", "status"])
+        user.is_active = False
+        user.save(update_fields=["password", "status", "is_active"])
 
         # new default access implementation
         for group_name in get_default_accesses():

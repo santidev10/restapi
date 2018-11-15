@@ -41,16 +41,9 @@ class UserRegistrationTestCase(APITestCase):
         user_data = self._user_data(password=password)
         response = self.client.post(self.registration_url, data=user_data)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Token {}'.format(response.data["token"]))
-        response = self.client.delete(self.auth_url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.client.credentials()
-        response = self.client.post(
-            self.auth_url, data={"username": email, "password": password})
-        self.assertEqual(response.status_code, HTTP_200_OK)
         user = get_user_model().objects.get(email=email)
         self.assertEqual(user.status, UserStatuses.PENDING.name)
+        self.assertFalse(user.is_active)
 
     @generic_test([
         (user_type, (user_type.value,), dict())
