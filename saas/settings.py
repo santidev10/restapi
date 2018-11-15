@@ -58,9 +58,9 @@ PROJECT_APPS = (
 )
 
 THIRD_PARTY_APPS = (
+    "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
-    "djcelery",
 )
 
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -172,7 +172,7 @@ REST_FRAMEWORK = {
 
 LOGS_DIRECTORY = 'logs'
 
-DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
 ip = socket.gethostbyname(hostname)
 
@@ -193,16 +193,62 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
-        'mail_developers': {
+        'file_googleads': {
+            'filename': os.path.join(LOGS_DIRECTORY, "googleads.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'file_updates': {
+            'filename': os.path.join(LOGS_DIRECTORY, "aw_update.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'file_celery': {
+            'filename': os.path.join(LOGS_DIRECTORY, "celery_info.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
+        },
+        "slack_aw_update": {
+            "level": "INFO",
+            "class": "administration.notifications.SlackAWUpdateLoggingHandler",
+            "filters": [
+                "audience_not_found_warning_filter",
+                "topic_not_found_warning_filter",
+                "undefined_criteria_warning_filter",
+                "require_debug_false",
+            ],
         }
     },
     'loggers': {
+        "googleads": {
+            "handlers": ["file_googleads"],
+            "level": "WARNING",
+        },
+        "aw_reporting.update": {
+            "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
+            "level": "DEBUG",
+        },
+        "celery": {
+            "handlers": ["file_celery"],
+            "level": "INFO",
+        },
         '': {
-            'handlers': ['console', 'file', 'mail_developers'],
+            'handlers': ['console', 'file', "mail_admins"],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
@@ -230,7 +276,16 @@ LOGGING = {
         "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: 0,
-        }
+        },
+        "audience_not_found_warning_filter": {
+            "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
+        },
+        "topic_not_found_warning_filter": {
+            "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
+        },
+        "undefined_criteria_warning_filter": {
+            "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
+        },
     }
 }
 
@@ -247,23 +302,10 @@ YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
-import djcelery
-
-djcelery.setup_loader()
-CELERY_TASK_RESULT_EXPIRES = 18000
-CELERYD_TASK_ERROR_EMAILS = False
-CELERY_RESULT_BACKEND = "redis://"
-CELERY_REDIS_HOST = "localhost"
-CELERY_REDIS_PORT = 6379
-CELERY_REDIS_DB = 0
-CELERY_ACKS_LATE = True
-CELERYD_PREFETCH_MULTIPLIER = 1
+from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
 
 # landing page settings
 LANDING_SUBJECT = [
@@ -328,7 +370,7 @@ CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
-HOST = "https://viewiq.com"
+HOST = "https://viewiq.channelfactory.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
@@ -360,6 +402,12 @@ MAX_AVATAR_SIZE_MB = 10.
 
 DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
 AUTOPILOT_API_KEY = "dd069a2d588d4dce95fe134b553ca5df"
+
+AW_UPDATE_SLACK_WEBHOOK_NAME = "aw_update"
+
+SLACK_WEBHOOKS = {
+    AW_UPDATE_SLACK_WEBHOOK_NAME: "https://hooks.slack.com/services/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",
+}
 
 try:
     from .local_settings import *

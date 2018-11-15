@@ -1,7 +1,10 @@
 from datetime import date
+from datetime import datetime
+from datetime import time
 from datetime import timedelta
 from itertools import product
 
+import pytz
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.utils import timezone
@@ -70,24 +73,48 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
-                "id", "name", "start", "end", "goal_type_id", "is_upcoming",
-                "is_completed", 'dynamic_placement',
-
-                "pacing", "pacing_quality", "pacing_direction",
-                "margin", "margin_quality", "margin_direction",
-                "video_view_rate_quality", "ctr_quality",
-
-                "plan_video_views", "plan_impressions",
-                "plan_cpm", "plan_cpv", "goal_type", "plan_cost", "cost",
-
-                "cpv", "cpm", "impressions", "video_views", "video_view_rate",
-                "ctr", "tech_fee",
-
-                "targeting", "yesterday_budget", "today_goal", "today_budget",
-                "yesterday_delivered", "charts",
-                "today_goal_views", "yesterday_delivered_impressions",
-                "today_goal_impressions", "yesterday_delivered_views",
-                "current_cost_limit"
+                "aw_update_time",
+                "charts",
+                "cost",
+                "cpm",
+                "cpv",
+                "ctr",
+                "ctr_quality",
+                "current_cost_limit",
+                "dynamic_placement",
+                "end",
+                "goal_type",
+                "goal_type_id",
+                "id",
+                "impressions",
+                "is_completed",
+                "is_upcoming",
+                "margin",
+                "margin_direction",
+                "margin_quality",
+                "name",
+                "pacing",
+                "pacing_direction",
+                "pacing_quality",
+                "plan_cost",
+                "plan_cpm",
+                "plan_cpv",
+                "plan_impressions",
+                "plan_video_views",
+                "start",
+                "targeting",
+                "tech_fee",
+                "today_budget",
+                "today_goal",
+                "today_goal_impressions",
+                "today_goal_views",
+                "video_view_rate",
+                "video_view_rate_quality",
+                "video_views",
+                "yesterday_budget",
+                "yesterday_delivered",
+                "yesterday_delivered_impressions",
+                "yesterday_delivered_views",
             }
         )
 
@@ -285,6 +312,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today + timedelta(days=3)
         total_days = (end - start).days + 1
@@ -307,7 +336,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
@@ -334,6 +365,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
         end = today + timedelta(days=5)
@@ -365,7 +398,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today - timedelta(days=1),
                                          campaign=campaign,

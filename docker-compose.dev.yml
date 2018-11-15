@@ -1,21 +1,27 @@
 version: '3'
 
 services:
-  pg:
-    image: postgres:9.6
-    environment:
-      POSTGRES_DB: saas
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
   api:
-    build: .
-    volumes:
-      - .:/code
-    ports:
-      - "5000:5000"
     environment:
       SINGLE_DATABASE_API_HOST: localhost
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
     depends_on:
       - pg
+
+  celery_beat:
+    image: busybox
+    command: ["pwd"]
+  celery_worker:
+    image: busybox
+    command: ["pwd"]
+  web:
+    image: busybox
+  sdb:
+    image: busybox
+  es:
+    image: busybox
+  cassandra:
+    image: busybox
+  rabbitmq:
+    image: busybox
+

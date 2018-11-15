@@ -1,9 +1,14 @@
 """
 Administration notifications module
 """
+import json
 import os
+import re
 from email.mime.image import MIMEImage
+from logging import Filter
+from logging import Handler
 
+import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
@@ -98,3 +103,60 @@ def send_html_email(subject, to, text_header, text_content, host):
         msg.attach(msg_img)
 
     msg.send(fail_silently=True)
+
+
+class SlackAWUpdateLoggingHandler(Handler):
+    slack_color_map = {
+        "INFO": "good",
+        "WARNING": "warning",
+        "ERROR": "danger",
+        "CRITICAL": "danger",
+    }
+
+    def emit(self, record):
+        webhook_name = settings.AW_UPDATE_SLACK_WEBHOOK_NAME
+        level_name = record.levelname
+        slack_message_color = self.slack_color_map[level_name]
+        log_entry = self.format(record)
+        payload = {
+            "attachments": [
+                {
+                    "pretext": "AdWords update on host: {}".format(settings.HOST),
+                    "text": log_entry,
+                    "color": slack_message_color,
+                }
+            ]
+        }
+        headers = {"Content-Type": "application/json"}
+        timeout = 60
+        requests.post(
+            settings.SLACK_WEBHOOKS.get(webhook_name),
+            data=json.dumps(payload),
+            timeout=timeout,
+            headers=headers,
+        )
+
+
+class Levels:
+    WARNING = "WARNING"
+
+
+class NotFoundWarningLoggingFilter(Filter):
+    pattern = None
+
+    def filter(self, record):
+        assert self.pattern is not None,\
+            "You must set sting with a regular expression in the 'patter' attribute of a child class"
+        return not (record.levelname == Levels.WARNING and bool(re.match(self.pattern, record.msg)))
+
+
+class AudienceNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "Audience \d+ not found"
+
+
+class TopicNotFoundWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "topic not found: \D+"
+
+
+class UndefinedCriteriaWarningLoggingFilter(NotFoundWarningLoggingFilter):
+    pattern = "Undefined criteria = \D+\d+"

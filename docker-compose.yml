@@ -7,37 +7,57 @@ services:
       POSTGRES_DB: saas
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+    - "5432:5432"
   api:
     build: .
     volumes:
-      - .:/code
+    - .:/code
     ports:
-      - "5000:5000"
+    - "5000:5000"
     environment:
       SINGLE_DATABASE_API_HOST: sdb
-      REDIS_HOST: redis
       ALLOWED_HOSTS: api
+      CELERY_BROKER_HOST: rabbitmq
     depends_on:
-      - pg
-      - sdb
-      - redis
-      - web
+    - pg
+    - sdb
+    - rabbitmq
+  celery_beat:
+    build: .
+    volumes:
+    - .:/code
+    command: ["celery", "-A", "saas", "beat", "-l", "info"]
+    depends_on:
+    - rabbitmq
+    - api
+    environment:
+      CELERY_BROKER_HOST: rabbitmq
+  celery_worker:
+    build: .
+    volumes:
+    - .:/code
+    command: ["celery", "-A", "saas", "worker", "-c", "4", "-l", "info"]
+    depends_on:
+    - rabbitmq
+    - pg
+    environment:
+      CELERY_BROKER_HOST: rabbitmq
   web:
     image: saas-ui
     ports:
-      - "8000:8000"
+    - "8000:8000"
   sdb:
     image: saas-sdb
     depends_on:
-      - cassandra
-      - redis
-      - es
+    - cassandra
+    - es
   es:
     image: elasticsearch:6.4.2
   cassandra:
     image: cassandra
     expose:
     - "9042"
-  redis:
-    image: redis
+  rabbitmq:
+    image: rabbitmq:3.7.8-management
+    ports:
+      - "15672:15672"

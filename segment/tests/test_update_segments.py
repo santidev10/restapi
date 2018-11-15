@@ -3,6 +3,7 @@ from datetime import date
 from datetime import datetime
 from unittest.mock import patch
 
+import pytz
 from django.core.management import call_command
 from django.test import TransactionTestCase
 from pytz import timezone
@@ -129,7 +130,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
             video_view_rate=views / impressions * 100
         )
 
-        test_now = datetime(2018, 1, 1)
+        test_now = datetime(2018, 1, 1).replace(tzinfo=pytz.utc)
         with patch_sdb(), patch_now(test_now):
             call_command("update_segments")
         segment.refresh_from_db()
@@ -141,3 +142,8 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                                account_name=mcc_account.name,
                                                updated_at=str(test_now),
                                                is_chf=True))
+
+    def test_success_on_force(self):
+        test_now = datetime(2018, 1, 1).replace(tzinfo=pytz.utc)
+        with patch_sdb(), patch_now(test_now):
+            call_command("update_segments", force_creation=True)

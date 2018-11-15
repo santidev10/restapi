@@ -61,28 +61,46 @@ class PacingReportTestCase(APITestCase):
         self.assertEqual(
             set(item.keys()),
             {
-                "id", "name", "start", "end", "is_upcoming", "is_completed",
-
-                "pacing", "pacing_quality", "pacing_direction",
-                "margin", "margin_quality", "margin_direction",
-                "video_view_rate_quality", "ctr_quality",
-
-                "plan_video_views", "plan_impressions",
-                "plan_cpm", "plan_cpv", "goal_type",
-
-                "plan_cost", "cost",
-
-                "cpv", "cpm", "impressions", "video_views",
-                "video_view_rate", "ctr",
-
-                "targeting", "yesterday_budget", "today_goal",
-                "yesterday_delivered", "today_budget",
+                "aw_update_time",
                 "charts",
+                "cost",
+                "cpm",
+                "cpv",
+                "ctr",
+                "ctr_quality",
+                "current_cost_limit",
+                "end",
                 "goal_allocation",
-
-                "yesterday_delivered_views", "today_goal_impressions",
-                "today_goal_views", "yesterday_delivered_impressions",
-                "current_cost_limit"
+                "goal_type",
+                "id",
+                "impressions",
+                "is_completed",
+                "is_upcoming",
+                "margin",
+                "margin_direction",
+                "margin_quality",
+                "name",
+                "pacing",
+                "pacing_direction",
+                "pacing_quality",
+                "plan_cost",
+                "plan_cpm",
+                "plan_cpv",
+                "plan_impressions",
+                "plan_video_views",
+                "start",
+                "targeting",
+                "today_budget",
+                "today_goal",
+                "today_goal_impressions",
+                "today_goal_views",
+                "video_view_rate",
+                "video_view_rate_quality",
+                "video_views",
+                "yesterday_budget",
+                "yesterday_delivered",
+                "yesterday_delivered_impressions",
+                "yesterday_delivered_views",
             }
         )
         campaign.refresh_from_db()

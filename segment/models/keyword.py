@@ -56,7 +56,7 @@ class SegmentKeywordManager(SegmentManager):
             ids = [i['keyword'] for i in items]
 
             segment.replace_related_ids(ids)
-            segment.update_statistics(segment)
+            segment.update_statistics()
             logger.info('   ... keywords: {}'.format(len(ids)))
 
 

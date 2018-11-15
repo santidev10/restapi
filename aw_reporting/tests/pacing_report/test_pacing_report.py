@@ -1,7 +1,7 @@
-from datetime import datetime
-from datetime import timedelta
-
 import pytz
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 from django.utils import timezone
 
 from aw_reporting.models import Account
@@ -63,9 +63,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
     def test_ended_opportunity(self):
         today = datetime.now()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=end, probability=100
         )
@@ -76,8 +78,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
         Flight.objects.create(
             id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
         )
+        account = Account.objects.create(timezone=tz, update_time=last_update)
         campaign = Campaign.objects.create(
-            id="1", name="", salesforce_placement=placement, video_views=102,
+            id="1", account=account, name="", salesforce_placement=placement, video_views=102,
         )
         CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=102)
 
@@ -295,8 +298,10 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = now_in_default_tz().date()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
@@ -311,8 +316,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
             start=yesterday - timedelta(days=1), end=yesterday + timedelta(days=8), ordered_units=2000,
         )
 
-        campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, video_views=700,
-                                           account=Account.objects.create(id="1", name=""))
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(id="1", account=account,
+                                           salesforce_placement=placement, video_views=700)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
 
         report = PacingReport()
@@ -329,11 +335,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = now_in_default_tz().date()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,  # CPV
+            goal_type_id=SalesForceGoalType.CPV,
         )
         Flight.objects.create(
             id="1", name="100 units/day and 500units up today", placement=placement,
@@ -344,8 +352,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
             start=yesterday - timedelta(days=1), end=yesterday + timedelta(days=8), ordered_units=2000,
         )
 
-        campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, video_views=700,
-                                           account=Account.objects.create(id="1", name=""))
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(id="1", salesforce_placement=placement, video_views=700,
+                                           account=account)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
 
         report = PacingReport()

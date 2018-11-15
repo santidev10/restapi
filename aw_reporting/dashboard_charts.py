@@ -5,23 +5,25 @@ from datetime import timedelta
 
 from django.db.models import Avg
 from django.db.models import Case
+from django.db.models import DateField
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.expressions import ExpressionWrapper
 from django.db.models.functions import TruncMonth
 from django.db.models.functions import TruncYear
 from django.db.models.sql.query import get_field_names_from_opts
 
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import CALCULATED_STATS
 from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
@@ -29,7 +31,6 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import GeoTarget
@@ -46,6 +47,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -648,7 +650,11 @@ class DeliveryChart:
         if date_segment == DateSegment.DAY:
             return F("date")
         if date_segment == DateSegment.WEEK:
-            return TruncWeek("date")
+            to_date = lambda e: ExpressionWrapper(e, output_field=DateField())
+            next_date = to_date(F("date") + timedelta(days=1))
+            start_of_the_week = TruncWeek(next_date)
+            shift_back = to_date(start_of_the_week - timedelta(days=1))
+            return shift_back
         if date_segment == DateSegment.MONTH:
             return TruncMonth("date")
         if date_segment == DateSegment.YEAR:
@@ -883,7 +889,7 @@ class DeliveryChart:
         )
         result = defaultdict(list)
         for item in raw_stats:
-            label = Devices[item['device_id']]
+            label = device_str(item['device_id'])
             del item['device_id']
             result[label].append(item)
 
