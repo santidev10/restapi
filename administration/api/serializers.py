@@ -73,25 +73,6 @@ class UserActionRetrieveSerializer(ModelSerializer):
             return obj.user.last_name
 
 
-class UserUpdateSerializer(ModelSerializer):
-    """
-    Update user serializer
-    """
-    can_access_media_buying = SerializerMethodField()
-
-    class Meta:
-        """
-        Meta params
-        """
-        model = get_user_model()
-        fields = (
-            "can_access_media_buying",
-        )
-
-    def get_can_access_media_buying(self, obj):
-        return obj.has_perm("userprofile.view_media_buying")
-
-
 class UserSerializer(ModelSerializer):
     """
     Retrieve user serializer
