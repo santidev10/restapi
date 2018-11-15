@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -7,7 +8,9 @@ from rest_framework.test import APITestCase
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from userprofile.constants import UserTypeRegular, UserAnnualAdSpend
+from userprofile.constants import UserTypeRegular
+from userprofile.constants import UserAnnualAdSpend
+from userprofile.constants import UserStatuses
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
@@ -38,14 +41,9 @@ class UserRegistrationTestCase(APITestCase):
         user_data = self._user_data(password=password)
         response = self.client.post(self.registration_url, data=user_data)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Token {}'.format(response.data["token"]))
-        response = self.client.delete(self.auth_url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.client.credentials()
-        response = self.client.post(
-            self.auth_url, data={"username": email, "password": password})
-        self.assertEqual(response.status_code, HTTP_200_OK)
+        user = get_user_model().objects.get(email=email)
+        self.assertEqual(user.status, UserStatuses.PENDING.name)
+        self.assertFalse(user.is_active)
 
     @generic_test([
         (user_type, (user_type.value,), dict())

@@ -14,6 +14,7 @@ from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
+from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import get_default_accesses
 
@@ -77,7 +78,9 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
-        user.save(update_fields=["password"])
+        user.status = UserStatuses.PENDING.name
+        user.is_active = False
+        user.save(update_fields=["password", "status", "is_active"])
 
         # new default access implementation
         for group_name in get_default_accesses():
