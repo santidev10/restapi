@@ -30,6 +30,6 @@ class UserAnnualAdSpend(ExtendedEnum):
 
 
 class UserStatuses(ExtendedEnum):
-    pending = "pending"
-    rejected = "rejected"
-    active = "active"
+    PENDING = "pending"
+    REJECTED = "rejected"
+    ACTIVE = "active"
