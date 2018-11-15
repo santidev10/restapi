@@ -63,12 +63,6 @@ class LowercaseEmailField(models.EmailField):
         return value.lower() if isinstance(value, str) else value
 
 
-class UserStatuses:
-    pending = "pending"
-    rejected = "rejected"
-    active = "active"
-
-
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with

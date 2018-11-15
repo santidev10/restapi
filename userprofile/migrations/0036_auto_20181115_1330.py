@@ -4,12 +4,13 @@ from __future__ import unicode_literals
 
 from django.db import migrations
 
-from userprofile.models import UserStatuses
+from userprofile.constants import UserStatuses
 
 
 def update_status(apps, schema_editor):
     user_profile_model = apps.get_model("userprofile", "UserProfile")
-    user_profile_model.objects.all().update(status=UserStatuses.active)
+    user_profile_model.objects.filter(is_active=True).update(status=UserStatuses.active.name)
+    user_profile_model.objects.filter(is_active=False).update(status=UserStatuses.pending.name)
 
 
 class Migration(migrations.Migration):

@@ -27,3 +27,9 @@ class UserAnnualAdSpend(ExtendedEnum):
     SPEND_0_100K = "$0-$100K"
     SPEND_100K_250K = "$100K-$250K"
     SPEND_250K_AND_MORE = "$250k+"
+
+
+class UserStatuses(ExtendedEnum):
+    pending = "pending"
+    rejected = "rejected"
+    active = "active"
