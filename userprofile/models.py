@@ -63,6 +63,12 @@ class LowercaseEmailField(models.EmailField):
         return value.lower() if isinstance(value, str) else value
 
 
+class UserStatuses:
+    pending = "pending"
+    rejected = "rejected"
+    active = "active"
+
+
 class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     """
     An abstract base class implementing a fully featured User model with
@@ -108,6 +114,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     is_password_generated = models.BooleanField(default=False)
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
+    status = models.CharField(max_length=255, null=True, blank=True)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
