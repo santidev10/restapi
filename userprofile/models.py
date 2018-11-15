@@ -108,6 +108,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     is_password_generated = models.BooleanField(default=False)
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
     logo = models.CharField(null=True, blank=True, max_length=255)
+    status = models.CharField(max_length=255, null=True, blank=True)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
