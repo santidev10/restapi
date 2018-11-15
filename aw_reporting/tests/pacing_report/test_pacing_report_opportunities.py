@@ -141,7 +141,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(date=start, campaign=campaign,
                                          video_views=1000, cost=5)
         Flight.objects.create(id="0", name="CPV Flight",
-                              placement=cpv_placement,
+                              placement=cpv_placement, total_cost=10,
                               start=start, end=end, cost=1)
 
         placement = OpPlacement.objects.create(

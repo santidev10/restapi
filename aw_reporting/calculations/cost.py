@@ -42,7 +42,9 @@ def get_client_cost(goal_type_id, dynamic_placement, placement_type,
             video_views=video_views,
             ordered_rate=ordered_rate
         )
-    actualized_client_cost = min(client_cost, total_cost)
+    actualized_client_cost = min(client_cost, total_cost) \
+        if total_cost is not None \
+        else client_cost
     return actualized_client_cost
 
 
