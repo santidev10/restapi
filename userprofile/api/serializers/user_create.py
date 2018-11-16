@@ -91,8 +91,9 @@ class UserCreateSerializer(ModelSerializer):
         # update last login
         update_last_login(None, user)
         # send email to admin
+        host = self.context.get("request").get_host()
         email_data = {
-            "host": self.context.get("request").get_host(),
+            "host": host,
             "email": user.email,
             "company": user.company,
             "phone": user.phone_number,
@@ -100,6 +101,7 @@ class UserCreateSerializer(ModelSerializer):
             "last_name": user.last_name,
             "annual_ad_spend": user.annual_ad_spend,
             "user_type": user.user_type,
+            "user_list_link": "{}/admin/users".format(host),
         }
         send_new_registration_email(email_data)
         send_welcome_email(user, self.context.get("request"))
