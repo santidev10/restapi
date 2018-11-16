@@ -78,7 +78,7 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
-        user.status = UserStatuses.PENDING.name
+        user.status = UserStatuses.PENDING.value
         user.is_active = False
         user.save(update_fields=["password", "status", "is_active"])
 

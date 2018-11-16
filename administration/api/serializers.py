@@ -1,12 +1,16 @@
 """
 Administration api serializers module
 """
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
+from administration.notifications import send_html_email
+from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserStatuses
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -104,3 +108,30 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+
+class UserUpdateSerializer(ModelSerializer):
+    status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
+                       validators=[extended_enum(UserStatuses)])
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            "status",
+        )
+
+    def save(self, **kwargs):
+        user = super(UserUpdateSerializer, self).save(**kwargs)
+        request = self.context.get("request")
+        access = request.data.get("access", None)
+        status = request.data.get("status", None)
+        if access:
+            user.update_access(access)
+        if status:
+            if user.status in (UserStatuses.PENDING.value, UserStatuses.REJECTED.value):
+                user.is_active = False
+            if user.status == UserStatuses.ACTIVE.value:
+                user.is_active = True
+                user.email_user_active(request)
+        user.save()
+        return user

@@ -14,6 +14,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
+from administration.notifications import send_html_email
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
@@ -174,6 +175,18 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         Sends an email to this User.
         """
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    def email_user_active(self, request):
+        """
+        Send email to user when admin makes it active
+        """
+        host = request.get_host()
+        subject = "Access to ViewIQ"
+        text_header = "Dear {} \n".format(self.get_full_name())
+        text_content = "Congratulations! You now have access to ViewIQ!\n" \
+                       " Click <a href='https://{host}/login'>here</a> to access your account." \
+            .format(host=host)
+        send_html_email(subject, self.email, text_header, text_content, host)
 
     @property
     def token(self):

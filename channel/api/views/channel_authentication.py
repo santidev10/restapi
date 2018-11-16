@@ -100,7 +100,7 @@ class ChannelAuthenticationApiView(APIView):
             # Create new user
             user_data["email"] = email
             user_data["google_account_id"] = google_id
-            user_data["status"] = UserStatuses.PENDING.name
+            user_data["status"] = UserStatuses.PENDING.value
             user_data["is_active"] = False
             user_data["user_type"] = UserTypeCreator.CREATOR.value
             user_data["password"] = hashlib.sha1(str(

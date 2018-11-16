@@ -9,8 +9,8 @@ from userprofile.constants import UserStatuses
 
 def update_status(apps, schema_editor):
     user_profile_model = apps.get_model("userprofile", "UserProfile")
-    user_profile_model.objects.filter(is_active=True).update(status=UserStatuses.ACTIVE.name)
-    user_profile_model.objects.filter(is_active=False).update(status=UserStatuses.PENDING.name)
+    user_profile_model.objects.filter(is_active=True).update(status=UserStatuses.ACTIVE.value)
+    user_profile_model.objects.filter(is_active=False).update(status=UserStatuses.PENDING.value)
 
 
 class Migration(migrations.Migration):
