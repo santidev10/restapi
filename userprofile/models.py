@@ -181,11 +181,15 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         Send email to user when admin makes it active
         """
         host = request.get_host()
+        protocol = "http://"
+        if request.is_secure():
+            protocol = "https://"
+        link = "{}{}/login".format(protocol, host)
         subject = "Access to ViewIQ"
         text_header = "Dear {} \n".format(self.get_full_name())
         text_content = "Congratulations! You now have access to ViewIQ!\n" \
-                       " Click <a href='https://{host}/login'>here</a> to access your account." \
-            .format(host=host)
+                       " Click <a href='{link}'>here</a> to access your account." \
+            .format(link=link)
         send_html_email(subject, self.email, text_header, text_content, host)
 
     @property
