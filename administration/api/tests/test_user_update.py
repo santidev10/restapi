@@ -1,21 +1,14 @@
-import json
-
 from django.contrib.auth import get_user_model
+from django.core import mail
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.test import APITestCase
 
-from saas.urls.namespaces import Namespace
 from administration.api.urls.names import AdministrationPathName
-from userprofile.constants import UserTypeRegular
-from userprofile.constants import UserAnnualAdSpend
+from saas.urls.namespaces import Namespace
 from userprofile.constants import UserStatuses
-from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
-from django.core import mail
 
 
 class AdminUpdateUserTestCase(ExtendedAPITestCase):

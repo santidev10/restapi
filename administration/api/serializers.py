@@ -1,14 +1,12 @@
 """
 Administration api serializers module
 """
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
-from administration.notifications import send_html_email
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
 
