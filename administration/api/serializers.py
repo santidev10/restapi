@@ -119,6 +119,7 @@ class UserUpdateSerializer(ModelSerializer):
         )
 
     def save(self, **kwargs):
+        old_status = self.instance.status
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
         access = request.data.get("access", None)
@@ -130,6 +131,7 @@ class UserUpdateSerializer(ModelSerializer):
                 user.is_active = False
             if user.status == UserStatuses.ACTIVE.value:
                 user.is_active = True
+            if old_status != user.status and user.status == UserStatuses.ACTIVE.value:
                 user.email_user_active(request)
         user.save()
         return user

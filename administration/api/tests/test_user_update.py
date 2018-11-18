@@ -86,3 +86,12 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         payload = {}
         response = self.client.put(update_url, data=payload)
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_status_change_from_active_to_active_no_email(self):
+        self.create_admin_user()
+        user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
+        update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(user.id,))
+        payload = {"status": UserStatuses.ACTIVE.value}
+        response = self.client.put(update_url, data=payload)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
