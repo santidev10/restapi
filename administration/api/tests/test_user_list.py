@@ -29,7 +29,8 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
             "google_account_id",
             "annual_ad_spend",
             "user_type",
-            "status"
+            "status",
+            "can_access_media_buying",
         }
         self.create_admin_user()
         get_user_model().objects.create(email="test_list@example.com")
