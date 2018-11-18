@@ -115,4 +115,5 @@ class UserSerializer(ModelSerializer):
             "google_account_id",
             "annual_ad_spend",
             "user_type",
+            "status"
         )
