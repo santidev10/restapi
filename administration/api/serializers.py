@@ -2,7 +2,6 @@
 Administration api serializers module
 """
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
@@ -96,8 +95,6 @@ class UserSerializer(ModelSerializer):
     """
     Retrieve user serializer
     """
-    can_access_media_buying = SerializerMethodField()
-
     class Meta:
         """
         Meta params
@@ -116,10 +113,6 @@ class UserSerializer(ModelSerializer):
             "token",
             "access",
             "google_account_id",
-            "can_access_media_buying",
             "annual_ad_spend",
             "user_type",
         )
-
-    def get_can_access_media_buying(self, obj: PermissionsMixin):
-        return obj.has_perm("userprofile.view_media_buying")

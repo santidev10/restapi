@@ -36,7 +36,7 @@ class UserListAdminApiView(ListAPIView):
         search = self.request.query_params.get("search")
         if search:
             search = search.strip()
-            queryset = queryset.annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
+            queryset = queryset.annotate(full_name=Concat("first_name", Value(" "), "last_name"))
             queryset = queryset.filter(
                 Q(full_name__icontains=search) |
                 Q(email__icontains=search) |
@@ -46,4 +46,4 @@ class UserListAdminApiView(ListAPIView):
         return queryset
 
     def do_sorts(self, queryset):
-        return queryset.order_by('last_name', 'first_name')
+        return queryset.order_by("last_name", "first_name")
