@@ -45,5 +45,6 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "phone_number",
                 "profile_image_url",
                 "token",
+                "is_active",
             }
         )

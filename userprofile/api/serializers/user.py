@@ -40,6 +40,7 @@ class UserSerializer(ModelSerializer):
             "has_disapproved_ad",
             "id",
             "is_staff",
+            "is_active",
             "last_login",
             "last_name",
             "logo_url",
@@ -57,6 +58,7 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "google_account_id",
             "logo_url",
+            "is_active",
         )
 
     @staticmethod
