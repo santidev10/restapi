@@ -7,6 +7,8 @@ from rest_framework.serializers import ModelSerializer, URLField, CharField, \
     SerializerMethodField
 
 from administration.models import UserAction
+from userprofile.api.serializers.validators.extended_enum import extended_enum
+from userprofile.constants import UserStatuses
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -73,25 +75,6 @@ class UserActionRetrieveSerializer(ModelSerializer):
             return obj.user.last_name
 
 
-class UserUpdateSerializer(ModelSerializer):
-    """
-    Update user serializer
-    """
-    can_access_media_buying = SerializerMethodField()
-
-    class Meta:
-        """
-        Meta params
-        """
-        model = get_user_model()
-        fields = (
-            "can_access_media_buying",
-        )
-
-    def get_can_access_media_buying(self, obj):
-        return obj.has_perm("userprofile.view_media_buying")
-
-
 class UserSerializer(ModelSerializer):
     """
     Retrieve user serializer
@@ -123,3 +106,32 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+
+class UserUpdateSerializer(ModelSerializer):
+    status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
+                       validators=[extended_enum(UserStatuses)])
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            "status",
+        )
+
+    def save(self, **kwargs):
+        old_status = self.instance.status
+        user = super(UserUpdateSerializer, self).save(**kwargs)
+        request = self.context.get("request")
+        access = request.data.get("access", None)
+        status = request.data.get("status", None)
+        if access:
+            user.update_access(access)
+        if status:
+            if user.status in (UserStatuses.PENDING.value, UserStatuses.REJECTED.value):
+                user.is_active = False
+            if user.status == UserStatuses.ACTIVE.value:
+                user.is_active = True
+            if old_status != user.status and user.status == UserStatuses.ACTIVE.value:
+                user.email_user_active(request)
+        user.save()
+        return user

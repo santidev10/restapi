@@ -42,7 +42,7 @@ class UserRegistrationTestCase(APITestCase):
         response = self.client.post(self.registration_url, data=user_data)
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         user = get_user_model().objects.get(email=email)
-        self.assertEqual(user.status, UserStatuses.PENDING.name)
+        self.assertEqual(user.status, UserStatuses.PENDING.value)
         self.assertFalse(user.is_active)
 
     @generic_test([
