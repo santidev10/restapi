@@ -1,5 +1,7 @@
 from collections import defaultdict
 from datetime import timedelta
+from math import ceil
+
 from django.contrib.auth import get_user_model
 from django.db.models import Case
 from django.db.models import F
@@ -10,7 +12,6 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
-from math import ceil
 
 from aw_reporting.calculations.margin import get_margin_from_flights
 from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
@@ -229,7 +230,7 @@ class PacingReport:
         group_by = ("id", campaign_id_key)
 
         annotate = self.get_flights_delivery_annotate()
-        
+
         raw_data = queryset.values(
             *group_by  # segment by campaigns
         ).order_by(*group_by).annotate(**annotate)
@@ -345,6 +346,7 @@ class PacingReport:
     def get_delivery_stats_from_flights(flights, campaign_id=None):
         impressions = video_views = cost = clicks = 0
         video_impressions = video_clicks = video_cost = 0
+        aw_update_time = None
         goal_type_ids = set()
         for f in flights:
             goal_type_ids.add(f["placement__goal_type_id"])
@@ -359,6 +361,9 @@ class PacingReport:
             video_cost += stats["video_cost"] or 0
             clicks += stats["clicks"] or 0
             cost += stats["sum_cost"] or 0
+            aw_update_time = max(aw_update_time, f["update_time"]) \
+                if all([aw_update_time, f["update_time"]]) \
+                else (aw_update_time or f["update_time"])
 
         if SalesForceGoalType.CPV in goal_type_ids:
             ctr = get_ctr_v(video_clicks, video_views)
@@ -380,6 +385,7 @@ class PacingReport:
             video_view_rate=get_video_view_rate(video_views,
                                                 video_impressions),
             goal_type=SalesForceGoalTypes[goal_type_id],
+            aw_update_time=aw_update_time,
         )
         return stats
 

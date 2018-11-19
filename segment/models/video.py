@@ -61,7 +61,7 @@ class SegmentVideoManager(SegmentManager):
             ids = [i["video_id"] for i in items]
 
             segment.replace_related_ids(ids)
-            segment.update_statistics(segment)
+            segment.update_statistics()
             logger.info("   ... videos: %d", len(ids))
 
 

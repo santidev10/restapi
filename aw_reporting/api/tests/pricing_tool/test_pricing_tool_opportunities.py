@@ -9,8 +9,8 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
     TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Devices, Genders, AgeRanges, \
-    Flight, GeoTargeting
+    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
+    Flight, GeoTargeting, device_str, Device
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
@@ -1163,7 +1163,7 @@ class PricingToolTestCase(APITestCase):
         campaign.device_computers = True
         campaign.device_tablets = True
         campaign.save()
-        expected_devices = {Devices[0], Devices[2]}
+        expected_devices = {device_str(Device.COMPUTER), device_str(Device.TABLET)}
 
         response = self._request(start=str(start_date), end=str(end_date))
 
@@ -1780,7 +1780,7 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(len(response.data["items"]), 1)
         campaign_data = response.data["items"][0]["campaigns"][0]
         self.assertEqual(set(campaign_data["devices"]),
-                         {Devices[0], Devices[2]})
+                         {device_str(Device.COMPUTER), device_str(Device.TABLET)})
 
     def test_campaign_products(self):
         _, campaign = self._create_opportunity_campaign(
