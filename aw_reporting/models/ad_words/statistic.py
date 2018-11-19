@@ -1,10 +1,22 @@
 import re
 
 from django.db import models
+from django.db.models import Model
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 from aw_reporting.models.ad_words.constants import VIEW_RATE_STATS, AgeRange, Gender, Parent, Device
 from aw_reporting.models.base import BaseModel
+
+
+class BaseClicksTypesStatisticsModel(Model):
+    clicks_website = models.IntegerField(default=0)
+    clicks_call_to_action_overlay = models.IntegerField(default=0)
+    clicks_app_store = models.IntegerField(default=0)
+    clicks_cards = models.IntegerField(default=0)
+    clicks_end_cap = models.IntegerField(default=0)
+
+    class Meta:
+        abstract = True
 
 
 class BaseStatisticModel(BaseModel):

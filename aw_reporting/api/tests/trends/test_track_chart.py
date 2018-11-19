@@ -6,14 +6,16 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import TrendId, Indicator, Breakdown
 from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher, generic_test, patch_now
+from userprofile.constants import UserSettingsKey
+from utils.utittests.generic_test import generic_test
+from utils.utittests.patch_now import patch_now
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TrackChartAPITestCase(AwReportingAPITestCase):
@@ -119,7 +121,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_channel_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
             channel_ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -141,7 +143,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="channel",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 
@@ -152,7 +154,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
 
     def test_success_dimension_video(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_video_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
             ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -174,7 +176,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="video",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 

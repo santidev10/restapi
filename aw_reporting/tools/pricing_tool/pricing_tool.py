@@ -11,17 +11,11 @@ from aw_reporting.tools.pricing_tool.pricing_tool_serializer import \
     PricingToolSerializer
 from utils.datetime import now_in_default_tz, build_periods
 
-
-def model_to_filter(mod):
-    return [dict(id=i.pk, name=str(i.name))
-            for i in mod.objects.all().order_by('name')]
-
-
 DATE_FORMAT = "%Y-%m-%d"
 
 
 class PricingTool:
-    def __init__(self, today=None, **kwargs):
+    def __init__(self, today=None, user=None, **kwargs):
         self.today = today or now_in_default_tz().date()
         kwargs.update(self._get_date_kwargs(kwargs))
         kwargs['margin'] = kwargs.get('margin') or 30
@@ -29,20 +23,20 @@ class PricingTool:
         self.filter = PricingToolFiltering(kwargs)
         self.serializer = PricingToolSerializer(kwargs)
         self._opportunities_qs = self.filter.apply(
-            self._get_opportunity_queryset())
+            self._get_opportunity_queryset(user))
         self.estimate_tool = PricingToolEstimate(
             kwargs, self.get_opportunities_queryset())
 
     @classmethod
-    def get_filters(cls):
-        return PricingToolFiltering.get_filters()
+    def get_filters(cls, user=None):
+        return PricingToolFiltering.get_filters(user=user)
 
     @property
     def estimate(self):
         return self.estimate_tool.estimate()
 
-    def get_opportunities_data(self, opportunities):
-        return self.serializer.get_opportunities_data(opportunities)
+    def get_opportunities_data(self, opportunities, user):
+        return self.serializer.get_opportunities_data(opportunities, user)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')
@@ -58,8 +52,8 @@ class PricingTool:
             end=max(d for _, d in periods or [(None, None)])
         )
 
-    def _get_opportunity_queryset(self):
-        return Opportunity.objects.have_campaigns() \
+    def _get_opportunity_queryset(self, user):
+        return Opportunity.objects.have_campaigns(user=user) \
             .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
             .order_by("-aw_budget")
 

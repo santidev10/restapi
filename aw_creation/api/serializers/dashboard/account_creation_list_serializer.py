@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from functools import reduce
 
 from django.db.models import Case
 from django.db.models import Count
@@ -9,10 +10,11 @@ from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Q
 from django.db.models import Sum
+from django.db.models import Value
 from django.db.models import When
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import \
-    SerializerMethodField, BooleanField
+from rest_framework.serializers import SerializerMethodField
 
 from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.models import AccountCreation
@@ -31,11 +33,9 @@ from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
-from aw_reporting.utils import safe_max
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
-from utils.registry import registry
 from utils.serializers import ExcludeFieldsMixin
 from utils.serializers.fields import ParentDictValueField
 from utils.serializers.fields import StatField
@@ -63,28 +63,23 @@ PLAN_STATS_ANNOTATION = dict(
 )
 
 PLAN_RATES_ANNOTATION = dict(
-    plan_cpm=F("cpm_total_cost") / F("cpm_ordered_units") * 1000,
-    plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
-)
-
-FLIGHTS_AGGREGATIONS = dict(
-    cpv_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="total_cost"))),
-    cpm_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="total_cost"))),
-    cpv_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="ordered_units"))),
-    cpm_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="ordered_units")))
+    plan_cpm=Case(When(
+        cpm_ordered_units__gt=0,
+        then=F("cpm_total_cost") / F("cpm_ordered_units") * 1000),
+        default=Value(None),
+        output_field=FloatField()
+    ),
+    plan_cpv=Case(When(
+        cpv_ordered_units__gt=0,
+        then=F("cpv_total_cost") / F("cpv_ordered_units")),
+        default=Value(None),
+        output_field=FloatField()
+    )
 )
 
 
 class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
-    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creations__id"
+    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creation__id"
     FLIGHT_ACCOUNT_ID_KEY = "placement__adwords_campaigns__" + CAMPAIGN_ACCOUNT_ID_KEY
     is_changed = BooleanField()
     name = SerializerMethodField()
@@ -93,7 +88,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     start = SerializerMethodField()
     end = SerializerMethodField()
     is_disapproved = SerializerMethodField()
-    status = SerializerMethodField()
     cost_method = SerializerMethodField()
     updated_at = SerializerMethodField()
     # analytic data
@@ -111,7 +105,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     keyword_count = StruckField()
     # opportunity data
     brand = SerializerMethodField()
-    agency = SerializerMethodField()
+    sf_account = SerializerMethodField()
 
     average_cpv = StatField()
     average_cpm = StatField()
@@ -125,18 +119,40 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     class Meta:
         model = AccountCreation
         fields = (
-            "id", "name", "start", "end", "account", "status",
-            "thumbnail", "is_changed", "weekly_chart",
-            # delivered stats
-            "clicks", "cost", "impressions", "video_views", "video_view_rate",
-            "ad_count", "channel_count", "video_count", "interest_count",
-            "topic_count", "keyword_count", "is_disapproved", "updated_at",
-            "brand", "agency", "cost_method", "average_cpv",
-            "average_cpm", "ctr", "ctr_v", "plan_cpm",
-            "plan_cpv"
+            "account",
+            "ad_count",
+            "average_cpm",
+            "average_cpv",
+            "brand",
+            "channel_count",
+            "clicks",
+            "cost",
+            "cost_method",
+            "ctr",
+            "ctr_v",
+            "end",
+            "id",
+            "impressions",
+            "interest_count",
+            "is_changed",
+            "is_disapproved",
+            "keyword_count",
+            "name",
+            "plan_cpm",
+            "plan_cpv",
+            "sf_account",
+            "start",
+            "thumbnail",
+            "topic_count",
+            "updated_at",
+            "video_count",
+            "video_view_rate",
+            "video_views",
+            "weekly_chart",
         )
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs["context"]["request"].user
         super(DashboardAccountCreationListSerializer, self).__init__(*args, **kwargs)
         self._filter_fields()
         self.settings = {}
@@ -182,7 +198,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        show_client_cost = not registry.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
+        show_client_cost = not self.user.get_aw_settings().get(UserSettingsKey.DASHBOARD_AD_WORDS_RATES)
         campaign_filter = {
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
@@ -200,12 +216,23 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **base_stats_aggregator())
-        sf_data_annotated = Flight.objects.filter(**flight_filter) \
-            .values(self.FLIGHT_ACCOUNT_ID_KEY) \
-            .order_by(self.FLIGHT_ACCOUNT_ID_KEY) \
-            .annotate(**FLIGHTS_AGGREGATIONS)
-        sf_data_by_acc = {i[self.FLIGHT_ACCOUNT_ID_KEY]: i
-                          for i in sf_data_annotated}
+        flights = Flight.objects.filter(**flight_filter) \
+            .distinct() \
+            .annotate(account_creation_id=F("placement__adwords_campaigns__account__account_creation__id"),
+                      goal_type_id=F("placement__goal_type_id"))
+
+        def accumulate(res, item):
+            acc_data = res[item.account_creation_id]
+            if item.goal_type_id == SalesForceGoalType.CPV:
+                acc_data["cpv_total_cost"] += item.total_cost or 0
+                acc_data["cpv_ordered_units"] += item.ordered_units or 0
+            elif item.goal_type_id == SalesForceGoalType.CPM:
+                acc_data["cpm_total_cost"] += item.total_cost or 0
+                acc_data["cpm_ordered_units"] += item.ordered_units or 0
+            res[item.account_creation_id] = acc_data
+            return res
+
+        sf_data_by_acc = reduce(accumulate, flights, defaultdict(lambda: defaultdict(lambda: 0)))
         for account_data in data:
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             dict_norm_base_stats(account_data)
@@ -213,17 +240,15 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
             if show_client_cost:
                 cost = account_client_cost[account_id]
-                sf_data_for_acc = sf_data_by_acc.get(account_id) or dict()
-                cpv_total_costs = sf_data_for_acc.get("cpv_total_costs") or 0
-                cpm_total_costs = sf_data_for_acc.get("cpm_total_costs") or 0
-                cpv_ordered_units = sf_data_for_acc.get(
-                    "cpv_ordered_units") or 0
-                cpm_ordered_units = sf_data_for_acc.get(
-                    "cpm_ordered_units") or 0
+                sf_data_for_acc = sf_data_by_acc[account_id]
+                cpv_total_costs = sf_data_for_acc["cpv_total_cost"]
+                cpm_total_costs = sf_data_for_acc["cpm_total_cost"]
+                cpv_ordered_units = sf_data_for_acc["cpv_ordered_units"]
+                cpm_ordered_units = sf_data_for_acc["cpm_ordered_units"]
                 average_cpv = cpv_total_costs / cpv_ordered_units \
-                    if cpv_ordered_units else None
+                    if cpv_ordered_units > 0 else None
                 average_cpm = cpm_total_costs * 1000 / cpm_ordered_units \
-                    if cpm_ordered_units else None
+                    if cpm_ordered_units > 0 else None
                 account_data["cost"] = cost
                 account_data["average_cpm"] = average_cpm
                 account_data["average_cpv"] = average_cpv
@@ -231,7 +256,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return stats
 
     def _get_plan_rates(self, account_creation_ids):
-        account_creation_ref = "adwords_campaigns__account__account_creations__id"
+        account_creation_ref = "adwords_campaigns__account__account_creation__id"
         keys = list(PLAN_RATES_ANNOTATION.keys())
         stats = OpPlacement.objects \
             .filter(**{account_creation_ref + "__in": account_creation_ids}) \
@@ -288,10 +313,10 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
         daily_chart = defaultdict(list)
-        account_id_key = "ad_group__campaign__account__account_creations__id"
+        account_id_key = "ad_group__campaign__account__account_creation__id"
         group_by = (account_id_key, "date")
         daily_stats = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(*group_by).order_by(*group_by).annotate(
             views=Sum("video_views")
         )
@@ -302,9 +327,9 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_video_ads_data(self, account_creation_ids):
         ids = account_creation_ids
-        group_key = "ad_group__campaign__account__account_creations__id"
+        group_key = "ad_group__campaign__account__account_creation__id"
         video_creative_stats = VideoCreativeStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(group_key, "creative_id").order_by(group_key,
                                                     "creative_id").annotate(
             impressions=Sum("impressions"))
@@ -315,18 +340,10 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return video_ads_data
 
     def _fields_to_exclude(self):
-        user = registry.user
+        user = self.user
         if user.get_aw_settings().get(UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN):
             return "average_cpv", "average_cpm", "plan_cpm", "plan_cpv", "cost"
         return tuple()
-
-    def get_status(self, obj):
-        if obj.is_ended:
-            return obj.STATUS_ENDED
-        if obj.is_paused:
-            return obj.STATUS_PAUSED
-        if obj.sync_at or not obj.is_managed:
-            return obj.STATUS_RUNNING
 
     @staticmethod
     def get_name(obj):
@@ -371,19 +388,17 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
-        if obj.account is not None:
-            return safe_max(
-                (obj.account.update_time, obj.account.hourly_updated_at))
+        return obj.account.update_time if obj.account else None
 
     def get_brand(self, obj: AccountCreation):
         opportunity = self._get_opportunity(obj)
         return opportunity.brand if opportunity is not None else None
 
-    def get_agency(self, obj):
+    def get_sf_account(self, obj):
         opportunity = self._get_opportunity(obj)
-        if opportunity is None or opportunity.agency is None:
+        if opportunity is None or opportunity.account is None:
             return None
-        return opportunity.agency.name
+        return opportunity.account.name
 
     def get_cost_method(self, obj):
         opportunity = self._get_opportunity(obj)
@@ -392,10 +407,9 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return list(opportunity.goal_types)
 
     def _get_opportunity(self, obj):
-        opportunities = Opportunity.objects.filter(
-            placements__adwords_campaigns__account__account_creations=obj)
-        if opportunities.count() > 1:
-            logger.warning(
-                "AccountCreation (id: ) has more then one opportunity".format(
-                    obj.id))
+        opportunities = Opportunity.objects.filter(placements__adwords_campaigns__account__account_creation=obj) \
+            .distinct()
+        opp_count = opportunities.count()
+        if opp_count > 1:
+            logger.warning("AccountCreation (id: {}) has more then one opportunity ({})".format(obj.id, opp_count))
         return opportunities.first()

@@ -5,19 +5,13 @@ from itertools import product
 from unittest.mock import patch
 
 import pytz
-from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_creation.models import AdCreation
-from aw_creation.models import AdGroupCreation
-from aw_creation.models import CampaignCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import AWConnection
-from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -29,16 +23,20 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
+from userprofile.constants import UserSettingsKey
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
         return reverse(
-            RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.ACCOUNT_DETAILS,
-            args=(account_creation_id,))
+            Name.Analytics.ACCOUNT_DETAILS,
+            [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
+            args=(account_creation_id,),
+        )
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
@@ -62,6 +60,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "interest_count",
         "is_changed",
         "is_disapproved",
+        "is_editable",
         "is_managed",
         "keyword_count",
         "name",
@@ -98,11 +97,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.user = self.create_test_user()
 
     def test_success_get(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="", is_managed=False, owner=self.user,
             account=account, is_approved=True)
@@ -140,11 +136,6 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data['details']['ad_network'], ad_network)
 
     def test_success_get_no_account(self):
-        # add a connection not to show demo data
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.user)
         account_creation = AccountCreation.objects.create(
             name="", owner=self.user, sync_at=timezone.now())
         account = Account.objects.create(id=1, name="")
@@ -182,33 +173,10 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             data["details"]['delivery_trend'][1]['label'], "Views")
 
-    def test_success_get_demo_data(self):
-        account_creation = AccountCreation.objects.create(
-            name="Name 123", owner=self.user)
-        campaign_creation = CampaignCreation.objects.create(
-            name="", account_creation=account_creation)
-        ad_group_creation = AdGroupCreation.objects.create(
-            name="", campaign_creation=campaign_creation)
-        ad_creation = AdCreation.objects.create(
-            name="", ad_group_creation=ad_group_creation,
-            video_thumbnail="https://f.i/123.jpeg")
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(data['id'], account_creation.id)
-        self.assertEqual(data['name'], account_creation.name)
-        self.assertEqual(data['status'], account_creation.status)
-        self.assertEqual(data['thumbnail'], ad_creation.video_thumbnail)
-        self.assertIsNotNone(data['impressions'])
-
     def test_updated_at(self):
         test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.user)
-        account = Account.objects.create(update_time=test_time)
+        account = Account.objects.create(update_time=test_time,
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="Name 123", account=account,
             is_approved=True, owner=self.user)
@@ -228,11 +196,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], None)
 
     def test_average_cpm_and_cpv(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.request_user)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -255,11 +219,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["average_cpv"], average_cpv)
 
     def test_plan_cpm_and_cpv(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.request_user)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user, is_approved=True)
         account_creation.refresh_from_db()
@@ -288,11 +248,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(response.data["plan_cpv"], expected_cpv)
 
     def test_ctr_and_ctr_v(self):
-        AWConnectionToUserRelation.objects.create(
-            # user must have a connected account not to see demo data
-            connection=AWConnection.objects.create(
-                email="me@mail.kz", refresh_token=""), user=self.request_user)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -335,11 +291,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         Flight.objects.create(id=4, placement=placement_cpv,
                               total_cost=total_cost_cpv[1],
                               ordered_units=ordered_units_cpv[1])
-        AWConnectionToUserRelation.objects.create(
-            connection=AWConnection.objects.create(email="me@mail.kz",
-                                                   refresh_token=""),
-            user=self.request_user)
-        account = Account.objects.create()
+        account = Account.objects.create(skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             id=1, account=account, owner=self.request_user,
             is_approved=True)
@@ -373,3 +325,37 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertEqual(response.data["id"], account_creation.id)
                 self.assertIsNone(response.data[key])
+
+    def test_no_demo_data(self):
+        account = Account.objects.create(id=next(int_iterator))
+        AccountCreation.objects.filter(account=account).update(owner=self.user)
+        Campaign.objects.create(id=next(int_iterator), account=account)
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        item = response.data
+        stats = (
+            "clicks",
+            "cost",
+            "impressions",
+            "video_views",
+        )
+        rates = (
+            "average_cpm",
+            "average_cpv",
+            "ctr",
+            "ctr_v",
+            "plan_cpm",
+            "plan_cpv",
+            "video_view_rate",
+        )
+        for key in stats:
+            self.assertEqual(item[key], 0, key)
+        for key in rates:
+            self.assertIsNone(item[key])

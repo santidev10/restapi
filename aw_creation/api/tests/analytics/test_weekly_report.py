@@ -10,9 +10,12 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import Account, Campaign
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
-from utils.utils_tests import ExtendedAPITestCase, int_iterator, reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
@@ -25,7 +28,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_success(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account)
@@ -92,7 +96,8 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
     def test_demo_data(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator))
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(owner=user,
                                                           is_managed=False,
                                                           account=account)

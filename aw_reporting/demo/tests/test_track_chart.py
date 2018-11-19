@@ -7,8 +7,8 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):

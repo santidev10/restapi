@@ -20,8 +20,8 @@ from aw_reporting.models import User
 from aw_reporting.models import UserRole
 from email_reports.models import SavedEmail
 from email_reports.reports.daily_campaign_report import OpportunityManager
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
-from utils.utils_tests import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class SendDailyEmailsTestCase(APITestCase):
@@ -181,7 +181,7 @@ class SendDailyEmailsTestCase(APITestCase):
         account = Account.objects.create(id="12341")
         Campaign.objects.create(salesforce_placement=placement, account=account)
         test_host = "https://host.test"
-        expected_account_link = "{host}/dashboard/{account_id}/?should_redirect=true" \
+        expected_account_link = "{host}/analytics/managed_service/{account_id}/?should_redirect=true" \
             .format(host=test_host, account_id=account.id)
 
         with patch_now(now), override_settings(HOST=test_host):

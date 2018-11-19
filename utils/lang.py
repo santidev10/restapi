@@ -1,5 +1,6 @@
+from enum import Enum
 from functools import reduce
-from typing import List
+from typing import Sequence
 
 
 def flatten(l):
@@ -13,14 +14,21 @@ def safe_index(l, item, default=None):
         return default
 
 
-def pick_dict(item: dict, keys: List[str]):
+def pick_dict(item: dict, keys: Sequence[str]) -> dict:
     return {key: value
             for key, value in item.items()
             if key in keys}
 
 
-def deep_getattr(obj, attr, default=None):
-    try:
-        return reduce(getattr, attr.split("."), obj)
-    except AttributeError:
-        return default
+class ExtendedEnum(Enum):
+    @classmethod
+    def values(cls):
+        return (item.value for item in cls)
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls.values()
+
+
+def merge_dicts(*dicts):
+    return reduce(lambda res, item: {**res, **item}, dicts, {})

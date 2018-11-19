@@ -9,7 +9,7 @@ from aw_reporting.models import OpPlacement, Flight, Opportunity, Campaign, \
 from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
     SalesForceGoalType
 from aw_reporting.salesforce import Connection
-from utils.utils_tests import patch_now
+from utils.utittests.patch_now import patch_now
 
 
 class BrowseSalesforceDataTestCase(TransactionTestCase):

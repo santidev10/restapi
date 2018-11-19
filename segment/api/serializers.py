@@ -1,13 +1,12 @@
 """
 Segment api serializers module
 """
+from rest_framework.serializers import CharField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
-from rest_framework.serializers import CharField
 
-from segment.models.utils import count_segment_adwords_statistics
 from singledb.connector import SingleDatabaseApiConnector
 
 
@@ -108,6 +107,6 @@ class SegmentSerializer(ModelSerializer):
             sdb_connector.post_channels(self.ids_to_create)
             segment.add_related_ids(self.ids_to_create)
         if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create)):
-            segment.update_statistics(segment)
+            segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
         return segment

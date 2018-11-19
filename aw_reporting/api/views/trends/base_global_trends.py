@@ -3,11 +3,13 @@ from django.conf import settings
 from aw_reporting.models import Account
 
 
-def get_account_queryset():
+def get_account_queryset(user):
     global_trends_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-    queryset = Account.objects \
-        .filter(managers__id=global_trends_account_id,
-                can_manage_clients=False) \
+    queryset = Account.objects.get_queryset_for_user(user)
+
+    queryset = queryset.filter(
+        managers__id=global_trends_account_id,
+        can_manage_clients=False) \
         .order_by("name")
     return queryset
 

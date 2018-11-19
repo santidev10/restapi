@@ -1,8 +1,13 @@
 from functools import wraps
 
-from django.db.models import Sum, Case, When, IntegerField, F
+from django.db.models import Case
+from django.db.models import F
+from django.db.models import IntegerField
+from django.db.models import Sum
+from django.db.models import When
 
-from aw_reporting.models.ad_words.constants import QUARTILE_STATS, CONVERSIONS
+from aw_reporting.models.ad_words.constants import CONVERSIONS
+from aw_reporting.models.ad_words.constants import QUARTILE_STATS
 
 
 def get_average_cpv(*args, **kwargs):
@@ -142,9 +147,6 @@ def dict_add_calculated_stats(data):
                 for data_key, fn_key in kwargs_map
             ))
         )
-        # kwargs = dict(((fn_key, data.get(data_key))
-        #                for data_key, fn_key in kwargs_map))
-
         data[n] = None if None in args else rec(*args, **kwargs)
 
 
@@ -185,7 +187,7 @@ def base_stats_aggregator(prefix=None):
         ),
         sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"),
-        sum_cost=Sum("cost")
+        sum_cost=Sum("cost"),
     )
 
 
@@ -207,18 +209,12 @@ client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
     *CLIENT_COST_REQUIRED_FIELDS, prefix="ad_group__campaign__"
 )
 
-# fixme: deprecated
-base_stats_aggregate = base_stats_aggregator()
 
-
-def all_stats_aggregator():
+def all_stats_aggregator(prefix=None):
     res = {"sum_{}".format(s): Sum(s)
            for s in QUARTILE_STATS + CONVERSIONS}
-    res.update(base_stats_aggregator())
+    res.update(base_stats_aggregator(prefix))
     return res
-
-
-all_stats_aggregate = all_stats_aggregator()
 
 
 def dict_norm_base_stats(data):

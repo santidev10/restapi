@@ -1,13 +1,13 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
 from django.utils import timezone
 
 from aw_reporting.models import *
-# pylint: disable=import-error
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
-# pylint: enable=import-error
-from userprofile.models import UserSettingsKey
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.constants import UserSettingsKey
+from utils.lang import pick_dict
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ DEMO_AD_GROUPS = (
 TOTAL_DEMO_AD_GROUPS_COUNT = len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT
 DEMO_BRAND = "Demo Brand"
 DEMO_COST_METHOD = ["CPM", "CPV"]
-DEMO_AGENCY = "Initiative LA"
+DEMO_SF_ACCOUNT = "Initiative LA"
 
 IMPRESSIONS = 150000
 VIDEO_VIEWS = 53000
@@ -76,6 +76,9 @@ class BaseDemo:
 
     def __getitem__(self, name):
         return getattr(self, name)
+
+    def get(self, attr):
+        return self[attr]
 
     video_criteria = dict(
         is_safe=True,
@@ -634,6 +637,26 @@ class DemoAdGroup(BaseDemo):
         )
         return data
 
+    @property
+    def clicks_call_to_action_overlay(self):
+        return 1
+
+    @property
+    def clicks_website(self):
+        return 2
+
+    @property
+    def clicks_app_store(self):
+        return 3
+
+    @property
+    def clicks_cards(self):
+        return 4
+
+    @property
+    def clicks_end_cap(self):
+        return 5
+
 
 class DemoCampaign(BaseDemo):
     type = "Video"
@@ -725,6 +748,15 @@ class DemoCampaign(BaseDemo):
 
 
 class DemoAccount(BaseDemo):
+    plan_cost = 2500000
+    plan_impressions = 242600000
+    plan_video_views = 21600000
+    clicks_website = 110
+    clicks_call_to_action_overlay = 50
+    clicks_app_store = 15
+    clicks_cards = 13
+    clicks_end_cap = 7
+
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
         self.children = [DemoCampaign(id="demo{}".format(i + 1),
@@ -817,58 +849,126 @@ class DemoAccount(BaseDemo):
         return details
 
     @property
-    def overview(self):
+    def overview_data(self):
         data = dict(
-            age=[dict(name=e, value=i + 1)
-                 for i, e in enumerate(reversed(AgeRanges))],
-            gender=[dict(name=e, value=i + 1)
-                    for i, e in enumerate(Genders)],
-            device=[dict(name=e, value=i + 1)
-                    for i, e in enumerate(reversed(Devices))],
-            location=[dict(name=e['label'], value=i + 1)
-                      for i, e in enumerate(reversed(self.location))][:6],
-            clicks=self.clicks,
-            clicks_this_week=self.clicks_this_week,
-            clicks_last_week=self.clicks_last_week,
-            cost=self.cost,
-            cost_this_week=self.cost_this_week,
-            cost_last_week=self.cost_last_week,
-            impressions=self.impressions,
-            impressions_this_week=self.impressions_this_week,
-            impressions_last_week=self.impressions_last_week,
-            video_views=self.video_views,
-            video_views_this_week=self.video_views_this_week,
-            video_views_last_week=self.video_views_last_week,
-            ctr=self.ctr,
-            ctr_top=self.ctr_top,
-            ctr_bottom=self.ctr_bottom,
-            ctr_v=self.ctr_v,
-            ctr_v_top=self.ctr_v_top,
-            ctr_v_bottom=self.ctr_v_bottom,
+            age=[dict(name=e, value=i + 1) for i, e in enumerate(reversed(AgeRanges))],
+            all_conversions=self.all_conversions,
             average_cpm=self.average_cpm,
             average_cpv=self.average_cpv,
-            average_cpv_top=self.average_cpv_top,
             average_cpv_bottom=self.average_cpv_bottom,
-            video_view_rate=self.video_view_rate,
-            video_view_rate_top=self.video_view_rate_top,
-            video_view_rate_bottom=self.video_view_rate_bottom,
+            average_cpv_top=self.average_cpv_top,
+            clicks=self.clicks,
+            clicks_last_week=self.clicks_last_week,
+            clicks_this_week=self.clicks_this_week,
+            conversions=self.conversions,
+            cost=self.cost,
+            cost_last_week=self.cost_last_week,
+            cost_this_week=self.cost_this_week,
+            ctr=self.ctr,
+            ctr_bottom=self.ctr_bottom,
+            ctr_top=self.ctr_top,
+            ctr_v=self.ctr_v,
+            ctr_v_bottom=self.ctr_v_bottom,
+            ctr_v_top=self.ctr_v_top,
+            delivered_cost=self.cost,
+            delivered_impressions=self.impressions,
+            delivered_video_views=self.video_views,
+            device=[dict(name=e, value=i + 1) for i, e in enumerate(reversed(Devices))],
+            gender=[dict(name=e, value=i + 1) for i, e in enumerate(Genders)],
+            has_statistics=True,
+            impressions=self.impressions,
+            impressions_last_week=self.impressions_last_week,
+            impressions_this_week=self.impressions_this_week,
+            location=[dict(name=e['label'], value=i + 1) for i, e in enumerate(reversed(self.location))][:6],
+            plan_cost=self.plan_cost,
+            plan_impressions=self.plan_impressions,
+            plan_video_views=self.plan_video_views,
             video100rate=self.video100rate,
             video25rate=self.video25rate,
             video50rate=self.video50rate,
             video75rate=self.video75rate,
-            conversions=self.conversions,
-            all_conversions=self.all_conversions,
-            view_through=self.view_through,
-            delivered_video_views=None,
-            delivered_impressions=None,
-            plan_video_views=None,
-            plan_cost=None,
-            delivered_cost=None,
-            plan_impressions=None,
             video_clicks=None,
-            has_statistics=True,
+            video_view_rate=self.video_view_rate,
+            video_view_rate_bottom=self.video_view_rate_bottom,
+            video_view_rate_top=self.video_view_rate_top,
+            video_views=self.video_views,
+            video_views_last_week=self.video_views_last_week,
+            video_views_this_week=self.video_views_this_week,
+            view_through=self.view_through,
         )
         return data
+
+    _overview_keys_shared = {
+        "age",
+        "all_conversions",
+        "average_cpm",
+        "average_cpv",
+        "clicks",
+        "conversions",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "delivered_cost",
+        "delivered_impressions",
+        "delivered_video_views",
+        "device",
+        "gender",
+        "has_statistics",
+        "impressions",
+        "location",
+        "plan_cost",
+        "plan_impressions",
+        "plan_video_views",
+        "video100rate",
+        "video25rate",
+        "video50rate",
+        "video75rate",
+        "video_clicks",
+        "video_view_rate",
+        "video_views",
+        "view_through",
+    }
+    _overview_keys_dashboard = _overview_keys_shared
+    _overview_keys_analytics = _overview_keys_shared | {
+        "average_cpv_bottom",
+        "average_cpv_top",
+        "clicks_last_week",
+        "clicks_this_week",
+        "cost_last_week",
+        "cost_this_week",
+        "ctr_bottom",
+        "ctr_top",
+        "ctr_v_bottom",
+        "ctr_v_top",
+        "impressions_last_week",
+        "impressions_this_week",
+        "video_view_rate_bottom",
+        "video_view_rate_top",
+        "video_views_last_week",
+        "video_views_this_week",
+    }
+
+    @property
+    def campaign(self):
+        return [
+            dict(
+                id=campaign.id,
+                label=campaign.name,
+            )
+            for campaign in self.children
+        ]
+
+    @property
+    def overview(self):
+        return [dict(id=self.id, label=self.name)]
+
+    @property
+    def overview_analytics(self):
+        return pick_dict(self.overview_data, self._overview_keys_analytics)
+
+    @property
+    def overview_dashboard(self):
+        return pick_dict(self.overview_data, self._overview_keys_dashboard)
 
     @property
     def _base_header_data(self):
@@ -886,85 +986,103 @@ class DemoAccount(BaseDemo):
         chart_lines = charts_obj.chart_lines(new_demo, filters)
 
         data = dict(
-            id=self.id,
             account=self.id,
-            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
-            name=self.name,
-            status="Running",
-            start=self.start_date,
-            end=self.end_date,
-            is_changed=False,
-            is_managed=True,
-            weekly_chart=chart_lines[0]['trend'],
-            video_view_rate=self.video_view_rate,
-            impressions=self.impressions,
-            video_views=self.video_views,
-            cost=self.cost,
-            clicks=self.clicks,
-            ctr=self.ctr,
-            ctr_v=self.ctr_v,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
-            channel_count=12,
-            video_count=12,
-            interest_count=10,
-            topic_count=8,
-            keyword_count=8,
-            is_disapproved=False,
-            from_aw=False,
-            updated_at=None,
             average_cpm=10,
             average_cpv=.10782609,
+            brand=DEMO_BRAND,
+            channel_count=12,
+            clicks=self.clicks,
+            clicks_app_store=100,
+            clicks_call_to_action_overlay=250,
+            clicks_cards=110,
+            clicks_end_cap=140,
+            clicks_website=350,
+            cost=self.cost,
+            cost_method=DEMO_COST_METHOD,
+            ctr=self.ctr,
+            ctr_v=self.ctr_v,
+            end=self.end_date,
+            from_aw=False,
+            id=self.id,
+            impressions=self.impressions,
+            interest_count=10,
+            is_changed=False,
+            is_disapproved=False,
+            is_editable=True,
+            is_managed=True,
+            keyword_count=8,
+            name=self.name,
             plan_cpm=11,
             plan_cpv=.3,
+            sf_account=DEMO_SF_ACCOUNT,
+            start=self.start_date,
+            status="Running",
+            thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
+            topic_count=8,
+            updated_at=None,
+            video_count=12,
+            video_view_rate=self.video_view_rate,
+            video_views=self.video_views,
+            weekly_chart=chart_lines[0]['trend'],
         )
         return data
+
+    _shared_keys = {
+        "account",
+        "ad_count",
+        "average_cpm",
+        "average_cpv",
+        "channel_count",
+        "clicks",
+        "cost",
+        "ctr",
+        "ctr_v",
+        "end",
+        "id",
+        "impressions",
+        "interest_count",
+        "is_changed",
+        "is_disapproved",
+        "keyword_count",
+        "name",
+        "plan_cpm",
+        "plan_cpv",
+        "start",
+        "thumbnail",
+        "topic_count",
+        "updated_at",
+        "video_count",
+        "video_view_rate",
+        "video_views",
+        "weekly_chart",
+    }
+    _dashboard_specific_keys = {
+        "brand",
+        "clicks_app_store",
+        "clicks_call_to_action_overlay",
+        "clicks_cards",
+        "clicks_end_cap",
+        "clicks_website",
+        "cost_method",
+        "sf_account",
+    }
+    _analytics_specific_keys = {
+        "from_aw",
+        "is_editable",
+        "is_managed",
+        "status",
+    }
 
     @property
     def header_data_analytics(self):
-        data = self._base_header_data
-        return data
+        keys = list(self._shared_keys | self._analytics_specific_keys)
+        return pick_dict(self._base_header_data, keys)
 
     @property
     def header_data_dashboard(self):
-        data = self._base_header_data
-        data.update(dict(
-            brand=DEMO_BRAND,
-            cost_method=DEMO_COST_METHOD,
-            agency=DEMO_AGENCY,
-        ))
-        return data
-
-    @property
-    def account_details(
-            self):  # TODO: remove this after we get rid of Track page
-        from aw_reporting.demo.charts import DemoChart
-        filters = dict(
-            start_date=self.today - timedelta(days=7),
-            end_date=self.today - timedelta(days=1),
-            indicator="video_views",
-        )
-        new_demo = DemoAccount()
-        new_demo.set_period_proportion(filters['start_date'],
-                                       filters['end_date'])
-        charts_obj = DemoChart(new_demo, filters)
-        chart_lines = charts_obj.chart_lines(new_demo, filters)
-
-        data = dict(
-            id=self.id,
-            name=self.name,
-            account_creation=self.id,
-            end=self.end_date,
-            start=self.start_date,
-            status="Eligible",
-            weekly_chart=chart_lines[0]['trend'],
-            clicks=self.clicks,
-            cost=self.cost,
-            impressions=self.impressions,
-            video_views=self.video_views,
-            video_view_rate=self.video_view_rate,
-            ctr_v=self.ctr_v,
-        )
-        return data
+        keys = list(self._shared_keys | self._dashboard_specific_keys)
+        return pick_dict(self._base_header_data, keys)
 
     @property
     def creation_details(self):

@@ -8,6 +8,8 @@ __pycache__/
 # C extensions
 *.so
 
+.DS_Store
+
 # Distribution / packaging
 .Python
 env/
@@ -54,6 +56,8 @@ coverage.xml
 
 # Django stuff:
 *.log
+logs/*
+!logs/.gitkeep
 local_settings.py
 
 # Flask stuff:
@@ -98,5 +102,9 @@ ENV/
 media
 dump.rdb
 iq_errors.*
-/aw_reporting/settings/instance.yml
-/aw_reporting/settings/test_instance.yml
+
+*.pid
+
+locks/*
+!locks/.gitkeep
+/docker-compose.override.yml

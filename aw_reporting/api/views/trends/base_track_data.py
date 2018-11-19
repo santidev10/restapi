@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 
+from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.api.views.trends.base_track import TrackApiBase
-from aw_reporting.charts import DeliveryChart
 
 
 class BaseTrackDataApiView(TrackApiBase):
@@ -25,7 +25,7 @@ class BaseTrackDataApiView(TrackApiBase):
         chart = DeliveryChart(
             visible_accounts,
             additional_chart=False,
-            always_aw_costs=True,
+            show_aw_costs=True,
             **filters
         )
         data = chart.get_account_segmented_data()

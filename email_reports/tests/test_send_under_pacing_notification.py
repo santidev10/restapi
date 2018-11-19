@@ -3,12 +3,11 @@ from datetime import timedelta
 from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
-from django.utils import timezone
 
 from aw_reporting.models import User, Opportunity, OpPlacement, \
     SalesForceGoalType, Flight, Account, Campaign, CampaignStatistic
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):

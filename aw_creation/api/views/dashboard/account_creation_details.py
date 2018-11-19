@@ -12,7 +12,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_creation.api.serializers import DashboardAccountCreationListSerializer
+from aw_creation.api.serializers.dashboard.account_creation_details_serializer import \
+    DashboardAccountCreationDetailsSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroupStatistic
@@ -27,7 +28,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import dict_quartiles_to_rates
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.permissions import UserHasDashboardPermission
 
@@ -42,7 +43,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
         account_creation = self._get_account_creation(request, pk)
         if account_creation is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        data = DashboardAccountCreationListSerializer(account_creation, context={"request": request}).data
+        data = DashboardAccountCreationDetailsSerializer(account_creation, context={"request": request}).data
         show_conversions = self.request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
         data["details"] = self.get_details_data(account_creation, show_conversions)
         return Response(data=data)

@@ -5,6 +5,7 @@ from django.core.mail import EmailMultiAlternatives
 
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
 
@@ -39,11 +40,12 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         msg = EmailMultiAlternatives(
             self._get_subject(opportunity),
             self._build_body(opportunity, flights_with_pacing, date_end),
-            settings.EMAIL_HOST_USER,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             to=self._get_to(opportunity),
             cc=self._get_cc(opportunity),
             bcc=self.get_bcc(),
-            headers={'X-Priority': 2}
+            headers={'X-Priority': 2},
+            reply_to="",
         )
         msg.send(fail_silently=False)
 
@@ -61,7 +63,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         )
         flights_with_pacing = [
             dict(
-                pacing=pacing_report.get_pacing_from_flights([flight]),
+                pacing=get_pacing_from_flights([flight]),
                 flight=flight
             ) for flight in flights_data
         ]

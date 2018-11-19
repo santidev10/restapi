@@ -1,15 +1,20 @@
-from datetime import datetime, timedelta
-
 import pytz
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 from django.utils import timezone
 
-from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
-    Account, Campaign, CampaignStatistic, Flight
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.registry import current_user
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):
@@ -58,9 +63,11 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
     def test_ended_opportunity(self):
         today = datetime.now()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today - timedelta(days=2)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(
             id='1', name="", start=start, end=end, probability=100
         )
@@ -71,8 +78,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
         Flight.objects.create(
             id="1", name="", placement=placement, start=start, end=end, total_cost=10, ordered_units=100,
         )
+        account = Account.objects.create(timezone=tz, update_time=last_update)
         campaign = Campaign.objects.create(
-            id="1", name="", salesforce_placement=placement, video_views=102,
+            id="1", account=account, name="", salesforce_placement=placement, video_views=102,
         )
         CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=102)
 
@@ -170,9 +178,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
         }
         user = self.create_test_user()
         user.aw_settings.update(**user_settings)
-        with current_user(user):
-            report = PacingReport()
-            opportunities = report.get_opportunities(dict())
+        report = PacingReport()
+        opportunities = report.get_opportunities(dict(), user=user)
         self.assertEqual(len(opportunities), 1)
         opportunity_data = opportunities[0]
         self.assertEqual(opportunity_data['id'], opportunity1.id)
@@ -199,6 +206,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
 
         report = PacingReport()
+
         flights = report.get_flights(placement)
         self.assertEqual(len(flights), 1)
         self.assertEqual(flights[0]['today_budget'], 0)
@@ -290,8 +298,10 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = now_in_default_tz().date()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
-        user = self.create_test_user()
+        self.create_test_user()
         opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
@@ -306,8 +316,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
             start=yesterday - timedelta(days=1), end=yesterday + timedelta(days=8), ordered_units=2000,
         )
 
-        campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, video_views=700,
-                                           account=Account.objects.create(id="1", name=""))
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(id="1", account=account,
+                                           salesforce_placement=placement, video_views=700)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
 
         report = PacingReport()
@@ -324,11 +335,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         :return:
         """
         today = now_in_default_tz().date()
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         opportunity = Opportunity.objects.create(id='1', name="", start=today, end=today, probability=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,  # CPV
+            goal_type_id=SalesForceGoalType.CPV,
         )
         Flight.objects.create(
             id="1", name="100 units/day and 500units up today", placement=placement,
@@ -339,8 +352,9 @@ class PacingReportTestCase(ExtendedAPITestCase):
             start=yesterday - timedelta(days=1), end=yesterday + timedelta(days=8), ordered_units=2000,
         )
 
-        campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, video_views=700,
-                                           account=Account.objects.create(id="1", name=""))
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(id="1", salesforce_placement=placement, video_views=700,
+                                           account=account)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
 
         report = PacingReport()

@@ -15,18 +15,6 @@ def registry(key, value=None):
     return _registry[key]
 
 
-def rated_pages():
-    history = registry('history')
-    pages = {}
-    for path in history:
-        if path not in pages:
-            pages[path] = 0
-        pages[path] += 1
-
-    return sorted(pages.items(),
-                  key=lambda x: -x[1])[:settings.CACHE_PAGES_LIMIT]
-
-
 def cache_reset():
     keys = registry('keys')
     for key in keys.keys():
@@ -60,8 +48,10 @@ def cached_view_decorator(method):
             response = method(self=self, request=request, *args, **kwargs)
             if isinstance(response, Response) and response.status_code < 300:
                 response['X-Cached-Content'] = False
-                cached_response = {'data': response.data,
-                                   'status': response.status_code}
+                cached_response = {
+                    'data': response.data,
+                    'status': response.status_code
+                }
                 cache.set(key, cached_response, settings.CACHE_TIMEOUT)
             else:
                 skip_caching = True
@@ -91,11 +81,13 @@ def cached_view_decorator(method):
         cache_reset()
         return method(self, *args, **kwargs)
 
-    wrapped = {'get': wrapped_get,
-               'get_for_exportable': wrapped_get,
-               'put': wrapped_put_update,
-               'post': wrapped_put_update,
-               'delete': wrapped_put_update}
+    wrapped = {
+        'get': wrapped_get,
+        'get_for_exportable': wrapped_get,
+        'put': wrapped_put_update,
+        'post': wrapped_put_update,
+        'delete': wrapped_put_update
+    }
 
     assert method.__name__ in wrapped, \
         "Unsupported method name: '{}'".format(method.__name__)

@@ -18,20 +18,16 @@ from rest_framework.serializers import SerializerMethodField
 from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
-from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
-from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import base_stats_aggregator
-from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
-from aw_reporting.utils import safe_max
 from utils.db.aggregators import ConcatAggregate
 from utils.lang import pick_dict
 from utils.serializers import ExcludeFieldsMixin
@@ -65,24 +61,9 @@ PLAN_RATES_ANNOTATION = dict(
     plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
 )
 
-FLIGHTS_AGGREGATIONS = dict(
-    cpv_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="total_cost"))),
-    cpm_total_costs=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="total_cost"))),
-    cpv_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPV,
-             then="ordered_units"))),
-    cpm_ordered_units=Sum(Case(
-        When(placement__goal_type_id=SalesForceGoalType.CPM,
-             then="ordered_units")))
-)
-
 
 class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin):
-    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creations__id"
+    CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creation__id"
     FLIGHT_ACCOUNT_ID_KEY = "placement__adwords_campaigns__" + CAMPAIGN_ACCOUNT_ID_KEY
     is_changed = BooleanField()
     name = SerializerMethodField()
@@ -95,6 +76,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     status = CharField()
     updated_at = SerializerMethodField()
     is_managed = BooleanField()
+    is_editable = SerializerMethodField()
     # analytic data
     impressions = StatField()
     video_views = StatField()
@@ -129,7 +111,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "topic_count", "keyword_count", "is_disapproved", "updated_at",
             "from_aw", "average_cpv",
             "average_cpm", "ctr", "ctr_v", "plan_cpm",
-            "plan_cpv"
+            "plan_cpv", "is_editable",
         )
 
     def __init__(self, *args, **kwargs):
@@ -140,6 +122,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.plan_rates = {}
         self.struck = {}
         self.daily_chart = defaultdict(list)
+        self.user = kwargs.get("context").get("request").user
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -155,34 +138,14 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             self.daily_chart = self._get_daily_chart(ids)
             self.video_ads_data = self._get_video_ads_data(ids)
 
-    def _get_client_cost_by_account(self, campaign_filter):
-        account_client_cost = defaultdict(float)
-        campaigns_with_cost = Campaign.objects.filter(**campaign_filter) \
-            .values(self.CAMPAIGN_ACCOUNT_ID_KEY, "impressions", "video_views") \
-            .annotate(aw_cost=F("cost"),
-                      start=F("start_date"), end=F("end_date"),
-                      **client_cost_campaign_required_annotation)
-
-        keys_to_extract = ("goal_type_id", "total_cost", "ordered_rate",
-                           "aw_cost", "dynamic_placement", "placement_type",
-                           "tech_fee", "impressions", "video_views",
-                           "start", "end")
-
-        for campaign_data in campaigns_with_cost:
-            account_id = campaign_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
-            kwargs = {key: campaign_data.get(key) for key in keys_to_extract}
-            client_cost = get_client_cost(**kwargs)
-            account_client_cost[account_id] = account_client_cost[account_id] \
-                                              + client_cost
-        return dict(account_client_cost)
-
     def _get_stats(self, account_creation_ids):
         stats = {}
         campaign_filter = {
             self.CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
 
-        data = Campaign.objects.filter(**campaign_filter) \
+        data = Campaign.objects \
+            .filter(**campaign_filter) \
             .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
@@ -197,7 +160,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         return stats
 
     def _get_plan_rates(self, account_creation_ids):
-        account_creation_ref = "adwords_campaigns__account__account_creations__id"
+        account_creation_ref = "adwords_campaigns__account__account_creation__id"
         keys = list(PLAN_RATES_ANNOTATION.keys())
         stats = OpPlacement.objects \
             .filter(**{account_creation_ref + "__in": account_creation_ids}) \
@@ -254,10 +217,10 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
         daily_chart = defaultdict(list)
-        account_id_key = "ad_group__campaign__account__account_creations__id"
+        account_id_key = "ad_group__campaign__account__account_creation__id"
         group_by = (account_id_key, "date")
         daily_stats = AdGroupStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(*group_by).order_by(*group_by).annotate(
             views=Sum("video_views")
         )
@@ -268,9 +231,9 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
 
     def _get_video_ads_data(self, account_creation_ids):
         ids = account_creation_ids
-        group_key = "ad_group__campaign__account__account_creations__id"
+        group_key = "ad_group__campaign__account__account_creation__id"
         video_creative_stats = VideoCreativeStatistic.objects.filter(
-            ad_group__campaign__account__account_creations__id__in=ids
+            ad_group__campaign__account__account_creation__id__in=ids
         ).values(group_key, "creative_id").order_by(group_key,
                                                     "creative_id").annotate(
             impressions=Sum("impressions"))
@@ -323,15 +286,7 @@ class AnalyticsAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             return self.stats.get(obj.id, {}).get("end")
 
     def get_updated_at(self, obj: AccountCreation):
-        if obj.account is not None:
-            return safe_max(
-                (obj.account.update_time, obj.account.hourly_updated_at))
+        return obj.account.update_time if obj.account else None
 
-    def _get_opportunity(self, obj):
-        opportunities = Opportunity.objects.filter(
-            placements__adwords_campaigns__account__account_creations=obj)
-        if opportunities.count() > 1:
-            logger.warning(
-                "AccountCreation (id: ) has more then one opportunity".format(
-                    obj.id))
-        return opportunities.first()
+    def get_is_editable(self, obj):
+        return obj.owner == self.user

@@ -3,41 +3,31 @@ Userprofile models module
 """
 import logging
 
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, \
-    UserManager
+from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import UserManager
 from django.contrib.postgres.fields import JSONField
 from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import SET_NULL
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
+from userprofile.constants import UserSettingsKey
+from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import PermissionHandler
 from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
 
-class UserSettingsKey:
-    DASHBOARD_CAMPAIGNS_SEGMENTED = "dashboard_campaigns_segmented"
-    DASHBOARD_AD_WORDS_RATES = "dashboard_ad_words_rates"
-    DEMO_ACCOUNT_VISIBLE = "demo_account_visible"
-    HIDE_REMARKETING = "dashboard_remarketing_tab_is_hidden"
-    DASHBOARD_COSTS_ARE_HIDDEN = "dashboard_costs_are_hidden"
-    SHOW_CONVERSIONS = "show_conversions"
-    VISIBLE_ACCOUNTS = "visible_accounts"
-    VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
-    HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
-    GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
-
-
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: False,
@@ -46,6 +36,18 @@ def get_default_settings():
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
     }
+
+
+def get_default_accesses(via_google=False):
+    default_accesses_group_names = [
+        PermissionGroupNames.HIGHLIGHTS,
+        PermissionGroupNames.RESEARCH,
+        PermissionGroupNames.MEDIA_PLANNING,
+        PermissionGroupNames.FORECASTING,
+    ]
+    if not via_google:
+        default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
+    return default_accesses_group_names
 
 
 class UserProfileManager(UserManager):
@@ -105,6 +107,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     facebook_id = models.CharField(max_length=255, null=True, blank=True)
     is_password_generated = models.BooleanField(default=False)
     google_account_id = models.CharField(null=True, blank=True, max_length=255)
+    logo = models.CharField(null=True, blank=True, max_length=255)
 
     # professional info
     vertical = models.CharField(max_length=200, null=True, blank=True)
@@ -121,10 +124,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     is_subscribed_to_campaign_notifications = models.BooleanField(default=True)
 
     aw_settings = JSONField(default=get_default_settings)
-    historical_aw_account = models.ForeignKey(AWConnectionToUserRelation,
-                                              null=True, default=None,
-                                              related_name="user_aw_historical",
-                                              on_delete=SET_NULL)
+
+    user_type = models.CharField(max_length=255, blank=True, null=True)
+    annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
+    synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
 
     objects = UserProfileManager()
 
@@ -181,6 +184,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     @property
     def access(self):
         return self.groups.values('name')
+
+    @property
+    def logo_url(self):
+        logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
+        return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
 
 
 class UserChannel(Timestampable):

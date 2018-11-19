@@ -25,13 +25,21 @@ class Name:
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
 
+    class ForecastTool:
+        ESTIMATE = "forecast_tool_estimate"
+        FILTERS = "forecast_tool_filters"
+
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
 
     class AWAccounts:
         LIST = "connect_aw_account_list"
-        ACCOUNT = "connect_aw_account"
+        CONNECTION_LIST = "connect_aw_account"
         CONNECTION = "aw_account_connection"
 
     class WebHook:
         ACCOUNTS_LIST = "webhook_accounts_list"
+
+    class HealthCheck:
+        LIST = "health_check_tool_list"
+        FILTERS = "health_check_tool_filters"

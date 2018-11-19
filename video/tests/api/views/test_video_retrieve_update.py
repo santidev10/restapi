@@ -1,15 +1,32 @@
 import json
 from unittest.mock import patch
 
-from django.contrib.auth.models import Group
-from rest_framework.reverse import reverse
+import requests
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from saas.urls.namespaces import Namespace
+from userprofile.permissions import Permissions
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.response import MockResponse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.reverse import reverse
+from video.api.urls.names import Name
 
 
 class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(VideoRetrieveUpdateTestSpec, cls).setUpClass()
+        Permissions.sync_groups()
+
+    def _get_url(self, video_id):
+        return reverse(
+            Name.VIDEO,
+            [Namespace.VIDEO],
+            args=(video_id,),
+        )
+
     def test_professional_user_should_see_video_aw_data(self):
         """
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
@@ -18,15 +35,23 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
 
         self.fill_all_groups(user)
 
-        with open('saas/fixtures/singledb_video_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             data = json.load(data_file)
         video_id = data["items"][0]["id"]
 
-        url = reverse("video_api_urls:video",
-                      args=(video_id,))
+        url = self._get_url(video_id)
         with patch("video.api.views.Connector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("aw_data", response.data)
+
+    def test_404_if_no_video(self):
+        self.create_test_user()
+        missing_video_id = "some_id"
+
+        url = self._get_url(missing_video_id)
+        with patch.object(requests, "get", return_value=MockResponse(HTTP_404_NOT_FOUND)):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

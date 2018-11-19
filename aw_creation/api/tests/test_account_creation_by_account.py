@@ -6,8 +6,8 @@ from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation
 from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
+from userprofile.constants import UserSettingsKey
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
@@ -79,7 +79,8 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
-        account = Account.objects.create(id="account_id")
+        account = Account.objects.create(id="account_id",
+                                                 skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(id="ac_cr_id",
                                                           account=account,
                                                           owner=user)
@@ -93,26 +94,3 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["id"], account_creation.id)
-
-    def test_success_creates_account_creation(self):
-        user = self.create_test_user()
-        account = Account.objects.create(id="account_id")
-        self.assertEqual(AccountCreation.objects.all().count(), 0)
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
-        url = self._get_url(account_id=account.id)
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        account_creation = AccountCreation.objects \
-            .filter(id=response.data["id"]).first()
-
-        self.assertIsNotNone(account_creation)
-        self.assertEqual(account_creation.owner, user)
-        self.assertEqual(account_creation.account, account)
-        self.assertEqual(account_creation.name, "")
-        self.assertFalse(account_creation.is_managed)

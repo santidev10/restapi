@@ -1,27 +1,41 @@
 import json
-from datetime import datetime, timedelta, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import urlencode
 
-from django.core.urlresolvers import reverse
 from django.test import override_settings
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
+from aw_reporting.analytics_charts import Breakdown
+from aw_reporting.analytics_charts import Indicator
+from aw_reporting.analytics_charts import TrendId
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import TrendId, Indicator, Breakdown
-from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
-    CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic, User, \
-    Opportunity, OpPlacement, SalesForceGoalType
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignHourlyStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher, int_iterator, generic_test
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.GlobalTrends.CHARTS)
+    url = reverse(Name.GlobalTrends.CHARTS, [Namespace.AW_REPORTING])
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -244,7 +258,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def test_success_dimension_channel(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_channel_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_channel_list.json") as fd:
             data = json.load(fd)
             channel_ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -267,7 +281,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
@@ -278,7 +292,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
 
     def test_success_dimension_video(self):
         today = datetime.now().date()
-        with open("saas/fixtures/singledb_video_list.json") as fd:
+        with open("saas/fixtures/tests/singledb_video_list.json") as fd:
             data = json.load(fd)
             ids = [i['id'] for i in data['items']]
         test_days = 10
@@ -301,7 +315,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher), \
              override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
@@ -644,6 +658,32 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             self.assertEqual(len(historical_cpv), 1)
             item = historical_cpv[0]
             self.assertAlmostEqual(item["value"], expected_cpv)
+
+    @generic_test([
+        ("Global account visibility is ON", (True, True), dict()),
+        ("Global account visibility is OFF", (False, False), dict()),
+    ])
+    def test_global_account_visibility(self, global_account_visibility, is_none):
+        account = self.account
+        manager = account.managers.first()
+        any_date = date(2018, 1, 1)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, date=any_date, video_views=1, cost=1,
+                                        average_position=1)
+        filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
+        url = "{}?{}".format(self.url, urlencode(filters))
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        }
+        with self.patch_user_settings(**user_settings), \
+             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            trend = get_trend(response.data, TrendId.HISTORICAL)
+            if is_none:
+                self.assertIsNone(trend)
+            else:
+                self.assertIsNotNone(trend)
 
 
 def get_trend(data, uid):

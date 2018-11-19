@@ -6,20 +6,20 @@ from django.test import testcases
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from channel.actions import remove_auth_channel
-from utils.utils_tests import TestUserMixin, MockResponse
 from userprofile.models import UserProfile, UserChannel
+from utils.utittests.test_case import TestUserMixin
+from utils.utittests.response import MockResponse
 
 
 class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
-    @patch("channel.api.views.requests")
-    def test_remove_auth_channel(self, requests_mock):
-        user = self.create_test_user(True)
-        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+    def test_remove_auth_channel(self):
+        user = self.create_test_user()
+        with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel_id = channels["items"][0]["id"]
         channel = UserChannel.objects.create(channel_id=channel_id, user=user)
 
-        with patch("channel.api.views.Connector.delete_channel_test") \
+        with patch("channel.api.views.channel_set.Connector.delete_channel_test") \
                 as delete_mock:
             remove_auth_channel(user.email)
 
@@ -28,11 +28,10 @@ class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
         self.assertFalse(UserProfile.objects.filter(pk=user.pk).exists())
         self.assertFalse(UserChannel.objects.filter(pk=channel.pk).exists())
 
-    @patch("channel.api.views.requests")
-    def test_remove_success_on_404_from_sdb(self, requests_mock):
-        user = self.create_test_user(True)
+    def test_remove_success_on_404_from_sdb(self):
+        user = self.create_test_user()
         response = MockResponse(HTTP_404_NOT_FOUND)
-        with open('saas/fixtures/singledb_channel_list.json') as data_file:
+        with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
             channels = json.load(data_file)
         channel_id = channels["items"][0]["id"]
         channel = UserChannel.objects.create(channel_id=channel_id, user=user)

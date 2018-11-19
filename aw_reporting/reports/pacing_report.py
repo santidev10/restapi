@@ -1,19 +1,19 @@
 from collections import defaultdict
 from datetime import timedelta
-from math import ceil
-
 from django.contrib.auth import get_user_model
 from django.db.models import Case
 from django.db.models import F
 from django.db.models import FloatField
+from django.db.models import Max
 from django.db.models import Q
 from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.http import QueryDict
+from math import ceil
 
-from aw_reporting.calculations.margin import get_days_run_and_total_days
 from aw_reporting.calculations.margin import get_margin_from_flights
+from aw_reporting.calculations.margin import get_minutes_run_and_total_minutes
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -46,6 +46,30 @@ class DefaultRate:
     CPV = .04
 
 
+FLIGHT_FIELDS = (
+    "cost",
+    "end",
+    "id",
+    "name",
+    "ordered_units",
+    "placement__dynamic_placement",
+    "placement__goal_type_id",
+    "placement__opportunity__budget",
+    "placement__opportunity__cannot_roll_over",
+    "placement__opportunity_id",
+    "placement__ordered_rate",
+    "placement__ordered_rate",
+    "placement__placement_type",
+    "placement__tech_fee",
+    "placement__tech_fee_type",
+    "placement__total_cost",
+    "placement_id",
+    "start",
+    "timezone",
+    "total_cost",
+    "update_time",
+)
+
 DELIVERY_FIELDS = ("yesterday_delivery", "video_views", "sum_cost",
                    "video_impressions", "impressions", "yesterday_cost",
                    "video_clicks", "clicks", "delivery", "video_cost")
@@ -75,21 +99,6 @@ class PacingReport:
             title=self.__class__.__name__,
             timestamp=self.today.strftime("%Y%m%d"),
         )
-
-    def get_goal_items_factor(self, budget):
-        """
-        Add 2(or 1)% to overall views goal which would trickle down
-        to the lower levels (placements, flights, etc.)
-        :param budget:
-        :return:
-        """
-        if budget > self.big_budget_border:
-            return self.big_goal_factor
-        else:
-            return self.goal_factor
-
-    def get_days_run_and_total_days(self, f):
-        return get_days_run_and_total_days(f, self.yesterday)
 
     def get_flights_delivery_annotate(self):
         flights_delivery_annotate = dict(
@@ -190,8 +199,7 @@ class PacingReport:
             sum_cost=Sum(
                 Case(
                     When(
-                        ~Q(
-                            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE),
+                        ~Q(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE),
                         then=F(
                             "placement__adwords_campaigns__statistics__cost"),
 
@@ -221,17 +229,7 @@ class PacingReport:
         group_by = ("id", campaign_id_key)
 
         annotate = self.get_flights_delivery_annotate()
-        flight_fields = (
-            "id", "name", "start", "end", "total_cost", "ordered_units",
-            "cost", "placement_id",
-            "placement__goal_type_id", "placement__placement_type",
-            "placement__opportunity_id",
-            "placement__opportunity__cannot_roll_over",
-            "placement__opportunity__budget",
-            "placement__dynamic_placement", "placement__ordered_rate",
-            "placement__tech_fee", "placement__tech_fee_type",
-            "placement__total_cost", "placement__ordered_rate"
-        )
+        
         raw_data = queryset.values(
             *group_by  # segment by campaigns
         ).order_by(*group_by).annotate(**annotate)
@@ -239,8 +237,15 @@ class PacingReport:
             start__isnull=False,
             end__isnull=False,
             **filters
+        ).annotate(
+            update_time=Case(
+                When(placement__placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+                     then=Value(now_in_default_tz())),
+                default=Max("placement__adwords_campaigns__account__update_time")
+            ),
+            timezone=Max("placement__adwords_campaigns__account__timezone"),
         ).values(
-            *flight_fields)
+            *FLIGHT_FIELDS)
 
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
@@ -248,9 +253,10 @@ class PacingReport:
             fl_data = data[row["id"]]
             fl_data["campaigns"] = fl_data.get("campaigns") or {}
 
-            fl_data["campaigns"][
-                row[campaign_id_key]
-            ] = {k: row.get(k) or 0 for k in DELIVERY_FIELDS}
+            fl_data["campaigns"][row[campaign_id_key]] = {
+                k: row.get(k) or 0
+                for k in DELIVERY_FIELDS
+            }
 
             for f in DELIVERY_FIELDS:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
@@ -302,8 +308,7 @@ class PacingReport:
                 diff = f["delivery"] - f["plan_units"]
                 if diff > 0:  # over-delivery
                     over_delivery += diff
-                elif diff < 0 and f[
-                    "end"] <= self.yesterday:  # under delivery for an ended flight
+                elif diff < 0 and f["end"] <= self.yesterday:  # under delivery for an ended flight
                     # if we have an ended under-delivered flight,
                     # it can consume his under-delivery from the total over-delivery amount
                     abs_diff = abs(diff)
@@ -404,10 +409,10 @@ class PacingReport:
             if dynamic_placement in ALL_DYNAMIC_PLACEMENTS:
                 sum_spent_cost += aw_cost
             elif placement_type == OpPlacement.OUTGOING_FEE_TYPE:
-                days_run, total_days = self.get_days_run_and_total_days(f)
-                if days_run and total_days and f["cost"]:
+                minutes_run, total_minutes = get_minutes_run_and_total_minutes(f)
+                if minutes_run and total_minutes and f["cost"]:
                     cost = f["cost"] or 0
-                    sum_spent_cost += cost * days_run / total_days
+                    sum_spent_cost += cost * minutes_run / total_minutes
 
             elif goal_type_id == SalesForceGoalType.CPV:
                 plan_video_views = (plan_video_views or 0) + plan_units
@@ -438,32 +443,6 @@ class PacingReport:
             current_cost_limit=current_cost_limit
         )
         return result
-
-    def get_pacing_from_flights(self, flights, allocation_ko=1,
-                                campaign_id=None):
-        goal_type_ids = list(set(f["placement__goal_type_id"] for f in flights))
-        dynamic_placements = list(
-            set(f["placement__dynamic_placement"] for f in flights))
-        if len(goal_type_ids) == 1 \
-                and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
-                and len(dynamic_placements) == 1 and \
-                dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
-            pacing = 1
-        else:
-            units_by_yesterday = sum_delivery = 0
-            for f in flights:
-                if f["placement__placement_type"] == OpPlacement.OUTGOING_FEE_TYPE:
-                    continue
-                stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
-                    if campaign_id else f
-                sum_delivery += stats["delivery"] or 0
-                days_run, total_days = self.get_days_run_and_total_days(f)
-                if days_run and total_days:
-                    plan_units = f["plan_units"] * allocation_ko
-                    units_by_yesterday += plan_units * days_run / total_days
-            pacing = sum_delivery / units_by_yesterday \
-                if units_by_yesterday else None
-        return pacing
 
     def get_margin_from_flights(self, flights, cost, plan_cost,
                                 allocation_ko=1, campaign_id=None):
@@ -528,8 +507,8 @@ class PacingReport:
         )
 
     # ## OPPORTUNITIES ## #
-    def get_opportunities(self, get):
-        queryset = self.get_opportunities_queryset(get)
+    def get_opportunities(self, get, user=None):
+        queryset = self.get_opportunities_queryset(get, user)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -606,7 +585,7 @@ class PacingReport:
             plan_stats = self.get_plan_stats_from_flights(flights)
             o.update(plan_stats)
 
-            o["pacing"] = self.get_pacing_from_flights(flights)
+            o["pacing"] = get_pacing_from_flights(flights)
             o["margin"] = self.get_margin_from_flights(flights, o["cost"],
                                                        o["current_cost_limit"])
 
@@ -637,13 +616,14 @@ class PacingReport:
 
         return opportunities
 
-    def get_opportunities_queryset(self, get):
+    def get_opportunities_queryset(self, get, user):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
             get = query_dict_get
 
-        queryset = Opportunity.objects.filter(probability=100)
+        queryset = Opportunity.objects.get_queryset_for_user(user) \
+            .filter(probability=100)
 
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
@@ -670,6 +650,7 @@ class PacingReport:
         if category:
             queryset = queryset.filter(
                 category_id__in=category)
+        # fixme: remove Opportunity.goal_type_id
         goal_type = get.getlist("goal_type")
         if goal_type:
             queryset = queryset.filter(
@@ -844,7 +825,7 @@ class PacingReport:
             plan_stats = self.get_plan_stats_from_flights(flights)
             p.update(plan_stats)
 
-            p["pacing"] = self.get_pacing_from_flights(flights)
+            p["pacing"] = get_pacing_from_flights(flights)
             p["margin"] = self.get_margin_from_flights(flights, p["cost"],
                                                        p["current_cost_limit"])
 
@@ -897,7 +878,7 @@ class PacingReport:
             delivery_stats = self.get_delivery_stats_from_flights(f_data)
             flight.update(delivery_stats)
 
-            flight["pacing"] = self.get_pacing_from_flights(f_data)
+            flight["pacing"] = get_pacing_from_flights(f_data)
             flight["margin"] = self.get_margin_from_flights(f_data,
                                                             flight["cost"],
                                                             flight["current_cost_limit"])
@@ -953,7 +934,7 @@ class PacingReport:
                                                                   c["id"])
             c.update(delivery_stats)
 
-            c["pacing"] = self.get_pacing_from_flights(flights_data, **kwargs)
+            c["pacing"] = get_pacing_from_flights(flights_data, **kwargs)
             c["margin"] = self.get_margin_from_flights(flights_data, c["cost"],
                                                        c["current_cost_limit"],
                                                        **kwargs)
@@ -1277,6 +1258,33 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
             )
         )
     return charts
+
+
+def get_pacing_from_flights(flights, allocation_ko=1,
+                            campaign_id=None):
+    goal_type_ids = list(set(flight["placement__goal_type_id"] for flight in flights))
+    dynamic_placements = list(
+        set(flight["placement__dynamic_placement"] for flight in flights))
+    if len(goal_type_ids) == 1 \
+            and goal_type_ids[0] == SalesForceGoalType.HARD_COST \
+            and len(dynamic_placements) == 1 and \
+            dynamic_placements[0] == DynamicPlacementType.SERVICE_FEE:
+        pacing = 1
+    else:
+        total_planned_units = sum_delivery = 0
+        for f in flights:
+            if f["placement__placement_type"] == OpPlacement.OUTGOING_FEE_TYPE:
+                continue
+            stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
+                if campaign_id else f
+            sum_delivery += stats["delivery"] or 0
+            minutes_run, total_minutes = get_minutes_run_and_total_minutes(f)
+            if minutes_run and total_minutes:
+                plan_units = f["plan_units"] * allocation_ko
+                total_planned_units += plan_units * minutes_run / total_minutes
+        pacing = sum_delivery / total_planned_units \
+            if total_planned_units else None
+    return pacing
 
 
 def get_delivery_field_name(flight_dict):

@@ -7,7 +7,6 @@ from itertools import chain
 from itertools import product
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
 from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
@@ -15,7 +14,8 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.excel_reports import PerformanceReportColumn
+from aw_reporting.excel_reports.analytics_performance_report import PerformanceReportColumn
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -41,28 +41,32 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import int_iterator
+from userprofile.constants import UserSettingsKey
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def _get_url(self, account_creation_id):
-        return reverse(RootNamespace.AW_CREATION + ":" + Namespace.ANALYTICS + ":" + Name.Analytics.PERFORMANCE_EXPORT,
+        return reverse(Name.Analytics.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.ANALYTICS],
                        args=(account_creation_id,))
 
     def _request(self, account_creation_id, **kwargs):
         url = self._get_url(account_creation_id)
         return self.client.post(url, json.dumps(kwargs), content_type="application/json", )
 
-    def _hide_demo_data_fallback(self, user):
+    def _add_aw_connection(self, user):
         AWConnectionToUserRelation.objects.create(
             # user must have a connected account not to see demo data
             connection=AWConnection.objects.create(email="me@mail.kz",
                                                    refresh_token=""),
             user=user,
         )
+
+    def _hide_demo_data_fallback(self, user):
+        self._add_aw_connection(user)
 
     def _create_stats(self, account):
         campaign1 = Campaign.objects.create(id=1, name="#1", account=account)
@@ -77,7 +81,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                                    type="A"))
         creative, _ = VideoCreative.objects.get_or_create(id=1)
         city, _ = GeoTarget.objects.get_or_create(id=1, defaults=dict(
-            name="bobruisk"))
+            name="Babruysk"))
         ad = Ad.objects.create(id=1, ad_group=ad_group1)
         AdStatistic.objects.create(ad=ad, average_position=1, **base_stats)
 
@@ -109,7 +113,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_success(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -121,7 +126,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             start_date=str(today - timedelta(days=1)),
             end_date=str(today)
         )
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id, **filters)
             sheet = get_sheet_from_response(response)
@@ -141,14 +146,15 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_report_is_xlsx_formatted(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -161,14 +167,15 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
     def test_report_percent_formatted(self):
         user = self.create_test_user()
         self._hide_demo_data_fallback(user)
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.charts.SingleDatabaseApiConnector",
+        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -192,7 +199,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self._hide_demo_data_fallback(user)
         any_date = date(2018, 1, 1)
         user.add_custom_user_permission("view_dashboard")
-        account = Account.objects.create(id=next(int_iterator), name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -219,21 +227,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
         self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
 
-    def test_demo_data_fallback(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("view_dashboard")
-        account = Account.objects.create(id=1, name="")
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_managed=False,
-                                                          account=account,
-                                                          is_approved=True)
-
-        campaign_name = "Test campaign"
-        Campaign.objects.create(name=campaign_name)
-
-        response = self._request(account_creation.id)
-        self.assert_demo_data(response)
-
     def test_ignores_hide_costs(self):
         user = self.create_test_user()
         any_date = date(2018, 1, 1)
@@ -242,7 +235,8 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(opportunity=opportunity, ordered_rate=.2, total_cost=23,
                                                goal_type_id=SalesForceGoalType.CPM)
 
-        account = Account.objects.create(id=next(int_iterator), name="")
+        account = Account.objects.create(id=next(int_iterator), name="",
+                                         skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_managed=False,
                                                           account=account,
@@ -267,6 +261,23 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]
         self.assertTrue(all([length == len(expected_headers) for length in row_lengths]))
+
+    def test_success_for_linked_account(self):
+        user = self.create_test_user()
+        self._add_aw_connection(user)
+        manager = Account.objects.create(id=next(int_iterator))
+        AWAccountPermission.objects.create(aw_connection=user.aw_connections.first().connection,
+                                           account=manager)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        account.save()
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
 
 def get_sheet_from_response(response):

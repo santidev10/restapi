@@ -1,14 +1,25 @@
-from django.db.models import Sum, When, Case, Value, F, FloatField
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
+
+import pytz
+from django.conf import settings
+from django.db.models import Case
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import SalesForceGoalType, Flight, \
-    get_margin
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import get_margin
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from utils.datetime import now_in_default_tz
 
 
 def get_margin_from_flights(flights, cost, plan_cost,
                             allocation_ko=1, campaign_id=None):
-
     dynamic_placements = list(
         set(f["placement__dynamic_placement"] for f in flights)
     )
@@ -43,34 +54,24 @@ def get_margin_from_flights(flights, cost, plan_cost,
     return margin
 
 
-def margin_for_opportunity(opportunity):
-    flights = Flight.objects.filter(placement__opportunity=opportunity) \
-        .annotate(delivery=flight_delivery_annotate) \
-        .values(
-        "id", "name", "start", "end", "total_cost", "ordered_units",
-        "cost", "placement_id", "delivery",
-        "placement__goal_type_id", "placement__placement_type",
-        "placement__opportunity_id",
-        "placement__opportunity__cannot_roll_over",
-        "placement__opportunity__budget",
-        "placement__dynamic_placement", "placement__ordered_rate",
-        "placement__tech_fee", "placement__tech_fee_type",
-    )
-    cost = sum((f["cost"] or 0) for f in flights)
-    plan_cost = sum((f["total_cost"] or 0) for f in flights)
-    return get_margin_from_flights(flights, cost, plan_cost)
-
-
-def get_days_run_and_total_days(flight, yesterday):
-    days_run, total_days = None, None
-    start, end = flight["start"], flight["end"]
-    if start and end:
-        total_days = (end - start).days + 1
-        latest_day = end if end < yesterday else yesterday
-        days_run = (latest_day - start).days + 1
-        if days_run < 0:
-            days_run = 0
-    return days_run, total_days
+def get_minutes_run_and_total_minutes(flight):
+    minutes_run, total_minutes = None, None
+    start_date, end_date = flight["start"], flight["end"]
+    if all([start_date, end_date]):
+        timezone = pytz.timezone(flight["timezone"] or settings.DEFAULT_TIMEZONE)
+        start = datetime.combine(start_date, time.min).replace(tzinfo=timezone)
+        end = datetime.combine(end_date + timedelta(days=1), time.min).replace(tzinfo=timezone)
+        last_update = flight.get("update_time")
+        if last_update is not None:
+            last_update = last_update.astimezone(timezone)
+        else:
+            last_update = now_in_default_tz()
+        total_seconds = (end - start).total_seconds()
+        latest_datetime = end if end < last_update else last_update
+        seconds_run = max((latest_datetime - start).total_seconds(), 0)
+        total_minutes = total_seconds // 60
+        minutes_run = seconds_run // 60
+    return minutes_run, total_minutes
 
 
 in_flight_dates_criteria = dict(

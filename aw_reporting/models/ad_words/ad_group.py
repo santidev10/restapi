@@ -1,15 +1,15 @@
 from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
-from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
-from userprofile.managers import UserRelatedManager
+from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields, BaseClicksTypesStatisticsModel
+from userprofile.managers import UserRelatedManagerMixin
 
 
-class AdGroupManager(UserRelatedManager):
+class AdGroupManager(models.Manager, UserRelatedManagerMixin):
     _account_id_ref = "campaign__account_id"
 
 
-class AdGroup(ModelPlusDeNormFields):
+class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = AdGroupManager()
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)

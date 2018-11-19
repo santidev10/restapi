@@ -1,18 +1,32 @@
-from aw_reporting.models import KeywordStatistic, base_stats_aggregate
-from django.db.models import Count, ExpressionWrapper, Case, When, F, Value, FloatField
 from collections import defaultdict
+
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import ExpressionWrapper
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import Value
+from django.db.models import When
+
+from aw_reporting.models import AdGroup
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import base_stats_aggregator
 
 
 def get_keywords_aw_stats(accounts, keywords, fields=None):
     annotate = dict(
         campaigns_count=Count('ad_group__campaign_id', distinct=True),
-        **base_stats_aggregate
+        **base_stats_aggregator("ad_group__campaign__")
     )
     if fields:
         annotate = {k: v for k, v in annotate.items() if k in fields}
 
+    account_ids = accounts.values_list("id", flat=True)
+    ad_group_ids = AdGroup.objects.filter(campaign__account_id__in=account_ids)
+
     stats = KeywordStatistic.objects.filter(
-        ad_group__campaign__account__in=accounts, keyword__in=keywords,
+        ad_group_id__in=ad_group_ids,
+        keyword__in=keywords,
     ).values('keyword').order_by('keyword').annotate(**annotate)
     stats = {s['keyword']: s for s in stats}
     return stats
@@ -70,7 +84,7 @@ def get_keywords_aw_top_bottom_stats(accounts, keywords):
         ad_group__campaign__account__in=accounts,
         keyword__in=keywords,
     ).values("keyword", "date").order_by("keyword", "date").annotate(
-        **base_stats_aggregate
+        **base_stats_aggregator("ad_group__campaign__")
     ).annotate(**annotate)
 
     top_bottom_data = defaultdict(

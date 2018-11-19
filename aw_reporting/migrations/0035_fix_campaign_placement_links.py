@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 from django.db import migrations
 from django.db.models import F, OuterRef, Subquery
 
-from aw_reporting.tasks import extract_placement_code
+from aw_reporting.update.tasks.get_campaigns import extract_placement_code
 
 
 def _set_placement_code(apps, schema_editor):

@@ -1,14 +1,6 @@
-from datetime import timedelta, datetime
-from unittest.mock import patch
-
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import *
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
@@ -68,58 +60,6 @@ class AccountAPITestCase(AwReportingAPITestCase):
             ad_group_creation=ad_group_creation,
         )
         return account_creation
-
-    def test_success_fail_has_no_permission(self):
-        self.user.remove_custom_user_permission("view_media_buying")
-
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_duplicate",
-                      args=(ac.id,))
-
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_success_post(self):
-        today = datetime.now().date()
-        defaults = dict(
-            owner=self.user,
-            start=today,
-            end=today + timedelta(days=10),
-        )
-        ac = self.create_account_creation(**defaults)
-        url = reverse("aw_creation_urls:account_creation_duplicate",
-                      args=(ac.id,))
-
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertNotEqual(ac.id, data['id'])
-        self.perform_details_check(data)
-        self.assertEqual(data['name'], "Pep (1)")
-
-    def test_success_post_demo(self):
-        url = reverse("aw_creation_urls:account_creation_duplicate",
-                      args=(DEMO_ACCOUNT_ID,))
-        with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertNotEqual(DEMO_ACCOUNT_ID, data['id'])
-        self.perform_details_check(data)
-        self.assertEqual(data['name'], "Demo (1)")
 
     def perform_details_check(self, data):
         self.assertEqual(

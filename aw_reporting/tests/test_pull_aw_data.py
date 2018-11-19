@@ -2,18 +2,23 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from itertools import product
 from unittest.mock import ANY
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TransactionTestCase
+from django.test import override_settings
+from googleads.errors import AdWordsReportBadRequestError
 from pytz import timezone
 from pytz import utc
+from requests import HTTPError
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DateRangeType
@@ -46,12 +51,14 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.tasks import AudienceAWType, max_ready_datetime, max_ready_date, MIN_UPDATE_HOUR
-from aw_reporting.tasks import MIN_FETCH_DATE
-from utils.utils_tests import build_csv_byte_stream
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import patch_now
+from aw_reporting.update.tasks.get_interests import AudienceAWType
+from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
+from aw_reporting.update.tasks.utils.max_ready_date import max_ready_date
+from utils.filelock import FileLock
+from utils.utittests.csv import build_csv_byte_stream
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 
 
 class PullAWDataTestCase(TransactionTestCase):
@@ -61,7 +68,7 @@ class PullAWDataTestCase(TransactionTestCase):
             kwargs["end"] = "get_campaigns"
         call_command("pull_aw_data", **kwargs)
 
-    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None):
+    def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
                                              can_manage_clients=True,
                                              update_time=manager_update_time)
@@ -69,41 +76,55 @@ class PullAWDataTestCase(TransactionTestCase):
                                            aw_connection=AWConnection.objects.create(),
                                            can_read=True)
 
-        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time)
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, update_time=account_update_time,
+                                         **kwargs)
         account.managers.add(mcc_account)
         account.save()
         return account
+
+    def setUp(self):
+        self.acquire_mock = patch.object(FileLock, "acquire", return_value=None)
+        self.release_mock = patch.object(FileLock, "release", return_value=None)
+        self.acquire_mock.start()
+        self.release_mock.start()
+
+    def tearDown(self):
+        self.acquire_mock.stop()
+        self.release_mock.stop()
 
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
         account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1,
-                                           account=account,
-                                           de_norm_fields_are_recalculated=True,
-                                           start_date=today - timedelta(
-                                               days=5),
-                                           end_date=today + timedelta(days=5),
-                                           cost=1,
-                                           budget=1,
-                                           impressions=1,
-                                           video_views=1,
-                                           clicks=1)
+        campaign = Campaign.objects.create(
+            id=1,
+            account=account,
+            de_norm_fields_are_recalculated=True,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+            cost=1,
+            budget=1,
+            impressions=1,
+            video_views=1,
+            clicks=1
+        )
         costs = (2, 3)
         impressions = (4, 5)
         views = (6, 7)
         clicks = (8, 9)
+        cta_website = (10, 11)
         self.assertNotEqual(campaign.cost, sum(costs))
         self.assertNotEqual(campaign.impressions, sum(impressions))
         self.assertNotEqual(campaign.video_views, sum(views))
         self.assertNotEqual(campaign.clicks, sum(clicks))
         dates = (today - timedelta(days=2), today - timedelta(days=1))
         statistic = zip(dates, costs, impressions, views, clicks)
-        test_report_data = [
+        cta = zip(dates, cta_website)
+        test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
                 Cost=cost * 10 ** 6,
-                Date=str(date),
+                Date=str(dt),
                 StartDate=str(campaign.start_date),
                 EndDate=str(campaign.end_date),
                 Amount=campaign.budget * 10 ** 6,
@@ -119,14 +140,32 @@ class PullAWDataTestCase(TransactionTestCase):
                 VideoQuartile75Rate=0,
                 VideoQuartile100Rate=0,
             )
-            for date, cost, impressions, views, clicks in statistic
+            for dt, cost, impressions, views, clicks in statistic
         ]
 
-        fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
-        test_stream = build_csv_byte_stream(fields, test_report_data)
+        test_cta_data = [
+            dict(
+                CampaignId=campaign.id,
+                Date=str(dt),
+                Clicks=clicks,
+                ClickType="Website",
+            )
+            for dt, clicks in cta
+        ]
+
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        cta_fields = ("CampaignId", "Date", "Clicks", "ClickType")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        test_stream_cta = build_csv_byte_stream(cta_fields, test_cta_data)
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        def test_router(selector, *args, **kwargs):
+            if "ClickType" in selector["selector"]["fields"]:
+                return test_stream_cta
+            return test_stream_statistic
+
+        downloader_mock.DownloadReportAsStream = test_router
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
@@ -137,6 +176,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(campaign.impressions, sum(impressions))
         self.assertEqual(campaign.video_views, sum(views))
         self.assertEqual(campaign.clicks, sum(clicks))
+        self.assertEqual(campaign.clicks_website, sum(cta_website))
 
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -158,6 +198,7 @@ class PullAWDataTestCase(TransactionTestCase):
         clicks = (8, 9)
         engagements = (10, 11)
         active_view_impressions = (12, 13)
+        cta_website = (14, 15)
         self.assertNotEqual(ad_group.cost, sum(costs))
         self.assertNotEqual(ad_group.impressions, sum(impressions))
         self.assertNotEqual(ad_group.video_views, sum(views))
@@ -168,13 +209,14 @@ class PullAWDataTestCase(TransactionTestCase):
         dates = (today - timedelta(days=2), today - timedelta(days=1))
         statistic = zip(dates, costs, impressions, views, clicks, engagements,
                         active_view_impressions)
-        test_report_data = [
+        cta = zip(dates, cta_website)
+        test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
                 AdGroupId=ad_group.id,
                 AveragePosition=1,
                 Cost=cost * 10 ** 6,
-                Date=str(date),
+                Date=str(dt),
                 Impressions=impressions,
                 VideoViews=views,
                 Clicks=clicks,
@@ -189,14 +231,33 @@ class PullAWDataTestCase(TransactionTestCase):
                 Engagements=engs,
                 ActiveViewImpressions=avi,
             )
-            for date, cost, impressions, views, clicks, engs, avi in statistic
+            for dt, cost, impressions, views, clicks, engs, avi in statistic
+        ]
+        test_cta_data = [
+            dict(
+                AdGroupId=ad_group.id,
+                Date=str(dt),
+                Device=Devices[0],
+                Clicks=clicks,
+                ClickType="Website"
+            )
+            for dt, clicks in cta
         ]
 
-        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
-        test_stream = build_csv_byte_stream(fields, test_report_data)
+        statistics_fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+        cta_fields = ("AdGroupId", "Date", "Device", "Clicks", "ClickType")
+
+        test_statistic_stream = build_csv_byte_stream(statistics_fields, test_statistic_data)
+        test_cta_stream = build_csv_byte_stream(cta_fields, test_cta_data)
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader()
-        downloader_mock.DownloadReportAsStream.return_value = test_stream
+
+        def test_router(selector, *args, **kwargs):
+            if "ClickType" in selector["selector"]["fields"]:
+                return test_cta_stream
+            return test_statistic_stream
+
+        downloader_mock.DownloadReportAsStream = test_router
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
@@ -211,6 +272,7 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(ad_group.engagements, sum(engagements))
         self.assertEqual(ad_group.active_view_impressions,
                          sum(active_view_impressions))
+        self.assertEqual(ad_group.clicks_website, sum(cta_website))
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)
@@ -637,7 +699,6 @@ class PullAWDataTestCase(TransactionTestCase):
     def test_first_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         AdGroup.objects.create(id=1,
@@ -671,13 +732,11 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     def test_ad_group_update_requests_again_recent_statistic(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
-        # last_statistic_date = today - timedelta(weeks=54)
-        # request_start_date = last_statistic_date + timedelta(days=1)
         yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -713,14 +772,13 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(MIN_FETCH_DATE),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
         last_statistic_date = today - timedelta(weeks=54)
         request_start_date = last_statistic_date + timedelta(days=1)
-        yesterday = today - timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         ad_group = AdGroup.objects.create(id=1,
@@ -740,8 +798,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
-             patch("aw_reporting.aw_data_loader.get_web_app_client",
-                   return_value=aw_client_mock):
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
             self._call_command(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
@@ -755,13 +812,13 @@ class PullAWDataTestCase(TransactionTestCase):
         selector = payload["selector"]
         self.assertEqual(payload["dateRangeType"], DateRangeType.CUSTOM_DATE)
         self.assertEqual(selector["dateRange"], dict(min=date_formatted(request_start_date),
-                                                     max=date_formatted(yesterday)))
+                                                     max=date_formatted(today)))
 
     @generic_test([
-        ("Not updating before 6am", (time(5, 59), False), {}),
-        ("Updating at 6am", (time(6, 0), True), {}),
+        ("Updating 6am", (time(5, 59),), {}),
+        ("Updating at 6am", (time(6, 0),), {}),
     ])
-    def test_should_not_be_updated_until_6am(self, time_now, should_be_updated):
+    def test_should_not_be_updated_until_6am(self, time_now):
         test_timezone_str = "America/Los_Angeles"
         test_timezone = timezone(test_timezone_str)
         today = date(2018, 2, 2)
@@ -771,7 +828,7 @@ class PullAWDataTestCase(TransactionTestCase):
 
         now = datetime.combine(today, time_now).replace(tzinfo=test_timezone)
         now_utc = now.astimezone(tz=utc)
-        expected_update_time = (now_utc if should_be_updated else last_update)
+        expected_update_time = now_utc
 
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now_utc), \
@@ -804,44 +861,101 @@ class PullAWDataTestCase(TransactionTestCase):
         account.refresh_from_db()
         self.assertEqual(account.update_time.astimezone(utc), now)
 
-        expected_max_date = max_ready_date(now, test_timezone)
+        expected_max_date = max_ready_date(now, tz_str=account.timezone)
         for call in downloader_mock.DownloadReportAsStream.mock_calls:
             payload = call[1][0]
             selector = payload["selector"]
             self.assertEqual(selector.get("dateRange", {}).get("max"), date_formatted(expected_max_date),
                              payload["reportName"])
 
-    @generic_test([
-        ("time={}, timezone={}, update={}".format(*args), args, {})
-        for args in product(
-            (time.min, time(12), time.max),
-            ("Etc/GMT+10", "UTC", "Etc/GMT-10"),
-            (True, False)
-        )
-    ])
-    def test_aware_of_local_date_and_time(self, utc_time, timezone_str, should_update):
-        today = date(2018, 2, 3)
+    def test_pre_process_chf_account_has_account_creation(self):
+        chf_acc_id = "test_id"
+        self.assertFalse(Account.objects.all().exists())
+        self.assertFalse(AccountCreation.objects.all().exists())
+        test_response = [
+            dict(
+                customerId=chf_acc_id,
+                canManageClients=True,
+                testAccount=False,
+                descriptiveName="",
+                currencyCode="",
+                dateTimeZone="UTC",
+            ),
+        ]
+        mocked_client = MagicMock()
+        mocked_client.GetService().getCustomers.return_value = test_response
+        with override_settings(IS_TEST=False), \
+             patch("aw_reporting.adwords_api.get_client", return_value=mocked_client):
+            self._call_command(start="get_ads", end="get_campaigns")
 
-        now = datetime.combine(today, utc_time).replace(tzinfo=utc)
-        test_timezone = timezone(timezone_str)
-        local_time = now.astimezone(test_timezone)
+        self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
 
-        border_update_time = datetime.combine(max_ready_datetime(local_time).date(), time(MIN_UPDATE_HOUR)) \
-            .replace(tzinfo=test_timezone)
-        last_update = border_update_time - timedelta(milliseconds=1) if should_update else border_update_time
+    def test_creates_account_creation_for_customer_accounts(self):
+        self._create_account().delete()
+        test_account_id = next(int_iterator)
+        self.assertFalse(Account.objects.filter(id=test_account_id).exists())
 
-        should_update_computed = max_ready_date(last_update, test_timezone) < max_ready_date(now, test_timezone)
-        self.assertEqual(should_update, should_update_computed, "Invalid test data")
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="",
+                currencyCode="",
+                dateTimeZone="UTC",
+            ),
+        ]
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(start="get_ads", end="get_campaigns")
 
+        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
+        self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
+
+    def test_get_topics_success(self):
+        now = datetime(2018, 2, 3, 4, 5, tzinfo=utc)
+        today = now.date()
+        last_update = today - timedelta(days=3)
         aw_client_mock = MagicMock()
         downloader_mock = aw_client_mock.GetReportDownloader()
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream([], [])
-        account = self._create_account(tz=timezone_str, account_update_time=last_update)
-        expected_update_time = now if should_update else last_update.astimezone(utc)
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        AdGroupStatistic.objects.create(ad_group=ad_group, date=last_update, average_position=1)
+
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(start="get_campaigns", end="get_campaigns")
+            self._call_command(start="get_topics", end="get_topics")
 
         account.refresh_from_db()
-        self.assertEqual(account.update_time, expected_update_time)
+
+    def test_skip_inactive_account(self):
+        self._create_account(is_active=False)
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.return_value = build_csv_byte_stream([], [])
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        downloader_mock.assert_not_called()
+
+    def test_mark_account_as_inactive(self):
+        account = self._create_account(is_active=True)
+
+        exception = AdWordsReportBadRequestError(AWErrorType.NOT_ACTIVE, "<null>", None, HTTP_400_BAD_REQUEST,
+                                                 HTTPError(), 'XML Body')
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command()
+
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)

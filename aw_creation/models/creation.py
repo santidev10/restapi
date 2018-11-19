@@ -1,25 +1,26 @@
 import calendar
 import json
 import logging
-import re
 import uuid
 from decimal import Decimal
 
 from PIL import Image
-from django.core.validators import MaxValueValidator, MinValueValidator, \
-    RegexValidator
+from django.core.validators import MaxValueValidator
+from django.core.validators import MinValueValidator
+from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import Q, F, CASCADE
+from django.db.models import CASCADE
+from django.db.models import F
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from aw_reporting.models import Account
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
 VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
-BULK_CREATE_CAMPAIGNS_COUNT = 5
-BULK_CREATE_AD_GROUPS_COUNT = 5
 
 WEEKDAYS = list(calendar.day_name)
 NameValidator = RegexValidator(r"^[^#']*$",
@@ -35,16 +36,6 @@ TrackingTemplateValidator = RegexValidator(
 
 def get_uid(length=12):
     return str(uuid.uuid4()).replace('-', '')[:length]
-
-
-def get_version():
-    return get_uid(8)
-
-
-def get_yt_id_from_url(url):
-    match = re.match(YT_VIDEO_REGEX, url)
-    if match:
-        return match.group(1)
 
 
 class CreationItemQueryset(models.QuerySet):
@@ -83,15 +74,27 @@ class UniqueCreationItem(models.Model):
         return self.sync_at and self.sync_at >= self.created_at
 
 
+class AccountCreationManager(models.Manager.from_queryset(CreationItemQueryset)):
+    def user_related(self, user):
+        related_accounts = Account.user_objects(user)
+        return self.get_queryset() \
+            .filter(
+            Q(is_deleted=False)
+            & (Q(owner=user) | Q(account__in=related_accounts))
+        )
+
+
 class AccountCreation(UniqueCreationItem):
+    objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
-                              on_delete=CASCADE)
+                              on_delete=CASCADE,
+                              null=True)
 
-    account = models.ForeignKey(
-        "aw_reporting.Account", related_name='account_creations',
+    account = models.OneToOneField(
+        Account, related_name='account_creation',
         null=True, blank=True,
     )
     is_paused = models.BooleanField(default=False)
@@ -149,6 +152,12 @@ def save_account_receiver(sender, instance, created, **_):
     if instance.is_deleted and not created:
         instance.is_deleted = False
         instance.save()
+
+
+@receiver(post_save, sender=Account, dispatch_uid="create_account_receiver")
+def create_account_receiver(sender, instance: Account, created, **_):
+    if created and not instance.skip_creating_account_creation:
+        AccountCreation.objects.create(account=instance, owner=None, is_managed=False)
 
 
 def default_languages():
@@ -467,8 +476,8 @@ class AdGroupCreation(UniqueCreationItem):
             types = [self.video_ad_format]
 
         elif self.campaign_creation.sync_at is not None or \
-                        AdCreation.objects.filter(
-                            ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
+                AdCreation.objects.filter(
+                    ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]

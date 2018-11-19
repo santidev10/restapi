@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
@@ -9,9 +10,8 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
 from aw_reporting.demo.models import DemoAccount
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
-from unittest.mock import patch
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AdCreationListAPITestCase(ExtendedAPITestCase):

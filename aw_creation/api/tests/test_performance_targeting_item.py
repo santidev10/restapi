@@ -1,18 +1,21 @@
+import json
+from datetime import datetime
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
+
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
-from utils.utils_tests import ExtendedAPITestCase
-from datetime import datetime
-import json
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PerformanceItemAPITestCase(ExtendedAPITestCase):
 
     def test_success_change_status(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         date = datetime(2017, 1, 1).date()
         campaign = Campaign.objects.create(id="999", name="", account=account)
         ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign)
@@ -39,7 +42,8 @@ class PerformanceItemAPITestCase(ExtendedAPITestCase):
 
     def test_fail_change_status_no_targeting_item(self):
         user = self.create_test_user()
-        account = Account.objects.create(id=1, name="")
+        account = Account.objects.create(id=1, name="",
+                                         skip_creating_account_creation=True)
         date = datetime(2017, 1, 1).date()
         campaign = Campaign.objects.create(id="999", name="", account=account)
         ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign)

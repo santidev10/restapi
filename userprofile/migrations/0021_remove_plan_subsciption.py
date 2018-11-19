@@ -13,14 +13,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RemoveField(
-            model_name='plan',
-            name='payments_plan',
-        ),
-        migrations.RemoveField(
-            model_name='subscription',
-            name='payments_subscription',
-        ),
-        migrations.RemoveField(
             model_name='subscription',
             name='plan',
         ),

@@ -5,10 +5,12 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
+
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account, campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
-from userprofile.models import UserProfile, UserSettingsKey
+from userprofile.constants import UserSettingsKey
+from userprofile.models import UserProfile
 from utils.cache import cache_reset
 from utils.cache import cached_view_decorator as cached_view
 

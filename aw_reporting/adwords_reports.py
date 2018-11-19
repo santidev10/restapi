@@ -49,8 +49,23 @@ AD_PERFORMANCE_REPORT_FIELDS = ("AdGroupId", "Headline", "Id",
                                 "CombinedApprovalStatus") \
                                + COMPLETED_FIELDS + MAIN_STATISTICS_FILEDS
 
+
+class AWErrorType:
+    NOT_ACTIVE = "AuthorizationError.CUSTOMER_NOT_ACTIVE"
+    PERMISSIONS_DENIED = "AuthorizationError.USER_PERMISSION_DENIED"
+    REPORT_TYPE_MISMATCH = "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH"
+
+
+FATAL_AW_ERRORS = (
+    AWErrorType.PERMISSIONS_DENIED,
+    AWErrorType.REPORT_TYPE_MISMATCH,
+)
 EMPTY = " --"
 MAX_ACCESS_AD_WORDS_TRIES = 5
+
+
+class AccountInactiveError(Exception):
+    pass
 
 
 class AWReport:
@@ -99,21 +114,25 @@ def _get_report(client, name, selector, date_range_type=None,
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
                 logger.warning(e)
-                if e.type == "AuthorizationError.USER_PERMISSION_DENIED":
-                    return
-                elif e.type == "ReportDefinitionError.CUSTOMER_SERVING_TYPE_REPORT_MISMATCH":
+                if e.type == AWErrorType.NOT_ACTIVE:
+                    raise AccountInactiveError()
+                if e.type in FATAL_AW_ERRORS:
                     return
                 raise
+        except AccountInactiveError as ex:
+            raise ex
 
         except Exception as e:
             error_str = str(e)
             if "RateExceededError.RATE_EXCEEDED" in error_str:
                 raise
-
+            if "invalid_grant" in error_str:
+                logger.error("Invalid grant faced. Skipping")
+                return
             logger.error("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1
-                seconds = try_num ** 4
+                seconds = try_num ** 3
                 logger.info("Sleep for %d seconds" % seconds)
                 sleep(seconds)
             else:
@@ -263,12 +282,14 @@ def geo_location_report(client):
     return _output_to_rows(result, fields)
 
 
-def _daily_statistic_performance_report(client, name, dates=None,
-                                        additional_fields=None):
-    fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+def _daily_statistic_performance_report(
+        client, name, dates=None, additional_fields=None, fields=None):
 
-    if additional_fields:
-        fields += additional_fields
+    if fields is None:
+        fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
+
+        if additional_fields:
+            fields += additional_fields
 
     selector = {
         "fields": fields,
@@ -286,9 +307,9 @@ def _daily_statistic_performance_report(client, name, dates=None,
     return _output_to_rows(result, fields)
 
 
-def gender_performance_report(client, dates):
+def gender_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "GENDER_PERFORMANCE_REPORT", dates
+        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
@@ -298,33 +319,34 @@ def parent_performance_report(client, dates):
     )
 
 
-def age_range_performance_report(client, dates):
+def age_range_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AGE_RANGE_PERFORMANCE_REPORT", dates
+        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def keywords_performance_report(client, dates):
+def keywords_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates
+        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def topics_performance_report(client, dates):
+def topics_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates,
+        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields
     )
 
 
-def audience_performance_report(client, dates):
+def audience_performance_report(client, dates, fields=None):
     return _daily_statistic_performance_report(
-        client, "AUDIENCE_PERFORMANCE_REPORT", dates,
+        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
         additional_fields=("UserListName",)
     )
 
 
-def ad_performance_report(client, dates=None):
-    fields = AD_PERFORMANCE_REPORT_FIELDS
+def ad_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,
@@ -375,8 +397,9 @@ def campaign_performance_report(client,
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None):
-    fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
+def ad_group_performance_report(client, dates=None, fields=None):
+    if fields is None:
+        fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
     selector = {
         "fields": fields,

@@ -88,17 +88,6 @@ class UserUpdateSerializer(ModelSerializer):
             "can_access_media_buying",
         )
 
-    def save(self, **kwargs):
-        """
-        Make 'post-save' actions
-        """
-
-        user = super(UserUpdateSerializer, self).save(**kwargs)
-
-        # turned off according to SAAS-1895
-        # send_plan_changed_email(user, self.context.get("request"))
-        return user
-
     def get_can_access_media_buying(self, obj):
         return obj.has_perm("userprofile.view_media_buying")
 
@@ -128,6 +117,8 @@ class UserSerializer(ModelSerializer):
             "access",
             "google_account_id",
             "can_access_media_buying",
+            "annual_ad_spend",
+            "user_type",
         )
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):

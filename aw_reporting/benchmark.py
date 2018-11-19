@@ -17,6 +17,7 @@ from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
+from utils.datetime import quarter_days
 
 CREATIVE_LENGTH_FILTERS = {
     1: [0, 6000],
@@ -60,12 +61,6 @@ class BenchMarkChart:
     def get_quarters_date(self, quarters):
         year = datetime.now().date().year
         quarters = quarters.split(',')
-        quarter_days = dict(
-            Q1=((1, 1), (3, 31)),
-            Q2=((4, 1), (6, 30)),
-            Q3=((7, 1), (9, 30)),
-            Q4=((10, 1), (12, 31)),
-        )
         first, *rest, last = list((itertools.chain(*[quarter_days[q] for q in quarters])))
         return datetime(year, *first).date(), datetime(year, *last).date()
 
@@ -416,33 +411,6 @@ class ChartsHandler:
 
     def __init__(self, request):
         self.request = request
-
-    def base_charts(self):
-        views_chart = ViewsBasedChart(self.request, None, annotate=True, aggregate=False,
-                                      product_type=False).get_chart()
-        impr_chart = ImpressionsBasedChart(self.request, None, annotate=True, aggregate=False,
-                                           product_type=False).get_chart()
-        result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
-        result = self.prepare_view_quartile(result)
-        return result
-
-    def product_charts(self):
-        timing = self.request.query_params.get('sort_by')
-        ad_group_ids = FiltersHandler(self.request.query_params).main()
-        if timing == 'timing':
-            views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
-                                          product_type=True).get_chart()
-            impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=True, aggregate=False,
-                                               product_type=True).get_chart()
-            result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart, timing=True)
-            result = self.prepare_view_quartile(result)
-        else:
-            views_chart = ViewsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
-                                          product_type=True).get_chart()
-            impr_chart = ImpressionsBasedChart(self.request, ad_group_ids, annotate=False, aggregate=True,
-                                               product_type=True).get_chart()
-            result = self.charts_aggregator(impr_chart=impr_chart, views_chart=views_chart)
-        return result
 
     def charts_aggregator(self, impr_chart, views_chart, timing=None):
         charts = {}

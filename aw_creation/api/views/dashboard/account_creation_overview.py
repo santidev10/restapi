@@ -24,13 +24,13 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import all_stats_aggregate
+from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import client_cost_ad_group_statistic_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.constants import CONVERSIONS
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 
 
 @demo_view_decorator
@@ -42,18 +42,7 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         data = self._get_overview_data(account_creation, request.user)
         return Response(data=data)
 
-    def _get_account_creation(self, pk):
-        account_creation_queryset = AccountCreation.objects.all()
-        user_settings = self.request.user.get_aw_settings()
-        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
-            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
-            account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
-        try:
-            return account_creation_queryset.get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            raise Http404
-
-    def _get_filters(self):
+    def get_filters(self):
         data = self.request.data
         start_date = data.get("start_date")
         end_date = data.get("end_date")
@@ -66,6 +55,17 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             ad_groups=data.get("ad_groups"))
         return filters
 
+    def _get_account_creation(self, pk):
+        account_creation_queryset = AccountCreation.objects.all()
+        user_settings = self.request.user.get_aw_settings()
+        if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+            visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+            account_creation_queryset = account_creation_queryset.filter(account__id__in=visible_accounts)
+        try:
+            return account_creation_queryset.get(pk=pk)
+        except AccountCreation.DoesNotExist:
+            raise Http404
+
     def _get_stats_aggregator(self, user):
         keys_to_exclude = ()
         show_conversions = user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
@@ -73,12 +73,12 @@ class DashboardAccountCreationOverviewAPIView(APIView):
             keys_to_exclude += tuple("sum_{}".format(key) for key in CONVERSIONS)
         return {
             key: value
-            for key, value in all_stats_aggregate.items()
+            for key, value in all_stats_aggregator("ad_group__campaign__").items()
             if key not in keys_to_exclude
         }
 
     def _get_overview_data(self, account_creation, current_user):
-        filters = self._get_filters()
+        filters = self.get_filters()
         fs = dict(ad_group__campaign__account=account_creation.account)
         if filters['campaigns']:
             fs["ad_group__campaign__id__in"] = filters['campaigns']
@@ -151,17 +151,9 @@ class DashboardAccountCreationOverviewAPIView(APIView):
         return sum([get_client_cost(**map_data(data)) for data in statistics])
 
     def _add_chf_performance_data(self, data, account_creation):
-        null_fields = (
-            "impressions_this_week", "cost_last_week", "impressions_last_week",
-            "cost_this_week", "video_views_this_week", "clicks_this_week",
-            "video_views_last_week", "clicks_last_week", "average_cpv_bottom",
-            "ctr_top", "ctr_v_bottom", "ctr_bottom", "video_view_rate_top",
-            "ctr_v_top", "average_cpv_top", "video_view_rate_bottom")
-        for field in null_fields:
-            data[field] = None
         account_campaigns_ids = account_creation.account. \
             campaigns.values_list("id", flat=True)
-        filters = self._get_filters()
+        filters = self.get_filters()
         campaigns_ids = filters.get("campaigns")
         ad_groups_ids = filters.get("ad_groups")
         start_date = filters.get("start_date")

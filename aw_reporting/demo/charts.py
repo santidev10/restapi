@@ -1,11 +1,24 @@
+import math
 import random
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, time
+
 from pytz import utc
+
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
-import math
+
+CLICKS_TYPES_DIMENSIONS = (
+    "gender",
+    "age",
+    "device",
+    "topic",
+    "interest",
+    "keyword",
+    "ad",
+    "remarketing"
+)
 
 
 class DemoChart:
@@ -50,8 +63,9 @@ class DemoChart:
         all_stats = (
             'clicks', 'cost',  'impressions', 'video_impressions', 'video_views',
             'video25rate', 'video50rate', 'video75rate', 'video100rate',
-            'view_through', 'conversions', 'all_conversions',
-        )
+            'view_through', 'conversions', 'all_conversions')
+        if dimension in CLICKS_TYPES_DIMENSIONS:
+            all_stats += CLICKS_STATS
         summary = {}
         items = {i['label']: i for i in dimensions}
         dim_len = len(dimensions)
@@ -59,7 +73,7 @@ class DemoChart:
             value = getattr(item, stat)
             summary[stat] = value
 
-            if stat in VIEW_RATE_STATS:
+            if stat in VIEW_RATE_STATS or stat in CLICKS_STATS:
                 for item_stat in items.values():
                     item_stat[stat] = value
             else:
@@ -279,7 +293,6 @@ class DemoChart:
     @staticmethod
     def explode_value_random(value, indicator, n):
 
-        # pylint: disable=E0102
         def get_val(val):
             return val
 
@@ -290,7 +303,6 @@ class DemoChart:
                     return int(val)
         else:
             daily = value
-        # pylint: enable=E0102
 
         # chart values
         values = [daily for i in range(n)]

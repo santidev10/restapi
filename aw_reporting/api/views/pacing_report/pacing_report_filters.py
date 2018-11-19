@@ -27,9 +27,10 @@ class PacingReportFiltersApiView(APIView):
         ]
         period.append(dict(id="custom", name="Custom"))
 
-        sales = User.objects.exclude(sold_opportunities__isnull=True)
-        ams = User.objects.exclude(managed_opportunities__isnull=True)
-        ad_ops = User.objects.exclude(ad_managed_opportunities__isnull=True)
+        active_users = User.objects.filter(is_active=True)
+        sales = active_users.exclude(sold_opportunities__isnull=True)
+        ams = active_users.exclude(managed_opportunities__isnull=True)
+        ad_ops = active_users.exclude(ad_managed_opportunities__isnull=True)
 
         filters = dict(
             category=CategorySerializer(Category.objects.all().order_by('id'),

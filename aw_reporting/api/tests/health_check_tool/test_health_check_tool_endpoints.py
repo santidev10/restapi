@@ -1,144 +1,43 @@
-from datetime import timedelta, date
+from datetime import date
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
-from aw_reporting.models import SFAccount, Opportunity, User, OpPlacement, \
-    Campaign, CampaignAgeRangeTargeting, CampaignGenderTargeting, \
-    GeoTarget, CampaignLocationTargeting, AdGroup, VideoCreative, \
-    VideoCreativeStatistic
-from aw_reporting.tools.health_check_tool import GENDERS, AGE_RANGES
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
+from aw_reporting.api.urls.names import Name
+from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignAgeRangeTargeting
+from aw_reporting.models import CampaignGenderTargeting
+from aw_reporting.models import CampaignLocationTargeting
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
+from aw_reporting.models import User
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.tools.health_check_tool import AGE_RANGES
+from aw_reporting.tools.health_check_tool import GENDERS
+from saas.urls.namespaces import Namespace
+from userprofile.models import UserSettingsKey
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
-class AWSetupHealthCheckTestCase(APITestCase):
+class AWSetupHealthCheckListTestCase(APITestCase):
+    url = reverse(Name.HealthCheck.LIST, [Namespace.AW_REPORTING])
+
     def setUp(self):
         self.user = self.create_test_user()
 
-    def test_fail_get_filters(self):
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        self.__create_not_auth_user()
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
-
-    def test_get_filters(self):
-        user_1 = User.objects.create(id="1", name="Mike", is_active=True)
-        user_2 = User.objects.create(id="2", name="Alien", is_active=True)
-        user_3 = User.objects.create(id="3", name="Samuel", is_active=True)
-        user_4 = User.objects.create(id="4", name="John", is_active=True)
-        account = SFAccount.objects.create(id="AAA", name="Acc")
-        Opportunity.objects.create(
-            id="AAA", name="", account=account,
-            account_manager=user_1, sales_manager=user_3)
-        Opportunity.objects.create(
-            id="BBB", name="", account_manager=user_2,
-            ad_ops_manager=user_1, sales_manager=user_4)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        expected_keys = {"period", "am", "account", "ad_ops", "date_range",
-                         "sales_rep", "brands"}
-        self.assertEqual(set(response.data.keys()), expected_keys)
-        self.assertEqual(len(response.data["am"]), 2)
-        self.assertEqual(len(response.data["ad_ops"]), 1)
-        self.assertEqual(len(response.data["account"]), 1)
-        self.assertEqual(len(response.data["sales_rep"]), 2)
-        sales_ids = [sale["id"] for sale in response.data["sales_rep"]]
-        self.assertEqual({user_3.id, user_4.id}, set(sales_ids))
-
-    def test_get_filters_data_range(self):
-        any_data = date(2017, 1, 1)
-        op1_start = any_data
-        op1_end = any_data + timedelta(days=10)
-        op2_start = any_data + timedelta(days=15)
-        op2_end = any_data + timedelta(days=20)
-        Opportunity.objects.create(
-            id="AAA", name="", start=op1_start, end=op1_end)
-        Opportunity.objects.create(
-            id="BBB", name="", start=op2_start, end=op2_end)
-        Opportunity.objects.create(
-            id="CCC", name="", start=None, end=None)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("date_range", set(response.data.keys()))
-        self.assertEqual(
-            response.data["date_range"], dict(min=op1_start, max=op2_end))
-
-    def test_get_filters_data_range_is_empty_if_no_data(self):
-        Opportunity.objects.create(id="CCC", name="", start=None, end=None)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("date_range", set(response.data.keys()))
-        self.assertEqual(response.data["date_range"], dict(min=None, max=None))
-
-    def test_get_filters_brands(self):
-        brand_1 = "test brand 1"
-        brand_2 = "test brand 2"
-        Opportunity.objects.create(id="1", name="", brand=brand_1)
-        Opportunity.objects.create(id="2", name="", brand=brand_2)
-        Opportunity.objects.create(id="3", name="", brand=brand_1)
-        Opportunity.objects.create(id="4", name="", brand=None)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("brands", set(response.data.keys()))
-        brands = response.data["brands"]
-        self.assertEqual(len(brands), 2)
-        self.assertEqual(set(brands), {brand_1, brand_2})
-
-    def test_get_filters_hide_not_active_media_service_manager(self):
-        user_1 = User.objects.create(
-            id="1", name="Daisy", email="1@mail.go", is_active=False)
-        user_2 = User.objects.create(
-            id="2", name="Jay", email="2@mail.go", is_active=True)
-        Opportunity.objects.create(id="1", name="", ad_ops_manager=user_1)
-        Opportunity.objects.create(id="2", name="", ad_ops_manager=user_2)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("ad_ops", set(response.data.keys()))
-        self.assertEqual(len(response.data["ad_ops"]), 1)
-        item = response.data["ad_ops"][0]
-        self.assertEqual(item["id"], user_2.id)
-
-    def test_get_filters_hide_not_active_account_manager(self):
-        user_1 = User.objects.create(
-            id="1", name="Daisy", email="1@mail.go", is_active=False)
-        user_2 = User.objects.create(
-            id="2", name="Jay", email="2@mail.go", is_active=True)
-        Opportunity.objects.create(id="1", name="", account_manager=user_1)
-        Opportunity.objects.create(id="2", name="", account_manager=user_2)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("am", set(response.data.keys()))
-        self.assertEqual(len(response.data["am"]), 1)
-        item = response.data["am"][0]
-        self.assertEqual(item["id"], user_2.id)
-
-    def test_get_filters_hide_not_active_sales_manager(self):
-        user_1 = User.objects.create(
-            id="1", name="Daisy", email="1@mail.go", is_active=False)
-        user_2 = User.objects.create(
-            id="2", name="Jay", email="2@mail.go", is_active=True)
-        Opportunity.objects.create(id="1", name="", sales_manager=user_1)
-        Opportunity.objects.create(id="2", name="", sales_manager=user_2)
-        url = reverse("aw_reporting_urls:health_check_tool_filters")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIn("sales_rep", set(response.data.keys()))
-        self.assertEqual(len(response.data["sales_rep"]), 1)
-        item = response.data["sales_rep"][0]
-        self.assertEqual(item["id"], user_2.id)
-
     def test_fail_get_list(self):
-        url = reverse("aw_reporting_urls:health_check_tool")
         self.__create_not_auth_user()
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_get_list(self):
@@ -212,8 +111,7 @@ class AWSetupHealthCheckTestCase(APITestCase):
         Opportunity.objects.create(
             id="B", name="Second campaign", probability=100,
             start="2016-01-20", end="2016-01-30")
-        url = reverse("aw_reporting_urls:health_check_tool")
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
         item = response.data["items"][0]
@@ -274,7 +172,7 @@ class AWSetupHealthCheckTestCase(APITestCase):
         query_params = QueryDict("", mutable=True)
         query_params.update(dict(start=date_range_start, end=date_range_end))
         url = "?".join([
-            reverse("aw_reporting_urls:health_check_tool"),
+            self.url,
             query_params.urlencode()])
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -293,8 +191,7 @@ class AWSetupHealthCheckTestCase(APITestCase):
         Opportunity.objects.create(
             id="3", name="", probability=100, brand=brand_3)
         query_params = "brands={}".format(",".join([brand_1, brand_2]))
-        url = "{}?{}".format(
-            reverse("aw_reporting_urls:health_check_tool"), query_params)
+        url = "{}?{}".format(self.url, query_params)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
@@ -315,8 +212,7 @@ class AWSetupHealthCheckTestCase(APITestCase):
         Opportunity.objects.create(
             id="CCC", name="", probability=100, sales_manager=user_3)
         query_params = "sales_rep={}".format(",".join([user_1.id, user_2.id]))
-        url = "{}?{}".format(
-            reverse("aw_reporting_urls:health_check_tool"), query_params)
+        url = "{}?{}".format(self.url, query_params)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 2)
@@ -346,7 +242,7 @@ class AWSetupHealthCheckTestCase(APITestCase):
             dict(campaign_start=left_date_border,
                  campaign_end=right_date_border))
         url = "?".join([
-            reverse("aw_reporting_urls:health_check_tool"),
+            self.url,
             query_params.urlencode()])
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -359,3 +255,140 @@ class AWSetupHealthCheckTestCase(APITestCase):
     def __create_not_auth_user(self):
         self.user.delete()
         self.create_test_user(False)
+
+    @generic_test([
+        (global_account_visibility, (global_account_visibility, count), dict())
+        for global_account_visibility, count in ((True, 0), (False, 1))
+    ])
+    def test_global_account_visibility(self, global_account_visibility, expected_count):
+        Opportunity.objects.create(id=next(int_iterator), probability=100)
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_count)
+
+
+class AWSetupHealthCheckFiltersTestCase(APITestCase):
+    url = reverse(Name.HealthCheck.FILTERS, [Namespace.AW_REPORTING])
+
+    def setUp(self):
+        self.user = self.create_test_user()
+
+    def __create_not_auth_user(self):
+        self.user.delete()
+        self.create_test_user(False)
+
+    def test_fail_get_filters(self):
+        self.__create_not_auth_user()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+
+    def test_get_filters(self):
+        user_1 = User.objects.create(id="1", name="Mike", is_active=True)
+        user_2 = User.objects.create(id="2", name="Alien", is_active=True)
+        user_3 = User.objects.create(id="3", name="Samuel", is_active=True)
+        user_4 = User.objects.create(id="4", name="John", is_active=True)
+        account = SFAccount.objects.create(id="AAA", name="Acc")
+        Opportunity.objects.create(
+            id="AAA", name="", account=account,
+            account_manager=user_1, sales_manager=user_3)
+        Opportunity.objects.create(
+            id="BBB", name="", account_manager=user_2,
+            ad_ops_manager=user_1, sales_manager=user_4)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        expected_keys = {"period", "am", "account", "ad_ops", "date_range",
+                         "sales_rep", "brands"}
+        self.assertEqual(set(response.data.keys()), expected_keys)
+        self.assertEqual(len(response.data["am"]), 2)
+        self.assertEqual(len(response.data["ad_ops"]), 1)
+        self.assertEqual(len(response.data["account"]), 1)
+        self.assertEqual(len(response.data["sales_rep"]), 2)
+        sales_ids = [sale["id"] for sale in response.data["sales_rep"]]
+        self.assertEqual({user_3.id, user_4.id}, set(sales_ids))
+
+    def test_get_filters_data_range(self):
+        any_data = date(2017, 1, 1)
+        op1_start = any_data
+        op1_end = any_data + timedelta(days=10)
+        op2_start = any_data + timedelta(days=15)
+        op2_end = any_data + timedelta(days=20)
+        Opportunity.objects.create(
+            id="AAA", name="", start=op1_start, end=op1_end)
+        Opportunity.objects.create(
+            id="BBB", name="", start=op2_start, end=op2_end)
+        Opportunity.objects.create(
+            id="CCC", name="", start=None, end=None)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("date_range", set(response.data.keys()))
+        self.assertEqual(
+            response.data["date_range"], dict(min=op1_start, max=op2_end))
+
+    def test_get_filters_data_range_is_empty_if_no_data(self):
+        Opportunity.objects.create(id="CCC", name="", start=None, end=None)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("date_range", set(response.data.keys()))
+        self.assertEqual(response.data["date_range"], dict(min=None, max=None))
+
+    def test_get_filters_brands(self):
+        brand_1 = "test brand 1"
+        brand_2 = "test brand 2"
+        Opportunity.objects.create(id="1", name="", brand=brand_1)
+        Opportunity.objects.create(id="2", name="", brand=brand_2)
+        Opportunity.objects.create(id="3", name="", brand=brand_1)
+        Opportunity.objects.create(id="4", name="", brand=None)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("brands", set(response.data.keys()))
+        brands = response.data["brands"]
+        self.assertEqual(len(brands), 2)
+        self.assertEqual(set(brands), {brand_1, brand_2})
+
+    def test_get_filters_hide_not_active_media_service_manager(self):
+        user_1 = User.objects.create(
+            id="1", name="Daisy", email="1@mail.go", is_active=False)
+        user_2 = User.objects.create(
+            id="2", name="Jay", email="2@mail.go", is_active=True)
+        Opportunity.objects.create(id="1", name="", ad_ops_manager=user_1)
+        Opportunity.objects.create(id="2", name="", ad_ops_manager=user_2)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("ad_ops", set(response.data.keys()))
+        self.assertEqual(len(response.data["ad_ops"]), 1)
+        item = response.data["ad_ops"][0]
+        self.assertEqual(item["id"], user_2.id)
+
+    def test_get_filters_hide_not_active_account_manager(self):
+        user_1 = User.objects.create(
+            id="1", name="Daisy", email="1@mail.go", is_active=False)
+        user_2 = User.objects.create(
+            id="2", name="Jay", email="2@mail.go", is_active=True)
+        Opportunity.objects.create(id="1", name="", account_manager=user_1)
+        Opportunity.objects.create(id="2", name="", account_manager=user_2)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("am", set(response.data.keys()))
+        self.assertEqual(len(response.data["am"]), 1)
+        item = response.data["am"][0]
+        self.assertEqual(item["id"], user_2.id)
+
+    def test_get_filters_hide_not_active_sales_manager(self):
+        user_1 = User.objects.create(
+            id="1", name="Daisy", email="1@mail.go", is_active=False)
+        user_2 = User.objects.create(
+            id="2", name="Jay", email="2@mail.go", is_active=True)
+        Opportunity.objects.create(id="1", name="", sales_manager=user_1)
+        Opportunity.objects.create(id="2", name="", sales_manager=user_2)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIn("sales_rep", set(response.data.keys()))
+        self.assertEqual(len(response.data["sales_rep"]), 1)
+        item = response.data["sales_rep"][0]
+        self.assertEqual(item["id"], user_2.id)

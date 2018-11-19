@@ -1,15 +1,16 @@
 import logging
-import os
 
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
 from django.db.models import Count
 
-from aw_reporting.models.base import BaseModel
-from aw_reporting.models.salesforce_constants import SalesForceGoalType, \
-    goal_type_str, SalesForceRegions, SalesForceGoalTypes
-from userprofile.managers import UserRelatedManager
+from aw_reporting.models.base import BaseModel, BaseQueryset
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
+from aw_reporting.models.salesforce_constants import SalesForceRegions
+from aw_reporting.models.salesforce_constants import goal_type_str
+from userprofile.managers import UserRelatedManagerMixin
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +66,6 @@ class User(BaseModel):
         return "{}.jpg".format(self.photo_id)
 
     @property
-    def photo_path(self):
-        if self.photo_id:
-            return os.path.join(
-                'static', 'img', 'sf', self.photo_name
-            )
-
-    @property
     def photo_url(self):
         if self.photo_id:
             return static('/'.join(('img', 'sf', self.photo_name)))
@@ -112,11 +106,11 @@ class Contact(BaseModel):
         )
 
 
-class OpportunityManager(UserRelatedManager):
+class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelatedManagerMixin):
     _account_id_ref = "placements__adwords_campaigns__account_id"
 
-    def have_campaigns(self):
-        return self.get_queryset() \
+    def have_campaigns(self, user=None):
+        return self.get_queryset_for_user(user=user) \
             .annotate(campaign_count=Count("placements__adwords_campaigns")) \
             .filter(campaign_count__gt=0)
 
@@ -240,17 +234,6 @@ class Opportunity(models.Model):
         return self.video_views
 
     @property
-    def views_budget(self):
-        return self.budget if self.goal_type_id else 0
-
-    @property
-    def impressions_budget(self):
-        if self.goal_type_id in (SalesForceGoalType.CPM,
-                                 SalesForceGoalType.CPM_AND_CPV):
-            return self.budget
-        return 0
-
-    @property
     def goal_type(self):
         return ", ".join(self.goal_types)
 
@@ -267,11 +250,6 @@ class Opportunity(models.Model):
             goal_type_str(goal_type_id) for goal_type_id in goal_type_ids]
         goal_types = filter(lambda x: x is not None, types_str)
         return goal_types
-
-    @property
-    def region(self):
-        return None if self.region_id is None \
-            else SalesForceRegions[int(self.region_id)]
 
     @classmethod
     def email_from_sf_id(cls, sf_id):
@@ -342,8 +320,8 @@ class Opportunity(models.Model):
             brand=data.get('Brand_Test__c'),
             agency_id=data.get('Agency_Contact__c'),
             account_id=data.get('AccountId'),
-            contracted_cpm=data.get('CPM_Rate__c'),
-            contracted_cpv=data.get('CPV_Rate__c'),
+            contracted_cpm=data.get('Quoted_CPM_Price__c'),
+            contracted_cpv=data.get('Avg_Cost_Per_Unit__c'),
             account_manager_id=data.get('Account_Manager__c'),
             sales_manager_id=data.get('OwnerId'),
             ad_ops_manager_id=data.get('Ad_Ops_Campaign_Manager_UPDATE__c'),
@@ -411,15 +389,6 @@ class OpPlacement(BaseModel):
 
     def __str__(self):
         return "%s" % self.name
-
-    @property
-    def ordered_cost(self):
-        if self.ordered_units is not None \
-                and self.ordered_rate is not None:
-            value = self.ordered_units * self.ordered_rate
-            if self.goal_type_id == SalesForceGoalType.CPM:
-                value /= 1000
-            return value
 
     @property
     def goal_type(self):

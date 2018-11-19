@@ -4,14 +4,15 @@ from urllib.parse import urlencode
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.analytics_charts import Indicator, Breakdown
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.charts import Indicator, Breakdown
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import generic_test, patch_now
+from userprofile.constants import UserSettingsKey
+from utils.utittests.generic_test import generic_test
+from utils.utittests.patch_now import patch_now
 
 
 class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
@@ -166,3 +167,40 @@ class TrackAccountsDataAPITestCase(AwReportingAPITestCase):
             self.assertIsNotNone(item["average_1d"])
             self.assertAlmostEqual(item["average_1d"], expected_cpv)
             self.assertAlmostEqual(item["trend"][0]["value"], expected_cpv)
+
+    def test_apex_deal(self):
+        today = datetime.now().date()
+        test_days = 10
+        for i in range(test_days):
+            for hour in range(24):
+                CampaignHourlyStatistic.objects.create(
+                    campaign=self.campaign,
+                    date=today - timedelta(days=i),
+                    hour=hour,
+                    impressions=hour,
+                )
+
+        filters = dict(
+            start_date=today - timedelta(days=2),
+            end_date=today - timedelta(days=1),
+            indicator="impressions",
+            dimension="age",
+            breakdown="hourly",
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+        filters = dict(
+            start_date=today - timedelta(days=2),
+            end_date=today - timedelta(days=1),
+            indicator="impressions",
+            dimension="age",
+            breakdown="hourly",
+            apex_deal="1",
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)

@@ -2,7 +2,6 @@ import json
 from datetime import date
 from itertools import product
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
@@ -10,9 +9,9 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.charts import ALL_DIMENSIONS
-from aw_reporting.charts import ALL_INDICATORS
-from aw_reporting.charts import Indicator
+from aw_reporting.dashboard_charts import ALL_DIMENSIONS
+from aw_reporting.dashboard_charts import ALL_INDICATORS
+from aw_reporting.dashboard_charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -24,15 +23,19 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
-from userprofile.models import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import int_iterator
+from userprofile.constants import UserSettingsKey
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.reverse import reverse
+from utils.utittests.int_iterator import int_iterator
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
     def _request(self, account_creation_id, **kwargs):
-        url = reverse(RootNamespace.AW_CREATION + ":" + Namespace.DASHBOARD + ":" + Name.Dashboard.PERFORMANCE_CHART,
-                      args=(account_creation_id,))
+        url = reverse(
+            Name.Dashboard.PERFORMANCE_CHART,
+            [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
+            args=(account_creation_id,)
+        )
         return self.client.post(url,
                                 json.dumps(dict(is_staff=False, **kwargs)),
                                 content_type="application/json")
@@ -56,17 +59,13 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         user.save()
         self._hide_demo_data(user)
         account = Account.objects.create(id=1)
-        account_creation = AccountCreation.objects.create(id=2,
-                                                          name="", owner=user,
-                                                          is_paused=True,
-                                                          account=account)
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation.id,
+            response = self._request(account.account_creation.id,
                                      indicator=Indicator.CPV)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -159,16 +158,13 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_cost_reflects_to_aw_rates_setting(self):
-        user = self.create_test_user()
+        self.create_test_user()
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
             opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
             ordered_rate=12)
         account = Account.objects.create(id=next(int_iterator))
-        account_creation = AccountCreation.objects.create(name="", owner=user,
-                                                          is_paused=True,
-                                                          account=account)
         campaign = Campaign.objects.create(id=next(int_iterator),
                                            salesforce_placement=placement,
                                            account=account)
@@ -207,7 +203,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
             with self.subTest(show_ad_words_rate=ad_words_rate), \
                  self.patch_user_settings(**user_settings):
 
-                response = self._request(account_creation.id,
+                response = self._request(account.account_creation.id,
                                          indicator=Indicator.COST)
                 self.assertEqual(response.status_code, HTTP_200_OK)
                 self.assertEqual(len(response.data), 1)

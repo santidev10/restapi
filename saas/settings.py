@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import socket
+from datetime import date
 
 from teamcity import is_running_under_teamcity, teamcity_presence_env_var
 
@@ -50,16 +51,15 @@ PROJECT_APPS = (
     "keyword_tool",
     "landing",
     "administration",
-    "payments",
     "channel",
     "email_reports",
     "audit_tool",
 )
 
 THIRD_PARTY_APPS = (
+    "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
-    "djcelery",
 )
 
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -72,7 +72,6 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
-    'utils.registry.RegistryMiddleware',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -155,6 +154,7 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 AUTH_USER_MODEL = "userprofile.UserProfile"
+USER_DEFAULT_LOGO = "viewiq"
 GOOGLE_APP_AUD = "832846444492-9j4sj19tkkrd3tpg7s8j5910l7kprg45.apps.googleusercontent.com"
 
 REST_FRAMEWORK = {
@@ -192,14 +192,48 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
+        'file_googleads': {
+            'filename': os.path.join(LOGS_DIRECTORY, "googleads.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'file_updates': {
+            'filename': os.path.join(LOGS_DIRECTORY, "aw_update.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
         'mail_developers': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'detail_formatter',
+        },
+        "slack_aw_update": {
+            "level": "INFO",
+            "class": "administration.notifications.SlackAWUpdateLoggingHandler",
+            "filters": [
+                "audience_not_found_warning_filter",
+                "topic_not_found_warning_filter",
+                "undefined_criteria_warning_filter",
+                "require_debug_false",
+            ],
         }
     },
     'loggers': {
+        "googleads": {
+            "handlers": ["file_googleads"],
+            "level": "WARNING",
+        },
+        "aw_reporting.update": {
+            "handlers": ["file_updates", "slack_aw_update"],
+            "level": "DEBUG",
+        },
         '': {
             'handlers': ['console', 'file', 'mail_developers'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
@@ -229,7 +263,16 @@ LOGGING = {
         "hide_all": {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda r: 0,
-        }
+        },
+        "audience_not_found_warning_filter": {
+          "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
+        },
+        "topic_not_found_warning_filter": {
+          "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
+        },
+        "undefined_criteria_warning_filter": {
+          "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
+        },
     }
 }
 
@@ -243,32 +286,13 @@ PASSWORD_RESET_TIMEOUT_DAYS = 1
 # this is default development key
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 
-# stripe user keys
-STRIPE_PUBLIC_KEY = None
-STRIPE_SECRET_KEY = None
-
 SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
-IQ_API_URL = "https://iq.channelfactory.com/api/v1/"
 
-import djcelery
-
-djcelery.setup_loader()
-CELERY_TASK_RESULT_EXPIRES = 18000
-CELERYD_TASK_ERROR_EMAILS = False
-CELERY_RESULT_BACKEND = "redis://"
-CELERY_REDIS_HOST = "localhost"
-CELERY_REDIS_PORT = 6379
-CELERY_REDIS_DB = 0
-CELERY_ACKS_LATE = True
-CELERYD_PREFETCH_MULTIPLIER = 1
+from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-BROKER_URL = "redis://{host}:6379/0".format(host=REDIS_HOST)
-
-KW_TOOL_KEY = "Qi3mxPnm"
+MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 # landing page settings
 LANDING_SUBJECT = [
@@ -284,15 +308,16 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-#    "yuriy.matso@channelfactory.com",
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
@@ -304,8 +329,9 @@ PAYMENT_ACTION_EMAIL_ADDRESSES = [
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    "anna.chumak@sigma.software",
+    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
+    "maryna.antonova@sigma.software",
     "yulia.prokudina@sigma.software",
 ]
 
@@ -314,10 +340,6 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 ]
 
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
-
-DEFAULT_PERMISSIONS_GROUP_NAME = 'Highlights'
-DEFAULT_ACCESS_PLAN_NAME = 'free'
-CHANNEL_AUTHENTICATION_PLAN_NAME = 'professional'
 
 TESTIMONIALS = {
     "UCpT9kL2Eba91BB9CK6wJ4Pg": "HKq3esKhu14",
@@ -335,11 +357,19 @@ CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
-HOST = "https://viewiq.com"
+HOST = "https://viewiq.channelfactory.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]
+
+CUSTOM_AUTH_FLAGS = {
+    # "user@example.com": {
+    #    "hide_something": True,
+    #    "show_something_else": True,
+    #    "logo_url": "https://s3.amazonaws.com/viewiq-prod/logos/super_user.png",
+    # },
+}
 
 
 # patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
@@ -349,6 +379,22 @@ def is_running_under_teamcity():
 
 if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
+
+AMAZON_S3_BUCKET_NAME = "viewiq-dev"
+AMAZON_S3_ACCESS_KEY_ID = "<put_aws_access_key_id_here>"
+AMAZON_S3_SECRET_ACCESS_KEY = "<put_aws_secret_access_key>"
+AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
+
+MAX_AVATAR_SIZE_MB = 10.
+
+DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
+AUTOPILOT_API_KEY = "dd069a2d588d4dce95fe134b553ca5df"
+
+AW_UPDATE_SLACK_WEBHOOK_NAME = "aw_update"
+
+SLACK_WEBHOOKS = {
+    AW_UPDATE_SLACK_WEBHOOK_NAME: "https://hooks.slack.com/services/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",
+}
 
 try:
     from .local_settings import *

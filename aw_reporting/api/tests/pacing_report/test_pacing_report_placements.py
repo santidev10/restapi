@@ -1,24 +1,33 @@
-from datetime import timedelta, date
-from itertools import product
-from unittest import skipIf
-
+import pytz
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
-    HTTP_404_NOT_FOUND
+from itertools import product
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Opportunity, OpPlacement, Flight, \
-    CampaignStatistic, Campaign, SalesForceGoalType, SalesForceGoalTypes, \
-    Account
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from aw_reporting.reports.pacing_report import PacingReportChartId, DefaultRate
+from aw_reporting.reports.pacing_report import DefaultRate
+from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now, \
-    get_current_release
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class PacingReportPlacementsTestCase(APITestCase):
@@ -278,6 +287,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_budget(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         start = today - timedelta(days=3)
         end = today + timedelta(days=3)
         total_days = (end - start).days + 1
@@ -300,7 +311,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
@@ -327,6 +340,8 @@ class PacingReportPlacementsTestCase(APITestCase):
 
     def test_dynamic_placement_rate_and_tech_fee(self):
         today = date(2017, 1, 1)
+        tz = "UTC"
+        last_update = datetime.combine(today, time.min).replace(tzinfo=pytz.timezone(tz))
         yesterday = today - timedelta(days=1)
         start = today - timedelta(days=3)
         end = today + timedelta(days=5)
@@ -358,7 +373,9 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(timezone=tz, update_time=last_update)
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today - timedelta(days=1),
                                          campaign=campaign,

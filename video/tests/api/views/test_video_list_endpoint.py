@@ -1,15 +1,15 @@
-from unittest import skip
-
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, \
-    HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
+from mock import patch
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from segment.models import SegmentVideo, SegmentRelatedVideo
-from utils.utils_tests import ExtendedAPITestCase, SegmentFunctionalityMixin, \
-    SingleDBMixin
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
-class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDBMixin):
+class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
     def setUp(self):
         self.url = reverse("video_api_urls:video_list")
 
@@ -32,27 +32,8 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, SingleDB
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.keys(), {"error"})
 
-    @skip("Unknown")
     def test_simple_list_works(self):
         self.create_admin_user()
-        response = self.client.get(self.url)
+        with patch("video.api.views.Connector", new=SingleDatabaseApiConnectorPatcher):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-
-    @skip("Unknown")
-    def test_video_segment_filter_success(self):
-        self.create_admin_user()
-        videos_limit = 5
-        video_fields = "video_id"
-        videos_data = self.obtain_videos_data(video_fields, videos_limit)
-        expected_videos_ids = {obj["video_id"] for obj in videos_data["items"]}
-        segment = SegmentVideo.objects.create()
-        self.create_segment_relations(
-            SegmentRelatedVideo, segment, expected_videos_ids)
-        url = "{}?video_segment={}".format(self.url, segment.id)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            response.data["items_count"], len(expected_videos_ids))
-        self.assertEqual(
-            {obj["id"] for obj in response.data["items"]},
-            expected_videos_ids)

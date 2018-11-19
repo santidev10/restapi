@@ -4,28 +4,6 @@ from aw_reporting.api import views
 from aw_reporting.api.urls.names import Name
 
 urlpatterns = [
-    # analyze
-    url(r'^analyze_accounts_list/$',
-        views.AnalyzeAccountsListApiView.as_view(),
-        name="analyze_accounts_list"),
-    url(r'^analyze_account_campaigns/(?P<pk>\w+)/$',
-        views.AnalyzeAccountCampaignsListApiView.as_view(),
-        name="analyze_account_campaigns"),
-    url(r'^analyze_details/(?P<pk>\w+)/$',
-        views.AnalyzeDetailsApiView.as_view(),
-        name="analyze_details"),
-    url(r'^analyze_chart/(?P<pk>\w+)/',
-        views.AnalyzeChartApiView.as_view(),
-        name="analyze_chart"),
-    url(r'^analyze_chart_items/(?P<pk>\w+)/(?P<dimension>\w+)/',
-        views.AnalyzeChartItemsApiView.as_view(),
-        name="analyze_chart_items"),
-    url(r'^analyze_export/(?P<pk>\w+)/',
-        views.AnalyzeExportApiView.as_view(),
-        name="analyze_export"),
-    url(r'^analyze_export_weekly_report/(?P<pk>\w+)/$',
-        views.AnalyzeExportWeeklyReportApiView.as_view(),
-        name="analyze_export_weekly_report"),
 
     # Admin
     url(r'^visible_accounts/$',
@@ -52,21 +30,10 @@ urlpatterns = [
         name=Name.AWAccounts.LIST),
     url(r'^connect_aw_account/$',
         views.ConnectAWAccountApiView.as_view(),
-        name=Name.AWAccounts.ACCOUNT),
+        name=Name.AWAccounts.CONNECTION_LIST),
     url(r'^connect_aw_account/(?P<email>[^/]+)/$',
         views.ConnectAWAccountApiView.as_view(),
         name=Name.AWAccounts.CONNECTION),
-
-    # benchmark
-    url(r'^benchmarks/base_charts/$',
-        views.BenchmarkBaseChartsApiView.as_view(),
-        name="benchmarks_base_charts"),
-    url(r'^benchmarks/product_charts/$',
-        views.BenchmarkProductChartsApiView.as_view(),
-        name="benchmarks_product_charts$"),
-    url(r'^benchmarks/filters/$',
-        views.BenchmarkFiltersListApiView.as_view(),
-        name="benchmarks_filters$"),
 
     # Pacing report
     url(r'^pacing_report_filters/$',
@@ -105,10 +72,10 @@ urlpatterns = [
     # Health check tool
     url(r'^setup_health_check_list/$',
         views.HealthCheckApiView.as_view(),
-        name="health_check_tool"),
+        name=Name.HealthCheck.LIST),
     url(r'^setup_health_check_filters/$',
         views.HealthCheckFiltersApiView.as_view(),
-        name="health_check_tool_filters"),
+        name=Name.HealthCheck.FILTERS),
 
     # Pricing tool
     url(r'^pricing_tool/filters/$',
@@ -120,6 +87,14 @@ urlpatterns = [
     url(r'^pricing_tool/opportunity/$',
         views.PricingToolOpportunityView.as_view(),
         name=Name.PricingTool.OPPORTUNITIES),
+
+    # Forecast tool
+    url(r'^forecast_tool/filters/$',
+        views.ForecastToolFiltersApiView.as_view(),
+        name=Name.ForecastTool.FILTERS),
+    url(r'^forecast_tool/estimate/$',
+        views.ForecastToolEstimateApiView.as_view(),
+        name=Name.ForecastTool.ESTIMATE),
 
     # Global trends
     url(r'^global_trends/filters',

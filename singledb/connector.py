@@ -6,12 +6,13 @@ from urllib.parse import urlencode, quote
 
 import requests
 from django.conf import settings
+from django.http import Http404
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS, \
     DEFAULT_VIDEO_LIST_FIELDS, DEFAULT_CHANNEL_LIST_FIELDS, \
     DEFAULT_CHANNEL_DETAILS_FIELDS, DEFAULT_KEYWORD_DETAILS_FIELDS, \
     DEFAULT_KEYWORD_LIST_FIELDS
-
 from singledb.settings import DEFAULT_VIDEO_DETAILS_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES, DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_CHANNEL_DETAILS_SOURCES, DEFAULT_KEYWORD_DETAILS_SOURCES, \
@@ -81,6 +82,8 @@ class SingleDatabaseApiConnector(object):
             raise SingleDatabaseApiConnectorException(
                 "Unable to reach API. Original exception: {}".format(e))
         else:
+            if self.response.status_code == HTTP_404_NOT_FOUND:
+                raise Http404(self.response.text)
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
                     "Error during iq api call: {}".format(self.response.text),
@@ -92,15 +95,6 @@ class SingleDatabaseApiConnector(object):
             raise SingleDatabaseApiConnectorException(
                 "Unable to parse api response: {}\n{}" \
                     .format(e, self.response.text))
-        return response_data
-
-    def get_country_list(self, query_params):
-        """
-        Obtain coutry list
-        :param query_params: dict
-        """
-        endpoint = "countries/"
-        response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
     def get_channel(self, query_params, pk):
@@ -137,15 +131,6 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def get_channel_filters_list(self, query_params):
-        """
-        Obtain channel filters list
-        :param query_params: dict
-        """
-        endpoint = "channels/filters/"
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -211,15 +196,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def get_video_filters_list(self, query_params):
-        """
-        Obtain video filters list
-        :param query_params: dict
-        """
-        endpoint = "videos/filters/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
     def delete_videos(self, query_params, data):
         """
         Delete videos
@@ -227,16 +203,6 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "video_set/"
         response_data = self.execute_delete_call(endpoint, query_params, data)
-        return response_data
-
-    def get_channels_statistics(self, **params):
-        endpoint = "channels/statistics/"
-        response_data = self.execute_post_call(endpoint, {}, data=params)
-        return response_data
-
-    def get_videos_statistics(self, **params):
-        endpoint = "videos/statistics/"
-        response_data = self.execute_post_call(endpoint, {}, data=params)
         return response_data
 
     def store_ids(self, ids):
@@ -408,48 +374,3 @@ class SingleDatabaseApiConnector(object):
         endpoint = "bad_words/" + pk + "/"
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
-
-
-class IQApiConnector(object):
-    single_database_api_url = settings.IQ_API_URL
-
-    def execute_post_call(self, *args, **kwargs):
-        return self.execute_call(requests.post, *args, **kwargs)
-
-    def execute_call(self, method, endpoint, query_params, data=None):
-        """
-        Make GET call to api
-        """
-        # prepare header
-        headers = {"Content-Type": "application/json"}
-        # prepare query params
-        params = "?{}".format(urlencode(query_params, doseq=True))
-        # build url
-        url = "{}{}{}".format(self.single_database_api_url, endpoint, params)
-        self.response = None
-        # execute call
-        try:
-            if data is None:
-                self.response = method(url, headers=headers, verify=False)
-            else:
-                self.response = method(url, headers=headers, verify=False,
-                                       data=json.dumps(data))
-        except Exception as e:
-            raise SingleDatabaseApiConnectorException(
-                "Unable to reach API. Original exception: {}".format(e))
-
-        try:
-            response_data = self.response.json()
-        except Exception as e:
-            return None
-
-        return response_data
-
-    def auth_channel(self, params):
-        endpoint = "channels/remoteauthentication/"
-        response_data = self.execute_post_call(endpoint, {}, data=params)
-        return response_data
-
-
-def get_connector():
-    return SingleDatabaseApiConnector()

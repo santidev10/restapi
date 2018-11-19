@@ -12,10 +12,11 @@ from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     VideoCreative, VideoCreativeStatistic, Devices, Genders, AgeRanges, \
     Flight, GeoTargeting
 from saas.urls.namespaces import Namespace
-from userprofile.models import UserSettingsKey
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class PricingToolTestCase(APITestCase):
