@@ -17,8 +17,8 @@ from segment.models import SegmentKeyword
 from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
-from userprofile.constants import UserTypeCreator
 from userprofile.constants import UserStatuses
+from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
 from userprofile.permissions import PermissionGroupNames
@@ -60,7 +60,7 @@ class ChannelAuthenticationApiView(APIView):
                     self.set_user_avatar(user, data.get("access_token"))
 
                 return Response(status=HTTP_202_ACCEPTED,
-                                data={"auth_token": user.auth_token.key})
+                                data={"auth_token": user.auth_token.key, "is_active": user.is_active})
 
         return Response()
 
