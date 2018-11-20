@@ -2,7 +2,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_401_UNAUTHORIZED, HTTP_200_OK
 
 from aw_reporting.models import UserRole, User, Opportunity, Category
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):

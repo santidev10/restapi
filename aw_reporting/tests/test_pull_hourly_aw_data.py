@@ -12,9 +12,9 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import Device
 from aw_reporting.models import device_str
-from utils.utils_tests import build_csv_byte_stream
-from utils.utils_tests import int_iterator
-from utils.utils_tests import patch_now
+from utils.utittests.csv import build_csv_byte_stream
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 
 
 class PullHourlyAWDataTestCase(TransactionTestCase):

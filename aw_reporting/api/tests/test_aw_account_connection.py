@@ -14,8 +14,8 @@ from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 from .base import AwReportingAPITestCase
 
 

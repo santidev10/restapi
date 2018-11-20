@@ -9,8 +9,9 @@ from suds import WebFault
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
-from aw_reporting.update.tasks import detect_success_aw_read_permissions
-from aw_reporting.update.tasks import recalculate_de_norm_fields
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.update.update_aw_account import update_aw_account
 from saas import celery_app
 from utils.celery.tasks import group_chorded
@@ -79,14 +80,16 @@ def post_process():
     add_relation_between_report_and_creation_campaigns()
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    recalculate_de_norm_fields()
     logger.debug("post process finished")
     logger.info("End of AW update procedure")
 
 
 def create_cf_account_connection():
-    from aw_reporting.models import AWConnection, Account, AWAccountPermission
-    from aw_reporting.adwords_api import load_web_app_settings, get_customers
+    from aw_reporting.models import AWConnection
+    from aw_reporting.models import Account
+    from aw_reporting.models import AWAccountPermission
+    from aw_reporting.adwords_api import load_web_app_settings
+    from aw_reporting.adwords_api import get_customers
 
     aw_settings = load_web_app_settings()
     connection, created = AWConnection.objects.update_or_create(
@@ -140,3 +143,31 @@ def update_accounts_group(today_str: str, start, end, account_ids, is_mcc: bool)
         for index, account in enumerate(accounts)
     ]
     return group(tasks_signatures)
+
+
+def detect_success_aw_read_permissions():
+    from aw_reporting.models import AWAccountPermission
+    for permission in AWAccountPermission.objects.filter(
+            can_read=False,
+            account__is_active=True,
+            aw_connection__revoked_access=False,
+    ):
+        try:
+            client = get_web_app_client(
+                refresh_token=permission.aw_connection.refresh_token,
+                client_customer_id=permission.account_id,
+            )
+        except Exception as e:
+            logger.error(e)
+        else:
+            try:
+                get_all_customers(client, page_size=1, limit=1)
+            except AccountInactiveError:
+                account = permission.account
+                account.is_active = False
+                account.save()
+            except Exception as e:
+                logger.error(e)
+            else:
+                permission.can_read = True
+                permission.save()

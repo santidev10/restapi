@@ -33,10 +33,10 @@ from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 
 logger = logging.getLogger(__name__)
 

@@ -8,6 +8,7 @@ import aw_reporting.update.tasks as aw_tasks
 from aw_reporting.adwords_api import get_web_app_client, get_all_customers
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.models import Account
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.lang import safe_index
 
 logger = logging.getLogger(__name__)
@@ -138,3 +139,4 @@ class AWDataLoader:
 
         account.update_time = timezone.now()
         account.save()
+        recalculate_de_norm_fields_for_account(account.id)

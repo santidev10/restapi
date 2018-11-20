@@ -16,7 +16,6 @@ MIGRATION_MODULES = {
     "email_reports": None,
     "keyword_tool": None,
     "landing": None,
-    "payments": None,
     "segment": None,
     "sessions": None,
     "userprofile": None,

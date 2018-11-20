@@ -34,9 +34,9 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):

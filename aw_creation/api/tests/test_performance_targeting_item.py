@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORB
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PerformanceItemAPITestCase(ExtendedAPITestCase):

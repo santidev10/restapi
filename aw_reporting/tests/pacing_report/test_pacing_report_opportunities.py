@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
@@ -16,8 +17,9 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import patch_now
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
@@ -141,7 +143,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(date=start, campaign=campaign,
                                          video_views=1000, cost=5)
         Flight.objects.create(id="0", name="CPV Flight",
-                              placement=cpv_placement,
+                              placement=cpv_placement, total_cost=10,
                               start=start, end=end, cost=1)
 
         placement = OpPlacement.objects.create(
@@ -344,4 +346,75 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         first_op_data = opportunities[0]
         self.assertEqual(first_op_data["impressions"], delivered_units)
         self.assertEqual(first_op_data["cost"], cost)
+        self.assertAlmostEqual(first_op_data["margin"], expected_margin)
+
+    def test_client_cost_cap_on_flight_level(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-767
+        Summary: Update Margin Calculations (Capping issue)
+        """
+        any_date = date(2018, 10, 1)
+        start_1, end_1, start_2, end_2 = (any_date + timedelta(days=i) for i in range(4))
+        total_cost_1 = total_cost_2 = 10
+        total_cost = sum([total_cost_1, total_cost_2])
+        ordered_rate = .5
+        opportunity = Opportunity.objects.create(
+            probability=100,
+            budget=total_cost,
+        )
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            total_cost=total_cost,
+            ordered_rate=ordered_rate,
+            start=start_1,
+            end=end_2,
+        )
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=start_1, end=end_1,
+            total_cost=total_cost_1,
+        )
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=start_2, end=end_2,
+            total_cost=total_cost_2,
+        )
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(
+            account=account,
+            salesforce_placement=placement,
+        )
+        delivered_1, delivered_2 = 30, 10
+        cost_1, cost_2 = 9, 3
+        aw_cost = sum([cost_1, cost_2])
+        CampaignStatistic.objects.create(
+            campaign=campaign,
+            date=start_1,
+            video_views=delivered_1,
+            cost=cost_1,
+        )
+        CampaignStatistic.objects.create(
+            campaign=campaign,
+            date=start_2,
+            video_views=delivered_2,
+            cost=cost_2,
+        )
+        client_cost_1, client_cost_2 = delivered_1 * ordered_rate, delivered_2 * ordered_rate
+        self.assertGreater(client_cost_1, total_cost_1)
+        self.assertLess(client_cost_2, total_cost_2)
+
+        actualized_client_cost_1 = min(client_cost_1, total_cost_1)
+        actualized_client_cost_2 = min(client_cost_2, total_cost_2)
+
+        actualized_client_cost = sum([actualized_client_cost_1, actualized_client_cost_2])
+        expected_margin = 1 - aw_cost / actualized_client_cost
+
+        report = PacingReport()
+        opportunities = report.get_opportunities({})
+        self.assertEqual(len(opportunities), 1)
+        first_op_data = opportunities[0]
         self.assertAlmostEqual(first_op_data["margin"], expected_margin)

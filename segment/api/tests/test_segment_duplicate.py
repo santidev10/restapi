@@ -4,7 +4,7 @@ from rest_framework.status import HTTP_201_CREATED
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class SegmentDuplicateTestCase(ExtendedAPITestCase):

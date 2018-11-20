@@ -267,7 +267,7 @@ class Opportunity(models.Model):
             if territory in SalesForceRegions:
                 region_id = SalesForceRegions.index(territory)
             else:
-                logger.critical("{} not in SFRegions".format(territory))
+                logger.debug("(Error) {} not in SFRegions".format(territory))
                 region_id = None
         else:
             region_id = None

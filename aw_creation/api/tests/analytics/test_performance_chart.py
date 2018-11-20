@@ -43,11 +43,11 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import generic_test
-from utils.utils_tests import int_iterator
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.generic_test import generic_test
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 
 
 class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):

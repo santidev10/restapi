@@ -1,12 +1,18 @@
-from datetime import date, datetime
+from datetime import date
+from datetime import datetime
+
 from django.test import TestCase
 
-from aw_reporting.models import Opportunity, Campaign, AdGroup, \
-    CampaignStatistic, AdGroupStatistic, OpPlacement
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from aw_reporting.tools.forecast_tool.forecast_tool import ForecastTool
-from aw_reporting.update.tasks import recalculate_de_norm_fields
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
+from utils.utittests.recalculate_de_norm_fields import recalculate_de_norm_fields
 
 
 class ForecastToolTestCase(TestCase):
