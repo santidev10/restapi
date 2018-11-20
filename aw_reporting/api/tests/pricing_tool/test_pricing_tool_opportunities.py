@@ -3098,27 +3098,28 @@ class PricingToolTestCase(APITestCase):
         stats = CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units,
                                                  cost=cost)
 
-        client_cost = get_client_cost(
-            goal_type_id=placement.goal_type_id,
-            dynamic_placement=placement.dynamic_placement,
-            placement_type=placement.placement_type,
-            ordered_rate=placement.ordered_rate,
-            total_cost=flight.total_cost,
-            tech_fee=placement.tech_fee,
-            start=flight.start,
-            end=flight.end,
-            impressions=stats.impressions,
-            video_views=stats.video_views,
-            aw_cost=stats.cost,
-        )
-        expected_margin = get_margin(
-            plan_cost=placement.total_cost,
-            cost=stats.cost,
-            client_cost=client_cost
-        ) * 100
-
         with patch_now(test_now):
+            client_cost = get_client_cost(
+                goal_type_id=placement.goal_type_id,
+                dynamic_placement=placement.dynamic_placement,
+                placement_type=placement.placement_type,
+                ordered_rate=placement.ordered_rate,
+                total_cost=flight.total_cost,
+                tech_fee=placement.tech_fee,
+                start=flight.start,
+                end=flight.end,
+                impressions=stats.impressions,
+                video_views=stats.video_views,
+                aw_cost=stats.cost,
+            )
+            expected_margin = get_margin(
+                plan_cost=placement.total_cost,
+                cost=stats.cost,
+                client_cost=client_cost
+            ) * 100
+
             response = self._request()
+
         opportunities = response.data["items"]
         self.assertEqual(len(opportunities), 1)
 
