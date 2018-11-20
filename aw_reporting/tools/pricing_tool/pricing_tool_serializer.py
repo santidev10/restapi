@@ -56,43 +56,14 @@ class PricingToolSerializer:
     def _get_opportunity_data(self, opportunity, campaigns,
                               campaigns_data, campaign_thumbs):
         periods = self.kwargs.get("periods", [])
-        date_filter = statistic_date_filter(periods)
-        base_date_filter = Q(
-            campaign__salesforce_placement__flights__start__lte=F("date"),
-            campaign__salesforce_placement__flights__end__gte=F("date")
-        )
-        date_f = reduce(lambda x, f: x | Q(**f), date_filter, base_date_filter)
-        stats_queryset = CampaignStatistic.objects \
-            .filter(campaign__salesforce_placement__opportunity=opportunity) \
-            .filter(date_f) \
-            .annotate(
-            ordered_rate=F("campaign__salesforce_placement__ordered_rate"))
-        total_statistic = stats_queryset.aggregate(
-            aw_clicks=Sum("clicks"),
-            video_views_100_quartile=Sum("video_views_100_quartile")
-        )
-        cpv_stats = stats_queryset \
-            .filter(
-            campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV) \
-            .annotate(cpv_client_cost=F("video_views") * F("ordered_rate")) \
-            .aggregate(aw_impressions=Sum("impressions"),
-                       aw_video_views=Sum("video_views"),
-                       aw_cpv_cost=Sum("cost"))
-        cpm_stats = stats_queryset \
-            .filter(
-            campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM) \
-            .annotate(
-            cpm_client_cost=F("impressions") / Value(1000.) * F("ordered_rate")) \
-            .aggregate(aw_impressions=Sum("impressions"),
-                       aw_cpm_cost=Sum("cost"))
 
-        flight_date_filter = statistic_date_filter(periods, "placement__adwords_campaigns__statistics__")
-        base_flight_date_filter = Q(
+        period_filter = statistic_date_filter(periods)
+        flight_date_range_filter = Q(
             placement__adwords_campaigns__statistics__date__gte=F("start"),
             placement__adwords_campaigns__statistics__date__lte=F("end"),
         )
-        flight_date_f = reduce(lambda x, f: x | Q(**f), flight_date_filter, base_flight_date_filter)
-        flights = Flight.objects.filter(flight_date_f, placement__opportunity=opportunity) \
+        all_filters = reduce(lambda x, f: x | Q(**f), period_filter, flight_date_range_filter)
+        flights = Flight.objects.filter(all_filters, placement__opportunity=opportunity) \
             .annotate(
             goal_type_id=F("placement__goal_type_id"),
             dynamic_placement=F("placement__dynamic_placement"),
@@ -101,13 +72,20 @@ class PricingToolSerializer:
             tech_fee=F("placement__tech_fee"),
             impressions=Sum("placement__adwords_campaigns__statistics__impressions"),
             video_views=Sum("placement__adwords_campaigns__statistics__video_views"),
+            clicks=Sum("placement__adwords_campaigns__statistics__clicks"),
+            video_views_100_quartile=Sum("placement__adwords_campaigns__statistics__video_views_100_quartile"),
             aw_cost=Sum("placement__adwords_campaigns__statistics__cost"),
         )
-        client_cost = 0
-        aw_cost = 0
+        client_cost = aw_cost = 0
+        cpm_impressions = cpv_impressions = 0
+        aw_cpm_cost = aw_cpv_cost = 0
+        cpv_video_views = 0
+        total_clicks = 0
+        video_views_100_quartile = 0
         for flight in flights:
+            goal_type_id = flight.goal_type_id
             rate = flight.ordered_rate / 1000 \
-                if flight.goal_type_id == SalesForceGoalType.CPM \
+                if goal_type_id == SalesForceGoalType.CPM \
                 else flight.ordered_rate
             client_cost += get_client_cost(
                 goal_type_id=flight.goal_type_id,
@@ -123,8 +101,16 @@ class PricingToolSerializer:
                 aw_cost=flight.aw_cost,
             )
             aw_cost += flight.aw_cost
-        aw_cpv_cost = cpv_stats["aw_cpv_cost"] or 0
-        aw_cpm_cost = cpm_stats["aw_cpm_cost"] or 0
+            total_clicks += flight.clicks
+            video_views_100_quartile += flight.video_views_100_quartile
+            if goal_type_id == SalesForceGoalType.CPM:
+                cpm_impressions += flight.impressions
+                aw_cpm_cost += flight.aw_cost
+            if goal_type_id == SalesForceGoalType.CPV:
+                cpv_impressions += flight.impressions
+                cpv_video_views += flight.video_views
+                aw_cpv_cost += flight.aw_cost
+
         sf_cpv_cost = opportunity.sf_cpv_cost or 0
         sf_cpm_cost = opportunity.sf_cpm_cost or 0
         sf_cpv_units = opportunity.sf_cpv_units or 0
@@ -132,12 +118,7 @@ class PricingToolSerializer:
         sf_cpm = sf_cpm_cost / sf_cpm_units * 1000 if sf_cpm_units > 0 else None
         sf_cpv = sf_cpv_cost / sf_cpv_units if sf_cpv_units > 0 else None
 
-        cpm_impressions = cpm_stats["aw_impressions"] or 0
-        cpv_impressions = cpv_stats["aw_impressions"] or 0
-
-        total_clicks = total_statistic["aw_clicks"] or 0
         total_impressions = cpm_impressions + cpv_impressions
-        cpv_video_views = cpv_stats["aw_video_views"] or 0
 
         ctr = (total_clicks / total_impressions) * 100 \
             if total_impressions else 0
@@ -184,8 +165,6 @@ class PricingToolSerializer:
             .order_by() \
             .distinct()
 
-        video_views_100_quartile = total_statistic["video_views_100_quartile"] \
-                                   or 0
         video100rate = video_views_100_quartile * 100. / total_impressions \
             if total_impressions > 0 else 0
 
@@ -418,12 +397,12 @@ def add_to_key(d: defaultdict, key, item):
     return d
 
 
-def statistic_date_filter(periods, prefix=""):
+def statistic_date_filter(periods):
     return [
-               {
-                   prefix + "date__gte": start,
-                   prefix + "date__lte": end,
-               }
+               dict(
+                   placement__adwords_campaigns__statistics__date__gte=start,
+                   placement__adwords_campaigns__statistics__date__lte=end,
+               )
                for start, end in periods
            ] or [dict()]
 
