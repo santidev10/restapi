@@ -1,5 +1,7 @@
 import json
-from datetime import timedelta, datetime, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 import pytz
 from django.core.urlresolvers import reverse
@@ -7,17 +9,37 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
-    Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
-    TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
-    Flight, GeoTargeting, device_str, Device
+from aw_reporting.calculations.cost import get_client_cost
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Category
+from aw_reporting.models import Device
+from aw_reporting.models import Flight
+from aw_reporting.models import Genders
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTargeting
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
+from aw_reporting.models import get_margin
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
-from utils.utittests.patch_now import patch_now, int_iterator
 
 
 class PricingToolTestCase(APITestCase):
@@ -2269,8 +2291,10 @@ class PricingToolTestCase(APITestCase):
         _, campaign = self._create_opportunity_campaign("1")
         campaign.account = Account.objects.create(id="1")
         campaign.save()
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: []}
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
+        }
         with self.patch_user_settings(**user_settings):
             response = self._request()
 
@@ -2299,8 +2323,10 @@ class PricingToolTestCase(APITestCase):
         account_2 = Account.objects.create(id="2", name="")
         Campaign.objects.create(
             id="2", account=account_2, salesforce_placement=placement)
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]
+        }
         with self.patch_user_settings(**user_settings):
             response = self._request()
 
@@ -2329,8 +2355,10 @@ class PricingToolTestCase(APITestCase):
                                          video_views_100_quartile=20,
                                          impressions=100)
 
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]
+        }
         with self.patch_user_settings(**user_settings):
             response = self._request(min_video100rate=10,
                                      max_video100rate=30)
@@ -2352,8 +2380,10 @@ class PricingToolTestCase(APITestCase):
                                          campaign=campaign_2,
                                          video_views=2,
                                          impressions=10)
-        user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
-                         UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+        user_settings = {
+            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]
+        }
         with self.patch_user_settings(**user_settings):
             response = self._request(min_video_view_rate=10,
                                      max_video_view_rate=30)
@@ -2375,7 +2405,8 @@ class PricingToolTestCase(APITestCase):
         predefined_cpv_statistics = {
             "impressions": 112,
             "video_views": 143,
-            "clicks": 78}
+            "clicks": 78
+        }
         campaign = Campaign.objects.create(
             id="campaign_1", name="Campaign name 1",
             salesforce_placement=placement_1,
@@ -2385,7 +2416,8 @@ class PricingToolTestCase(APITestCase):
         predefined_cpm_statistics = {
             "impressions": 26,
             "video_views": 0,
-            "clicks": 11}
+            "clicks": 11
+        }
         campaign = Campaign.objects.create(
             id="campaign_2", name="Campaign name 2",
             salesforce_placement=placement_2,
@@ -3039,11 +3071,64 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["products"], [test_type])
 
-    def test_aggregates_latest_data(self):
+    def test_margin_hard_cost(self):
         """
         Ticket: https://channelfactory.atlassian.net/browse/VIQ-760
         Summary: Pricing Tool > Margin doesn't match with Margin on Pacing report (which is correct)
         Root cause 1: Different calculation of client cost for Hard Cost
+        """
+        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
+        start = (test_now - timedelta(days=5)).date()
+        end = (test_now + timedelta(days=2)).date()
+        ordered_units = 1234
+        delivered_units = 345
+        cost = 123
+
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(id=next(int_iterator),
+                                               opportunity=opportunity, goal_type_id=SalesForceGoalType.HARD_COST,
+                                               ordered_rate=12.2, total_cost=9999)
+
+        flight = Flight.objects.create(id=next(int_iterator),
+                                       placement=placement, start=start, end=end,
+                                       ordered_units=ordered_units, total_cost=9999)
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        stats = CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units,
+                                                 cost=cost)
+
+        client_cost = get_client_cost(
+            goal_type_id=placement.goal_type_id,
+            dynamic_placement=placement.dynamic_placement,
+            placement_type=placement.placement_type,
+            ordered_rate=placement.ordered_rate,
+            total_cost=flight.total_cost,
+            tech_fee=placement.tech_fee,
+            start=flight.start,
+            end=flight.end,
+            impressions=stats.impressions,
+            video_views=stats.video_views,
+            aw_cost=stats.cost,
+        )
+        expected_margin = get_margin(
+            plan_cost=placement.total_cost,
+            cost=stats.cost,
+            client_cost=client_cost
+        ) * 100
+
+        with patch_now(test_now):
+            response = self._request()
+        opportunities = response.data["items"]
+        self.assertEqual(len(opportunities), 1)
+
+        opp_data = opportunities[0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
+    def test_margin_ignore_out_of_flight(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-760
+        Summary: Pricing Tool > Margin doesn't match with Margin on Pacing report (which is correct)
         Root cause 2: Pacing report uses statistic filtered by flight dates, pricing tool does not.
         """
         test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
@@ -3064,9 +3149,96 @@ class PricingToolTestCase(APITestCase):
 
         account = Account.objects.create()
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
-        CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units, cost=cost)
+        CampaignStatistic.objects.create(
+            date=start - timedelta(days=1),
+            campaign=campaign,
+            impressions=delivered_units,
+            cost=cost
+        )
 
-        client_cost = delivered_units * placement.ordered_rate / 1000
+        client_cost = cost = 0  # as there is no statistic in the flight date range
+        expected_margin = get_margin(
+            plan_cost=placement.total_cost,
+            cost=cost,
+            client_cost=client_cost
+        ) * 100
+
+        with patch_now(test_now):
+            response = self._request()
+        opportunities = response.data["items"]
+        self.assertEqual(len(opportunities), 1)
+
+        opp_data = opportunities[0]
+        self.assertAlmostEqual(opp_data["margin"], expected_margin)
+
+    def test_margin_client_cost_cap(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-760
+        Summary: Pricing Tool > Margin doesn't match with Margin on Pacing report (which is correct)
+        Root cause 3: Pacing report uses statistic filtered by flight dates, pricing tool does not.
+        """
+        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
+        start_1 = end_1 = (test_now - timedelta(days=2)).date()
+        start_2 = end_2 = (test_now - timedelta(days=1)).date()
+        ordered_units = 100, 100
+        ordered_rate = 1
+        total_cost_1 = ordered_units[0] * ordered_rate
+        total_cost_2 = ordered_units[1] * ordered_rate
+        total_cost = sum([total_cost_1, total_cost_2])
+        delivered_units = 3456, 1
+        costs = 12, 23
+        cost = sum(costs)
+
+        opportunity = Opportunity.objects.create(probability=100)
+        placement = OpPlacement.objects.create(id=next(int_iterator),
+                                               opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+                                               ordered_rate=1, total_cost=total_cost)
+
+        flights = [
+            Flight.objects.create(id=next(int_iterator),
+                                  placement=placement, start=start_1, end=end_1,
+                                  ordered_units=ordered_units[0], total_cost=total_cost_1),
+            Flight.objects.create(id=next(int_iterator),
+                                  placement=placement, start=start_2, end=end_2,
+                                  ordered_units=ordered_units[1], total_cost=total_cost_2)
+        ]
+
+        account = Account.objects.create()
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        stats = [
+            CampaignStatistic.objects.create(
+                date=start_1,
+                campaign=campaign,
+                video_views=delivered_units[0],
+                cost=costs[0]
+            ),
+            CampaignStatistic.objects.create(
+                date=start_2,
+                campaign=campaign,
+                video_views=delivered_units[1],
+                cost=costs[1]
+            )
+        ]
+        self.assertGreater(delivered_units[0], ordered_units[0])
+        self.assertLess(delivered_units[1], ordered_units[1])
+        client_costs = [
+            get_client_cost(
+                goal_type_id=placement.goal_type_id,
+                dynamic_placement=placement.dynamic_placement,
+                placement_type=placement.placement_type,
+                ordered_rate=ordered_rate,
+                total_cost=flight.total_cost,
+                tech_fee=placement.tech_fee,
+                start=flight.start,
+                end=flight.end,
+                impressions=stat.impressions,
+                video_views=stat.video_views,
+                aw_cost=stat.cost,
+            )
+            for flight, stat in zip(flights, stats)
+        ]
+
+        client_cost = sum(client_costs)
         expected_margin = (1 - cost / client_cost) * 100
 
         with patch_now(test_now):
@@ -3076,7 +3248,6 @@ class PricingToolTestCase(APITestCase):
 
         opp_data = opportunities[0]
         self.assertAlmostEqual(opp_data["margin"], expected_margin)
-        self.fail("Test not covers the issue yet.")
 
 
 def generate_campaign_statistic(
