@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 
 from aw_reporting.models import Campaign
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.cta import format_click_types_report
 from aw_reporting.update.tasks.utils.cta import update_stats_with_click_type_data
@@ -18,7 +19,6 @@ logger = logging.getLogger(__name__)
 def get_ad_groups_and_stats(client, account, *_):
     from aw_reporting.models import AdGroup
     from aw_reporting.models import AdGroupStatistic
-    from aw_reporting.models import Devices
     from aw_reporting.adwords_reports import ad_group_performance_report
     click_type_report_fields = (
         "AdGroupId",
@@ -94,7 +94,7 @@ def get_ad_groups_and_stats(client, account, *_):
             stats = {
                 "date": row_obj.Date,
                 "ad_network": row_obj.AdNetworkType1,
-                "device_id": Devices.index(row_obj.Device),
+                "device_id": get_device_id_by_name(row_obj.Device),
                 "ad_group_id": ad_group_id,
                 "average_position": row_obj.AveragePosition,
                 "engagements": row_obj.Engagements,

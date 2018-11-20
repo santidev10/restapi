@@ -21,8 +21,7 @@ services:
     depends_on:
     - pg
     - sdb
-    - web
-    - celery_worker
+    - rabbitmq
   celery_beat:
     build: .
     volumes:

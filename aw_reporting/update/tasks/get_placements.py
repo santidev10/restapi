@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.db.models import Max
 
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
@@ -60,7 +61,7 @@ def get_placements(client, account, today):
                     "yt_id": criteria,
                     "date": row_obj.Date,
                     "ad_group_id": row_obj.AdGroupId,
-                    "device_id": Devices.index(row_obj.Device),
+                    "device_id": get_device_id_by_name(row_obj.Device),
                     "video_views_25_quartile": quart_views(row_obj, 25),
                     "video_views_50_quartile": quart_views(row_obj, 50),
                     "video_views_75_quartile": quart_views(row_obj, 75),
@@ -78,7 +79,7 @@ def get_placements(client, account, today):
                     "yt_id": criteria,
                     "date": row_obj.Date,
                     "ad_group_id": row_obj.AdGroupId,
-                    "device_id": Devices.index(row_obj.Device),
+                    "device_id": get_device_id_by_name(row_obj.Device),
                     "video_views_25_quartile": quart_views(row_obj, 25),
                     "video_views_50_quartile": quart_views(row_obj, 50),
                     "video_views_75_quartile": quart_views(row_obj, 75),
