@@ -40,7 +40,11 @@ class PricingToolSerializer:
                               campaigns_data, campaign_thumbs):
         periods = self.kwargs.get("periods", [])
         date_filter = statistic_date_filter(periods)
-        date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
+        base_date_filter = Q(
+            campaign__salesforce_placement__flights__start__gt=F("date"),
+            campaign__salesforce_placement__flights__end__lt=F("date")
+        )
+        date_f = reduce(lambda x, f: x | Q(**f), date_filter, base_date_filter)
         stats_queryset = CampaignStatistic.objects \
             .filter(campaign__salesforce_placement__opportunity=opportunity) \
             .filter(date_f) \
