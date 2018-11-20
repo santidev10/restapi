@@ -58,12 +58,14 @@ class PricingToolSerializer:
         periods = self.kwargs.get("periods", [])
 
         period_filter = statistic_date_filter(periods)
+        opportunity_filter = Q(placement__opportunity=opportunity)
         flight_date_range_filter = Q(
             placement__adwords_campaigns__statistics__date__gte=F("start"),
             placement__adwords_campaigns__statistics__date__lte=F("end"),
         )
-        all_filters = reduce(lambda x, f: x | Q(**f), period_filter, flight_date_range_filter)
-        flights = Flight.objects.filter(all_filters, placement__opportunity=opportunity) \
+
+        all_filters = opportunity_filter & flight_date_range_filter & period_filter
+        flights = Flight.objects.filter(all_filters) \
             .annotate(
             goal_type_id=F("placement__goal_type_id"),
             dynamic_placement=F("placement__dynamic_placement"),
@@ -84,14 +86,11 @@ class PricingToolSerializer:
         video_views_100_quartile = 0
         for flight in flights:
             goal_type_id = flight.goal_type_id
-            rate = flight.ordered_rate / 1000 \
-                if goal_type_id == SalesForceGoalType.CPM \
-                else flight.ordered_rate
             client_cost += get_client_cost(
                 goal_type_id=flight.goal_type_id,
                 dynamic_placement=flight.dynamic_placement,
                 placement_type=flight.placement_type,
-                ordered_rate=rate,
+                ordered_rate=flight.ordered_rate,
                 total_cost=flight.total_cost,
                 tech_fee=flight.tech_fee,
                 start=flight.start,
@@ -398,13 +397,14 @@ def add_to_key(d: defaultdict, key, item):
 
 
 def statistic_date_filter(periods):
-    return [
-               dict(
-                   placement__adwords_campaigns__statistics__date__gte=start,
-                   placement__adwords_campaigns__statistics__date__lte=end,
-               )
-               for start, end in periods
-           ] or [dict()]
+    dicts = [
+                dict(
+                    placement__adwords_campaigns__statistics__date__gte=start,
+                    placement__adwords_campaigns__statistics__date__lte=end,
+                )
+                for start, end in periods
+            ] or [dict()]
+    return reduce(lambda x, f: x | Q(**f), dicts, Q())
 
 
 def get_campaign_start_end(campaign):
