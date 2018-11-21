@@ -14,10 +14,11 @@ from django.db.models import Value
 from django.db.models import When
 
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.models import AdGroup, Flight
+from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
 from aw_reporting.models import Genders
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import Opportunity
@@ -31,6 +32,7 @@ from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES
 from userprofile.models import UserProfile
 from utils.datetime import as_date
+from utils.datetime import now_in_default_tz
 from utils.query import merge_when
 
 
@@ -55,16 +57,20 @@ class PricingToolSerializer:
 
     def _get_opportunity_data(self, opportunity, campaigns,
                               campaigns_data, campaign_thumbs):
+        today = now_in_default_tz().date()
         periods = self.kwargs.get("periods", [])
 
-        period_filter = statistic_date_filter(periods)
         opportunity_filter = Q(placement__opportunity=opportunity)
+        period_filter = statistic_date_filter(periods)
         flight_date_range_filter = Q(
             placement__adwords_campaigns__statistics__date__gte=F("start"),
             placement__adwords_campaigns__statistics__date__lte=F("end"),
         )
+        flight_is_hard_cost = Q(placement__goal_type_id=SalesForceGoalType.HARD_COST)
+        statistic_filter = (period_filter & flight_date_range_filter) | flight_is_hard_cost
+        start_filter = Q(start__lte=today)
 
-        all_filters = opportunity_filter & flight_date_range_filter & period_filter
+        all_filters = opportunity_filter & start_filter & statistic_filter
         flights = Flight.objects.filter(all_filters) \
             .annotate(
             goal_type_id=F("placement__goal_type_id"),
@@ -78,7 +84,7 @@ class PricingToolSerializer:
             video_views_100_quartile=Sum("placement__adwords_campaigns__statistics__video_views_100_quartile"),
             aw_cost=Sum("placement__adwords_campaigns__statistics__cost"),
         )
-        client_cost = aw_cost = 0
+        client_cost = our_cost = 0
         cpm_impressions = cpv_impressions = 0
         aw_cpm_cost = aw_cpv_cost = 0
         cpv_video_views = 0
@@ -86,22 +92,26 @@ class PricingToolSerializer:
         video_views_100_quartile = 0
         for flight in flights:
             goal_type_id = flight.goal_type_id
-            client_cost += get_client_cost(
-                goal_type_id=flight.goal_type_id,
-                dynamic_placement=flight.dynamic_placement,
-                placement_type=flight.placement_type,
-                ordered_rate=flight.ordered_rate,
-                total_cost=flight.total_cost,
-                tech_fee=flight.tech_fee,
-                start=flight.start,
-                end=flight.end,
-                impressions=flight.impressions,
-                video_views=flight.video_views,
-                aw_cost=flight.aw_cost,
-            )
-            aw_cost += flight.aw_cost
-            total_clicks += flight.clicks
-            video_views_100_quartile += flight.video_views_100_quartile
+            if goal_type_id == SalesForceGoalType.HARD_COST:
+                client_cost += flight.total_cost or 0
+                our_cost += flight.cost or 0
+            else:
+                client_cost += get_client_cost(
+                    goal_type_id=flight.goal_type_id,
+                    dynamic_placement=flight.dynamic_placement,
+                    placement_type=flight.placement_type,
+                    ordered_rate=flight.ordered_rate,
+                    total_cost=flight.total_cost,
+                    tech_fee=flight.tech_fee,
+                    start=flight.start,
+                    end=flight.end,
+                    impressions=flight.impressions,
+                    video_views=flight.video_views,
+                    aw_cost=flight.aw_cost,
+                )
+                our_cost += flight.aw_cost
+                total_clicks += flight.clicks
+                video_views_100_quartile += flight.video_views_100_quartile
             if goal_type_id == SalesForceGoalType.CPM:
                 cpm_impressions += flight.impressions
                 aw_cpm_cost += flight.aw_cost
@@ -136,8 +146,7 @@ class PricingToolSerializer:
                        campaigns_data.get(g)])
         devices = set([device_str(i) for i, d in enumerate(DEVICE_FIELDS)
                        if campaigns_data.get(d)])
-        margin = get_margin(cost=aw_cost, client_cost=client_cost, plan_cost=None)
-
+        margin = get_margin(cost=our_cost, client_cost=client_cost, plan_cost=None)
         if margin is not None:
             margin *= 100
 
@@ -184,7 +193,7 @@ class PricingToolSerializer:
             margin=margin,
             start_date=start_date,
             end_date=end_date,
-            budget=aw_cost,
+            budget=our_cost,
             devices=devices,
             relevant_date_range=relevant_date_range,
             sf_cpm=sf_cpm,

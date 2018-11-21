@@ -59,7 +59,7 @@ class PricingToolTestCase(APITestCase):
     def _create_opportunity_campaign(_id, goal_type=SalesForceGoalType.CPV,
                                      opp_data=None, pl_data=None,
                                      camp_data=None, generate_statistic=True):
-        today = timezone.now().date()
+        today = now_in_default_tz().date()
         period_days = 10
         start, end = today - timedelta(days=period_days), today
         default_opp_data = dict(start=start, end=end, brand="Test")
@@ -2661,10 +2661,12 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(data["items"][0]["id"], opportunity_1.id)
 
     def test_margin_hard_cost_zero_our_cost(self):
+        today = now_in_default_tz().date()
         _, campaign = self._create_opportunity_campaign(
             "1", SalesForceGoalType.HARD_COST, generate_statistic=False)
         placement = campaign.salesforce_placement
         Flight.objects.create(placement=placement,
+                              start=today, end=today,
                               total_cost=1)
         response = self._request()
 
@@ -2674,9 +2676,11 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(items[0]["margin"], 100)
 
     def test_margin_hard_cost_zero_client_cost(self):
+        today = now_in_default_tz().date()
         _, campaign = self._create_opportunity_campaign(
             "1", SalesForceGoalType.HARD_COST)
         Flight.objects.create(placement=campaign.salesforce_placement,
+                              start=today, end=today,
                               cost=1)
         response = self._request()
 
@@ -2685,43 +2689,8 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["margin"], -100)
 
-    def test_margin_hard_cost_and_cpv_zero_client_cost(self):
-        ordered_cpv = .7
-        aw_cpv = .3
-        delivered_units = 1000
-        cpv_client_cost = delivered_units * ordered_cpv
-        aw_cpv_cost = delivered_units * aw_cpv
-        hard_cost_cost = 20
-        hard_cost_client_cost = 200
-        client_cost = hard_cost_client_cost + cpv_client_cost
-        cost = hard_cost_cost + aw_cpv_cost
-        expected_margin = (client_cost - cost) / client_cost * 100
-        opportunity, hard_cost_campaign = self._create_opportunity_campaign(
-            "1", SalesForceGoalType.HARD_COST,
-            pl_data=dict(total_cost=9999),
-            generate_statistic=False)
-        Flight.objects.create(total_cost=hard_cost_client_cost,
-                              cost=hard_cost_cost,
-                              placement=hard_cost_campaign.salesforce_placement)
-        cpv_placement = OpPlacement.objects.create(
-            id="2", goal_type_id=SalesForceGoalType.CPV,
-            opportunity=opportunity,
-            total_cost=9999,
-            ordered_rate=ordered_cpv)
-        cpv_campaign = Campaign.objects.create(
-            id="2", salesforce_placement=cpv_placement)
-        CampaignStatistic.objects.create(date=date(2017, 1, 1),
-                                         campaign=cpv_campaign,
-                                         video_views=delivered_units,
-                                         cost=aw_cpv_cost)
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        items = response.data["items"]
-        self.assertEqual(len(items), 1)
-        self.assertAlmostEqual(items[0]["margin"], expected_margin)
-
     def test_hard_cost(self):
+        today = now_in_default_tz().date()
         client_cost = 400
         cost = 300
         expected_margin = (client_cost - cost) * 1. / client_cost * 100
@@ -2732,6 +2701,7 @@ class PricingToolTestCase(APITestCase):
             total_cost=999)
         Campaign.objects.create(salesforce_placement=placement)
         Flight.objects.create(placement=placement,
+                              start=today, end=today,
                               cost=cost,
                               total_cost=client_cost)
         response = self._request()
@@ -2764,8 +2734,9 @@ class PricingToolTestCase(APITestCase):
                               placement=placement,
                               cost=999999,
                               total_cost=999999)
-        response = self._request(start=str(today),
-                                 end=str(today))
+        with patch_now(today):
+            response = self._request(start=str(today),
+                                     end=str(today))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -2773,6 +2744,7 @@ class PricingToolTestCase(APITestCase):
         self.assertAlmostEqual(items[0]["margin"], expected_margin)
 
     def test_hard_cost_margin(self):
+        today = date(2017, 1, 1)
         opportunity = Opportunity.objects.create(probability=50)
         placement_cpm = OpPlacement.objects.create(
             id="1",
@@ -2792,11 +2764,14 @@ class PricingToolTestCase(APITestCase):
             total_cost=9999,
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(id="1", placement=placement_cpm,
+                              start=today, end=today,
                               total_cost=9999)
         Flight.objects.create(id="2", placement=placement_cpv,
+                              start=today, end=today,
                               total_cost=9999)
         flight_hard_cost = Flight.objects.create(id="3",
                                                  placement=placement_hard_cost,
+                                                 start=today, end=today,
                                                  cost=324,
                                                  total_cost=9999)
         campaign_cpm = Campaign.objects.create(
@@ -2812,7 +2787,6 @@ class PricingToolTestCase(APITestCase):
             salesforce_placement=placement_hard_cost
         )
 
-        today = date(2017, 1, 1)
         impressions = 23499
         views = 654
         cpm_cost, cpv_cost = 543, 356
@@ -2841,21 +2815,23 @@ class PricingToolTestCase(APITestCase):
         today = date(2017, 1, 15)
         start_1, end_1 = date(2017, 1, 1), date(2017, 1, 31)
         start_2, end_2 = date(2017, 2, 1), date(2017, 2, 28)
+        placement_start = min(start_1, start_2)
+        placement_end = max(end_1, end_2)
         aw_cost = 234
         impressions = 22222222
 
         placement_cpm = OpPlacement.objects.create(
             id="1",
-            start=min(start_1, start_2),
-            end=max(end_1, end_2),
+            start=placement_start,
+            end=placement_end,
             opportunity=opportunity,
             ordered_rate=0.2,
             total_cost=9999,
             goal_type_id=SalesForceGoalType.CPM)
         placement_hc = OpPlacement.objects.create(
             id="2",
-            start=min(start_1, start_2),
-            end=max(end_1, end_2),
+            start=placement_start,
+            end=placement_end,
             opportunity=opportunity,
             total_cost=9999,
             goal_type_id=SalesForceGoalType.HARD_COST)
@@ -2871,6 +2847,12 @@ class PricingToolTestCase(APITestCase):
                                                    end=end_2,
                                                    cost=3240,
                                                    total_cost=9999)
+        Flight.objects.create(id="3",
+                              placement=placement_cpm,
+                              start=placement_start,
+                              end=placement_end,
+                              cost=3240,
+                              total_cost=9999)
         campaign = Campaign.objects.create(salesforce_placement=placement_cpm)
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=date(2017, 1, 1),
@@ -3088,61 +3070,6 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["products"], [test_type])
-
-    def test_margin_hard_cost(self):
-        """
-        Ticket: https://channelfactory.atlassian.net/browse/VIQ-760
-        Summary: Pricing Tool > Margin doesn't match with Margin on Pacing report (which is correct)
-        Root cause 1: Different calculation of client cost for Hard Cost
-        """
-        test_now = datetime(2018, 1, 1, 14, 45, tzinfo=pytz.utc)
-        start = (test_now - timedelta(days=5)).date()
-        end = (test_now + timedelta(days=2)).date()
-        ordered_units = 1234
-        delivered_units = 345
-        cost = 123
-
-        opportunity = Opportunity.objects.create(probability=100)
-        placement = OpPlacement.objects.create(id=next(int_iterator),
-                                               opportunity=opportunity, goal_type_id=SalesForceGoalType.HARD_COST,
-                                               ordered_rate=12.2, total_cost=9999)
-
-        flight = Flight.objects.create(id=next(int_iterator),
-                                       placement=placement, start=start, end=end,
-                                       ordered_units=ordered_units, total_cost=9999)
-
-        account = Account.objects.create()
-        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
-        stats = CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units,
-                                                 cost=cost)
-
-        with patch_now(test_now):
-            client_cost = get_client_cost(
-                goal_type_id=placement.goal_type_id,
-                dynamic_placement=placement.dynamic_placement,
-                placement_type=placement.placement_type,
-                ordered_rate=placement.ordered_rate,
-                total_cost=flight.total_cost,
-                tech_fee=placement.tech_fee,
-                start=flight.start,
-                end=flight.end,
-                impressions=stats.impressions,
-                video_views=stats.video_views,
-                aw_cost=stats.cost,
-            )
-            expected_margin = get_margin(
-                plan_cost=placement.total_cost,
-                cost=stats.cost,
-                client_cost=client_cost
-            ) * 100
-
-            response = self._request()
-
-        opportunities = response.data["items"]
-        self.assertEqual(len(opportunities), 1)
-
-        opp_data = opportunities[0]
-        self.assertAlmostEqual(opp_data["margin"], expected_margin)
 
     def test_margin_ignore_out_of_flight(self):
         """
