@@ -171,7 +171,7 @@ REST_FRAMEWORK = {
 
 LOGS_DIRECTORY = 'logs'
 
-DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "iq_errors.log")
+DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
 ip = socket.gethostbyname(hostname)
 
@@ -208,7 +208,15 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
-        'mail_developers': {
+        'file_celery': {
+            'filename': os.path.join(LOGS_DIRECTORY, "celery_info.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
+        'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
@@ -231,11 +239,15 @@ LOGGING = {
             "level": "WARNING",
         },
         "aw_reporting.update": {
-            "handlers": ["file_updates", "slack_aw_update"],
+            "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
             "level": "DEBUG",
         },
+        "celery": {
+            "handlers": ["file_celery"],
+            "level": "INFO",
+        },
         '': {
-            'handlers': ['console', 'file', 'mail_developers'],
+            'handlers': ['console', 'file', "mail_admins"],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
         },
     },
@@ -265,13 +277,13 @@ LOGGING = {
             'callback': lambda r: 0,
         },
         "audience_not_found_warning_filter": {
-          "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
+            "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",
         },
         "topic_not_found_warning_filter": {
-          "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
+            "()": "administration.notifications.TopicNotFoundWarningLoggingFilter",
         },
         "undefined_criteria_warning_filter": {
-          "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
+            "()": "administration.notifications.UndefinedCriteriaWarningLoggingFilter",
         },
     }
 }

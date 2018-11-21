@@ -1,43 +1,51 @@
-from django.db.models import Sum, Case, When, F, FloatField, DateField
-from django.db.models.functions import Cast, ExtractDay, Least
+from django.db.models import Case
+from django.db.models import DateField
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import Sum
+from django.db.models import When
+from django.db.models.functions import Cast
+from django.db.models.functions import ExtractDay
+from django.db.models.functions import Least
 
 from aw_reporting.models.salesforce import OpPlacement
-from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
-    SalesForceGoalType
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.datetime import now_in_default_tz
 
 
 def get_client_cost(goal_type_id, dynamic_placement, placement_type,
-                    ordered_rate, impressions, video_views, aw_cost,
-                    total_cost,
-                    tech_fee, start, end):
+                    ordered_rate, total_cost, tech_fee, start, end,
+                    impressions, video_views, aw_cost):
+    client_cost = 0
     if placement_type == OpPlacement.OUTGOING_FEE_TYPE:
-        return 0
-    if goal_type_id == SalesForceGoalType.HARD_COST:
-        total_cost_or_zero = total_cost or 0
-        today = now_in_default_tz().date()
-        if start is not None and start > today:
-            return 0
-        if start is None or end is None:
-            return total_cost_or_zero
-        total_days = (end - start).days + 1
-        days_pass = (min(today, end) - start).days + 1
-        return total_cost_or_zero / total_days * days_pass
-    video_views = video_views or 0
-    impressions = impressions or 0
-    units = video_views if goal_type_id == SalesForceGoalType.CPV \
-        else impressions
-    if dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
-        aw_rate = aw_cost / units if units else 0
-        return units * (aw_rate + float(tech_fee))
-    if dynamic_placement == DynamicPlacementType.BUDGET:
-        return aw_cost or 0
-
-    # assume simple CPM/CPV
-    ordered_rate = ordered_rate or 0
-    norm_rate = ordered_rate / 1000. if goal_type_id == SalesForceGoalType.CPM \
-        else ordered_rate
-    return norm_rate * units
+        client_cost = _get_client_cost_outgoing_fee()
+    elif goal_type_id == SalesForceGoalType.HARD_COST:
+        client_cost = _get_client_cost_hard_cost(
+            start=start, end=end,
+            total_cost=total_cost,
+        )
+    elif dynamic_placement == DynamicPlacementType.RATE_AND_TECH_FEE:
+        client_cost = _get_client_cost_rate_and_tech_fee(
+            goal_type_id=goal_type_id,
+            video_views=video_views,
+            impressions=impressions,
+            aw_cost=aw_cost,
+            tech_fee=tech_fee
+        )
+    elif dynamic_placement == DynamicPlacementType.BUDGET:
+        client_cost = _get_client_cost_budget(aw_cost)
+    else:
+        client_cost = _get_client_cost_regular_cpm_cpv(
+            goal_type_id=goal_type_id,
+            impressions=impressions,
+            video_views=video_views,
+            ordered_rate=ordered_rate
+        )
+    actualized_client_cost = min(client_cost, total_cost) \
+        if total_cost is not None \
+        else client_cost
+    return actualized_client_cost
 
 
 def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
@@ -119,3 +127,49 @@ def get_client_cost_aggregation(campaign_ref="ad_group__campaign"):
     ))
 
     return aggregation
+
+
+def _get_client_cost_outgoing_fee():
+    return 0
+
+
+def _get_client_cost_hard_cost(start, end, total_cost):
+    total_cost_or_zero = total_cost or 0
+    today = now_in_default_tz().date()
+    if start is not None and start > today:
+        return 0
+    if start is None or end is None:
+        return total_cost_or_zero
+    total_days = (end - start).days + 1
+    days_pass = (min(today, end) - start).days + 1
+    return total_cost_or_zero / total_days * days_pass
+
+
+def _get_client_cost_rate_and_tech_fee(goal_type_id, video_views, impressions, aw_cost, tech_fee):
+    video_views = video_views or 0
+    impressions = impressions or 0
+    units = video_views if goal_type_id == SalesForceGoalType.CPV else impressions
+    aw_rate = aw_cost / units if units else 0
+    return units * (aw_rate + float(tech_fee))
+
+
+def _get_client_cost_budget(aw_cost):
+    return aw_cost or 0
+
+
+def _get_client_cost_regular_cpm_cpv(goal_type_id, video_views, impressions, ordered_rate):
+    units = _get_payable_units(
+        goal_type_id=goal_type_id,
+        impressions=impressions,
+        video_views=video_views,
+    )
+    ordered_rate = ordered_rate or 0
+    norm_rate = ordered_rate / 1000. if goal_type_id == SalesForceGoalType.CPM \
+        else ordered_rate
+    return norm_rate * units
+
+
+def _get_payable_units(goal_type_id, impressions, video_views):
+    video_views = video_views or 0
+    impressions = impressions or 0
+    return video_views if goal_type_id == SalesForceGoalType.CPV else impressions

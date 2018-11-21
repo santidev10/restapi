@@ -31,7 +31,6 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
-from aw_reporting.models import Devices
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import Genders
 from aw_reporting.models import GeoTarget
@@ -48,6 +47,7 @@ from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import device_str
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
@@ -889,7 +889,7 @@ class DeliveryChart:
         )
         result = defaultdict(list)
         for item in raw_stats:
-            label = Devices[item['device_id']]
+            label = device_str(item['device_id'])
             del item['device_id']
             result[label].append(item)
 

@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.db.models import Max
 
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.tasks.utils.constants import GET_DF
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.cta import format_click_types_report
@@ -20,7 +21,6 @@ def get_campaigns(client, account, *_):
     from aw_reporting.models import ACTION_STATUSES
     from aw_reporting.models import Campaign
     from aw_reporting.models import CampaignStatistic
-    from aw_reporting.models import Devices
 
     now = now_in_default_tz()
     today = now.date()
@@ -80,7 +80,7 @@ def get_campaigns(client, account, *_):
         statistic_data = {
             "date": row_obj.Date,
             "campaign_id": row_obj.CampaignId,
-            "device_id": Devices.index(row_obj.Device),
+            "device_id": get_device_id_by_name(row_obj.Device),
 
             "video_views_25_quartile": quart_views(row_obj, 25),
             "video_views_50_quartile": quart_views(row_obj, 50),
