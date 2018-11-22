@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers.analytics.account_creation_details_serializer import \
-    AnalyticsCreationDetailsSerializer
+    AnalyticsAccountCreationDetailsSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroupStatistic
@@ -38,7 +38,7 @@ class AnalyticsAccountCreationDetailsAPIView(APIView):
 
     def post(self, request, pk, **_):
         account_creation = self._get_account_creation(request, pk)
-        data = AnalyticsCreationDetailsSerializer(account_creation, context={"request": request}).data
+        data = AnalyticsAccountCreationDetailsSerializer(account_creation, context={"request": request}).data
         data["details"] = self.get_details_data(account_creation)
         return Response(data=data)
 
