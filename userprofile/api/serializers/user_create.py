@@ -14,6 +14,7 @@ from administration.notifications import send_welcome_email
 from userprofile.api.serializers.validators import phone_validator
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserAnnualAdSpend
+from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import get_default_accesses
 
@@ -77,7 +78,9 @@ class UserCreateSerializer(ModelSerializer):
         user = super(UserCreateSerializer, self).save(**kwargs)
         # set password
         user.set_password(user.password)
-        user.save(update_fields=["password"])
+        user.status = UserStatuses.PENDING.value
+        user.is_active = False
+        user.save(update_fields=["password", "status", "is_active"])
 
         # new default access implementation
         for group_name in get_default_accesses():
@@ -88,8 +91,9 @@ class UserCreateSerializer(ModelSerializer):
         # update last login
         update_last_login(None, user)
         # send email to admin
+        host = self.context.get("request").get_host()
         email_data = {
-            "host": self.context.get("request").get_host(),
+            "host": host,
             "email": user.email,
             "company": user.company,
             "phone": user.phone_number,
@@ -97,6 +101,7 @@ class UserCreateSerializer(ModelSerializer):
             "last_name": user.last_name,
             "annual_ad_spend": user.annual_ad_spend,
             "user_type": user.user_type,
+            "user_list_link": "{}/admin/users".format(host),
         }
         send_new_registration_email(email_data)
         send_welcome_email(user, self.context.get("request"))

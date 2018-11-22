@@ -17,6 +17,7 @@ from segment.models import SegmentKeyword
 from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
+from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
@@ -59,7 +60,7 @@ class ChannelAuthenticationApiView(APIView):
                     self.set_user_avatar(user, data.get("access_token"))
 
                 return Response(status=HTTP_202_ACCEPTED,
-                                data={"auth_token": user.auth_token.key})
+                                data={"auth_token": user.auth_token.key, "is_active": user.is_active})
 
         return Response()
 
@@ -99,6 +100,8 @@ class ChannelAuthenticationApiView(APIView):
             # Create new user
             user_data["email"] = email
             user_data["google_account_id"] = google_id
+            user_data["status"] = UserStatuses.PENDING.value
+            user_data["is_active"] = False
             user_data["user_type"] = UserTypeCreator.CREATOR.value
             user_data["password"] = hashlib.sha1(str(
                 timezone.now().timestamp()).encode()).hexdigest()

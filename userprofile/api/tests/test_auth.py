@@ -47,6 +47,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "logo_url",
                 "phone_number",
                 "token",
+                "is_active",
             }
         )
 
