@@ -44,11 +44,11 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_ok_order_by(self):
+    def test_ok_sort_by(self):
         self.create_admin_user()
-        user = get_user_model().objects.create(email="test_list1@example.com", first_name="A")
-        get_user_model().objects.create(email="test_list2@example.com", first_name="B")
-        url = "{}{}".format(self.url, "?order_by=first_name")
+        user = get_user_model().objects.create(email="test_list1@example.com", first_name="B")
+        get_user_model().objects.create(email="test_list2@example.com", first_name="A")
+        url = "{}{}".format(self.url, "?sort_by=-first_name")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data.get("items")[0].get("id"), user.id)

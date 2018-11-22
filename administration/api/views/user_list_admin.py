@@ -72,8 +72,8 @@ class UserListAdminApiView(ListAPIView):
         return queryset
 
     def do_sorts(self, queryset):
-        order_by = self.request.query_params.get("order_by")
-        if not order_by:
+        sort_by = self.request.query_params.get("sort_by")
+        if not sort_by:
             return queryset.order_by("last_name", "first_name")
-        return queryset.order_by(order_by)
+        return queryset.order_by(sort_by)
 
