@@ -291,8 +291,12 @@ class DeliveryChart:
                                        "total_cost",
                                        "ordered_units")
 
-        start = max(placements_start, self.params.get("start"))
+        start = placements_start
+        if self.params.get("start") is not None and self.params.get("start") > start:
+            start = self.params.get("start")
         end = self.params.get("end")
+        if end is None:
+            end = now_in_default_tz().date()
 
         total_days = (end - start).days + 1
         trend = [

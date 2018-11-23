@@ -685,6 +685,31 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
             else:
                 self.assertIsNotNone(trend)
 
+    def test_filters_without_dates(self):
+        today = datetime.now().date()
+        test_days = 10
+        test_impressions = 100
+        for i in range(test_days):
+            AdGroupStatistic.objects.create(
+                ad_group=self.ad_group,
+                average_position=1,
+                date=today - timedelta(days=i),
+                impressions=test_impressions,
+            )
+
+        today = datetime.now().date()
+        filters = dict(
+            indicator=Indicator.IMPRESSIONS,
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = self.campaign.account.managers.first()
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        trend = get_trend(response.data, TrendId.HISTORICAL)
+        self.assertIsNotNone(trend)
+        self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
+                         {test_impressions})
 
 def get_trend(data, uid):
     trends = dict(((t["id"], t["data"])
