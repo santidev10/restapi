@@ -278,7 +278,7 @@ class BaseDemo:
 
     @property
     def clicks_website(self):
-        return sum(i.clicks_call_to_action_overlay for i in self.children)
+        return sum(i.clicks_website for i in self.children)
 
     @property
     def clicks_call_to_action_overlay(self):
@@ -286,15 +286,15 @@ class BaseDemo:
 
     @property
     def clicks_app_store(self):
-        return sum(i.clicks_call_to_action_overlay for i in self.children)
+        return sum(i.clicks_app_store for i in self.children)
 
     @property
     def clicks_cards(self):
-        return sum(i.clicks_call_to_action_overlay for i in self.children)
+        return sum(i.clicks_cards for i in self.children)
 
     @property
     def clicks_end_cap(self):
-        return sum(i.clicks_call_to_action_overlay for i in self.children)
+        return sum(i.clicks_end_cap for i in self.children)
 
     @property
     def video_impressions(self):

@@ -52,7 +52,7 @@ class AnalyticsPerformanceWeeklyReport:
         ]
         return columns
 
-    def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
+    def _extract_data_row(self, row, default=None, with_cta=True):
         rows = [
             row["impressions"] or default,
             row["video_views"] or default,
@@ -126,13 +126,18 @@ class AnalyticsPerformanceWeeklyReport:
             1: footer_text_format,
             2: footer_text_format,
             3: footer_text_format,
-            4: footer_percent_format,
+            4: footer_text_format,
             5: footer_text_format,
-            6: footer_percent_format,
-            7: footer_percent_format,
-            8: footer_percent_format,
+            6: footer_text_format,
+            7: footer_text_format,
+            8: footer_text_format,
             9: footer_percent_format,
-            10: footer_percent_format,
+            10: footer_text_format,
+            11: footer_percent_format,
+            12: footer_percent_format,
+            13: footer_percent_format,
+            14: footer_percent_format,
+            15: footer_percent_format,
         }
 
         # First column cell
@@ -181,7 +186,6 @@ class AnalyticsPerformanceWeeklyReport:
             8: last_columns_percentage_cell_format,
             9: last_columns_percentage_cell_format,
             10: last_columns_percentage_cell_format,
-
         }
 
     def _prepare_empty_document(self):
@@ -360,14 +364,23 @@ class AnalyticsPerformanceWeeklyReport:
         return campaign_data
 
     def get_total_data(self):
-        queryset = AdGroupStatistic.objects.filter(**self.get_filters())
-        total_data = queryset.aggregate(
-            **all_stats_aggregate
+        total_data = AdGroupStatistic.objects.filter(**self.get_filters()) \
+            .aggregate(
+            **get_all_stats_aggregate_with_clicks_stats()
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
         return total_data
+
+    def prepare_total_row(self, start_row):
+        total_data = self.get_total_data()
+        total_row = [(
+            "Total",
+            *self._extract_data_row(total_data, default=0),
+        )]
+        start_row = self.write_rows(total_row, start_row, data_cell_options=self.footer_format)
+        return start_row
 
     def prepare_placement_section(self, start_row):
         """
@@ -388,26 +401,13 @@ class AnalyticsPerformanceWeeklyReport:
             rows.append((
                 # placement
                 obj["name"],
-                *self._extract_data_row_with_cta(obj),
+                *self._extract_data_row(obj),
             ))
         start_row = self.write_rows(rows, start_row)
         # Write total
-        total_data = self.get_total_data()
-        # Drop None values
-        total_row = [(
-            "Total",
-            total_data["impressions"],
-            total_data["video_views"],
-            div_by_100(total_data["video_view_rate"]),
-            total_data["clicks"],
-            div_by_100(total_data["ctr"]),
-            div_by_100(total_data["video25rate"]),
-            div_by_100(total_data["video50rate"]),
-            div_by_100(total_data["video75rate"]),
-            div_by_100(total_data["video100rate"]),
-        )]
-        start_row = self.write_rows(
-            total_row, start_row, data_cell_options=self.footer_format)
+        start_row = self.prepare_total_row(
+            start_row,
+        )
         return start_row + 1
 
     def get_ad_group_data(self):
@@ -439,7 +439,7 @@ class AnalyticsPerformanceWeeklyReport:
         ad_group_info = [
             (
                 obj["name"],
-                *self._extract_data_row_with_cta(obj),
+                *self._extract_data_row(obj),
             )
             for obj in self.get_ad_group_data()
         ]
@@ -474,7 +474,7 @@ class AnalyticsPerformanceWeeklyReport:
         rows = [
             (
                 obj["name"],
-                *self._extract_data_row_with_cta(obj),
+                *self._extract_data_row(obj),
             )
             for obj in self.get_interest_data()
         ]
@@ -511,7 +511,7 @@ class AnalyticsPerformanceWeeklyReport:
         rows = [
             (
                 obj["name"],
-                *self._extract_data_row_with_cta(obj),
+                *self._extract_data_row(obj),
             )
             for obj in self.get_topic_data()
         ]
@@ -585,7 +585,7 @@ class AnalyticsPerformanceWeeklyReport:
             rows.append(
                 (
                     device,
-                    *self._extract_data_row_with_cta(obj),
+                    *self._extract_data_row(obj),
                 )
             )
         start_row = self.write_rows(rows, start_row)
