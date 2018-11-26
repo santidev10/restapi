@@ -486,7 +486,7 @@ class DashboardPerformanceWeeklyReport:
         )
         # TODO add brand image
 
-    def get_placement_data(self):
+    def get_campaign_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
@@ -514,7 +514,7 @@ class DashboardPerformanceWeeklyReport:
         # Write content
 
         rows = []
-        for obj in self.get_placement_data():
+        for obj in self.get_campaign_data():
             rows.append((
                 # placement
                 obj["name"],
@@ -590,13 +590,17 @@ class DashboardPerformanceWeeklyReport:
             dict_quartiles_to_rates(item)
         return videos_data
 
-    def _get_total_data(self, queryset, aggregator, extractor):
+    def get_total_data(self, queryset, aggregator):
         total_data = queryset.aggregate(
             **aggregator()
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
+        return total_data
+
+    def _get_total_data(self, queryset, aggregator, extractor):
+        total_data = self.get_total_data(queryset, aggregator)
         return extractor(total_data, default=0)
 
     def _prepare_total_row(self, start_row, queryset, aggregator, extractor, data_cell_options=None):

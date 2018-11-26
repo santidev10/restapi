@@ -11,7 +11,7 @@ class DemoAnalyzeWeeklyReportMixin:
     def get_ad_group_data(self):
         return [a for c in self.account.children for a in c.children]
 
-    def get_total_data(self):
+    def get_total_data(self, *args, **kwargs):
         return self.account
 
     def get_interest_data(self):
