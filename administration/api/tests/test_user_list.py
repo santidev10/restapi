@@ -1,3 +1,6 @@
+from datetime import datetime
+
+import pytz
 from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -44,14 +47,55 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_ok_sort_by(self):
+    def test_char_field_sort_by_ascending(self):
         self.create_admin_user()
-        user = get_user_model().objects.create(email="test_list1@example.com", first_name="B")
-        get_user_model().objects.create(email="test_list2@example.com", first_name="A")
-        url = "{}{}".format(self.url, "?sort_by=-first_name")
+        get_user_model().objects.create(email="test_list1@example.com", first_name="B")
+        user = get_user_model().objects.create(email="test_list2@example.com", first_name="A")
+        url = "{}{}".format(self.url, "?sort_by=first_name&ascending=1")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data.get("items")[0].get("id"), user.id)
+
+    def test_char_field_sort_by_descending(self):
+        self.create_admin_user()
+        user = get_user_model().objects.create(email="test_list1@example.com", first_name="B")
+        get_user_model().objects.create(email="test_list2@example.com", first_name="A")
+        url = "{}{}".format(self.url, "?sort_by=first_name")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items")[0].get("id"), user.id)
+
+    def test_date_time_field_sort_by_ascending(self):
+        self.create_admin_user()
+        user1 = get_user_model().objects.create(email="test_list1@example.com")
+        user2 = get_user_model().objects.create(email="test_list2@example.com")
+        user1.date_joined = datetime(day=1, month=1, year=2018, hour=23, minute=23, tzinfo=pytz.utc)
+        user1.save()
+        user2.date_joined = datetime(day=2, month=1, year=2018, hour=21, minute=20, tzinfo=pytz.utc)
+        user2.save()
+        url = "{}{}".format(self.url, "?sort_by=date_joined&ascending=1")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items")[0].get("id"), user1.id)
+
+    def test_date_time_field_sort_by_descending(self):
+        self.create_admin_user()
+        user1 = get_user_model().objects.create(email="test_list1@example.com")
+        user2 = get_user_model().objects.create(email="test_list2@example.com")
+        user1.date_joined = datetime(day=1, month=1, year=2018, hour=23, minute=23, tzinfo=pytz.utc)
+        user1.save()
+        user2.date_joined = datetime(day=2, month=1, year=2018, hour=21, minute=20, tzinfo=pytz.utc)
+        user2.save()
+        url = "{}{}".format(self.url, "?sort_by=date_joined")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items")[0].get("id"), user2.id)
+
+    def test_ascending_invalid(self):
+        self.create_admin_user()
+        url = "{}{}".format(self.url, "?ascending=kgmeh")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_filter_by_status(self):
         self.create_admin_user()
