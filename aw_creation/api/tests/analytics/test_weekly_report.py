@@ -1,5 +1,6 @@
 import io
 import re
+from collections import defaultdict
 from functools import partial
 from itertools import product
 
@@ -99,7 +100,7 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_quartiles_are_percent_formatted(self):
+    def test_placements_format(self):
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
@@ -107,45 +108,30 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         book = load_workbook(f)
         sheet = book.worksheets[0]
 
-        row_indexes = range(14, 17)
-        column_indexes = range(7, 11)
-        cell_indexes = product(row_indexes, column_indexes)
-        for row, column in cell_indexes:
-            cell = sheet[row][column]
-            self.assertEqual(cell.number_format, "0.00%",
-                             "Cell[{}:{}]".format(row, column))
+        section = SectionName.PLACEMENT
+        columns = get_section_columns(sheet, section)
+        start_row = get_section_start_row(sheet, section) + 1
+        row_indexes = range(start_row, start_row + len(DemoAccount().children) + 1)
 
-    def test_view_rate_are_percent_formatted(self):
-        self.create_test_user()
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.post(url)
-        f = io.BytesIO(response.content)
-        book = load_workbook(f)
-        sheet = book.worksheets[0]
-
-        row_indexes = range(14, 17)
-        column_indexes = [4]
-        cell_indexes = product(row_indexes, column_indexes)
-        for row, column in cell_indexes:
-            cell = sheet[row][column]
-            self.assertEqual(cell.number_format, "0.00%",
-                             "Cell[{}:{}]".format(row, column))
-
-    def test_ctr_are_percent_formatted(self):
-        self.create_test_user()
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.post(url)
-        f = io.BytesIO(response.content)
-        book = load_workbook(f)
-        sheet = book.worksheets[0]
-
-        row_indexes = range(14, 17)
-        column_indexes = [6]
-        cell_indexes = product(row_indexes, column_indexes)
-        for row, column in cell_indexes:
-            cell = sheet[row][column]
-            self.assertEqual(cell.number_format, "0.00%",
-                             "Cell[{}:{}]".format(row, column))
+        percent_columns = [
+            Column.VIEW_RATE,
+            Column.CTR,
+            Column.VIDEO_PLAYED_PERCENT_25,
+            Column.VIDEO_PLAYED_PERCENT_50,
+            Column.VIDEO_PLAYED_PERCENT_75,
+            Column.VIDEO_PLAYED_PERCENT_100,
+        ]
+        percent_format = "0.00%"
+        default_format = "General"
+        formats = defaultdict(lambda: default_format,
+                              {column: percent_format for column in percent_columns})
+        cell_indexes = product(row_indexes, COLUMNS_ORDER)
+        for row_index, column in cell_indexes:
+            column_index = columns.index(column) + TITLE_COLUMN
+            expected_format = formats[column]
+            cell = sheet[row_index][column_index]
+            with self.subTest("{}:{}".format(sheet[row_index][TITLE_COLUMN].value, column)):
+                self.assertEqual(cell.number_format, expected_format)
 
     def test_demo_data(self):
         user = self.create_test_user()
