@@ -32,3 +32,7 @@ class ExtendedEnum(Enum):
 
 def merge_dicts(*dicts):
     return reduce(lambda res, item: {**res, **item}, dicts, {})
+
+
+def get_request_prefix(request):
+    return "https://" if request.is_secure() else "http://"
