@@ -41,9 +41,9 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.get("items")[0].keys()), expected_fields)
 
-    def test_wrong_order_by(self):
+    def test_wrong_sort_by(self):
         self.create_admin_user()
-        url = "{}{}".format(self.url, "?order_by=kgmeh")
+        url = "{}{}".format(self.url, "?sort_by=kgmeh")
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
