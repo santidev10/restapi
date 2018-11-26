@@ -4,9 +4,12 @@ from io import BytesIO
 
 import xlsxwriter
 from django.conf import settings
+from django.db.models import Sum
 
+from aw_reporting.excel_reports.dashboard_performance_weekly_report import all_stats_aggregation
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import all_stats_aggregator
@@ -19,8 +22,54 @@ all_stats_aggregate = all_stats_aggregator("ad_group__campaign__")
 FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected TV Devices, Non-smart phones etc."
 
 
+def get_all_stats_aggregate_with_clicks_stats():
+    return {
+        **all_stats_aggregation(),
+        **{field: Sum(field) for field in CLICKS_STATS}
+    }
+
+
 class AnalyticsPerformanceWeeklyReport:
     hide_logo = False
+
+    @property
+    def _with_cta_columns(self):
+        columns = [
+            "Impressions",
+            "Views",
+            "View Rate",
+            "Clicks",
+            "Call-to-Action overlay",
+            "Website",
+            "App Store",
+            "Cards",
+            "End cap",
+            "CTR",
+            "Video played to: 25%",
+            "Video played to: 50%",
+            "Video played to: 75%",
+            "Video played to: 100%",
+        ]
+        return columns
+
+    def _extract_data_row_with_cta(self, row, default=None, with_cta=True):
+        rows = [
+            row["impressions"] or default,
+            row["video_views"] or default,
+            div_by_100(row["video_view_rate"]) or default,
+            row["clicks"] or default,
+            row.get("clicks_call_to_action_overlay") or default if with_cta else None,
+            row.get("clicks_website") or default if with_cta else None,
+            row.get("clicks_app_store") or default if with_cta else None,
+            row.get("clicks_cards") or default if with_cta else None,
+            row.get("clicks_end_cap") or default if with_cta else None,
+            div_by_100(row["ctr"]),
+            div_by_100(row["video25rate"]),
+            div_by_100(row["video50rate"]),
+            div_by_100(row["video75rate"]),
+            div_by_100(row["video100rate"]),
+        ]
+        return rows
 
     def _set_format_options(self):
         """
@@ -301,7 +350,7 @@ class AnalyticsPerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__campaign__name']
@@ -329,15 +378,7 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Placement",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "CTR",
-            "Video played to: 25%",
-            "Video played to: 50%",
-            "Video played to: 75%",
-            "Video played to: 100%",
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -346,14 +387,8 @@ class AnalyticsPerformanceWeeklyReport:
         for obj in self.get_campaign_data():
             rows.append((
                 # placement
-                obj["name"], obj["impressions"], obj["video_views"],
-                div_by_100(obj["video_view_rate"]),
-                obj["clicks"],
-                div_by_100(obj["ctr"]),
-                div_by_100(obj["video25rate"]),
-                div_by_100(obj["video50rate"]),
-                div_by_100(obj["video75rate"]),
-                div_by_100(obj["video100rate"]),
+                obj["name"],
+                *self._extract_data_row_with_cta(obj),
             ))
         start_row = self.write_rows(rows, start_row)
         # Write total
@@ -379,7 +414,7 @@ class AnalyticsPerformanceWeeklyReport:
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__name", "ad_group_id")
         campaign_data = queryset.values(*group_by).annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by(*group_by)
         for i in campaign_data:
             i['name'] = i['ad_group__name']
@@ -397,24 +432,14 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Ad Groups",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "CTR",
-            "Video played to: 100%",
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         ad_group_info = [
             (
                 obj["name"],
-                obj["impressions"],
-                obj["video_views"],
-                div_by_100(obj["video_view_rate"]),
-                obj["clicks"],
-                div_by_100(obj["ctr"]),
-                div_by_100(obj["video100rate"]),
+                *self._extract_data_row_with_cta(obj),
             )
             for obj in self.get_ad_group_data()
         ]
@@ -424,7 +449,7 @@ class AnalyticsPerformanceWeeklyReport:
     def get_interest_data(self):
         queryset = AudienceStatistic.objects.filter(**self.get_filters())
         interest_data = queryset.values("audience__name").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("audience__name")
         for i in interest_data:
             i['name'] = i['audience__name']
@@ -442,15 +467,15 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Interests",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (
+                obj["name"],
+                *self._extract_data_row_with_cta(obj),
+            )
             for obj in self.get_interest_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -460,7 +485,7 @@ class AnalyticsPerformanceWeeklyReport:
         queryset = TopicStatistic.objects.filter(**self.get_filters())
         topic_data = queryset.values("topic__name").order_by(
             "topic__name").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         )
         for i in topic_data:
             i['name'] = i['topic__name']
@@ -478,16 +503,16 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Topics",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
 
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (
+                obj["name"],
+                *self._extract_data_row_with_cta(obj),
+            )
             for obj in self.get_topic_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -496,7 +521,7 @@ class AnalyticsPerformanceWeeklyReport:
     def get_keyword_data(self):
         queryset = KeywordStatistic.objects.filter(**self.get_filters())
         keyword_data = queryset.values("keyword").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("keyword")
         for i in keyword_data:
             i['name'] = i['keyword']
@@ -514,9 +539,7 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Keywords",
-            "Impressions",
-            "Views",
-            "View Rate"
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -531,7 +554,7 @@ class AnalyticsPerformanceWeeklyReport:
     def get_device_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         device_data = queryset.values("device_id").annotate(
-            **all_stats_aggregate
+            **get_all_stats_aggregate_with_clicks_stats()
         ).order_by("device_id")
         for i in device_data:
             i['name'] = device_str(i['device_id'])
@@ -549,12 +572,7 @@ class AnalyticsPerformanceWeeklyReport:
         # Write header
         headers = [(
             "Device",
-            "Impressions",
-            "Views",
-            "View Rate",
-            "Clicks",
-            "CTR",
-            "Video Played to: 100%"
+            *self._with_cta_columns,
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
@@ -565,10 +583,10 @@ class AnalyticsPerformanceWeeklyReport:
             if device == "Other":
                 device = "Other*"
             rows.append(
-                (device, obj['impressions'], obj['video_views'],
-                 div_by_100(obj['video_view_rate']), obj['clicks'],
-                 div_by_100(obj['ctr']),
-                 div_by_100(obj['video100rate']))
+                (
+                    device,
+                    *self._extract_data_row_with_cta(obj),
+                )
             )
         start_row = self.write_rows(rows, start_row)
         # Write annotation
