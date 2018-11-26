@@ -30,6 +30,7 @@ class UserListAdminApiView(ListAPIView):
         "status",
         "date_joined"
     )
+    allowed_ascending_value = "1"
 
     def is_query_params_valid(self):
         order_by = self.request.query_params.get("order_by")
@@ -37,6 +38,12 @@ class UserListAdminApiView(ListAPIView):
             return Response(
                 {"query_param_value_invalid": "{} can be one of: {}".format(
                     "order_by", ", ".join(self.allowed_sorts))},
+                status=HTTP_400_BAD_REQUEST)
+        ascending = self.request.query_params.get("ascending")
+        if ascending and ascending != self.allowed_ascending_value:
+            return Response(
+                {"query_param_value_invalid": "{} can have inly {} value".format(
+                    "ascending", self.allowed_ascending_value)},
                 status=HTTP_400_BAD_REQUEST)
         return True
 
@@ -74,6 +81,9 @@ class UserListAdminApiView(ListAPIView):
     def do_sorts(self, queryset):
         sort_by = self.request.query_params.get("sort_by")
         if not sort_by:
-            return queryset.order_by("last_name", "first_name")
-        return queryset.order_by(sort_by)
-
+            return queryset.order_by("pk")
+        ascending = self.request.query_params.get("ascending")
+        sort_prefix = ""
+        if ascending is None:
+            sort_prefix = "-"
+        return queryset.order_by("{}{}".format(sort_prefix, sort_by))
