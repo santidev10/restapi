@@ -39,7 +39,7 @@ def send_new_registration_email(email_data):
            "User phone: {phone} \n"\
            "Annual ad spend: {annual_ad_spend} \n"\
            "User type: {user_type} \n\n"\
-           "Please accept the user and provide him access: {user_list_link} \n\n".format(**email_data)
+           "Please accept the user: {user_list_link} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
 
@@ -60,7 +60,7 @@ def send_new_channel_authentication_email(user, channel_id, request):
            "User last_name: {last_name} \n" \
            "Channel id: {channel_id}\n" \
            "Link to channel: {link} \n\n" \
-           "Please accept the user and provide him access: {user_list_link} \n\n" \
+           "Please accept the user: {user_list_link} \n\n" \
         .format(
             host=request.get_host(),
             email=user.email,
