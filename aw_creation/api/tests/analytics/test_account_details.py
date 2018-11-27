@@ -161,7 +161,6 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(data["details"].keys()), self.detail_keys)
         self.assertIs(data["impressions"], None)
 
-    @skip("Temporarily. Will extend demo account click types as well")
     def test_success_get_filter_dates_demo(self):
         today = datetime.now().date()
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",

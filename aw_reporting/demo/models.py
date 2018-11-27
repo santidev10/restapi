@@ -986,7 +986,7 @@ class DemoAccount(BaseDemo):
         return pick_dict(self.overview_data, self._overview_keys_dashboard)
 
     @property
-    def _base_header_data(self):
+    def header_data(self):
 
         from aw_reporting.demo.charts import DemoChart
         filters = dict(
@@ -1043,61 +1043,8 @@ class DemoAccount(BaseDemo):
         )
         return data
 
-    _shared_keys = {
-        "account",
-        "ad_count",
-        "average_cpm",
-        "average_cpv",
-        "channel_count",
-        "clicks",
-        "cost",
-        "ctr",
-        "ctr_v",
-        "end",
-        "id",
-        "impressions",
-        "interest_count",
-        "is_changed",
-        "is_disapproved",
-        "keyword_count",
-        "name",
-        "plan_cpm",
-        "plan_cpv",
-        "start",
-        "thumbnail",
-        "topic_count",
-        "updated_at",
-        "video_count",
-        "video_view_rate",
-        "video_views",
-        "weekly_chart",
-    }
-    _dashboard_specific_keys = {
-        "brand",
-        "clicks_app_store",
-        "clicks_call_to_action_overlay",
-        "clicks_cards",
-        "clicks_end_cap",
-        "clicks_website",
-        "cost_method",
-        "sf_account",
-    }
-    _analytics_specific_keys = {
-        "from_aw",
-        "is_editable",
-        "is_managed",
-        "status",
-    }
-
-    @property
-    def header_data_analytics(self):
-        keys = list(self._shared_keys | self._analytics_specific_keys)
-        return pick_dict(self._base_header_data, keys)
-
-    @property
-    def header_data_dashboard(self):
-        keys = list(self._shared_keys | self._dashboard_specific_keys)
-        return pick_dict(self._base_header_data, keys)
+    def get_header_keys(self, keys):
+        return pick_dict(self.header_data, keys)
 
     @property
     def creation_details(self):
