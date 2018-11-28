@@ -11,3 +11,4 @@ from .get_parents import get_parents
 from .get_placements import get_placements
 from .get_topics import get_topics
 from .get_videos import get_videos
+from .upload_initial_aw_data import upload_initial_aw_data
