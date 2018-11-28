@@ -1,13 +1,13 @@
 from datetime import datetime
 
 import pytz
-from celery import task
+from saas import celery_app
 
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.update.tasks.load_hourly_stats import load_hourly_stats
 
 
-@task
+@celery_app.task
 def upload_initial_aw_data(connection_pk):
     from aw_reporting.models import AWConnection
     from aw_reporting.models import Account
