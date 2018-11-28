@@ -134,8 +134,6 @@ class AnalyticsPerformanceReport:
                    cell_formats=None):
         cell_formats = cell_formats or {}
         for index, column in enumerate(self.columns):
-            if index > 10:
-                a = 1 + 1
             value = row.get(column.value)
             current_column = start_column + index
             formatting = cell_formats.get(column, {})
