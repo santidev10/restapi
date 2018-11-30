@@ -61,7 +61,7 @@ class DemoChart:
     def _get_items(self, item, dimension):
         dimensions = deepcopy(getattr(item, dimension))
         all_stats = (
-            'clicks', 'cost',  'impressions', 'video_impressions', 'video_views',
+            'clicks', 'cost',  'impressions', 'video_impressions', 'video_views', 'video_clicks',
             'video25rate', 'video50rate', 'video75rate', 'video100rate',
             'view_through', 'conversions', 'all_conversions')
         if dimension in CLICKS_TYPES_DIMENSIONS:

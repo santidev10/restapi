@@ -301,6 +301,10 @@ class BaseDemo:
         return self.impressions
 
     @property
+    def video_clicks(self):
+        return self.clicks
+
+    @property
     def impressions_this_week(self):
         return sum(i.impressions_this_week for i in self.children)
 
@@ -1003,8 +1007,8 @@ class DemoAccount(BaseDemo):
         data = dict(
             account=self.id,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
-            average_cpm=10,
-            average_cpv=.10782609,
+            average_cpm=24.3667,
+            average_cpv=.069382609,
             brand=DEMO_BRAND,
             channel_count=12,
             clicks=self.clicks,

@@ -5,7 +5,6 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import chain
 from itertools import product
-from unittest import skip
 from unittest.mock import patch
 
 from openpyxl import load_workbook
@@ -133,7 +132,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             sheet = get_sheet_from_response(response)
             self.assertFalse(is_empty_report(sheet))
 
-    @skip("Will be fixed in VIQ-828")
     def test_success_demo(self):
         self.create_test_user()
 

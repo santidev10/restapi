@@ -547,7 +547,7 @@ class AnalyticsPerformanceExportApiView:
 
                 def data_generator():
                     data = account.details
-                    yield {**{"tab": "Summary"}, **data}
+                    yield {**{"tab": "Summary"}, **data, **account.header_data, **{"name": ""}}
 
                     for dimension in view.tabs:
                         filters['dimension'] = dimension
