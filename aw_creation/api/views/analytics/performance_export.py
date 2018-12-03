@@ -1,7 +1,9 @@
 import re
+from copy import copy
 from datetime import datetime
 from functools import partial
 
+from django.db.models import Sum
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -12,6 +14,7 @@ from aw_reporting.analytics_charts import DeliveryChart
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import AnalyticsPerformanceReport
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import DATE_FORMAT
 from aw_reporting.models import all_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
@@ -31,7 +34,7 @@ class AnalyticsPerformanceExportApiView(APIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        data_generator = partial(self.get_export_data, item, self.request.user)
+        data_generator = partial(self.get_export_data, item)
         return self.build_response(item.name, data_generator)
 
     tabs = (
@@ -62,7 +65,7 @@ class AnalyticsPerformanceExportApiView(APIView):
         )
         return filters
 
-    def get_export_data(self, item, user):
+    def get_export_data(self, item):
         filters = self.get_filters()
         data = dict(name=item.name)
 
@@ -78,7 +81,9 @@ class AnalyticsPerformanceExportApiView(APIView):
         elif filters["campaigns"]:
             fs["ad_group__campaign_id__in"] = filters["campaigns"]
 
-        aggregation = all_stats_aggregator("ad_group__campaign__")
+        aggregation = copy(all_stats_aggregator("ad_group__campaign__"))
+        for field in CLICKS_STATS:
+            aggregation["sum_{}".format(field)] = Sum(field)
         stats = AdGroupStatistic.objects.filter(**fs).aggregate(
             **aggregation
         )

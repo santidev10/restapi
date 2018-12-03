@@ -37,13 +37,14 @@ logger = logging.getLogger(__name__)
 
 @demo_view_decorator
 class DashboardAccountCreationDetailsAPIView(APIView):
+    serializer_class = DashboardAccountCreationDetailsSerializer
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
     def post(self, request, pk):
         account_creation = self._get_account_creation(request, pk)
         if account_creation is None:
             return Response(status=HTTP_404_NOT_FOUND)
-        data = DashboardAccountCreationDetailsSerializer(account_creation, context={"request": request}).data
+        data = self.serializer_class(account_creation, context={"request": request}).data
         show_conversions = self.request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
         data["details"] = self.get_details_data(account_creation, show_conversions)
         return Response(data=data)

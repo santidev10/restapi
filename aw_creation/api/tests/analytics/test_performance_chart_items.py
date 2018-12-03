@@ -37,12 +37,12 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
@@ -142,6 +142,11 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'average_cpm',
                 'ctr_v',
                 "video_clicks",
+                "clicks_end_cap",
+                "clicks_app_store",
+                "clicks_call_to_action_overlay",
+                "clicks_cards",
+                "clicks_website",
             }
         )
 
@@ -228,6 +233,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'average_cpv',
                 'video100rate',
                 'video_views',
+                "video_clicks",
                 'video50rate',
                 'clicks',
                 'average_position',
@@ -276,6 +282,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                 'average_cpv',
                 'video100rate',
                 'video_views',
+                "video_clicks",
                 'video50rate',
                 'clicks',
                 'impressions',

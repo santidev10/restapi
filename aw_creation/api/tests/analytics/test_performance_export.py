@@ -14,7 +14,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.excel_reports.analytics_performance_report import PerformanceReportColumn
+from aw_reporting.excel_reports.analytics_performance_report import AnalyticsPerformanceReportColumn, ALL_COLUMNS
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -42,10 +42,10 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
@@ -182,9 +182,12 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             sheet = get_sheet_from_response(response)
             self.assertFalse(is_empty_report(sheet))
             rows = range(2, sheet.max_row + 1)
-            ctr_range = 8, 10,
-            view_rate_range = 10, 11
-            quartile_range = 11, 15
+            ctr_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_I),
+                         ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_V) + 1)
+            view_rate_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE),
+                               ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE) + 1)
+            quartile_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_25),
+                              ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_100) + 1)
             test_ranges = [range(start, end) for start, end
                            in [ctr_range, view_rate_range, quartile_range]]
             cols = chain(*test_ranges)
@@ -222,10 +225,16 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         sheet = get_sheet_from_response(response)
         self.assertFalse(is_empty_report(sheet))
 
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.COST].value, aw_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER + 1][PerformanceReportColumn.COST].value, aw_cost)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPM].value, average_cpm)
-        self.assertAlmostEqual(sheet[SUMMARY_ROW_NUMBER][PerformanceReportColumn.AVERAGE_CPV].value, average_cpv)
+        self.assertAlmostEqual(
+            sheet[SUMMARY_ROW_NUMBER][ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.COST)].value, aw_cost)
+        self.assertAlmostEqual(
+            sheet[SUMMARY_ROW_NUMBER + 1][ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.COST)].value, aw_cost)
+        self.assertAlmostEqual(
+            sheet[SUMMARY_ROW_NUMBER][ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.AVERAGE_CPM)].value,
+            average_cpm)
+        self.assertAlmostEqual(
+            sheet[SUMMARY_ROW_NUMBER][ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.AVERAGE_CPV)].value,
+            average_cpv)
 
     def test_ignores_hide_costs(self):
         user = self.create_test_user()
@@ -257,6 +266,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         header_row_number = 1
         headers = tuple(cell.value for cell in sheet[header_row_number])
         expected_headers = (None, "Name", "Impressions", "Views", "Cost", "Average cpm", "Average cpv", "Clicks",
+                            "Call-to-Action overlay", "Website", "App Store", "Cards", "End cap",
                             "Ctr(i)", "Ctr(v)", "View rate", "25%", "50%", "75%", "100%")
         self.assertEqual(headers, expected_headers)
         row_lengths = [len(row) for row in sheet.rows]

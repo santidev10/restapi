@@ -277,8 +277,32 @@ class BaseDemo:
         return sum(i.impressions for i in self.children)
 
     @property
+    def clicks_website(self):
+        return sum(i.clicks_website for i in self.children)
+
+    @property
+    def clicks_call_to_action_overlay(self):
+        return sum(i.clicks_call_to_action_overlay for i in self.children)
+
+    @property
+    def clicks_app_store(self):
+        return sum(i.clicks_app_store for i in self.children)
+
+    @property
+    def clicks_cards(self):
+        return sum(i.clicks_cards for i in self.children)
+
+    @property
+    def clicks_end_cap(self):
+        return sum(i.clicks_end_cap for i in self.children)
+
+    @property
     def video_impressions(self):
         return self.impressions
+
+    @property
+    def video_clicks(self):
+        return self.clicks
 
     @property
     def impressions_this_week(self):
@@ -751,11 +775,6 @@ class DemoAccount(BaseDemo):
     plan_cost = 2500000
     plan_impressions = 242600000
     plan_video_views = 21600000
-    clicks_website = 110
-    clicks_call_to_action_overlay = 50
-    clicks_app_store = 15
-    clicks_cards = 13
-    clicks_end_cap = 7
 
     def __init__(self, **kwargs):
         super(DemoAccount, self).__init__(**kwargs)
@@ -971,7 +990,7 @@ class DemoAccount(BaseDemo):
         return pick_dict(self.overview_data, self._overview_keys_dashboard)
 
     @property
-    def _base_header_data(self):
+    def header_data(self):
 
         from aw_reporting.demo.charts import DemoChart
         filters = dict(
@@ -988,16 +1007,16 @@ class DemoAccount(BaseDemo):
         data = dict(
             account=self.id,
             ad_count=len(DEMO_AD_GROUPS) * DEMO_CAMPAIGNS_COUNT,
-            average_cpm=10,
-            average_cpv=.10782609,
+            average_cpm=24.3667,
+            average_cpv=.069382609,
             brand=DEMO_BRAND,
             channel_count=12,
             clicks=self.clicks,
-            clicks_app_store=100,
-            clicks_call_to_action_overlay=250,
-            clicks_cards=110,
-            clicks_end_cap=140,
-            clicks_website=350,
+            clicks_app_store=self.clicks_app_store,
+            clicks_call_to_action_overlay=self.clicks_call_to_action_overlay,
+            clicks_cards=self.clicks_cards,
+            clicks_end_cap=self.clicks_end_cap,
+            clicks_website=self.clicks_website,
             cost=self.cost,
             cost_method=DEMO_COST_METHOD,
             ctr=self.ctr,
@@ -1028,61 +1047,8 @@ class DemoAccount(BaseDemo):
         )
         return data
 
-    _shared_keys = {
-        "account",
-        "ad_count",
-        "average_cpm",
-        "average_cpv",
-        "channel_count",
-        "clicks",
-        "cost",
-        "ctr",
-        "ctr_v",
-        "end",
-        "id",
-        "impressions",
-        "interest_count",
-        "is_changed",
-        "is_disapproved",
-        "keyword_count",
-        "name",
-        "plan_cpm",
-        "plan_cpv",
-        "start",
-        "thumbnail",
-        "topic_count",
-        "updated_at",
-        "video_count",
-        "video_view_rate",
-        "video_views",
-        "weekly_chart",
-    }
-    _dashboard_specific_keys = {
-        "brand",
-        "clicks_app_store",
-        "clicks_call_to_action_overlay",
-        "clicks_cards",
-        "clicks_end_cap",
-        "clicks_website",
-        "cost_method",
-        "sf_account",
-    }
-    _analytics_specific_keys = {
-        "from_aw",
-        "is_editable",
-        "is_managed",
-        "status",
-    }
-
-    @property
-    def header_data_analytics(self):
-        keys = list(self._shared_keys | self._analytics_specific_keys)
-        return pick_dict(self._base_header_data, keys)
-
-    @property
-    def header_data_dashboard(self):
-        keys = list(self._shared_keys | self._dashboard_specific_keys)
-        return pick_dict(self._base_header_data, keys)
+    def get_header_keys(self, keys):
+        return pick_dict(self.header_data, keys)
 
     @property
     def creation_details(self):
