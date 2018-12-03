@@ -12,7 +12,11 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 class BadWordListTestCase(ExtendedAPITestCase):
     def _request(self, **query_params):
-        url = reverse(PathNames.BadWord.LIST, [Namespace.BRAND_SAFETY])
+        url = reverse(
+            PathNames.BadWord.LIST,
+            [Namespace.BRAND_SAFETY],
+            query_params=query_params,
+        )
         return self.client.get(url)
 
     def test_not_auth(self):
@@ -85,3 +89,37 @@ class BadWordListTestCase(ExtendedAPITestCase):
 
         response_bad_words = [item["name"] for item in response.data["items"]]
         self.assertEqual(response_bad_words, sorted(bad_words))
+
+    def test_filter_by_category(self):
+        test_category = "Test category"
+        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category=test_category + " test suffix")
+        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category=test_category)
+
+        self.create_admin_user()
+
+        response = self._request(category=test_category)
+
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], expected_bad_word.id)
+
+    def test_search_positive(self):
+        test_bad_word = "test bad word"
+        test_search_query = test_bad_word[3:-3].upper()
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category="")
+
+        self.create_admin_user()
+
+        response = self._request(name=test_search_query)
+
+        self.assertEqual(response.data["items_count"], 1)
+
+    def test_search_negative(self):
+        test_bad_word = "bad word 1"
+        test_search_query = "bad word 2"
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category="")
+
+        self.create_admin_user()
+
+        response = self._request(search=test_search_query)
+
+        self.assertEqual(response.data["items_count"], 0)
