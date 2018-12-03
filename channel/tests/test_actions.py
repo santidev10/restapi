@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from channel.actions import remove_auth_channel
 from userprofile.models import UserProfile, UserChannel
-from utils.utils_tests import TestUserMixin, MockResponse
+from utils.utittests.test_case import TestUserMixin
+from utils.utittests.response import MockResponse
 
 
 class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):

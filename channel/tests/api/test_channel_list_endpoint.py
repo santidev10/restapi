@@ -5,10 +5,10 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import SegmentFunctionalityMixin
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.reverse import reverse
 
 
 class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):

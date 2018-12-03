@@ -14,7 +14,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from utils.utils_tests import reverse
+from utils.utittests.reverse import reverse
 
 
 class AuthAPITestCase(AwReportingAPITestCase):
@@ -47,6 +47,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "logo_url",
                 "phone_number",
                 "token",
+                "is_active",
             }
         )
 

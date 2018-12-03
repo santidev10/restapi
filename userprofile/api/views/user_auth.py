@@ -3,7 +3,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -36,9 +35,15 @@ class UserAuthApiView(APIView):
             else:
                 update_date_of_last_login = False
         else:
-            serializer = AuthTokenSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            user = serializer.validated_data['user']
+            user_email = request.data.get("username")
+            try:
+                user = get_user_model().objects.get(email=user_email)
+            except get_user_model().DoesNotExist:
+                user = None
+            else:
+                user_password = request.data.get("password")
+                if not user.check_password(user_password):
+                    user = None
         if not user:
             return Response(
                 data={

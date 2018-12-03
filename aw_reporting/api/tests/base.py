@@ -3,7 +3,7 @@ from datetime import datetime
 import pytz
 
 from aw_reporting.models import *
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class AwReportingAPITestCase(ExtendedAPITestCase):

@@ -15,8 +15,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase
-from utils.utils_tests import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.patch_now import patch_now
 
 
 class PacingReportTestCase(ExtendedAPITestCase):

@@ -24,8 +24,9 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utils_tests import ExtendedAPITestCase, reverse
-from utils.utils_tests import int_iterator
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.reverse import reverse
+from utils.utittests.int_iterator import int_iterator
 
 
 class DashboardPerformanceChartTestCase(ExtendedAPITestCase):

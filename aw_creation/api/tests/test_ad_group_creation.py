@@ -10,8 +10,8 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation
 from aw_reporting.demo.models import DemoAccount
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):

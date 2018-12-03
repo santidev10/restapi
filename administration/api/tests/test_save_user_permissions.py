@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PermissionsAPITestCase(ExtendedAPITestCase):

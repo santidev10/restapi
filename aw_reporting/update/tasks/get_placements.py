@@ -1,0 +1,97 @@
+from datetime import timedelta
+
+from django.db.models import Max
+
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
+from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
+from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
+from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
+from aw_reporting.update.tasks.utils.quart_views import quart_views
+
+
+def get_placements(client, account, today):
+    from aw_reporting.models import YTVideoStatistic
+    from aw_reporting.models import YTChannelStatistic
+    from aw_reporting.models import Devices
+    from aw_reporting.adwords_reports import placement_performance_report
+
+    min_acc_date, max_acc_date = get_account_border_dates(account)
+    if max_acc_date is None:
+        return
+
+    channel_stats_queryset = YTChannelStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    video_stats_queryset = YTVideoStatistic.objects.filter(
+        ad_group__campaign__account=account
+    )
+    drop_latest_stats(channel_stats_queryset, today)
+    drop_latest_stats(video_stats_queryset, today)
+
+    channel_saved_max_date = channel_stats_queryset.aggregate(
+        max_date=Max("date"),
+    ).get("max_date")
+    video_saved_max_date = video_stats_queryset.aggregate(
+        max_date=Max("date"),
+    ).get("max_date")
+
+    if channel_saved_max_date and video_saved_max_date:
+        saved_max_date = max(channel_saved_max_date, video_saved_max_date)
+    else:
+        saved_max_date = channel_saved_max_date or video_saved_max_date
+
+    if saved_max_date is None or saved_max_date < max_acc_date:
+        min_date = saved_max_date + timedelta(days=1) \
+            if saved_max_date else min_acc_date
+        max_date = max_acc_date
+
+        report = placement_performance_report(
+            client, dates=(min_date, max_date),
+        )
+        bulk_channel_data = []
+        bulk_video_data = []
+
+        for row_obj in report:
+            # only channels
+            display_name = row_obj.DisplayName
+            criteria = row_obj.Criteria.strip()
+
+            if "/channel/" in display_name:
+                stats = {
+                    "yt_id": criteria,
+                    "date": row_obj.Date,
+                    "ad_group_id": row_obj.AdGroupId,
+                    "device_id": get_device_id_by_name(row_obj.Device),
+                    "video_views_25_quartile": quart_views(row_obj, 25),
+                    "video_views_50_quartile": quart_views(row_obj, 50),
+                    "video_views_75_quartile": quart_views(row_obj, 75),
+                    "video_views_100_quartile": quart_views(row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_channel_data.append(YTChannelStatistic(**stats))
+
+            elif "/video/" in display_name:
+                # only youtube ids we need in criteria
+                if "youtube.com/video/" in criteria:
+                    criteria = criteria.split("/")[-1]
+
+                stats = {
+                    "yt_id": criteria,
+                    "date": row_obj.Date,
+                    "ad_group_id": row_obj.AdGroupId,
+                    "device_id": get_device_id_by_name(row_obj.Device),
+                    "video_views_25_quartile": quart_views(row_obj, 25),
+                    "video_views_50_quartile": quart_views(row_obj, 50),
+                    "video_views_75_quartile": quart_views(row_obj, 75),
+                    "video_views_100_quartile": quart_views(row_obj, 100),
+                }
+                stats.update(get_base_stats(row_obj))
+                bulk_video_data.append(YTVideoStatistic(**stats))
+
+        if bulk_channel_data:
+            YTChannelStatistic.objects.safe_bulk_create(
+                bulk_channel_data)
+
+        if bulk_video_data:
+            YTVideoStatistic.objects.safe_bulk_create(
+                bulk_video_data)

@@ -10,7 +10,6 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('payments', '0002_event'),
         ('userprofile', '0011_plan_features'),
     ]
 
@@ -19,7 +18,6 @@ class Migration(migrations.Migration):
             name='Subscription',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('payments_subscription', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='payments.Subscription')),
                 ('plan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='userprofile.Plan')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],

@@ -51,7 +51,6 @@ PROJECT_APPS = (
     "keyword_tool",
     "landing",
     "administration",
-    "payments",
     "channel",
     "email_reports",
     "audit_tool",

@@ -14,6 +14,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
 from django.template.loader import get_template
 
+from utils.lang import get_request_prefix
+
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
 }
@@ -36,7 +38,8 @@ def send_new_registration_email(email_data):
            "User company: {company}\n" \
            "User phone: {phone} \n"\
            "Annual ad spend: {annual_ad_spend} \n"\
-           "User type: {user_type} \n\n".format(**email_data)
+           "User type: {user_type} \n\n"\
+           "Please accept the user: {user_list_link} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
 
@@ -48,6 +51,8 @@ def send_new_channel_authentication_email(user, channel_id, request):
     sender = settings.SENDER_EMAIL_ADDRESS
     to = settings.CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES
     subject = "New channel authentication"
+    host = request.get_host()
+    prefix = get_request_prefix(request)
     text = "Dear Admin, \n\n" \
            "A user has just authenticated a channel on {host}. \n\n" \
            "User email: {email} \n" \
@@ -55,11 +60,15 @@ def send_new_channel_authentication_email(user, channel_id, request):
            "User last_name: {last_name} \n" \
            "Channel id: {channel_id}\n" \
            "Link to channel: {link} \n\n" \
-        .format(host=request.get_host(), email=user.email,
-                first_name=user.first_name, last_name=user.last_name,
-                channel_id=channel_id,
-                link="{}/research/channels/{}".format(
-                    request.get_host(), channel_id))
+           "Please accept the user: {user_list_link} \n\n" \
+        .format(
+            host=request.get_host(),
+            email=user.email,
+            first_name=user.first_name, last_name=user.last_name,
+            channel_id=channel_id,
+            link="{}{}/research/channels/{}".format(prefix, host, channel_id),
+            user_list_link="{}{}/admin/users".format(prefix, host),
+        )
     send_mail(subject, text, sender, to, fail_silently=True)
 
 

@@ -25,8 +25,9 @@ from aw_reporting.reports.pacing_report import DefaultRate
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase as APITestCase, patch_now
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
+from utils.utittests.reverse import reverse
 
 
 class PacingReportFlightsTestCase(APITestCase):

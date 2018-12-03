@@ -7,9 +7,10 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
-from utils.utils_tests import ExtendedAPITestCase, MockResponse
-from utils.utils_tests import SingleDatabaseApiConnectorPatcher
-from utils.utils_tests import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.response import MockResponse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.reverse import reverse
 from video.api.urls.names import Name
 
 

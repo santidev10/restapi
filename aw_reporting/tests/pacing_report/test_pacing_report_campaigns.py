@@ -5,7 +5,7 @@ from django.utils import timezone
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Account, Campaign, CampaignStatistic
 from aw_reporting.reports.pacing_report import PacingReport
-from utils.utils_tests import ExtendedAPITestCase
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):

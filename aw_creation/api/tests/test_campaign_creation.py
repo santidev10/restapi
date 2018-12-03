@@ -15,8 +15,9 @@ from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utils_tests import ExtendedAPITestCase, \
-    SingleDatabaseApiConnectorPatcher, patch_now
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.patch_now import patch_now
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class CampaignAPITestCase(ExtendedAPITestCase):

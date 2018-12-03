@@ -238,29 +238,32 @@ class SingleDatabaseApiConnector(object):
 
     def get_highlights_channels(self, query_params):
         endpoint = "channels/"
+        max_page = query_params.pop("max_page")
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
-        max_page = response_data.get('max_page', None)
-        if max_page:
-            response_data['max_page'] = 5 if max_page > 5 else max_page
+        response_max_page = response_data.get("max_page", None)
+        if response_max_page:
+            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
         return response_data
 
     def get_highlights_videos(self, query_params):
         endpoint = "videos/"
+        max_page = query_params.pop("max_page")
         self.set_fields_query_param(query_params, DEFAULT_VIDEO_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
-        max_page = response_data.get('max_page', None)
-        if max_page:
-            response_data['max_page'] = 5 if max_page > 5 else max_page
+        response_max_page = response_data.get("max_page", None)
+        if response_max_page:
+            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
         return response_data
 
     def get_highlights_keywords(self, query_params):
         endpoint = "keywords/"
+        max_page = query_params.pop("max_page")
         self.set_fields_query_param(query_params, DEFAULT_KEYWORD_LIST_FIELDS)
         response_data = self.execute_get_call(endpoint, query_params)
-        max_page = response_data.get('max_page', None)
-        if max_page:
-            response_data['max_page'] = 5 if max_page > 5 else max_page
+        response_max_page = response_data.get("max_page", None)
+        if response_max_page:
+            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
         return response_data
 
     def get_channels_base_info(self, ids):

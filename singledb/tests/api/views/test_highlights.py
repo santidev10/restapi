@@ -4,7 +4,8 @@ from urllib import parse
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utils_tests import ExtendedAPITestCase, MockResponse
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.response import MockResponse
 
 
 class HighlightKeywordsListApiViewTestCase(ExtendedAPITestCase):
