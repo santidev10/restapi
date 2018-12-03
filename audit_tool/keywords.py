@@ -69,6 +69,7 @@ class Keywords:
 
     def load_from_sdb(self):
         params = QueryDict()
+        # fixme: move to the local database
         keywords = SingleDatabaseApiConnector().get_bad_words_list(params)
         keywords = [kw.get("name") for kw in keywords]
         self._keywords = keywords
