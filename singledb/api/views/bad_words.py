@@ -15,7 +15,3 @@ class BadWordHistoryListApiView(SingledbApiView):
     permission_classes = (IsAdminUser, )
     connector_get = Connector().get_bad_words_history_list
 
-
-class BadWordCategoriesListApiView(SingledbApiView):
-    permission_classes = (IsAdminUser, )
-    connector_get = Connector().get_bad_words_categories_list

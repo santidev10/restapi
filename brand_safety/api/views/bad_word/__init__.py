@@ -1,1 +1,2 @@
 from .bad_word_list import BadWordListApiView
+from .bad_word_category_list import BadWordCategoryListApiView
