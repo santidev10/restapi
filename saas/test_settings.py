@@ -11,6 +11,7 @@ MIGRATION_MODULES = {
     "authtoken": None,
     "aw_creation": None,
     "aw_reporting": None,
+    "brand_safety": None,
     "contenttypes": None,
     "django_celery_results": None,
     "email_reports": None,
