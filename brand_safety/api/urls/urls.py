@@ -7,7 +7,7 @@ urlpatterns = [
     url(
         r'^bad_words/$',
         views.BadWordListApiView.as_view(),
-        name=BrandSafetyPathName.BadWord.LIST,
+        name=BrandSafetyPathName.BadWord.LIST_AND_CREATE,
     ),
     url(
         r"^bad_words_categories/$",
