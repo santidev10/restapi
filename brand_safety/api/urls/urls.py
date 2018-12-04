@@ -10,6 +10,11 @@ urlpatterns = [
         name=BrandSafetyPathName.BadWord.LIST_AND_CREATE,
     ),
     url(
+        r'^bad_words/export/$',
+        views.BadWordExportApiView.as_view(),
+        name=BrandSafetyPathName.BadWord.EXPORT,
+    ),
+    url(
         r'^bad_words/(?P<pk>.+)/$',
         views.BadWordUpdateDeleteApiView.as_view(),
         name=BrandSafetyPathName.BadWord.UPDATE_DELETE,
