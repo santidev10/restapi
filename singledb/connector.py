@@ -343,6 +343,7 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
 
+    # todo: remove bad words
     def get_bad_words_list(self, query_params):
         endpoint = "bad_words/"
         response_data = self.execute_get_call(endpoint, query_params)

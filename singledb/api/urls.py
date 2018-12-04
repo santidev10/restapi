@@ -14,6 +14,5 @@ urlpatterns = [
     url(r'^highlights/channels/$', HighlightChannelsListApiView.as_view(), name="highlights_channels"),
     url(r'^highlights/videos/$', HighlightVideosListApiView.as_view(), name="highlights_videos"),
     url(r'^highlights/keywords/$', HighlightKeywordsListApiView.as_view(), name="highlights_keywords"),
-    url(r"^bad_words/(?P<pk>.+)/$", BadWordRetrieveUpdateDeleteApiView.as_view(), name="bw_details"),
     url(r"^bad_words_history/$", BadWordHistoryListApiView.as_view(), name="bwh_list"),
 ]

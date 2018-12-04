@@ -13,7 +13,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class BadWordListTestCase(ExtendedAPITestCase):
     def _request(self, **query_params):
         url = reverse(
-            PathNames.BadWord.LIST,
+            PathNames.BadWord.LIST_AND_CREATE,
             [Namespace.BRAND_SAFETY],
             query_params=query_params,
         )
