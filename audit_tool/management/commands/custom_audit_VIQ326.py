@@ -6,12 +6,11 @@ from typing import List
 
 import xlsxwriter
 from django.core.management import BaseCommand
-from django.http import QueryDict
 
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
 from audit_tool.youtube import Youtube
-from singledb.connector import SingleDatabaseApiConnector
+from brand_safety.models import BadWord
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +87,10 @@ class Command(BaseCommand):
 
         # get KW_Category
         self.KW_CATEGORY = {}
-        params = QueryDict()
         logger.error("start downloading categories")
         # fixme: move to the local database
-        for row in SingleDatabaseApiConnector().get_bad_words_list(params):
+        bad_words = BadWord.objects.all().values()
+        for row in bad_words:
             name = row.get("name")
             category = row.get("category")
             if name not in self.KW_CATEGORY:
