@@ -60,8 +60,8 @@ THIRD_PARTY_APPS = (
     "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
+    "drf_yasg",
 )
-
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
 MIDDLEWARE_CLASSES = [
@@ -80,9 +80,10 @@ WSGI_APPLICATION = 'saas.wsgi.application'
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'static'),
-)
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# STATICFILES_DIRS = (
+#     os.path.join(BASE_DIR, 'static'),
+# )
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
