@@ -180,21 +180,12 @@ class KeywordListApiView(APIView,
         Adapt SDB response format
         """
         items = response_data.get("items", [])
-        from aw_reporting.models import Account, BASE_STATS, CALCULATED_STATS, \
+        from aw_reporting.models import BASE_STATS, CALCULATED_STATS, \
             dict_norm_base_stats, dict_add_calculated_stats
 
-        accounts = Account.user_objects(request.user)
-        cf_accounts = Account.objects.filter(managers__id=load_web_app_settings()['cf_account_id'])
         keywords = set(i['keyword'] for i in items)
-        stats = get_keywords_aw_stats(accounts, keywords)
-        top_bottom_stats = get_keywords_aw_top_bottom_stats(accounts, keywords)
-
-        kw_without_stats = keywords - set(stats.keys())
-        if kw_without_stats:  # show CF account stats
-            cf_stats = get_keywords_aw_stats(cf_accounts, kw_without_stats)
-            stats.update(cf_stats)
-            cf_top_bottom_stats = get_keywords_aw_top_bottom_stats(cf_accounts, kw_without_stats)
-            top_bottom_stats.update(cf_top_bottom_stats)
+        stats = get_keywords_aw_stats(keywords)
+        top_bottom_stats = get_keywords_aw_top_bottom_stats(keywords)
 
         aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
         for item in items:
