@@ -1,12 +1,9 @@
 from django.conf import settings
-from django.conf.urls import url, include
+from django.conf.urls import url
 from django.conf.urls.static import static
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-
-from brand_safety.api import urls as brand_safety_api_urls
-from saas.urls.namespaces import Namespace
 
 __all__ = [
     "urlpatterns",
@@ -19,7 +16,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
-    patterns=[url(r'^api/v1/', include(brand_safety_api_urls, namespace=Namespace.BRAND_SAFETY))],
+    # patterns=[url(r'^api/v1/', include(brand_safety_api_urls, namespace=Namespace.BRAND_SAFETY))],
 )
 
 urlpatterns = [

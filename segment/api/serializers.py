@@ -7,6 +7,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
+from segment.models import SegmentKeyword
 from singledb.connector import SingleDatabaseApiConnector
 
 
@@ -21,7 +22,8 @@ class SegmentSerializer(ModelSerializer):
         max_length=255, required=True, allow_null=False, allow_blank=False)
 
     class Meta:
-        model = None
+        # fixme: replace SegmentKeyword with None. It's a workaround to fix documentation generation
+        model = SegmentKeyword
         fields = ('id',
                   'title',
                   'segment_type',
