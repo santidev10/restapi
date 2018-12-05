@@ -12,6 +12,7 @@ from rest_framework.status import HTTP_200_OK
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class BaseCSVStreamResponseGenerator(object):
     def __init__(self, columns, data_generator, headers_map):
         self.columns = columns
@@ -54,6 +55,7 @@ class BaseCSVStreamResponseGenerator(object):
             yield output.getvalue()
 
 
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class CSVExport(BaseCSVStreamResponseGenerator):
     """
     Class for csv export
@@ -72,7 +74,7 @@ class CSVExport(BaseCSVStreamResponseGenerator):
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
 
-
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class CassandraExportMixin(object):
     """
     Export mixin for cassandra data
