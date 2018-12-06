@@ -66,8 +66,7 @@ class Keywords:
         return keywords
 
     def load_from_sdb(self):
-        keywords = BadWord.objects.all().values()
-        keywords = [kw.get("name") for kw in keywords]
+        keywords = list(BadWord.objects.all().values_list("name", flat=True))
         self._keywords = keywords
 
     def load_from_file(self, filename):
