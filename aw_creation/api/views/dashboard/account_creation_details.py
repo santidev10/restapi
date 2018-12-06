@@ -1,5 +1,8 @@
 import logging
+import requests
 
+from django.core.cache import cache
+from django.conf import settings
 from django.db.models import Avg
 from django.db.models import Case
 from django.db.models import F
@@ -60,8 +63,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
         except AccountCreation.DoesNotExist:
             raise Http404
 
-    @staticmethod
-    def get_details_data(account_creation, show_conversions):
+    def get_details_data(self, account_creation, show_conversions):
         if show_conversions:
             ads_and_placements_stats = {s: Sum(s) for s in
                                         CONVERSIONS + QUARTILE_STATS}
@@ -91,23 +93,37 @@ class DashboardAccountCreationDetailsAPIView(APIView):
             "creative_id").annotate(**annotate).order_by('v')[:3]
         if creative:
             ids = [i['creative_id'] for i in creative]
+            unresolved_ids = []
             creative = []
             try:
-                channel_info = SingleDatabaseApiConnector().get_videos_base_info(
-                    ids)
+                videos_singledb_info = SingleDatabaseApiConnector().get_videos_base_info(ids)
             except SingleDatabaseApiConnectorException as e:
                 logger.critical(e)
             else:
-                video_info = {i['id']: i for i in channel_info}
+                video_info = {i['id']: i for i in videos_singledb_info}
                 for video_id in ids:
-                    info = video_info.get(video_id, {})
-                    creative.append(
-                        dict(
-                            id=video_id,
-                            name=info.get("title"),
-                            thumbnail=info.get('thumbnail_image_url'),
+                    info = video_info.get(video_id)
+                    if info is not None:
+                        creative.append(
+                            dict(
+                                id=video_id,
+                                name=info.get("title"),
+                                thumbnail=info.get('thumbnail_image_url'),
+                            )
                         )
-                    )
+                    else:
+                        unresolved_ids.append(video_id)
+
+            if unresolved_ids:
+                try:
+                    videos_details = self.resolve_videos_info(unresolved_ids)
+                except Exception as e:
+                    logger.error(str(e))
+                    videos_details = {}
+
+                for video_id in ids:
+                    info = videos_details.get(video_id, dict(id=video_id, name=None, thumbnail=None))
+                    creative.append(info)
         data.update(creative=creative)
 
         # second section
@@ -160,3 +176,40 @@ class DashboardAccountCreationDetailsAPIView(APIView):
         data['delivery_trend'] = charts
 
         return data
+
+    @staticmethod
+    def resolve_videos_info(ids):
+        cache_key = "video_title_thumbnail_{}"
+        cache_timeout = 86400  # 24 hours
+        requests_timeout = 2
+        api_url = "https://www.googleapis.com/youtube/v3/videos"
+        details = {}
+        unresolved_ids = []
+        for video_id in ids:
+            info = cache.get(cache_key.format(video_id))
+            if info:
+                details[video_id] = info
+            else:
+                unresolved_ids.append(video_id)
+
+        if unresolved_ids:
+            ids_string = ",".join(unresolved_ids)
+            params = dict(key=settings.YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY,
+                          id=ids_string,
+                          part="snippet",
+                          maxResults=len(ids))
+            response = requests.get(url=api_url, params=params, timeout=requests_timeout)
+
+            data = response.json()
+            items = data.get("items", [])
+
+            for item in items:
+                video_id = item.get("id")
+                snippet = item.get("snippet", {})
+                info = dict(
+                    name=snippet.get("title"),
+                    thumbnail=snippet.get("thumbnails", {}).get("high", {}).get("url"),
+                )
+                cache.set(cache_key.format(video_id), info, cache_timeout)
+                details[video_id] = info
+        return details
