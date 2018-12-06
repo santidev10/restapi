@@ -88,7 +88,6 @@ class Command(BaseCommand):
         # get KW_Category
         self.KW_CATEGORY = {}
         logger.error("start downloading categories")
-        # fixme: move to the local database
         bad_words = BadWord.objects.all().values()
         for row in bad_words:
             name = row.get("name")
