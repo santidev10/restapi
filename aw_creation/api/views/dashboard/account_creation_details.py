@@ -121,7 +121,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
                     logger.error(e)
                     videos_details = {}
 
-                for video_id in ids:
+                for video_id in unresolved_ids:
                     info = videos_details.get(video_id, dict(id=video_id, name=None, thumbnail=None))
                     creative.append(info)
         data.update(creative=creative)
