@@ -14,7 +14,6 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
-from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -148,41 +147,6 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         is_demo_report(sheet)
-
-    @generic_test([
-        (section, (section,), dict())
-        for section in STATISTIC_SECTIONS
-    ])
-    def test_column_set(self, section):
-        user = self.create_test_user()
-        account = Account.objects.create(id=next(int_iterator),
-                                         skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(owner=user,
-                                                          is_managed=False,
-                                                          account=account)
-
-        url = self._get_url(account_creation.id)
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        row_index = get_section_start_row(sheet, section)
-        title_values = tuple(cell.value for cell in sheet[row_index][1:])
-        self.assertEqual(title_values, (section,) + COLUMNS_ORDER)
-
-    @generic_test([
-        (section, (section,), dict())
-        for section in STATISTIC_SECTIONS
-    ])
-    def test_demo_account_cta(self, section):
-        self.create_test_user()
-
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        row_index = get_section_start_row(sheet, section)
-        title_values = tuple(cell.value for cell in sheet[row_index][1:])
-        self.assertEqual(title_values, (section,) + COLUMNS_ORDER)
 
     def test_demo_total_contains_cta(self):
         self.create_test_user()
