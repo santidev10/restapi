@@ -179,14 +179,14 @@ class DashboardAccountCreationDetailsAPIView(APIView):
 
     @staticmethod
     def resolve_videos_info(ids):
-        cache_key = "video_title_thumbnail_{}"
+        cache_key_template = "video_title_thumbnail_{}"
         cache_timeout = 86400  # 24 hours
         requests_timeout = 2
         api_url = "https://www.googleapis.com/youtube/v3/videos"
         details = {}
         unresolved_ids = []
         for video_id in ids:
-            info = cache.get(cache_key.format(video_id))
+            info = cache.get(cache_key_template.format(video_id))
             if info:
                 details[video_id] = info
             else:
@@ -210,6 +210,6 @@ class DashboardAccountCreationDetailsAPIView(APIView):
                     name=snippet.get("title"),
                     thumbnail=snippet.get("thumbnails", {}).get("high", {}).get("url"),
                 )
-                cache.set(cache_key.format(video_id), info, cache_timeout)
+                cache.set(cache_key_template.format(video_id), info, cache_timeout)
                 details[video_id] = info
         return details
