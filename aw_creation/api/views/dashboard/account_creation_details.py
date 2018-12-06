@@ -118,7 +118,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
                 try:
                     videos_details = self.resolve_videos_info(unresolved_ids)
                 except Exception as e:
-                    logger.error(str(e))
+                    logger.error(e)
                     videos_details = {}
 
                 for video_id in ids:
