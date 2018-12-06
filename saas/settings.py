@@ -63,7 +63,6 @@ THIRD_PARTY_APPS = (
     "rest_framework.authtoken",
     "drf_yasg",
 )
-LOGIN_URL = "/api/v1/auth/"
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
 MIDDLEWARE_CLASSES = [
