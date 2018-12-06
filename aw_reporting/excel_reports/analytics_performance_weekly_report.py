@@ -146,8 +146,8 @@ class AnalyticsPerformanceWeeklyReport:
             8: last_columns_percentage_cell_format,
             9: last_columns_percentage_cell_format,
             10: last_columns_percentage_cell_format,
-
         }
+
         self.data_cell_options_with_cta = {
             1: first_column_cell_format,
             2: middle_columns_cell_format,
@@ -246,8 +246,7 @@ class AnalyticsPerformanceWeeklyReport:
         self.workbook.close()
         return self.output.getvalue()
 
-    def write_rows(self, data, start_row, default_format=None,
-                   data_cell_options=None):
+    def write_rows(self, data, start_row, default_format=None, data_cell_options=None):
         """
         Writing document rows
         :param data: list of lists
@@ -382,7 +381,6 @@ class AnalyticsPerformanceWeeklyReport:
         )]
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
-
         rows = []
         for obj in self.get_campaign_data():
             rows.append((
@@ -404,7 +402,6 @@ class AnalyticsPerformanceWeeklyReport:
         start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options_with_cta)
         # Write total
         total_data = self.get_total_data()
-        # Drop None values
         total_row = [(
             "Total",
             total_data["impressions"],
@@ -510,8 +507,11 @@ class AnalyticsPerformanceWeeklyReport:
         start_row = self.write_rows(headers, start_row, self.header_format)
         # Write content
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (obj["name"],
+             obj["impressions"],
+             obj["video_views"],
+             div_by_100(obj["video_view_rate"])
+             )
             for obj in self.get_interest_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -547,8 +547,11 @@ class AnalyticsPerformanceWeeklyReport:
         # Write content
 
         rows = [
-            (obj["name"], obj["impressions"], obj["video_views"],
-             div_by_100(obj["video_view_rate"]))
+            (obj["name"],
+             obj["impressions"],
+             obj["video_views"],
+             div_by_100(obj["video_view_rate"])
+             )
             for obj in self.get_topic_data()
         ]
         start_row = self.write_rows(rows, start_row)
@@ -627,22 +630,22 @@ class AnalyticsPerformanceWeeklyReport:
 
         rows = []
         for obj in self.get_device_data():
-            device = obj['name']
+            device = obj["name"]
             if device == "Other":
                 device = "Other*"
             rows.append(
                 (device,
-                 obj['impressions'],
-                 obj['video_views'],
-                 div_by_100(obj['video_view_rate']),
-                 obj['clicks'],
+                 obj["impressions"],
+                 obj["video_views"],
+                 div_by_100(obj["video_view_rate"]),
+                 obj["clicks"],
                  obj["clicks_call_to_action_overlay"],
                  obj["clicks_website"],
                  obj["clicks_app_store"],
                  obj["clicks_cards"],
                  obj["clicks_end_cap"],
-                 div_by_100(obj['ctr']),
-                 div_by_100(obj['video100rate'])
+                 div_by_100(obj["ctr"]),
+                 div_by_100(obj["video100rate"])
                  )
             )
         start_row = self.write_rows(rows, start_row, data_cell_options=self.data_cell_options_with_cta)
