@@ -82,6 +82,7 @@ class UserListCSVExport(BaseCSVStreamResponseGenerator):
         return "User List {}.csv".format(timestamp)
 
 
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class UserListExportApiView(APIView):
     permission_classes = (IsAdminUser,)
 

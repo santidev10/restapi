@@ -19,7 +19,7 @@ from utils.lang import get_request_prefix
 IGNORE_EMAILS_TEMPLATE = {
     "@pages.plusgoogle.com"
 }
-EMAIL_IMAGES_DIR = os.path.join(settings.STATICFILES_DIRS[0],
+EMAIL_IMAGES_DIR = os.path.join(settings.STATIC_ROOT,
                                 'img/notifications')
 
 
