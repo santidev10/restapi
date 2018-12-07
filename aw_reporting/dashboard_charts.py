@@ -62,6 +62,7 @@ from utils.db.functions import TruncWeek
 from utils.lang import ExtendedEnum
 from utils.lang import flatten
 from utils.utils import get_all_class_constants
+from utils.youtube_api import resolve_videos_info
 
 logger = logging.getLogger(__name__)
 
@@ -816,6 +817,11 @@ class DeliveryChart:
                 videos_info = {}
             else:
                 videos_info = {i['id']: i for i in items}
+
+            unresolved_ids = list(set(ids) - set(videos_info.keys()))
+            if unresolved_ids:
+                unresolved_videos_info = resolve_videos_info(unresolved_ids)
+                videos_info = {**videos_info, **unresolved_videos_info}
 
             for item in raw_stats:
                 youtube_id = item['creative_id']
