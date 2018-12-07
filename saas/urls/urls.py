@@ -15,8 +15,9 @@ from saas.urls.namespaces import Namespace
 from segment.api import urls as segment_api_urls
 from singledb.api import urls as singledb_api_urls
 from userprofile.api import urls as userprofile_api_urls
-from video.api import urls as video_api_urls
 from utils.documentation import urlpatterns as documentation_api_urls
+from video.api import urls as video_api_urls
+
 
 urlpatterns = [
     # Admin api urls
@@ -61,4 +62,3 @@ urlpatterns = [
 
     url(r'^docs/', include(documentation_api_urls))
 ]
-

@@ -417,7 +417,9 @@ SWAGGER_SETTINGS = {
             'name': 'Authorization',
             'in': 'header'
         }
-    }
+    },
+    'LOGIN_URL': "/docs/login/",
+    'LOGOUT_URL': "/docs/logout/",
 }
 
 try:
