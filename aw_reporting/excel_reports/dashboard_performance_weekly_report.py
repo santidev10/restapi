@@ -29,6 +29,7 @@ from aw_reporting.models import gender_str
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
+from utils.youtube_api import resolve_videos_info
 
 logger = logging.getLogger(__name__)
 all_stats_aggregation = partial(all_stats_aggregator, "ad_group__campaign__")
@@ -721,14 +722,20 @@ class DashboardPerformanceWeeklyReport:
             .order_by("creative_id")
         videos_data = list(videos_data)
         ids = [i["creative_id"] for i in videos_data]
-        videos_info = {}
         connector = SingleDatabaseApiConnector()
         try:
             items = connector.get_videos_base_info(ids)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
+            videos_info = {}
         else:
             videos_info = {i['id']: i for i in items}
+
+        unresolved_ids = list(set(ids) - set(videos_info.keys()))
+        if unresolved_ids:
+            unresolved_videos_info = resolve_videos_info(unresolved_ids)
+            videos_info = {**videos_info, **unresolved_videos_info}
+
         for item in videos_data:
             video_id = item["creative_id"]
             item['name'] = videos_info.get(video_id, {}).get("title", video_id)
