@@ -146,24 +146,6 @@ class SlackAWUpdateLoggingHandler(Handler):
         )
 
 
-def flight_ordered_units_changed_notification(opportunity_name, placement_name, flight_name, old_ordered_units,
-                                              new_ordered_units, ad_ops_email):
-    """
-    Send Flight ordered units changed email
-    """
-    sender = settings.SENDER_EMAIL_ADDRESS
-    to = ad_ops_email,
-    subject = "{opportunity_name} Ordered Units has changed".format(opportunity_name=opportunity_name)
-    text = "Flight: {flight_name}\n\n" \
-           "Placement: {placement_name}\n\n" \
-           "Change: The ordered units were changed from {old_value} to {new_value}" \
-           "".format(flight_name=flight_name,
-                     placement_name=placement_name,
-                     old_value=old_ordered_units,
-                     new_value=new_ordered_units)
-    send_mail(subject, text, sender, to, fail_silently=True)
-
-
 class Levels:
     WARNING = "WARNING"
 
