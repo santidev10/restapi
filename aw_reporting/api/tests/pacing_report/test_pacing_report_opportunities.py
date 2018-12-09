@@ -789,7 +789,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(opportunity_data["yesterday_budget"], 51)
 
         charts = opportunity_data["charts"]
-        self.assertEqual(len(charts), 2)
+        self.assertEqual(len(charts), 4)
 
         pacing_chart = charts[0]
         self.assertEqual(pacing_chart["title"], "Ideal Pacing")
@@ -864,7 +864,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(cpv_chart_data["targeting"]["video_views"], 306)
 
         charts = cpv_chart_data["charts"]
-        self.assertEqual(len(charts), 2)
+        self.assertEqual(len(charts), 4)
 
         pacing_chart = charts[0]
         self.assertEqual(pacing_chart["title"], "Ideal Pacing")
@@ -886,7 +886,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(cpm_chart_data["targeting"]["impressions"], 3060)
 
         charts = cpm_chart_data["charts"]
-        self.assertEqual(len(charts), 2)
+        self.assertEqual(len(charts), 4)
 
         pacing_chart = charts[0]
         self.assertEqual(pacing_chart["title"], "Ideal Pacing")

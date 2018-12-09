@@ -1207,9 +1207,13 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
 
     delivered_chart = []
     pacing_chart = []
+    delivery_plan_chart = []
+    historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
+    planned_delivery = 0
     total_goal = sum(f["plan_units"] for f in flights)
+    recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
         current_flights = [f for f in flights if
@@ -1226,10 +1230,23 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
         pacing_chart.append(
             dict(
                 label=date,
-                value=min(total_pacing, total_goal),
+                value=min(total_pacing, recalculated_total_goal),
             )
         )
 
+        planned_delivery += goal_for_today
+
+        delivery_plan_chart.append(
+            dict(
+                label=date,
+                value=planned_delivery,
+            )
+        )
+
+        historical_goal_chart.append(dict(
+            label=date,
+            value=0,
+        ))
         # delivered cumulative chart
         delivered = 0
         for f in current_flights:
@@ -1264,6 +1281,22 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
                 title="Daily Deviation",
                 id=PacingReportChartId.DAILY_DEVIATION,
                 data=delivered_chart,
+            )
+        )
+    if delivery_plan_chart:
+        charts.append(
+            dict(
+                title="Planned delivery",
+                id=PacingReportChartId.PLANNED_DELIVERY,
+                data=delivery_plan_chart,
+            )
+        )
+    if historical_goal_chart:
+        charts.append(
+            dict(
+                title="Historical Goal",
+                id=PacingReportChartId.HISTORICAL_GOAL,
+                data=historical_goal_chart,
             )
         )
     return charts
