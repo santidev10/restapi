@@ -81,14 +81,12 @@ class PacingReportTestCase(ExtendedAPITestCase):
         self.assertEqual(len(flights), 2)
 
         flight_data = flights[1]
-        self.assertEqual(flight_data['plan_video_views'], 0)  # 1020 - 1020
         first_chart = flight_data['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 0)
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        self.assertEqual(campaigns[0]['plan_video_views'], 0)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 0)
@@ -127,7 +125,6 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flights = report.get_flights(placement)
         self.assertEqual(len(flights), 2)
-        self.assertEqual(flights[1]['plan_video_views'], 408)
         first_chart = flights[1]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(
@@ -139,7 +136,6 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        self.assertEqual(campaigns[0]['plan_video_views'], 408)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 408)
@@ -211,7 +207,6 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # test campaign
         campaigns = report.get_campaigns(flight)
-        self.assertEqual(campaigns[0]['plan_video_views'], 530.4)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 530.4)
@@ -273,7 +268,6 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flight_2 = flights[1]
         self.assertEqual(flight_2['id'], feb.id)
-        self.assertEqual(flight_2['plan_video_views'], 520)
         pacing_chart = flight_2['charts'][0]
         self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
         self.assertEqual(
@@ -282,39 +276,33 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flight_3 = flights[2]
         self.assertEqual(flight_3['id'], march.id)
-        self.assertEqual(flight_3['plan_video_views'], 770)
         pacing_chart = flight_3['charts'][0]
         self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
         self.assertAlmostEqual(pacing_chart['data'][-1]['value'], 770, places=10)
 
         flight_4 = flights[3]
         self.assertEqual(flight_4['id'], april.id)
-        self.assertEqual(flight_4['plan_video_views'], 770)
         pacing_chart = flight_4['charts'][0]
         self.assertEqual(pacing_chart['title'], 'Ideal Pacing')
         self.assertAlmostEqual(pacing_chart['data'][-1]['value'], 770)
 
         # test campaigns
         campaigns = report.get_campaigns(jan)
-        self.assertEqual(campaigns[0]['plan_video_views'], 1020)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 1020)
 
         campaigns = report.get_campaigns(feb)
-        self.assertEqual(campaigns[0]['plan_video_views'], 520)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertEqual(first_chart['data'][-1]['value'], 520)
 
         campaigns = report.get_campaigns(march)
-        self.assertEqual(campaigns[0]['plan_video_views'], 770)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertAlmostEqual(first_chart['data'][-1]['value'], 770)
 
         campaigns = report.get_campaigns(april)
-        self.assertEqual(campaigns[0]['plan_video_views'], 770)
         first_chart = campaigns[0]['charts'][0]
         self.assertEqual(first_chart['title'], 'Ideal Pacing')
         self.assertAlmostEqual(first_chart['data'][-1]['value'], 770)
