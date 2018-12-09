@@ -40,6 +40,8 @@ from utils.datetime import now_in_default_tz
 class PacingReportChartId:
     IDEAL_PACING = "ideal_pacing"
     DAILY_DEVIATION = "daily_deviation"
+    PLANNED_DELIVERY = "planned_delivery"
+    HISTORICAL_GOAL = "historical_goal"
 
 
 class DefaultRate:
@@ -306,7 +308,8 @@ class PacingReport:
             # first get the over delivery
             over_delivery = 0
             for f in placement_flights:
-                diff = f["delivery"] - f["plan_units"]
+                f["recalculated_plan_units"] = f["plan_units"]
+                diff = f["delivery"] - f["recalculated_plan_units"]
                 if diff > 0:  # over-delivery
                     over_delivery += diff
                 elif diff < 0 and f["end"] <= self.yesterday:  # under delivery for an ended flight
@@ -315,7 +318,7 @@ class PacingReport:
                     abs_diff = abs(diff)
                     reallocate_to_flight = min(abs_diff, over_delivery)
                     over_delivery -= reallocate_to_flight
-                    f["plan_units"] -= reallocate_to_flight
+                    f["recalculated_plan_units"] -= reallocate_to_flight
 
             # then reassign between flights that haven't finished
             if over_delivery:
@@ -325,7 +328,7 @@ class PacingReport:
 
                     # recalculate reassignment
                     for fl in not_finished_flights:
-                        flight_can_consume = fl["plan_units"] - fl["delivery"]
+                        flight_can_consume = fl["recalculated_plan_units"] - fl["delivery"]
                         if flight_can_consume > 0:  # if it hasn't reached the plan yet
                             total_days = sum(
                                 f["days"] for f in not_finished_flights if
@@ -337,7 +340,7 @@ class PacingReport:
                             assigned_over_delivery = min(
                                 assigned_over_delivery, flight_can_consume)
                             # reassign items
-                            fl["plan_units"] -= assigned_over_delivery
+                            fl["recalculated_plan_units"] -= assigned_over_delivery
                             over_delivery -= assigned_over_delivery
 
         return data

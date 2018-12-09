@@ -33,10 +33,10 @@ from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 logger = logging.getLogger(__name__)
 
@@ -1337,3 +1337,152 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunity_data = response.data["items"][0]
         self.assertEqual(opportunity_data["aw_update_time"], test_update_time.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    def test_goal_on_recalculation(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        ordered_units = 100
+        total_ordered_units = 0
+        for dt in [yesterday, today, tomorrow]:
+            flight = Flight.objects.create(
+                id=next(int_iterator),
+                placement=placement,
+                ordered_units=ordered_units,
+                start=dt,
+                end=dt,
+            )
+            total_ordered_units += flight.ordered_units
+
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            salesforce_placement=placement
+        )
+        CampaignStatistic.objects.create(
+            date=yesterday,
+            campaign=campaign,
+            video_views=ordered_units * 2,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        expected_plan_views = total_ordered_units * PacingReport.goal_factor
+        self.assertAlmostEqual(response.data["items"][0]["plan_video_views"], expected_plan_views)
+
+    def test_delivery_plan(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        ordered_units = 100
+        total_ordered_units = 0
+        for dt in [yesterday, today, tomorrow]:
+            flight = Flight.objects.create(
+                id=next(int_iterator),
+                placement=placement,
+                ordered_units=ordered_units,
+                start=dt,
+                end=dt,
+            )
+            total_ordered_units += flight.ordered_units
+
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            salesforce_placement=placement
+        )
+        CampaignStatistic.objects.create(
+            date=yesterday,
+            campaign=campaign,
+            video_views=ordered_units * 2,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+
+        expected_plan_views = total_ordered_units * PacingReport.goal_factor
+        daily_plan = expected_plan_views / 3
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        charts = response.data["items"][0]["chart_data"]["cpv"]["charts"]
+        data_by_id = {i["id"]: i["data"] for i in charts}
+        planned_chart = data_by_id.get(PacingReportChartId.PLANNED_DELIVERY)
+        self.assertAlmostEqual(planned_chart[0]["value"], daily_plan)
+        self.assertAlmostEqual(planned_chart[1]["value"], daily_plan * 2)
+        self.assertAlmostEqual(planned_chart[2]["value"], daily_plan * 3)
+
+    def test_historical_goal(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        ordered_units = 100
+        total_ordered_units = 0
+        for dt in [yesterday, today, tomorrow]:
+            flight = Flight.objects.create(
+                id=next(int_iterator),
+                placement=placement,
+                ordered_units=ordered_units,
+                start=dt,
+                end=dt,
+            )
+            total_ordered_units += flight.ordered_units
+
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            salesforce_placement=placement
+        )
+        delivered = ordered_units * 2
+        CampaignStatistic.objects.create(
+            date=yesterday,
+            campaign=campaign,
+            video_views=delivered,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+
+        expected_plan_views = total_ordered_units * PacingReport.goal_factor
+        daily_plan = expected_plan_views / 3
+        over_delivery = delivered - daily_plan
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        charts = response.data["items"][0]["chart_data"]["cpv"]["charts"]
+        data_by_id = {i["id"]: i["data"] for i in charts}
+        historical_goal_chart = data_by_id.get(PacingReportChartId.HISTORICAL_GOAL)
+        self.assertEqual(len(historical_goal_chart), 2)
+        self.assertAlmostEqual(historical_goal_chart[0]["value"], expected_plan_views)
+        self.assertAlmostEqual(historical_goal_chart[1]["value"], expected_plan_views - over_delivery)
