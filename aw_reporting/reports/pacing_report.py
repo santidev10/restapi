@@ -286,6 +286,7 @@ class PacingReport:
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor \
                     if fl["ordered_units"] else 0
+            fl["recalculated_plan_units"] = fl["plan_units"]
 
         # we need to check  "cannot_roll_over" option
         # if it's False, the over-delivery from completed flights should be spread between future ones
@@ -1211,13 +1212,13 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
-    planned_delivery = 0
     total_goal = sum(f["plan_units"] for f in flights)
     recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
         current_flights = [f for f in flights if
                            f["start"] <= date <= f["end"]]
+
         if current_flights:
             goal_for_today = sum(
                 f["daily_goal"].get(date, 0) for f in current_flights)
@@ -1234,19 +1235,21 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
             )
         )
 
-        planned_delivery += goal_for_today
-
         delivery_plan_chart.append(
             dict(
                 label=date,
-                value=planned_delivery,
+                value=get_ideal_delivery_for_date(flights, date),
             )
         )
 
-        historical_goal_chart.append(dict(
-            label=date,
-            value=0,
-        ))
+        if date <= today:
+            historical_goal_chart.append(
+                dict(
+                    label=date,
+                    value=get_historical_goal(flights, date, total_goal, total_delivered),
+                )
+            )
+
         # delivered cumulative chart
         delivered = 0
         for f in current_flights:
@@ -1393,3 +1396,24 @@ def _get_dynamic_placements_summary(placements):
         has_dynamic_placements=has_dynamic_placements,
         dynamic_placements_types=list(dynamic_placements_types)
     )
+
+
+def get_ideal_delivery_for_date(flights, selected_date):
+    ideal_delivery = 0
+    started_flights = [flight for flight in flights if flight["start"] <= selected_date]
+    for flight in started_flights:
+        end_date = min(selected_date, flight["end"])
+        total_duration_days = (flight["end"] - flight["start"]).days + 1
+        passed_duration_days = (end_date - flight["start"]).days + 1
+        ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
+
+    return ideal_delivery
+
+
+def get_historical_goal(flights, selected_date, total_goal, delivered):
+    started_flights = [f for f in flights if f["start"] <= selected_date]
+    not_started_flights = [f for f in flights if f["start"] > selected_date]
+    current_max_goal = sum(f["plan_units"] for f in started_flights)
+    can_consume = sum(f["plan_units"] for f in not_started_flights)
+    over_delivered = max(delivered - current_max_goal, 0)
+    return total_goal - min(over_delivered, can_consume)

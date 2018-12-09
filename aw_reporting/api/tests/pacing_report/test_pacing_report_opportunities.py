@@ -1446,22 +1446,33 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.CPV,
         )
         ordered_units = 100
-        total_ordered_units = 0
-        for dt in [yesterday, today, tomorrow]:
-            flight = Flight.objects.create(
-                id=next(int_iterator),
-                placement=placement,
-                ordered_units=ordered_units,
-                start=dt,
-                end=dt,
-            )
-            total_ordered_units += flight.ordered_units
+        flight_finished = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_units,
+            start=yesterday,
+            end=yesterday,
+        )
+        flight_started = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_units,
+            start=today,
+            end=today,
+        )
+        flight_not_started = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_units,
+            start=tomorrow,
+            end=tomorrow,
+        )
 
         campaign = Campaign.objects.create(
             id=next(int_iterator),
             salesforce_placement=placement
         )
-        delivered = ordered_units * 2
+        delivered = ordered_units * 2.5
         CampaignStatistic.objects.create(
             date=yesterday,
             campaign=campaign,
@@ -1475,14 +1486,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
              patch_now(now):
             response = self.client.get(self.url)
 
-        expected_plan_views = total_ordered_units * PacingReport.goal_factor
-        daily_plan = expected_plan_views / 3
-        over_delivery = delivered - daily_plan
+        total_plan_units = sum(flight.ordered_units for flight in Flight.objects.all()) * PacingReport.goal_factor
+        current_max = (flight_started.ordered_units + flight_finished.ordered_units)*PacingReport.goal_factor
+        over_delivery = delivered - current_max
+        consume = min(flight_not_started.ordered_units, over_delivery)
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         charts = response.data["items"][0]["chart_data"]["cpv"]["charts"]
         data_by_id = {i["id"]: i["data"] for i in charts}
         historical_goal_chart = data_by_id.get(PacingReportChartId.HISTORICAL_GOAL)
         self.assertEqual(len(historical_goal_chart), 2)
-        self.assertAlmostEqual(historical_goal_chart[0]["value"], expected_plan_views)
-        self.assertAlmostEqual(historical_goal_chart[1]["value"], expected_plan_views - over_delivery)
+        self.assertAlmostEqual(historical_goal_chart[0]["value"], total_plan_units)
+        self.assertAlmostEqual(historical_goal_chart[1]["value"], total_plan_units - consume)
