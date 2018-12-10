@@ -8,3 +8,9 @@ class BrandSafetyPathName:
         CATEGORY_LIST = "bad_word_category_list"
         UPDATE_DELETE = "bad_word_update_delete"
         EXPORT = "bad_word_export"
+
+    class BadVideo:
+        LIST_AND_CREATE = "bad_video_list_create"
+        CATEGORY_LIST = "bad_video_category_list"
+        UPDATE_DELETE = "bad_video_update_delete"
+        EXPORT = "bad_video_export"
