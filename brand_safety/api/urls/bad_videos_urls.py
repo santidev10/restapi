@@ -11,4 +11,9 @@ urlpatterns = [
         views.BadVideoListCreateApiView.as_view(),
         name=Names.LIST_AND_CREATE,
     ),
+    url(
+        r'^(?P<pk>.+)/$',
+        views.BadVideoUpdateDeleteApiView.as_view(),
+        name=Names.UPDATE_DELETE,
+    ),
 ]
