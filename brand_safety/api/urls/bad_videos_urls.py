@@ -17,6 +17,11 @@ urlpatterns = [
         name=Names.CATEGORY_LIST
     ),
     url(
+        r'^export/$',
+        views.BadVideoExportApiView.as_view(),
+        name=Names.EXPORT,
+    ),
+    url(
         r'^(?P<pk>.+)/$',
         views.BadVideoUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,

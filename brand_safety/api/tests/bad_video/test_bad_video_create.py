@@ -14,12 +14,12 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class BadVideoCreateTestCase(ExtendedAPITestCase):
-    def _request(self, **bad_word_data):
+    def _request(self, **bad_video_data):
         url = reverse(
             PathNames.BadVideo.LIST_AND_CREATE,
             [Namespace.BRAND_SAFETY],
         )
-        return self.client.post(url, json.dumps(bad_word_data), content_type="application/json")
+        return self.client.post(url, json.dumps(bad_video_data), content_type="application/json")
 
     def test_not_auth(self):
         response = self._request()
@@ -119,7 +119,7 @@ class BadVideoCreateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_allow_the_same_bad_word_in_different_categories(self):
+    def test_allow_the_same_bad_video_in_different_categories(self):
         self.create_admin_user()
         test_category_1 = "test category 1"
         test_category_2 = "test category 2"
