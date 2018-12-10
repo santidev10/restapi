@@ -153,7 +153,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         self.assertEqual(placement_data["yesterday_budget"], 51)
 
         charts = placement_data["charts"]
-        self.assertEqual(len(charts), 2)
+        self.assertEqual(len(charts), 4)
 
         pacing_chart = charts[0]
         self.assertEqual(pacing_chart["title"], "Ideal Pacing")

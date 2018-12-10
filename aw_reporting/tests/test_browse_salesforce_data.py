@@ -1,14 +1,21 @@
 from datetime import date
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
+from django.core import mail
 from django.core.management import call_command
 from django.test import TransactionTestCase
 
-from aw_reporting.models import OpPlacement, Flight, Opportunity, Campaign, \
-    CampaignStatistic
-from aw_reporting.models.salesforce_constants import DynamicPlacementType, \
-    SalesForceGoalType
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import User
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.salesforce import Connection
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
 
@@ -112,22 +119,9 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
 
         sf_mock = MockSalesforceConnection()
         sf_mock.add_mocked_items("Opportunity", [
-            dict(
+            opportunity_data(
                 Id="123",
                 Name="",
-                DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c=False,
-                Probability=100,
-                CreatedDate=None,
-                CloseDate=None,
-                Renewal_Approved__c=False,
-                Reason_for_Close_Lost__c=None,
-                Demo_TEST__c=None,
-                Geo_Targeting_Country_State_City__c=None,
-                Targeting_Tactics__c=None,
-                Tags__c=None,
-                Types_of__c=None,
-                APEX_Deal__c=False,
-                Bill_off_3p_Numbers__c=False
             )
         ])
         with patch(
@@ -136,6 +130,87 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(Opportunity.objects.all().count(), 1)
+
+    def test_notify_ordered_units_changed(self):
+        ordered_units = 123
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            ordered_units=ordered_units,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            ordered_units=ordered_units,
+        )
+
+        new_ordered_units = ordered_units + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Ordered_Units__c=new_ordered_units,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        flight.refresh_from_db()
+        self.assertEqual(flight.ordered_units, new_ordered_units)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(email.subject, "{} Ordered Units has changed".format(opportunity.name))
+        expected_body_lines = [
+            "Flight: {}".format(flight.name),
+            "Placement: {}".format(placement.name),
+            "Change: The ordered units were changed from {old_value} to {new_value}".format(
+                old_value=ordered_units,
+                new_value=new_ordered_units,
+            ),
+        ]
+        expected_body = "\n\n".join(expected_body_lines)
+        self.assertEqual(email.body, expected_body)
 
 
 class MockSalesforceConnection(Connection):
@@ -151,4 +226,72 @@ class MockSalesforceConnection(Connection):
 
     def describe(self, *_):
         return {
-            "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]}
+            "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]
+        }
+
+
+def opportunity_data(**kwargs):
+    default_values = dict(
+        Name="",
+        DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c=False,
+        Probability=100,
+        CreatedDate=None,
+        CloseDate=None,
+        Renewal_Approved__c=False,
+        Reason_for_Close_Lost__c=None,
+        Demo_TEST__c=None,
+        Geo_Targeting_Country_State_City__c=None,
+        Targeting_Tactics__c=None,
+        Tags__c=None,
+        Types_of__c=None,
+        APEX_Deal__c=False,
+        Bill_off_3p_Numbers__c=False
+    )
+    return {
+        **default_values,
+        **kwargs,
+    }
+
+
+def placement_data(**kwargs):
+    default_values = dict(
+        Name="",
+        Cost_Method__c="CPM",
+        Insertion_Order__c=None,
+        Total_Ordered_Units__c=0,
+        Ordered_Cost_Per_Unit__c=0,
+        Total_Client_Costs__c=0,
+        Placement_Start_Date__c=None,
+        Placement_End_Date__c=None,
+        PLACEMENT_ID_Number__c=None,
+        Adwords_Placement_IQ__c=None,
+        Incremental__c=False,
+        Placement_Type__c=None,
+        Dynamic_Placement__c=None,
+        Tech_Fee_if_applicable__c=None,
+        Tech_Fee_Cap_if_applicable__c=None,
+        Tech_Fee_Type__c=None,
+    )
+    return {
+        **default_values,
+        **kwargs,
+    }
+
+
+def flight_data(**kwargs):
+    default_values = dict(
+        Name="",
+        Placement__c=None,
+        Flight_Start_Date__c=None,
+        Flight_End_Date__c=None,
+        Flight_Month__c=None,
+        Total_Flight_Cost__c=0,
+        Flight_Value__c=0,
+        Delivered_Ad_Ops__c=None,
+        Ordered_Amount__c=0,
+        Ordered_Units__c=0,
+    )
+    return {
+        **default_values,
+        **kwargs,
+    }

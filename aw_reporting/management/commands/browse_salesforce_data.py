@@ -312,7 +312,10 @@ class Command(BaseCommand):
                 if item_id in existed_ids:
                     del data['id']
                     try:
-                        model.objects.filter(pk=item_id).update(**data)
+                        item = model.objects.get(pk=item_id)
+                        for key, value in data.items():
+                            setattr(item, key, value)
+                        item.save()
                     except IntegrityError as e:
                         logging.critical(e)
                     update += 1
