@@ -1404,8 +1404,9 @@ def get_ideal_delivery_for_date(flights, selected_date):
     for flight in started_flights:
         end_date = min(selected_date, flight["end"])
         total_duration_days = (flight["end"] - flight["start"]).days + 1
-        passed_duration_days = (end_date - flight["start"]).days + 1
-        ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
+        if total_duration_days != 0:
+            passed_duration_days = (end_date - flight["start"]).days + 1
+            ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
 
     return ideal_delivery
 
