@@ -1,6 +1,7 @@
 from django.db import models
 
 from utils.db.models import SoftDeleteModel
+from utils.utils import get_all_class_constants
 
 
 class BadVideo(SoftDeleteModel):
@@ -13,3 +14,11 @@ class BadVideo(SoftDeleteModel):
 
     class Meta:
         unique_together = ("youtube_id", "category")
+
+
+class BadVideoCategory:
+    CF_MASTER_EXCLUSION_LIST = "CF Master Exclusion List"
+    NEGATIVE_KIDS_PLACEMENT_LIST = "Negative Kids Placement List"
+
+
+ALL_BAD_VIDEO_CATEGORIES = get_all_class_constants(BadVideoCategory)

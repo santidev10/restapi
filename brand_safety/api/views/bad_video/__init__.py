@@ -1,2 +1,3 @@
+from .bad_video_category_list import BadVideoCategoryListApiView
 from .bad_video_list_create import BadVideoListCreateApiView
 from .bad_video_update_delete import BadVideoUpdateDeleteApiView
