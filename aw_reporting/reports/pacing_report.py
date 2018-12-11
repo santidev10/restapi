@@ -1003,7 +1003,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     goal = 0
     for f in flights:
         goal_type_id = f["placement__goal_type_id"]
-        goal += f["ordered_units"]
+        goal += f["ordered_units"] or 0
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
 
