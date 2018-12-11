@@ -167,7 +167,17 @@ def _device_annotation():
 
 
 def _get_sum_fields(model):
-    fields = ("cost", "impressions", "video_views", "clicks", "clicks_website")
+    fields = (
+        "clicks",
+        "clicks_app_store",
+        "clicks_call_to_action_overlay",
+        "clicks_cards",
+        "clicks_end_cap",
+        "clicks_website",
+        "cost",
+        "impressions",
+        "video_views",
+    )
     if model is AdGroup:
         fields = fields + ("engagements", "active_view_impressions")
     return fields
