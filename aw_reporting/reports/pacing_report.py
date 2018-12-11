@@ -276,16 +276,21 @@ class PacingReport:
                 goal_factor = self.goal_factor
 
             fl["plan_units"] = 0
+            fl["sf_ordered_units"] = 0
             if fl["placement__dynamic_placement"] \
                     in (DynamicPlacementType.BUDGET,
                         DynamicPlacementType.RATE_AND_TECH_FEE,
                         DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
+                fl["sf_ordered_units"] = fl["plan_units"]
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
+                fl["sf_ordered_units"] = 0
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor \
                     if fl["ordered_units"] else 0
+                fl["sf_ordered_units"] = fl["ordered_units"] or 0
+
             fl["recalculated_plan_units"] = fl["plan_units"]
 
         # we need to check  "cannot_roll_over" option
@@ -1003,7 +1008,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
     goal = 0
     for f in flights:
         goal_type_id = f["placement__goal_type_id"]
-        goal += (f["ordered_units"] or 0) * allocation_ko
+        goal += (f["sf_ordered_units"] or 0) * allocation_ko
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
 

@@ -1543,3 +1543,33 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         chart_data = response.data["items"][0]["chart_data"]
         self.assertEqual(chart_data["cpv"]["goal"], ordered_views)
         self.assertEqual(chart_data["cpm"]["goal"], ordered_impressions)
+
+    def test_dynamic_placement_goal(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=1000,
+            total_cost=120,
+            start=today,
+            end=today,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        chart_data = response.data["items"][0]["chart_data"]["budget"]
+        self.assertEqual(chart_data["goal"], flight.total_cost)
