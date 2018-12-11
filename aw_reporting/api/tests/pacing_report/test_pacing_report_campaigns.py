@@ -189,7 +189,7 @@ class PacingReportTestCase(APITestCase):
             id=next(int_iterator),
             placement=placement,
             ordered_units=ordered_views,
-            start=datetime(2018, 10, 1, 10, 10),
+            start=today,
             end=today,
         )
         allocation_1 = 30
@@ -228,3 +228,59 @@ class PacingReportTestCase(APITestCase):
 
         self.assertAlmostEqual(get_planned_delivery(campaign_1.id), expected_goal_1)
         self.assertAlmostEqual(get_planned_delivery(campaign_2.id), expected_goal_2)
+
+    def test_campaign_allocation_historical_goal_chart(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        ordered_views = 100
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_views,
+            start=today,
+            end=today,
+        )
+        allocation_1 = 30
+        allocation_2 = 100 - allocation_1
+        campaign_1 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_1,
+        )
+        campaign_2 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_2,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data), 2)
+        items_by_id = {item["id"]: item for item in data}
+        expected_goal_1 = ordered_views * allocation_1 / 100 * PacingReport.goal_factor
+        expected_goal_2 = ordered_views * allocation_2 / 100 * PacingReport.goal_factor
+
+        def get_planned_delivery(campaign_id):
+            charts = items_by_id[campaign_id]["charts"]
+            for chart in charts:
+                if chart["id"] == PacingReportChartId.HISTORICAL_GOAL:
+                    return chart["data"][0]["value"]
+
+        self.assertAlmostEqual(get_planned_delivery(campaign_1.id), expected_goal_1)
+        self.assertAlmostEqual(get_planned_delivery(campaign_2.id), expected_goal_2)
+
+
