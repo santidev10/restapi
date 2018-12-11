@@ -1254,7 +1254,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
             historical_goal_chart.append(
                 dict(
                     label=date,
-                    value=get_historical_goal(flights, date, total_goal, total_delivered),
+                    value=get_historical_goal(flights, date, total_goal, total_delivered) * allocation_ko,
                 )
             )
 
