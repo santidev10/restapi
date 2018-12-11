@@ -1241,7 +1241,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
         delivery_plan_chart.append(
             dict(
                 label=date,
-                value=get_ideal_delivery_for_date(flights, date),
+                value=get_ideal_delivery_for_date(flights, date) * allocation_ko,
             )
         )
 
