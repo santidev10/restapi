@@ -1487,7 +1487,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             response = self.client.get(self.url)
 
         total_plan_units = sum(flight.ordered_units for flight in Flight.objects.all()) * PacingReport.goal_factor
-        current_max = (flight_started.ordered_units + flight_finished.ordered_units)*PacingReport.goal_factor
+        current_max = (flight_started.ordered_units + flight_finished.ordered_units) * PacingReport.goal_factor
         over_delivery = delivered - current_max
         consume = min(flight_not_started.ordered_units, over_delivery)
 
@@ -1499,3 +1499,47 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(len(historical_goal_chart), 2)
         self.assertAlmostEqual(historical_goal_chart[0]["value"], total_plan_units)
         self.assertAlmostEqual(historical_goal_chart[1]["value"], total_plan_units - consume)
+
+    def test_chart_goal(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        ordered_views = 100
+        ordered_impressions = 230
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        cpv_placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=cpv_placement,
+            ordered_units=ordered_views,
+            start=today,
+            end=today,
+        )
+        cpm_placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=cpm_placement,
+            ordered_units=ordered_impressions,
+            start=today,
+            end=today,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        chart_data = response.data["items"][0]["chart_data"]
+        self.assertEqual(chart_data["cpv"]["goal"], ordered_views)
+        self.assertEqual(chart_data["cpm"]["goal"], ordered_impressions)
