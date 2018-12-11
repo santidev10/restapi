@@ -70,6 +70,7 @@ class PacingReportTestCase(APITestCase):
                 "ctr_quality",
                 "current_cost_limit",
                 "end",
+                "goal",
                 "goal_allocation",
                 "goal_type",
                 "id",
