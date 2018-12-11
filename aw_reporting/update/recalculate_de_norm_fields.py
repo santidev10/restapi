@@ -172,7 +172,7 @@ def _get_sum_fields(model):
         "clicks_app_store",
         "clicks_call_to_action_overlay",
         "clicks_cards",
-        "clicks_end_cap"
+        "clicks_end_cap",
         "clicks_website",
         "cost",
         "impressions",
