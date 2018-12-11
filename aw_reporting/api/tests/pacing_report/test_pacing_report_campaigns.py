@@ -1,12 +1,21 @@
+from datetime import datetime
 from datetime import timedelta
 
 from django.core.urlresolvers import reverse
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, \
-    HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, \
-    CampaignStatistic, SalesForceGoalType
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from userprofile.constants import UserSettingsKey
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -113,3 +122,53 @@ class PacingReportTestCase(APITestCase):
         delivery_chart = item["charts"][1]
         self.assertEqual(delivery_chart["title"], "Daily Deviation")
         self.assertEqual(delivery_chart["data"][-1]["value"], 500)
+
+    def test_campaign_allocation_goal(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        ordered_views = 100
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_views,
+            start=today,
+            end=today,
+        )
+        allocation_1 = 30
+        allocation_2 = 100 - allocation_1
+        campaign_1 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_1,
+        )
+        campaign_2 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_2,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data), 2)
+        items_by_id = {item["id"]: item for item in data}
+        expected_goal_1 = ordered_views * allocation_1 / 100
+        expected_goal_2 = ordered_views * allocation_2 / 100
+
+        chart_data_1 = items_by_id[campaign_1.id]
+        chart_data_2 = items_by_id[campaign_2.id]
+        self.assertEqual(chart_data_1["goal"], expected_goal_1)
+        self.assertEqual(chart_data_2["goal"], expected_goal_2)
