@@ -7,21 +7,21 @@ from email_reports.reports.base import BaseEmailReport
 class FlightOrderedUnitsChangedEmail(BaseEmailReport):
 
     def __init__(self, opportunity_name, placement_name, flight_name, old_ordered_units,
-                 new_ordered_units, ad_ops_email):
+                 new_ordered_units, recipients):
         super(FlightOrderedUnitsChangedEmail, self).__init__(host=None, debug=settings.DEBUG)
         self.opportunity_name = opportunity_name
         self.placement_name = placement_name
         self.flight_name = flight_name
         self.old_ordered_units = old_ordered_units
         self.new_ordered_units = new_ordered_units
-        self.ad_ops_email = ad_ops_email
+        self.recipients = recipients
 
     def send(self):
         """
             Send Flight ordered units changed email
             """
         sender = settings.SENDER_EMAIL_ADDRESS
-        to = self.get_to([self.ad_ops_email])
+        to = self.get_to(self.recipients or settings.CONTACT_FORM_EMAIL_ADDRESSES)
         bcc = self.get_bcc()
         subject = "{opportunity_name} Ordered Units has changed".format(opportunity_name=self.opportunity_name)
         text = "Flight: {flight_name}\n\n" \
