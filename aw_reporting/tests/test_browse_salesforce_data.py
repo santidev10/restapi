@@ -385,6 +385,139 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_notify_ordered_units_changed_no_ad_ops(self):
+        ordered_units = 123
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=None,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            ordered_units=ordered_units,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            ordered_units=ordered_units,
+        )
+
+        new_ordered_units = ordered_units + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Ordered_Units__c=new_ordered_units,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        flight.refresh_from_db()
+        self.assertEqual(flight.ordered_units, new_ordered_units)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        # self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(email.subject, "{} Ordered Units has changed".format(opportunity.name))
+        expected_body_lines = [
+            "Flight: {}".format(flight.name),
+            "Placement: {}".format(placement.name),
+            "Change: The ordered units were changed from {old_value} to {new_value}".format(
+                old_value=ordered_units,
+                new_value=new_ordered_units,
+            ),
+        ]
+        expected_body = "\n\n".join(expected_body_lines)
+        self.assertEqual(email.body, expected_body)
+
+    def test_dynamic_placement_notify_total_cost_changed_no_ad_ops(self):
+        total_cost = 123.
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=total_cost,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            total_cost=total_cost,
+        )
+
+        new_total_cost = total_cost + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+                Dynamic_Placement__c=placement.dynamic_placement,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Flight_Value__c=new_total_cost,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        flight.refresh_from_db()
+        self.assertEqual(flight.total_cost, new_total_cost)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        # self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(email.subject, "{} Total Client Cost has changed".format(opportunity.name))
+        expected_body_lines = [
+            "Flight: {}".format(flight.name),
+            "Placement: {}".format(placement.name),
+            "Change: The total client cost was changed from {old_value} to {new_value}".format(
+                old_value=total_cost,
+                new_value=new_total_cost,
+            ),
+        ]
+        expected_body = "\n\n".join(expected_body_lines)
+        self.assertEqual(email.body, expected_body)
+
 
 class MockSalesforceConnection(Connection):
     def __init__(self):
