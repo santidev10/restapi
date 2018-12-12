@@ -212,6 +212,179 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         expected_body = "\n\n".join(expected_body_lines)
         self.assertEqual(email.body, expected_body)
 
+    def test_dynamic_placement_notify_total_cost_changed(self):
+        total_cost = 123.
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=total_cost,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            total_cost=total_cost,
+        )
+
+        new_total_cost = total_cost + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+                Dynamic_Placement__c=placement.dynamic_placement,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Flight_Value__c=new_total_cost,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        flight.refresh_from_db()
+        self.assertEqual(flight.total_cost, new_total_cost)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(email.subject, "{} Total Client Cost has changed".format(opportunity.name))
+        expected_body_lines = [
+            "Flight: {}".format(flight.name),
+            "Placement: {}".format(placement.name),
+            "Change: The total client cost was changed from {old_value} to {new_value}".format(
+                old_value=total_cost,
+                new_value=new_total_cost,
+            ),
+        ]
+        expected_body = "\n\n".join(expected_body_lines)
+        self.assertEqual(email.body, expected_body)
+
+    def test_change_notification_no_false_notifications(self):
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement_dynamic = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=100,
+            ordered_units=100,
+        )
+        flight_dynamic = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement_dynamic,
+            total_cost=100,
+            ordered_units=100,
+        )
+
+        placement_regular = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            total_cost=100,
+            ordered_units=100,
+        )
+        flight_regular = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement_regular,
+            total_cost=100,
+            ordered_units=100,
+        )
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+                Dynamic_Placement__c=placement.dynamic_placement,
+            )
+            for placement in [placement_dynamic, placement_regular]
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight_dynamic.id,
+                Name=flight_dynamic.name,
+                Flight_Value__c=flight_dynamic.total_cost,
+                Ordered_Units__c=flight_dynamic.ordered_units + 1,
+                Placement__c=flight_dynamic.placement_id,
+            ),
+            flight_data(
+                Id=flight_regular.id,
+                Name=flight_regular.name,
+                Flight_Value__c=flight_regular.total_cost + 1,
+                Ordered_Units__c=flight_regular.ordered_units,
+                Placement__c=flight_regular.placement_id,
+            ),
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        self.assertEqual(len(mail.outbox), 0)
+
 
 class MockSalesforceConnection(Connection):
     def __init__(self):
