@@ -4,14 +4,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
 from django.db.models import Count
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
 
 from aw_reporting.models.base import BaseModel, BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesForceRegions
 from aw_reporting.models.salesforce_constants import goal_type_str
+from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
 
 logger = logging.getLogger(__name__)
@@ -528,30 +527,6 @@ class Flight(BaseModel):
         return res
 
 
-@receiver(pre_save, sender=Flight, dispatch_uid="pre_save_flight_receiver")
-def pre_save_flight_receiver(instance, **_):
-    if Flight.objects.filter(pk=instance.pk).exists():
-        flight_changed(instance)
-
-
-def flight_changed(flight: Flight):
-    old_ordered_units = Flight.objects.values_list("ordered_units", flat=True).get(id=flight.id)
-    ordered_units_changed = old_ordered_units != flight.ordered_units
-    if ordered_units_changed:
-        from email_reports.reports.flight_ordered_units_changed import FlightOrderedUnitsChangedEmail
-        placement = flight.placement
-        opportunity = placement.opportunity
-        ad_ops = opportunity.ad_ops_manager
-        FlightOrderedUnitsChangedEmail(
-            opportunity_name=opportunity.name,
-            placement_name=placement.name,
-            flight_name=flight.name,
-            old_ordered_units=old_ordered_units,
-            new_ordered_units=flight.ordered_units,
-            ad_ops_email=ad_ops.email,
-        ).send()
-
-
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
     owner = models.ForeignKey(User, related_name='activities')
@@ -581,3 +556,6 @@ class Activity(BaseModel):
             account_id=data['AccountId'],
         )
         return res
+
+
+init_signals()
