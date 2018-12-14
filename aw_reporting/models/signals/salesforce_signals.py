@@ -12,8 +12,9 @@ def pre_save_flight_receiver(instance, **_):
 
 
 def flight_changed(old_flight: Flight, new_flight: Flight):
-    flight_ordered_units_changed(old_flight, new_flight)
-    flight_total_cost_changed(old_flight, new_flight)
+    if old_flight.placement.opportunity.probability == 100:
+        flight_ordered_units_changed(old_flight, new_flight)
+        flight_total_cost_changed(old_flight, new_flight)
 
 
 def flight_ordered_units_changed(old_flight: Flight, new_flight: Flight):
