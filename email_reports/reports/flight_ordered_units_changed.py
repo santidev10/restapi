@@ -8,7 +8,7 @@ class FlightOrderedUnitsChangedEmail(BaseEmailReport):
 
     def __init__(self, opportunity_name, placement_name, flight_name, old_ordered_units,
                  new_ordered_units, recipients):
-        super(FlightOrderedUnitsChangedEmail, self).__init__(host=None, debug=settings.DEBUG)
+        super(FlightOrderedUnitsChangedEmail, self).__init__(host=None, debug=settings.DEBUG_EMAIL_NOTIFICATIONS)
         self.opportunity_name = opportunity_name
         self.placement_name = placement_name
         self.flight_name = flight_name
@@ -21,7 +21,7 @@ class FlightOrderedUnitsChangedEmail(BaseEmailReport):
             Send Flight ordered units changed email
             """
         sender = settings.SENDER_EMAIL_ADDRESS
-        to = self.get_to(self.recipients or settings.CONTACT_FORM_EMAIL_ADDRESSES)
+        to = self.get_to(self.recipients or settings.SALESFORCE_UPDATES_ADDRESSES)
         bcc = self.get_bcc()
         subject = "{opportunity_name} Ordered Units has changed".format(opportunity_name=self.opportunity_name)
         text = "Flight: {flight_name}\n\n" \
