@@ -10,7 +10,7 @@ from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class BadWordListTestCase(ExtendedAPITestCase):
+class BadWordCategoriesListTestCase(ExtendedAPITestCase):
     def _request(self):
         url = reverse(
             PathNames.BadWord.CATEGORY_LIST,
