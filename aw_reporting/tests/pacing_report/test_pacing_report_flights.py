@@ -170,7 +170,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         flight_data = flights[0]
         charts = flight_data["charts"]
-        self.assertEqual(len(charts), 2)
+        self.assertEqual(len(charts), 4)
         pacing_chart = charts[0]
         self.assertEqual(pacing_chart["title"], "Ideal Pacing")
 

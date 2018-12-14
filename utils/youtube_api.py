@@ -1,12 +1,17 @@
 """
 Youtube api connector module
 """
+import isodate
 import logging
+import requests
 import time
+from typing import Dict
+from typing import List
 
 from apiclient import discovery
-from django.conf import settings
 
+from django.conf import settings
+from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
@@ -145,3 +150,89 @@ class YoutubeAPIConnector(object):
                 return result
         raise YoutubeAPIConnectorException(
             "Unable to obtain data from YouTube")
+
+
+def resolve_videos_info(ids: List[int],
+                        cache_timeout: int=86400,
+                        request_timeout: float=2,
+                        api_key: str=settings.YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY) -> Dict[str, Dict[str, str]]:
+    """
+    Non-guaranteed gathering of meta-data for a list of videos.
+    Data gathering is immediately ignored in the event of any error or timeout.
+
+    :param ids: List of video IDs
+    :param cache_timeout:  timeout for storing data in the cache
+    :param request_timeout: timeout for data request
+    :param api_key: Youtube API Developer Key
+
+    :return:
+        {
+            video_id: {
+                "title": title,
+                "thumbnail_image_url": thumbnail_image_url,
+                "duration": duration,
+            },
+            video_id: {
+                "title": title,
+                "thumbnail_image_url": thumbnail_image_url,
+                "duration": duration,
+            },
+            ...
+        }
+    """
+
+    details = {}
+
+    try:
+        cache_key_template = "video_title_thumbnail_{}"
+        api_url = "https://www.googleapis.com/youtube/v3/videos"
+
+        unresolved_ids = []
+
+        for video_id in ids:
+            info = cache.get(cache_key_template.format(video_id))
+            if info:
+                details[video_id] = info
+            else:
+                unresolved_ids.append(video_id)
+
+        if unresolved_ids:
+            ids_string = ",".join(unresolved_ids)
+
+            max_results = len(ids)
+
+            params = dict(key=api_key,
+                          id=ids_string,
+                          part="snippet,contentDetails",
+                          maxResults=max_results)
+
+            response = requests.get(url=api_url,
+                                    params=params,
+                                    timeout=request_timeout)
+
+            items = response.json().get("items", [])
+
+            for item in items:
+                video_id = item.get("id")
+                snippet = item.get("snippet", {})
+
+                title = snippet.get("title")
+
+                thumbnails = snippet.get("thumbnails", {})
+                thumbnail_image_url = thumbnails.get("default", {}).get("url")
+
+                iso_duration = item.get("contentDetails", {}).get("duration")
+                duration = isodate.parse_duration(iso_duration).total_seconds() if iso_duration else 0
+
+                info = dict(
+                    title=title,
+                    thumbnail_image_url=thumbnail_image_url,
+                    duration=duration,
+                )
+
+                cache.set(cache_key_template.format(video_id), info, cache_timeout)
+                details[video_id] = info
+    except Exception as e:
+        logger.error(e)
+
+    return details

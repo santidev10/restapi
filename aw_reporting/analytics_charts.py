@@ -19,7 +19,9 @@ from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import CALCULATED_STATS
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
@@ -486,12 +488,34 @@ class DeliveryChart:
 
     def _serialize_item(self, item):
         allowed_keys = {
-            "all_conversions", "average_cpm", "average_cpv",
-            "average_position", "clicks", "conversions", "cost", "ctr",
-            "ctr_v", "duration", "id", "impressions", "name", "status",
-            "thumbnail", "video100rate", "video25rate", "video50rate",
-            "video75rate", "video_clicks", "video_view_rate", "video_views",
-            "view_through"
+            "all_conversions",
+            "average_cpm",
+            "average_cpv",
+            "average_position",
+            "clicks",
+            "conversions",
+            "cost",
+            "ctr",
+            "ctr_v",
+            "duration",
+            "id",
+            "impressions",
+            "name",
+            "status",
+            "thumbnail",
+            "video100rate",
+            "video25rate",
+            "video50rate",
+            "video75rate",
+            "video_clicks",
+            "video_view_rate",
+            "video_views",
+            "view_through",
+            "clicks_website",
+            "clicks_call_to_action_overlay",
+            "clicks_app_store",
+            "clicks_cards",
+            "clicks_end_cap",
         }
         return {key: value for key, value in item.items()
                 if key in allowed_keys}
@@ -650,6 +674,9 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
+        if issubclass(queryset.model, BaseClicksTypesStatisticsModel):
+            for field in CLICKS_STATS:
+                kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):

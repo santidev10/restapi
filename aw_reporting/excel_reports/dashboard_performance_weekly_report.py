@@ -29,6 +29,7 @@ from aw_reporting.models import gender_str
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
+from utils.youtube_api import resolve_videos_info
 
 logger = logging.getLogger(__name__)
 all_stats_aggregation = partial(all_stats_aggregator, "ad_group__campaign__")
@@ -486,7 +487,7 @@ class DashboardPerformanceWeeklyReport:
         )
         # TODO add brand image
 
-    def get_placement_data(self):
+    def get_campaign_data(self):
         queryset = AdGroupStatistic.objects.filter(**self.get_filters())
         group_by = ("ad_group__campaign__name", "ad_group__campaign_id")
         campaign_data = queryset.values(*group_by).annotate(
@@ -514,7 +515,7 @@ class DashboardPerformanceWeeklyReport:
         # Write content
 
         rows = []
-        for obj in self.get_placement_data():
+        for obj in self.get_campaign_data():
             rows.append((
                 # placement
                 obj["name"],
@@ -590,13 +591,17 @@ class DashboardPerformanceWeeklyReport:
             dict_quartiles_to_rates(item)
         return videos_data
 
-    def _get_total_data(self, queryset, aggregator, extractor):
+    def get_total_data(self, queryset, aggregator):
         total_data = queryset.aggregate(
             **aggregator()
         )
         dict_norm_base_stats(total_data)
         dict_add_calculated_stats(total_data)
         dict_quartiles_to_rates(total_data)
+        return total_data
+
+    def _get_total_data(self, queryset, aggregator, extractor):
+        total_data = self.get_total_data(queryset, aggregator)
         return extractor(total_data, default=0)
 
     def _prepare_total_row(self, start_row, queryset, aggregator, extractor, data_cell_options=None):
@@ -717,14 +722,20 @@ class DashboardPerformanceWeeklyReport:
             .order_by("creative_id")
         videos_data = list(videos_data)
         ids = [i["creative_id"] for i in videos_data]
-        videos_info = {}
         connector = SingleDatabaseApiConnector()
         try:
             items = connector.get_videos_base_info(ids)
         except SingleDatabaseApiConnectorException as e:
             logger.error(e)
+            videos_info = {}
         else:
             videos_info = {i['id']: i for i in items}
+
+        unresolved_ids = list(set(ids) - set(videos_info.keys()))
+        if unresolved_ids:
+            unresolved_videos_info = resolve_videos_info(unresolved_ids)
+            videos_info = {**videos_info, **unresolved_videos_info}
+
         for item in videos_data:
             video_id = item["creative_id"]
             item['name'] = videos_info.get(video_id, {}).get("title", video_id)

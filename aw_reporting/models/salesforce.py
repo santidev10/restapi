@@ -10,6 +10,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import SalesForceRegions
 from aw_reporting.models.salesforce_constants import goal_type_str
+from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
 
 logger = logging.getLogger(__name__)
@@ -555,3 +556,6 @@ class Activity(BaseModel):
             account_id=data['AccountId'],
         )
         return res
+
+
+init_signals()
