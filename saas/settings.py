@@ -352,6 +352,10 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
 ]
 
+SALESFORCE_UPDATES_ADDRESSES = []
+
+DEBUG_EMAIL_NOTIFICATIONS = True
+
 MS_CHANNELFACTORY_EMAIL = "ms@channelfactory.com"
 
 TESTIMONIALS = {
