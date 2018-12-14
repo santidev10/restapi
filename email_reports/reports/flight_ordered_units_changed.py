@@ -8,7 +8,7 @@ class FlightOrderedUnitsChangedEmail(BaseEmailReport):
 
     def __init__(self, opportunity_name, placement_name, flight_name, old_ordered_units,
                  new_ordered_units, recipients):
-        super(FlightOrderedUnitsChangedEmail, self).__init__(host=None, debug=settings.DEBUG)
+        super(FlightOrderedUnitsChangedEmail, self).__init__(host=None, debug=settings.DEBUG_EMAIL_NOTIFICATIONS)
         self.opportunity_name = opportunity_name
         self.placement_name = placement_name
         self.flight_name = flight_name
