@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.core import mail
 from django.core.management import call_command
 from django.test import TransactionTestCase
+from django.test import override_settings
 
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
@@ -429,8 +430,9 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
                 Placement__c=flight.placement_id,
             )
         ])
-
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        test_email = "test@mail.com"
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -438,18 +440,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        # self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(mail.outbox[0].to[0], test_email)
         self.assertEqual(email.subject, "{} Ordered Units has changed".format(opportunity.name))
-        expected_body_lines = [
-            "Flight: {}".format(flight.name),
-            "Placement: {}".format(placement.name),
-            "Change: The ordered units were changed from {old_value} to {new_value}".format(
-                old_value=ordered_units,
-                new_value=new_ordered_units,
-            ),
-        ]
-        expected_body = "\n\n".join(expected_body_lines)
-        self.assertEqual(email.body, expected_body)
 
     def test_dynamic_placement_notify_total_cost_changed_no_ad_ops(self):
         total_cost = 123.
@@ -497,7 +489,9 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        test_email = "test@mail.com"
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -505,18 +499,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        # self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(mail.outbox[0].to[0], test_email)
         self.assertEqual(email.subject, "{} Total Client Cost has changed".format(opportunity.name))
-        expected_body_lines = [
-            "Flight: {}".format(flight.name),
-            "Placement: {}".format(placement.name),
-            "Change: The total client cost was changed from {old_value} to {new_value}".format(
-                old_value=total_cost,
-                new_value=new_total_cost,
-            ),
-        ]
-        expected_body = "\n\n".join(expected_body_lines)
-        self.assertEqual(email.body, expected_body)
 
     def test_no_notifications_if_probability_low(self):
         ad_ops = User.objects.create(

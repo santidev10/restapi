@@ -21,7 +21,7 @@ class FlightOrderedUnitsChangedEmail(BaseEmailReport):
             Send Flight ordered units changed email
             """
         sender = settings.SENDER_EMAIL_ADDRESS
-        to = self.get_to(self.recipients or settings.CONTACT_FORM_EMAIL_ADDRESSES)
+        to = self.get_to(self.recipients or settings.SALESFORCE_UPDATES_ADDRESSES)
         bcc = self.get_bcc()
         subject = "{opportunity_name} Ordered Units has changed".format(opportunity_name=self.opportunity_name)
         text = "Flight: {flight_name}\n\n" \
