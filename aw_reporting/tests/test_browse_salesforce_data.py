@@ -16,6 +16,7 @@ from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.salesforce import Connection
+from email_reports.reports.base import BaseEmailReport
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
@@ -192,7 +193,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -275,7 +277,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -432,7 +435,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         ])
         test_email = "test@mail.com"
         with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
-             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]):
+             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -491,7 +495,8 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
 
         test_email = "test@mail.com"
         with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
-             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]):
+             override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
         flight.refresh_from_db()
@@ -592,6 +597,142 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_notify_ordered_units_changed_debug(self):
+        ordered_units = 123
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            ordered_units=ordered_units,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            ordered_units=ordered_units,
+        )
+
+        new_ordered_units = ordered_units + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Ordered_Units__c=new_ordered_units,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
+            call_command("browse_salesforce_data", no_update="1")
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
+
+    def test_dynamic_placement_notify_total_cost_changed_debug(self):
+        total_cost = 123.
+        ad_ops = User.objects.create(
+            id=str(next(int_iterator)),
+            name="Paul",
+            email="1@mail.cz"
+        )
+        opportunity = Opportunity.objects.create(
+            id=str(next(int_iterator)),
+            name="Some Opportunity #123",
+            ad_ops_manager=ad_ops,
+        )
+        placement = OpPlacement.objects.create(
+            id=str(next(int_iterator)),
+            name="Some placement #234",
+            opportunity=opportunity,
+            dynamic_placement=DynamicPlacementType.BUDGET,
+            total_cost=total_cost,
+        )
+        flight = Flight.objects.create(
+            id=str(next(int_iterator)),
+            name="Some flight #345",
+            placement=placement,
+            total_cost=total_cost,
+        )
+
+        new_total_cost = total_cost + 13
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("User", [
+            dict(
+                Id=ad_ops.id,
+                Name=ad_ops.name,
+                Email=ad_ops.email,
+                IsActive=True,
+                UserRoleId=None,
+            )
+        ])
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity.id,
+                Name=opportunity.name,
+                Ad_Ops_Campaign_Manager_UPDATE__c=ad_ops.id,
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement.id,
+                Name=placement.name,
+                Insertion_Order__c=placement.opportunity_id,
+                Dynamic_Placement__c=placement.dynamic_placement,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight.id,
+                Name=flight.name,
+                Flight_Value__c=new_total_cost,
+                Placement__c=flight.placement_id,
+            )
+        ])
+
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+             override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
+            call_command("browse_salesforce_data", no_update="1")
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
 
 
 class MockSalesforceConnection(Connection):

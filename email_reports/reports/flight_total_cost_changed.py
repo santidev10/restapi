@@ -7,7 +7,7 @@ from email_reports.reports.base import BaseEmailReport
 class FlightTotalCostChangedEmail(BaseEmailReport):
 
     def __init__(self, opportunity_name, placement_name, flight_name, old_total_cost, new_total_cost, recipients):
-        super(FlightTotalCostChangedEmail, self).__init__(host=None, debug=settings.DEBUG)
+        super(FlightTotalCostChangedEmail, self).__init__(host=None, debug=settings.DEBUG_EMAIL_NOTIFICATIONS)
         self.opportunity_name = opportunity_name
         self.placement_name = placement_name
         self.flight_name = flight_name
