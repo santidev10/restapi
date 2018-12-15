@@ -23,6 +23,8 @@ from django.db.models import When
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import GenericAPIView
@@ -41,6 +43,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
+from aw_creation.api.views import schemas
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import AdScheduleRule
@@ -198,6 +201,22 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 
 
 class YoutubeVideoSearchApiView(GenericAPIView):
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="query",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="urlencoded search string to lookup Youtube videos",
+                type=openapi.TYPE_STRING,
+            ),
+            schemas.VIDEO_FORMAT_PARAMETER,
+        ],
+        responses={
+            HTTP_200_OK: schemas.VIDEO_RESPONSE_SCHEMA
+        }
+    )
     def get(self, request, query, **_):
         video_ad_format = request.GET.get("video_ad_format")
 
@@ -277,6 +296,23 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
     url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="url",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="urlencoded Youtube video URL",
+                type=openapi.TYPE_STRING,
+            ),
+            schemas.VIDEO_FORMAT_PARAMETER,
+        ],
+        responses={
+            HTTP_200_OK: schemas.VIDEO_ITEM_SCHEMA,
+            HTTP_400_BAD_REQUEST: openapi.Response("Wrong request parameters"),
+            HTTP_404_NOT_FOUND: openapi.Response("Video not found"),
+        }
+    )
     def get(self, request, url, **_):
         match = re.match(self.url_regex, url)
         if match:
