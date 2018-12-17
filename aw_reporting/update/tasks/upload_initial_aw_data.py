@@ -1,10 +1,14 @@
+import logging
 from datetime import datetime
 
 import pytz
-from saas import celery_app
 
 from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.update.tasks.load_hourly_stats import load_hourly_stats
+from saas import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task
@@ -34,6 +38,10 @@ def upload_initial_aw_data(connection_pk):
     )
     for account in accounts_to_update:
         client.SetClientCustomerId(account.id)
-        updater.advertising_account_update(client, account)
-        # hourly stats
-        load_hourly_stats(client, account)
+        try:
+            updater.advertising_account_update(client, account)
+            # hourly stats
+            load_hourly_stats(client, account)
+        except AccountInactiveError:
+            account.is_active = False
+            account.save()

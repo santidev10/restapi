@@ -1,11 +1,16 @@
 import json
 from unittest.mock import patch
+from unittest.mock import MagicMock
 from urllib.parse import urlencode
 
+from django.http import QueryDict
+from googleads.errors import AdWordsReportBadRequestError
+from requests import HTTPError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.models import AccountCreation
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
@@ -169,8 +174,58 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
         self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
 
+    def test_handle_inactive_account(self):
+        tz = "UTC"
+        mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
+                                             can_manage_clients=True)
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
 
-class AccountConnectionAPITestCase(AwReportingAPITestCase):
+        account = Account.objects.create(id=next(int_iterator), timezone=tz)
+        account.managers.add(mcc_account)
+        account.save()
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=mcc_account.id,
+                dateTimeZone=tz,
+                descriptiveName="MCC Account",
+                companyName=mcc_account.name,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
+
+        query_params = QueryDict("", mutable=True)
+        query_params.update(redirect_url="https://saas.channelfactory.com")
+        url = "?".join([self._url, query_params.urlencode()])
+        exception = AdWordsReportBadRequestError(
+            AWErrorType.NOT_ACTIVE,
+            "<null>",
+            None,
+            HTTP_400_BAD_REQUEST,
+            HTTPError(),
+            "XML Body"
+        )
+        test_email = "test@email.com"
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+        view_path = "aw_reporting.api.views.connect_aw_account"
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
+                patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
+                patch("aw_reporting.adwords_api.adwords.AdWordsClient", return_value=aw_client_mock):
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
+            response = self.client.post(url, dict(code="1111"))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)
+
+
+class AccountConnectionDeleteAPITestCase(AwReportingAPITestCase):
     def _get_url(self, connection_email):
         return reverse(Name.AWAccounts.CONNECTION, [Namespace.AW_REPORTING], args=(connection_email,))
 
