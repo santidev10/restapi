@@ -1,6 +1,6 @@
 import json
-from unittest.mock import patch
 from unittest.mock import MagicMock
+from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.http import QueryDict
@@ -12,6 +12,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.api.urls.names import Name
+from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -223,6 +224,44 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         account.refresh_from_db()
         self.assertFalse(account.is_active)
+
+    def test_link_account_skip_inactive(self):
+        tz = "UTC"
+        mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
+                                             can_manage_clients=True)
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
+
+        account = Account.objects.create(id=next(int_iterator), timezone=tz, is_active=False)
+        account.managers.add(mcc_account)
+        account.save()
+
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=mcc_account.id,
+                dateTimeZone=tz,
+                descriptiveName="MCC Account",
+                companyName=mcc_account.name,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
+        view_path = "aw_reporting.api.views.connect_aw_account"
+
+        query_params = QueryDict("", mutable=True)
+        query_params.update(redirect_url="https://saas.channelfactory.com")
+        url = "?".join([self._url, query_params.urlencode()])
+        with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
+                patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email="test@mail.com")), \
+                patch.object(AWDataLoader, "advertising_account_update") as account_update_mock:
+            flow().step2_exchange().refresh_token = "^test_refresh_token$"
+            response = self.client.post(url, dict(code="1111"))
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertFalse(account_update_mock.called)
 
 
 class AccountConnectionDeleteAPITestCase(AwReportingAPITestCase):
