@@ -25,6 +25,8 @@ def update_audiences_from_aw():
     for audience_data in all_data:
         Audience.objects.update_or_create(id=audience_data["id"], defaults=audience_data)
 
+    update_parents()
+
 
 def get_audience_data_by_link(link, audience_type):
     response = requests.get(link)
@@ -36,3 +38,15 @@ def get_audience_data_by_link(link, audience_type):
             name=row["Category"],
             type=audience_type,
         )
+
+
+def update_parents():
+    audiences = Audience.objects.filter(parent__isnull=True).order_by('id')
+    for audience in audiences:
+        if audience.name.count("/") > 1:
+            parent_name = "/".join(
+                audience.name.split("/")[:-1]
+            )
+            parent = Audience.objects.get(name=parent_name)
+            audience.parent = parent
+            audience.save()

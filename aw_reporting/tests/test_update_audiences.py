@@ -38,6 +38,33 @@ class UpdateAudiencesTestCase(TestCase):
         self.assertTrue(test_queryset.exists())
         self.assertEqual(test_queryset.first().name, test_affinity_data["name"])
 
+    def test_link_parents(self):
+        parent_name = "/parent name"
+        test_affinity_data_1 = dict(
+            id=next(int_iterator),
+            name=parent_name
+        )
+        test_affinity_data_2 = dict(
+            id=next(int_iterator),
+            name=parent_name + "/test affinity"
+        )
+        affinity_type = Audience.AFFINITY_TYPE
+        data_link = LINK_FOR_AUDIENCE_TYPE.get(affinity_type)
+        test_audience_data = {
+            data_link: [
+                test_affinity_data_1,
+                test_affinity_data_2,
+            ]
+        }
+
+        with path_response(test_audience_data):
+            update_audiences_from_aw()
+
+        self.assertEqual(
+            Audience.objects.get(pk=test_affinity_data_2["id"]).parent_id,
+            test_affinity_data_1["id"]
+        )
+
 
 LINK_FOR_AUDIENCE_TYPE = {
     Audience.AFFINITY_TYPE: AudienceAWLink.AFFINITY,
