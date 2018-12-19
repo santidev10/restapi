@@ -8,10 +8,9 @@ from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Campaign, Account, User, Opportunity, \
     OpPlacement, SalesForceGoalType, goal_type_str
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models.salesforce_constants import ALL_SALESFORCE_REGIONS, \
-    salesforce_region_str
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
+from utils.utittests.int_iterator import int_iterator
 
 
 class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
@@ -234,6 +233,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         test_ad_ops = User.objects.create(id="123",
                                           name="Test User Name (inactive)",
                                           is_active=False)
+
         def create_relations(_id):
             opportunity = Opportunity.objects.create(
                 id=_id,
@@ -386,10 +386,19 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["goal_types"], expected_goal_types)
 
     def test_region(self):
+        test_territory_1 = "test region 1"
+        test_territory_2 = "test region 2"
+        Opportunity.objects.create(id=next(int_iterator), territory=test_territory_2)
+        Opportunity.objects.create(id=next(int_iterator), territory=test_territory_1)
+        Opportunity.objects.create(id=next(int_iterator), territory=test_territory_2)
         self.create_test_user()
-        expected_regions = [dict(id=region_id,
-                                 name=salesforce_region_str(region_id))
-                            for region_id in ALL_SALESFORCE_REGIONS]
+        expected_regions = [
+            dict(
+                id=territory,
+                name=territory
+            )
+            for territory in sorted([test_territory_1, test_territory_2])
+        ]
 
         response = self.client.get(self.url)
 

@@ -77,7 +77,11 @@ class PacingReportOpportunitiesSerializer(Serializer):
         return obj["category"]
 
     def get_region(self, obj):
-        return obj["region"]
+        territory = obj["territory"]
+        return dict(
+            id=territory,
+            name=territory,
+        )
 
     def get_chart_data(self, obj):
         flights = obj["flights"]

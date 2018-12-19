@@ -8,6 +8,7 @@ from pytz import utc
 
 from aw_reporting.models import *
 from aw_reporting.utils import get_dates_range
+from utils.datetime import now_in_default_tz
 
 CLICKS_TYPES_DIMENSIONS = (
     "gender",
@@ -26,7 +27,7 @@ class DemoChart:
     def __init__(self, account, filters,
                  summary_label="Summary", goal_units=None,
                  cumulative=False):
-        self.today = datetime.now().date()
+        self.today = now_in_default_tz().date()
         self.account = account
         self.filters = filters
         self.summary_label = summary_label
@@ -184,8 +185,9 @@ class DemoChart:
 
             if breakdown == "hourly":
                 time_points = []
+                now = now_in_default_tz()
                 for date in get_dates_range(start, end):
-                    max_hour = datetime.now().hour \
+                    max_hour = now.hour \
                         if date == self.today else 24
                     for hour in range(max_hour):
                         time_points.append(
@@ -292,6 +294,8 @@ class DemoChart:
 
     @staticmethod
     def explode_value_random(value, indicator, n):
+        if n == 0:
+            return []
 
         def get_val(val):
             return val
