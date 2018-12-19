@@ -11,13 +11,14 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, Language, \
     LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
+from aw_creation.models.creation import BudgetType
 from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.patch_now import patch_now
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class CampaignAPITestCase(ExtendedAPITestCase):
@@ -536,3 +537,59 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                                        content_type='application/json')
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_update_budget_type(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=today,
+                                                 end=today)
+        self.assertEqual(campaign_creation.budget_type, BudgetType.DAILY.value)
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=str(today),
+            end=str(today),
+            budget_type=BudgetType.TOTAL.value,
+        )
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        campaign_creation.refresh_from_db()
+        self.assertEqual(campaign_creation.budget_type, BudgetType.TOTAL.value)
+
+    def test_update_budget_type_validation(self):
+        now = datetime(2018, 1, 1, tzinfo=pytz.utc)
+        today = now.date()
+        invalid_budget_type = BudgetType.TOTAL.value.upper()
+        campaign_creation = self.create_campaign(self.user,
+                                                 start=today,
+                                                 end=today)
+        update_data = dict(
+            content_exclusions=[],
+            devices=["DESKTOP_DEVICE"],
+            video_networks=["YOUTUBE_SEARCH"],
+            name="Name",
+            start=str(today),
+            end=str(today),
+            budget_type=invalid_budget_type,
+        )
+
+        url = reverse(self._url_path,
+                      args=(campaign_creation.id,))
+
+        with patch_now(today):
+            response = self.client.put(url, json.dumps(update_data),
+                                       content_type='application/json')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        campaign_creation.refresh_from_db()
+        self.assertEqual(campaign_creation.budget_type, BudgetType.DAILY.value)
