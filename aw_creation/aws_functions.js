@@ -5,14 +5,14 @@ function getOrCreateCampaign(params){
     }else if(params.is_deleted){
         return null;
     }else{
-        createCampaign(params.name, params.budget, params.start_for_creation, params.budget_type);
+        createCampaign(params.name, params.budget, params.start_for_creation, params.bid_strategy_type);
         Utilities.sleep(5000);
         campaign = getOrCreateCampaign(params);
     }
     return campaign;
 }
 
-function createCampaign(name, budget, start, type) {
+function createCampaign(name, budget, start, bid_strategy_type) {
     var columns = ['Campaign', 'Budget', 'Start Date', 'Bid Strategy type',
         'Campaign type', 'Campaign state'];
     var upload = AdWordsApp.bulkUploads().newCsvUpload(columns);
@@ -20,7 +20,7 @@ function createCampaign(name, budget, start, type) {
         'Campaign': name,
         'Budget': budget,
         'Start Date': start,
-        'Bid Strategy type': type,
+        'Bid Strategy type': bid_strategy_type,
         'Campaign type': 'Video',
         'Campaign state': 'paused',
     });
@@ -55,7 +55,11 @@ function createOrUpdateCampaign(params){
     }
 
     var budget_obj = campaign.getBudget();
-    budget_obj.setAmount(params.budget);
+    if (params.budget_type === "total") {
+        budget_obj.setTotalAmount(params.budget);
+    } else {
+        budget_obj.setAmount(params.budget);
+    }
 
     campaign.setNetworks(params.video_networks);
 

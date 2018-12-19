@@ -50,6 +50,7 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
+from aw_creation.models.creation import BUDGET_TYPE_CHOICES
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -489,6 +490,7 @@ class CreationOptionsApiView(APIView):
             end="date",
             goal_units="integer;max_value=4294967294",
             budget="decimal;max_digits=10,decimal_places=2",
+            budget_type=opts_to_response(BUDGET_TYPE_CHOICES),
             max_rate="decimal;max_digits=6,decimal_places=3",
             languages=[
                 dict(id=l.id, name=l.name)

@@ -17,6 +17,7 @@ from django.dispatch import receiver
 
 from aw_reporting.models import Account
 from utils.datetime import now_in_default_tz
+from utils.lang import ExtendedEnum
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,17 @@ class CampaignCreationQueryset(CreationItemQueryset):
         return qs
 
 
+class BudgetType(ExtendedEnum):
+    DAILY = "daily"
+    TOTAL = "total"
+
+
+BUDGET_TYPE_CHOICES = [
+    (value, value)
+    for value in BudgetType.values()
+]
+
+
 class CampaignCreation(UniqueCreationItem):
     objects = CampaignCreationQueryset.as_manager()
 
@@ -273,6 +285,12 @@ class CampaignCreation(UniqueCreationItem):
         default=json.dumps(
             [YOUTUBE_SEARCH, YOUTUBE_VIDEO, VIDEO_PARTNER_DISPLAY_NETWORK]
         ),
+    )
+
+    budget_type = models.CharField(
+        max_length=30,
+        choices=BUDGET_TYPE_CHOICES,
+        default=BudgetType.DAILY.value,
     )
 
     def get_video_networks(self):
@@ -385,8 +403,9 @@ class CampaignCreation(UniqueCreationItem):
                     is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
+                    budget_type=self.budget_type,
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
-                    budget_type=self.bid_strategy_type.lower(),
+                    bid_strategy_type=self.bid_strategy_type.lower(),
                     is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
