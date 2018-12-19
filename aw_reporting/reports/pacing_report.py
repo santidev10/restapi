@@ -31,7 +31,6 @@ from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
-from aw_reporting.models.salesforce_constants import SalesForceRegions
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -535,8 +534,9 @@ class PacingReport:
             "account_manager__id", "account_manager__name",
             "sales_manager__id", "sales_manager__name",
             "apex_deal",
-            "bill_of_third_party_numbers"
-        ).annotate(region=F("region_id"))
+            "bill_of_third_party_numbers",
+            "territory",
+        )
 
         # collect ids
         ad_ops_emails = set()
@@ -619,9 +619,9 @@ class PacingReport:
                               name=o['sales_manager__name'])
             del o['sales_manager__id'], o['sales_manager__name']
 
-            region_id = o['region']
-            o['region'] = dict(id=region_id, name=SalesForceRegions[region_id]) \
-                if region_id is not None else None
+            territory = o["territory"]
+            o['region'] = dict(id=territory, name=territory) \
+                if territory is not None else None
             category_id = o['category']
             o['category'] = dict(id=category_id, name=category_id) \
                 if category_id is not None else None
@@ -672,7 +672,7 @@ class PacingReport:
                 goal_type_id__in=goal_type)
         region = get.getlist("region")
         if region:
-            queryset = queryset.filter(region_id__in=region)
+            queryset = queryset.filter(territory__in=region)
 
         status = get.get("status")
         if status:

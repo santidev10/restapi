@@ -4,8 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from aw_reporting.api.serializers import CategorySerializer
-from aw_reporting.models.salesforce import User, SalesForceRegions, \
-    SalesForceGoalTypes, Category
+from aw_reporting.models.salesforce import User, SalesForceGoalTypes, Category, Opportunity
 from utils.datetime import now_in_default_tz
 
 
@@ -32,11 +31,12 @@ class PacingReportFiltersApiView(APIView):
         ams = active_users.exclude(managed_opportunities__isnull=True)
         ad_ops = active_users.exclude(ad_managed_opportunities__isnull=True)
 
+        territories = Opportunity.objects.values_list('territory', flat=True).distinct()
+
         filters = dict(
             category=CategorySerializer(Category.objects.all().order_by('id'),
                                         many=True).data,
-            region=[dict(id=n, name=r) for n, r in
-                    enumerate(SalesForceRegions)],
+            region=[dict(id=territory, name=territory) for territory in territories],
             goal_type=[dict(id=n, name=r) for n, r in
                        enumerate(SalesForceGoalTypes[:3])],
             am=_map_users(ams),

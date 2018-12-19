@@ -40,11 +40,11 @@ class PacingReportTestCase(APITestCase):
         category2 = Category.objects.create(id='Bicycle')
 
         opportunity = Opportunity.objects.create(
-            id="1", name="", category=category1, region_id=0, notes="Hi there",
+            id="1", name="", category=category1, territory="test 1", notes="Hi there",
             account_manager_id="0", sales_manager_id="1", ad_ops_manager_id="2",
         )
         update = dict(
-            region=1,
+            region="test 2",
             category=category2.id,
             ad_ops="1",
             am="2",

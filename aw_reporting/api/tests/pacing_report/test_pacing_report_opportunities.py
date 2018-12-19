@@ -24,7 +24,6 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import SalesForceRegions
 from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
@@ -63,13 +62,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             profile_image_url="https://static.folder/very-ugly-photo.jpeg")
         category = Category.objects.create(id="Fun & despise")
         notes = "Ops it's a mistake"
-        region_id = 1
+        territory = "Test territory"
         current_op = Opportunity.objects.create(
             id="1", name="1", start=today - timedelta(days=1),
             end=today + timedelta(days=1),
             ad_ops_manager=ad_ops_manager,
             category=category, notes=notes,
-            region_id=region_id,
+            territory=territory,
             probability=100,
         )
         OpPlacement.objects.create(id="1", name="", opportunity=current_op,
@@ -141,8 +140,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(item['notes'], notes)
         self.assertEqual(item['category']['id'], category.id)
         self.assertEqual(item['category']['name'], category.name)
-        self.assertEqual(item['region']['id'], region_id)
-        self.assertEqual(item['region']['name'], SalesForceRegions[region_id])
+        self.assertEqual(item['region']['id'], territory)
+        self.assertEqual(item['region']['name'], territory)
 
     def test_get_opportunities_filter_period(self):
         today = timezone.now()
@@ -255,18 +254,42 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def test_get_opportunities_filter_region(self):
         today = timezone.now()
+        territory_1 = "Territory 1"
+        territory_2 = "Territory 2"
         Opportunity.objects.create(id="1", name="1", start=today, end=today,
-                                   region_id=0, probability=100)
+                                   territory=territory_1, probability=100)
         op_expected = Opportunity.objects.create(id="2", name="2", start=today,
-                                                 end=today, region_id=1,
+                                                 end=today, territory=territory_2,
                                                  probability=100)
 
-        response = self.client.get("{}?region={}".format(self.url, 1))
+        query = QueryDict(mutable=True)
+        query.update(region=territory_2)
+        response = self.client.get("{}?{}".format(self.url, urlencode(query)))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['id'], op_expected.id)
+
+    def test_get_opportunities_filter_region_multiple(self):
+        today = timezone.now()
+        territory_1 = "Territory 1"
+        territory_2 = "Territory 2"
+        Opportunity.objects.create(id="1", name="1",
+                                   start=today, end=today,
+                                   territory=territory_1, probability=100)
+        Opportunity.objects.create(id="2", name="2",
+                                   start=today, end=today,
+                                   territory=territory_2, probability=100)
+
+        query = QueryDict(mutable=True)
+        query.update(region=territory_1)
+        query.update(region=territory_2)
+        response = self.client.get("{}?{}".format(self.url, query.urlencode()))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        data = response.data["items"]
+        self.assertEqual(len(data), 2)
 
     def test_get_opportunities_filter_name(self):
         today = timezone.now()
