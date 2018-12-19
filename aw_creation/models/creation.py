@@ -181,6 +181,12 @@ class BudgetType(ExtendedEnum):
     TOTAL = "total"
 
 
+BUDGET_TYPE_CHOICES = [
+    (value, value)
+    for value in BudgetType.values()
+]
+
+
 class CampaignCreation(UniqueCreationItem):
     objects = CampaignCreationQueryset.as_manager()
 
@@ -283,7 +289,7 @@ class CampaignCreation(UniqueCreationItem):
 
     budget_type = models.CharField(
         max_length=30,
-        choices=[(value, value) for value in BudgetType.values()],
+        choices=BUDGET_TYPE_CHOICES,
         default=BudgetType.DAILY.value,
     )
 
