@@ -459,8 +459,19 @@ function getOrCreateImage(image_url){
     return image;
 }
 
-function createOrUpdateVideoAd(ad_group, params){
-    if ( ! ad_group ){  // if there is no ad_group we don't need to manage ads within it
+function getAdBuilder(adGroup, adFormat) {
+    var videoAd = adGroup.newVideoAd();
+    switch (adFormat) {
+        case "VIDEO_TRUE_VIEW_IN_STREAM":
+            return videoAd.inStreamAdBuilder();
+        case "VIDEO_TRUE_VIEW_IN_DISPLAY":
+            return videoAd.videoDiscoveryAdBuilder();
+        default:
+            return videoAd.bumperAdBuilder();
+    }
+}
+function createOrUpdateVideoAd(ad_group, params) {
+    if (!ad_group) {  // if there is no ad_group we don't need to manage ads within it
         return null;
     }
     var video_id = getYTId(params.video_url);
@@ -471,25 +482,24 @@ function createOrUpdateVideoAd(ad_group, params){
     // drop if exists
     while (iterator.hasNext()) {
         var video_ad = iterator.next();
-        if(video_ad.getName().indexOf("#" + params.id) != -1){
+        if (video_ad.getName().indexOf("#" + params.id) !== -1) {
             var urls = video_ad.urls();
             video_ad.remove();
         }
     }
-    if( ! params.is_deleted){
-        if(params.ad_format == "VIDEO_TRUE_VIEW_IN_STREAM"){
-            var ad_builder = ad_group.newVideoAd().inStreamAdBuilder();
-        }else{
-            ad_builder = ad_group.newVideoAd().bumperAdBuilder();
-        }
-        ad_builder = ad_builder.withAdName(params.name).withDisplayUrl(params.display_url)
-        .withTrackingTemplate(params.tracking_template).withFinalUrl(params.final_url).withVideo(video);
+    if (!params.is_deleted) {
+        var ad_builder = getAdBuilder(ad_group, params.ad_format);
+        ad_builder = ad_builder.withAdName(params.name)
+            .withDisplayUrl(params.display_url)
+            .withTrackingTemplate(params.tracking_template)
+            .withFinalUrl(params.final_url)
+            .withVideo(video);
         try {
             ad_builder = ad_builder.withCustomParameters(params.custom_params)
-        } catch(err) {
+        } catch (err) {
             Logger.log("Error->" + err);
         }
-        if(params['video_thumbnail']){
+        if (params['video_thumbnail']) {
             var imageMedia = getOrCreateImage(params['video_thumbnail']);
             ad_builder = ad_builder.withCompanionBanner(imageMedia);
         }
