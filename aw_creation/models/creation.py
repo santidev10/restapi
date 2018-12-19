@@ -17,6 +17,7 @@ from django.dispatch import receiver
 
 from aw_reporting.models import Account
 from utils.datetime import now_in_default_tz
+from utils.lang import ExtendedEnum
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,11 @@ class CampaignCreationQueryset(CreationItemQueryset):
         return qs
 
 
+class BudgetType(ExtendedEnum):
+    DAILY = "daily"
+    TOTAL = "total"
+
+
 class CampaignCreation(UniqueCreationItem):
     objects = CampaignCreationQueryset.as_manager()
 
@@ -273,6 +279,12 @@ class CampaignCreation(UniqueCreationItem):
         default=json.dumps(
             [YOUTUBE_SEARCH, YOUTUBE_VIDEO, VIDEO_PARTNER_DISPLAY_NETWORK]
         ),
+    )
+
+    budget_type = models.CharField(
+        max_length=30,
+        choices=[(value, value) for value in BudgetType.values()],
+        default=BudgetType.DAILY.value,
     )
 
     def get_video_networks(self):
