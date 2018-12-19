@@ -484,7 +484,7 @@ class AdGroupCreation(UniqueCreationItem):
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
         else:
-            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD]
+            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD, AdGroupCreation.DISCOVERY_TYPE]
 
         return types
 
