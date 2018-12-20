@@ -15,7 +15,8 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from aw_reporting.models import Account, BudgetType
+from aw_reporting.models import Account
+from aw_reporting.models import BudgetType
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)

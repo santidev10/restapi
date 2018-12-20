@@ -24,7 +24,7 @@ from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIEL
 from aw_reporting.adwords_reports import DateRangeType
 from aw_reporting.adwords_reports import GEO_LOCATION_REPORT_FIELDS
 from aw_reporting.adwords_reports import date_formatted
-from aw_reporting.models import ALL_AGE_RANGES, BudgetType
+from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
@@ -37,6 +37,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Device

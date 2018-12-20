@@ -12,7 +12,8 @@ from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, Language, \
     LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import GeoTarget, BudgetType
+from aw_reporting.models import BudgetType
+from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now

@@ -4,7 +4,8 @@ from datetime import timedelta
 
 from django.db.models import Max
 
-from aw_reporting.models.ad_words.constants import get_device_id_by_name, BudgetType
+from aw_reporting.models.ad_words.constants import BudgetType
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.tasks.utils.constants import GET_DF
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.cta import format_click_types_report
