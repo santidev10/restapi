@@ -68,8 +68,14 @@ PLAN_STATS_ANNOTATION = dict(
 )
 
 PLAN_RATES_ANNOTATION = dict(
-    plan_cpm=F("cpm_total_cost") / F("cpm_ordered_units") * 1000,
-    plan_cpv=F("cpv_total_cost") / F("cpv_ordered_units")
+    plan_cpm=Case(When(
+        ~Q(cpm_ordered_units=0),
+        then=F("cpm_total_cost") / F("cpm_ordered_units") * 1000
+    )),
+    plan_cpv=Case(When(
+        ~Q(cpv_ordered_units=0),
+        then=F("cpv_total_cost") / F("cpv_ordered_units")
+    ))
 )
 CAMPAIGN_ACCOUNT_ID_KEY = "account__account_creation__id"
 
