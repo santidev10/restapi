@@ -8,7 +8,6 @@ from django.db.models import Count
 from aw_reporting.models.base import BaseModel, BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
-from aw_reporting.models.salesforce_constants import SalesForceRegions
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
@@ -127,7 +126,7 @@ class Opportunity(models.Model):
                                  related_name="opportunities",
                                  on_delete=models.SET_NULL)
 
-    region_id = models.SmallIntegerField(null=True)  # Rep_Division__c
+    territory = models.CharField(max_length=80, null=True, default=None)
     budget = models.FloatField(default=0)
 
     io_start = models.DateField(null=True)  # Projected_Launch_Date__c
@@ -263,16 +262,6 @@ class Opportunity(models.Model):
 
     @classmethod
     def get_data(cls, data):
-        territory = data.get('Territory1__c')
-        if territory:
-            if territory in SalesForceRegions:
-                region_id = SalesForceRegions.index(territory)
-            else:
-                logger.debug("(Error) {} not in SFRegions".format(territory))
-                region_id = None
-        else:
-            region_id = None
-
         rate_type = data.get('Rate_Type__c') or data.get('Cost_Method__c')
         if rate_type and 'CPM' in rate_type:
             if 'CPV' in rate_type:
@@ -303,7 +292,7 @@ class Opportunity(models.Model):
             id=data['Id'],
             name=data.get('Name'),
             category_id=data.get('Client_Vertical__c'),
-            region_id=region_id,
+            territory=data.get('Territory1__c'),
             budget=data.get('Grand_Total__c') or 0,
             io_start=data.get('Projected_Launch_Date__c'),
             start=data.get('MIN_Placement_Start_Date__c'),
