@@ -37,6 +37,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Device
@@ -130,6 +131,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 StartDate=str(campaign.start_date),
                 EndDate=str(campaign.end_date),
                 Amount=campaign.budget * 10 ** 6,
+                TotalAmount="--",
                 Impressions=impressions,
                 VideoViews=views,
                 Clicks=clicks,
@@ -367,6 +369,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 StartDate=str(today),
                 EndDate=str(today),
                 Amount=0,
+                TotalAmount="--",
                 Impressions=0,
                 VideoViews=0,
                 Clicks=0,
@@ -1029,6 +1032,102 @@ class PullAWDataTestCase(TransactionTestCase):
             self._call_command(account_ids=test_account_id)
 
         exception_mock.assert_called_with(FakeExceptionWithArgs(test_account_id))
+
+    def test_budget_daily(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+        test_statistic_data = [
+            dict(
+                CampaignId=campaign.id,
+                Cost=1 * 10 ** 6,
+                Date=str(statistic_date),
+                StartDate=str(campaign.start_date),
+                EndDate=str(campaign.end_date),
+                Amount=test_budget * 10 ** 6,
+                TotalAmount="--",
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(end="get_campaigns")
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.DAILY.value)
+
+    def test_budget_total(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+        test_statistic_data = [
+            dict(
+                CampaignId=campaign.id,
+                Cost=1 * 10 ** 6,
+                Date=str(statistic_date),
+                StartDate=str(campaign.start_date),
+                EndDate=str(campaign.end_date),
+                TotalAmount=test_budget * 10 ** 6,
+                Amount=-1,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(end="get_campaigns")
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
 
 
 class FakeExceptionWithArgs:

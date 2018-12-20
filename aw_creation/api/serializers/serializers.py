@@ -368,9 +368,16 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
     class Meta:
         model = CampaignCreation
         fields = (
-            'name', 'start', 'end', 'budget',
-            'languages', 'devices',
-            'delivery_method', 'video_networks', 'content_exclusions',
+            "budget",
+            "budget_type",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "languages",
+            "name",
+            "start",
+            "video_networks",
         )
 
     def validate_start(self, value):
