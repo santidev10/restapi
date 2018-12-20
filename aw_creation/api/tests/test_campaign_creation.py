@@ -11,9 +11,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, Language, \
     LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
-from aw_creation.models.creation import BudgetType
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTarget, BudgetType
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now

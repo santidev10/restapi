@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from django.db.models import Max
 
-from aw_reporting.models.ad_words.constants import get_device_id_by_name
+from aw_reporting.models.ad_words.constants import get_device_id_by_name, BudgetType
 from aw_reporting.update.tasks.utils.constants import GET_DF
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.cta import format_click_types_report
@@ -65,6 +65,9 @@ def get_campaigns(client, account, *_):
 
         name = row_obj.CampaignName
         placement_code = extract_placement_code(name)
+        budget_type = BudgetType.DAILY if row_obj.TotalAmount == "--" else BudgetType.TOTAL
+        budget_str = row_obj.Amount if budget_type == BudgetType.DAILY else row_obj.TotalAmount
+        budget = float(budget_str) / 1000000
         stats = {
             "de_norm_fields_are_recalculated": False,
             "name": name,
@@ -72,7 +75,8 @@ def get_campaigns(client, account, *_):
             "type": row_obj.AdvertisingChannelType,
             "start_date": datetime.strptime(row_obj.StartDate, GET_DF),
             "end_date": end_date,
-            "budget": float(row_obj.Amount) / 1000000,
+            "budget": budget,
+            "budget_type": budget_type.value,
             "status": status,
             "placement_code": placement_code
         }

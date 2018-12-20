@@ -15,9 +15,8 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from aw_reporting.models import Account
+from aw_reporting.models import Account, BudgetType
 from utils.datetime import now_in_default_tz
-from utils.lang import ExtendedEnum
 
 logger = logging.getLogger(__name__)
 
@@ -174,11 +173,6 @@ class CampaignCreationQueryset(CreationItemQueryset):
     def not_empty(self):
         qs = self.filter(budget__isnull=False)
         return qs
-
-
-class BudgetType(ExtendedEnum):
-    DAILY = "daily"
-    TOTAL = "total"
 
 
 BUDGET_TYPE_CHOICES = [

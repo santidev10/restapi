@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import CampaignCreation, \
     default_languages, AdGroupCreation, AdCreation
-from aw_creation.models.creation import BudgetType
+from aw_reporting.models import BudgetType
 from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
 from utils.utittests.int_iterator import int_iterator
 
