@@ -136,13 +136,14 @@ class AccountCreation(UniqueCreationItem):
         campaign_ended_status = "ended"
         campaign_eligible_status = "eligible"
         account = self.account
-        campaigns_queryset = account.campaigns.all()
-        if account is not None and campaigns_queryset:
-            campaigns_statuses_set = set(campaigns_queryset.values_list("status", flat=True))
-            if {campaign_ended_status} == campaigns_statuses_set:
-                return self.STATUS_ENDED
-            elif campaign_eligible_status not in campaigns_statuses_set:
-                return self.STATUS_PAUSED
+        if account is not None:
+            campaigns_queryset = account.campaigns.all()
+            if campaigns_queryset:
+                campaigns_statuses_set = set(campaigns_queryset.values_list("status", flat=True))
+                if {campaign_ended_status} == campaigns_statuses_set:
+                    return self.STATUS_ENDED
+                elif campaign_eligible_status not in campaigns_statuses_set:
+                    return self.STATUS_PAUSED
         if self.sync_at or not self.is_managed:
             return self.STATUS_RUNNING
         elif self.is_approved:
