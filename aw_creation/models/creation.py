@@ -129,19 +129,27 @@ class AccountCreation(UniqueCreationItem):
     STATUS_RUNNING = "Running"
     STATUS_APPROVED = "Approved"
     STATUS_PENDING = "Pending"
+    STATUS_DRAFT = "Draft"
 
     @property
     def status(self):
-        if self.is_ended:
-            return self.STATUS_ENDED
-        elif self.is_paused:
-            return self.STATUS_PAUSED
-        elif self.sync_at or not self.is_managed:
+        campaign_ended_status = "ended"
+        campaign_eligible_status = "eligible"
+        account = self.account
+        if account is not None:
+            campaigns_queryset = account.campaigns.all()
+            if campaigns_queryset:
+                campaigns_statuses_set = set(campaigns_queryset.values_list("status", flat=True))
+                if {campaign_ended_status} == campaigns_statuses_set:
+                    return self.STATUS_ENDED
+                elif campaign_eligible_status not in campaigns_statuses_set:
+                    return self.STATUS_PAUSED
+        if self.sync_at or not self.is_managed:
             return self.STATUS_RUNNING
         elif self.is_approved:
-            return self.STATUS_APPROVED
-        else:
             return self.STATUS_PENDING
+        else:
+            return self.STATUS_DRAFT
 
     @property
     def from_aw(self):
