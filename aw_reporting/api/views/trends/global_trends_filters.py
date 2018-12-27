@@ -2,6 +2,7 @@ from aw_reporting.api.views.trends.base_global_trends import \
     get_account_queryset
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
+from aw_reporting.calculations.territories import get_salesforce_territories
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import User, Opportunity, goal_type_str, \
     SalesForceGoalType
@@ -15,11 +16,7 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
     def _get_static_filters(self):
         static_filters = super(GlobalTrendsFiltersApiView,
                                self)._get_static_filters()
-        territories = Opportunity.objects \
-            .filter(territory__isnull=False) \
-            .order_by("territory") \
-            .distinct() \
-            .values_list('territory', flat=True)
+        territories = get_salesforce_territories()
 
         return dict(
             goal_types=[dict(id=t, name=goal_type_str(t))
