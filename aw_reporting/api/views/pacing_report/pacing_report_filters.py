@@ -31,7 +31,11 @@ class PacingReportFiltersApiView(APIView):
         ams = active_users.exclude(managed_opportunities__isnull=True)
         ad_ops = active_users.exclude(ad_managed_opportunities__isnull=True)
 
-        territories = Opportunity.objects.values_list('territory', flat=True).distinct()
+        territories = Opportunity.objects\
+            .filter(territory__isnull=False) \
+            .order_by("territory") \
+            .distinct() \
+            .values_list('territory', flat=True)
 
         filters = dict(
             category=CategorySerializer(Category.objects.all().order_by('id'),
