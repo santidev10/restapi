@@ -301,7 +301,7 @@ class Opportunity(models.Model):
             proposal_date=data.get('Date_Proposal_Submitted__c'),
             goal_type_id=goal_type_id,
             units=units,
-            margin_cap_required=data.get("CID_Google_Transparency_Required__c"),
+            margin_cap_required=data.get("CID_Google_Transparency_Required__c", False),
             video_views=data.get('CPV_Units_Purchased__c'),
             impressions=data.get('CPM_Impression_Units_Purchased__c'),
             cpv_cost=data.get('CPV_Total_Client_Cost__c'),
