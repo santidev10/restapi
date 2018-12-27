@@ -15,7 +15,12 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
     def _get_static_filters(self):
         static_filters = super(GlobalTrendsFiltersApiView,
                                self)._get_static_filters()
-        territories = Opportunity.objects.values_list('territory', flat=True).distinct()
+        territories = Opportunity.objects \
+            .filter(territory__isnull=False) \
+            .order_by("territory") \
+            .distinct() \
+            .values_list('territory', flat=True)
+
         return dict(
             goal_types=[dict(id=t, name=goal_type_str(t))
                         for t in sorted([SalesForceGoalType.CPM,

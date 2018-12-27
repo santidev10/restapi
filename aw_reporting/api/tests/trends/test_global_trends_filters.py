@@ -1,13 +1,21 @@
+from datetime import date
+
 from django.core.urlresolvers import reverse
 from django.test import override_settings
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import Campaign, Account, User, Opportunity, \
-    OpPlacement, SalesForceGoalType, goal_type_str
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utittests.int_iterator import int_iterator
@@ -404,3 +412,41 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["region"], expected_regions)
+
+    def test_region_no_duplicates(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
+        Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
+        Root cause: select query includes 'start' column
+        """
+        self.create_test_user()
+        test_territory = "test region"
+        date_1 = date(2018, 1, 1)
+        date_2 = date(2018, 1, 2)
+        for dt in (date_1, date_2):
+            Opportunity.objects.create(
+                id=next(int_iterator),
+                territory=test_territory,
+                name="Opportunity 1",
+                start=dt
+            )
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        regions_filter = response.data["region"]
+        self.assertEqual(len(regions_filter), 1)
+        self.assertEqual(regions_filter[0], dict(id=test_territory, name=test_territory))
+
+    def test_region_no_null(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
+        Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
+        """
+        self.create_test_user()
+        Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 1")
+        Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 2")
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        regions_filter = response.data["region"]
+        self.assertEqual(len(regions_filter), 0)
