@@ -110,3 +110,23 @@ class SegmentSerializer(ModelSerializer):
             segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
+
+
+class PersistentSegmentSerializer(ModelSerializer):
+    statistics = SerializerMethodField()
+
+    class Meta:
+        model = None
+        fields = (
+            "id",
+            "title",
+            "segment_type",
+            "statistics",
+            "shared_with",
+        )
+
+    def get_statistics(self, obj):
+        statistics = dict(
+            items_count=obj.related_count,
+        )
+        return statistics
