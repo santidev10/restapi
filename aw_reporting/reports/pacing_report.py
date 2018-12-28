@@ -535,7 +535,7 @@ class PacingReport:
             "sales_manager__id", "sales_manager__name",
             "apex_deal",
             "bill_of_third_party_numbers",
-            "territory",
+            "territory", "margin_cap_required",
         )
 
         # collect ids

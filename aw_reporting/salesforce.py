@@ -105,7 +105,8 @@ class Connection:
                 'Targeting_Tactics__c', 'Tags__c',
                 'Types_of__c',
                 "APEX_Deal__c",
-                "Bill_off_3p_Numbers__c"
+                "Bill_off_3p_Numbers__c",
+                "CID_Google_Transparency_Required__c",
             ],
             where=where
         )
