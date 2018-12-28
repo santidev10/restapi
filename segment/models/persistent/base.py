@@ -42,13 +42,11 @@ class BasePersistentSegmentRelated(Timestampable):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
     related_id = CharField(max_length=100)
-
+    category = CharField(max_length=100, default="")
     title = TextField(default="")
-    description = TextField(default="")
-    tags = TextField(default="")
     thumbnail_image_url = TextField(default="")
 
-    statistics = JSONField(default=dict())
+    details = JSONField(default=dict())
 
     class Meta:
         abstract = True

@@ -18,7 +18,7 @@ class BaseQueryset(models.QuerySet):
             raise IntegrityError(
                 "`safe_bulk_create` is invoked inside a transaction")
         try:
-            self.bulk_create(objs, batch_size=batch_size)
+            self.bulk_create(objs, xbatch_size=batch_size)
         except IntegrityError as ex_1:
             logger.info(ex_1)
             for obj in objs:
