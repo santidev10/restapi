@@ -13,7 +13,7 @@ djangorestframework==3.8.2
 docutils==0.14
 et-xmlfile==1.0.1
 google-api-python-client==1.6.2
-googleads==10.1.0
+googleads==15.0.1
 httplib2==0.10.3
 idna==2.7
 isodate==0.5.4

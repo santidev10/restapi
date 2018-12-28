@@ -100,6 +100,7 @@ def _get_report(client, name, selector, date_range_type=None,
         "downloadFormat": "CSV",
         "selector": selector,
     }
+    report["selector"]["fields"] = list(report["selector"]["fields"])
     try_num = 0
     while True:
         try:

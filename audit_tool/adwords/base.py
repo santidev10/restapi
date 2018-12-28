@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class AdwordsBase:
-    API_VERSION = "v201806"
+    API_VERSION = "v201809"
     MAX_WORKERS = 50
 
     # instance properties --->
