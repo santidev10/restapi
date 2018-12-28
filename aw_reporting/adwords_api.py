@@ -6,7 +6,7 @@ from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
 logger = logging.getLogger(__name__)
-API_VERSION = 'v201802'
+API_VERSION = 'v201809'
 
 
 def load_settings():
