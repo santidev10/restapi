@@ -3,11 +3,15 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Count
+from django.db.models import F
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from rest_framework.generics import GenericAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
@@ -16,7 +20,9 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
 from channel.api.views import ChannelListApiView
+from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
+from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
@@ -310,3 +316,34 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
         if response_data:
             ChannelListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
+
+
+class DynamicPersistentModelViewMixin(object):
+    def dispatch(self, request, segment_type, **kwargs):
+        self.model = get_persistent_segment_model_by_type(segment_type)
+        self.serializer_class.Meta.model = self.model
+        return super().dispatch(request, **kwargs)
+
+    def get_queryset(self):
+        """
+        Prepare queryset to display
+        """
+        if self.request.user.is_staff:
+            queryset = self.model.objects.all()
+        else:
+            queryset = self.model.objects.filter(
+                Q(owner=self.request.user)
+                | Q(shared_with__contains=[self.request.user.email])
+            )
+        queryset = queryset.annotate(related_count=Count(F("related__id")))
+        return queryset
+
+
+class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView):
+    serializer_class = PersistentSegmentSerializer
+    pagination_class = SegmentPaginator
+
+
+class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, RetrieveAPIView):
+    serializer_class = PersistentSegmentSerializer
+    pagination_class = SegmentPaginator
