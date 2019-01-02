@@ -44,6 +44,7 @@ from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
 from aw_creation.api.views import schemas
+from aw_creation.api.views.schemas import CREATION_OPTIONS_SCHEMA
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import AdScheduleRule
@@ -158,8 +159,10 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
         else:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data={"errors": ["The content type isn't supported: "
-                                 "{}".format(content_type)]})
+                data={
+                    "errors": ["The content type isn't supported: "
+                               "{}".format(content_type)]
+                })
         return Response(status=HTTP_200_OK, data=response_data)
 
     def get_location_rules(self, items):
@@ -478,8 +481,13 @@ class TargetingItemsSearchApiView(APIView):
 
 
 class CreationOptionsApiView(APIView):
-    @staticmethod
-    def get(request, **k):
+    @swagger_auto_schema(
+        operation_description="Allowed options for account creations",
+        responses={
+            HTTP_200_OK: CREATION_OPTIONS_SCHEMA,
+        },
+    )
+    def get(self, request, **k):
         def opts_to_response(opts):
             res = [dict(id=i, name=n) for i, n in opts]
             return res
@@ -1844,12 +1852,15 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                 else:
                     return Response(status=HTTP_400_BAD_REQUEST,
                                     data={
-                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                                    })
             except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
-                                                 'Stage: Load File Data. Cause: {}'.format(
-                                                     e)]})
+                                data={
+                                    "errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                               'Stage: Load File Data. Cause: {}'.format(
+                                                   e)]
+                                })
 
             try:
                 criteria_list.extend(getattr(self, method)(data))
