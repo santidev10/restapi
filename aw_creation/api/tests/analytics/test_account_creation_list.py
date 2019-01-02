@@ -365,7 +365,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertGreaterEqual(item[metric], min2)
                 self.assertLessEqual(item[metric], max2)
 
-    def test_success_status_filter(self):
+    def test_status_filter(self):
         mcc_account = self.mcc_account
 
         def create_account():

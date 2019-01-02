@@ -1,9 +1,10 @@
 from django.db import transaction
-from django.db.models import Case, IntegerField
+from django.db.models import Case
 from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import F
 from django.db.models import FloatField as AggrFloatField
+from django.db.models import IntegerField
 from django.db.models import IntegerField as AggrIntegerField
 from django.db.models import Max
 from django.db.models import Min
@@ -168,27 +169,34 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get("status")
         if status:
-            if status == "Ended":
+            if status == AccountCreation.STATUS_ENDED:
                 queryset = queryset.annotate(
                     campaigns_count=Count("account__campaigns"),
                     ended_campaigns_count=Sum(
-                        Case(When(account__campaigns__status="ended", then=1),
-                             output_field=IntegerField(),))
-                ).filter(campaigns_count=F("ended_campaigns_count"))
-            elif status == "Paused":
+                        Case(
+                            When(
+                                account__campaigns__status="ended",
+                                then=1),
+                            output_field=IntegerField()
+                        )
+                    )).filter(campaigns_count=F("ended_campaigns_count"))
+            elif status == AccountCreation.STATUS_PAUSED:
                 queryset = queryset.annotate(
                     campaigns_count=Count("account__campaigns"),
                     ended_campaigns_count=Sum(
-                        Case(When(account__campaigns__status="ended", then=1),
-                             default=0,
-                             output_field=IntegerField())
+                        Case(
+                            When(
+                                account__campaigns__status="ended",
+                                then=1),
+                            default=0,
+                            output_field=IntegerField())
                     )).exclude(campaigns_count=F("ended_campaigns_count")).exclude(
                         account__campaigns__status="eligible").distinct()
-            elif status == "Running":
+            elif status == AccountCreation.STATUS_RUNNING:
                 queryset = queryset.filter(Q(sync_at__isnull=False) | Q(is_managed=False))
-            elif status == "Pending":
+            elif status == AccountCreation.STATUS_PENDING:
                 queryset = queryset.filter(is_approved=True)
-            elif status == "Draft":
+            elif status == AccountCreation.STATUS_DRAFT:
                 queryset = queryset.filter(account__isnull=True)
         if "from_aw" in filters:
             from_aw = filters.get('from_aw') == '1'
