@@ -11,6 +11,8 @@ from django.db.models import Q
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions import Coalesce
+from drf_yasg.utils import no_body
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -34,7 +36,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 @demo_view_decorator
 class AnalyticsAccountCreationListApiView(ListAPIView):
-    serializer_class = AnalyticsAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
     permission_classes = (IsAuthenticated,)
     annotate_sorts = dict(
@@ -90,6 +91,11 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             )
         ),
     )
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AccountCreationSetupSerializer
+        return AnalyticsAccountCreationListSerializer
 
     def get_queryset(self, **filters):
         user = self.request.user
@@ -263,6 +269,13 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
         return queryset
 
+    @swagger_auto_schema(
+        operation_description="Create new account creation",
+        request_body=no_body,
+        responses={
+            HTTP_202_ACCEPTED: AccountCreationSetupSerializer
+        }
+    )
     def post(self, *a, **_):
         account_count = AccountCreation.objects.filter(
             owner=self.request.user).count()
@@ -290,5 +303,5 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
         for language in default_languages():
             campaign_creation.languages.add(language)
 
-        data = AccountCreationSetupSerializer(account_creation).data
+        data = self.get_serializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)

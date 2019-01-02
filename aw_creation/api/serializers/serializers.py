@@ -1,6 +1,7 @@
 import json
 import logging
 
+from drf_yasg.utils import swagger_serializer_method
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
     ListField, ValidationError, DictField
 
@@ -125,8 +126,8 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
     video_ad_format = SerializerMethodField()
     ad_creations = SerializerMethodField()
 
-    @staticmethod
-    def get_ad_creations(obj):
+    @swagger_serializer_method(serializer_or_field=AdCreationSetupSerializer(many=True))
+    def get_ad_creations(self, obj):
         queryset = obj.ad_creations.filter(is_deleted=False)
         ad_creations = AdCreationSetupSerializer(queryset, many=True).data
         return ad_creations
@@ -267,8 +268,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     content_exclusions = SerializerMethodField()
     ad_group_creations = SerializerMethodField()
 
-    @staticmethod
-    def get_ad_group_creations(obj):
+    @swagger_serializer_method(serializer_or_field=AdGroupCreationSetupSerializer(many=True))
+    def get_ad_group_creations(self, obj):
         queryset = obj.ad_group_creations.filter(is_deleted=False)
         ad_group_creations = AdGroupCreationSetupSerializer(queryset, many=True)
         return ad_group_creations.data
@@ -335,8 +336,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
 class AccountCreationSetupSerializer(ModelSerializer):
     campaign_creations = SerializerMethodField()
 
-    @staticmethod
-    def get_campaign_creations(obj):
+    @swagger_serializer_method(serializer_or_field=CampaignCreationSetupSerializer(many=True))
+    def get_campaign_creations(self, obj):
         queryset = obj.campaign_creations.filter(is_deleted=False)
         campaign_creations = CampaignCreationSetupSerializer(queryset,
                                                              many=True).data
