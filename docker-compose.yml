@@ -10,6 +10,7 @@ services:
     - "5432:5432"
   api:
     build: .
+    image: viewiq-restapi
     volumes:
     - .:/code
     ports:
@@ -22,7 +23,7 @@ services:
     - pg
     - rabbitmq
   celery_beat:
-    build: .
+    image: viewiq-restapi
     volumes:
     - .:/code
     command: ["celery", "-A", "saas", "beat", "-l", "info"]
@@ -32,7 +33,7 @@ services:
     environment:
       CELERY_BROKER_HOST: rabbitmq
   celery_worker:
-    build: .
+    image: viewiq-restapi
     volumes:
     - .:/code
     command: ["celery", "-A", "saas", "worker", "-c", "4", "-l", "info"]

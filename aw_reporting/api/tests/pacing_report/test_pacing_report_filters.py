@@ -1,7 +1,14 @@
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_401_UNAUTHORIZED, HTTP_200_OK
+from datetime import date
 
-from aw_reporting.models import UserRole, User, Opportunity, Category
+from django.core.urlresolvers import reverse
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_401_UNAUTHORIZED
+
+from aw_reporting.models import Category
+from aw_reporting.models import Opportunity
+from aw_reporting.models import User
+from aw_reporting.models import UserRole
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -131,3 +138,41 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         self.assertEqual(ad_ops_filter, expected_ad_ops)
         self.assertEqual(len(response.data["sales"]), 0)
         self.assertEqual(len(response.data["am"]), 0)
+
+    def test_region_no_duplicates(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
+        Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
+        Root cause: select query includes 'start' column
+        """
+        self.create_test_user()
+        test_territory = "test region"
+        date_1 = date(2018, 1, 1)
+        date_2 = date(2018, 1, 2)
+        for dt in (date_1, date_2):
+            Opportunity.objects.create(
+                id=next(int_iterator),
+                territory=test_territory,
+                name="Opportunity 1",
+                start=dt
+            )
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        regions_filter = response.data["region"]
+        self.assertEqual(len(regions_filter), 1)
+        self.assertEqual(regions_filter[0], dict(id=test_territory, name=test_territory))
+
+    def test_region_no_null(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-999
+        Summary: Filters > Duplicated and null values in Territory filter in Pacing report and CHF trends
+        """
+        self.create_test_user()
+        Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 1")
+        Opportunity.objects.create(id=next(int_iterator), territory=None, name="Opportunity 2")
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        regions_filter = response.data["region"]
+        self.assertEqual(len(regions_filter), 0)

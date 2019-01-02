@@ -9,11 +9,16 @@ from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
 from segment.api.views import SegmentShareApiView
 from segment.api.views import SegmentSuggestedChannelApiView
+from segment.api.views import PersistentSegmentListApiView
+from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.utils import SEGMENT_TYPES
+from segment.utils import PERSISTENT_SEGMENT_TYPES
 
 segment_types = '|'.join(SEGMENT_TYPES.fget())
+persistent_segment_types = '|'.join(PERSISTENT_SEGMENT_TYPES.fget())
 
 urlpatterns = [
+    # segments
     url(r'^segments/(?P<segment_type>{})/$'.format(segment_types),
         SegmentListCreateApiView.as_view(),
         name=Name.SEGMENT_LIST),
@@ -26,8 +31,15 @@ urlpatterns = [
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(segment_types),
         SegmentDuplicateApiView.as_view(),
         name=Name.SEGMENT_DUPLICATE),
-    url(
-        r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
+    url(r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
         SegmentSuggestedChannelApiView.as_view(),
         name="suggested_channels"),
+
+    # persistent_segments
+    url(r'^persistent_segments/(?P<segment_type>{})/$'.format(persistent_segment_types),
+        PersistentSegmentListApiView.as_view(),
+        name=Name.PERSISTENT_SEGMENT_LIST),
+    url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(persistent_segment_types),
+        PersistentSegmentRetrieveApiView.as_view(),
+        name=Name.PERSISTENT_SEGMENT_DETAILS),
 ]

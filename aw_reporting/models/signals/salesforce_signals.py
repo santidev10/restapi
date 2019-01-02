@@ -12,8 +12,9 @@ def pre_save_flight_receiver(instance, **_):
 
 
 def flight_changed(old_flight: Flight, new_flight: Flight):
-    flight_ordered_units_changed(old_flight, new_flight)
-    flight_total_cost_changed(old_flight, new_flight)
+    if old_flight.placement.opportunity.probability == 100:
+        flight_ordered_units_changed(old_flight, new_flight)
+        flight_total_cost_changed(old_flight, new_flight)
 
 
 def flight_ordered_units_changed(old_flight: Flight, new_flight: Flight):
@@ -31,7 +32,7 @@ def flight_ordered_units_changed(old_flight: Flight, new_flight: Flight):
         flight_name=new_flight.name,
         old_ordered_units=old_flight.ordered_units,
         new_ordered_units=new_flight.ordered_units,
-        ad_ops_email=ad_ops.email,
+        recipients=[ad_ops.email] if ad_ops else None,
     )
     email.send()
 
@@ -51,6 +52,6 @@ def flight_total_cost_changed(old_flight: Flight, new_flight: Flight):
         flight_name=new_flight.name,
         old_total_cost=old_flight.total_cost,
         new_total_cost=new_flight.total_cost,
-        ad_ops_email=ad_ops.email,
+        recipients=[ad_ops.email] if ad_ops else None,
     )
     email.send()

@@ -36,7 +36,7 @@ def get_filters(request):
     category_ids = categories.split(",") if categories is not None else None
 
     regions = data.get("region")
-    region_ids = [int(r_id) for r_id in regions.split(",")] \
+    territories = [territory for territory in regions.split(",")] \
         if regions is not None else None
 
     return dict(
@@ -46,5 +46,5 @@ def get_filters(request):
         goal_type_ids=goal_type_ids,
         brands=brands,
         category_ids=category_ids,
-        region_ids=region_ids,
+        territories=territories,
     )

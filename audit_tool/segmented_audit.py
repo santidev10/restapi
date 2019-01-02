@@ -1,0 +1,199 @@
+import re
+
+from singledb.connector import SingleDatabaseApiConnector as Connector
+
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentRelatedChannel
+from segment.models.persistent import PersistentSegmentVideo
+from segment.models.persistent import PersistentSegmentRelatedVideo
+
+
+class SegmentedAudit:
+    BATCH_SIZE = 10000
+    CHANNELS_BATCH_LIMIT = 100
+    BLACKLIST_SEGMENT_TITLE = "Master black list"
+    BAD_WORDS_DATA_KEY = "__found_bad_words"
+    AUDITED_VIDEOS_DATA_KEY = "__audited_videos"
+
+    def __init__(self):
+        self.connector = Connector()
+
+        bad_words = self.get_all_bad_words()
+        self.bad_words_regexp = re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(w)) for w in bad_words]))
+        )
+
+    def run(self):
+        last_channel = PersistentSegmentRelatedChannel.objects.order_by("-updated_at").first()
+        last_channel_id = last_channel.related_id if last_channel else None
+        channels = self.get_next_channels_batch(last_id=last_channel_id, limit=self.CHANNELS_BATCH_LIMIT)
+        channel_ids = [c["channel_id"] for c in channels]
+        videos = list(self.get_all_videos(channel_ids=channel_ids))
+
+        # parse videos
+        found = [self._parse_video(video) for video in videos]
+        for idx, video in enumerate(videos):
+            video[self.BAD_WORDS_DATA_KEY] = found[idx]
+
+        # group results from videos to channel
+        channel_bad_words = {}
+        channel_audited_videos = {}
+        for video in videos:
+
+            channel_id = video["channel_id"]
+            if channel_id not in channel_bad_words.keys():
+                channel_bad_words[channel_id] = []
+            channel_bad_words[channel_id] += video[self.BAD_WORDS_DATA_KEY]
+
+            if channel_id not in channel_audited_videos.keys():
+                channel_audited_videos[channel_id] = 0
+            channel_audited_videos[channel_id] += 1
+
+        # apply results to channels
+        for channel in channels:
+            channel[self.BAD_WORDS_DATA_KEY] = channel_bad_words.get(channel["channel_id"], [])
+            channel[self.AUDITED_VIDEOS_DATA_KEY] = channel_audited_videos.get(channel["channel_id"], 0)
+
+        # storing results
+        self.store_channels(channels)
+        self.store_videos(videos)
+
+        return len(channels), len(videos)
+
+    def get_next_channels_batch(self, last_id=None, limit=100):
+        size = limit + 1 if last_id else limit
+        params = dict(
+            fields="channel_id,title,description,thumbnail_image_url,category,likes,dislikes,views",
+            sort="channel_id",
+            size=size,
+            channel_id__range="{},".format(last_id or ""),
+        )
+
+        response = self.connector.execute_get_call("channels/", params)
+        channels = [item for item in response.get("items", []) if item["channel_id"] != last_id]
+
+        for channel in channels:
+            if not channel.get("category"):
+                channel["category"] = "Unknown"
+
+        return channels
+
+    def get_all_videos(self, channel_ids):
+        last_id = None
+        params = dict(
+            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views",
+            sort="video_id",
+            size=self.BATCH_SIZE,
+            channel_id__terms=",".join(channel_ids),
+        )
+        while True:
+            params["video_id__range"] = "{},".format(last_id or "")
+            response = self.connector.execute_get_call("videos/", params)
+            videos = [item for item in response.get("items", []) if item["video_id"] != last_id]
+            if not videos:
+                break
+            for video in videos:
+                if video["video_id"] == last_id:
+                    continue
+                if not video.get("category"):
+                    video["category"] = "Unknown"
+                yield video
+            last_id = videos[-1]["video_id"]
+
+    def get_all_bad_words(self):
+        response = self.connector.execute_get_call("bad_words/", {})
+        bad_words = [item["name"] for item in response]
+        bad_words = list(set(bad_words))
+        return bad_words
+
+    def _parse_video(self, video):
+        items = [
+            video.get("title", ""),
+            video.get("description", ""),
+            video.get("tags", ""),
+        ]
+        text = " ".join(items)
+        found = re.findall(self.bad_words_regexp, text)
+        return found
+
+    def _segment_title(self, item):
+        title = self.BLACKLIST_SEGMENT_TITLE if item[self.BAD_WORDS_DATA_KEY] else item["category"]
+        return title
+
+    def _video_details(self, video):
+        details = dict(
+            likes=video["likes"],
+            dislikes=video["dislikes"],
+            views=video["views"],
+            tags=video["tags"],
+            description=video["description"],
+            bad_words=video[self.BAD_WORDS_DATA_KEY],
+        )
+        return details
+
+    def _channel_details(self, channel):
+        details = dict(
+            likes=channel["likes"],
+            dislikes=channel["dislikes"],
+            views=channel["views"],
+            bad_words=channel[self.BAD_WORDS_DATA_KEY],
+            audited_videos=channel[self.AUDITED_VIDEOS_DATA_KEY],
+        )
+        return details
+
+    def _store(self, items, segments_model, items_model, id_field_name, get_details):
+        segments_manager = segments_model.objects
+        items_manager = items_model.objects
+
+        # group items by segments
+        grouped_by_segment = {}
+        for item in items:
+            segment_title = self._segment_title(item)
+            if segment_title not in grouped_by_segment:
+                segment, _ = segments_manager.get_or_create(title=segment_title)
+                grouped_by_segment[segment_title] = (segment, [])  # segment, items
+            grouped_by_segment[segment_title][1].append(item)
+
+        # store to segments
+        for segment, items in grouped_by_segment.values():
+            all_ids = [item[id_field_name] for item in items]
+            old_ids = items_manager.filter(segment=segment, related_id__in=all_ids)\
+                                   .values_list("related_id", flat=True)
+            new_ids = set(all_ids) - set(old_ids)
+            # save new items to relevant segment
+            new_items = [
+                items_manager.model(
+                    segment=segment,
+                    related_id=item[id_field_name],
+                    category=item["category"],
+                    title=item["title"],
+                    thumbnail_image_url=item["thumbnail_image_url"],
+                    details=get_details(item),
+                )
+                for item in items if item[id_field_name] in new_ids
+            ]
+            items_manager.bulk_create(new_items)
+
+            # Remove new items from irrelevant segments
+            items_manager.exclude(segment=segment)\
+                         .filter(related_id__in=new_ids)\
+                         .delete()
+
+    def store_videos(self, videos):
+        self._store(
+            items=videos,
+            segments_model=PersistentSegmentVideo,
+            items_model=PersistentSegmentRelatedVideo,
+            id_field_name="video_id",
+            get_details=self._video_details,
+        )
+
+    def store_channels(self, channels):
+        self._store(
+            items=channels,
+            segments_model=PersistentSegmentChannel,
+            items_model=PersistentSegmentRelatedChannel,
+            id_field_name="channel_id",
+            get_details=self._channel_details,
+        )
+
