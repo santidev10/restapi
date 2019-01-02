@@ -7,6 +7,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
+from segment.models import PersistentSegmentChannel
 from segment.models import SegmentKeyword
 from singledb.connector import SingleDatabaseApiConnector
 
@@ -118,7 +119,8 @@ class PersistentSegmentSerializer(ModelSerializer):
     statistics = SerializerMethodField()
 
     class Meta:
-        model = None
+        # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
+        model = PersistentSegmentChannel
         fields = (
             "id",
             "title",
