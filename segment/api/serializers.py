@@ -7,7 +7,8 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
-from segment.models import SegmentKeyword, PersistentSegmentChannel
+from segment.models import PersistentSegmentChannel
+from segment.models import SegmentKeyword
 from singledb.connector import SingleDatabaseApiConnector
 
 
