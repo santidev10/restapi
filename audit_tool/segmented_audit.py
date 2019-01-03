@@ -74,7 +74,7 @@ class SegmentedAudit:
 
         for channel in channels:
             if not channel.get("category"):
-                channel["category"] = "Unknown"
+                channel["category"] = "Unclassified"
 
         return channels
 
