@@ -2,7 +2,10 @@ import re
 from copy import deepcopy
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
@@ -14,6 +17,34 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
+
+CHANNEL_ITEM_SCHEMA = openapi.Schema(
+    title="Youtube channel",
+    type=openapi.TYPE_OBJECT,
+    properties=dict(
+        description=openapi.Schema(type=openapi.TYPE_STRING),
+        id=openapi.Schema(type=openapi.TYPE_STRING),
+        subscribers=openapi.Schema(type=openapi.TYPE_STRING),
+        thumbnail_image_url=openapi.Schema(type=openapi.TYPE_STRING),
+        title=openapi.Schema(type=openapi.TYPE_STRING),
+        videos=openapi.Schema(type=openapi.TYPE_STRING),
+        views=openapi.Schema(type=openapi.TYPE_STRING),
+    ),
+)
+CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
+    title="Youtube channel paginated response",
+    type=openapi.TYPE_OBJECT,
+    properties=dict(
+        max_page=openapi.Schema(type=openapi.TYPE_INTEGER),
+        items_count=openapi.Schema(type=openapi.TYPE_INTEGER),
+        current_page=openapi.Schema(type=openapi.TYPE_INTEGER),
+        items=openapi.Schema(
+            title="Youtube channel list",
+            type=openapi.TYPE_ARRAY,
+            items=CHANNEL_ITEM_SCHEMA,
+        ),
+    ),
+)
 
 
 class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin, ChannelYoutubeSearchMixin,
@@ -42,6 +73,30 @@ class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin,
     ]
     export_file_title = "channel"
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="youtube_link",
+                required=False,
+                in_=openapi.IN_QUERY,
+                description="Youtube channel URL",
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                name="youtube_keyword",
+                required=False,
+                in_=openapi.IN_QUERY,
+                description="Search string to find Youtube channela",
+                type=openapi.TYPE_STRING,
+            )
+        ],
+        responses={
+            HTTP_200_OK: CHANNELS_SEARCH_RESPONSE_SCHEMA,
+            HTTP_400_BAD_REQUEST: openapi.Response("Wrong request parameters"),
+            HTTP_404_NOT_FOUND: openapi.Response("Channel not found"),
+            HTTP_408_REQUEST_TIMEOUT: openapi.Response("Request timeout"),
+        }
+    )
     def get(self, request):
         """
         Get procedure
