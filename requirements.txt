@@ -26,6 +26,7 @@ oauth2client==4.1.2
 olefile==0.44
 openpyxl==2.4.7
 phonenumbers==8.5.2
+pid==2.1.1
 Pillow==4.2.1
 psutil==5.4.3
 psycopg2==2.7.1

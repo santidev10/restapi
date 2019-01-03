@@ -41,7 +41,7 @@ class BasePersistentSegment(Timestampable):
 class BasePersistentSegmentRelated(Timestampable):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
-    related_id = CharField(max_length=100)
+    related_id = CharField(max_length=100, db_index=True)
     category = CharField(max_length=100, default="")
     title = TextField(default="")
     thumbnail_image_url = TextField(default="")

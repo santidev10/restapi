@@ -2,6 +2,8 @@ import logging
 from django.core.management import BaseCommand
 from audit_tool.segmented_audit import SegmentedAudit
 
+from pid.decorator import pidfile
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,6 +15,7 @@ class Command(BaseCommand):
                             default=False,
                             help="Run in a infinitely cycle")
 
+    @pidfile(piddir=".", pidname="segmented_audit.pid")
     def handle(self, *args, **options):
         while True:
             audit = SegmentedAudit()
