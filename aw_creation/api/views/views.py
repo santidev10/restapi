@@ -928,6 +928,21 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         MediaBuyingAddOnPermission),
     )
 
+    @swagger_auto_schema(
+        operation_description="Get Ad creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Ad creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
             ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
