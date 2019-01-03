@@ -170,7 +170,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
         status = filters.get("status")
         if status:
             if status == AccountCreation.STATUS_ENDED:
-                queryset = queryset\
+                queryset = queryset \
                     .annotate(
                         campaigns_count=Count("account__campaigns"),
                         ended_campaigns_count=Sum(
@@ -181,10 +181,10 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                                 output_field=IntegerField()
                             )
                         )
-                    )\
+                    ) \
                     .filter(campaigns_count=F("ended_campaigns_count"))
             elif status == AccountCreation.STATUS_PAUSED:
-                queryset = queryset\
+                queryset = queryset \
                     .annotate(
                         campaigns_count=Count("account__campaigns"),
                         ended_campaigns_count=Sum(
@@ -195,9 +195,9 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                                 default=0,
                                 output_field=IntegerField())
                         )
-                    )\
-                    .exclude(campaigns_count=F("ended_campaigns_count"))\
-                    .exclude(account__campaigns__status="eligible")\
+                    ) \
+                    .exclude(campaigns_count=F("ended_campaigns_count")) \
+                    .exclude(account__campaigns__status="eligible") \
                     .distinct()
             elif status == AccountCreation.STATUS_RUNNING:
                 queryset = queryset.filter(Q(sync_at__isnull=False) | Q(is_managed=False))
