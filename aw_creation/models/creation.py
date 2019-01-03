@@ -294,6 +294,7 @@ class CampaignCreation(UniqueCreationItem):
         choices=BUDGET_TYPE_CHOICES,
         default=BudgetType.DAILY.value,
     )
+    is_draft = models.BooleanField(default=False)
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
