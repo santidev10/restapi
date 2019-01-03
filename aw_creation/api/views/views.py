@@ -1032,6 +1032,18 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 class AdCreationAvailableAdFormatsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
+    @swagger_auto_schema(
+        operation_description="Get Ad group creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Ad Group creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
     def get(self, request, pk, **_):
         try:
             ad_creation = AdCreation.objects.get(pk=pk)
