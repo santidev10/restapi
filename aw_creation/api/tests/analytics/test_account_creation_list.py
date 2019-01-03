@@ -365,6 +365,39 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertGreaterEqual(item[metric], min2)
                 self.assertLessEqual(item[metric], max2)
 
+    def test_pending_status_filter(self):
+        mcc_account = self.mcc_account
+
+        def create_account():
+            account = Account.objects.create(id=next(int_iterator), name="", skip_creating_account_creation=True)
+            account.managers.add(mcc_account)
+            return account
+        # ended
+        ended_account = create_account()
+        Campaign.objects.create(name="ended 1", id="1", account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 2", id="2", account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 3", id="3", account=ended_account, status="ended")
+        AccountCreation.objects.create(name="Ended", owner=self.user, account=ended_account, is_approved=True)
+        # paused
+        paused_account = create_account()
+        Campaign.objects.create(name="paused 1", id="4", account=paused_account, status="paused")
+        Campaign.objects.create(name="eligible", id="5", account=paused_account, status="removed")
+        Campaign.objects.create(name="paused 2", id="6", account=paused_account, status="paused")
+        AccountCreation.objects.create(name="Paused", owner=self.user, account=paused_account, is_approved=True)
+        # running
+        running_account = create_account()
+        Campaign.objects.create(name="paused 1", id="7", account=running_account, status="removed")
+        Campaign.objects.create(name="eligible", id="8", account=running_account, status="eligible")
+        Campaign.objects.create(name="paused 2", id="9", account=running_account, status="paused")
+        Campaign.objects.create(name="paused 2", id="10", account=running_account, status="ended")
+        AccountCreation.objects.create(
+            name="Running", owner=self.user, account=running_account, sync_at=timezone.now())
+        AccountCreation.objects.create(is_approved=True, sync_at=None, is_manged=True)
+        AccountCreation.objects.create(is_approved=True, sync_at=timezone.now(), is_manged=False)
+        AccountCreation.objects.create(is_approved=True, sync_at=timezone.now(), is_managed=False)
+
+
+
     def test_status_filter(self):
         mcc_account = self.mcc_account
 
@@ -378,14 +411,14 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         Campaign.objects.create(name="ended 2", id="2", account=ended_account, status="ended")
         Campaign.objects.create(name="ended 3", id="3", account=ended_account, status="ended")
         ended_account_creation = AccountCreation.objects.create(
-            name="Ended", owner=self.user, account=ended_account)
+            name="Ended", owner=self.user, account=ended_account, is_approved=True, sync_at=timezone.now())
         # paused
         paused_account = create_account()
         Campaign.objects.create(name="paused 1", id="4", account=paused_account, status="paused")
         Campaign.objects.create(name="eligible", id="5", account=paused_account, status="removed")
         Campaign.objects.create(name="paused 2", id="6", account=paused_account, status="paused")
         paused_account_creation = AccountCreation.objects.create(
-            name="Paused", owner=self.user, account=paused_account)
+            name="Paused", owner=self.user, account=paused_account, is_approved=True, sync_at=timezone.now())
         # running
         running_account = create_account()
         Campaign.objects.create(name="paused 1", id="7", account=running_account, status="removed")
@@ -393,7 +426,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         Campaign.objects.create(name="paused 2", id="9", account=running_account, status="paused")
         Campaign.objects.create(name="paused 2", id="10", account=running_account, status="ended")
         running_account_creation = AccountCreation.objects.create(
-            name="Running", owner=self.user, account=running_account, sync_at=timezone.now())
+            name="Running", owner=self.user, account=running_account, sync_at=timezone.now(), is_approved=True)
         # pending
         pending_account = create_account()
         pending_account_creation = AccountCreation.objects.create(
