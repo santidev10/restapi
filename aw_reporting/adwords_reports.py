@@ -23,7 +23,7 @@ COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate",
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
                                          "CampaignId", "CampaignName",
                                          "ServingStatus", "CampaignStatus",
-                                         "StartDate", "EndDate", "Amount",
+                                         "StartDate", "EndDate", "Amount", "TotalAmount",
                                          "AdvertisingChannelType",
                                      ) + COMPLETED_FIELDS \
                                      + MAIN_STATISTICS_FILEDS

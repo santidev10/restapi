@@ -7,7 +7,9 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import CampaignCreation, \
     default_languages, AdGroupCreation, AdCreation
+from aw_reporting.models import BudgetType
 from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
+from utils.utittests.int_iterator import int_iterator
 
 
 class CreationCodeAPITestCase(AwReportingAPITestCase):
@@ -92,3 +94,45 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             re.search(r"createOrUpdateVideoAd\(.*?\"id\": 2", code,
                       re.MULTILINE)
         )
+
+    def test_campaign_budget_type(self):
+        self.create_test_user(auth=False)
+        account = Account.objects.create(id="123", name="What")
+        account_creation = account.account_creation
+        account_creation.is_managed = True
+        account_creation.save()
+        campaign_daily = CampaignCreation.objects.create(
+            id=next(int_iterator),
+            name="",
+            account_creation=account_creation,
+            budget=1,
+            budget_type=BudgetType.DAILY.value
+        )
+        campaign_total = CampaignCreation.objects.create(
+            id=next(int_iterator),
+            name="",
+            account_creation=account_creation,
+            budget=1,
+            budget_type=BudgetType.TOTAL.value
+        )
+        url = reverse("aw_creation_urls:aw_creation_code", args=(account.id,))
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+
+        self.assertIsInstance(data, dict)
+        self.assertIn("code", data)
+        code = data['code']
+
+        def get_campaign_creation_invocation(campaign_id):
+            return re.search(
+                r"createOrUpdateCampaign\(.*?\"id\": {}.*$".format(campaign_id),
+                code,
+                re.MULTILINE
+            ).group(0)
+
+        daily_campaign_creation = get_campaign_creation_invocation(campaign_daily.id)
+        total_campaign_creation = get_campaign_creation_invocation(campaign_total.id)
+        self.assertIn("\"budget_type\": \"{}\"".format(BudgetType.DAILY.value), daily_campaign_creation)
+        self.assertIn("\"budget_type\": \"{}\"".format(BudgetType.TOTAL.value), total_campaign_creation)

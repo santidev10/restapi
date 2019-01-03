@@ -34,7 +34,7 @@ class AnalyticsAccountCreationListApiView:
                 filters = request.query_params
                 if demo.account_passes_filters(filters):
                     header_data = demo.header_data
-                    keys = view.serializer_class.Meta.fields
+                    keys = view.get_serializer_class().Meta.fields
                     data = pick_dict(header_data, keys)
                     response.data['items'].insert(0, data)
                     response.data['items_count'] += 1
