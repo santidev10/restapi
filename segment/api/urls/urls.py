@@ -9,6 +9,7 @@ from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
 from segment.api.views import SegmentShareApiView
 from segment.api.views import SegmentSuggestedChannelApiView
+from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentListApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.utils import SEGMENT_TYPES
@@ -42,4 +43,7 @@ urlpatterns = [
     url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(persistent_segment_types),
         PersistentSegmentRetrieveApiView.as_view(),
         name=Name.PERSISTENT_SEGMENT_DETAILS),
+    url(r'^persistent_segments_export/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(persistent_segment_types),
+        PersistentSegmentExportApiView.as_view(),
+        name=Name.PERSISTENT_SEGMENT_EXPORT),
 ]

@@ -17,3 +17,6 @@ class PersistentSegmentVideo(BasePersistentSegment):
 
 class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
     segment = ForeignKey(PersistentSegmentVideo, related_name="related")
+
+    def get_url(self):
+        return "https://www.youtube.com/video/{}".format(self.related_id)
