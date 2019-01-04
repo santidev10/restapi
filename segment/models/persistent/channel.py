@@ -17,3 +17,6 @@ class PersistentSegmentChannel(BasePersistentSegment):
 
 class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
     segment = ForeignKey(PersistentSegmentChannel, related_name="related")
+
+    def get_url(self):
+        return "https://www.youtube.com/channel/{}".format(self.related_id)
