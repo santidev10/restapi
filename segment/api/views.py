@@ -19,6 +19,7 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
+from audit_tool.segmented_audit import SegmentedAudit
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
@@ -342,6 +343,17 @@ class DynamicPersistentModelViewMixin(object):
 class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        items = []
+        for item in response.data.get("items", []):
+            if item.get("title") == SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+                items.append(item)
+        for item in response.data.get("items", []):
+            if item.get("title") != SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+                items.append(item)
+        response.data["items"] = items
+        return super().finalize_response(request, response, *args, **kwargs)
 
 
 class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, RetrieveAPIView):
