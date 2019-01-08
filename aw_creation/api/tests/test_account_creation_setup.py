@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 from datetime import timedelta
-from unittest import skip
 from unittest.mock import Mock
 from unittest.mock import patch
 
@@ -134,7 +133,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         data = response.data
         self.perform_details_check(data)
 
-    @skip("demo account will be refactored, no need to keep up to date")
     def test_success_get_demo(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
         with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",

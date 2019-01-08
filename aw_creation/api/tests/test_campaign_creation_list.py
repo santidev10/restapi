@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from unittest import skip
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
@@ -67,7 +66,6 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 
-    @skip("demo account will be refactored, no need to keep up to date")
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
