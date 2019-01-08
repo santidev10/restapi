@@ -323,13 +323,23 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     class Meta:
         model = CampaignCreation
         fields = (
-            'id', 'name', 'updated_at',
-            'start', 'end', 'budget', 'languages',
-            'devices', 'location_rules', 'frequency_capping',
-            'ad_schedule_rules',
-            'video_networks', 'delivery_method', 'type',
-            'content_exclusions',
-            'ad_group_creations'
+            "ad_group_creations",
+            "ad_schedule_rules",
+            "budget",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "frequency_capping",
+            "id",
+            "is_draft",
+            "languages",
+            "location_rules",
+            "name",
+            "start",
+            "type",
+            "updated_at",
+            "video_networks",
         )
 
 
@@ -375,6 +385,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "delivery_method",
             "devices",
             "end",
+            "is_draft",
             "languages",
             "name",
             "start",

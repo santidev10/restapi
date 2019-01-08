@@ -117,7 +117,7 @@ class AccountCreation(UniqueCreationItem):
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
-            for c in self.campaign_creations.not_empty().changed():
+            for c in self.campaign_creations.not_empty().changed().filter(is_draft=False):
                 lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
@@ -294,6 +294,7 @@ class CampaignCreation(UniqueCreationItem):
         choices=BUDGET_TYPE_CHOICES,
         default=BudgetType.DAILY.value,
     )
+    is_draft = models.BooleanField(default=False)
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
