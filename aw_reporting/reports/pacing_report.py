@@ -534,7 +534,7 @@ class PacingReport:
             "account_manager__id", "account_manager__name",
             "sales_manager__id", "sales_manager__name",
             "apex_deal",
-            "bill_of_third_party_numbers",
+            "billing_server",
             "territory",
         )
 

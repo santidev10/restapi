@@ -198,7 +198,7 @@ class Opportunity(models.Model):
     types_of_targeting = models.CharField(max_length=100, default="")
 
     apex_deal = models.BooleanField(default=False)
-    bill_of_third_party_numbers = models.BooleanField(default=False)
+    billing_server = models.CharField(max_length=30, null=True)
 
     default_thumbnail = None
 
@@ -330,7 +330,7 @@ class Opportunity(models.Model):
             tags=data["Tags__c"] or "",
             types_of_targeting=data["Types_of__c"] or "",
             apex_deal=data.get("APEX_Deal__c"),
-            bill_of_third_party_numbers=data.get("Bill_off_3p_Numbers__c")
+            billing_server=data.get("Billing_Serer__c")
         )
         if sales_email:
             res['sales_email'] = sales_email

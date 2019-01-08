@@ -93,7 +93,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "am",
                 "apex_deal",
                 "aw_update_time",
-                "bill_of_third_party_numbers",
+                "billing_server",
                 "cannot_roll_over",
                 "category",
                 "chart_data",
@@ -1179,11 +1179,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertAlmostEqual(response.data["items"][0]["margin"],
                                expected_margin)
 
-    def test_bill_of_third_party_numbers_is_bool(self):
+    def test_billing_server(self):
         opportunity_1 = Opportunity.objects.create(
-            id=1, bill_of_third_party_numbers=False, probability=100)
+            id=1, billing_server="test 1", probability=100)
         opportunity_2 = Opportunity.objects.create(
-            id=2, bill_of_third_party_numbers=False, probability=100)
+            id=2, billing_server="test 2", probability=100)
         opportunity_1.refresh_from_db()
         opportunity_2.refresh_from_db()
 
@@ -1194,10 +1194,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         opps_by_id = {o["id"]: o for o in response.data["items"]}
         opp_1 = opps_by_id[opportunity_1.id]
         opp_2 = opps_by_id[opportunity_2.id]
-        self.assertEqual(opp_1["bill_of_third_party_numbers"],
-                         opportunity_1.bill_of_third_party_numbers)
-        self.assertEqual(opp_2["bill_of_third_party_numbers"],
-                         opportunity_2.bill_of_third_party_numbers)
+        self.assertEqual(opp_1["billing_server"], opportunity_1.billing_server)
+        self.assertEqual(opp_2["billing_server"], opportunity_2.billing_server)
 
     def test_hard_cost_margin(self):
         today = date(2018, 1, 1)
