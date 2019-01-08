@@ -117,7 +117,7 @@ class AccountCreation(UniqueCreationItem):
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
-            for c in self.campaign_creations.not_empty().changed():
+            for c in self.campaign_creations.not_empty().changed().filter(is_draft=False):
                 lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
