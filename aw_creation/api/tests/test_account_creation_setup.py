@@ -154,12 +154,23 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(campaign_data.keys()),
             {
-                'id', 'name', 'updated_at', 'start', 'end',
-                'budget', 'delivery_method', 'type', 'video_networks',
-                'languages',
-                'frequency_capping', 'ad_schedule_rules', 'location_rules',
-                'devices', 'content_exclusions', 'ad_group_creations',
+                "ad_group_creations",
+                "ad_schedule_rules",
+                "budget",
+                "content_exclusions",
+                "delivery_method",
+                "devices",
+                "end",
+                "frequency_capping",
+                "id",
                 "is_draft",
+                "languages",
+                "location_rules",
+                "name",
+                "start",
+                "type",
+                "updated_at",
+                "video_networks",
             }
         )
         self.assertEqual(len(campaign_data['content_exclusions']), 2)

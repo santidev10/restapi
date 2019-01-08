@@ -15,13 +15,23 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 class CampaignListAPITestCase(ExtendedAPITestCase):
     detail_keys = {
-        'id', 'name', 'start', 'end', 'updated_at',
-        'budget', 'languages',
-        'devices', 'frequency_capping', 'ad_schedule_rules',
-        'location_rules',
-        'video_networks', 'type', 'delivery_method',
-        'content_exclusions', 'ad_group_creations',
+        "ad_group_creations",
+        "ad_schedule_rules",
+        "budget",
+        "content_exclusions",
+        "delivery_method",
+        "devices",
+        "end",
+        "frequency_capping",
+        "id",
         "is_draft",
+        "languages",
+        "location_rules",
+        "name",
+        "start",
+        "type",
+        "updated_at",
+        "video_networks",
     }
 
     def setUp(self):
