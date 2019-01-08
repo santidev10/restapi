@@ -37,6 +37,7 @@ from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.csv_export import BaseCSVStreamResponseGenerator
 from utils.datetime import now_in_default_tz
+from utils.permissions import user_has_permission
 
 
 class SegmentPaginator(CustomPageNumberPaginator):
@@ -44,6 +45,7 @@ class SegmentPaginator(CustomPageNumberPaginator):
     Paginator for segments list
     """
     page_size = 10
+    page_size_query_param = "page_size"
 
 
 class DynamicModelViewMixin(object):
@@ -337,20 +339,17 @@ class DynamicPersistentModelViewMixin(object):
         """
         Prepare queryset to display
         """
-        if self.request.user.is_staff:
-            queryset = self.model.objects.all()
-        else:
-            queryset = self.model.objects.filter(
-                Q(owner=self.request.user)
-                | Q(shared_with__contains=[self.request.user.email])
-            )
-        queryset = queryset.annotate(related_count=Count(F("related__id")))
+        queryset = self.model.objects.all()\
+                                     .annotate(related_count=Count(F("related__id")))
         return queryset
 
 
 class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
 
     def finalize_response(self, request, response, *args, **kwargs):
         items = []
@@ -367,6 +366,9 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
 class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, RetrieveAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
 
 
 class PersistentSegmentCSVExport(BaseCSVStreamResponseGenerator):
@@ -399,10 +401,14 @@ class PersistentSegmentCSVExport(BaseCSVStreamResponseGenerator):
 
 
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+
     def get(self, request, pk, *_):
         from segment.models.persistent.channel import PersistentSegmentChannel
 
-        segment = self.model.objects.get(pk=pk)
+        segment = self.get_queryset().get(pk=pk)
 
         columns = list(PERSISTENT_SEGMENT_CSV_COLUMN_ORDER)
 
