@@ -99,6 +99,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 'location_rules', 'ad_group_creations',
                 "type", "delivery_method", "video_networks",
                 'content_exclusions',
+                "is_draft",
             }
         )
         self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))

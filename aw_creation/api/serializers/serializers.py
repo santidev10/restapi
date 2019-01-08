@@ -329,7 +329,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             'ad_schedule_rules',
             'video_networks', 'delivery_method', 'type',
             'content_exclusions',
-            'ad_group_creations'
+            'ad_group_creations',
+            "is_draft",
         )
 
 
