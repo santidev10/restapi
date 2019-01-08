@@ -380,6 +380,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "name",
             "start",
             "video_networks",
+            "is_draft",
         )
 
     def validate_start(self, value):
