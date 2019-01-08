@@ -66,7 +66,7 @@ def get_campaigns(client, account, *_):
 
         name = row_obj.CampaignName
         placement_code = extract_placement_code(name)
-        budget_type = BudgetType.DAILY if row_obj.TotalAmount == "--" else BudgetType.TOTAL
+        budget_type = BudgetType.DAILY if row_obj.TotalAmount.strip() == "--" else BudgetType.TOTAL
         budget_str = row_obj.Amount if budget_type == BudgetType.DAILY else row_obj.TotalAmount
         budget = float(budget_str) / 1000000
         stats = {
