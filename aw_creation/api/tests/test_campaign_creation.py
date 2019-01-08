@@ -101,12 +101,23 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name', 'updated_at', 'start', 'end',
-                'budget', 'languages',
-                'devices', 'frequency_capping', 'ad_schedule_rules',
-                'location_rules',
-                'delivery_method', 'type', 'video_networks',
-                'content_exclusions', 'ad_group_creations',
+                "ad_group_creations",
+                "ad_schedule_rules",
+                "budget",
+                "content_exclusions",
+                "delivery_method",
+                "devices",
+                "end",
+                "frequency_capping",
+                "id",
+                "is_draft",
+                "languages",
+                "location_rules",
+                "name",
+                "start",
+                "type",
+                "updated_at",
+                "video_networks",
             }
         )
         ad_group_data = data['ad_group_creations'][0]

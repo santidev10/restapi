@@ -705,6 +705,7 @@ class DemoCampaign(BaseDemo):
             CampaignCreation
         data = dict(
             id=self.id,
+            is_draft=False,
             name=self.name,
             updated_at=self.now,
             budget=self.budget,
