@@ -1,6 +1,7 @@
 from django.db import models
 
 from aw_reporting.models.ad_words.account import Account
+from aw_reporting.models.ad_words.constants import BudgetType
 from aw_reporting.models.ad_words.statistic import BaseClicksTypesStatisticsModel
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields
 from aw_reporting.models.salesforce import OpPlacement
@@ -44,6 +45,8 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     targeting_excluded_channels = models.BooleanField(default=False)
     targeting_excluded_topics = models.BooleanField(default=False)
     targeting_excluded_keywords = models.BooleanField(default=False)
+
+    budget_type = models.CharField(max_length=30, default=BudgetType.DAILY.value, null=False, blank=False)
 
     _start = models.DateField(null=True)
     _end = models.DateField(null=True)

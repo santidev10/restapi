@@ -7,6 +7,8 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
+from segment.models import PersistentSegmentChannel
+from segment.models import SegmentKeyword
 from singledb.connector import SingleDatabaseApiConnector
 
 
@@ -21,7 +23,8 @@ class SegmentSerializer(ModelSerializer):
         max_length=255, required=True, allow_null=False, allow_blank=False)
 
     class Meta:
-        model = None
+        # fixme: replace SegmentKeyword with None. It's a workaround to fix documentation generation
+        model = SegmentKeyword
         fields = ('id',
                   'title',
                   'segment_type',
@@ -110,3 +113,24 @@ class SegmentSerializer(ModelSerializer):
             segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
         return segment
+
+
+class PersistentSegmentSerializer(ModelSerializer):
+    statistics = SerializerMethodField()
+
+    class Meta:
+        # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
+        model = PersistentSegmentChannel
+        fields = (
+            "id",
+            "title",
+            "segment_type",
+            "statistics",
+            "shared_with",
+        )
+
+    def get_statistics(self, obj):
+        statistics = dict(
+            items_count=obj.related_count,
+        )
+        return statistics

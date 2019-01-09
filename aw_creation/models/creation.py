@@ -16,6 +16,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from aw_reporting.models import Account
+from aw_reporting.models import BudgetType
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -116,7 +117,7 @@ class AccountCreation(UniqueCreationItem):
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
-            for c in self.campaign_creations.not_empty().changed():
+            for c in self.campaign_creations.not_empty().changed().filter(is_draft=False):
                 lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
@@ -128,19 +129,26 @@ class AccountCreation(UniqueCreationItem):
     STATUS_RUNNING = "Running"
     STATUS_APPROVED = "Approved"
     STATUS_PENDING = "Pending"
+    STATUS_DRAFT = "Draft"
 
     @property
     def status(self):
-        if self.is_ended:
-            return self.STATUS_ENDED
-        elif self.is_paused:
-            return self.STATUS_PAUSED
-        elif self.sync_at or not self.is_managed:
+        campaign_ended_status = "ended"
+        campaign_eligible_status = "eligible"
+        account = self.account
+        if account is not None:
+            campaigns_queryset = account.campaigns.all()
+            if campaigns_queryset:
+                campaigns_statuses_set = set(campaigns_queryset.values_list("status", flat=True))
+                if {campaign_ended_status} == campaigns_statuses_set:
+                    return self.STATUS_ENDED
+                if campaign_eligible_status not in campaigns_statuses_set:
+                    return self.STATUS_PAUSED
+        if self.sync_at or not self.is_managed:
             return self.STATUS_RUNNING
-        elif self.is_approved:
-            return self.STATUS_APPROVED
-        else:
+        if self.is_approved:
             return self.STATUS_PENDING
+        return self.STATUS_DRAFT
 
     @property
     def from_aw(self):
@@ -173,6 +181,12 @@ class CampaignCreationQueryset(CreationItemQueryset):
     def not_empty(self):
         qs = self.filter(budget__isnull=False)
         return qs
+
+
+BUDGET_TYPE_CHOICES = [
+    (value, value)
+    for value in BudgetType.values()
+]
 
 
 class CampaignCreation(UniqueCreationItem):
@@ -274,6 +288,13 @@ class CampaignCreation(UniqueCreationItem):
             [YOUTUBE_SEARCH, YOUTUBE_VIDEO, VIDEO_PARTNER_DISPLAY_NETWORK]
         ),
     )
+
+    budget_type = models.CharField(
+        max_length=30,
+        choices=BUDGET_TYPE_CHOICES,
+        default=BudgetType.DAILY.value,
+    )
+    is_draft = models.BooleanField(default=False)
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
@@ -385,8 +406,9 @@ class CampaignCreation(UniqueCreationItem):
                     is_deleted=self.is_deleted or self.account_creation.is_deleted,
                     name=self.unique_name,
                     budget=str(self.budget),
+                    budget_type=self.budget_type,
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
-                    budget_type=self.bid_strategy_type.lower(),
+                    bid_strategy_type=self.bid_strategy_type.lower(),
                     is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
@@ -484,7 +506,7 @@ class AdGroupCreation(UniqueCreationItem):
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
         else:
-            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD]
+            types = [AdGroupCreation.IN_STREAM_TYPE, AdGroupCreation.BUMPER_AD, AdGroupCreation.DISCOVERY_TYPE]
 
         return types
 

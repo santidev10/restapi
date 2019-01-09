@@ -3,26 +3,41 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Count
+from django.db.models import F
 from django.db.models import Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+import pytz
 from rest_framework.generics import GenericAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
+from rest_framework.views import APIView
 
+from audit_tool.segmented_audit import SegmentedAudit
+from segment.api.names import PERSISTENT_SEGMENT_CSV_COLUMN_ORDER
+from segment.api.names import PERSISTENT_SEGMENT_REPORT_HEADERS
+from segment.api.names import PersistentSegmentExportColumn
 from channel.api.views import ChannelListApiView
+from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
+from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.csv_export import BaseCSVStreamResponseGenerator
+from utils.datetime import now_in_default_tz
+from utils.permissions import user_has_permission
 
 
 class SegmentPaginator(CustomPageNumberPaginator):
@@ -30,6 +45,7 @@ class SegmentPaginator(CustomPageNumberPaginator):
     Paginator for segments list
     """
     page_size = 10
+    page_size_query_param = "page_size"
 
 
 class DynamicModelViewMixin(object):
@@ -310,3 +326,97 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
         if response_data:
             ChannelListApiView.adapt_response_data(response_data, request.user)
         return Response(response_data)
+
+
+class DynamicPersistentModelViewMixin(object):
+    def dispatch(self, request, segment_type, **kwargs):
+        self.model = get_persistent_segment_model_by_type(segment_type)
+        if hasattr(self, "serializer_class"):
+            self.serializer_class.Meta.model = self.model
+        return super().dispatch(request, **kwargs)
+
+    def get_queryset(self):
+        """
+        Prepare queryset to display
+        """
+        queryset = self.model.objects.all()\
+                                     .annotate(related_count=Count(F("related__id")))
+        return queryset
+
+
+class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView):
+    serializer_class = PersistentSegmentSerializer
+    pagination_class = SegmentPaginator
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        items = []
+        for item in response.data.get("items", []):
+            if item.get("title") == SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+                items.append(item)
+        for item in response.data.get("items", []):
+            if item.get("title") != SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+                items.append(item)
+        response.data["items"] = items
+        return super().finalize_response(request, response, *args, **kwargs)
+
+
+class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, RetrieveAPIView):
+    serializer_class = PersistentSegmentSerializer
+    pagination_class = SegmentPaginator
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+
+
+class PersistentSegmentCSVExport(BaseCSVStreamResponseGenerator):
+    def __init__(self, segment, columns):
+        self.segment = segment
+        super().__init__(columns, self.related_list(), PERSISTENT_SEGMENT_REPORT_HEADERS)
+
+    def related_list(self):
+        queryset = self.segment.related.all()
+        for related in queryset:
+            details = related.details or {}
+            row = {
+                PersistentSegmentExportColumn.URL: related.get_url(),
+                PersistentSegmentExportColumn.TITLE: related.title,
+                PersistentSegmentExportColumn.CATEGORY: related.category,
+                PersistentSegmentExportColumn.THUMBNAIL: related.thumbnail_image_url,
+                PersistentSegmentExportColumn.LIKES: details.get("likes"),
+                PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
+                PersistentSegmentExportColumn.VIEWS: details.get("views"),
+                PersistentSegmentExportColumn.AUDITED_VIDEOS: details.get("audited_videos"),
+                PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
+            }
+            yield row
+
+    def get_filename(self):
+        now = now_in_default_tz()
+        now_utc = now.astimezone(pytz.utc)
+        timestamp = now_utc.strftime("%Y%m%d %H%M%S")
+        return "Segment-{}-{}.csv".format(self.segment.title, timestamp)
+
+
+class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+
+    def get(self, request, pk, *_):
+        from segment.models.persistent.channel import PersistentSegmentChannel
+
+        segment = self.get_queryset().get(pk=pk)
+
+        columns = list(PERSISTENT_SEGMENT_CSV_COLUMN_ORDER)
+
+        if isinstance(segment, PersistentSegmentChannel):
+            columns.append(PersistentSegmentExportColumn.AUDITED_VIDEOS)
+
+        if segment.title == SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+            columns.append(PersistentSegmentExportColumn.BAD_WORDS)
+
+        csv_generator = PersistentSegmentCSVExport(segment, columns)
+        return csv_generator.prepare_csv_file_response()

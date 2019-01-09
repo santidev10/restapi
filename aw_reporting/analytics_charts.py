@@ -116,7 +116,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
+                 territories=None, with_plan=False, show_aw_costs=False, show_conversions=True,
                  apex_deal=None, **_):
         if account and account in accounts:
             accounts = [account]
@@ -146,7 +146,7 @@ class DeliveryChart:
             goal_type_ids=goal_type_ids,
             brands=brands,
             category_ids=category_ids,
-            region_ids=region_ids,
+            territories=territories,
             show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
             apex_deal=apex_deal,
@@ -571,8 +571,8 @@ class DeliveryChart:
             filters["opportunity__category_id__in"] = self.params[
                 "category_ids"]
 
-        if self.params["region_ids"] is not None:
-            filters["opportunity__region_id__in"] = self.params["region_ids"]
+        if self.params["territories"] is not None:
+            filters["opportunity__territory__in"] = self.params["territories"]
 
         if self.params["apex_deal"] is not None:
             filters["opportunity__apex_deal"] = self.params["apex_deal"]
@@ -632,8 +632,8 @@ class DeliveryChart:
             filters["%s__category_id__in" % opp_link] = self.params[
                 "category_ids"]
 
-        if self.params["region_ids"] is not None:
-            filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
+        if self.params["territories"] is not None:
+            filters["%s__territory__in" % opp_link] = self.params["territories"]
 
         if self.params["apex_deal"] is not None:
             filters["%s__apex_deal" % opp_link] = self.params["apex_deal"]

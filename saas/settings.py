@@ -60,8 +60,8 @@ THIRD_PARTY_APPS = (
     "django_celery_results",
     "rest_framework",
     "rest_framework.authtoken",
+    "drf_yasg",
 )
-
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
 MIDDLEWARE_CLASSES = [
@@ -80,9 +80,10 @@ WSGI_APPLICATION = 'saas.wsgi.application'
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'static'),
-)
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# STATICFILES_DIRS = (
+#     os.path.join(BASE_DIR, 'static'),
+# )
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -411,6 +412,18 @@ AW_UPDATE_SLACK_WEBHOOK_NAME = "aw_update"
 
 SLACK_WEBHOOKS = {
     AW_UPDATE_SLACK_WEBHOOK_NAME: "https://hooks.slack.com/services/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",
+}
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'LOGIN_URL': "/docs/login/",
+    'LOGOUT_URL': "/docs/logout/",
 }
 
 try:
