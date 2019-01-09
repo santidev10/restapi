@@ -331,7 +331,7 @@ class Opportunity(models.Model):
             tags=data["Tags__c"] or "",
             types_of_targeting=data["Types_of__c"] or "",
             apex_deal=data.get("APEX_Deal__c"),
-            bill_of_third_party_numbers=data.get("Bill_off_3p_Numbers__c")
+            billing_server=data.get("Billing_Serer__c")
         )
         if sales_email:
             res['sales_email'] = sales_email
