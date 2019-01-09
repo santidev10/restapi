@@ -59,7 +59,8 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
 
     def test_fail_post(self):
-        url = reverse("aw_creation_urls:performance_targeting_list")
+        url = reverse("aw_creation_urls:performance_targeting_list"
+                      "")
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_405_METHOD_NOT_ALLOWED)
 

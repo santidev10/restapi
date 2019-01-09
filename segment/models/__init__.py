@@ -5,3 +5,6 @@ from .keyword import SegmentKeyword
 from .keyword import SegmentRelatedKeyword
 from .video import SegmentRelatedVideo
 from .video import SegmentVideo
+
+from .persistent import PersistentSegmentChannel
+from .persistent import PersistentSegmentVideo

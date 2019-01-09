@@ -23,7 +23,7 @@ COMPLETED_FIELDS = ("VideoQuartile25Rate", "VideoQuartile50Rate",
 CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
                                          "CampaignId", "CampaignName",
                                          "ServingStatus", "CampaignStatus",
-                                         "StartDate", "EndDate", "Amount",
+                                         "StartDate", "EndDate", "Amount", "TotalAmount",
                                          "AdvertisingChannelType",
                                      ) + COMPLETED_FIELDS \
                                      + MAIN_STATISTICS_FILEDS
@@ -100,6 +100,7 @@ def _get_report(client, name, selector, date_range_type=None,
         "downloadFormat": "CSV",
         "selector": selector,
     }
+    report["selector"]["fields"] = list(report["selector"]["fields"])
     try_num = 0
     while True:
         try:

@@ -1,11 +1,12 @@
-from rest_framework.serializers import ModelSerializer, IntegerField, \
-    PrimaryKeyRelatedField
+from rest_framework.serializers import CharField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import PrimaryKeyRelatedField
 
 from aw_reporting.models import Opportunity, User
 
 
 class PacingReportOpportunityUpdateSerializer(ModelSerializer):
-    region = IntegerField(source="region_id")
+    region = CharField(source="territory")
     am = PrimaryKeyRelatedField(source="account_manager",
                                 queryset=User.objects.all())
     sales = PrimaryKeyRelatedField(source="sales_manager",

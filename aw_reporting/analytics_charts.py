@@ -19,7 +19,9 @@ from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BaseClicksTypesStatisticsModel
 from aw_reporting.models import CALCULATED_STATS
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
@@ -114,7 +116,7 @@ class DeliveryChart:
                  additional_chart=None, segmented_by=None,
                  date=True, am_ids=None, ad_ops_ids=None, sales_ids=None,
                  goal_type_ids=None, brands=None, category_ids=None,
-                 region_ids=None, with_plan=False, show_aw_costs=False, show_conversions=True,
+                 territories=None, with_plan=False, show_aw_costs=False, show_conversions=True,
                  apex_deal=None, **_):
         if account and account in accounts:
             accounts = [account]
@@ -144,7 +146,7 @@ class DeliveryChart:
             goal_type_ids=goal_type_ids,
             brands=brands,
             category_ids=category_ids,
-            region_ids=region_ids,
+            territories=territories,
             show_aw_costs=show_aw_costs,
             show_conversions=show_conversions,
             apex_deal=apex_deal,
@@ -486,12 +488,34 @@ class DeliveryChart:
 
     def _serialize_item(self, item):
         allowed_keys = {
-            "all_conversions", "average_cpm", "average_cpv",
-            "average_position", "clicks", "conversions", "cost", "ctr",
-            "ctr_v", "duration", "id", "impressions", "name", "status",
-            "thumbnail", "video100rate", "video25rate", "video50rate",
-            "video75rate", "video_clicks", "video_view_rate", "video_views",
-            "view_through"
+            "all_conversions",
+            "average_cpm",
+            "average_cpv",
+            "average_position",
+            "clicks",
+            "conversions",
+            "cost",
+            "ctr",
+            "ctr_v",
+            "duration",
+            "id",
+            "impressions",
+            "name",
+            "status",
+            "thumbnail",
+            "video100rate",
+            "video25rate",
+            "video50rate",
+            "video75rate",
+            "video_clicks",
+            "video_view_rate",
+            "video_views",
+            "view_through",
+            "clicks_website",
+            "clicks_call_to_action_overlay",
+            "clicks_app_store",
+            "clicks_cards",
+            "clicks_end_cap",
         }
         return {key: value for key, value in item.items()
                 if key in allowed_keys}
@@ -547,8 +571,8 @@ class DeliveryChart:
             filters["opportunity__category_id__in"] = self.params[
                 "category_ids"]
 
-        if self.params["region_ids"] is not None:
-            filters["opportunity__region_id__in"] = self.params["region_ids"]
+        if self.params["territories"] is not None:
+            filters["opportunity__territory__in"] = self.params["territories"]
 
         if self.params["apex_deal"] is not None:
             filters["opportunity__apex_deal"] = self.params["apex_deal"]
@@ -608,8 +632,8 @@ class DeliveryChart:
             filters["%s__category_id__in" % opp_link] = self.params[
                 "category_ids"]
 
-        if self.params["region_ids"] is not None:
-            filters["%s__region_id__in" % opp_link] = self.params["region_ids"]
+        if self.params["territories"] is not None:
+            filters["%s__territory__in" % opp_link] = self.params["territories"]
 
         if self.params["apex_deal"] is not None:
             filters["%s__apex_deal" % opp_link] = self.params["apex_deal"]
@@ -650,6 +674,9 @@ class DeliveryChart:
         if not self.params["show_conversions"]:
             for key in CONVERSIONS:
                 del kwargs["sum_{}".format(key)]
+        if issubclass(queryset.model, BaseClicksTypesStatisticsModel):
+            for field in CLICKS_STATS:
+                kwargs["sum_{}".format(field)] = Sum(field)
         return queryset.annotate(**kwargs)
 
     def _get_campaign_ref(self, queryset):

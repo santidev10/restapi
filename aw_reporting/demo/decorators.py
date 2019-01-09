@@ -1,3 +1,5 @@
+from functools import wraps
+
 from aw_creation.demo import views as aw_creation_views
 from aw_reporting.demo import views as aw_reporting_views
 from utils.lang import merge_dicts
@@ -17,6 +19,7 @@ def demo_view_decorator(wrapped_class):
             if not method_name.startswith('__'):
                 mock_method = getattr(mock_class, method_name)
                 original_method = getattr(wrapped_class, method_name)
-                setattr(wrapped_class, method_name,
-                        mock_method(original_method))
+
+                wrapped_method = wraps(original_method)(mock_method(original_method))
+                setattr(wrapped_class, method_name, wrapped_method)
     return wrapped_class

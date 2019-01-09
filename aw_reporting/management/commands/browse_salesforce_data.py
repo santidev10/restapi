@@ -1,6 +1,5 @@
 import calendar
 import logging
-import traceback
 from datetime import datetime
 from datetime import timedelta
 
@@ -103,8 +102,8 @@ class Command(BaseCommand):
             self.match_using_placement_numbers()
             cache_reset()
 
-        except Exception:
-            logger.critical(traceback.format_exc())
+        except Exception as ex:
+            logger.exception(ex)
 
     @staticmethod
     def match_using_placement_numbers():
@@ -312,9 +311,12 @@ class Command(BaseCommand):
                 if item_id in existed_ids:
                     del data['id']
                     try:
-                        model.objects.filter(pk=item_id).update(**data)
+                        item = model.objects.get(pk=item_id)
+                        for key, value in data.items():
+                            setattr(item, key, value)
+                        item.save()
                     except IntegrityError as e:
-                        logging.critical(e)
+                        logger.exception(e)
                     update += 1
                 else:
                     insert_list.append(

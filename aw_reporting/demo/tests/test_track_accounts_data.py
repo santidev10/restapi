@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
+from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -42,7 +43,7 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(account['trend']), 2)
 
     def test_success_hourly(self):
-        today = datetime.now().date()
+        today = now_in_default_tz().date()
         filters = dict(
             start_date=today - timedelta(days=2),
             end_date=today - timedelta(days=1),

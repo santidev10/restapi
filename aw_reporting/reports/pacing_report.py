@@ -31,7 +31,6 @@ from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
-from aw_reporting.models.salesforce_constants import SalesForceRegions
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -40,6 +39,8 @@ from utils.datetime import now_in_default_tz
 class PacingReportChartId:
     IDEAL_PACING = "ideal_pacing"
     DAILY_DEVIATION = "daily_deviation"
+    PLANNED_DELIVERY = "planned_delivery"
+    HISTORICAL_GOAL = "historical_goal"
 
 
 class DefaultRate:
@@ -274,16 +275,22 @@ class PacingReport:
                 goal_factor = self.goal_factor
 
             fl["plan_units"] = 0
+            fl["sf_ordered_units"] = 0
             if fl["placement__dynamic_placement"] \
                     in (DynamicPlacementType.BUDGET,
                         DynamicPlacementType.RATE_AND_TECH_FEE,
                         DynamicPlacementType.SERVICE_FEE):
                 fl["plan_units"] = fl["total_cost"] or 0
+                fl["sf_ordered_units"] = fl["plan_units"]
             elif fl["placement__goal_type_id"] == SalesForceGoalType.HARD_COST:
                 fl["plan_units"] = 0
+                fl["sf_ordered_units"] = 0
             else:
                 fl["plan_units"] = fl["ordered_units"] * goal_factor \
                     if fl["ordered_units"] else 0
+                fl["sf_ordered_units"] = fl["ordered_units"] or 0
+
+            fl["recalculated_plan_units"] = fl["plan_units"]
 
         # we need to check  "cannot_roll_over" option
         # if it's False, the over-delivery from completed flights should be spread between future ones
@@ -306,7 +313,8 @@ class PacingReport:
             # first get the over delivery
             over_delivery = 0
             for f in placement_flights:
-                diff = f["delivery"] - f["plan_units"]
+                f["recalculated_plan_units"] = f["plan_units"]
+                diff = f["delivery"] - f["recalculated_plan_units"]
                 if diff > 0:  # over-delivery
                     over_delivery += diff
                 elif diff < 0 and f["end"] <= self.yesterday:  # under delivery for an ended flight
@@ -315,7 +323,7 @@ class PacingReport:
                     abs_diff = abs(diff)
                     reallocate_to_flight = min(abs_diff, over_delivery)
                     over_delivery -= reallocate_to_flight
-                    f["plan_units"] -= reallocate_to_flight
+                    f["recalculated_plan_units"] -= reallocate_to_flight
 
             # then reassign between flights that haven't finished
             if over_delivery:
@@ -325,7 +333,7 @@ class PacingReport:
 
                     # recalculate reassignment
                     for fl in not_finished_flights:
-                        flight_can_consume = fl["plan_units"] - fl["delivery"]
+                        flight_can_consume = fl["recalculated_plan_units"] - fl["delivery"]
                         if flight_can_consume > 0:  # if it hasn't reached the plan yet
                             total_days = sum(
                                 f["days"] for f in not_finished_flights if
@@ -337,7 +345,7 @@ class PacingReport:
                             assigned_over_delivery = min(
                                 assigned_over_delivery, flight_can_consume)
                             # reassign items
-                            fl["plan_units"] -= assigned_over_delivery
+                            fl["recalculated_plan_units"] -= assigned_over_delivery
                             over_delivery -= assigned_over_delivery
 
         return data
@@ -526,8 +534,9 @@ class PacingReport:
             "account_manager__id", "account_manager__name",
             "sales_manager__id", "sales_manager__name",
             "apex_deal",
-            "bill_of_third_party_numbers"
-        ).annotate(region=F("region_id"))
+            "bill_of_third_party_numbers",
+            "territory", "margin_cap_required",
+        )
 
         # collect ids
         ad_ops_emails = set()
@@ -610,9 +619,9 @@ class PacingReport:
                               name=o['sales_manager__name'])
             del o['sales_manager__id'], o['sales_manager__name']
 
-            region_id = o['region']
-            o['region'] = dict(id=region_id, name=SalesForceRegions[region_id]) \
-                if region_id is not None else None
+            territory = o["territory"]
+            o['region'] = dict(id=territory, name=territory) \
+                if territory is not None else None
             category_id = o['category']
             o['category'] = dict(id=category_id, name=category_id) \
                 if category_id is not None else None
@@ -663,7 +672,7 @@ class PacingReport:
                 goal_type_id__in=goal_type)
         region = get.getlist("region")
         if region:
-            queryset = queryset.filter(region_id__in=region)
+            queryset = queryset.filter(territory__in=region)
 
         status = get.get("status")
         if status:
@@ -996,8 +1005,10 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
 
     yesterday_views = yesterday_impressions = 0
     today_goal_views = today_goal_impressions = 0
+    goal = 0
     for f in flights:
         goal_type_id = f["placement__goal_type_id"]
+        goal += (f["sf_ordered_units"] or 0) * allocation_ko
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
 
@@ -1049,6 +1060,7 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         yesterday_delivered=yesterday_units,
         yesterday_delivered_views=yesterday_views,
         yesterday_delivered_impressions=yesterday_impressions,
+        goal=goal,
         charts=charts,
         targeting=targeting,
 
@@ -1204,13 +1216,17 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
 
     delivered_chart = []
     pacing_chart = []
+    delivery_plan_chart = []
+    historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
     total_goal = sum(f["plan_units"] for f in flights)
+    recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
         current_flights = [f for f in flights if
                            f["start"] <= date <= f["end"]]
+
         if current_flights:
             goal_for_today = sum(
                 f["daily_goal"].get(date, 0) for f in current_flights)
@@ -1223,9 +1239,24 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
         pacing_chart.append(
             dict(
                 label=date,
-                value=min(total_pacing, total_goal),
+                value=min(total_pacing, recalculated_total_goal),
             )
         )
+
+        delivery_plan_chart.append(
+            dict(
+                label=date,
+                value=get_ideal_delivery_for_date(flights, date) * allocation_ko,
+            )
+        )
+
+        if date <= today:
+            historical_goal_chart.append(
+                dict(
+                    label=date,
+                    value=get_historical_goal(flights, date, total_goal, total_delivered) * allocation_ko,
+                )
+            )
 
         # delivered cumulative chart
         delivered = 0
@@ -1261,6 +1292,22 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
                 title="Daily Deviation",
                 id=PacingReportChartId.DAILY_DEVIATION,
                 data=delivered_chart,
+            )
+        )
+    if delivery_plan_chart:
+        charts.append(
+            dict(
+                title="Planned delivery",
+                id=PacingReportChartId.PLANNED_DELIVERY,
+                data=delivery_plan_chart,
+            )
+        )
+    if historical_goal_chart:
+        charts.append(
+            dict(
+                title="Historical Goal",
+                id=PacingReportChartId.HISTORICAL_GOAL,
+                data=historical_goal_chart,
             )
         )
     return charts
@@ -1357,3 +1404,25 @@ def _get_dynamic_placements_summary(placements):
         has_dynamic_placements=has_dynamic_placements,
         dynamic_placements_types=list(dynamic_placements_types)
     )
+
+
+def get_ideal_delivery_for_date(flights, selected_date):
+    ideal_delivery = 0
+    started_flights = [flight for flight in flights if flight["start"] <= selected_date]
+    for flight in started_flights:
+        end_date = min(selected_date, flight["end"])
+        total_duration_days = (flight["end"] - flight["start"]).days + 1
+        if total_duration_days != 0:
+            passed_duration_days = (end_date - flight["start"]).days + 1
+            ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
+
+    return ideal_delivery
+
+
+def get_historical_goal(flights, selected_date, total_goal, delivered):
+    started_flights = [f for f in flights if f["start"] <= selected_date]
+    not_started_flights = [f for f in flights if f["start"] > selected_date]
+    current_max_goal = sum(f["plan_units"] for f in started_flights)
+    can_consume = sum(f["plan_units"] for f in not_started_flights)
+    over_delivered = max(delivered - current_max_goal, 0)
+    return total_goal - min(over_delivered, can_consume)

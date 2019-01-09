@@ -16,7 +16,7 @@ docutils==0.14
 drf-yasg==1.11.1
 et-xmlfile==1.0.1
 google-api-python-client==1.6.2
-googleads==10.1.0
+googleads==15.0.1
 httplib2==0.10.3
 idna==2.7
 inflection==0.3.1
@@ -28,6 +28,7 @@ oauth2client==4.1.2
 olefile==0.44
 openpyxl==2.4.7
 phonenumbers==8.5.2
+pid==2.1.1
 Pillow==4.2.1
 psutil==5.4.3
 psycopg2==2.7.1

@@ -1,5 +1,6 @@
 import logging
 
+from utils.lang import ExtendedEnum
 from utils.utils import get_all_class_constants
 
 logger = logging.getLogger(__name__)
@@ -139,3 +140,8 @@ def get_device_id_by_name(device_repr):
             return device_id
     logger.debug("Undefined device name <{}>".format(device_repr))
     return Device._UNDETERMINED
+
+
+class BudgetType(ExtendedEnum):
+    DAILY = "daily"
+    TOTAL = "total"

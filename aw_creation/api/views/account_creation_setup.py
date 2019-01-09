@@ -1,3 +1,5 @@
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_204_NO_CONTENT
@@ -21,6 +23,37 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
             user_has_permission("userprofile.settings_my_aw_accounts"),
             MediaBuyingAddOnPermission),
     )
+
+    @swagger_auto_schema(
+        operation_description="Get account creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Account creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="""Update account creation.
+        To push account to AW set `is_approved=True`""",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Account creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)

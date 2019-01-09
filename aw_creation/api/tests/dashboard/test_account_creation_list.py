@@ -23,7 +23,6 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
-from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
@@ -34,9 +33,9 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -155,13 +154,12 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
-        dashboard_specific_keys = CLICKS_STATS
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(set(response.data["items"][0].keys()),
-                         set(tuple(self.details_keys) + dashboard_specific_keys))
+                         self.details_keys)
 
     def test_get_chf_account_creation_list_queryset(self):
         chf_account = Account.objects.create(

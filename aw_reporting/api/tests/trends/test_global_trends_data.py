@@ -308,17 +308,18 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_geo(self):
+        test_region_1 = "Region 1"
+        test_region_2 = "Region 2"
+        test_region_3 = "Region 3"
         account_1, campaign_1 = self._create_ad_group_statistic("rel_1")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("rel_2",
-                                                                manager=manager)
-        account_3, campaign_3 = self._create_ad_group_statistic("irr",
-                                                                manager=manager)
-        self._create_opportunity(uid=1, campaign=campaign_1, region_id=0)
-        self._create_opportunity(uid=2, campaign=campaign_2, region_id=1)
-        self._create_opportunity(uid=3, campaign=campaign_3, region_id=2)
+        account_2, campaign_2 = self._create_ad_group_statistic("rel_2", manager=manager)
+        account_3, campaign_3 = self._create_ad_group_statistic("irr", manager=manager)
+        self._create_opportunity(uid=1, campaign=campaign_1, territory=test_region_1)
+        self._create_opportunity(uid=2, campaign=campaign_2, territory=test_region_2)
+        self._create_opportunity(uid=3, campaign=campaign_3, territory=test_region_3)
 
-        filters = dict(region="0,1")
+        filters = dict(region=",".join([test_region_1, test_region_2]))
         url = "{}?{}".format(self.url, urlencode(filters))
         with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)

@@ -31,9 +31,9 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -116,6 +116,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "frequency_capping", "ad_schedule_rules",
                 "location_rules", "ad_group_creations",
                 "video_networks", "type", "delivery_method",
+                "is_draft",
             }
         )
         self.assertEqual(len(campaign_creation["languages"]), 1)
@@ -365,47 +366,76 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertGreaterEqual(item[metric], min2)
                 self.assertLessEqual(item[metric], max2)
 
-    def test_success_status_filter(self):
+    def test_status_filter(self):
         mcc_account = self.mcc_account
 
         def create_account():
-            account = Account.objects.create(id=next(int_iterator), name="",
-                                             skip_creating_account_creation=True)
+            account = Account.objects.create(id=next(int_iterator), name="", skip_creating_account_creation=True)
             account.managers.add(mcc_account)
             return account
-
-        AccountCreation.objects.create(name="Pending", owner=self.user, account=create_account())
-        AccountCreation.objects.create(name="Ended", owner=self.user, account=create_account(),
-                                       is_ended=True, is_paused=True,
-                                       is_approved=True)
-        AccountCreation.objects.create(name="Paused", owner=self.user, account=create_account(),
-                                       is_ended=False, is_paused=True,
-                                       is_approved=True)
-        AccountCreation.objects.create(name="Approved", owner=self.user, account=create_account(),
-                                       is_ended=False, is_paused=False,
-                                       is_approved=True)
-        AccountCreation.objects.create(
-            name="Running", owner=self.user, sync_at=timezone.now(), account=create_account()
-        )
-        # --
-        expected = (
-            ("Pending", 1),
-            ("Ended", 1),
-            ("Paused", 1),
-            ("Approved", 1),
-            ("Running", 2),  # with Demo
-        )
-
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
-            for status, count in expected:
-                response = self.client.get(
-                    "{}?show_closed=1&status={}".format(self.url, status))
-                self.assertEqual(response.status_code, HTTP_200_OK)
-                self.assertEqual(response.data["items_count"], count)
-                self.assertEqual(response.data["items"][-1]["name"], status)
-                for i in response.data["items"]:
-                    self.assertEqual(i["status"], status)
+        # ended
+        ended_account = create_account()
+        Campaign.objects.create(name="ended 1", id="1", account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 2", id="2", account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 3", id="3", account=ended_account, status="ended")
+        ended_account_creation = AccountCreation.objects.create(
+            name="Ended", owner=self.user, account=ended_account, is_approved=True, sync_at=timezone.now())
+        # paused
+        paused_account = create_account()
+        Campaign.objects.create(name="paused 1", id="4", account=paused_account, status="paused")
+        Campaign.objects.create(name="eligible", id="5", account=paused_account, status="removed")
+        Campaign.objects.create(name="paused 2", id="6", account=paused_account, status="paused")
+        paused_account_creation = AccountCreation.objects.create(
+            name="Paused", owner=self.user, account=paused_account, is_approved=True, sync_at=timezone.now())
+        # running
+        running_account = create_account()
+        Campaign.objects.create(name="paused 1", id="7", account=running_account, status="removed")
+        Campaign.objects.create(name="eligible", id="8", account=running_account, status="eligible")
+        Campaign.objects.create(name="paused 2", id="9", account=running_account, status="paused")
+        Campaign.objects.create(name="paused 2", id="10", account=running_account, status="ended")
+        running_account_creation = AccountCreation.objects.create(
+            name="Running", owner=self.user, account=running_account, sync_at=timezone.now(), is_approved=True)
+        # pending
+        pending_account = create_account()
+        pending_account_creation = AccountCreation.objects.create(
+            name="Pending", owner=self.user, account=pending_account, is_approved=True)
+        # draft
+        draft_account_creation = AccountCreation.objects.create(name="Draft", owner=self.user)
+        # Ended
+        response = self.client.get("{}?status={}".format(self.url, "Ended"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 1)
+        self.assertEqual(response.data.get("items")[0].get("id"), ended_account_creation.id)
+        ended_account_creation.refresh_from_db()
+        self.assertEqual(ended_account_creation.status, AccountCreation.STATUS_ENDED)
+        # Paused
+        response = self.client.get("{}?status={}".format(self.url, "Paused"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 1)
+        self.assertEqual(response.data.get("items")[0].get("id"), paused_account_creation.id)
+        paused_account_creation.refresh_from_db()
+        self.assertEqual(paused_account_creation.status, AccountCreation.STATUS_PAUSED)
+        # Running
+        response = self.client.get("{}?status={}".format(self.url, "Running"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 2)  # + demo
+        self.assertEqual(response.data.get("items")[1].get("id"), running_account_creation.id)
+        running_account_creation.refresh_from_db()
+        self.assertEqual(running_account_creation.status, AccountCreation.STATUS_RUNNING)
+        # Pending
+        response = self.client.get("{}?status={}".format(self.url, "Pending"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 1)
+        self.assertEqual(response.data.get("items")[0].get("id"), pending_account_creation.id)
+        pending_account_creation.refresh_from_db()
+        self.assertEqual(pending_account_creation.status, AccountCreation.STATUS_PENDING)
+        # Draft
+        response = self.client.get("{}?status={}".format(self.url, "Draft"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get("items_count"), 1)
+        self.assertEqual(response.data.get("items")[0].get("id"), draft_account_creation.id)
+        draft_account_creation.refresh_from_db()
+        self.assertEqual(draft_account_creation.status, AccountCreation.STATUS_DRAFT)
 
     def test_success_dates_filter(self):
         mcc_account = self.mcc_account

@@ -210,6 +210,16 @@ client_cost_ad_group_statistic_required_annotation = aw_placement_annotation(
 )
 
 
+def click_stats_aggregations():
+    return dict(
+        clicks_website=Sum("clicks_website"),
+        clicks_call_to_action_overlay=Sum("clicks_call_to_action_overlay"),
+        clicks_app_store=Sum("clicks_app_store"),
+        clicks_cards=Sum("clicks_cards"),
+        clicks_end_cap=Sum("clicks_end_cap")
+    )
+
+
 def all_stats_aggregator(prefix=None):
     res = {"sum_{}".format(s): Sum(s)
            for s in QUARTILE_STATS + CONVERSIONS}

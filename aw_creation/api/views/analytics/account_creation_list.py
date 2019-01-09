@@ -4,6 +4,7 @@ from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import F
 from django.db.models import FloatField as AggrFloatField
+from django.db.models import IntegerField
 from django.db.models import IntegerField as AggrIntegerField
 from django.db.models import Max
 from django.db.models import Min
@@ -11,6 +12,8 @@ from django.db.models import Q
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions import Coalesce
+from drf_yasg.utils import no_body
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -34,7 +37,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
 
 @demo_view_decorator
 class AnalyticsAccountCreationListApiView(ListAPIView):
-    serializer_class = AnalyticsAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
     permission_classes = (IsAuthenticated,)
     annotate_sorts = dict(
@@ -90,6 +92,11 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             )
         ),
     )
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AccountCreationSetupSerializer
+        return AnalyticsAccountCreationListSerializer
 
     def get_queryset(self, **filters):
         user = self.request.user
@@ -168,25 +175,56 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                 queryset = queryset.filter(end__lte=max_end)
         status = filters.get("status")
         if status:
-            if status == "Ended":
-                queryset = queryset.filter(is_ended=True, is_managed=True)
-            elif status == "Paused":
-                queryset = queryset.filter(is_paused=True, is_managed=True,
-                                           is_ended=False)
-            elif status == "Running":
-                running_filter = Q(sync_at__isnull=False, is_managed=True,
-                                   is_paused=False, is_ended=False) | \
-                                 Q(is_managed=False)
-                queryset = queryset.filter(running_filter)
-            elif status == "Approved":
-                queryset = queryset.filter(is_approved=True, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
-            elif status == "Pending":
-                queryset = queryset.filter(is_approved=False, is_managed=True,
-                                           sync_at__isnull=True,
-                                           is_paused=False, is_ended=False)
-
+            if status == AccountCreation.STATUS_ENDED:
+                queryset = queryset \
+                    .annotate(
+                        campaigns_count=Count("account__campaigns"),
+                        ended_campaigns_count=Sum(
+                            Case(
+                                When(
+                                    account__campaigns__status="ended",
+                                    then=1),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ) \
+                    .filter(campaigns_count=F("ended_campaigns_count"))
+            elif status == AccountCreation.STATUS_PAUSED:
+                queryset = queryset \
+                    .annotate(
+                        campaigns_count=Count("account__campaigns"),
+                        ended_campaigns_count=Sum(
+                            Case(
+                                When(
+                                    account__campaigns__status="ended",
+                                    then=1),
+                                default=0,
+                                output_field=IntegerField())
+                        )
+                    ) \
+                    .exclude(campaigns_count=F("ended_campaigns_count")) \
+                    .exclude(account__campaigns__status="eligible") \
+                    .distinct()
+            elif status == AccountCreation.STATUS_RUNNING:
+                queryset = queryset \
+                    .annotate(
+                        campaigns_count=Count("account__campaigns"),
+                        ended_campaigns_count=Sum(
+                            Case(
+                                When(
+                                    account__campaigns__status="ended",
+                                    then=1),
+                                default=0,
+                                output_field=IntegerField())
+                        )
+                    ) \
+                    .exclude(campaigns_count=F("ended_campaigns_count")) \
+                    .filter(account__campaigns__status="eligible") \
+                    .distinct()
+            elif status == AccountCreation.STATUS_PENDING:
+                queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_managed=True)
+            elif status == AccountCreation.STATUS_DRAFT:
+                queryset = queryset.filter(account__isnull=True)
         if "from_aw" in filters:
             from_aw = filters.get('from_aw') == '1'
             queryset = queryset.filter(is_managed=not from_aw)
@@ -263,6 +301,13 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
         return queryset
 
+    @swagger_auto_schema(
+        operation_description="Create new account creation",
+        request_body=no_body,
+        responses={
+            HTTP_202_ACCEPTED: AccountCreationSetupSerializer
+        }
+    )
     def post(self, *a, **_):
         account_count = AccountCreation.objects.filter(
             owner=self.request.user).count()
@@ -290,5 +335,5 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
         for language in default_languages():
             campaign_creation.languages.add(language)
 
-        data = AccountCreationSetupSerializer(account_creation).data
+        data = self.get_serializer(account_creation).data
         return Response(status=HTTP_202_ACCEPTED, data=data)

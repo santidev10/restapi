@@ -16,6 +16,7 @@ from aw_reporting.models import CONVERSIONS
 from aw_reporting.models import VIEW_RATE_STATS
 from userprofile.constants import UserSettingsKey
 from utils.lang import flatten
+from utils.lang import pick_dict
 from utils.views import xlsx_response
 
 DEMO_READ_ONLY = dict(error="You are not allowed to change this entity")
@@ -32,7 +33,10 @@ class AnalyticsAccountCreationListApiView:
                 demo = DemoAccount()
                 filters = request.query_params
                 if demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.header_data_analytics)
+                    header_data = demo.header_data
+                    keys = view.get_serializer_class().Meta.fields
+                    data = pick_dict(header_data, keys)
+                    response.data['items'].insert(0, data)
                     response.data['items_count'] += 1
             return response
 
@@ -57,7 +61,10 @@ class DashboardAccountCreationListApiView:
                 filters = request.query_params
                 if demo_account_visible and \
                         demo.account_passes_filters(filters):
-                    response.data['items'].insert(0, demo.header_data_dashboard)
+                    header_data = demo.header_data
+                    keys = view.serializer_class.Meta.fields
+                    data = pick_dict(header_data, keys)
+                    response.data['items'].insert(0, data)
                     response.data['items_count'] += 1
             return response
 
@@ -377,8 +384,10 @@ class AnalyticsAccountCreationDetailsAPIView:
             if pk == DEMO_ACCOUNT_ID:
 
                 account = DemoAccount()
-                data = account.header_data_analytics
-                data['details'] = account.details
+                keys = view.serializer_class.Meta.fields
+                header_data = account.header_data
+                header_data['details'] = account.details
+                data = pick_dict(header_data, keys)
 
                 return Response(status=HTTP_200_OK, data=data)
             return original_method(view, request, pk=pk, **kwargs)
@@ -393,7 +402,9 @@ class DashboardAccountCreationDetailsAPIView:
             if pk == DEMO_ACCOUNT_ID:
 
                 account = DemoAccount()
-                data = account.header_data_dashboard
+                header_data = account.header_data
+                keys = view.serializer_class.Meta.fields
+                data = pick_dict(header_data, keys)
                 data['details'] = account.details
 
                 return Response(status=HTTP_200_OK, data=data)
@@ -536,7 +547,7 @@ class AnalyticsPerformanceExportApiView:
 
                 def data_generator():
                     data = account.details
-                    yield {**{"tab": "Summary"}, **data}
+                    yield {**{"tab": "Summary"}, **data, **account.header_data, **{"name": ""}}
 
                     for dimension in view.tabs:
                         filters['dimension'] = dimension
@@ -591,6 +602,7 @@ class DashboardPerformanceExportApiView:
                 )
             else:
                 return original_method(view, account)
+
         return method
 
     @staticmethod

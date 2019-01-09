@@ -37,6 +37,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import BudgetType
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Device
@@ -115,14 +116,13 @@ class PullAWDataTestCase(TransactionTestCase):
         impressions = (4, 5)
         views = (6, 7)
         clicks = (8, 9)
-        cta_website = (10, 11)
         self.assertNotEqual(campaign.cost, sum(costs))
         self.assertNotEqual(campaign.impressions, sum(impressions))
         self.assertNotEqual(campaign.video_views, sum(views))
         self.assertNotEqual(campaign.clicks, sum(clicks))
         dates = (today - timedelta(days=2), today - timedelta(days=1))
+        dates_len = len(dates)
         statistic = zip(dates, costs, impressions, views, clicks)
-        cta = zip(dates, cta_website)
         test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
@@ -131,6 +131,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 StartDate=str(campaign.start_date),
                 EndDate=str(campaign.end_date),
                 Amount=campaign.budget * 10 ** 6,
+                TotalAmount="--",
                 Impressions=impressions,
                 VideoViews=views,
                 Clicks=clicks,
@@ -145,17 +146,29 @@ class PullAWDataTestCase(TransactionTestCase):
             )
             for dt, cost, impressions, views, clicks in statistic
         ]
-
-        test_cta_data = [
-            dict(
-                CampaignId=campaign.id,
-                Date=str(dt),
-                Clicks=clicks,
-                ClickType="Website",
-            )
-            for dt, clicks in cta
+        website_clicks = 1
+        call_to_action_overlay_clicks = 2
+        app_store_clicks = 3
+        cards_clicks = 4
+        end_cap_clicks = 5
+        cta_click_values = [
+            {"clicks": website_clicks, "clicks_type": "Website"},
+            {"clicks": call_to_action_overlay_clicks, "clicks_type": "Call-to-Action overlay"},
+            {"clicks": app_store_clicks, "clicks_type": "App store"},
+            {"clicks": cards_clicks, "clicks_type": "Cards"},
+            {"clicks": end_cap_clicks, "clicks_type": "End cap"}
         ]
-
+        test_cta_data = []
+        for dt in dates:
+            for cta_click_data in cta_click_values:
+                test_cta_data.append(
+                    dict(
+                        CampaignId=campaign.id,
+                        Date=str(dt),
+                        Clicks=cta_click_data.get("clicks"),
+                        ClickType=cta_click_data.get("clicks_type"),
+                    )
+                )
         statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
         cta_fields = ("CampaignId", "Date", "Clicks", "ClickType")
         test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
@@ -179,7 +192,11 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(campaign.impressions, sum(impressions))
         self.assertEqual(campaign.video_views, sum(views))
         self.assertEqual(campaign.clicks, sum(clicks))
-        self.assertEqual(campaign.clicks_website, sum(cta_website))
+        self.assertEqual(campaign.clicks_website, website_clicks * dates_len)
+        self.assertEqual(campaign.clicks_call_to_action_overlay, call_to_action_overlay_clicks * dates_len)
+        self.assertEqual(campaign.clicks_app_store, app_store_clicks * dates_len)
+        self.assertEqual(campaign.clicks_cards, cards_clicks * dates_len)
+        self.assertEqual(campaign.clicks_end_cap, end_cap_clicks * dates_len)
 
     def test_update_ad_group_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -201,7 +218,18 @@ class PullAWDataTestCase(TransactionTestCase):
         clicks = (8, 9)
         engagements = (10, 11)
         active_view_impressions = (12, 13)
-        cta_website = (14, 15)
+        website_clicks = 1
+        call_to_action_overlay_clicks = 2
+        app_store_clicks = 3
+        cards_clicks = 4
+        end_cap_clicks = 5
+        cta_click_values = [
+            {"clicks": website_clicks, "clicks_type": "Website"},
+            {"clicks": call_to_action_overlay_clicks, "clicks_type": "Call-to-Action overlay"},
+            {"clicks": app_store_clicks, "clicks_type": "App store"},
+            {"clicks": cards_clicks, "clicks_type": "Cards"},
+            {"clicks": end_cap_clicks, "clicks_type": "End cap"}
+        ]
         self.assertNotEqual(ad_group.cost, sum(costs))
         self.assertNotEqual(ad_group.impressions, sum(impressions))
         self.assertNotEqual(ad_group.video_views, sum(views))
@@ -210,9 +238,9 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertNotEqual(ad_group.active_view_impressions,
                             sum(active_view_impressions))
         dates = (today - timedelta(days=2), today - timedelta(days=1))
+        dates_len = len(dates)
         statistic = zip(dates, costs, impressions, views, clicks, engagements,
                         active_view_impressions)
-        cta = zip(dates, cta_website)
         test_statistic_data = [
             dict(
                 CampaignId=campaign.id,
@@ -236,16 +264,18 @@ class PullAWDataTestCase(TransactionTestCase):
             )
             for dt, cost, impressions, views, clicks, engs, avi in statistic
         ]
-        test_cta_data = [
-            dict(
-                AdGroupId=ad_group.id,
-                Date=str(dt),
-                Device=device_str(Device.COMPUTER),
-                Clicks=clicks,
-                ClickType="Website"
-            )
-            for dt, clicks in cta
-        ]
+        test_cta_data = []
+        for dt in dates:
+            for cta_click_data in cta_click_values:
+                test_cta_data.append(
+                    dict(
+                        AdGroupId=ad_group.id,
+                        Date=str(dt),
+                        Device=device_str(Device.COMPUTER),
+                        Clicks=cta_click_data.get("clicks"),
+                        ClickType=cta_click_data.get("clicks_type"),
+                    )
+                )
 
         statistics_fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
         cta_fields = ("AdGroupId", "Date", "Device", "Clicks", "ClickType")
@@ -275,7 +305,11 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertEqual(ad_group.engagements, sum(engagements))
         self.assertEqual(ad_group.active_view_impressions,
                          sum(active_view_impressions))
-        self.assertEqual(ad_group.clicks_website, sum(cta_website))
+        self.assertEqual(ad_group.clicks_website, website_clicks * dates_len)
+        self.assertEqual(ad_group.clicks_call_to_action_overlay, call_to_action_overlay_clicks * dates_len)
+        self.assertEqual(ad_group.clicks_app_store, app_store_clicks * dates_len)
+        self.assertEqual(ad_group.clicks_cards, cards_clicks * dates_len)
+        self.assertEqual(ad_group.clicks_end_cap, end_cap_clicks * dates_len)
 
     def test_pull_geo_targeting(self):
         now = datetime(2018, 1, 15, 15, tzinfo=utc)
@@ -335,6 +369,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 StartDate=str(today),
                 EndDate=str(today),
                 Amount=0,
+                TotalAmount="--",
                 Impressions=0,
                 VideoViews=0,
                 Clicks=0,
@@ -997,6 +1032,102 @@ class PullAWDataTestCase(TransactionTestCase):
             self._call_command(account_ids=test_account_id)
 
         exception_mock.assert_called_with(FakeExceptionWithArgs(test_account_id))
+
+    def test_budget_daily(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+        test_statistic_data = [
+            dict(
+                CampaignId=campaign.id,
+                Cost=1 * 10 ** 6,
+                Date=str(statistic_date),
+                StartDate=str(campaign.start_date),
+                EndDate=str(campaign.end_date),
+                Amount=test_budget * 10 ** 6,
+                TotalAmount="--",
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(end="get_campaigns")
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.DAILY.value)
+
+    def test_budget_total(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+        test_statistic_data = [
+            dict(
+                CampaignId=campaign.id,
+                Cost=1 * 10 ** 6,
+                Date=str(statistic_date),
+                StartDate=str(campaign.start_date),
+                EndDate=str(campaign.end_date),
+                TotalAmount=test_budget * 10 ** 6,
+                Amount=-1,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+            )
+        ]
+        statistic_fields = CAMPAIGN_PERFORMANCE_REPORT_FIELDS + ("Device", "Date")
+        test_stream_statistic = build_csv_byte_stream(statistic_fields, test_statistic_data)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
+        with patch_now(now), \
+             patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(end="get_campaigns")
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
 
 
 class FakeExceptionWithArgs:
