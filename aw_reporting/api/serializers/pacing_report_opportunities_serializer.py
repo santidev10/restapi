@@ -61,6 +61,7 @@ class PacingReportOpportunitiesSerializer(Serializer):
     video_view_rate_quality = IntegerField()
     video_views = IntegerField()
     aw_update_time = DateTimeField()
+    margin_cap_required = BooleanField()
 
     def __init__(self, *args, **kwargs):
         super(PacingReportOpportunitiesSerializer, self).__init__(*args,

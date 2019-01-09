@@ -9,6 +9,7 @@ def generic_test(args_list, debug_indexes=None):
     """
     Generates subtest per each item in the args_list
     :param args_list: (msg: str, args: List, kwargs: Dict)
+    :param debug_indexes:
     :return:
     """
     if debug_indexes:
@@ -18,7 +19,9 @@ def generic_test(args_list, debug_indexes=None):
     def wrapper(fn):
         def wrapped_test_function(self):
             for msg, args, kwargs in args_list:
-                with self.subTest(msg=msg, **kwargs), transaction.atomic():
+                if msg is None:
+                    msg = ", ".join([str(item) for item in args + (kwargs,)])
+                with self.subTest(msg=msg or str(args), **kwargs), transaction.atomic():
                     sid = transaction.savepoint()
                     fn(self, *args, **kwargs)
                     transaction.savepoint_rollback(sid)

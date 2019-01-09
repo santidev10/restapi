@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.core import mail
-from django.core.management import call_command
+from django.core.management import call_command as django_call_command
 from django.test import TransactionTestCase
 from django.test import override_settings
 
@@ -19,6 +19,13 @@ from aw_reporting.salesforce import Connection
 from email_reports.reports.base import BaseEmailReport
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
+
+
+def call_command(*args, **kwargs):
+    with patch("aw_reporting.management.commands.browse_salesforce_data.logger.exception") as exception_mock:
+        django_call_command(*args, **kwargs)
+        if exception_mock.called:
+            raise exception_mock.call_args[0][0]
 
 
 class BrowseSalesforceDataTestCase(TransactionTestCase):
@@ -767,7 +774,8 @@ def opportunity_data(**kwargs):
         Tags__c=None,
         Types_of__c=None,
         APEX_Deal__c=False,
-        Bill_off_3p_Numbers__c=False
+        Bill_off_3p_Numbers__c=False,
+        CID_Google_Transparency_Required__c=False,
     )
     return {
         **default_values,

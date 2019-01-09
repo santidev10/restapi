@@ -112,6 +112,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "is_completed",
                 "is_upcoming",
                 "margin",
+                "margin_cap_required",
                 "margin_direction",
                 "margin_quality",
                 "name",
@@ -1594,3 +1595,22 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(len(response.data["items"]), 1)
         chart_data = response.data["items"][0]["chart_data"]["budget"]
         self.assertEqual(chart_data["goal"], flight.total_cost)
+
+    @generic_test([
+        ("True", (True,), dict()),
+        ("False", (False,), dict()),
+    ])
+    def test_margin_cap_required(self, margin_cap_required):
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            margin_cap_required=margin_cap_required,
+            probability=100,
+        )
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items"][0]["margin_cap_required"], margin_cap_required)

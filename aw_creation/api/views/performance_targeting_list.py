@@ -8,7 +8,8 @@ from .analytics import AnalyticsAccountCreationListApiView
 
 
 class PerformanceTargetingListAPIView(AnalyticsAccountCreationListApiView):
-    serializer_class = AccountCreationPerformanceTargetingListSerializer
+    def get_serializer_class(self):
+        return AccountCreationPerformanceTargetingListSerializer
 
     def get_queryset(self, **filters):
         queryset = super(PerformanceTargetingListAPIView, self).get_queryset(

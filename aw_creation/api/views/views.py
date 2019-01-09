@@ -23,6 +23,8 @@ from django.db.models import When
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from openpyxl import load_workbook
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import GenericAPIView
@@ -41,6 +43,8 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_creation.api.serializers import *
+from aw_creation.api.views import schemas
+from aw_creation.api.views.schemas import CREATION_OPTIONS_SCHEMA
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import AdScheduleRule
@@ -50,6 +54,7 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
+from aw_creation.models.creation import BUDGET_TYPE_CHOICES
 from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -154,8 +159,10 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
         else:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data={"errors": ["The content type isn't supported: "
-                                 "{}".format(content_type)]})
+                data={
+                    "errors": ["The content type isn't supported: "
+                               "{}".format(content_type)]
+                })
         return Response(status=HTTP_200_OK, data=response_data)
 
     def get_location_rules(self, items):
@@ -198,6 +205,22 @@ class DocumentToChangesApiView(DocumentImportBaseAPIView):
 
 
 class YoutubeVideoSearchApiView(GenericAPIView):
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="query",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="urlencoded search string to lookup Youtube videos",
+                type=openapi.TYPE_STRING,
+            ),
+            schemas.VIDEO_FORMAT_PARAMETER,
+        ],
+        responses={
+            HTTP_200_OK: schemas.VIDEO_RESPONSE_SCHEMA
+        }
+    )
     def get(self, request, query, **_):
         video_ad_format = request.GET.get("video_ad_format")
 
@@ -277,6 +300,23 @@ class YoutubeVideoSearchApiView(GenericAPIView):
 class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
     url_regex = r"^(?:https?:/{1,2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="url",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="urlencoded Youtube video URL",
+                type=openapi.TYPE_STRING,
+            ),
+            schemas.VIDEO_FORMAT_PARAMETER,
+        ],
+        responses={
+            HTTP_200_OK: schemas.VIDEO_ITEM_SCHEMA,
+            HTTP_400_BAD_REQUEST: openapi.Response("Wrong request parameters"),
+            HTTP_404_NOT_FOUND: openapi.Response("Video not found"),
+        }
+    )
     def get(self, request, url, **_):
         match = re.match(self.url_regex, url)
         if match:
@@ -441,8 +481,13 @@ class TargetingItemsSearchApiView(APIView):
 
 
 class CreationOptionsApiView(APIView):
-    @staticmethod
-    def get(request, **k):
+    @swagger_auto_schema(
+        operation_description="Allowed options for account creations",
+        responses={
+            HTTP_200_OK: CREATION_OPTIONS_SCHEMA,
+        },
+    )
+    def get(self, request, **k):
         def opts_to_response(opts):
             res = [dict(id=i, name=n) for i, n in opts]
             return res
@@ -489,6 +534,7 @@ class CreationOptionsApiView(APIView):
             end="date",
             goal_units="integer;max_value=4294967294",
             budget="decimal;max_digits=10,decimal_places=2",
+            budget_type=opts_to_response(BUDGET_TYPE_CHOICES),
             max_rate="decimal;max_digits=6,decimal_places=3",
             languages=[
                 dict(id=l.id, name=l.name)
@@ -614,6 +660,21 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
         user_has_permission("userprofile.settings_my_aw_accounts"),
         MediaBuyingAddOnPermission),
     )
+
+    @swagger_auto_schema(
+        operation_description="Update campaign creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Campaign creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
@@ -781,6 +842,20 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
         MediaBuyingAddOnPermission),
     )
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Ad Group creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
             campaign_creation__account_creation__owner=self.request.user,
@@ -852,6 +927,21 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         user_has_permission("userprofile.settings_my_aw_accounts"),
         MediaBuyingAddOnPermission),
     )
+
+    @swagger_auto_schema(
+        operation_description="Get Ad creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Ad creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
@@ -957,6 +1047,18 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
 class AdCreationAvailableAdFormatsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
+    @swagger_auto_schema(
+        operation_description="Get Ad group creation",
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                required=True,
+                in_=openapi.IN_PATH,
+                description="Ad Group creation id",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+    )
     def get(self, request, pk, **_):
         try:
             ad_creation = AdCreation.objects.get(pk=pk)
@@ -1806,12 +1908,15 @@ class TargetingItemsImportApiView(DocumentImportBaseAPIView):
                 else:
                     return Response(status=HTTP_400_BAD_REQUEST,
                                     data={
-                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]})
+                                        "errors": [DOCUMENT_LOAD_ERROR_TEXT]
+                                    })
             except Exception as e:
                 return Response(status=HTTP_400_BAD_REQUEST,
-                                data={"errors": [DOCUMENT_LOAD_ERROR_TEXT,
-                                                 'Stage: Load File Data. Cause: {}'.format(
-                                                     e)]})
+                                data={
+                                    "errors": [DOCUMENT_LOAD_ERROR_TEXT,
+                                               'Stage: Load File Data. Cause: {}'.format(
+                                                   e)]
+                                })
 
             try:
                 criteria_list.extend(getattr(self, method)(data))

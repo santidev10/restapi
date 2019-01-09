@@ -3,8 +3,9 @@ from datetime import timedelta
 
 from django.core.urlresolvers import reverse
 from django.utils import timezone
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from aw_creation.models import *
 from aw_reporting.api.tests.base import AwReportingAPITestCase
@@ -59,7 +60,8 @@ class AdCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data, [AdGroupCreation.IN_STREAM_TYPE,
-                                         AdGroupCreation.BUMPER_AD])
+                                         AdGroupCreation.BUMPER_AD,
+                                         AdGroupCreation.DISCOVERY_TYPE])
 
         response = self.client.patch(
             reverse("aw_creation_urls:ad_creation_setup",
