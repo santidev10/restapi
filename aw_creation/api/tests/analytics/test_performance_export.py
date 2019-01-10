@@ -1,4 +1,3 @@
-import io
 import json
 from datetime import date
 from datetime import datetime
@@ -7,7 +6,6 @@ from itertools import chain
 from itertools import product
 from unittest.mock import patch
 
-from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -46,6 +44,7 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.xlsx import get_sheet_from_response
 
 
 class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
@@ -159,8 +158,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             response = self._request(account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
             try:
-                f = io.BytesIO(response.content)
-                load_workbook(f)
+                get_sheet_from_response(response)
             except:
                 self.fail("Report is not an xls")
 
@@ -288,13 +286,6 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
-
-
-def get_sheet_from_response(response):
-    single_sheet_index = 0
-    f = io.BytesIO(response.content)
-    book = load_workbook(f)
-    return book.worksheets[single_sheet_index]
 
 
 SUMMARY_ROW_NUMBER = 2
