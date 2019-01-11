@@ -48,7 +48,7 @@ class CreationItemQueryset(models.QuerySet):
 class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
-    name = models.CharField(max_length=250, validators=[NameValidator])
+    name = models.CharField(max_length=250)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
