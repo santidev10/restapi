@@ -608,7 +608,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_fail_name_validation(self):
+    def test_success_name_validation(self):
         today = datetime.now().date()
         defaults = dict(
             owner=self.user,
@@ -618,16 +618,14 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         ac = self.create_account_creation(**defaults)
         url = self._get_url(ac.id)
         data = dict(
-            name="Campaign '",
+            name="#Campaign '",
         )
         response = self.client.patch(
             url, json.dumps(data), content_type='application/json',
         )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(
-            response.data['name'][0],
-            "# and ' are not allowed for titles",
-        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(data['name'], response.data.get('name'))
+
 
     def test_success_delete(self):
         today = datetime.now().date()
