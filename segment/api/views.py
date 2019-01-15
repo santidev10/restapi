@@ -340,7 +340,8 @@ class DynamicPersistentModelViewMixin(object):
         Prepare queryset to display
         """
         queryset = self.model.objects.all()\
-                                     .annotate(related_count=Count(F("related__id")))
+                                     .annotate(related_count=Count(F("related__id"))) \
+                                     .order_by('title')
         return queryset
 
 
