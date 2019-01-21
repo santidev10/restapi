@@ -63,7 +63,7 @@ class SegmentedAudit:
     def get_next_channels_batch(self, last_id=None, limit=100):
         size = limit + 1 if last_id else limit
         params = dict(
-            fields="channel_id,title,description,thumbnail_image_url,category,subscribers,likes,dislikes,views",
+            fields="channel_id,title,description,thumbnail_image_url,category,subscribers,likes,dislikes,views,language",
             sort="channel_id",
             size=size,
             channel_id__range="{},".format(last_id or ""),
@@ -76,12 +76,16 @@ class SegmentedAudit:
             if not channel.get("category"):
                 channel["category"] = "Unclassified"
 
+        if not channels:
+            channels = self.get_next_channels_batch(limit=limit)
+
         return channels
 
     def get_all_videos(self, channel_ids):
         last_id = None
         params = dict(
-            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views",
+            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views,"
+                   "language",
             sort="video_id",
             size=self.BATCH_SIZE,
             channel_id__terms=",".join(channel_ids),
@@ -117,7 +121,9 @@ class SegmentedAudit:
         return found
 
     def _segment_title(self, item):
-        title = self.BLACKLIST_SEGMENT_TITLE if item[self.BAD_WORDS_DATA_KEY] else item["category"]
+        title = item["category"]
+        if item[self.BAD_WORDS_DATA_KEY] or item["language"] != "English":
+            title = self.BLACKLIST_SEGMENT_TITLE
         return title
 
     def _video_details(self, video):
@@ -127,6 +133,7 @@ class SegmentedAudit:
             views=video["views"],
             tags=video["tags"],
             description=video["description"],
+            language=video["language"],
             bad_words=video[self.BAD_WORDS_DATA_KEY],
         )
         return details
@@ -137,6 +144,7 @@ class SegmentedAudit:
             likes=channel["likes"],
             dislikes=channel["dislikes"],
             views=channel["views"],
+            language=channel["language"],
             bad_words=channel[self.BAD_WORDS_DATA_KEY],
             audited_videos=channel[self.AUDITED_VIDEOS_DATA_KEY],
         )
