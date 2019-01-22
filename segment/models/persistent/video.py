@@ -49,6 +49,7 @@ class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.URL: self.get_url(),
             PersistentSegmentExportColumn.TITLE: self.title,
             PersistentSegmentExportColumn.CATEGORY: self.category,
+            PersistentSegmentExportColumn.LANGUAGE: details.get("language"),
             PersistentSegmentExportColumn.THUMBNAIL: self.thumbnail_image_url,
             PersistentSegmentExportColumn.LIKES: details.get("likes"),
             PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),

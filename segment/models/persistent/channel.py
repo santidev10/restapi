@@ -53,6 +53,7 @@ class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.URL: self.get_url(),
             PersistentSegmentExportColumn.TITLE: self.title,
             PersistentSegmentExportColumn.CATEGORY: self.category,
+            PersistentSegmentExportColumn.LANGUAGE: details.get("language"),
             PersistentSegmentExportColumn.THUMBNAIL: self.thumbnail_image_url,
             PersistentSegmentExportColumn.SUBSCRIBERS: details.get("subscribers"),
             PersistentSegmentExportColumn.LIKES: details.get("likes"),

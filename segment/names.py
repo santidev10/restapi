@@ -2,6 +2,7 @@ class PersistentSegmentExportColumn:
     URL = "URL"
     TITLE = "Title"
     CATEGORY = "Category"
+    LANGUAGE = "Language"
     THUMBNAIL = "Thumbnail"
     LIKES = "Likes"
     DISLIKES = "Dislikes"
@@ -15,6 +16,7 @@ PERSISTENT_SEGMENT_CHANNEL_CSV_COLUMNS = (
     PersistentSegmentExportColumn.URL,
     PersistentSegmentExportColumn.TITLE,
     PersistentSegmentExportColumn.CATEGORY,
+    PersistentSegmentExportColumn.LANGUAGE,
     PersistentSegmentExportColumn.THUMBNAIL,
     PersistentSegmentExportColumn.SUBSCRIBERS,
     PersistentSegmentExportColumn.LIKES,
@@ -28,6 +30,7 @@ PERSISTENT_SEGMENT_VIDEO_CSV_COLUMNS = (
     PersistentSegmentExportColumn.URL,
     PersistentSegmentExportColumn.TITLE,
     PersistentSegmentExportColumn.CATEGORY,
+    PersistentSegmentExportColumn.LANGUAGE,
     PersistentSegmentExportColumn.THUMBNAIL,
     PersistentSegmentExportColumn.LIKES,
     PersistentSegmentExportColumn.DISLIKES,
