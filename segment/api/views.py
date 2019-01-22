@@ -394,7 +394,7 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
         timestamp = ""
         if segment.export_last_modified:
             tz = pytz.timezone(settings.DEFAULT_TIMEZONE)
-            timestamp = tz.localize(segment.export_last_modified).strftime(" %Y-%m-%d %H:%M:%S")
+            timestamp = segment.export_last_modified.astimezone(tz).strftime(" %Y-%m-%d %H:%M:%S")
 
         return "Segment-{}{}.csv".format(segment.title, timestamp)
 
