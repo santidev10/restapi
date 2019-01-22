@@ -34,7 +34,6 @@ from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.datetime import now_in_default_tz
 from utils.permissions import user_has_permission
 
 
@@ -394,7 +393,8 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get_filename(segment):
         timestamp = ""
         if segment.export_last_modified:
-            timestamp = segment.export_last_modified.strftime(" %Y-%m-%d %H:%M:%S")
+            tz = pytz.timezone(settings.DEFAULT_TIMEZONE)
+            timestamp = tz.localize(segment.export_last_modified).strftime(" %Y-%m-%d %H:%M:%S")
 
         return "Segment-{}{}.csv".format(segment.title, timestamp)
 
