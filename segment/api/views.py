@@ -6,6 +6,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.db.models import Count
 from django.db.models import F
 from django.db.models import Q
+from django.http import StreamingHttpResponse
+from django.http import Http404
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 import pytz
@@ -22,9 +24,6 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
 from audit_tool.segmented_audit import SegmentedAudit
-from segment.api.names import PERSISTENT_SEGMENT_CSV_COLUMN_ORDER
-from segment.api.names import PERSISTENT_SEGMENT_REPORT_HEADERS
-from segment.api.names import PersistentSegmentExportColumn
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
@@ -35,7 +34,6 @@ from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.csv_export import BaseCSVStreamResponseGenerator
 from utils.datetime import now_in_default_tz
 from utils.permissions import user_has_permission
 
@@ -372,52 +370,31 @@ class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, Retrieve
     )
 
 
-class PersistentSegmentCSVExport(BaseCSVStreamResponseGenerator):
-    def __init__(self, segment, columns):
-        self.segment = segment
-        super().__init__(columns, self.related_list(), PERSISTENT_SEGMENT_REPORT_HEADERS)
-
-    def related_list(self):
-        queryset = self.segment.related.all()
-        for related in queryset:
-            details = related.details or {}
-            row = {
-                PersistentSegmentExportColumn.URL: related.get_url(),
-                PersistentSegmentExportColumn.TITLE: related.title,
-                PersistentSegmentExportColumn.CATEGORY: related.category,
-                PersistentSegmentExportColumn.THUMBNAIL: related.thumbnail_image_url,
-                PersistentSegmentExportColumn.LIKES: details.get("likes"),
-                PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
-                PersistentSegmentExportColumn.VIEWS: details.get("views"),
-                PersistentSegmentExportColumn.AUDITED_VIDEOS: details.get("audited_videos"),
-                PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
-            }
-            yield row
-
-    def get_filename(self):
-        now = now_in_default_tz()
-        now_utc = now.astimezone(pytz.utc)
-        timestamp = now_utc.strftime("%Y%m%d %H%M%S")
-        return "Segment-{}-{}.csv".format(self.segment.title, timestamp)
-
-
 class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
 
     def get(self, request, pk, *_):
-        from segment.models.persistent.channel import PersistentSegmentChannel
+        try:
+            segment = self.get_queryset().get(pk=pk)
+            content_generator = segment.get_s3_export_content().iter_chunks()
+        except segment.__class__.DoesNotExist:
+            raise Http404
+        response = StreamingHttpResponse(
+            content_generator,
+            content_type=segment.export_content_type,
+            status=HTTP_200_OK,
+        )
+        filename = self.get_filename(segment)
+        response["Content-Disposition"] = "attachment; filename='{}'".format(filename)
+        return response
 
-        segment = self.get_queryset().get(pk=pk)
+    @staticmethod
+    def get_filename(segment):
+        timestamp = ""
+        if segment.export_last_modified:
+            timestamp = segment.export_last_modified.strftime(" %Y-%m-%d %H:%M:%S")
 
-        columns = list(PERSISTENT_SEGMENT_CSV_COLUMN_ORDER)
+        return "Segment-{}{}.csv".format(segment.title, timestamp)
 
-        if isinstance(segment, PersistentSegmentChannel):
-            columns.append(PersistentSegmentExportColumn.AUDITED_VIDEOS)
-
-        if segment.title == SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
-            columns.append(PersistentSegmentExportColumn.BAD_WORDS)
-
-        csv_generator = PersistentSegmentCSVExport(segment, columns)
-        return csv_generator.prepare_csv_file_response()
