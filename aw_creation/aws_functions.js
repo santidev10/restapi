@@ -532,7 +532,7 @@ function sendChangesStatus(account_id, updated_at){
         var options = {
             muteHttpExceptions : true,
             method: "PATCH",
-            payload: {updated_at: updated_at, campaigns: getBaseCampaignsInfo()},
+            payload: JSON.stringify({updated_at: updated_at, campaigns: getBaseCampaignsInfo()})
         };
         var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGES_STATUS_PATH + account_id + '/', options);
         if(resp.getResponseCode() == 200) {
