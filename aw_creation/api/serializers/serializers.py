@@ -212,7 +212,7 @@ class LocationRuleSerializer(ModelSerializer):
 class AdScheduleSerializer(ModelSerializer):
     class Meta:
         model = AdScheduleRule
-        exclude = ("id",)
+        fields = '__all__'
 
 
 class FrequencyCapUpdateSerializer(ModelSerializer):
