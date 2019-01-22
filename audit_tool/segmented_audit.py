@@ -63,7 +63,7 @@ class SegmentedAudit:
     def get_next_channels_batch(self, last_id=None, limit=100):
         size = limit + 1 if last_id else limit
         params = dict(
-            fields="channel_id,title,description,thumbnail_image_url,category,likes,dislikes,views,language",
+            fields="channel_id,title,description,thumbnail_image_url,category,subscribers,likes,dislikes,views,language",
             sort="channel_id",
             size=size,
             channel_id__range="{},".format(last_id or ""),
@@ -140,6 +140,7 @@ class SegmentedAudit:
 
     def _channel_details(self, channel):
         details = dict(
+            subscribers=channel["subscribers"],
             likes=channel["likes"],
             dislikes=channel["dislikes"],
             views=channel["views"],

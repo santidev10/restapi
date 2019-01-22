@@ -7,7 +7,6 @@ from io import StringIO
 import logging
 
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField
 from django.db.models import TextField
@@ -31,7 +30,9 @@ class BasePersistentSegment(Timestampable):
     Base persistent segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
-    shared_with = ArrayField(CharField(max_length=200), blank=True, default=list)
+
+    details = JSONField(default=dict())
+
     related = None  # abstract property
     segment_type = None  # abstract property
 
@@ -42,6 +43,9 @@ class BasePersistentSegment(Timestampable):
     class Meta:
         abstract = True
         ordering = ["pk"]
+
+    def calculate_details(self):
+        raise NotImplementedError
 
     @property
     def shared_with_string(self, separation_symbol="|"):
