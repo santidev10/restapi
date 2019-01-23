@@ -173,6 +173,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(campaign_data['ad_schedule_rules'][0].keys()),
             {
+                'id',
                 'from_hour',
                 'from_minute',
                 'campaign_creation',
