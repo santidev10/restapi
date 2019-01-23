@@ -741,6 +741,7 @@ class DemoCampaign(BaseDemo):
             ],
             ad_schedule_rules=[
                 dict(
+                    id=1,
                     from_hour=18,
                     from_minute=0,
                     to_minute=0,
