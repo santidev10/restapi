@@ -78,10 +78,9 @@ class BasePersistentSegment(Timestampable):
         self._s3().upload_file(
             Bucket=settings.AMAZON_S3_BUCKET_NAME,
             Key=self.get_s3_key(),
-            Filename=self.get_export_content_file_name(),
+            Filename=exported_file_name,
         )
         os.remove(exported_file_name)
-        return
 
     def get_s3_export_content(self):
         s3 = self._s3()
