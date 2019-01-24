@@ -112,7 +112,7 @@ class PersistentSegmentExportContent(object):
             writer = csv.DictWriter(export_file, fieldnames=self.segment.export_columns)
             writer.writeheader()
             for related in self.segment.related.all():
-                writer.writerows([related.get_exportable_row()])
+                writer.writerow(related.get_exportable_row())
         return self.filename
 
     def __exit__(self, *args):
