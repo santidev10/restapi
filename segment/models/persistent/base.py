@@ -1,17 +1,16 @@
 """
 BasePersistentSegment models module
 """
-import boto3
 import csv
-from io import StringIO
 import logging
+import os
 
+import boto3
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField
-from django.db.models import TextField
 from django.db.models import Manager
-
+from django.db.models import TextField
 
 from utils.models import Timestampable
 from ...names import S3_SEGMENT_EXPORT_KEY_PATTERN
@@ -37,8 +36,10 @@ class BasePersistentSegment(Timestampable):
     segment_type = None  # abstract property
 
     export_content_type = "application/CSV"
-    export_columns = None # abstract property
+    export_columns = None  # abstract property
     export_last_modified = None
+    temp_exported_files_directory_path = "/home/ubuntu/tmp/"
+    export_file_extension = ".csv"
 
     class Meta:
         abstract = True
@@ -55,13 +56,14 @@ class BasePersistentSegment(Timestampable):
         key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
 
-    def get_export_content(self):
-        output = StringIO()
-        writer = csv.DictWriter(output, fieldnames=self.export_columns)
-        writer.writeheader()
-        rows = [related.get_exportable_row() for related in self.related.all()]
-        writer.writerows(rows)
-        return output.getvalue()
+    def get_export_content_file_name(self):
+        filename = "{}{}{}".format(self.temp_exported_files_directory_path, self.id, self.export_file_extension)
+        with open(filename, mode="w+", newline="") as export_file:
+            writer = csv.DictWriter(export_file, fieldnames=self.export_columns)
+            writer.writeheader()
+            for related in self.related.all():
+                writer.writerows([related.get_exportable_row()])
+        return filename
 
     def _s3(self):
         s3 = boto3.client(
@@ -72,12 +74,14 @@ class BasePersistentSegment(Timestampable):
         return s3
 
     def export_to_s3(self):
-        self._s3().put_object(
+        exported_file_name = self.get_export_content_file_name()
+        self._s3().upload_file(
             Bucket=settings.AMAZON_S3_BUCKET_NAME,
             Key=self.get_s3_key(),
-            Body=self.get_export_content(),
-            ContentType=self.export_content_type
+            Filename=self.get_export_content_file_name(),
         )
+        os.remove(exported_file_name)
+        return
 
     def get_s3_export_content(self):
         s3 = self._s3()
