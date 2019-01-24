@@ -3,8 +3,8 @@ from email.mime.image import MIMEImage
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.db.models import Count
-from django.db.models import F
+from django.db.models import CharField
+from django.db.models import Value
 from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.http import Http404
@@ -28,8 +28,11 @@ from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
+from segment.models.persistent.constants import PersistentSegmentType
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -337,7 +340,7 @@ class DynamicPersistentModelViewMixin(object):
         """
         Prepare queryset to display
         """
-        queryset = self.model.objects.all().order_by("-title")
+        queryset = self.model.objects.all().order_by("title")
         return queryset
 
 
@@ -370,6 +373,25 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
 
         response.data["items"] = items
         return super().finalize_response(request, response, *args, **kwargs)
+
+
+class PersistentMasterSegmentsListApiView(ListAPIView):
+    serializer_class = PersistentSegmentSerializer
+    pagination_class = SegmentPaginator
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+
+    def get_queryset(self):
+        channels_segment_queryset = PersistentSegmentChannel.objects\
+            .filter(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .annotate(segment_type=Value(PersistentSegmentType.CHANNEL, output_field=CharField()))
+
+        videos_segment_queryset = PersistentSegmentVideo.objects\
+            .filter(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .annotate(segment_type=Value(PersistentSegmentType.VIDEO, output_field=CharField()))
+
+        return videos_segment_queryset.union(channels_segment_queryset)
 
 
 class PersistentSegmentRetrieveApiView(DynamicPersistentModelViewMixin, RetrieveAPIView):
