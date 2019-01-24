@@ -1,17 +1,17 @@
 """
 BasePersistentSegment models module
 """
-import boto3
 import csv
-from io import StringIO
 import logging
+import os
+import tempfile
 
+import boto3
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField
-from django.db.models import TextField
 from django.db.models import Manager
-
+from django.db.models import TextField
 
 from utils.models import Timestampable
 from ...names import S3_SEGMENT_EXPORT_KEY_PATTERN
@@ -37,7 +37,7 @@ class BasePersistentSegment(Timestampable):
     segment_type = None  # abstract property
 
     export_content_type = "application/CSV"
-    export_columns = None # abstract property
+    export_columns = None  # abstract property
     export_last_modified = None
 
     class Meta:
@@ -55,14 +55,6 @@ class BasePersistentSegment(Timestampable):
         key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
 
-    def get_export_content(self):
-        output = StringIO()
-        writer = csv.DictWriter(output, fieldnames=self.export_columns)
-        writer.writeheader()
-        rows = [related.get_exportable_row() for related in self.related.all()]
-        writer.writerows(rows)
-        return output.getvalue()
-
     def _s3(self):
         s3 = boto3.client(
             "s3",
@@ -72,12 +64,12 @@ class BasePersistentSegment(Timestampable):
         return s3
 
     def export_to_s3(self):
-        self._s3().put_object(
-            Bucket=settings.AMAZON_S3_BUCKET_NAME,
-            Key=self.get_s3_key(),
-            Body=self.get_export_content(),
-            ContentType=self.export_content_type
-        )
+        with PersistentSegmentExportContent(segment=self) as exported_file_name:
+            self._s3().upload_file(
+                Bucket=settings.AMAZON_S3_BUCKET_NAME,
+                Key=self.get_s3_key(),
+                Filename=exported_file_name,
+            )
 
     def get_s3_export_content(self):
         s3 = self._s3()
@@ -108,3 +100,20 @@ class BasePersistentSegmentRelated(Timestampable):
         unique_together = (
             ("segment", "related_id"),
         )
+
+
+class PersistentSegmentExportContent(object):
+    def __init__(self, segment):
+        self.segment = segment
+
+    def __enter__(self):
+        _, self.filename = tempfile.mkstemp()
+        with open(self.filename, mode="w+", newline="") as export_file:
+            writer = csv.DictWriter(export_file, fieldnames=self.segment.export_columns)
+            writer.writeheader()
+            for related in self.segment.related.all():
+                writer.writerow(related.get_exportable_row())
+        return self.filename
+
+    def __exit__(self, *args):
+        os.remove(self.filename)
