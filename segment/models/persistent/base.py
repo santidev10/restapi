@@ -14,6 +14,7 @@ from django.db.models import Manager
 from django.db.models import TextField
 
 from utils.models import Timestampable
+from .constants import PersistentSegmentCategory
 from ...names import S3_SEGMENT_EXPORT_KEY_PATTERN
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class BasePersistentSegment(Timestampable):
     Base persistent segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
+    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST)
 
     details = JSONField(default=dict())
 
@@ -46,10 +48,6 @@ class BasePersistentSegment(Timestampable):
 
     def calculate_details(self):
         raise NotImplementedError
-
-    @property
-    def shared_with_string(self, separation_symbol="|"):
-        return separation_symbol.join(self.shared_with)
 
     def get_s3_key(self):
         key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
