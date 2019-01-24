@@ -23,12 +23,13 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
-from audit_tool.segmented_audit import SegmentedAudit
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
+from segment.models.persistent.constants import PersistentSegmentCategory
+from segment.models.persistent.constants import PersistentSegmentTitles
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -336,9 +337,7 @@ class DynamicPersistentModelViewMixin(object):
         """
         Prepare queryset to display
         """
-        queryset = self.model.objects.all()\
-                                     .annotate(related_count=Count(F("related__id"))) \
-                                     .order_by('title')
+        queryset = self.model.objects.all().order_by("-title")
         return queryset
 
 
@@ -349,14 +348,26 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
         user_has_permission("userprofile.view_audit_segments"),
     )
 
+    def get_queryset(self):
+        queryset = super().get_queryset().exclude(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE) \
+                                         .filter(
+                                            Q(title=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLE)
+                                            | Q(category=PersistentSegmentCategory.WHITELIST)
+                                         )
+        return queryset
+
     def finalize_response(self, request, response, *args, **kwargs):
         items = []
+        master_segment_titles = dict(PersistentSegmentTitles.CATEGORY_MAP).values()
+
         for item in response.data.get("items", []):
-            if item.get("title") == SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+            if item.get("title") in master_segment_titles:
                 items.append(item)
+
         for item in response.data.get("items", []):
-            if item.get("title") != SegmentedAudit.BLACKLIST_SEGMENT_TITLE:
+            if item.get("title") not in master_segment_titles:
                 items.append(item)
+
         response.data["items"] = items
         return super().finalize_response(request, response, *args, **kwargs)
 
