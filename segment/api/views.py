@@ -352,23 +352,22 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset().exclude(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE) \
+        queryset = super().get_queryset().exclude(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES) \
                                          .filter(
-                                            Q(title=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLE)
+                                            Q(title__in=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES)
                                             | Q(category=PersistentSegmentCategory.WHITELIST)
                                          )
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
         items = []
-        master_segment_titles = dict(PersistentSegmentTitles.CATEGORY_MAP).values()
 
         for item in response.data.get("items", []):
-            if item.get("title") in master_segment_titles:
+            if item.get("title") in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
                 items.append(item)
 
         for item in response.data.get("items", []):
-            if item.get("title") not in master_segment_titles:
+            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
                 items.append(item)
 
         response.data["items"] = items
@@ -384,11 +383,11 @@ class PersistentMasterSegmentsListApiView(ListAPIView):
 
     def get_queryset(self):
         channels_segment_queryset = PersistentSegmentChannel.objects\
-            .filter(title__endswith=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .filter(title__endswith=PersistentSegmentTitles.CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE)\
             .annotate(segment_type=Value(PersistentSegmentType.CHANNEL, output_field=CharField()))
 
         videos_segment_queryset = PersistentSegmentVideo.objects\
-            .filter(title__endswith=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .filter(title__endswith=PersistentSegmentTitles.VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE)\
             .annotate(segment_type=Value(PersistentSegmentType.VIDEO, output_field=CharField()))
 
         return videos_segment_queryset.union(channels_segment_queryset)
