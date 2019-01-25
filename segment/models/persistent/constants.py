@@ -9,8 +9,8 @@ class PersistentSegmentCategory:
 
 
 class PersistentSegmentTitles:
-    MASTER_BLACKLIST_SEGMENT_TITLE = "Master black list"
-    MASTER_WHITELIST_SEGMENT_TITLE = "Master white list"
+    MASTER_BLACKLIST_SEGMENT_TITLE = "Master Blacklist"
+    MASTER_WHITELIST_SEGMENT_TITLE = "Master Whitelist"
 
     CATEGORY_MAP = (
         (PersistentSegmentCategory.BLACKLIST, MASTER_BLACKLIST_SEGMENT_TITLE),
