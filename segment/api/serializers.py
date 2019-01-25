@@ -118,6 +118,15 @@ class SegmentSerializer(ModelSerializer):
 class PersistentSegmentSerializer(ModelSerializer):
     statistics = SerializerMethodField()
 
+    statistics_fields = (
+        "subscribers",
+        "likes",
+        "dislikes",
+        "views",
+        "audited_videos",
+        "items_count",
+    )
+
     class Meta:
         # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
         model = PersistentSegmentChannel
@@ -126,11 +135,9 @@ class PersistentSegmentSerializer(ModelSerializer):
             "title",
             "segment_type",
             "statistics",
-            "shared_with",
         )
 
     def get_statistics(self, obj):
-        statistics = dict(
-            items_count=obj.related_count,
-        )
+        details = obj.details or {}
+        statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
         return statistics
