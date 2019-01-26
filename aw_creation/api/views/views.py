@@ -597,6 +597,11 @@ class CreationOptionsApiView(APIView):
             age_ranges=opts_to_response(
                 AdGroupCreation.AGE_RANGES,
             ),
+
+            # Bidding Strategy
+            bidding_strategy_types=opts_to_response(
+                CampaignCreation.BID_STRATEGY_TYPES,
+            ),
         )
         return Response(data=options)
 

@@ -254,9 +254,11 @@ class CampaignCreation(UniqueCreationItem):
 
     CPV_STRATEGY = 'CPV'
     CPM_STRATEGY = 'CPM'
+    CPA_STRATEGY = 'CPA'
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, CPV_STRATEGY),
-        (CPM_STRATEGY, CPM_STRATEGY),
+        (CPV_STRATEGY, 'Maximum CPV'),
+        (CPM_STRATEGY, 'Target CPM'),
+        (CPA_STRATEGY, 'Target CPA'),
     )
     bid_strategy_type = models.CharField(
         max_length=3,
