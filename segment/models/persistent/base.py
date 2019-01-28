@@ -101,17 +101,30 @@ class BasePersistentSegmentRelated(Timestampable):
 
 
 class PersistentSegmentExportContent(object):
+    CHNUK_SIZE = 100000
+
     def __init__(self, segment):
         self.segment = segment
 
     def __enter__(self):
-
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
+
         with open(self.filename, mode="w+", newline="") as export_file:
+            queryset = self.segment.related.order_by("pk").all()
             writer = csv.DictWriter(export_file, fieldnames=self.segment.export_columns)
             writer.writeheader()
-            for related in self.segment.related.all():
-                writer.writerow(related.get_exportable_row())
+            page = 0
+            while True:
+                offset = page * self.CHNUK_SIZE
+                limit = (page + 1) * self.CHNUK_SIZE
+                items = queryset[offset:limit]
+                page += 1
+
+                rows = [item.get_exportable_row() for item in items]
+                if not rows:
+                    break
+
+                writer.writerows(rows)
         return self.filename
 
     def __exit__(self, *args):
