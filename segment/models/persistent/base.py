@@ -105,7 +105,8 @@ class PersistentSegmentExportContent(object):
         self.segment = segment
 
     def __enter__(self):
-        _, self.filename = tempfile.mkstemp()
+
+        _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
         with open(self.filename, mode="w+", newline="") as export_file:
             writer = csv.DictWriter(export_file, fieldnames=self.segment.export_columns)
             writer.writeheader()
