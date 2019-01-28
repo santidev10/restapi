@@ -109,6 +109,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "type",
                 "updated_at",
                 "video_networks",
+                "bid_strategy_type"
             }
         )
         self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))

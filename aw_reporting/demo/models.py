@@ -769,6 +769,7 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
             ],
+            bid_strategy_type=CampaignCreation.CPV_STRATEGY,
         )
         return data
 
