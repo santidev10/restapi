@@ -117,6 +117,7 @@ class SegmentedAudit:
             video.get("title", ""),
             video.get("description", ""),
             video.get("tags", ""),
+            video.get("transcript", ""),
         ]
         text = " ".join(items)
         found = re.findall(self.bad_words_regexp, text)
