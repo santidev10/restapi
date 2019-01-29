@@ -1,14 +1,12 @@
-import io
 import json
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+from itertools import cycle
+from itertools import product
 from unittest.mock import patch
 
 from django.test import override_settings
-from itertools import cycle
-from itertools import product
-from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -54,12 +52,13 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
 from utils.lang import flatten
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.xlsx import get_sheet_from_response
 
 
 class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
@@ -404,7 +403,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data_rows[0][1].value, expected_date_label)
 
     @generic_test([
-        (dt.strftime("%A"), (dt, ), dict())
+        (dt.strftime("%A"), (dt,), dict())
         for dt in (date(2018, 4, 5) + timedelta(days=offset) for offset in range(7))
     ])
     def test_date_segment_week(self, test_date):
@@ -1050,13 +1049,6 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
 
         impressions_column_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
-
-
-def get_sheet_from_response(response):
-    single_sheet_index = 0
-    f = io.BytesIO(response.content)
-    book = load_workbook(f)
-    return book.worksheets[single_sheet_index]
 
 
 def get_headers(sheet):

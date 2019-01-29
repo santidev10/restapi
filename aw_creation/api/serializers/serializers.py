@@ -212,7 +212,7 @@ class LocationRuleSerializer(ModelSerializer):
 class AdScheduleSerializer(ModelSerializer):
     class Meta:
         model = AdScheduleRule
-        exclude = ("id",)
+        fields = '__all__'
 
 
 class FrequencyCapUpdateSerializer(ModelSerializer):
@@ -267,6 +267,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
     video_networks = SerializerMethodField()
     content_exclusions = SerializerMethodField()
     ad_group_creations = SerializerMethodField()
+    bid_strategy_type = SerializerMethodField()
 
     @swagger_serializer_method(serializer_or_field=AdGroupCreationSetupSerializer(many=True))
     def get_ad_group_creations(self, obj):
@@ -320,6 +321,18 @@ class CampaignCreationSetupSerializer(ModelSerializer):
         ]
         return devices
 
+    @staticmethod
+    def get_bid_strategy_type(obj) -> dict:
+        """
+        Maps Campaign's bidding strategy (str) to dictionary (id, name)
+        """
+        bid_strategy_id = obj.bid_strategy_type
+        bid_strategy_name = [name for id, name in CampaignCreation.BID_STRATEGY_TYPES if id == bid_strategy_id][0]
+        return {
+            'id': bid_strategy_id,
+            'name': bid_strategy_name
+        }
+
     class Meta:
         model = CampaignCreation
         fields = (
@@ -340,6 +353,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             "type",
             "updated_at",
             "video_networks",
+            "bid_strategy_type",
         )
 
 
@@ -390,6 +404,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "name",
             "start",
             "video_networks",
+            "bid_strategy_type",
         )
 
     def validate_start(self, value):

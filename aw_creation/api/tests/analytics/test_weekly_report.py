@@ -1,10 +1,8 @@
-import io
 import re
 from collections import defaultdict
 from functools import partial
 from itertools import product
 
-from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -17,6 +15,7 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.xlsx import get_sheet_from_response
 
 
 class SectionName:
@@ -103,9 +102,7 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
-        f = io.BytesIO(response.content)
-        book = load_workbook(f)
-        sheet = book.worksheets[0]
+        sheet = get_sheet_from_response(response)
 
         section = SectionName.PLACEMENT
         columns = get_section_columns(sheet, section)
@@ -168,13 +165,6 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
 
 TITLE_COLUMN = 1
 FIRST_SECTION_ROW_NUMBER = 13
-
-
-def get_sheet_from_response(response):
-    single_sheet_index = 0
-    f = io.BytesIO(response.content)
-    book = load_workbook(f)
-    return book.worksheets[single_sheet_index]
 
 
 def get_title_cell(sheet):

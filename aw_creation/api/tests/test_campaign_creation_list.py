@@ -32,6 +32,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         "type",
         "updated_at",
         "video_networks",
+        "bid_strategy_type"
     }
 
     def setUp(self):

@@ -48,7 +48,7 @@ class CreationItemQueryset(models.QuerySet):
 class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
-    name = models.CharField(max_length=250, validators=[NameValidator])
+    name = models.CharField(max_length=250)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -254,9 +254,11 @@ class CampaignCreation(UniqueCreationItem):
 
     CPV_STRATEGY = 'CPV'
     CPM_STRATEGY = 'CPM'
+    CPA_STRATEGY = 'CPA'
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, CPV_STRATEGY),
-        (CPM_STRATEGY, CPM_STRATEGY),
+        (CPV_STRATEGY, 'Maximum CPV'),
+        (CPM_STRATEGY, 'Target CPM'),
+        (CPA_STRATEGY, 'Target CPA'),
     )
     bid_strategy_type = models.CharField(
         max_length=3,
