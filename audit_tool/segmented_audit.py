@@ -160,8 +160,13 @@ class SegmentedAudit:
         grouped_by_segment = {}
         for item in items:
             segment_category = self._segment_category(item)
-            categorized_segment_title = "{} {}".format(item["category"], segment_category)
-            master_segment_title = dict(PersistentSegmentTitles.CATEGORY_MAP)[segment_category]
+            segment_type = segments_model.segment_type
+            categorized_segment_title = "{}s {} {}".format(
+                segment_type.capitalize(),
+                item["category"],
+                segment_category.capitalize(),
+            )
+            master_segment_title = dict(dict(PersistentSegmentTitles.TITLES_MAP)[segment_type])[segment_category]
             for segment_title in [categorized_segment_title, master_segment_title]:
                 if segment_title not in grouped_by_segment:
                     segment, _ = segments_manager.get_or_create(title=segment_title, category=segment_category)
@@ -171,7 +176,7 @@ class SegmentedAudit:
         master_segments = [
             segment
             for segment, _ in grouped_by_segment.values()
-            if segment.title in dict(PersistentSegmentTitles.CATEGORY_MAP).values()
+            if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES
         ]
 
         # store to segments
