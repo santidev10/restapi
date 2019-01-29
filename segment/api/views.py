@@ -10,7 +10,6 @@ from django.http import StreamingHttpResponse
 from django.http import Http404
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-import pytz
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
@@ -429,10 +428,5 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
 
     @staticmethod
     def get_filename(segment):
-        timestamp = ""
-        if segment.export_last_modified:
-            tz = pytz.timezone(settings.DEFAULT_TIMEZONE)
-            timestamp = segment.export_last_modified.astimezone(tz).strftime(" %Y-%m-%d %H:%M:%S")
-
-        return "Segment-{}{}.csv".format(segment.title, timestamp)
+        return "{}.csv".format(segment.title)
 
