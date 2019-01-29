@@ -378,7 +378,7 @@ class PersistentMasterSegmentsListApiView(ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
     permission_classes = (
-        user_has_permission("userprofile.view_white_list"),
+        user_has_permission("userprofile.view_white_lists"),
     )
 
     def get_queryset(self):
