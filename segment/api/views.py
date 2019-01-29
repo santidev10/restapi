@@ -1,16 +1,16 @@
 import os
 from email.mime.image import MIMEImage
 
+import pytz
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import CharField
-from django.db.models import Value
 from django.db.models import Q
-from django.http import StreamingHttpResponse
+from django.db.models import Value
 from django.http import Http404
+from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-import pytz
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
@@ -26,13 +26,13 @@ from rest_framework.views import APIView
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
-from segment.utils import get_persistent_segment_model_by_type
-from segment.utils import get_segment_model_by_type
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import PersistentSegmentType
+from segment.utils import get_persistent_segment_model_by_type
+from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -384,7 +384,7 @@ class PersistentMasterSegmentsListApiView(ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
     permission_classes = (
-        user_has_permission("userprofile.view_audit_segments"),
+        user_has_permission("userprofile.view_white_lists"),
     )
 
     def get_queryset(self):
