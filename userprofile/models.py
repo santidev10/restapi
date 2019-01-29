@@ -131,6 +131,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
 
+    # GDPR Cookie Compliance
+    has_accepted_GDPR = models.BooleanField(default=False)
+
     objects = UserProfileManager()
 
     USERNAME_FIELD = 'email'

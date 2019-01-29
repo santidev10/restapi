@@ -48,6 +48,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "phone_number",
                 "token",
                 "is_active",
+                "has_accepted_GDPR",
             }
         )
 
