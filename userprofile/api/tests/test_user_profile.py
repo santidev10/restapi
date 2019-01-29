@@ -46,5 +46,6 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "profile_image_url",
                 "token",
                 "is_active",
+                "has_accepted_GDPR",
             }
         )
