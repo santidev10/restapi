@@ -370,6 +370,12 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
                 items.append(item)
 
+        for item in items:
+            # remove "Channels " or "Videos " prefix
+            prefix = "{}s ".format(item.get("segment_type").capitalize())
+            if item.get("title", prefix).startswith(prefix):
+                item["title"] = item.get("title", "")[len(prefix):]
+
         response.data["items"] = items
         return super().finalize_response(request, response, *args, **kwargs)
 
