@@ -1,16 +1,16 @@
 import os
 from email.mime.image import MIMEImage
 
+import pytz
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import CharField
-from django.db.models import Value
 from django.db.models import Q
-from django.http import StreamingHttpResponse
+from django.db.models import Value
 from django.http import Http404
+from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-import pytz
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
@@ -26,13 +26,13 @@ from rest_framework.views import APIView
 from channel.api.views import ChannelListApiView
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.api.serializers import SegmentSerializer
-from segment.utils import get_persistent_segment_model_by_type
-from segment.utils import get_segment_model_by_type
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import PersistentSegmentType
+from segment.utils import get_persistent_segment_model_by_type
+from segment.utils import get_segment_model_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -352,24 +352,29 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset().exclude(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE) \
+        queryset = super().get_queryset().exclude(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES) \
                                          .filter(
-                                            Q(title=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLE)
+                                            Q(title__in=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES)
                                             | Q(category=PersistentSegmentCategory.WHITELIST)
                                          )
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
         items = []
-        master_segment_titles = dict(PersistentSegmentTitles.CATEGORY_MAP).values()
 
         for item in response.data.get("items", []):
-            if item.get("title") in master_segment_titles:
+            if item.get("title") in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
                 items.append(item)
 
         for item in response.data.get("items", []):
-            if item.get("title") not in master_segment_titles:
+            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
                 items.append(item)
+
+        for item in items:
+            # remove "Channels " or "Videos " prefix
+            prefix = "{}s ".format(item.get("segment_type").capitalize())
+            if item.get("title", prefix).startswith(prefix):
+                item["title"] = item.get("title", "")[len(prefix):]
 
         response.data["items"] = items
         return super().finalize_response(request, response, *args, **kwargs)
@@ -379,16 +384,16 @@ class PersistentMasterSegmentsListApiView(ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator
     permission_classes = (
-        user_has_permission("userprofile.view_audit_segments"),
+        user_has_permission("userprofile.view_white_lists"),
     )
 
     def get_queryset(self):
         channels_segment_queryset = PersistentSegmentChannel.objects\
-            .filter(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .filter(title=PersistentSegmentTitles.CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE)\
             .annotate(segment_type=Value(PersistentSegmentType.CHANNEL, output_field=CharField()))
 
         videos_segment_queryset = PersistentSegmentVideo.objects\
-            .filter(title=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLE)\
+            .filter(title=PersistentSegmentTitles.VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE)\
             .annotate(segment_type=Value(PersistentSegmentType.VIDEO, output_field=CharField()))
 
         return videos_segment_queryset.union(channels_segment_queryset)
@@ -424,10 +429,5 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
 
     @staticmethod
     def get_filename(segment):
-        timestamp = ""
-        if segment.export_last_modified:
-            tz = pytz.timezone(settings.DEFAULT_TIMEZONE)
-            timestamp = segment.export_last_modified.astimezone(tz).strftime(" %Y-%m-%d %H:%M:%S")
-
-        return "Segment-{}{}.csv".format(segment.title, timestamp)
+        return "{}.csv".format(segment.title)
 
