@@ -611,7 +611,6 @@ class CreationOptionsApiView(APIView):
                 CampaignCreation.BID_STRATEGY_TYPES,
             ),
         )
-        print(options['ad_schedule_rules']['day'])
         return Response(data=options)
 
 
