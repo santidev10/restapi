@@ -499,6 +499,14 @@ class CreationOptionsApiView(APIView):
         def get_week_day_name(n):
             return calendar.day_name[n - 1]
 
+        ad_schedule_rules = list_to_resp(range(1, 8), n_func=get_week_day_name)
+        additional_ad_schedule_rules = [
+            {'id': 8, 'name': 'All Days'},
+            {'id': 9, 'name': 'Weekdays'},
+            {'id': 10, 'name': 'Weekends'},
+        ]
+        ad_schedule_rules.extend(additional_ad_schedule_rules)
+
         options = OrderedDict(
             # ACCOUNT
             # create
@@ -572,7 +580,7 @@ class CreationOptionsApiView(APIView):
                        "coordinates and a radius - required",
             ),
             ad_schedule_rules=dict(
-                day=list_to_resp(range(1, 8), n_func=get_week_day_name),
+                day=ad_schedule_rules,
                 from_hour=list_to_resp(range(0, 24)),
                 from_minute=list_to_resp(range(0, 60, 15)),
                 to_hour=list_to_resp(range(0, 24)),
@@ -603,6 +611,7 @@ class CreationOptionsApiView(APIView):
                 CampaignCreation.BID_STRATEGY_TYPES,
             ),
         )
+        print(options['ad_schedule_rules']['day'])
         return Response(data=options)
 
 
