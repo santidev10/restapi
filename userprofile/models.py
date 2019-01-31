@@ -132,7 +132,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
 
     # GDPR Cookie Compliance
-    has_accepted_GDPR = models.BooleanField(default=False)
+    has_accepted_GDPR = models.NullBooleanField(default=None)
 
     objects = UserProfileManager()
 
