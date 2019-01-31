@@ -8,9 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     def set_userprofiles_GDPR_null(apps, schema_editor):
         UserTable = apps.get_model('userprofile', 'UserProfile')
-        for profile in UserTable.objects.all():
-            profile.has_accepted_GDPR = None
-            profile.save()
+        UserTable.objects.all().update(has_accepted_GDPR=None)
 
     dependencies = [
         ('userprofile', '0037_userprofile_has_accepted_gdpr'),
