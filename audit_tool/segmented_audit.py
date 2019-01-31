@@ -114,9 +114,9 @@ class SegmentedAudit:
 
     def _parse_video(self, video):
         items = [
-            video.get("title", ""),
-            video.get("description", ""),
-            video.get("tags", ""),
+            video.get("title") or "",
+            video.get("description") or "",
+            video.get("tags") or "",
         ]
         text = " ".join(items)
         found = re.findall(self.bad_words_regexp, text)
