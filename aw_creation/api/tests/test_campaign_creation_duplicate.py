@@ -109,6 +109,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "type",
                 "updated_at",
                 "video_networks",
+                "bid_strategy_type"
             }
         )
         self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))
@@ -173,6 +174,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(
             set(campaign_data['ad_schedule_rules'][0].keys()),
             {
+                'id',
                 'from_hour',
                 'from_minute',
                 'campaign_creation',

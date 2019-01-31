@@ -741,6 +741,7 @@ class DemoCampaign(BaseDemo):
             ],
             ad_schedule_rules=[
                 dict(
+                    id=1,
                     from_hour=18,
                     from_minute=0,
                     to_minute=0,
@@ -768,6 +769,7 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
             ],
+            bid_strategy_type=CampaignCreation.CPV_STRATEGY,
         )
         return data
 

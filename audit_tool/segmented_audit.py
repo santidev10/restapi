@@ -87,7 +87,7 @@ class SegmentedAudit:
         last_id = None
         params = dict(
             fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views,"
-                   "language",
+                   "language,transcript",
             sort="video_id",
             size=self.BATCH_SIZE,
             channel_id__terms=",".join(channel_ids),
@@ -117,6 +117,7 @@ class SegmentedAudit:
             video.get("title") or "",
             video.get("description") or "",
             video.get("tags") or "",
+            video.get("transcript") or "",
         ]
         text = " ".join(items)
         found = re.findall(self.bad_words_regexp, text)

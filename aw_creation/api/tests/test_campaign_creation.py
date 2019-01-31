@@ -118,6 +118,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 "type",
                 "updated_at",
                 "video_networks",
+                "bid_strategy_type"
             }
         )
         ad_group_data = data['ad_group_creations'][0]

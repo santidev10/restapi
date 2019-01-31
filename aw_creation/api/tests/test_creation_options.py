@@ -36,6 +36,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
                 'languages',
                 'goal_units',
                 'frequency_capping',
+                'bidding_strategy_types',
 
                 'ct_overlay_text',
                 'video_url',

@@ -48,7 +48,7 @@ class CreationItemQueryset(models.QuerySet):
 class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
-    name = models.CharField(max_length=250, validators=[NameValidator])
+    name = models.CharField(max_length=250)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -254,9 +254,11 @@ class CampaignCreation(UniqueCreationItem):
 
     CPV_STRATEGY = 'CPV'
     CPM_STRATEGY = 'CPM'
+    CPA_STRATEGY = 'CPA'
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, CPV_STRATEGY),
-        (CPM_STRATEGY, CPM_STRATEGY),
+        (CPV_STRATEGY, 'Maximum CPV'),
+        (CPM_STRATEGY, 'Target CPM'),
+        (CPA_STRATEGY, 'Target CPA'),
     )
     bid_strategy_type = models.CharField(
         max_length=3,
@@ -395,6 +397,31 @@ class CampaignCreation(UniqueCreationItem):
 
         return start_for_creation, start, end
 
+    def get_aw_schedulers(self):
+        schedules_queryset = self.ad_schedule_rules.all()
+        extra_schedules_rules = {
+            8: list(calendar.day_name),  # all days
+            9: list(calendar.day_name[:-2]),  # all working days
+            10: list(calendar.day_name[-2:]),  # weekends
+        }
+        schedules = []
+        for schedule in schedules_queryset:
+            if schedule.day not in extra_schedules_rules.keys():
+                days = [WEEKDAYS[schedule.day - 1].upper()]
+            else:
+                weekdays = extra_schedules_rules[schedule.day]
+                days = [day.upper() for day in weekdays]
+            for day in days:
+                aw_schedule_string = "{} {} {} {} {}".format(
+                    day,
+                    schedule.from_hour,
+                    schedule.from_minute,
+                    schedule.to_hour,
+                    schedule.to_minute
+                )
+                schedules.append(aw_schedule_string)
+        return schedules
+
     def get_aws_code(self, request):
 
         start_for_creation, start, end = self.get_creation_dates()
@@ -415,12 +442,7 @@ class CampaignCreation(UniqueCreationItem):
                     video_networks=self.video_networks,
                     lang_ids=list(self.languages.values_list('id', flat=True)),
                     devices=self.devices,
-                    schedules=[
-                        "{} {} {} {} {}".format(
-                            WEEKDAYS[s.day - 1].upper(), s.from_hour,
-                            s.from_minute, s.to_hour, s.to_minute
-                        ) for s in self.ad_schedule_rules.all()
-                    ],
+                    schedules=self.get_aw_schedulers(),
                     freq_caps={
                         f["event_type"]: f
                         for f in self.frequency_capping.all(

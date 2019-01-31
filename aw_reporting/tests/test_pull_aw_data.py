@@ -940,6 +940,7 @@ class PullAWDataTestCase(TransactionTestCase):
                 name="",
                 currencyCode="",
                 dateTimeZone="UTC",
+                canManageClients=False,
             ),
         ]
         aw_client_mock = MagicMock()
