@@ -13,13 +13,11 @@ from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
 from .constants import PersistentSegmentType
-from ...names import PERSISTENT_SEGMENT_CHANNEL_CSV_COLUMNS
-from ...names import PersistentSegmentExportColumn
+from .constants import PersistentSegmentExportColumn
 
 
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
-    export_columns = PERSISTENT_SEGMENT_CHANNEL_CSV_COLUMNS
 
     objects = PersistentSegmentManager()
 
