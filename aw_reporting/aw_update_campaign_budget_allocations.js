@@ -12,15 +12,21 @@ const CHANGES_STATUS_PATH = "aw_creation_changes_status/";
 function main() {
     Logger.log('Updating budget allocations...')
     // Object with keys -> campaign id, value -> newBudget
-    const campaignsToUpdate = getChangedCampaignIds();
+    const managedAccounts = getManagedAccounts()
+    const campaignsToUpdate = getUpdatedCampaignBudgets(managedAccounts);
     const campaignIterator = AdsApp.videoCampaigns().withIds(Object.keys(campaignsToUpdate));
 
-    while (campaignIterator.hasNext()) {
-        const campaign = campaignIterator.next();
-        const budget = campaign.getBudget()
-        budget.setAmount(campaignsToUpdate[campaign['Id']])
-    }
+    updateCampaignBudgets(campaignIterator)
+
     Logger.log('Budget allocations update complete')_
+}
+
+function getManagedAccounts() {
+    return AdsManagerApp.accounts.get();
+}
+
+function get_mcc_account_id(){
+    return AdWordsApp.currentAccount().getCustomerId().split('-').join('');
 }
 
 function getChangedCampaignIds() {
@@ -36,5 +42,15 @@ function getChangedCampaignIds() {
         Logger.log(resp.getResponseCode());
         Logger.log(resp.getContentText());
         return '';
+    }
+}
+
+function updateCampaignBudgets(iterator) {
+    campaignIterator = iterator;
+
+    while (campaignIterator.hasNext()) {
+        const campaign = campaignIterator.next();
+        const budget = campaign.getBudget()
+        budget.setAmount(campaignsToUpdate[campaign['Id']])
     }
 }

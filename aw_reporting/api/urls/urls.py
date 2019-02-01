@@ -60,6 +60,9 @@ urlpatterns = [
     url(r'^flights_campaign_allocations/(?P<pk>\w+)/$',
         views.PacingReportFlightsCampaignAllocationsView.as_view(),
         name=Name.PacingReport.FLIGHTS_CAMPAIGN_ALLOCATIONS),
+    url(r'^flights/campaigns/budgets/updated/(?P<pk>\w+)$',
+        views.PacingReportFlightsCampaignAllocationsChangedView.as_view(),
+        name='pacing_report_flights_campaign_allocations_changed'),
 
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',

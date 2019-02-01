@@ -37,6 +37,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 data="Sum of the values is wrong: {}".format(actual_sum)
             )
         # apply changes
+        # apply changes to CampaignCreation
         for campaign_id, allocation_value in request.data.items():
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value
