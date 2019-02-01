@@ -61,7 +61,10 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_campaigns = []
 
         for account in accounts:
-            campaigns = account.campaigns.filter(status='eligible').values_list('id', 'goal_allocation')
+            campaigns = account.campaigns\
+                .filter(status='eligible')\
+                .exclude(end_date__lte=datetime.now())\
+                .values_list('id', 'goal_allocation', 'account')
 
             if not campaigns:
                 continue
@@ -69,6 +72,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             campaigns = [{
                 'id': campaign[0],
                 'budget': campaign[1],
+                'account': campaign[2],
             } for campaign in campaigns]
 
             all_campaigns.extend(campaigns)
