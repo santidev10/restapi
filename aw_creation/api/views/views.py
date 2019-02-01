@@ -710,7 +710,28 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        """
+        PUT method handler: Entire update of CampaignCreation
+        :param request: request.data -> dict of full CampaignCreation object to PUT
+        """
+
+        partial = False
+        instance = self.get_object()
+        serializer = CampaignCreationUpdateSerializer(
+            instance, data=request.data, partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+        self.update_related_models(obj.id, request.data)
+
+        return self.retrieve(self, request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        PATCH method handler: Partial updating of CampaignCreations
+        :param request: request.data -> dict of fields and values to PATCH
+        """
+        partial = True
         instance = self.get_object()
         serializer = CampaignCreationUpdateSerializer(
             instance, data=request.data, partial=partial
