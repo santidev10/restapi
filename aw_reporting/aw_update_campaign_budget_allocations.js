@@ -12,24 +12,20 @@ const CHANGES_STATUS_PATH = "aw_creation_changes_status/";
 function main() {
     Logger.log('Updating budget allocations...')
     // Object with keys -> campaign id, value -> newBudget
-    const managedAccounts = getManagedAccounts()
-    const campaignsToUpdate = getUpdatedCampaignBudgets(managedAccounts);
+    const mcc_account_id = get_mcc_account_id()
+    const campaignsToUpdate = getUpdatedCampaignBudgets(mcc_account_id);
+
     const campaignIterator = AdsApp.videoCampaigns().withIds(Object.keys(campaignsToUpdate));
 
     updateCampaignBudgets(campaignIterator)
-
     Logger.log('Budget allocations update complete')_
-}
-
-function getManagedAccounts() {
-    return AdsManagerApp.accounts.get();
 }
 
 function get_mcc_account_id(){
     return AdWordsApp.currentAccount().getCustomerId().split('-').join('');
 }
 
-function getChangedCampaignIds() {
+function getUpdatedCampaignBudgets() {
     // Retrieve accounts that have been edited
     const options = {
         muteHttpExceptions : true,
@@ -50,7 +46,13 @@ function updateCampaignBudgets(iterator) {
 
     while (campaignIterator.hasNext()) {
         const campaign = campaignIterator.next();
-        const budget = campaign.getBudget()
-        budget.setAmount(campaignsToUpdate[campaign['Id']])
+        const budgetObj = campaign.getBudget()
+        const newBudget = campaignsToUpdate[campaign['Id']]
+
+        budgetObj.setAmount(newBudget)
     }
+}
+
+function getManagedAccounts() {
+    return AdsManagerApp.accounts.get();
 }
