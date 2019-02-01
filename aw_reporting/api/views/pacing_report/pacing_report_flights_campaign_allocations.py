@@ -13,12 +13,23 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
     queryset = Flight.objects.all()
 
     def get(self, *a, **_):
+        """
+        Get all Campaigns associated with Flight
+        :return: list -> Campaigns
+        """
         flight = self.get_object()
         data = PacingReport().get_campaigns(flight)
         self.multiply_percents(data)
         return Response(data=data)
 
     def update(self, request, *args, **kwargs):
+        """
+        Update Campaign budget allocations associated with flight
+        Update Campiagn.account.update_time to mark for updating from google ads scripts
+        :return: list -> Flights
+        """
+
+        updated_at = request.data.get("updated_at")
         instance = self.get_object()
         # validation
         campaign_ids = Campaign.objects.filter(
@@ -36,11 +47,12 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="Sum of the values is wrong: {}".format(actual_sum)
             )
-        # apply changes
         # apply changes to CampaignCreation
         for campaign_id, allocation_value in request.data.items():
             Campaign.objects.filter(pk=campaign_id).update(
-                goal_allocation=allocation_value
+                goal_allocation=allocation_value,
+                update_time=updated_at,
+                account_update_time=updated_at,
             )
 
         # return

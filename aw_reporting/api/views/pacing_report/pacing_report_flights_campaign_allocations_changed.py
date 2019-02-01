@@ -39,9 +39,8 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
 
         try:
             managed_accounts = Account.objects\
-                .get(id=mcc_account_id)\
-                .managers\
-                .all()\
+                .filter(managers__id=mcc_account_id)\
+                .distinct("pk")\
                 .exclude(is_active=False)\
                 .exclude(update_time=None)\
                 .exclude(hourly_updated_at__gte=F("update_time"))\
@@ -58,25 +57,25 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         :param accounts: account ids to get campaign budgets for
         :return: list of dictionaries
         """
-        all_campaigns = []
+        all_account_campaigns = {
+            'accountIds': accounts.values_list('id', flat=True),
+            'campaignBudgets': {},
+        }
 
         for account in accounts:
             campaigns = account.campaigns\
                 .filter(status='eligible')\
-                .exclude(end_date__lte=datetime.now())\
-                .values_list('id', 'goal_allocation', 'account')
+                .values_list('id', 'goal_allocation', 'account') \
+                # .exclude(end_date__lte=datetime.datetime.now())\
 
             if not campaigns:
                 continue
 
-            campaigns = [{
-                'id': campaign[0],
-                'budget': campaign[1],
-                'account': campaign[2],
-            } for campaign in campaigns]
+            for campaign in campaigns:
+                campaign_id = campaign[0]
+                campaign_budget = campaign[1]
+                all_account_campaigns['campaignBudgets'][campaign_id] = campaign_budget
 
-            all_campaigns.extend(campaigns)
-
-        return all_campaigns
+        return all_account_campaigns
 
 
