@@ -1,20 +1,12 @@
-// Need to get endpoint from backend, get flight campaigns with new budget allocations
-/*
-1. get camaign ids to edit with their new budgets from backend
-2. Retrieve campaigns
-3. Iterate through campaigns and set new budget amounts
-*/
-
 var IQ_API_HOST = "https://rc.view-iq.channelfactory.com/api/v1/";
 var CHANGED_ACCOUNTS = "aw_creation_changed_accounts_list/";
-var CODE_ENDPOINT = "aw_creation_code/";
 var CHANGES_STATUS_PATH = "aw_creation_changes_status/";
 
 function main() {
   Logger.log('Updating budget allocations...');
   // Object with keys -> campaign id, value -> newBudget
   var mcc_account_id = get_mcc_account_id();
-  //var accountsToUpdate = getUpdatedCampaignBudgets(mcc_account_id);
+  //var accountsToUpdate = getUpdatedAccounts(mcc_account_id);
 
   var accountsToUpdate = {
     "accountIds": [
@@ -43,8 +35,8 @@ function get_mcc_account_id(){
   return AdWordsApp.currentAccount().getCustomerId().split('-').join('');
 }
 
-function getUpdatedCampaignBudgets() {
-  // Retrieve accounts that have been edited
+function getUpdatedAccounts() {
+  // Retrieve aw_accounts that have been edited / marked for syncing in view-iq
   var options = {
     muteHttpExceptions : true,
     method: "GET",
@@ -60,6 +52,7 @@ function getUpdatedCampaignBudgets() {
 }
 
 function processAccounts(iterator, accountsToUpdate) {
+  // Iterate over received accounts and process their campaigns
   var accountIterator = iterator;
 
   while (accountIterator.hasNext()) {
@@ -71,6 +64,7 @@ function processAccounts(iterator, accountsToUpdate) {
     .withIds(Object.keys(accountsToUpdate.campaignBudgets))
     .get()
 
+    // For each account, pass its campaigns as an iterator to process
     processCampaigns(campaignIterator, accountsToUpdate.campaignBudgets)
   }
 }
