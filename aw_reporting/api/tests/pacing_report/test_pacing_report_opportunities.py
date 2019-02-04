@@ -1616,3 +1616,37 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["margin_cap_required"], margin_cap_required)
+
+    def test_outgoing_fee(self):
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+        )
+        start = date(2019, 1, 1)
+        left, total = 3, 10
+        now = start + timedelta(days=left)
+        end = start + timedelta(days=total - 1)
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            cost=123,
+            start=start,
+            end=end,
+        )
+        expected_spent = flight.cost / total * left
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertAlmostEqual(response.data["items"][0]["cost"], expected_spent)
