@@ -86,7 +86,7 @@ class AWDataLoader:
                         name=e['name'],
                         currency_code=e['currencyCode'],
                         timezone=e['dateTimeZone'],
-                        can_manage_clients=e.get("canManageClients", False),
+                        can_manage_clients=e['canManageClients'],
                     )
                 )
                 a.managers.add(manager)
