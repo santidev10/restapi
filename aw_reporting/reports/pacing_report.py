@@ -30,6 +30,7 @@ from aw_reporting.models.salesforce_constants import ALL_DYNAMIC_PLACEMENTS
 from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
@@ -377,7 +378,12 @@ class PacingReport:
         else:
             ctr = get_ctr(clicks, impressions)
 
-        goal_type = ", ".join(sorted([goal_type_str(goal_type_id) for goal_type_id in goal_type_ids]))
+        goal_type_id = SalesForceGoalType.CPV
+        if SalesForceGoalType.CPM in goal_type_ids:
+            if SalesForceGoalType.CPV in goal_type_ids:
+                goal_type_id = SalesForceGoalType.CPM_AND_CPV
+            else:
+                goal_type_id = SalesForceGoalType.CPM
 
         stats = dict(
             impressions=impressions, video_views=video_views,
@@ -386,7 +392,7 @@ class PacingReport:
             ctr=ctr,
             video_view_rate=get_video_view_rate(video_views,
                                                 video_impressions),
-            goal_type=goal_type,
+            goal_type=SalesForceGoalTypes[goal_type_id],
             aw_update_time=aw_update_time,
         )
         return stats
@@ -781,7 +787,6 @@ class PacingReport:
         for p in placements:
             goal_type_id = p["goal_type_id"]
             p.update(
-                goal_type=goal_type_str(goal_type_id),
                 is_completed=p["end"] < self.today if p["end"] else None,
                 is_upcoming=p["start"] > self.today if p["start"] else None,
                 tech_fee=float(p["tech_fee"]) if p["tech_fee"] else None
@@ -806,6 +811,7 @@ class PacingReport:
 
             if goal_type_id == SalesForceGoalType.HARD_COST:
                 self._set_none_hard_cost_properties(p)
+            p.update(goal_type=goal_type_str(goal_type_id))
 
         return placements
 
