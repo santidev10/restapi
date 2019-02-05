@@ -416,7 +416,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="1", name="A", start=today - timedelta(days=1),
             end=today + timedelta(days=1), probability=100
         )
-        placement = OpPlacement.objects.create(opportunity=opportunity)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
         Flight.objects.create(placement=placement,
                               start=today,
                               end=today)
@@ -459,7 +462,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             end=today + timedelta(days=1), probability=100
         )
         placement = OpPlacement.objects.create(
-            goal_type_id=SalesForceGoalType.HARD_COST,
+            goal_type_id=SalesForceGoalType.CPM,
             opportunity=opportunity, total_cost=0)
         Flight.objects.create(placement=placement, start=today, end=today)
         campaign = Campaign.objects.create(salesforce_placement=placement)
@@ -474,12 +477,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     def test_opportunity_margin(self):
         now = now_in_default_tz()
         today = now.date()
-        campaign_1_cost = 10
-        campaign_2_cost = 20
+        placement_hc_cost = 10
+        campaign_cost = 20
         placement_cpv_ordered_rate = 50
         campaign_cpv_video_views = 10
         hard_cost_client_cost = 400
-        cost = campaign_1_cost + campaign_2_cost
+        cost = placement_hc_cost + campaign_cost
         cpv_client_cost = placement_cpv_ordered_rate * campaign_cpv_video_views
         client_cost = hard_cost_client_cost + cpv_client_cost
         expected_margin = (1 - cost / client_cost) * 100
@@ -494,20 +497,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             opportunity=opportunity, ordered_rate=placement_cpv_ordered_rate)
         Flight.objects.create(id="1", placement=placement_hc,
                               start=today, end=today,
-                              total_cost=hard_cost_client_cost)
+                              total_cost=hard_cost_client_cost,
+                              cost=placement_hc_cost)
         Flight.objects.create(id="2", placement=placement_cpv,
                               start=today, end=today, total_cost=1000)
-        campaign_1 = Campaign.objects.create(
-            salesforce_placement=placement_hc, cost=campaign_1_cost)
-        campaign_2 = Campaign.objects.create(
+        campaign = Campaign.objects.create(
             id="2", salesforce_placement=placement_cpv,
-            cost=campaign_2_cost)
+            cost=campaign_cost)
         CampaignStatistic.objects.create(date=today,
-                                         campaign=campaign_1,
-                                         cost=campaign_1_cost)
-        CampaignStatistic.objects.create(date=today,
-                                         campaign=campaign_2,
-                                         cost=campaign_2_cost,
+                                         campaign=campaign,
+                                         cost=campaign_cost,
                                          video_views=campaign_cpv_video_views)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1219,11 +1218,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
             start=start, end=end, total_cost=total_cost,
-            placement=hard_cost_placement, cost=1)
-        campaign = Campaign.objects.create(
-            salesforce_placement=hard_cost_placement)
-        CampaignStatistic.objects.create(date=start, campaign=campaign,
-                                         cost=our_cost)
+            placement=hard_cost_placement, cost=our_cost)
         client_cost = total_cost / total_days * days_pass
         expected_margin = (1 - our_cost / client_cost) * 100
         with patch_now(today):
@@ -1349,7 +1344,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         test_update_time = datetime(2018, 10, 11, 12, 13, 14, tzinfo=pytz.utc)
         any_date = date(2018, 1, 1)
         opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        placement = OpPlacement.objects.create(opportunity=opportunity)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
         Flight.objects.create(placement=placement, start=any_date, end=any_date)
         account = Account.objects.create(update_time=test_update_time)
         Campaign.objects.create(account=account, salesforce_placement=placement)
@@ -1575,6 +1573,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id=next(int_iterator),
             opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.BUDGET,
         )
         flight = Flight.objects.create(
@@ -1650,3 +1649,21 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertAlmostEqual(response.data["items"][0]["cost"], expected_spent)
+
+    def test_hard_cost_placement_margin_zero_total_cost(self):
+        today = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="1", start=today - timedelta(days=3),probability=100,
+            end=today + timedelta(days=3))
+        hard_cost_placement = OpPlacement.objects.create(
+            id="2", name="Hard cost placement", opportunity=opportunity,
+            start=today - timedelta(days=2), end=today + timedelta(days=2),
+            goal_type_id=SalesForceGoalType.HARD_COST)
+        Flight.objects.create(
+            start=today, end=today,
+            placement=hard_cost_placement, total_cost=0, cost=1)
+        Campaign.objects.create(
+            salesforce_placement=hard_cost_placement)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items"][0]["margin"], -100)
