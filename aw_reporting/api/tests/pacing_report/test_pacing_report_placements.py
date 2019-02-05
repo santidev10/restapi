@@ -133,7 +133,7 @@ class PacingReportPlacementsTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
             placement=hard_cost_placement, cost=30, total_cost=300,
-            start=today, end= today,
+            start=today, end=today,
         )
         url = self._get_url(opportunity.id)
         response = self.client.get(url)
@@ -843,3 +843,35 @@ class PacingReportPlacementsTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertAlmostEqual(response.data[0]["cost"], expected_spent)
+
+    def test_outgoing_fee_update_time(self):
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+        )
+        now = now_in_default_tz()
+        today = now.date()
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            cost=123,
+            start=today,
+            end=today,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = self._get_url(opportunity.id)
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["aw_update_time"], now)
