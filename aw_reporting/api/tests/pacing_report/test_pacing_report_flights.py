@@ -25,9 +25,10 @@ from aw_reporting.reports.pacing_report import DefaultRate
 from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportFlightsTestCase(APITestCase):
@@ -58,6 +59,7 @@ class PacingReportFlightsTestCase(APITestCase):
         )
         placement = OpPlacement.objects.create(
             id="2", name="Where is my money", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
             start=today - timedelta(days=2), end=today + timedelta(days=2),
         )
         flight = Flight.objects.create(
@@ -86,7 +88,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "ctr_quality",
                 "current_cost_limit",
                 "dynamic_placement",
-                "end", 
+                "end",
                 "goal",
                 "goal_type",
                 "goal_type_id",
@@ -141,12 +143,8 @@ class PacingReportFlightsTestCase(APITestCase):
                               total_cost=plan_cost,
                               ordered_units=1,
                               start=date(2017, 1, 1),
-                              end=date(2017, 2, 1))
-        campaign = Campaign.objects.create(id="1",
-                                           salesforce_placement=placement)
-        CampaignStatistic.objects.create(date=date(2017, 1, 1),
-                                         campaign=campaign,
-                                         cost=amount_spend)
+                              end=date(2017, 2, 1),
+                              cost=amount_spend)
         url = self._get_url(placement.id)
         response = self.client.get(url)
 
@@ -196,11 +194,8 @@ class PacingReportFlightsTestCase(APITestCase):
         Flight.objects.create(placement=placement,
                               ordered_units=1,
                               start=date(2017, 1, 1),
-                              end=date(2017, 2, 1))
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(campaign=campaign,
-                                         date=date(2017, 1, 1),
-                                         cost=1)
+                              end=date(2017, 2, 1),
+                              cost=1)
 
         url = self._get_url(placement.id)
         response = self.client.get(url)
@@ -223,11 +218,8 @@ class PacingReportFlightsTestCase(APITestCase):
                               ordered_units=1,
                               total_cost=client_cost,
                               start=date(2017, 1, 1),
-                              end=date(2017, 2, 1))
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(campaign=campaign,
-                                         date=date(2017, 1, 1),
-                                         cost=cost)
+                              end=date(2017, 2, 1),
+                              cost=cost)
 
         url = self._get_url(placement.id)
         response = self.client.get(url)
@@ -763,6 +755,7 @@ class PacingReportFlightsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
@@ -1054,6 +1047,7 @@ class PacingReportFlightsTestCase(APITestCase):
             id="1",
             opportunity=opportunity,
             total_cost=total_cost,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.BUDGET)
         account = Account.objects.create(update_time=today_time, timezone="UTC")
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
@@ -1091,11 +1085,7 @@ class PacingReportFlightsTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
             start=start, end=end, total_cost=total_cost,
-            placement=hard_cost_placement, cost=1)
-        campaign = Campaign.objects.create(
-            salesforce_placement=hard_cost_placement)
-        CampaignStatistic.objects.create(date=start, campaign=campaign,
-                                         cost=our_cost)
+            placement=hard_cost_placement, cost=our_cost)
         client_cost = total_cost / total_days * days_pass
         expected_margin = (1 - our_cost / client_cost) * 100
         url = self._get_url(hard_cost_placement.id)
@@ -1103,3 +1093,34 @@ class PacingReportFlightsTestCase(APITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]["margin"], expected_margin)
+
+    def test_outgoing_fee(self):
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+        )
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+        )
+        start = date(2019, 1, 1)
+        left, total = 3, 10
+        now = start + timedelta(days=left)
+        end = start + timedelta(days=total - 1)
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            cost=123,
+            start=start,
+            end=end,
+        )
+
+        expected_spent = flight.cost / total * left
+
+        url = self._get_url(placement.id)
+        with patch_now(now):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertAlmostEqual(response.data[0]["cost"], expected_spent)

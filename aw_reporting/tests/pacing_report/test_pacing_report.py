@@ -224,7 +224,12 @@ class PacingReportTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(
             id='1', name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
         )
-        placement = OpPlacement.objects.create(id="1", name="", opportunity=opportunity)
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="",
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
         flight = Flight.objects.create(id="1", name="", placement=placement, start=today, end=today)
         account = Account.objects.create(id="1", name="")
         campaign = Campaign.objects.create(
@@ -264,7 +269,12 @@ class PacingReportTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create(
             id='1', name="", start=today - timedelta(days=1), end=today + timedelta(days=1),
         )
-        placement = OpPlacement.objects.create(id="1", name="", opportunity=opportunity)
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="",
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
         flight = Flight.objects.create(id="1", name="", placement=placement, start=today, end=today)
         account = Account.objects.create(id="1", name="")
         campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, account=account)

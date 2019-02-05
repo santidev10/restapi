@@ -16,8 +16,8 @@ from aw_reporting.models import settings
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.patch_now import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportPlacementsTestCase(ExtendedAPITestCase):
@@ -64,6 +64,8 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
 
     def test_cost_hard_cost_outgoing_fee(self):
         today = now_in_default_tz().date()
+        days_pass, days_left = 2, 7
+        total_days = days_pass + days_left
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=today, end=today, probability=100,
             budget=500001)
@@ -76,21 +78,22 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
             id="1", name="", placement=placement,
             start=today - timedelta(days=5), end=today - timedelta(days=4),
             cost=1)
-        flight_1 = Flight.objects.create(
+        current_flight = Flight.objects.create(
             id="2", name="", placement=placement,
-            start=today - timedelta(days=2), end=today + timedelta(days=7),
+            start=today - timedelta(days=days_pass), end=today + timedelta(days=days_left - 1),
             cost=10)
-        flight_2 = Flight.objects.create(
+        future_flight = Flight.objects.create(
             id="3", name="", placement=placement,
             start=today + timedelta(days=12), end=today + timedelta(days=24),
             cost=100)
-        report = PacingReport()
-        placements = report.get_placements(opportunity)
+        with patch_now(today):
+            report = PacingReport()
+            placements = report.get_placements(opportunity)
         self.assertEqual(len(placements), 1)
-        expected_cost = sum(
-            (obj.cost for obj in [prev_flight, flight_1, flight_2]))
+        expected_cost = prev_flight.cost \
+                        + current_flight.cost * days_pass / total_days
         first_data = placements[0]
-        self.assertEqual(first_data["cost"], expected_cost)
+        self.assertAlmostEqual(first_data["cost"], expected_cost)
 
     def test_placement_chart_data(self):
         """

@@ -27,8 +27,9 @@ from aw_reporting.reports.pacing_report import PacingReportChartId
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PacingReportPlacementsTestCase(APITestCase):
@@ -131,7 +132,9 @@ class PacingReportPlacementsTestCase(APITestCase):
             start=today - timedelta(days=2), end=today + timedelta(days=2),
             goal_type_id=SalesForceGoalType.HARD_COST)
         Flight.objects.create(
-            placement=hard_cost_placement, cost=30, total_cost=300)
+            placement=hard_cost_placement, cost=30, total_cost=300,
+            start=today, end=today,
+        )
         url = self._get_url(opportunity.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -453,6 +456,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=total_cost,
         )
@@ -494,6 +498,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
@@ -534,6 +539,7 @@ class PacingReportPlacementsTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="BBB", opportunity=opportunity,
             start=start - timedelta(days=1), end=end,
+            goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
             total_cost=total_cost,
         )
@@ -801,3 +807,71 @@ class PacingReportPlacementsTestCase(APITestCase):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data[0]["margin"], expected_margin)
+
+    def test_outgoing_fee(self):
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+        )
+        start = date(2019, 1, 1)
+        left, total = 3, 10
+        now = start + timedelta(days=left)
+        end = start + timedelta(days=total - 1)
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            cost=123,
+            start=start,
+            end=end,
+        )
+
+        expected_spent = flight.cost / total * left
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = self._get_url(opportunity.id)
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertAlmostEqual(response.data[0]["cost"], expected_spent)
+
+    def test_outgoing_fee_update_time(self):
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            placement_type=OpPlacement.OUTGOING_FEE_TYPE,
+            goal_type_id=SalesForceGoalType.HARD_COST,
+        )
+        now = now_in_default_tz()
+        today = now.date()
+        Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            cost=123,
+            start=today,
+            end=today,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = self._get_url(opportunity.id)
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["aw_update_time"], now)
