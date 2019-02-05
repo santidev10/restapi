@@ -751,7 +751,7 @@ class PacingReport:
         raise PeriodError(period)
 
     # ## PLACEMENTS ## #
-    # todo: remove this method
+    # todo: remove this method. Calculate these vales on general logic. Ensure that FE can handle them.
     def _set_none_hard_cost_properties(self, placement_dict_data):
         placement_dict_data.update(
             cpm=None, cpv=None, ctr=None, ctr_quality=None, impressions=None,
