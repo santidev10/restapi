@@ -77,6 +77,8 @@ class SegmentedAudit:
         for channel in channels:
             if not channel.get("category"):
                 channel["category"] = "Unclassified"
+            if not channel.get("language"):
+                channel["language"] = "Unknown"
 
         if not channels:
             channels = self.get_next_channels_batch(limit=limit)
