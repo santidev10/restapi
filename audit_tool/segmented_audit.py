@@ -105,6 +105,8 @@ class SegmentedAudit:
                     continue
                 if not video.get("category"):
                     video["category"] = "Unknown"
+                if not video.get("language"):
+                    video["language"] = "Unknown"
                 yield video
             last_id = videos[-1]["video_id"]
 
