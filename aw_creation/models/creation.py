@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
 
 WEEKDAYS = list(calendar.day_name)
-NameValidator = RegexValidator(r"^[^#']*$",
-                               "# and ' are not allowed for titles")
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)" \
                  r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
@@ -89,7 +87,7 @@ class AccountCreation(UniqueCreationItem):
     objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
-    name = models.CharField(max_length=255, validators=[NameValidator])
+    name = models.CharField(max_length=255)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
                               on_delete=CASCADE,
