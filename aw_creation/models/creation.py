@@ -89,6 +89,7 @@ class AccountCreation(UniqueCreationItem):
     objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
+    name = models.CharField(max_length=255, validators=[NameValidator])
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
                               on_delete=CASCADE,

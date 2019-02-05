@@ -1130,6 +1130,44 @@ class PullAWDataTestCase(TransactionTestCase):
         self.assertAlmostEqual(campaign.budget, test_budget)
         self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
 
+    def test_account_name_limit(self):
+        """
+        Ticket: https://channelfactory.atlassian.net/browse/VIQ-1163
+        Summary: Increase AW account name length
+        """
+        name_limit = 255
+        mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            timezone="UTC",
+            can_manage_clients=True,
+            update_time=None
+        )
+        AWAccountPermission.objects.create(
+            account=mcc_account,
+            aw_connection=AWConnection.objects.create(),
+            can_read=True
+        )
+        test_account_id = next(int_iterator)
+        self.assertFalse(Account.objects.filter(id=test_account_id).exists())
+
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="N" * name_limit,
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
+            self._call_command(start="get_ads", end="get_campaigns")
+
+        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
+        self.assertTrue(len(Account.objects.get(id=test_account_id).name), name_limit)
+
 
 class FakeExceptionWithArgs:
     def __init__(self, search_string):
