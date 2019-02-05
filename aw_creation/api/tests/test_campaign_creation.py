@@ -6,7 +6,7 @@ import pytz
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, Language, \
@@ -153,11 +153,35 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
-
         response = self.client.patch(
             url, json.dumps({}), content_type='application/json',
         )
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_success_update_patch(self):
+        today = now_in_default_tz().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        campaign = self.create_campaign(**defaults)
+        account_creation = campaign.account_creation
+        account_creation.is_deleted = True
+        account_creation.save()
+
+        url = reverse(self._url_path,
+                      args=(campaign.id,))
+
+        update_name = "UPDATED"
+        request_data = dict(
+            name=update_name
+        )
+        response = self.client.patch(
+            url, json.dumps(request_data), content_type='application/json',
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data.get('name'), update_name)
 
     def test_success_update(self):
         today = now_in_default_tz().date()
