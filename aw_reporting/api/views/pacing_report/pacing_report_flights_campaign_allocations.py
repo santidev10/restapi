@@ -4,7 +4,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
-from aw_reporting.models import Flight, Campaign
+from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import Account
 from aw_reporting.reports.pacing_report import PacingReport
 
 
@@ -15,7 +17,8 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
     def get(self, *a, **_):
         """
         Get all Campaigns associated with Flight
-        :return: list -> Campaigns
+
+        :return: (list) Campaign objects
         """
         flight = self.get_object()
         data = PacingReport().get_campaigns(flight)
@@ -25,8 +28,9 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
     def update(self, request, *args, **kwargs):
         """
         Update Campaign budget allocations associated with flight
-        Update Campiagn.account.update_time to mark for updating from google ads scripts
-        :return: list -> Flights
+            Also updates both Campaign and associated Account update_times to mark for syncing with Adwords
+
+        :return: (list) All flights
         """
 
         updated_at = request.data.get("updated_at")
@@ -49,12 +53,15 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             )
         # apply changes to CampaignCreation
         for campaign_id, allocation_value in request.data.items():
+            related_account_id = Campaign.objects.get(id=campaign_id).account_id
+
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value,
                 update_time=updated_at,
-                account_update_time=updated_at,
             )
-
+            Account.objects.get(id=related_account_id).update(
+                update_time=updated_at,
+            )
         # return
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
