@@ -360,8 +360,7 @@ class ItemsFromSegmentIdsApiView(APIView):
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
-
-        return Response(data=items)
+        return Response(data=[item for item in items if item["id"] is not None])
 
     @staticmethod
     def get_video_item_ids(ids):
