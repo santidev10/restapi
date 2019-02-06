@@ -156,6 +156,10 @@ class Opportunity(models.Model):
     renewal_approved = models.BooleanField(default=False)
     reason_for_close = models.TextField(default="")
 
+    # Buffers for CPV and CPM goal types
+    cpv_buffer = models.IntegerField()
+    cpm_buffer = models.IntegerField()
+
     # sf managers
     account_manager = models.ForeignKey(
         User, null=True, related_name="managed_opportunities",
@@ -357,6 +361,9 @@ class OpPlacement(BaseModel):
     end = models.DateField(null=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
     ad_words_placement = models.CharField(max_length=255, null=True)
+
+    # ordered units goal with buffer
+    goal_ordered_units = models.IntegerField(null=True)
 
     placement_type = models.CharField(max_length=25, null=True)
     dynamic_placement = models.CharField(max_length=25, null=True)
