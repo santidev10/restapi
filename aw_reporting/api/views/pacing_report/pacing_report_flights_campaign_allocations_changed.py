@@ -39,7 +39,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
-            'hourly_updated_at': self.now
+            'hourlyUpdatedAt': self.now
         }
 
         return Response(all_updated_campaign_budgets)
@@ -55,7 +55,8 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         if mcc_account_id is None:
             raise ValueError('Must provide MCC Account ID.')
 
-        managed_accounts = Account.objects \
+        managed_accounts = Account\
+            .objects \
             .filter(managers__id=mcc_account_id) \
             .distinct("pk") \
             .exclude(is_active=False) \
@@ -101,7 +102,9 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         :return: (list) Account campaigns
         """
         for account in accounts:
-            campaigns = account.campaigns \
+            campaigns = account\
+                .campaigns \
+                .exclude(update_time__lte=account.update_time) \
                 .filter(status='eligible') \
                 .values_list('id', 'goal_allocation', 'account') \
 

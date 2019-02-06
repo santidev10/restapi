@@ -35,6 +35,6 @@ class PacingReportStatusApiView(APIView):
 
         Campaign.objects\
             .filter(id__in=campaign_ids)\
-            .update(hourly_updated_at=updated_at)
+            .update(updated_time=updated_at)
 
         return Response(status=HTTP_200_OK, data='Campaigns and Accounts status update complete.')
