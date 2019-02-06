@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
         from segment.models import SegmentRelatedVideo, SegmentVideo
         ids = []
         item_ids = []
-        video_ids = ["9bZkp7q19f0", "RgKAFK5djSk", "fRh_vgS2dFE", "OPf0YbXqDm0"]
+        video_ids = ["aSjflT_J0Xo", "xp6706wVdCI", "fRh_vgS2dFE", "gFZfwWZV074"]
         j = 0
         for i in range(2):
             segment = SegmentVideo.objects.create()
@@ -60,8 +60,8 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
         from segment.models import SegmentRelatedChannel, SegmentChannel
         ids = []
         item_ids = []
-        channel_ids = ["UC-lHJZR3Gqxm24_Vd_AJ5Yw", "UCZJ7m7EnCNodqnu5SAtg8eQ",
-                       "UCHkj014U2CQ2Nv0UZeYpE_A", "UCBR8-60-B28hp2BmDPdntcQ"]
+        channel_ids = ["UCF0OLOFwYYu5SkDNunKMbqw", "UCZJ7m7EnCNodqnu5SAtg8eQ",
+                       "UCHkj014U2CQ2Nv0UZeYpE_A", "UCLGOpkME9pyo3gDzWWrJwqA"]
         j = 0
         for i in range(2):
             segment = SegmentChannel.objects.create()

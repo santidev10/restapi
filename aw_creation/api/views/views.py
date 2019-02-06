@@ -71,6 +71,7 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from segment.models import SegmentChannel, SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -360,7 +361,9 @@ class ItemsFromSegmentIdsApiView(APIView):
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
-        return Response(data=[item for item in items if item["id"] is not None])
+        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
+            return Response(data=[item for item in items if item["id"] is not None])
+        return Response(data=items)
 
     @staticmethod
     def get_video_item_ids(ids):
