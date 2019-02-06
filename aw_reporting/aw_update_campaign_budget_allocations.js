@@ -17,9 +17,10 @@ function main() {
 
   processAccounts(accountIterator, accountsToUpdate);
 
-  { accountIds, Object.keys(campaignBudgets) } = accountsToUpdate
+  var accountIds = accountsToUpdate.accountIds;
+  var hourlyUpdatedAt = accountsToUpdate.hourlyUpdatedAt;
 
-  setAccountCampaignUpdateTimes(accountIds, campaignBudgets, hourlyUpdatedAt)
+  setAccountCampaignUpdateTimes(accountIds, campaignIds, hourlyUpdatedAt)
 
   Logger.log('Budget allocations update complete');
 }
@@ -35,11 +36,16 @@ function getUpdatedAccounts(mcc_account_id) {
     method: 'GET',
   };
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGED_ACCOUNTS + mcc_account_id + '/', options);
+
   if (resp.getResponseCode() == 200) {
+
     return JSON.parse(resp.getContentText());
+
   } else {
+
     Logger.log(resp.getResponseCode());
     Logger.log(resp.getContentText());
+
     return '';
   }
 }
@@ -78,14 +84,13 @@ function getManagedAccounts() {
   return AdsManagerApp.accounts.get();
 }
 
-function setAccountCampaignUpdateTimes(accountIds, campaignIds, updatedAt) {
+function setAccountCampaignUpdateTimes(accountIds, updatedAt) {
   // Update Account and Campaign object hourly_updated_at fields to mark sync with Adwords
   var options = {
     muteHttpExceptions : true,
     method: 'PATCH',
     data: {
       account_ids: accountIds,
-      campaign_ids: campaignIds,
       updated_at: updatedAt
     }
   };
@@ -95,13 +100,18 @@ function setAccountCampaignUpdateTimes(accountIds, campaignIds, updatedAt) {
   Logger.log(resp.data)
 
   if (resp.getResponseCode() == 200) {
+
     return JSON.parse(resp.getContentText());
+
   } else {
+
     Logger.log(resp.getResponseCode());
     Logger.log(resp.getContentText());
+
     return '';
   }
 }
+
 
 
 

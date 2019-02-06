@@ -1,7 +1,6 @@
-from rest_framework.generics import UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
 from utils.datetime import Time
@@ -104,7 +103,6 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         for account in accounts:
             campaigns = account\
                 .campaigns \
-                .exclude(update_time__lte=account.update_time) \
                 .filter(status='eligible') \
                 .values_list('id', 'goal_allocation', 'account') \
 
