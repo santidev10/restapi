@@ -23,11 +23,11 @@ class PacingReportStatusApiView(APIView):
         :param campaign_ids: Campaigns ids to update hourly_updated_at
         """
         account_ids = request.data.get('account_ids', [])
-        updated_at = request.data.get('updated_at', self.now)
+        hourly_updated_at = request.data.get('hourly_updated_at', self.now)
 
         # update all accounts
         Account.objects\
             .filter(id__in=account_ids)\
-            .update(hourly_updated_at=updated_at)
+            .update(hourly_updated_at=hourly_updated_at)
 
         return Response(status=HTTP_200_OK, data='Campaigns and Accounts status update complete.')

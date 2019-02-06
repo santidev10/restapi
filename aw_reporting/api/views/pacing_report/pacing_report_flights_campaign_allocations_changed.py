@@ -8,10 +8,6 @@ from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
 
-    @property
-    def now(self):
-        return Time().now()
-
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
@@ -38,7 +34,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
-            'hourlyUpdatedAt': self.now
+            'hourlyUpdatedAt': Time().now()
         }
 
         return Response(all_updated_campaign_budgets)

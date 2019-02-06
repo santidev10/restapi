@@ -91,7 +91,7 @@ function setAccountCampaignUpdateTimes(accountIds, updatedAt) {
     method: 'PATCH',
     data: {
       account_ids: accountIds,
-      updated_at: updatedAt
+      hourly_updated_at: updatedAt
     }
   };
 

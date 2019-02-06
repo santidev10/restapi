@@ -8,6 +8,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.models import Account
 from aw_reporting.reports.pacing_report import PacingReport
+from utils.datetime import Time
 
 
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
@@ -32,8 +33,6 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
 
         :return: (list) All flights
         """
-
-        updated_at = request.data.get("updated_at")
         instance = self.get_object()
         # validation
         campaign_ids = Campaign.objects.filter(
@@ -57,10 +56,9 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
 
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value,
-                update_time=updated_at,
             )
-            Account.objects.get(id=related_account_id).update(
-                update_time=updated_at,
+            Account.objects.filter(id=related_account_id).update(
+                update_time=Time().now(),
             )
         # return
         res = self.get(request, *args, **kwargs)
