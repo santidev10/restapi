@@ -25,6 +25,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     budget = models.FloatField(null=True)
     status = models.CharField(max_length=10, null=True)
     update_time = models.DateTimeField(auto_now_add=True)
+    hourly_updated_at = models.DateTimeField(null=True)
     salesforce_placement = models.ForeignKey(
         OpPlacement,
         null=True,

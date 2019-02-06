@@ -1,6 +1,7 @@
-var IQ_API_HOST = "https://rc.view-iq.channelfactory.com/api/v1/";
-var CHANGED_ACCOUNTS = "aw_creation_changed_accounts_list/";
-var CHANGES_STATUS_PATH = "aw_creation_changes_status/";
+var IQ_API_HOST = 'https://rc.view-iq.channelfactory.com/api/v1/';
+var CHANGED_ACCOUNTS = 'aw_creation_changed_accounts_list/';
+var CHANGES_STATUS_PATH = 'aw_creation_changes_status/';
+var SET_CAMPAIGN_ACCOUNT_UPDATE_TIMES = 'pacing_report/status/'
 
 function main() {
   Logger.log('Updating budget allocations...');
@@ -9,14 +10,14 @@ function main() {
   //var accountsToUpdate = getUpdatedAccounts(mcc_account_id);
 
   var accountsToUpdate = {
-    "accountIds": [
-      "1191514178",
-      "7155851537",
-      "9102949537"
+    'accountIds': [
+      '1191514178',
+      '7155851537',
+      '9102949537'
     ],
-    "campaignBudgets": {
-      "2902": 2,
-      "1687597595": 6
+    'campaignBudgets': {
+      '2902': 2,
+      '1687597595': 6
     }
   }
 
@@ -39,7 +40,7 @@ function getUpdatedAccounts() {
   // Retrieve aw_accounts that have been edited / marked for syncing in view-iq
   var options = {
     muteHttpExceptions : true,
-    method: "GET",
+    method: 'GET',
   };
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGED_ACCOUNTS + '/', options);
   if (resp.getResponseCode() == 200) {
@@ -85,6 +86,30 @@ function getManagedAccounts() {
   return AdsManagerApp.accounts.get();
 }
 
+function setCampaignAccountUpdateTimes(accountIds, campaignIds), updatedAt {
+  // Update Account and Campaign object hourly_updated_at fields to mark sync with Adwords
+  var options = {
+    muteHttpExceptions : true,
+    method: 'PATCH',
+    data: {
+      account_ids: accountIds,
+      campaign_ids: campaignIds,
+      updated_at: updatedAt
+    }
+  };
+
+  var resp = UrlFetchApp.fetch(IQ_API_HOST + SET_CAMPAIGN_ACCOUNT_UPDATE_TIMES + '/', options);
+
+  Logger.log(resp.data)
+
+  if (resp.getResponseCode() == 200) {
+    return JSON.parse(resp.getContentText());
+  } else {
+    Logger.log(resp.getResponseCode());
+    Logger.log(resp.getContentText());
+    return '';
+  }
+}
 
 
 

@@ -4,9 +4,15 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
 from aw_reporting.models import Account
+from utils.datetime import Time
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
+
+    @property
+    def now(self):
+        return Time().now()
+
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
@@ -33,6 +39,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
+            'hourly_updated_at': self.now
         }
 
         return Response(all_updated_campaign_budgets)

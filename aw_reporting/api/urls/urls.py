@@ -36,6 +36,9 @@ urlpatterns = [
         name=Name.AWAccounts.CONNECTION),
 
     # Pacing report
+    url(r'^pacing_report/status/$',
+        views.PacingReportStatusApiView.as_view(),
+        name="pacing_report_status"),
     url(r'^pacing_report_filters/$',
         views.PacingReportFiltersApiView.as_view(),
         name="pacing_report_filters"),
