@@ -6,6 +6,12 @@ from aw_reporting.api.serializers.pacing_report_opportunity_update_serializer im
     PacingReportOpportunityUpdateSerializer
 from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
+from django.db.models import F
+from django.db.models import Q
+from django.db.models import Case
+from django.db.models import When
+from django.db.models import Value
+from django.db.models import IntegerField
 
 
 class PacingReportOpportunityUpdateApiView(UpdateAPIView):
@@ -18,12 +24,12 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
         response = super(PacingReportOpportunityUpdateApiView, self).update(
             request, *args, **kwargs)
 
-        cpm_buffer = request.data.get('cpm_buffer', None)
-        cpv_buffer = request.data.get('cpv_buffer', None)
-
-        self.update_opportunity_placements_buffers(cpm_buffer=cpm_buffer, cpv_buffer=cpv_buffer)
-
         if response.status_code == HTTP_200_OK:
+            cpm_buffer = request.data.get('cpm_buffer', None)
+            cpv_buffer = request.data.get('cpv_buffer', None)
+
+            self.update_opportunity_placements_buffers(cpm_buffer=cpm_buffer, cpv_buffer=cpv_buffer)
+
             response.data['thumbnail'] = None
             ad_ops = self.get_object().ad_ops_manager
             if ad_ops:
@@ -46,17 +52,16 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
         """
         opportunity = self.get_object()
 
-        for placement in OpPlacement.objects.filter(opportunity=opportunity):
-            if cpm_buffer is not None and placement.goal_type == 'CPM':
-                new_cpm_ordered_units_goal = placement.ordered_units + (placement.ordered_units * cpm_buffer / 100)
-                new_cpm_ordered_units_goal = new_cpm_ordered_units_goal if new_cpm_ordered_units_goal > 0 else 0
-
-                placement.goal_ordered_units = new_cpm_ordered_units_goal
-                placement.save()
-
-            if cpv_buffer is not None and placement.goal_type == 'CPM':
-                new_cpv_ordered_units_goal = placement.ordered_units + (placement.ordered_units * cpv_buffer / 100)
-                new_cpv_ordered_units_goal = new_cpv_ordered_units_goal if new_cpv_ordered_units_goal > 0 else 0
-                
-                placement.goal_ordered_units = new_cpv_ordered_units_goal
-                placement.save()
+        OpPlacement\
+            .objects\
+            .filter(opportunity=opportunity) \
+            .filter(Q(goal_type_id=0) | Q(goal_type_id=1)) \
+            .annotate(cpm_buffer=Value(cpm_buffer, output_field=IntegerField())) \
+            .annotate(cpv_buffer=Value(cpv_buffer, output_field=IntegerField())) \
+            .update(
+                goal_ordered_units=Case(
+                    When(Q(goal_type=0 & ~Q(cpm_buffer=None)), then=F('ordered_units') + F('ordered_units') * F('cpm_buffer') / 100),
+                    When(Q(goal_type=1 & ~Q(cpv_buffer=None)), then=F('ordered_units') + F('ordered_units') * F('cpv_buffer') / 100),
+                    default=F('goal_ordered_units')
+                )
+            )
