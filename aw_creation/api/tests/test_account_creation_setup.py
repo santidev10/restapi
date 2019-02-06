@@ -628,7 +628,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(data['name'], response.data.get('name'))
 
-
     def test_success_delete(self):
         today = datetime.now().date()
         defaults = dict(

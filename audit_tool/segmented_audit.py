@@ -77,6 +77,8 @@ class SegmentedAudit:
         for channel in channels:
             if not channel.get("category"):
                 channel["category"] = "Unclassified"
+            if not channel.get("language"):
+                channel["language"] = "Unknown"
 
         if not channels:
             channels = self.get_next_channels_batch(limit=limit)
@@ -103,6 +105,8 @@ class SegmentedAudit:
                     continue
                 if not video.get("category"):
                     video["category"] = "Unknown"
+                if not video.get("language"):
+                    video["language"] = "Unknown"
                 yield video
             last_id = videos[-1]["video_id"]
 
