@@ -32,7 +32,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         "type",
         "updated_at",
         "video_networks",
-        "bid_strategy_type"
+        "bid_strategy_type",
     }
 
     def setUp(self):
@@ -75,7 +75,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_get_format_check(response.data)
+        self.perform_get_format_check(response.data, extra_data_keys=['sync_at'])
 
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
@@ -86,14 +86,38 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 
-    def perform_get_format_check(self, data):
+    def perform_get_format_check(self, data, extra_data_keys=None):
+        campaign_keys = {
+            "ad_group_creations",
+            "ad_schedule_rules",
+            "budget",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "frequency_capping",
+            "id",
+            "is_draft",
+            "languages",
+            "location_rules",
+            "name",
+            "start",
+            "type",
+            "updated_at",
+            "video_networks",
+            "bid_strategy_type",
+        }
+        if extra_data_keys is not None:
+            campaign_keys.update(extra_data_keys)
         self.assertEqual(len(data), 2)
         self.assertEqual(
             set(data[0].keys()),
-            self.detail_keys
+            campaign_keys
         )
 
     def test_success_post(self):
+        detail_keys = set(self.detail_keys)
+        detail_keys.add('sync_at')
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )
@@ -107,7 +131,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(
             set(response.data.keys()),
-            self.detail_keys,
+            detail_keys,
         )
         self.assertEqual(len(response.data['languages']), 1)
 

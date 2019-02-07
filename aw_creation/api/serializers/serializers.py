@@ -354,6 +354,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             "updated_at",
             "video_networks",
             "bid_strategy_type",
+            "sync_at"
         )
 
 
@@ -371,7 +372,7 @@ class AccountCreationSetupSerializer(ModelSerializer):
         model = AccountCreation
         fields = (
             'id', 'name', 'account', 'is_ended', 'is_approved', 'is_paused',
-            'campaign_creations', 'updated_at')
+            'campaign_creations', 'updated_at', "sync_at")
 
 
 class AccountCreationUpdateSerializer(ModelSerializer):
@@ -382,6 +383,7 @@ class AccountCreationUpdateSerializer(ModelSerializer):
             'is_ended',
             'is_paused',
             'is_approved',
+            'sync_at'
         )
 
 
@@ -405,6 +407,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "start",
             "video_networks",
             "bid_strategy_type",
+            "sync_at"
         )
 
     def validate_start(self, value):

@@ -131,7 +131,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.perform_details_check(data)
+        self.perform_details_check(data, extra_account_keys=['sync_at'], extra_campaign_keys=['sync_at'])
 
     def test_success_get_demo(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
@@ -141,38 +141,45 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_details_check(response.data)
 
-    def perform_details_check(self, data):
+    def perform_details_check(self, data, extra_account_keys=None, extra_campaign_keys=None):
+        account_keys = {
+            'id', 'name', 'account', 'updated_at', 'campaign_creations',
+            'updated_at',
+            'is_ended', 'is_approved', 'is_paused',
+        }
+        campaign_keys = {
+            "ad_group_creations",
+            "ad_schedule_rules",
+            "budget",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "frequency_capping",
+            "id",
+            "is_draft",
+            "languages",
+            "location_rules",
+            "name",
+            "start",
+            "type",
+            "updated_at",
+            "video_networks",
+            "bid_strategy_type",
+        }
+        if extra_account_keys is not None:
+            account_keys.update(extra_account_keys)
+        if extra_campaign_keys is not None:
+            campaign_keys.update(extra_campaign_keys)
+
         self.assertEqual(
             set(data.keys()),
-            {
-                'id', 'name', 'account', 'updated_at', 'campaign_creations',
-                'updated_at',
-                'is_ended', 'is_approved', 'is_paused'
-            }
+            account_keys
         )
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_data.keys()),
-            {
-                "ad_group_creations",
-                "ad_schedule_rules",
-                "budget",
-                "content_exclusions",
-                "delivery_method",
-                "devices",
-                "end",
-                "frequency_capping",
-                "id",
-                "is_draft",
-                "languages",
-                "location_rules",
-                "name",
-                "start",
-                "type",
-                "updated_at",
-                "video_networks",
-                "bid_strategy_type"
-            }
+            campaign_keys
         )
         self.assertEqual(len(campaign_data['content_exclusions']), 2)
         self.assertEqual(

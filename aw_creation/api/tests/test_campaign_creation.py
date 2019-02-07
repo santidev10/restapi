@@ -95,12 +95,10 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_format_check(response.data)
+        self.perform_format_check(response.data, extra_campaign_keys=['sync_at'])
 
-    def perform_format_check(self, data):
-        self.assertEqual(
-            set(data.keys()),
-            {
+    def perform_format_check(self, data, extra_campaign_keys=None):
+        campaign_keys = {
                 "ad_group_creations",
                 "ad_schedule_rules",
                 "budget",
@@ -118,8 +116,14 @@ class CampaignAPITestCase(ExtendedAPITestCase):
                 "type",
                 "updated_at",
                 "video_networks",
-                "bid_strategy_type"
+                "bid_strategy_type",
             }
+
+        if extra_campaign_keys is not None:
+            campaign_keys.update(extra_campaign_keys)
+        self.assertEqual(
+            set(data.keys()),
+            campaign_keys
         )
         ad_group_data = data['ad_group_creations'][0]
         self.assertEqual(
