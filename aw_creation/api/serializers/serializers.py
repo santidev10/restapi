@@ -354,6 +354,7 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             "updated_at",
             "video_networks",
             "bid_strategy_type",
+            "sync_at"
         )
 
 
@@ -405,6 +406,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "start",
             "video_networks",
             "bid_strategy_type",
+            "sync_at"
         )
 
     def validate_start(self, value):

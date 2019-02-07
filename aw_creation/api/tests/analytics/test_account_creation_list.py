@@ -116,7 +116,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "frequency_capping", "ad_schedule_rules",
                 "location_rules", "ad_group_creations",
                 "video_networks", "type", "delivery_method",
-                "is_draft", 'bid_strategy_type'
+                "is_draft", 'bid_strategy_type', "sync_at"
             }
         )
         self.assertEqual(len(campaign_creation["languages"]), 1)
