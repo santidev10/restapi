@@ -100,7 +100,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             set(response.data.keys()),
             {
                 "id", "name", "account", "campaign_creations",
-                "updated_at", "is_ended", "is_paused", "is_approved",
+                "updated_at", "is_ended", "is_paused", "is_approved", "sync_at"
             }
         )
 

@@ -372,7 +372,7 @@ class AccountCreationSetupSerializer(ModelSerializer):
         model = AccountCreation
         fields = (
             'id', 'name', 'account', 'is_ended', 'is_approved', 'is_paused',
-            'campaign_creations', 'updated_at')
+            'campaign_creations', 'updated_at', "sync_at")
 
 
 class AccountCreationUpdateSerializer(ModelSerializer):
@@ -383,6 +383,7 @@ class AccountCreationUpdateSerializer(ModelSerializer):
             'is_ended',
             'is_paused',
             'is_approved',
+            'sync_at'
         )
 
 
