@@ -131,7 +131,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.perform_details_check(data, extra_campaign_keys=['sync_at'])
+        self.perform_details_check(data, extra_account_keys=['sync_at'], extra_campaign_keys=['sync_at'])
 
     def test_success_get_demo(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
