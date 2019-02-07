@@ -147,7 +147,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             {
                 'id', 'name', 'account', 'updated_at', 'campaign_creations',
                 'updated_at',
-                'is_ended', 'is_approved', 'is_paused'
+                'is_ended', 'is_approved', 'is_paused', "sync_at"
             }
         )
         campaign_data = data['campaign_creations'][0]
@@ -171,7 +171,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
                 "type",
                 "updated_at",
                 "video_networks",
-                "bid_strategy_type"
+                "bid_strategy_type",
+                "sync_at"
             }
         )
         self.assertEqual(len(campaign_data['content_exclusions']), 2)
