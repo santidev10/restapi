@@ -25,8 +25,8 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
             request, *args, **kwargs)
 
         if response.status_code == HTTP_200_OK:
-            cpm_buffer = request.data.get('cpm_buffer', None)
-            cpv_buffer = request.data.get('cpv_buffer', None)
+            cpm_buffer = request.data.get('cpm_buffer', 0)
+            cpv_buffer = request.data.get('cpv_buffer', 0)
 
             self.update_opportunity_placements_buffers(cpm_buffer=cpm_buffer, cpv_buffer=cpv_buffer)
 
@@ -42,7 +42,7 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
                     response.data['thumbnail'] = profile_images[0]
         return response
 
-    def update_opportunity_placements_buffers(self, cpm_buffer=None, cpv_buffer=None):
+    def update_opportunity_placements_buffers(self, cpm_buffer: int = 0, cpv_buffer: int = 0) -> None:
         """
         Retrieves all OpPlacements for Opportunity and updates their cpm or cpv buffers if provided
 
@@ -50,6 +50,12 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
         :param cpv_buffer: Integer
         :return: None
         """
+        try:
+            cpm_buffer = int(cpm_buffer)
+            cpv_buffer = int(cpv_buffer)
+        except ValueError:
+            raise ValueError('You must provide buffers that are integers / can be casted into integers.')
+
         opportunity = self.get_object()
 
         OpPlacement\
