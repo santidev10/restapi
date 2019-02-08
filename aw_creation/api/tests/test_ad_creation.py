@@ -104,8 +104,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 "beacon_view_1",
                 "beacon_view_2",
                 "beacon_view_3",
-                "description1",
-                "description2",
+                "description_1",
+                "description_2",
                 "headline",
                 "is_disapproved",
                 "companion_banner",
@@ -297,7 +297,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
     @generic_test([
         (None, (field,), dict())
-        for field in ("headline", "description1", "description2")
+        for field in ("headline", "description_1", "description_2")
     ])
     def test_discovery_fields_not_none(self, property_name):
         self.fill_all_groups(self.user)
@@ -315,8 +315,8 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         data = dict(
             name="Ad Group  1",
             headline="headline",
-            description1="description1",
-            description2="description2",
+            description_1="description_1",
+            description_2="description_2",
             final_url="https://wtf.com",
             tracking_template="https://track.com?why",
             custom_params=[{"name": "name1", "value": "value2"},

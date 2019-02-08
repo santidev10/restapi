@@ -99,11 +99,11 @@ class AdCreationSetupSerializer(ModelSerializer):
         self._validate_discovery_not_empty_field(value)
         return value
 
-    def validate_description1(self, value):
+    def validate_description_1(self, value):
         self._validate_discovery_not_empty_field(value)
         return value
 
-    def validate_description2(self, value):
+    def validate_description_2(self, value):
         self._validate_discovery_not_empty_field(value)
         return value
 
@@ -147,8 +147,8 @@ class AdCreationSetupSerializer(ModelSerializer):
             "beacon_view_3",
             "companion_banner",
             "custom_params",
-            "description1",
-            "description2",
+            "description_1",
+            "description_2",
             "display_url",
             "final_url",
             "headline",

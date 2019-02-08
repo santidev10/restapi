@@ -14,12 +14,12 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='adcreation',
-            name='description1',
+            name='description_1',
             field=models.CharField(default=None, max_length=250, null=True),
         ),
         migrations.AddField(
             model_name='adcreation',
-            name='description2',
+            name='description_2',
             field=models.CharField(default=None, max_length=250, null=True),
         ),
         migrations.AddField(

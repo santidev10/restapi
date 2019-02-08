@@ -739,7 +739,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     @generic_test([
         (None, (field,), dict())
-        for field in ("headline", "description1", "description2")
+        for field in ("headline", "description_1", "description_2")
     ])
     def test_error_on_empty_discovery_fields(self, property_field):
         user = self.user
@@ -763,8 +763,8 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             is_approved=True,
             mcc_account_id=manager.id,
             headline="headline",
-            description1="description1",
-            description2="description2",
+            description_1="description_1",
+            description_2="description_2",
         )
         data.update({property_field: None})
         AdCreation.objects.create(

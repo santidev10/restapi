@@ -764,8 +764,8 @@ class AdCreation(UniqueCreationItem):
     beacon_dcm_3_changed = models.BooleanField(default=False)
 
     headline = models.CharField(max_length=250, null=True, default=None)
-    description1 = models.CharField(max_length=250, null=True, default=None)
-    description2 = models.CharField(max_length=250, null=True, default=None)
+    description_1 = models.CharField(max_length=250, null=True, default=None)
+    description_2 = models.CharField(max_length=250, null=True, default=None)
 
     tag_field_names = (
         "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
@@ -826,8 +826,8 @@ class AdCreation(UniqueCreationItem):
                     tracking_template=self.tracking_template,
                     custom_params={p['name']: p['value'] for p in self.custom_params},
                     headline=self.headline,
-                    description1=self.description1,
-                    description2=self.description2,
+                    description_1=self.description_1,
+                    description_2=self.description_2,
                 )
             )
         )

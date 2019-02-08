@@ -532,8 +532,8 @@ function createDiscoveryVideoAd(adGroup, params) {
         .videoDiscoveryAdBuilder()
         .withAdName(params.name)
         .withHeadline(params.headline)
-        .withDescription1(params.description1)
-        .withDescription2(params.description2)
+        .withDescription1(params.description_1)
+        .withDescription2(params.description_2)
         .withThumbnail("DEFAULT")
         .withVideo(video);
     return builder.build()

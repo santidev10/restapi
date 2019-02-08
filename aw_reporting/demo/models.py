@@ -479,8 +479,8 @@ class DemoAd(BaseDemo):
             is_disapproved=False,
 
             headline=None,
-            description1=None,
-            description2=None,
+            description_1=None,
+            description_2=None,
         )
         return data
 

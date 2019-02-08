@@ -159,8 +159,8 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             id=next(int_iterator),
             ad_group_creation=ad_group,
             headline="Headline",
-            description1="Description 1",
-            description2="Description 2",
+            description_1="Description 1",
+            description_2="Description 2",
             video_url="http://youtube.com",
             display_url="http://youtube.com",
             final_url="http://youtube.com",
@@ -180,6 +180,6 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
             re.MULTILINE
         ).group(0)
 
-        fields = ("headline", "description1", "description2")
+        fields = ("headline", "description_1", "description_2")
         for field in fields:
             self.assertIn("\"{}\": \"{}\"".format(field, getattr(ad, field)), ad_creation)
