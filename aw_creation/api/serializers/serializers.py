@@ -459,7 +459,8 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "start",
             "video_networks",
             "bid_strategy_type",
-            "sync_at"
+            "sync_at",
+            "target_cpa",
         )
 
     def validate_start(self, value):
