@@ -48,3 +48,16 @@ class PacingReportHelper(APIView):
 
         for item in data:
             multiply_item_fields(item)
+
+    @staticmethod
+    def apply_buffers(data=None, cpv_buffer=0, cpm_buffer=0):
+
+        if data is None:
+            return
+
+        # goal_type_ids: CPM = 0, CPV = 1
+        for item in data:
+            if item['goal_type_id'] == 0 and item['plan_impressions'] is not None:
+                item['plan_impressions'] += item['plan_impressions'] * cpm_buffer / 100
+            if item['goal_type_id'] == 1 and item['plan_video_views'] is not None:
+                item['plan_video_views'] += item['plan_video_views'] * cpv_buffer / 100

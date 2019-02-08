@@ -17,4 +17,12 @@ class PacingReportFlightsApiView(ListAPIView, PacingReportHelper):
         report = PacingReport()
         flights = report.get_flights(placement)
         self.multiply_percents(flights)
+
+        # cpv_buffer = placement.opportunity.cpv_buffer
+        # cpm_buffer = placement.opportunity.cpm_buffer
+
+        cpv_buffer = 10
+        cpm_buffer = 10
+        self.apply_buffers(flights, cpv_buffer=cpv_buffer, cpm_buffer=cpm_buffer)
+
         return Response(flights)
