@@ -75,7 +75,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_get_format_check(response.data, extra_data_keys=['sync_at'])
+        self.perform_get_format_check(response.data, extra_data_keys=['sync_at', 'target_cpa'])
 
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
@@ -118,6 +118,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
     def test_success_post(self):
         detail_keys = set(self.detail_keys)
         detail_keys.add('sync_at')
+        detail_keys.add('target_cpa')
         account_creation = AccountCreation.objects.create(
             name="Pep", owner=self.user,
         )

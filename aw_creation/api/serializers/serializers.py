@@ -405,7 +405,8 @@ class CampaignCreationSetupSerializer(ModelSerializer):
             "updated_at",
             "video_networks",
             "bid_strategy_type",
-            "sync_at"
+            "sync_at",
+            "target_cpa"
         )
 
 
