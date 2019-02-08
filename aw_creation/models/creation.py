@@ -825,6 +825,9 @@ class AdCreation(UniqueCreationItem):
                     final_url=self.final_url,
                     tracking_template=self.tracking_template,
                     custom_params={p['name']: p['value'] for p in self.custom_params},
+                    headline=self.headline,
+                    description1=self.description1,
+                    description2=self.description2,
                 )
             )
         )
