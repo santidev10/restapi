@@ -437,6 +437,7 @@ class CampaignCreation(UniqueCreationItem):
                     budget_type=self.budget_type,
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
                     bid_strategy_type=self.bid_strategy_type.lower(),
+                    campaign_type=self.type,
                     target_cpa=self.target_cpa,
                     is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,

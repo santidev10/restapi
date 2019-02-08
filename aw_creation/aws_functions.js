@@ -8,7 +8,7 @@ function getOrCreateCampaign(params, created) {
         if (created) {
             throw Error("Can't create campaign " + JSON.stringify(params, null, 2));
         }
-        createCampaign(params.name, params.budget, params.start_for_creation, params.bid_strategy_type, params.target_cpa);
+        createCampaign(params.name, params.budget, params.start_for_creation, params.bid_strategy_type, params.campaign_type, params.target_cpa);
         Utilities.sleep(5000);
         campaign = getOrCreateCampaign(params, true);
     }
@@ -22,7 +22,7 @@ function mapBidType(bid_type) {
     return bid_type;
 }
 
-function createCampaign(name, budget, start, bid_strategy_type, target_cpa) {
+function createCampaign(name, budget, start, bid_strategy_type, campaign_type, target_cpa) {
     var columns = ['Campaign', 'Budget', 'Start Date', 'Bid Strategy type',
         'Campaign type', 'Campaign state'];
 
@@ -31,13 +31,12 @@ function createCampaign(name, budget, start, bid_strategy_type, target_cpa) {
         'Budget': budget,
         'Start Date': start,
         'Bid Strategy type': mapBidType(bid_strategy_type),
-        'Campaign type': 'Video',
+        'Campaign type': campaign_type,
         'Campaign state': 'paused',
     };
 
     if (bid_strategy_type === 'cpa') {
         columns.push('Target CPA');
-        options['Campaign type'] = 'Display Only';
         options['Target CPA'] = target_cpa;
     }
 
