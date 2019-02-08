@@ -12,6 +12,7 @@ from aw_reporting.models import GeoTarget, Topic, Audience
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
+from utils.lang import convert_sequence_items_to_sting
 
 logger = logging.getLogger(__name__)
 
@@ -95,26 +96,76 @@ class AdCreationSetupSerializer(ModelSerializer):
     def get_is_disapproved(obj):
         return obj.ad.is_disapproved if obj.ad is not None else False
 
+    def validate_headline(self, value):
+        self._validate_discovery_not_empty_field(value)
+        return value
+
+    def validate_description_1(self, value):
+        self._validate_discovery_not_empty_field(value)
+        return value
+
+    def validate_description_2(self, value):
+        self._validate_discovery_not_empty_field(value)
+        return value
+
+    def _validate_discovery_not_empty_field(self, value):
+        if self.instance.ad_group_creation.video_ad_format != AdGroupCreation.DISCOVERY_TYPE:
+            return
+        if value is None:
+            raise ValidationError("Can't be null for Discovery Ad")
+        if value == "":
+            raise ValidationError("Can't be empty for Discovery Ad")
+
     class Meta:
         model = AdCreation
         fields = (
-            'id', 'name', 'updated_at', 'companion_banner',
-            'final_url', 'video_url', 'display_url',
-            'tracking_template', 'custom_params', 'video_ad_format',
-            'video_id', 'video_title', 'video_description', 'video_thumbnail',
-            'video_channel_title', 'video_duration',
-
-            "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
-            "beacon_view_1", "beacon_view_2", "beacon_view_3",
-            "beacon_skip_1", "beacon_skip_2", "beacon_skip_3",
-            "beacon_first_quartile_1", "beacon_first_quartile_2",
+            "beacon_completed_1",
+            "beacon_completed_2",
+            "beacon_completed_3",
+            "beacon_dcm_1",
+            "beacon_dcm_2",
+            "beacon_dcm_3",
+            "beacon_first_quartile_1",
+            "beacon_first_quartile_2",
             "beacon_first_quartile_3",
-            "beacon_midpoint_1", "beacon_midpoint_2", "beacon_midpoint_3",
-            "beacon_third_quartile_1", "beacon_third_quartile_2",
+            "beacon_impression_1",
+            "beacon_impression_2",
+            "beacon_impression_3",
+            "beacon_midpoint_1",
+            "beacon_midpoint_2",
+            "beacon_midpoint_3",
+            "beacon_skip_1",
+            "beacon_skip_2",
+            "beacon_skip_3",
+            "beacon_third_quartile_1",
+            "beacon_third_quartile_2",
             "beacon_third_quartile_3",
-            "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
-            "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
-            "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved"
+            "beacon_vast_1",
+            "beacon_vast_2",
+            "beacon_vast_3",
+            "beacon_view_1",
+            "beacon_view_2",
+            "beacon_view_3",
+            "companion_banner",
+            "custom_params",
+            "description_1",
+            "description_2",
+            "display_url",
+            "final_url",
+            "headline",
+            "id",
+            "is_disapproved",
+            "name",
+            "tracking_template",
+            "updated_at",
+            "video_ad_format",
+            "video_channel_title",
+            "video_description",
+            "video_duration",
+            "video_id",
+            "video_thumbnail",
+            "video_title",
+            "video_url",
         )
 
 
@@ -507,7 +558,8 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
                     # insert new items
                     existed_ids = queryset.values_list("criteria", flat=True)
-                    to_insert_ids = set(item_ids) - set(existed_ids)
+                    to_insert_ids = (convert_sequence_items_to_sting(item_ids)
+                                     - convert_sequence_items_to_sting(existed_ids))
                     if to_insert_ids:
                         bulk_items.extend(
                             TargetingItem(criteria=uid, **kwargs) for uid in
