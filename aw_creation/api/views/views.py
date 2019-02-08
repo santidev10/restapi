@@ -528,7 +528,7 @@ class CreationOptionsApiView(APIView):
                 CampaignCreation.GOAL_TYPES[:1],
             ),
             type=opts_to_response(
-                CampaignCreation.CAMPAIGN_TYPES[:1],
+                CampaignCreation.CAMPAIGN_TYPES,
             ),
             bidding_type=opts_to_response(
                 CampaignCreation.BIDDING_TYPES,
