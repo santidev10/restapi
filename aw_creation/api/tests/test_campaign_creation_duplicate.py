@@ -110,7 +110,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "updated_at",
                 "video_networks",
                 "bid_strategy_type",
-                "sync_at"
+                "sync_at",
+                "target_cpa"
             }
         )
         self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))
