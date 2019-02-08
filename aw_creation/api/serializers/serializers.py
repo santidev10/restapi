@@ -12,7 +12,7 @@ from aw_reporting.models import GeoTarget, Topic, Audience
 from singledb.connector import SingleDatabaseApiConnector, \
     SingleDatabaseApiConnectorException
 from utils.datetime import now_in_default_tz
-from utils.lang import convert_items_to_sting
+from utils.lang import convert_sequence_items_to_sting
 
 logger = logging.getLogger(__name__)
 
@@ -508,7 +508,8 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
                     # insert new items
                     existed_ids = queryset.values_list("criteria", flat=True)
-                    to_insert_ids = convert_items_to_sting(item_ids) - convert_items_to_sting(existed_ids)
+                    to_insert_ids = (convert_sequence_items_to_sting(item_ids)
+                                     - convert_sequence_items_to_sting(existed_ids))
                     if to_insert_ids:
                         bulk_items.extend(
                             TargetingItem(criteria=uid, **kwargs) for uid in
