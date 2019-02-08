@@ -763,6 +763,10 @@ class AdCreation(UniqueCreationItem):
     beacon_dcm_2_changed = models.BooleanField(default=False)
     beacon_dcm_3_changed = models.BooleanField(default=False)
 
+    headline = models.CharField(max_length=250, null=True, default=None)
+    description1 = models.CharField(max_length=250, null=True, default=None)
+    description2 = models.CharField(max_length=250, null=True, default=None)
+
     tag_field_names = (
         "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
         "beacon_view_1", "beacon_view_2", "beacon_view_3",

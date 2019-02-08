@@ -476,7 +476,11 @@ class DemoAd(BaseDemo):
             beacon_dcm_1="",
             beacon_dcm_2="",
             beacon_dcm_3="",
-            is_disapproved=False
+            is_disapproved=False,
+
+            headline=None,
+            description1=None,
+            description2=None,
         )
         return data
 
