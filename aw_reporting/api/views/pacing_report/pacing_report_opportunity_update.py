@@ -58,6 +58,17 @@ class PacingReportOpportunityUpdateApiView(UpdateAPIView):
 
         opportunity = self.get_object()
 
+        opportunity.cpv_buffer = cpv_buffer
+        opportunity.cpm_buffer = cpm_buffer
+
+        opportunity_serializer = PacingReportOpportunityUpdateSerializer(opportunity)
+        opportunity_serializer.is_valid(raise_exception=True)
+
+        return
+        # TODO: see if is valid
+
+        opportunity.save()
+
         OpPlacement\
             .objects\
             .filter(opportunity=opportunity) \
