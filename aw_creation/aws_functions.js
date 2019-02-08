@@ -8,7 +8,7 @@ function getOrCreateCampaign(params, created) {
         if (created) {
             throw Error("Can't create campaign " + JSON.stringify(params, null, 2));
         }
-        createCampaign(params.name, params.budget, params.start_for_creation, params.bid_strategy_type);
+        createCampaign(params.name, params.budget, params.start_for_creation, params.bid_strategy_type, params.target_cpa);
         Utilities.sleep(5000);
         campaign = getOrCreateCampaign(params, true);
     }
@@ -17,15 +17,15 @@ function getOrCreateCampaign(params, created) {
 
 function mapBidType(bid_type) {
     if (bid_type === "cpa"){
-        return "max/target cpa";
+        return "target cpa";
     }
     return bid_type;
 }
 
-function createCampaign(name, budget, start, bid_strategy_type) {
+function createCampaign(name, budget, start, bid_strategy_type, target_cpa) {
     var columns = ['Campaign', 'Budget', 'Start Date', 'Bid Strategy type',
         'Campaign type', 'Campaign state'];
-    var upload = AdWordsApp.bulkUploads().newCsvUpload(columns);
+
     var options = {
         'Campaign': name,
         'Budget': budget,
@@ -34,6 +34,15 @@ function createCampaign(name, budget, start, bid_strategy_type) {
         'Campaign type': 'Video',
         'Campaign state': 'paused',
     };
+
+    if (bid_strategy_type === 'cpa') {
+        columns.push('Target CPA');
+        options['Campaign type'] = 'Display Only';
+        options['Target CPA'] = target_cpa;
+    }
+
+    var upload = AdWordsApp.bulkUploads().newCsvUpload(columns);
+
     Logger.log("creation\n" + JSON.stringify(options, null, 2));
     upload.append(options);
     upload.apply();
