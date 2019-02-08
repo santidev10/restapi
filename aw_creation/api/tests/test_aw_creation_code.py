@@ -7,8 +7,8 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import CampaignCreation, \
     default_languages, AdGroupCreation, AdCreation
-from aw_reporting.models import BudgetType
 from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
+from aw_reporting.models import BudgetType
 from utils.utittests.int_iterator import int_iterator
 
 
@@ -136,3 +136,50 @@ class CreationCodeAPITestCase(AwReportingAPITestCase):
         total_campaign_creation = get_campaign_creation_invocation(campaign_total.id)
         self.assertIn("\"budget_type\": \"{}\"".format(BudgetType.DAILY.value), daily_campaign_creation)
         self.assertIn("\"budget_type\": \"{}\"".format(BudgetType.TOTAL.value), total_campaign_creation)
+
+    def test_ad_creation_parameters(self):
+        self.create_test_user(auth=False)
+        account = Account.objects.create(id="123", name="What")
+        account_creation = account.account_creation
+        account_creation.is_managed = True
+        account_creation.save()
+        campaign = CampaignCreation.objects.create(
+            id=next(int_iterator),
+            name="",
+            account_creation=account_creation,
+            budget=1,
+            budget_type=BudgetType.DAILY.value
+        )
+        ad_group = AdGroupCreation.objects.create(
+            id=next(int_iterator),
+            campaign_creation=campaign,
+            max_rate=1,
+        )
+        ad = AdCreation.objects.create(
+            id=next(int_iterator),
+            ad_group_creation=ad_group,
+            headline="Headline",
+            description_1="Description 1",
+            description_2="Description 2",
+            video_url="http://youtube.com",
+            display_url="http://youtube.com",
+            final_url="http://youtube.com",
+        )
+        url = reverse("aw_creation_urls:aw_creation_code", args=(account.id,))
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+
+        self.assertIsInstance(data, dict)
+        self.assertIn("code", data)
+        code = data['code']
+        ad_creation = re.search(
+            r"createOrUpdateVideoAd\(.*?\"id\": {}.*$".format(ad.id),
+            code,
+            re.MULTILINE
+        ).group(0)
+
+        fields = ("headline", "description_1", "description_2")
+        for field in fields:
+            self.assertIn("\"{}\": \"{}\"".format(field, getattr(ad, field)), ad_creation)

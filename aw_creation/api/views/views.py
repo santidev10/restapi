@@ -991,6 +991,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
 
         # validate video ad format and video duration
         video_ad_format = data.get(
