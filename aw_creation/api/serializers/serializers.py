@@ -457,6 +457,7 @@ class CampaignCreationUpdateSerializer(ModelSerializer):
             "languages",
             "name",
             "start",
+            "type",
             "video_networks",
             "bid_strategy_type",
             "sync_at",
