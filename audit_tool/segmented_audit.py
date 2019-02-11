@@ -185,7 +185,6 @@ class SegmentedAudit:
 
         no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS)\
                                                .values_list("id", flat=True)
-        no_audit_segment_ids = list(no_audit_segment_ids)
 
         # store to segments
         for segment, items in grouped_by_segment.values():
