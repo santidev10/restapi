@@ -49,3 +49,7 @@ class KeywordAudit(BaseModel):
 
     class Meta:
         unique_together = ("date", "keyword")
+
+
+class ChannelAuditIgnore(models.Model):
+    channel_id = models.CharField(max_length=30, db_index=True)

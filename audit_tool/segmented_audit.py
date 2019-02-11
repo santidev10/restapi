@@ -1,13 +1,13 @@
 import re
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
-
+from audit_tool.models import ChannelAuditIgnore
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
+from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
+from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
 class SegmentedAudit:
@@ -57,6 +57,7 @@ class SegmentedAudit:
             channel[self.AUDITED_VIDEOS_DATA_KEY] = channel_audited_videos.get(channel["channel_id"], 0)
 
         # storing results
+        channels = self._filter_channels(channels)
         self.store_channels(channels)
         self.store_videos(videos)
 
@@ -96,7 +97,7 @@ class SegmentedAudit:
         )
         while True:
             params["video_id__range"] = "{},".format(last_id or "")
-            response = self.connector.get_video_list(params)
+            response = self.connector.get_video_list(query_params=params)
             videos = [item for item in response.get("items", []) if item["video_id"] != last_id]
             if not videos:
                 break
@@ -186,8 +187,8 @@ class SegmentedAudit:
         # store to segments
         for segment, items in grouped_by_segment.values():
             all_ids = [item[id_field_name] for item in items]
-            old_ids = items_manager.filter(segment=segment, related_id__in=all_ids)\
-                                   .values_list("related_id", flat=True)
+            old_ids = items_manager.filter(segment=segment, related_id__in=all_ids) \
+                .values_list("related_id", flat=True)
             new_ids = set(all_ids) - set(old_ids)
             # save new items to relevant segment
             new_items = [
@@ -207,14 +208,19 @@ class SegmentedAudit:
             if segment in master_segments:
                 # remove from master segments
                 items_manager.filter(segment__in=master_segments) \
-                             .exclude(segment=segment) \
-                             .filter(related_id__in=new_ids) \
-                             .delete()
+                    .exclude(segment=segment) \
+                    .filter(related_id__in=new_ids) \
+                    .delete()
             else:
                 # remove from categorized segments
-                items_manager.exclude(segment__in=master_segments + [segment])\
-                             .filter(related_id__in=new_ids)\
-                             .delete()
+                items_manager.exclude(segment__in=master_segments + [segment]) \
+                    .filter(related_id__in=new_ids) \
+                    .delete()
+
+    def _filter_channels(self, channels):
+        ids_to_ignore = ChannelAuditIgnore.objects.all() \
+                .values_list("channel_id", flat=True)
+        return list(filter(lambda item: item["id"] not in ids_to_ignore, channels))
 
     def store_videos(self, videos):
         self._store(
@@ -233,4 +239,3 @@ class SegmentedAudit:
             id_field_name="channel_id",
             get_details=self._channel_details,
         )
-
