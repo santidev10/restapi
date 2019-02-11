@@ -71,7 +71,7 @@ class SegmentedAudit:
             channel_id__range="{},".format(last_id or ""),
         )
 
-        response = self.connector.execute_get_call("channels/", params)
+        response = self.connector.get_channel_list(params, True)
         channels = [item for item in response.get("items", []) if item["channel_id"] != last_id]
 
         for channel in channels:
@@ -96,7 +96,7 @@ class SegmentedAudit:
         )
         while True:
             params["video_id__range"] = "{},".format(last_id or "")
-            response = self.connector.execute_get_call("videos/", params)
+            response = self.connector.get_video_list(params)
             videos = [item for item in response.get("items", []) if item["video_id"] != last_id]
             if not videos:
                 break
@@ -111,10 +111,10 @@ class SegmentedAudit:
             last_id = videos[-1]["video_id"]
 
     def get_all_bad_words(self):
-        response = self.connector.execute_get_call("bad_words/", {})
-        bad_words = [item["name"] for item in response]
-        bad_words = list(set(bad_words))
-        return bad_words
+        bad_words = self.connector.get_bad_words_list({})
+        bad_words_names = [item["name"] for item in bad_words]
+        bad_words_names = list(set(bad_words_names))
+        return bad_words_names
 
     def _parse_video(self, video):
         items = [
