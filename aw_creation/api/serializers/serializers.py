@@ -2,8 +2,10 @@ import json
 import logging
 
 from drf_yasg.utils import swagger_serializer_method
+from rest_framework.serializers import DecimalField
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, \
     ListField, ValidationError, DictField
+from rest_framework.serializers import URLField
 
 from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
@@ -85,6 +87,9 @@ def add_targeting_list_items_info(data, list_type):
 class AdCreationSetupSerializer(ModelSerializer):
     video_ad_format = SerializerMethodField()
     is_disapproved = SerializerMethodField()
+    video_url = URLField(required=True, allow_blank=False, allow_null=False)
+    display_url = URLField(required=True, allow_blank=False, allow_null=False)
+    final_url = URLField(required=True, allow_blank=False, allow_null=False)
 
     @staticmethod
     def get_video_ad_format(obj):
@@ -176,6 +181,7 @@ class AdGroupCreationSetupSerializer(ModelSerializer):
     parents = SerializerMethodField()
     video_ad_format = SerializerMethodField()
     ad_creations = SerializerMethodField()
+    max_rate = DecimalField(max_digits=6, decimal_places=3, allow_null=False, required=True)
 
     @swagger_serializer_method(serializer_or_field=AdCreationSetupSerializer(many=True))
     def get_ad_creations(self, obj):
