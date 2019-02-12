@@ -2211,4 +2211,4 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
                                 id=ad_group_creation['id']
                             ).update(ad_group_id=ad_group['id'])
                             break
-        return Response()
+        return Response('Successfully updated Campaign: {}'.format(str(account_id)))

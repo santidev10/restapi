@@ -251,18 +251,22 @@ class CampaignCreation(UniqueCreationItem):
         default=STANDARD_DELIVERY,
     )
 
-    CPV_STRATEGY = 'CPV'
-    CPM_STRATEGY = 'CPM'
-    CPA_STRATEGY = 'CPA'
+    MAX_CPV_STRATEGY = 'MAX_CPV'
+    MAX_CPM_STRATEGY = 'MAX_CPM'
+    TARGET_CPM_STRATEGY = 'TARGET_CPM'
+    TARGET_CPA_STRATEGY = 'TARGET_CPA'
+
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, 'Maximum CPV'),
-        (CPM_STRATEGY, 'Target CPM'),
-        (CPA_STRATEGY, 'Target CPA'),
+        (MAX_CPV_STRATEGY, 'Maximum CPV'),
+        (MAX_CPM_STRATEGY, 'Maximum CPM'),
+        (TARGET_CPM_STRATEGY, 'Target CPM'),
+        (TARGET_CPA_STRATEGY, 'Target CPA'),
     )
+
     bid_strategy_type = models.CharField(
-        max_length=3,
+        max_length=10,
         choices=BID_STRATEGY_TYPES,
-        default=CPV_STRATEGY,
+        default=MAX_CPV_STRATEGY,
     )
 
     target_cpa = models.IntegerField(null=True, blank=True, default=None)
@@ -656,6 +660,8 @@ class AdGroupCreation(UniqueCreationItem):
             interests_negative=qs_to_list(interests.filter(is_negative=True), to_int=True),
             keywords=qs_to_list(keywords.filter(is_negative=False)),
             keywords_negative=qs_to_list(keywords.filter(is_negative=True)),
+            bid_strategy_type=campaign.bid_strategy_type.lower(),
+            target_cpa=campaign.target_cpa,
         )
         lines = [
             "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
@@ -815,6 +821,8 @@ class AdCreation(UniqueCreationItem):
                 image.save(self.companion_banner.path)
 
     def get_aws_code(self, request):
+        campaign = self.ad_group_creation.campaign_creation
+        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
         code = "createOrUpdateVideoAd(ad_group, {});".format(
             json.dumps(
                 dict(
@@ -832,6 +840,7 @@ class AdCreation(UniqueCreationItem):
                     headline=self.headline,
                     description_1=self.description_1,
                     description_2=self.description_2,
+                    ad_type=ad_type
                 )
             )
         )
