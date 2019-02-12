@@ -426,6 +426,8 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
+TEMPDIR = "/tmp"
+
 try:
     from .local_settings import *
 except ImportError:

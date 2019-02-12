@@ -6,12 +6,14 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
+from segment.models.persistent.constants import PersistentSegmentCategory
+from segment.models.persistent.constants import PersistentSegmentTitles
 
 
 class SegmentedAudit:
     BATCH_SIZE = 10000
     CHANNELS_BATCH_LIMIT = 100
-    BLACKLIST_SEGMENT_TITLE = "Master black list"
+
     BAD_WORDS_DATA_KEY = "__found_bad_words"
     AUDITED_VIDEOS_DATA_KEY = "__audited_videos"
 
@@ -63,7 +65,7 @@ class SegmentedAudit:
     def get_next_channels_batch(self, last_id=None, limit=100):
         size = limit + 1 if last_id else limit
         params = dict(
-            fields="channel_id,title,description,thumbnail_image_url,category,likes,dislikes,views",
+            fields="channel_id,title,description,thumbnail_image_url,category,subscribers,likes,dislikes,views,language",
             sort="channel_id",
             size=size,
             channel_id__range="{},".format(last_id or ""),
@@ -75,13 +77,19 @@ class SegmentedAudit:
         for channel in channels:
             if not channel.get("category"):
                 channel["category"] = "Unclassified"
+            if not channel.get("language"):
+                channel["language"] = "Unknown"
+
+        if not channels:
+            channels = self.get_next_channels_batch(limit=limit)
 
         return channels
 
     def get_all_videos(self, channel_ids):
         last_id = None
         params = dict(
-            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views",
+            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views,"
+                   "language",
             sort="video_id",
             size=self.BATCH_SIZE,
             channel_id__terms=",".join(channel_ids),
@@ -97,6 +105,8 @@ class SegmentedAudit:
                     continue
                 if not video.get("category"):
                     video["category"] = "Unknown"
+                if not video.get("language"):
+                    video["language"] = "Unknown"
                 yield video
             last_id = videos[-1]["video_id"]
 
@@ -108,17 +118,19 @@ class SegmentedAudit:
 
     def _parse_video(self, video):
         items = [
-            video.get("title", ""),
-            video.get("description", ""),
-            video.get("tags", ""),
+            video.get("title") or "",
+            video.get("description") or "",
+            video.get("tags") or "",
         ]
         text = " ".join(items)
         found = re.findall(self.bad_words_regexp, text)
         return found
 
-    def _segment_title(self, item):
-        title = self.BLACKLIST_SEGMENT_TITLE if item[self.BAD_WORDS_DATA_KEY] else item["category"]
-        return title
+    def _segment_category(self, item):
+        category = PersistentSegmentCategory.WHITELIST
+        if item[self.BAD_WORDS_DATA_KEY] or item["language"] != "English":
+            category = PersistentSegmentCategory.BLACKLIST
+        return category
 
     def _video_details(self, video):
         details = dict(
@@ -127,15 +139,18 @@ class SegmentedAudit:
             views=video["views"],
             tags=video["tags"],
             description=video["description"],
+            language=video["language"],
             bad_words=video[self.BAD_WORDS_DATA_KEY],
         )
         return details
 
     def _channel_details(self, channel):
         details = dict(
+            subscribers=channel["subscribers"],
             likes=channel["likes"],
             dislikes=channel["dislikes"],
             views=channel["views"],
+            language=channel["language"],
             bad_words=channel[self.BAD_WORDS_DATA_KEY],
             audited_videos=channel[self.AUDITED_VIDEOS_DATA_KEY],
         )
@@ -148,11 +163,28 @@ class SegmentedAudit:
         # group items by segments
         grouped_by_segment = {}
         for item in items:
-            segment_title = self._segment_title(item)
-            if segment_title not in grouped_by_segment:
-                segment, _ = segments_manager.get_or_create(title=segment_title)
-                grouped_by_segment[segment_title] = (segment, [])  # segment, items
-            grouped_by_segment[segment_title][1].append(item)
+            segment_category = self._segment_category(item)
+            segment_type = segments_model.segment_type
+            categorized_segment_title = "{}s {} {}".format(
+                segment_type.capitalize(),
+                item["category"],
+                segment_category.capitalize(),
+            )
+            master_segment_title = dict(dict(PersistentSegmentTitles.TITLES_MAP)[segment_type])[segment_category]
+            for segment_title in [categorized_segment_title, master_segment_title]:
+                if segment_title not in grouped_by_segment:
+                    segment, _ = segments_manager.get_or_create(title=segment_title, category=segment_category)
+                    grouped_by_segment[segment_title] = (segment, [])  # segment, items
+                grouped_by_segment[segment_title][1].append(item)
+
+        master_segments = [
+            segment
+            for segment, _ in grouped_by_segment.values()
+            if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES
+        ]
+
+        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS)\
+                                               .values_list("id", flat=True)
 
         # store to segments
         for segment, items in grouped_by_segment.values():
@@ -175,9 +207,19 @@ class SegmentedAudit:
             items_manager.bulk_create(new_items)
 
             # Remove new items from irrelevant segments
-            items_manager.exclude(segment=segment)\
-                         .filter(related_id__in=new_ids)\
-                         .delete()
+            if segment in master_segments:
+                # remove from master segments
+                items_manager.filter(segment__in=master_segments) \
+                             .exclude(segment=segment) \
+                             .exclude(segment_id__in=no_audit_segment_ids) \
+                             .filter(related_id__in=new_ids) \
+                             .delete()
+            else:
+                # remove from categorized segments
+                items_manager.exclude(segment__in=master_segments + [segment])\
+                             .exclude(segment_id__in=no_audit_segment_ids) \
+                             .filter(related_id__in=new_ids) \
+                             .delete()
 
     def store_videos(self, videos):
         self._store(
