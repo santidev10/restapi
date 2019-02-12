@@ -13,13 +13,9 @@ def change_bid_strategy_values(apps, schema_editor):
     """
     campaign_creation_model = apps.get_model('aw_creation.CampaignCreation')
 
-    MAX_CPV_STRATEGY = campaign_creation_model.MAX_CPV_STRATEGY
-    TARGET_CPA_STRATEGY = campaign_creation_model.TARGET_CPA_STRATEGY
-    TARGET_CPM_STRATEGY = campaign_creation_model.TARGET_CPM_STRATEGY
-
-    campaign_creation_model.objects.filter(bid_strategy_type='CPV').update(bid_strategy_type=MAX_CPV_STRATEGY)
-    campaign_creation_model.objects.filter(bid_strategy_type='CPA').update(bid_strategy_type=TARGET_CPA_STRATEGY)
-    campaign_creation_model.objects.filter(bid_strategy_type='CPM').update(bid_strategy_type=TARGET_CPM_STRATEGY)
+    campaign_creation_model.objects.filter(bid_strategy_type='CPV').update(bid_strategy_type='MAX_CPV')
+    campaign_creation_model.objects.filter(bid_strategy_type='CPA').update(bid_strategy_type='TARGET_CPA')
+    campaign_creation_model.objects.filter(bid_strategy_type='CPM').update(bid_strategy_type='TARGET_CPM')
 
 
 class Migration(migrations.Migration):

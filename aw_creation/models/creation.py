@@ -530,7 +530,7 @@ class AdGroupCreation(UniqueCreationItem):
                 AdCreation.objects.filter(
                     ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
-            if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
+            if self.campaign_creation.bid_strategy_type == CampaignCreation.MAX_CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
