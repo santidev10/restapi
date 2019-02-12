@@ -550,12 +550,8 @@ class PricingToolFiltering:
             )
             return ann
 
-        creative_lengths_condition = self.kwargs.get(
-            "creative_lengths_condition")
-        if creative_lengths_condition == "or":
-            operator = "|"
-        else:
-            operator = "&"
+        creative_lengths_condition = self.kwargs.get("creative_lengths_condition") or "or"
+        operator = "|" if creative_lengths_condition == "or" else "&"
         creative_length_annotate = get_creative_length_annotation(
             creative_lengths[0])
         for length_id in creative_lengths[1:]:
