@@ -49,7 +49,7 @@ function createCampaign(name, budget, start, bid_strategy_type, campaign_type, t
         'Campaign state': 'paused',
     };
 
-    if (bid_strategy_type.toLowerCase() === 'target_cpa') {
+    if (bid_strategy_type === 'target_cpa') {
         columns.push('Target CPA');
         options['Target CPA'] = target_cpa;
     }
