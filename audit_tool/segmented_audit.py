@@ -1,6 +1,8 @@
 import re
+from typing import Type
 
-from audit_tool.models import ChannelAuditIgnore
+from audit_tool.models import ChannelAuditIgnore, AuditIgnoreModel
+from audit_tool.models import VideoAuditIgnore
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
@@ -57,7 +59,6 @@ class SegmentedAudit:
             channel[self.AUDITED_VIDEOS_DATA_KEY] = channel_audited_videos.get(channel["channel_id"], 0)
 
         # storing results
-        channels = self._filter_channels(channels)
         self.store_channels(channels)
         self.store_videos(videos)
 
@@ -217,12 +218,13 @@ class SegmentedAudit:
                     .filter(related_id__in=new_ids) \
                     .delete()
 
-    def _filter_channels(self, channels):
-        ids_to_ignore = ChannelAuditIgnore.objects.all() \
-                .values_list("channel_id", flat=True)
-        return list(filter(lambda item: item["id"] not in ids_to_ignore, channels))
+    def _filter_manual_items(self, model: Type[AuditIgnoreModel], items):
+        ids_to_ignore = model.objects.all() \
+            .values_list("id", flat=True)
+        return list(filter(lambda item: item["id"] not in ids_to_ignore, items))
 
     def store_videos(self, videos):
+        videos = self._filter_manual_items(VideoAuditIgnore, videos)
         self._store(
             items=videos,
             segments_model=PersistentSegmentVideo,
@@ -232,6 +234,7 @@ class SegmentedAudit:
         )
 
     def store_channels(self, channels):
+        channels = self._filter_manual_items(ChannelAuditIgnore, channels)
         self._store(
             items=channels,
             segments_model=PersistentSegmentChannel,

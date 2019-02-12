@@ -51,5 +51,16 @@ class KeywordAudit(BaseModel):
         unique_together = ("date", "keyword")
 
 
-class ChannelAuditIgnore(models.Model):
-    channel_id = models.CharField(max_length=30, db_index=True)
+class AuditIgnoreModel(models.Model):
+    id = models.CharField(primary_key=True, max_length=30, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
+class ChannelAuditIgnore(AuditIgnoreModel):
+    pass
+
+
+class VideoAuditIgnore(AuditIgnoreModel):
+    pass
