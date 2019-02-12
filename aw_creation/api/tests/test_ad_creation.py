@@ -219,7 +219,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         campaign_creation = ad.ad_group_creation.campaign_creation
         campaign_creation.refresh_from_db()
         self.assertEqual(campaign_creation.bid_strategy_type,
-                         CampaignCreation.CPM_STRATEGY)
+                         CampaignCreation.MAX_CPM_STRATEGY)
 
     def test_success_update_json(self):
         today = now_in_default_tz().date()

@@ -1031,12 +1031,12 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPM_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPM_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPM_STRATEGY
                 elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE,
                                        AdGroupCreation.DISCOVERY_TYPE) and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPV_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPV_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPV_STRATEGY
 
                 if set_bid_strategy:
                     if campaign_creation.is_pulled_to_aw:
@@ -2211,4 +2211,4 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
                                 id=ad_group_creation['id']
                             ).update(ad_group_id=ad_group['id'])
                             break
-        return Response()
+        return Response('Successfully updated Campaign: {}'.format(str(account_id)))
