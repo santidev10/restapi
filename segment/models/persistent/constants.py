@@ -46,6 +46,12 @@ class PersistentSegmentTitles:
         )),
     )
 
+    CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE = "Curated Channels Master Whitelist"
+
+    NO_AUDIT_SEGMENTS = (
+        CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
+    )
+
 
 class PersistentSegmentExportColumn:
     URL = "URL"

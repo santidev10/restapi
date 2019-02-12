@@ -185,6 +185,9 @@ class SegmentedAudit:
             if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES
         ]
 
+        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS)\
+                                               .values_list("id", flat=True)
+
         # store to segments
         for segment, items in grouped_by_segment.values():
             all_ids = [item[id_field_name] for item in items]
@@ -210,11 +213,13 @@ class SegmentedAudit:
                 # remove from master segments
                 items_manager.filter(segment__in=master_segments) \
                     .exclude(segment=segment) \
+                    .exclude(segment_id__in=no_audit_segment_ids) \
                     .filter(related_id__in=new_ids) \
                     .delete()
             else:
                 # remove from categorized segments
                 items_manager.exclude(segment__in=master_segments + [segment]) \
+                    .exclude(segment_id__in=no_audit_segment_ids) \
                     .filter(related_id__in=new_ids) \
                     .delete()
 
