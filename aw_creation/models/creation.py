@@ -510,10 +510,13 @@ class AdGroupCreation(UniqueCreationItem):
     IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
     DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
     BUMPER_AD = 'BUMPER'
+    DISPLAY_AD = 'DISPLAY'
+
     VIDEO_AD_FORMATS = (
         (IN_STREAM_TYPE, "In-stream"),
         (DISCOVERY_TYPE, "Discovery"),
         (BUMPER_AD, "Bumper"),
+        (DISPLAY_AD, "Display")
     )
     video_ad_format = models.CharField(
         max_length=20,
@@ -532,6 +535,8 @@ class AdGroupCreation(UniqueCreationItem):
 
             if self.campaign_creation.bid_strategy_type == CampaignCreation.MAX_CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
+            elif self.campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY:
+                types = [AdGroupCreation.DISPLAY_AD]
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
         else:
@@ -707,6 +712,9 @@ class AdCreation(UniqueCreationItem):
     display_url = models.CharField(max_length=200, default="")
     final_url = models.URLField(default="")
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
+    business_name = models.CharField(max_length=250, blank=True, null=True)
+    short_headline = models.CharField(max_length=250, blank=True, null=True)
+    long_headline = models.CharField(max_length=250, blank=True, null=True)
 
     # video details
     video_id = models.CharField(max_length=20, default="")
@@ -840,6 +848,9 @@ class AdCreation(UniqueCreationItem):
                     headline=self.headline,
                     description_1=self.description_1,
                     description_2=self.description_2,
+                    long_headline=self.long_headline,
+                    short_headline=self.short_headline,
+                    business_name=self.business_name,
                     ad_type=ad_type
                 )
             )

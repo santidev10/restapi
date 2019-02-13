@@ -1028,6 +1028,17 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         error="Ad type cannot be changed for only one ad within an ad group"),
                         status=HTTP_400_BAD_REQUEST)
 
+
+                # Invalid if the campaign bid strategy type is Target CPA and the ad long headline and short headline have not been set
+                if campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY and \
+                        (data.get('long_headline') is None or data.get('short_headline') is None):
+                    return Response(
+                        dict(
+                            error="You must provide a short headline and long headline.",
+                            status=HTTP_400_BAD_REQUEST
+                        )
+                    )
+
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
