@@ -848,6 +848,9 @@ class AdCreation(UniqueCreationItem):
                     headline=self.headline,
                     description_1=self.description_1,
                     description_2=self.description_2,
+                    long_headline=self.long_headline,
+                    short_headline=self.short_headline,
+                    business_name=self.business_name,
                     ad_type=ad_type
                 )
             )

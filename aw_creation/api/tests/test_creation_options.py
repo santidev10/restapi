@@ -49,7 +49,7 @@ class AccountListAPITestCase(ExtendedAPITestCase):
             }
         )
 
-        self.assertEqual(len(response.data['video_ad_format']), 3)
+        self.assertEqual(len(response.data['video_ad_format']), 4)
         self.assertEqual(set(response.data['video_ad_format'][0].keys()), {"id", "name", "thumbnail"})
 
     def test_budget_type(self):

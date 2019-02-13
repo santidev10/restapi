@@ -178,7 +178,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad.id,))
         with open('aw_creation/fixtures/tests/video_thumbnail.png', 'rb') as fp:
             data = dict(
-                name="Ad Group  1",
+                name="Ad Group 1",
                 final_url="https://wtf.com",
                 tracking_template="https://track.com?why",
                 custom_params=json.dumps([{"name": "name1", "value": "value2"},
