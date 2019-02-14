@@ -227,11 +227,11 @@ function getOrCreateAdGroup(campaign, params){
     } else if ( params.is_deleted ){
         return null;
     }else{
-        // Cpa campaigns do not use videoAdGroups
+        // CPA campaigns do not use videoAdGroups
       	if (params.bid_strategy_type === 'target_cpa') {
           var builder = campaign.newAdGroupBuilder().withName(params.name);
         } else {
-		  var builder = campaign.newVideoAdGroupBuilder().withName(params.name).withAdGroupType(params.ad_format);
+		      var builder = campaign.newVideoAdGroupBuilder().withName(params.name).withAdGroupType(params.ad_format);
         }
 
       	if (params.bid_strategy_type === 'target_cpa') {
@@ -556,6 +556,7 @@ function getOrCreateImage(image_url){
     if(images.hasNext()){
          var image = images.next();
     }else{
+      		Logger.log('creating image')
          var imageBlob = UrlFetchApp.fetch(image_url).getBlob();
          var mediaOperation = AdsApp.adMedia().newImageBuilder()
             .withName(image_url).withData(imageBlob).build();
@@ -567,59 +568,61 @@ function getOrCreateImage(image_url){
 var AD_TYPE_IN_STREAM = "VIDEO_TRUE_VIEW_IN_STREAM";
 var AD_TYPE_DISCOVERY = "VIDEO_TRUE_VIEW_IN_DISPLAY";
 var AD_TYPE_BUMPER = "VIDEO_BUMPER";
+var AD_TYPE_DISPLAY = "VIDEO_DISPLAY";
 
 function getYTVideo(url) {
     var videoId = getYTId(url);
     return getOrCreateVideo(videoId);
 }
 
+function createDisplayResponsive(adGroup, params) {
+  var video = getYTVideo(params.video_url);
+  var builder = adGroup.newAd()
+    .responsiveDisplayAdBuilder()
+  	.withBusinessName(params.business_name)
+    .withShortHeadline(params.short_headline)
+    .withLongHeadline(params.long_headline)
+    .withDescription(params.description_1)
+    .withTrackingTemplate(params.tracking_template)
+    .withFinalUrl(params.final_url)
+
+    try {
+      builder = builder.withCustomParameters(params.custom_params)
+    } catch (err) {
+      Logger.log("Error->" + err);
+    }
+
+    var marketingImageUrl = 'https://drive.google.com/uc?export=view&id=1eeMgUUp6dg9GyezWTSDOTMevgPmUlvvE';
+    var marketingImage = getOrCreateImage(marketingImageUrl);
+
+    builder = builder
+      .withMarketingImage(marketingImage);
+
+  	return builder.build();
+}
+
 function createInStreamVideoAd(adGroup, params) {
   var video = getYTVideo(params.video_url);
 
-  if (params.ad_type === 'display') {
-    Logger.log('in display ad')
-    var builder = adGroup.newAd()
-      .responsiveDisplayAdBuilder()
-      .withShortHeadline(params.headline)
-      .withLongHeadline(params.headline)
-      .withDescription(params.description_1 + '\n' + params.description_2)
-      .withTrackingTemplate(params.tracking_template)
-      .withFinalUrl(params.final_url)
+  var builder = adGroup.newVideoAd()
+    .inStreamAdBuilder()
+    .withAdName(params.name)
+    .withDisplayUrl(params.display_url)
+    .withTrackingTemplate(params.tracking_template)
+    .withFinalUrl(params.final_url)
+    .withVideo(video);
 
-    try {
-      builder = builder.withCustomParameters(params.custom_params)
-    } catch (err) {
-      Logger.log("Error->" + err);
-    }
-
-    var thumbnail = params.video_thumbnail || 'https://channelfactory.com/wp-content/uploads/2016/07/cropped-siteIcon1-512.png';
-    var imageMedia = getOrCreateImage(thumbnail);
-
-    builder = builder
-      .withMarketingImage(imageMedia)
-      .withLogoImage(imageMedia);
-
-  } else if (params.ad_type === 'video') {
-    Logger.log('building video ad')
-    var builder = adGroup.newVideoAd()
-      .inStreamAdBuilder()
-      .withAdName(params.name)
-      .withDisplayUrl(params.display_url)
-      .withTrackingTemplate(params.tracking_template)
-      .withFinalUrl(params.final_url)
-      .withVideo(video);
-
-    try {
-      builder = builder.withCustomParameters(params.custom_params)
-    } catch (err) {
-      Logger.log("Error->" + err);
-    }
-
-    if (params['video_thumbnail']) {
-      var imageMedia = getOrCreateImage(params['video_thumbnail']);
-      builder = builder.withCompanionBanner(imageMedia);
-    }
+  try {
+    builder = builder.withCustomParameters(params.custom_params)
+  } catch (err) {
+    Logger.log("Error->" + err);
   }
+
+  if (params['video_thumbnail']) {
+    var imageMedia = getOrCreateImage(params['video_thumbnail']);
+    builder = builder.withCompanionBanner(imageMedia);
+  }
+
   return builder.build()
 }
 
@@ -660,30 +663,44 @@ function createDiscoveryVideoAd(adGroup, params) {
 function createVideoAd(adGroup, params) {
     var adFormat = params.ad_format;
     switch (adFormat) {
-        case AD_TYPE_IN_STREAM:
-            return createInStreamVideoAd(adGroup, params);
-        case AD_TYPE_DISCOVERY:
-            return createDiscoveryVideoAd(adGroup, params);
-        case AD_TYPE_BUMPER:
-            return createBumperVideoAd(adGroup, params);
-        default:
-            Logger.log("Unknown ad format: " + adFormat);
+      case AD_TYPE_IN_STREAM:
+          return createInStreamVideoAd(adGroup, params);
+      case AD_TYPE_DISCOVERY:
+          return createDiscoveryVideoAd(adGroup, params);
+      case AD_TYPE_BUMPER:
+          return createBumperVideoAd(adGroup, params);
+      case AD_TYPE_DISPLAY:
+          return createDisplayResponsive(adGroup, params);
+      default:
+          Logger.log("Unknown ad format: " + adFormat);
     }
 }
 
 function removeVideoAds(adGroup, params) {
   	if (params.ad_type === 'display') {
       var iterator = adGroup.ads().get();
+      // drop if exists
+      while (iterator.hasNext()) {
+        var ad = iterator.next();
+        var labels = ad.labels().get();
+
+        while (labels.hasNext()) {
+          var label = label.next();
+          if (label.getName().indexOf("#" + params.id) !== -1) {
+            ad.remove();
+          }
+        }
+      }
     } else {
       var iterator = adGroup.videoAds().get();
-    }
 
-    // drop if exists
-    while (iterator.hasNext()) {
-        var videoAd = iterator.next();
-        if (videoAd.getName().indexOf("#" + params.id) !== -1) {
-            videoAd.remove();
-        }
+      // drop if exists
+      while (iterator.hasNext()) {
+          var videoAd = iterator.next();
+          if (videoAd.getName().indexOf("#" + params.id) !== -1) {
+              videoAd.remove();
+          }
+      }
     }
 }
 

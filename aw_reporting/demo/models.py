@@ -481,6 +481,10 @@ class DemoAd(BaseDemo):
             headline=None,
             description_1=None,
             description_2=None,
+
+            long_headline="",
+            short_headline="",
+            business_name=""
         )
         return data
 
