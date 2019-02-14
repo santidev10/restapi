@@ -18,10 +18,5 @@ class PacingReportPlacementsApiView(ListAPIView, PacingReportHelper):
         placements = report.get_placements(opportunity)
         self.multiply_percents(placements)
 
-        cpv_buffer = opportunity.cpv_buffer
-        cpm_buffer = opportunity.cpm_buffer
-
-        self.apply_buffers(placements, cpv_buffer=cpv_buffer, cpm_buffer=cpm_buffer)
-
         return Response(placements)
 
