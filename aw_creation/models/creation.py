@@ -251,19 +251,25 @@ class CampaignCreation(UniqueCreationItem):
         default=STANDARD_DELIVERY,
     )
 
-    CPV_STRATEGY = 'CPV'
-    CPM_STRATEGY = 'CPM'
-    CPA_STRATEGY = 'CPA'
+    MAX_CPV_STRATEGY = 'MAX_CPV'
+    MAX_CPM_STRATEGY = 'MAX_CPM'
+    TARGET_CPM_STRATEGY = 'TARGET_CPM'
+    TARGET_CPA_STRATEGY = 'TARGET_CPA'
+
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, 'Maximum CPV'),
-        (CPM_STRATEGY, 'Target CPM'),
-        (CPA_STRATEGY, 'Target CPA'),
+        (MAX_CPV_STRATEGY, 'Maximum CPV'),
+        (MAX_CPM_STRATEGY, 'Maximum CPM'),
+        (TARGET_CPM_STRATEGY, 'Target CPM'),
+        (TARGET_CPA_STRATEGY, 'Target CPA'),
     )
+
     bid_strategy_type = models.CharField(
-        max_length=3,
+        max_length=10,
         choices=BID_STRATEGY_TYPES,
-        default=CPV_STRATEGY,
+        default=MAX_CPV_STRATEGY,
     )
+
+    target_cpa = models.IntegerField(null=True, blank=True, default=None)
 
     MANUAL_CPV_BIDDING = 'MANUAL_CPV'
     BIDDING_TYPES = (
@@ -435,6 +441,8 @@ class CampaignCreation(UniqueCreationItem):
                     budget_type=self.budget_type,
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
                     bid_strategy_type=self.bid_strategy_type.lower(),
+                    campaign_type=self.type,
+                    target_cpa=self.target_cpa,
                     is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
@@ -502,10 +510,13 @@ class AdGroupCreation(UniqueCreationItem):
     IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
     DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
     BUMPER_AD = 'BUMPER'
+    DISPLAY_AD = 'DISPLAY'
+
     VIDEO_AD_FORMATS = (
         (IN_STREAM_TYPE, "In-stream"),
         (DISCOVERY_TYPE, "Discovery"),
         (BUMPER_AD, "Bumper"),
+        (DISPLAY_AD, "Display")
     )
     video_ad_format = models.CharField(
         max_length=20,
@@ -522,8 +533,10 @@ class AdGroupCreation(UniqueCreationItem):
                 AdCreation.objects.filter(
                     ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
-            if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
+            if self.campaign_creation.bid_strategy_type == CampaignCreation.MAX_CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
+            elif self.campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY:
+                types = [AdGroupCreation.DISPLAY_AD]
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
         else:
@@ -652,6 +665,8 @@ class AdGroupCreation(UniqueCreationItem):
             interests_negative=qs_to_list(interests.filter(is_negative=True), to_int=True),
             keywords=qs_to_list(keywords.filter(is_negative=False)),
             keywords_negative=qs_to_list(keywords.filter(is_negative=True)),
+            bid_strategy_type=campaign.bid_strategy_type.lower(),
+            target_cpa=campaign.target_cpa,
         )
         lines = [
             "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
@@ -697,6 +712,9 @@ class AdCreation(UniqueCreationItem):
     display_url = models.CharField(max_length=200, default="")
     final_url = models.URLField(default="")
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
+    business_name = models.CharField(max_length=250, blank=True, null=True)
+    short_headline = models.CharField(max_length=250, blank=True, null=True)
+    long_headline = models.CharField(max_length=250, blank=True, null=True)
 
     # video details
     video_id = models.CharField(max_length=20, default="")
@@ -811,6 +829,8 @@ class AdCreation(UniqueCreationItem):
                 image.save(self.companion_banner.path)
 
     def get_aws_code(self, request):
+        campaign = self.ad_group_creation.campaign_creation
+        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
         code = "createOrUpdateVideoAd(ad_group, {});".format(
             json.dumps(
                 dict(
@@ -828,6 +848,10 @@ class AdCreation(UniqueCreationItem):
                     headline=self.headline,
                     description_1=self.description_1,
                     description_2=self.description_2,
+                    long_headline=self.long_headline,
+                    short_headline=self.short_headline,
+                    business_name=self.business_name,
+                    ad_type=ad_type
                 )
             )
         )

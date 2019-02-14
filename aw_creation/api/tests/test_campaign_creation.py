@@ -95,7 +95,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_format_check(response.data, extra_campaign_keys=['sync_at'])
+        self.perform_format_check(response.data, extra_campaign_keys=['sync_at', 'target_cpa'])
 
     def perform_format_check(self, data, extra_campaign_keys=None):
         campaign_keys = {

@@ -74,7 +74,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
                 "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
                 "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3", "is_disapproved",
-                "headline", "description_1", "description_2",
+                "headline", "description_1", "description_2", "long_headline", "short_headline", "business_name"
             }
         )
         self.assertEqual(data['name'], "{} (1)".format(ad.name))

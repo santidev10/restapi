@@ -481,6 +481,10 @@ class DemoAd(BaseDemo):
             headline=None,
             description_1=None,
             description_2=None,
+
+            long_headline="",
+            short_headline="",
+            business_name=""
         )
         return data
 
@@ -773,7 +777,7 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
             ],
-            bid_strategy_type=CampaignCreation.CPV_STRATEGY,
+            bid_strategy_type=CampaignCreation.MAX_CPV_STRATEGY,
         )
         return data
 

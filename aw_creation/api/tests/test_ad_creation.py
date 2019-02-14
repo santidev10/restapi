@@ -124,6 +124,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 "video_thumbnail",
                 "video_title",
                 "video_url",
+                "long_headline",
+                "short_headline",
+                "business_name"
             }
         )
         if len(data["custom_params"]) > 0:
@@ -178,7 +181,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad.id,))
         with open('aw_creation/fixtures/tests/video_thumbnail.png', 'rb') as fp:
             data = dict(
-                name="Ad Group  1",
+                name="Ad Group 1",
                 final_url="https://wtf.com",
                 tracking_template="https://track.com?why",
                 custom_params=json.dumps([{"name": "name1", "value": "value2"},
@@ -219,7 +222,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         campaign_creation = ad.ad_group_creation.campaign_creation
         campaign_creation.refresh_from_db()
         self.assertEqual(campaign_creation.bid_strategy_type,
-                         CampaignCreation.CPM_STRATEGY)
+                         CampaignCreation.MAX_CPM_STRATEGY)
 
     def test_success_update_json(self):
         today = now_in_default_tz().date()
