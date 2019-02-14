@@ -171,6 +171,9 @@ class AdCreationSetupSerializer(ModelSerializer):
             "video_thumbnail",
             "video_title",
             "video_url",
+            "long_headline",
+            "short_headline",
+            "business_name"
         )
 
 
