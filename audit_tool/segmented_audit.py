@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Type
 
@@ -10,6 +11,8 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from singledb.connector import SingleDatabaseApiConnector as Connector
+
+logger = logging.getLogger(__name__)
 
 
 class SegmentedAudit:
@@ -186,8 +189,8 @@ class SegmentedAudit:
             if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES
         ]
 
-        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS)\
-                                               .values_list("id", flat=True)
+        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS) \
+            .values_list("id", flat=True)
 
         # store to segments
         for segment, items in grouped_by_segment.values():
@@ -224,27 +227,31 @@ class SegmentedAudit:
                     .filter(related_id__in=new_ids) \
                     .delete()
 
-    def _filter_manual_items(self, model: Type[AuditIgnoreModel], items):
+    def _filter_manual_items(self, model: Type[AuditIgnoreModel], items, id_field_name):
         ids_to_ignore = model.objects.all() \
             .values_list("id", flat=True)
-        return list(filter(lambda item: item["id"] not in ids_to_ignore, items))
+        return list(filter(lambda item: item[id_field_name] not in ids_to_ignore, items))
 
     def store_videos(self, videos):
-        videos = self._filter_manual_items(VideoAuditIgnore, videos)
+        logger.info("store videos")
+        id_field_name = "video_id"
+        videos = self._filter_manual_items(VideoAuditIgnore, videos, id_field_name)
         self._store(
             items=videos,
             segments_model=PersistentSegmentVideo,
             items_model=PersistentSegmentRelatedVideo,
-            id_field_name="video_id",
+            id_field_name=id_field_name,
             get_details=self._video_details,
         )
 
     def store_channels(self, channels):
-        channels = self._filter_manual_items(ChannelAuditIgnore, channels)
+        logger.info("store channels")
+        id_field_name = "channel_id"
+        channels = self._filter_manual_items(ChannelAuditIgnore, channels, id_field_name)
         self._store(
             items=channels,
             segments_model=PersistentSegmentChannel,
             items_model=PersistentSegmentRelatedChannel,
-            id_field_name="channel_id",
+            id_field_name=id_field_name,
             get_details=self._channel_details,
         )

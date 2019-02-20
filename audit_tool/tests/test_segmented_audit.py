@@ -18,19 +18,20 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         connector = SingleDatabaseApiConnectorPatcher()
         channels = connector.get_channel_list()["items"]
         any_channel = channels[-1]
-        ChannelAuditIgnore.objects.create(id=any_channel["id"])
+        any_channel_id = any_channel["channel_id"]
+        ChannelAuditIgnore.objects.create(id=any_channel_id)
 
         with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher):
             audit = SegmentedAudit()
             audit.run()
 
-        self.assertFalse(PersistentSegmentChannel.objects.filter(related__related_id=any_channel["id"]).exists())
+        self.assertFalse(PersistentSegmentChannel.objects.filter(related__related_id=any_channel_id).exists())
 
     def test_ignores_manual_channel_on_remove(self):
         connector = SingleDatabaseApiConnectorPatcher()
         channels = connector.get_channel_list()["items"]
         any_channel = channels[0]
-        any_channel_id = any_channel["id"]
+        any_channel_id = any_channel["channel_id"]
         segment = PersistentSegmentChannel.objects.create(
             category=PersistentSegmentCategory.WHITELIST,
             title=PersistentSegmentTitles.CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
@@ -47,7 +48,7 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         self.assertTrue(related_item.exists())
 
         def mark_as_blacklist(item):
-            if item["id"] == any_channel_id:
+            if item["channel_id"] == any_channel_id:
                 return PersistentSegmentCategory.BLACKLIST
             return PersistentSegmentCategory.WHITELIST
 
@@ -62,19 +63,20 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         connector = SingleDatabaseApiConnectorPatcher()
         videos = connector.get_video_list()["items"]
         any_video = videos[-1]
-        VideoAuditIgnore.objects.create(id=any_video["id"])
+        any_video_id = any_video["video_id"]
+        VideoAuditIgnore.objects.create(id=any_video_id)
 
         with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher):
             audit = SegmentedAudit()
             audit.run()
 
-        self.assertFalse(PersistentSegmentVideo.objects.filter(related__related_id=any_video["id"]).exists())
+        self.assertFalse(PersistentSegmentVideo.objects.filter(related__related_id=any_video_id).exists())
 
     def test_ignores_manual_video_on_remove(self):
         connector = SingleDatabaseApiConnectorPatcher()
         videos = connector.get_video_list()["items"]
         any_video = videos[0]
-        any_video_id = any_video["id"]
+        any_video_id = any_video["video_id"]
         segment = PersistentSegmentVideo.objects.create(
             category=PersistentSegmentCategory.WHITELIST,
             title=PersistentSegmentTitles.VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE,
@@ -91,7 +93,7 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         self.assertTrue(related_item.exists())
 
         def mark_as_blacklist(item):
-            if item["id"] == any_video_id:
+            if item.get("video_id") == any_video_id:
                 return PersistentSegmentCategory.BLACKLIST
             return PersistentSegmentCategory.WHITELIST
 
