@@ -104,7 +104,7 @@ def send_html_email(subject, to, text_header, text_content, host):
     msg.attach_alternative(html_content, "text/html")
     msg.mixed_subtype = "related"
 
-    for img in ["cf_logo_wt_big.png", "img.png", "logo.gif"]:
+    for img in ["cf_logo_wt_big.png", "img.png", "cf_logo_footer.png"]:
         img_path = os.path.join(EMAIL_IMAGES_DIR, img)
         with open(img_path, 'rb') as fp:
             msg_img = MIMEImage(fp.read())
