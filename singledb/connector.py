@@ -123,14 +123,16 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
-    def get_channel_list(self, query_params):
+    def get_channel_list(self, query_params, ignore_sources=False):
         """
         Obtain channel list
         :param query_params: dict
+        :param ignore_sources: bool
         """
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
-        self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
+        if not ignore_sources:
+            self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
@@ -183,16 +185,18 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
-    def get_video_list(self, query_params):
+    def get_video_list(self, query_params, ignore_sources=False):
         """
         Obtain video list
         :param query_params: dict
+        :param ignore_sources: bool
         """
         endpoint = "videos/"
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
-        self.set_sources_query_param(
-            query_params, DEFAULT_VIDEO_LIST_SOURCES)
+        if not ignore_sources:
+            self.set_sources_query_param(
+                query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
