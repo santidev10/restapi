@@ -576,29 +576,32 @@ function getYTVideo(url) {
 }
 
 function createDisplayResponsive(adGroup, params) {
-  var video = getYTVideo(params.video_url);
-  var builder = adGroup.newAd()
-    .responsiveDisplayAdBuilder()
-  	.withBusinessName(params.business_name)
-    .withShortHeadline(params.short_headline)
-    .withLongHeadline(params.long_headline)
-    .withDescription(params.description_1)
-    .withTrackingTemplate(params.tracking_template)
-    .withFinalUrl(params.final_url)
+    var builder = adGroup.newAd()
+        .responsiveDisplayAdBuilder()
+        .withBusinessName(params.business_name)
+        .withShortHeadline(params.short_headline)
+        .withLongHeadline(params.long_headline)
+        .withDescription(params.description_1)
+        .withTrackingTemplate(params.tracking_template)
+        .withFinalUrl(params.final_url)
 
     try {
-      builder = builder.withCustomParameters(params.custom_params)
+        builder = builder.withCustomParameters(params.custom_params)
     } catch (err) {
-      Logger.log("Error->" + err);
+        Logger.log("Error->" + err);
     }
 
     var marketingImageUrl = 'https://drive.google.com/uc?export=view&id=1eeMgUUp6dg9GyezWTSDOTMevgPmUlvvE';
     var marketingImage = getOrCreateImage(marketingImageUrl);
 
     builder = builder
-      .withMarketingImage(marketingImage);
+        .withMarketingImage(marketingImage);
 
-  	return builder.build();
+    var adOperation = builder.build();
+    var labelName = "Display ad #" + params.id;
+    AdsApp.createLabel(labelName);
+    adOperation.getResult().applyLabel(labelName);
+    return adOperation;
 }
 
 function createInStreamVideoAd(adGroup, params) {
@@ -677,30 +680,32 @@ function createVideoAd(adGroup, params) {
 }
 
 function removeVideoAds(adGroup, params) {
-  	if (params.ad_type === 'display') {
-      var iterator = adGroup.ads().get();
-      // drop if exists
-      while (iterator.hasNext()) {
-        var ad = iterator.next();
-        var labels = ad.labels().get();
+    if (params.ad_type === 'display') {
+        var iterator = adGroup.ads().get();
+        // drop if exists
+        while (iterator.hasNext()) {
+            var ad = iterator.next();
+            var labels = ad.labels().get();
 
-        while (labels.hasNext()) {
-          var label = label.next();
-          if (label.getName().indexOf("#" + params.id) !== -1) {
-            ad.remove();
-          }
+            while (labels.hasNext()) {
+                var label = labels.next();
+                Logger.log(label.name);
+                if (label.getName().indexOf("#" + params.id) !== -1) {
+                    label.remove();
+                    ad.remove();
+                }
+            }
         }
-      }
     } else {
-      var iterator = adGroup.videoAds().get();
+        var iterator = adGroup.videoAds().get();
 
-      // drop if exists
-      while (iterator.hasNext()) {
-          var videoAd = iterator.next();
-          if (videoAd.getName().indexOf("#" + params.id) !== -1) {
-              videoAd.remove();
-          }
-      }
+        // drop if exists
+        while (iterator.hasNext()) {
+            var videoAd = iterator.next();
+            if (videoAd.getName().indexOf("#" + params.id) !== -1) {
+                videoAd.remove();
+            }
+        }
     }
 }
 
