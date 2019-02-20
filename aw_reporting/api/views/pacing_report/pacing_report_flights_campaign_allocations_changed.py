@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
+from pytz import utc
 from utils.datetime import Time
 from django.db.models import F
 
@@ -34,7 +35,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
-            'hourlyUpdatedAt': Time().now()
+            'hourlyUpdatedAt': Time().now(tz=utc)
         }
 
         return Response(all_updated_campaign_budgets)
@@ -80,7 +81,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             except StopIteration:
                 break
 
-            # campaigns is yielded from self._campaigns_generator as a django values list tuple (id, goal_allocation)
+            # campaigns is yielded from self._campaigns_generator as a django values list tuple (id, goal_allocation, account)
             for campaign in campaigns:
                 campaign_id = campaign[0]
                 campaign_budget = campaign[1]

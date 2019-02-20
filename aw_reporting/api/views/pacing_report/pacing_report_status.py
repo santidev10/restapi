@@ -4,6 +4,7 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import Account
 from utils.datetime import Time
+from pytz import utc
 
 class PacingReportStatusApiView(APIView):
     """
@@ -11,7 +12,7 @@ class PacingReportStatusApiView(APIView):
     """
     @property
     def now(self):
-        return Time().now()
+        return Time().now(tz=utc)
 
     def patch(self, request, *_, **__):
         """

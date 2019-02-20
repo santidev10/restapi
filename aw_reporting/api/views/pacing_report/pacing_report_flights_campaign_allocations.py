@@ -9,6 +9,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import Account
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.datetime import Time
+from pytz import utc
 
 
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
@@ -58,7 +59,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 goal_allocation=allocation_value,
             )
             Account.objects.filter(id=related_account_id).update(
-                update_time=Time().now(),
+                update_time=Time().now(tz=utc),
             )
         # return
         res = self.get(request, *args, **kwargs)
