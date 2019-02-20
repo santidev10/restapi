@@ -71,6 +71,8 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from segment.models import SegmentChannel
+from segment.models import SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -360,7 +362,8 @@ class ItemsFromSegmentIdsApiView(APIView):
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
-
+        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
+            return Response(data=[item for item in items if item["id"] is not None])
         return Response(data=items)
 
     @staticmethod
@@ -525,7 +528,7 @@ class CreationOptionsApiView(APIView):
                 CampaignCreation.GOAL_TYPES[:1],
             ),
             type=opts_to_response(
-                CampaignCreation.CAMPAIGN_TYPES[:1],
+                CampaignCreation.CAMPAIGN_TYPES,
             ),
             bidding_type=opts_to_response(
                 CampaignCreation.BIDDING_TYPES,
@@ -988,6 +991,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
 
         # validate video ad format and video duration
         video_ad_format = data.get(
@@ -1023,15 +1028,26 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         error="Ad type cannot be changed for only one ad within an ad group"),
                         status=HTTP_400_BAD_REQUEST)
 
+
+                # Invalid if the campaign bid strategy type is Target CPA and the ad long headline and short headline have not been set
+                if campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY and \
+                        (data.get('long_headline') is None or data.get('short_headline') is None):
+                    return Response(
+                        dict(
+                            error="You must provide a short headline and long headline.",
+                            status=HTTP_400_BAD_REQUEST
+                        )
+                    )
+
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPM_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPM_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPM_STRATEGY
                 elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE,
                                        AdGroupCreation.DISCOVERY_TYPE) and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPV_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPV_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPV_STRATEGY
 
                 if set_bid_strategy:
                     if campaign_creation.is_pulled_to_aw:
@@ -2206,4 +2222,4 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
                                 id=ad_group_creation['id']
                             ).update(ad_group_id=ad_group['id'])
                             break
-        return Response()
+        return Response('Successfully updated Campaign: {}'.format(str(account_id)))

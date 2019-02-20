@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,8 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
         from segment.models import SegmentRelatedVideo, SegmentVideo
         ids = []
         item_ids = []
-        video_ids = ["9bZkp7q19f0", "RgKAFK5djSk", "fRh_vgS2dFE", "OPf0YbXqDm0"]
+        video_ids = ["bad_id", "RgKAFK5djSk", "fRh_vgS2dFE", "OPf0YbXqDm0"]
+        expected_videos_count = 3
         j = 0
         for i in range(2):
             segment = SegmentVideo.objects.create()
@@ -41,13 +42,13 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:items_from_segment_ids",
                       args=("video",))
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.serializers.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url, json.dumps(ids), content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 4)
+        self.assertEqual(len(response.data), expected_videos_count)
         self.assertEqual(set(response.data[0].keys()),
                          {"id", "name", "thumbnail", "criteria"})
 
@@ -60,8 +61,9 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
         from segment.models import SegmentRelatedChannel, SegmentChannel
         ids = []
         item_ids = []
-        channel_ids = ["UC-lHJZR3Gqxm24_Vd_AJ5Yw", "UCZJ7m7EnCNodqnu5SAtg8eQ",
+        channel_ids = ["bad_id", "UCZJ7m7EnCNodqnu5SAtg8eQ",
                        "UCHkj014U2CQ2Nv0UZeYpE_A", "UCBR8-60-B28hp2BmDPdntcQ"]
+        expected_channels_count = 3
         j = 0
         for i in range(2):
             segment = SegmentChannel.objects.create()
@@ -75,13 +77,13 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:items_from_segment_ids",
                       args=("channel",))
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
+        with patch("aw_creation.api.serializers.serializers.SingleDatabaseApiConnector",
                    new=SingleDatabaseApiConnectorPatcher):
             response = self.client.post(
                 url, json.dumps(ids), content_type='application/json',
             )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 4)
+        self.assertEqual(len(response.data), expected_channels_count)
         self.assertEqual(set(response.data[0].keys()),
                          {"id", "name", "thumbnail", "criteria"})
 

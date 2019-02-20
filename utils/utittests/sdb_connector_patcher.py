@@ -16,11 +16,13 @@ class SingleDatabaseApiConnectorPatcher:
 
     @staticmethod
     def get_video_list(*args, **kwargs):
+        query_params = kwargs.get("query_params", dict())
+        if query_params.get("video_id__range", ",") != ",":
+            return dict(items=[])
         with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             data = json.load(data_file)
         for i in data["items"]:
             i["video_id"] = i["id"]
-        query_params = kwargs.get("query_params", dict())
         size = query_params.get("size", 1)
         if size == 0:
             data["max_page"] = None
@@ -64,3 +66,8 @@ class SingleDatabaseApiConnectorPatcher:
 
     def store_ids(self, query_params):
         pass
+
+    def get_bad_words_list(self, *args):
+        with open("saas/fixtures/tests/singledb_bad_words_list.json") as data_file:
+            bad_words = json.load(data_file)
+        return bad_words

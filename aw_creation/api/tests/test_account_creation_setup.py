@@ -34,6 +34,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
+from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
@@ -131,7 +132,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.perform_details_check(data)
+        self.perform_details_check(data, extra_account_keys=['sync_at'], extra_campaign_keys=['sync_at', 'target_cpa'])
 
     def test_success_get_demo(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
@@ -141,38 +142,45 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_details_check(response.data)
 
-    def perform_details_check(self, data):
+    def perform_details_check(self, data, extra_account_keys=None, extra_campaign_keys=None):
+        account_keys = {
+            'id', 'name', 'account', 'updated_at', 'campaign_creations',
+            'updated_at',
+            'is_ended', 'is_approved', 'is_paused',
+        }
+        campaign_keys = {
+            "ad_group_creations",
+            "ad_schedule_rules",
+            "budget",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "frequency_capping",
+            "id",
+            "is_draft",
+            "languages",
+            "location_rules",
+            "name",
+            "start",
+            "type",
+            "updated_at",
+            "video_networks",
+            "bid_strategy_type",
+        }
+        if extra_account_keys is not None:
+            account_keys.update(extra_account_keys)
+        if extra_campaign_keys is not None:
+            campaign_keys.update(extra_campaign_keys)
+
         self.assertEqual(
             set(data.keys()),
-            {
-                'id', 'name', 'account', 'updated_at', 'campaign_creations',
-                'updated_at',
-                'is_ended', 'is_approved', 'is_paused'
-            }
+            account_keys
         )
         campaign_data = data['campaign_creations'][0]
         self.assertEqual(
             set(campaign_data.keys()),
-            {
-                "ad_group_creations",
-                "ad_schedule_rules",
-                "budget",
-                "content_exclusions",
-                "delivery_method",
-                "devices",
-                "end",
-                "frequency_capping",
-                "id",
-                "is_draft",
-                "languages",
-                "location_rules",
-                "name",
-                "start",
-                "type",
-                "updated_at",
-                "video_networks",
-                "bid_strategy_type"
-            }
+            campaign_keys
         )
         self.assertEqual(len(campaign_data['content_exclusions']), 2)
         self.assertEqual(
@@ -728,3 +736,45 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertIsNotNone(account_creation.account)
         self.assertEqual(Account.objects.all().count(), 2)
         self.assertEqual(AccountCreation.objects.all().count(), 2)
+
+    @generic_test([
+        (None, (field,), dict())
+        for field in ("headline", "description_1", "description_2")
+    ])
+    def test_error_on_empty_discovery_fields(self, property_field):
+        user = self.user
+        manager = Account.objects.create(id="11", name="Management Account")
+        connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****")
+        AWConnectionToUserRelation.objects.create(connection=connection, user=user)
+        AWAccountPermission.objects.create(aw_connection=connection, account=manager)
+        account_creation = AccountCreation.objects \
+            .create(name="Name", owner=user,)
+        campaign_creation = CampaignCreation.objects.create(
+            id=next(int_iterator),
+            account_creation=account_creation,
+        )
+        ad_group_creation = AdGroupCreation.objects.create(
+            id=next(int_iterator),
+            campaign_creation=campaign_creation,
+            video_ad_format=AdGroupCreation.DISCOVERY_TYPE,
+        )
+        data = dict(
+            name=account_creation.name,
+            is_approved=True,
+            mcc_account_id=manager.id,
+            headline="headline",
+            description_1="description_1",
+            description_2="description_2",
+        )
+        data.update({property_field: None})
+        AdCreation.objects.create(
+            id=next(int_iterator),
+            ad_group_creation=ad_group_creation,
+        )
+        url = self._get_url(account_creation.id)
+
+        with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
+                   new=lambda *_: "uid_from_aw"):
+            response = self.client.put(url, data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

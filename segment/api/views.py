@@ -389,7 +389,8 @@ class PersistentMasterSegmentsListApiView(ListAPIView):
 
     def get_queryset(self):
         channels_segment_queryset = PersistentSegmentChannel.objects\
-            .filter(title=PersistentSegmentTitles.CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE)\
+            .filter(title__in=[PersistentSegmentTitles.CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
+                               PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE])\
             .annotate(segment_type=Value(PersistentSegmentType.CHANNEL, output_field=CharField()))
 
         videos_segment_queryset = PersistentSegmentVideo.objects\
