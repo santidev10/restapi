@@ -28,7 +28,6 @@ class CustomAudit(object):
     max_thread_count = 5
     audited_found_channels = {}
     channels_with_found_words = []
-    videos_audited = 0
     lock = Lock()
 
     def __init__(self, *args, **kwargs):
@@ -79,19 +78,14 @@ class CustomAudit(object):
             queue.put(channel_batch)
             all_channel_ids = all_channel_ids[self.channel_batch_size - 1:]
 
-            with self.lock:
-                # Periodically create the related SegmentRelatedChannel objects the tasks have created
-                if len(self.channels_with_found_words) >= self.channel_batch_size:
-                    SegmentRelatedChannel.objects.bulk_create(self.channels_with_found_words[:self.channel_batch_size])
-                    self.channels_with_found_words = self.channels_with_found_words[self.channel_batch_size - 1:]
-
         queue.join()
-        # Create any remaining related channels
+
         SegmentRelatedChannel.objects.bulk_create(self.channels_with_found_words)
 
         end = time.time()
         logger.info('Custom audit for segment "{}" complete.'.format(self.segment_title))
         logger.info('Audit execution time: {}'.format(end - start))
+        print('Audit execution time: {}'.format(end - start))
 
     def start_threads(self, queue: Queue) -> None:
         """
@@ -141,9 +135,6 @@ class CustomAudit(object):
                         related_id=channel_id)
                 )
                 self.audited_found_channels[channel_id] = True
-
-        with self.lock:
-            self.videos_audited += len(videos)
 
     def get_videos_batch(self, channel_ids: list = None) -> list:
         """
