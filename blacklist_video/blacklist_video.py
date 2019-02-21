@@ -1,12 +1,10 @@
 from utils.youtube_api import YoutubeAPIConnector
 from blacklist_video.models import BlacklistVideo
-from queue import Queue
-from threading import Thread
 import csv
 import re
 
 class BlacklistVideos(object):
-    video_batch_size = 5
+    video_batch_size = 10
 
     def __init__(self):
         self.yt_connector = YoutubeAPIConnector()
@@ -14,10 +12,11 @@ class BlacklistVideos(object):
     def run(self):
         print('Starting video blacklist...')
         self.extract_video_id_seeds()
-        self.get_videos_from_db()
+        self.get_related_videos()
 
         all_video_data = BlacklistVideo\
-            .objects.all()\
+            .objects.all() \
+            .distinct('video_id') \
             .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
         self.export_csv(data=all_video_data,
@@ -28,6 +27,7 @@ class BlacklistVideos(object):
     def export_existing(self):
         all_video_data = BlacklistVideo \
             .objects.all() \
+            .distinct('video_id') \
             .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
         self.export_csv(data=all_video_data,
                         headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title'],
@@ -51,8 +51,9 @@ class BlacklistVideos(object):
             video_batch = video_id_seeds[:self.video_batch_size]
             video_ids_term = ','.join(video_batch)
             # Get metadata for the videos
-            video_data = self.yt_connector.obtain_video_metadata(video_ids_term)['items']
+            response = self.yt_connector.obtain_video_metadata(video_ids_term)
 
+            video_data = response['items']
             print('Creating {} videos.'.format(len(video_data)))
             self._bulk_create(video_data)
 
@@ -60,31 +61,50 @@ class BlacklistVideos(object):
 
         print('All seed ids added', BlacklistVideo.objects.all().count())
 
-    def get_videos_from_db(self):
-        video_ids = BlacklistVideo\
+    def get_related_videos(self):
+        # Get all video ids to scan
+        video_ids_in_db = BlacklistVideo\
             .objects\
             .filter(scanned=False)\
             .distinct('video_id')\
             .values_list('video_id', flat=True)
 
-        print('Videos to scan: {}'.format(len(video_ids)))
+        while video_ids_in_db:
+            print('Videos to scan: {}'.format(len(video_ids_in_db)))
 
-        while video_ids:
-            for id in video_ids:
-                video_data = self.yt_connector.get_related_videos(id)['items']
-                print('Related videos retrieved: {}'.format(len(video_data)))
-
+            for id in video_ids_in_db:
+                response = self.yt_connector.get_related_videos(id)
+                video_data = response['items']
                 self._bulk_create(video_data)
 
-                total_videos = BlacklistVideo.objects.all().count()
-                print('Total videos stored: {}'.format(total_videos))
-                BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
+                print('Related videos retrieved: '.format(len(video_data)))
 
-                video_ids = BlacklistVideo \
-                    .objects \
-                    .filter(scanned=False) \
-                    .distinct('video_id') \
-                    .values_list('video_id', flat=True)
+                # While there is a next page, get and save the results
+                page_number = 1
+                while response.get('nextPageToken') is not None:
+                    print('Getting page {} for id {}'.format(page_number, id))
+
+                    page_token = response['nextPageToken']
+                    response = self.yt_connector.get_related_videos(id, page_token=page_token)
+                    video_data = response['items']
+
+                    print('Related videos retrieved: {}'.format(len(video_data)))
+
+                    if video_data:
+                        self._bulk_create(video_data)
+
+                    page_number += 1
+
+            total_videos = BlacklistVideo.objects.all().count()
+            print('Total videos stored: {}'.format(total_videos))
+
+            self.update_scanned(video_ids_in_db)
+
+            video_ids_in_db = BlacklistVideo \
+                .objects \
+                .filter(scanned=False) \
+                .distinct('video_id') \
+                .values_list('video_id', flat=True)
 
         print('Audit complete!')
         total_videos = BlacklistVideo.objects.all().count()
@@ -102,6 +122,9 @@ class BlacklistVideos(object):
             self.get_videos_from_db()
 
             self.get_related_videos_queue.task_done()
+
+    def update_scanned(self, video_ids):
+        BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
 
     def _bulk_create(self, video_data):
         blacklist_to_create = [

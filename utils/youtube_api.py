@@ -64,15 +64,18 @@ class YoutubeAPIConnector(object):
             options["pageToken"] = page_token
         return self.__execute_call(self.youtube.videos().list(**options))
 
-    def get_related_videos(self, video_id):
+    def get_related_videos(self, video_id, page_token = None, max_results=50):
         """
         Get related videos
         """
         options = {
             'part': 'snippet',
             'type': 'video',
-            'relatedToVideoId': video_id
+            'relatedToVideoId': video_id,
+            "maxResults": max_results,
         }
+        if page_token is not None:
+            options['pageToken'] = page_token
 
         return self.__execute_call(self.youtube.search().list(**options))
 
