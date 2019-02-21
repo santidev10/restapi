@@ -9,6 +9,7 @@ from singledb.api.views.bad_words import BadWordRetrieveUpdateDeleteApiView
 from singledb.api.views.highlights import HighlightChannelsListApiView
 from singledb.api.views.highlights import HighlightKeywordsListApiView
 from singledb.api.views.highlights import HighlightVideosListApiView
+from singledb.api.views.audit import AuditKeyWordsExportApiView
 
 urlpatterns = [
     url(r'^countries/$', CountryListApiView.as_view(), name="countries_list"),
@@ -20,4 +21,5 @@ urlpatterns = [
     url(r"^bad_words_categories/$", BadWordCategoriesListApiView.as_view(), name="bwc_list"),
     url(r"^bad_words/(?P<pk>.+)/$", BadWordRetrieveUpdateDeleteApiView.as_view(), name="bw_details"),
     url(r"^bad_words_history/$", BadWordHistoryListApiView.as_view(), name="bwh_list"),
+    url(r"^audit/keywords/export/$", AuditKeyWordsExportApiView.as_view(), name="audit_keywords_export")
 ]

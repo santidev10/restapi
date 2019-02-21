@@ -93,6 +93,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                             return Response(
                                 status=HTTP_400_BAD_REQUEST,
                                 data=dict(error="The dates cannot be in the past: {}".format(campaign.name)))
+                    self._validate_consistency(instance)
                     mcc_accounts = Account.user_mcc_objects(request.user)
                     if not mcc_accounts.exists():
                         return Response(
@@ -144,3 +145,28 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                 data=dict(error="You cannot delete approved setups"))
         AccountCreation.objects.filter(pk=instance.id).update(is_deleted=True)
         return Response(status=HTTP_204_NO_CONTENT)
+
+    def _validate_consistency(self, account_creation):
+        for campaign_creation in account_creation.campaign_creations.all():
+            self._validate_campaign_creation(campaign_creation)
+
+    def _validate_campaign_creation(self, campaign_creation):
+        for ad_group_creation in campaign_creation.ad_group_creations.all():
+            self._validate_ad_group_creation(ad_group_creation)
+
+    def _validate_ad_group_creation(self, ad_group_creation):
+        self._validate_discovery_ad_group(ad_group_creation)
+
+    def _validate_discovery_ad_group(self, ad_group_creation):
+        if ad_group_creation.video_ad_format != AdGroupCreation.DISCOVERY_TYPE:
+            return
+        for ad_creation in ad_group_creation.ad_creations.all():
+            self._validate_discovery_ad(ad_creation)
+
+    def _validate_discovery_ad(self, ad_creation):
+        for field in ("headline",):
+            value = getattr(ad_creation, field)
+            if value is None:
+                raise ValidationError("{} can't be null".format(field))
+            if value == "":
+                raise ValidationError("{} can't be empty".format(field))

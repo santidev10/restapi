@@ -1,5 +1,6 @@
 import logging
 from functools import wraps
+from time import sleep
 
 
 class ExceptionWithArgs(Exception):
@@ -29,6 +30,25 @@ def ignore_on_error(logger=None, default_result=None):
                 wrapped_error = wrap_exception(args, kwargs, ex)
                 logger.exception(wrapped_error)
                 return default_result
+
+        return wrapper
+
+    return decorator
+
+
+def retry(count=3, delay=1, exceptions=(Exception,)):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for i in range(count):
+                if last_exception is not None:
+                    sleep(delay)
+                try:
+                    return fn(*args, **kwargs)
+                except exceptions as ex:
+                    last_exception = ex
+            raise last_exception
 
         return wrapper
 

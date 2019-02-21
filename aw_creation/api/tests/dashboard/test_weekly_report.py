@@ -1,10 +1,8 @@
-import io
 import re
 from datetime import date
 from datetime import timedelta
 from unittest.mock import patch
 
-from openpyxl import load_workbook
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
@@ -33,12 +31,13 @@ from aw_reporting.models import age_range_str
 from aw_reporting.models import gender_str
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.xlsx import get_sheet_from_response
 
 
 class SectionName:
@@ -474,13 +473,6 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         row_index = get_section_start_row(sheet, section)
         title_values = tuple(cell.value for cell in sheet[row_index][1:])
         self.assertEqual(title_values, (section,) + shared_columns)
-
-
-def get_sheet_from_response(response):
-    single_sheet_index = 0
-    f = io.BytesIO(response.content)
-    book = load_workbook(f)
-    return book.worksheets[single_sheet_index]
 
 
 TITLE_COLUMN = 1

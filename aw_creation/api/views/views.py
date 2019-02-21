@@ -71,6 +71,8 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from segment.models import SegmentChannel
+from segment.models import SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -360,7 +362,8 @@ class ItemsFromSegmentIdsApiView(APIView):
         item_ids = getattr(self, method)(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
-
+        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
+            return Response(data=[item for item in items if item["id"] is not None])
         return Response(data=items)
 
     @staticmethod
@@ -499,6 +502,14 @@ class CreationOptionsApiView(APIView):
         def get_week_day_name(n):
             return calendar.day_name[n - 1]
 
+        ad_schedule_rules = list_to_resp(range(1, 8), n_func=get_week_day_name)
+        additional_ad_schedule_rules = [
+            {'id': 8, 'name': 'All Days'},
+            {'id': 9, 'name': 'Weekdays'},
+            {'id': 10, 'name': 'Weekends'},
+        ]
+        ad_schedule_rules.extend(additional_ad_schedule_rules)
+
         options = OrderedDict(
             # ACCOUNT
             # create
@@ -517,7 +528,7 @@ class CreationOptionsApiView(APIView):
                 CampaignCreation.GOAL_TYPES[:1],
             ),
             type=opts_to_response(
-                CampaignCreation.CAMPAIGN_TYPES[:1],
+                CampaignCreation.CAMPAIGN_TYPES,
             ),
             bidding_type=opts_to_response(
                 CampaignCreation.BIDDING_TYPES,
@@ -572,7 +583,7 @@ class CreationOptionsApiView(APIView):
                        "coordinates and a radius - required",
             ),
             ad_schedule_rules=dict(
-                day=list_to_resp(range(1, 8), n_func=get_week_day_name),
+                day=ad_schedule_rules,
                 from_hour=list_to_resp(range(0, 24)),
                 from_minute=list_to_resp(range(0, 60, 15)),
                 to_hour=list_to_resp(range(0, 24)),
@@ -596,6 +607,11 @@ class CreationOptionsApiView(APIView):
             ),
             age_ranges=opts_to_response(
                 AdGroupCreation.AGE_RANGES,
+            ),
+
+            # Bidding Strategy
+            bidding_strategy_types=opts_to_response(
+                CampaignCreation.BID_STRATEGY_TYPES,
             ),
         )
         return Response(data=options)
@@ -697,7 +713,28 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        """
+        PUT method handler: Entire update of CampaignCreation
+        :param request: request.data -> dict of full CampaignCreation object to PUT
+        """
+
+        partial = False
+        instance = self.get_object()
+        serializer = CampaignCreationUpdateSerializer(
+            instance, data=request.data, partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+        self.update_related_models(obj.id, request.data)
+
+        return self.retrieve(self, request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        PATCH method handler: Partial updating of CampaignCreations
+        :param request: request.data -> dict of fields and values to PATCH
+        """
+        partial = True
         instance = self.get_object()
         serializer = CampaignCreationUpdateSerializer(
             instance, data=request.data, partial=partial
@@ -954,6 +991,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
 
         # validate video ad format and video duration
         video_ad_format = data.get(
@@ -989,15 +1028,26 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                         error="Ad type cannot be changed for only one ad within an ad group"),
                         status=HTTP_400_BAD_REQUEST)
 
+
+                # Invalid if the campaign bid strategy type is Target CPA and the ad long headline and short headline have not been set
+                if campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY and \
+                        (data.get('long_headline') is None or data.get('short_headline') is None):
+                    return Response(
+                        dict(
+                            error="You must provide a short headline and long headline.",
+                            status=HTTP_400_BAD_REQUEST
+                        )
+                    )
+
                 # campaign restrictions
                 set_bid_strategy = None
                 if set_ad_format == AdGroupCreation.BUMPER_AD and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPM_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPM_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPM_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPM_STRATEGY
                 elif set_ad_format in (AdGroupCreation.IN_STREAM_TYPE,
                                        AdGroupCreation.DISCOVERY_TYPE) and \
-                        campaign_creation.bid_strategy_type != CampaignCreation.CPV_STRATEGY:
-                    set_bid_strategy = CampaignCreation.CPV_STRATEGY
+                        campaign_creation.bid_strategy_type != CampaignCreation.MAX_CPV_STRATEGY:
+                    set_bid_strategy = CampaignCreation.MAX_CPV_STRATEGY
 
                 if set_bid_strategy:
                     if campaign_creation.is_pulled_to_aw:
@@ -2172,4 +2222,4 @@ class AwCreationChangeStatusAPIView(GenericAPIView):
                                 id=ad_group_creation['id']
                             ).update(ad_group_id=ad_group['id'])
                             break
-        return Response()
+        return Response('Successfully updated Campaign: {}'.format(str(account_id)))
