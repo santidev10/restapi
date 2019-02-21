@@ -18,8 +18,21 @@ class BlacklistVideos(object):
 
         all_video_data = BlacklistVideo\
             .objects.all()\
-            .values_list('video_id', 'channel_id', 'channel_title', 'title', 'description', flat=True)
-        self.export_csv(data=all_video_data, headers=['Video ID', 'Channel ID', 'Channel Title', 'Video Title', 'Video Description'])
+            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+
+        self.export_csv(data=all_video_data,
+                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title'],
+                        csv_export_path='/Users/kennethoh/Desktop/blacklist_result.csv'
+                        )
+
+    def export_existing(self):
+        all_video_data = BlacklistVideo \
+            .objects.all() \
+            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+        self.export_csv(data=all_video_data,
+                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title'],
+                        csv_export_path='/Users/kennethoh/Desktop/blacklist_result.csv'
+                        )
 
     def extract_video_id_seeds(self):
         video_id_seeds = []
