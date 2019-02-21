@@ -47,6 +47,35 @@ class YoutubeAPIConnector(object):
             developerKey=self.developer_key
         )
 
+    def obtain_video_metadata(self,
+                              videos_ids,
+                              part="id,snippet",
+                              max_results=50,
+                              page_token=None):
+        """
+        Obtain Video metadata
+        """
+        options = {
+            "part": part,
+            "maxResults": max_results,
+            "id": videos_ids
+        }
+        if page_token:
+            options["pageToken"] = page_token
+        return self.__execute_call(self.youtube.videos().list(**options))
+
+    def get_related_videos(self, video_id):
+        """
+        Get related videos
+        """
+        options = {
+            'part': 'snippet',
+            'type': 'video',
+            'relatedToVideoId': video_id
+        }
+
+        return self.__execute_call(self.youtube.search().list(**options))
+
     def keyword_search(self, keyword, part="snippet", search_type="channel",
                        max_results=50, safe_search="none", page_token=None):
         """
@@ -140,12 +169,14 @@ class YoutubeAPIConnector(object):
         while tries_count <= self.max_connect_retries:
             try:
                 result = method.execute()
-            except Exception:
+            except Exception as e:
                 tries_count += 1
+                print('Trying api call again. Count: {}'.format(tries_count))
                 if tries_count <= self.max_connect_retries:
-                    sleep_seconds_count = self.max_connect_retries \
-                                          ** self.retry_sleep_coefficient
+                    sleep_seconds_count = 10
                     time.sleep(sleep_seconds_count)
+
+                print(str(e))
             else:
                 return result
         raise YoutubeAPIConnectorException(

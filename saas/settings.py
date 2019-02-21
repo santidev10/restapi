@@ -54,6 +54,7 @@ PROJECT_APPS = (
     "channel",
     "email_reports",
     "audit_tool",
+    "blacklist_video"
 )
 
 THIRD_PARTY_APPS = (
