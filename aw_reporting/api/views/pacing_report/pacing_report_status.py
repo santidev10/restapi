@@ -1,34 +1,30 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
-from utils.datetime import Time
-from pytz import utc
 
 class PacingReportStatusApiView(APIView):
     """
     View for updating all Account and Campaign objects that have been synced with adwords
     """
-    @property
-    def now(self):
-        return Time().now(tz=utc)
-
     def patch(self, request, *_, **__):
         """
-        Update Account and Campaigns hourly_updated_at fields
+        Update Account hourly_updated_at fields
             to indicate they have been synced with Adwords
 
-        :param request: request -> (utc datetime) updated_at
-        :param account_ids: Account ids to update hourly_updated_at
-        :param campaign_ids: Campaigns ids to update hourly_updated_at
+        :param request.data: (utc datetime) updated_at
+        :param request.data: Account id to update hourly_updated_at field
         """
-        account_ids = request.data.get('account_ids', [])
-        hourly_updated_at = request.data.get('hourly_updated_at', self.now)
+        try:
+            account_id = request.data['account_id']
+            hourly_updated_at = request.data['updated_at']
+        except KeyError:
+            return Response(status=HTTP_400_BAD_REQUEST, data='You must provide an account id and an update time.')
 
-        # update all accounts
         Account.objects\
-            .filter(id__in=account_ids)\
+            .filter(id=account_id)\
             .update(hourly_updated_at=hourly_updated_at)
 
-        return Response(status=HTTP_200_OK, data='Campaigns and Accounts status update complete.')
+        return Response(status=HTTP_200_OK, data='Account update complete.')

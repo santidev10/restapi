@@ -8,7 +8,6 @@ from utils.datetime import Time
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
-
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
@@ -71,7 +70,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         if accounts is None:
             raise ValueError('Must provide account to retrieve campaigns for.')
 
-        campaign_generator = self._campaigns_generator(accounts=accounts)
+        campaign_generator = self.campaigns_generator(accounts=accounts)
         campaign_budgets = {}
 
         while True:
@@ -90,7 +89,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
 
         return campaign_budgets
 
-    def _campaigns_generator(self, accounts=None) -> iter:
+    def campaigns_generator(self, accounts=None) -> iter:
         """
         Generator to yield campaigns for each account
         
