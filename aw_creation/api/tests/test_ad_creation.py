@@ -331,3 +331,26 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertIn(property_name, response.data)
+
+    def test_headline_limit(self):
+        self.fill_all_groups(self.user)
+        today = now_in_default_tz().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad = self.create_ad(**defaults)
+        ad.ad_group_creation.video_ad_format = AdGroupCreation.DISCOVERY_TYPE
+        ad.ad_group_creation.save()
+        url = reverse("aw_creation_urls:ad_creation_setup",
+                      args=(ad.id,))
+        data = dict(
+            name="Ad Group  1",
+            short_headline="h" * 26,
+        )
+        response = self.client.patch(url, json.dumps(data),
+                                     content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertIn("short_headline", response.data)
