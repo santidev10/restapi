@@ -713,7 +713,7 @@ class AdCreation(UniqueCreationItem):
     final_url = models.URLField(default="")
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
     business_name = models.CharField(max_length=250, blank=True, null=True)
-    short_headline = models.CharField(max_length=250, blank=True, null=True)
+    short_headline = models.CharField(max_length=25, blank=True, null=True)
     long_headline = models.CharField(max_length=250, blank=True, null=True)
 
     # video details
