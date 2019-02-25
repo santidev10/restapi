@@ -74,16 +74,16 @@ def get_placements(client, account, today):
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        report = placement_performance_report(
-            client, dates=(min_date, max_date),
-        )
-
         chunk_size = 10000
-
-        _gen = _generate_stat_instances(YTChannelStatistic, "/channel/", report)
-        for chunk in chunks_generator(_gen, chunk_size):
+        # As Out-Of-Memory errors prevention we have to download this report twice
+        # and save to the DB only the necessary records at each load.
+        # Any accumulation of such a report in memory is unacceptable because it may cause Out-Of-Memory error.
+        report = placement_performance_report(client, dates=(min_date, max_date))
+        generator = _generate_stat_instances(YTChannelStatistic, "/channel/", report)
+        for chunk in chunks_generator(generator, chunk_size):
             YTChannelStatistic.objects.safe_bulk_create(chunk)
 
-        _gen = _generate_stat_instances(YTVideoStatistic, "/video/", report)
-        for chunk in chunks_generator(_gen, chunk_size):
+        report = placement_performance_report(client, dates=(min_date, max_date))
+        generator = _generate_stat_instances(YTVideoStatistic, "/video/", report)
+        for chunk in chunks_generator(generator, chunk_size):
             YTVideoStatistic.objects.safe_bulk_create(chunk)
