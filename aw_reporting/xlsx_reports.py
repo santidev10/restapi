@@ -58,7 +58,7 @@ def pacing_report(report, opportunities):
         'Opportunity', 'Placement', 'Flight', 'Campaign', 'Pacing',
         'Margin', 'IO', 'Start', 'End', 'Budget', 'Views', 'CPV',
         'Impressions', 'CPM', 'Cost', 'Views', 'CPV', 'Impressions',
-        'CPM', 'AdOps', 'AM', 'Sales', 'Category', 'Region',
+        'CPM', 'AdOps', 'AM', 'Sales', 'Category', 'Territory',
     )
 
     for h in header:

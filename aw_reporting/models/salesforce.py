@@ -198,7 +198,7 @@ class Opportunity(models.Model):
     types_of_targeting = models.CharField(max_length=100, default="")
 
     apex_deal = models.BooleanField(default=False)
-    bill_of_third_party_numbers = models.BooleanField(default=False)
+    billing_server = models.CharField(max_length=30, null=True)
     margin_cap_required = models.BooleanField(default=False)
 
     default_thumbnail = None
@@ -301,7 +301,6 @@ class Opportunity(models.Model):
             proposal_date=data.get('Date_Proposal_Submitted__c'),
             goal_type_id=goal_type_id,
             units=units,
-            margin_cap_required=data.get("CID_Google_Transparency_Required__c", False),
             video_views=data.get('CPV_Units_Purchased__c'),
             impressions=data.get('CPM_Impression_Units_Purchased__c'),
             cpv_cost=data.get('CPV_Total_Client_Cost__c'),
@@ -332,7 +331,7 @@ class Opportunity(models.Model):
             tags=data["Tags__c"] or "",
             types_of_targeting=data["Types_of__c"] or "",
             apex_deal=data.get("APEX_Deal__c"),
-            bill_of_third_party_numbers=data.get("Bill_off_3p_Numbers__c")
+            billing_server=data.get("Billing_Serer__c")
         )
         if sales_email:
             res['sales_email'] = sales_email

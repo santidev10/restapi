@@ -443,7 +443,7 @@ class PacingReport:
                 sum_spent_cost += aw_cost
 
             elif goal_type_id == SalesForceGoalType.HARD_COST:
-                sum_spent_cost += aw_cost
+                sum_spent_cost += f["cost"] or 0
             sum_total_cost += total_cost
             if f["start"] <= self.today:
                 current_cost_limit += total_cost
@@ -534,7 +534,7 @@ class PacingReport:
             "account_manager__id", "account_manager__name",
             "sales_manager__id", "sales_manager__name",
             "apex_deal",
-            "bill_of_third_party_numbers",
+            "billing_server",
             "territory", "margin_cap_required",
         )
 
@@ -756,52 +756,15 @@ class PacingReport:
                 raise PeriodError(period)
         raise PeriodError(period)
 
-    # ## OPPORTUNITIES ## #
-
     # ## PLACEMENTS ## #
-    def prepare_hard_cost_placement_data(self, placement_dict_data, flights):
-        """
-        :param placement_dict_data: dict
-        """
+    # todo: remove this method. Calculate these vales on general logic. Ensure that FE can handle them.
+    def _set_none_hard_cost_properties(self, placement_dict_data):
         placement_dict_data.update(
             cpm=None, cpv=None, ctr=None, ctr_quality=None, impressions=None,
             pacing=None, pacing_direction=None, pacing_quality=None,
             plan_cmp=None, plan_cpv=None, plan_impressions=None,
             plan_video_views=None, video_view_rate=None,
             video_view_rate_quality=None, video_views=None)
-        hard_cost_placement_flights = Flight.objects.filter(
-            placement_id=placement_dict_data["id"])
-        flights_cost_data = hard_cost_placement_flights.aggregate(
-            total_client_cost=Sum("total_cost"),
-            current_cost_limit=Sum(Case(When(start__lte=self.today,
-                                             then="total_cost"),
-                                        output_field=FloatField(),
-                                        default=0)),
-            our_cost=Sum("cost"))
-        our_cost = flights_cost_data["our_cost"]
-        total_client_cost = flights_cost_data["total_client_cost"] or 0
-        placement_dict_data.update()
-        border = self.borders["margin"]
-        current_cost_limit = flights_cost_data["current_cost_limit"]
-
-        margin = self.get_margin_from_flights(flights, our_cost,
-                                              current_cost_limit)
-
-        if margin >= border[0]:
-            margin_quality = 2
-            margin_direction = 0
-        elif margin >= border[1]:
-            margin_quality = 1
-            margin_direction = 1
-        else:
-            margin_quality = 0
-            margin_direction = 1
-        placement_dict_data.update(
-            cost=our_cost,
-            plan_cost=total_client_cost,
-            margin=margin,
-            margin_quality=margin_quality,
-            margin_direction=margin_direction)
 
     def get_placements(self, opportunity):
         queryset = opportunity.placements.all().order_by("name", "start")
@@ -824,15 +787,11 @@ class PacingReport:
         for p in placements:
             goal_type_id = p["goal_type_id"]
             p.update(
-                goal_type=goal_type_str(goal_type_id),
                 is_completed=p["end"] < self.today if p["end"] else None,
                 is_upcoming=p["start"] > self.today if p["start"] else None,
                 tech_fee=float(p["tech_fee"]) if p["tech_fee"] else None
             )
             flights = all_flights[p["id"]]
-            if goal_type_id == SalesForceGoalType.HARD_COST:
-                self.prepare_hard_cost_placement_data(p, flights)
-                continue
 
             delivery_stats = self.get_delivery_stats_from_flights(flights)
             p.update(delivery_stats)
@@ -849,6 +808,10 @@ class PacingReport:
 
             chart_data = get_chart_data(flights=flights, today=self.today)
             p.update(chart_data)
+
+            if goal_type_id == SalesForceGoalType.HARD_COST:
+                self._set_none_hard_cost_properties(p)
+            p.update(goal_type=goal_type_str(goal_type_id))
 
         return placements
 

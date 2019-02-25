@@ -7,6 +7,7 @@ IS_TEST = True
 
 MIGRATION_MODULES = {
     "administration": None,
+    "audit_tool": None,
     "auth": None,
     "authtoken": None,
     "aw_creation": None,

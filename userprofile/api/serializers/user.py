@@ -47,6 +47,7 @@ class UserSerializer(ModelSerializer):
             "phone_number",
             "profile_image_url",
             "token",
+            "has_accepted_GDPR",
         )
         read_only_fields = (
             "is_staff",

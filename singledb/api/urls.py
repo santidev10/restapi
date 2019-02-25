@@ -5,6 +5,7 @@ from singledb.api.views.augmentation import AugmentationChannelSegmentListApiVie
 from singledb.api.views.highlights import HighlightChannelsListApiView
 from singledb.api.views.highlights import HighlightKeywordsListApiView
 from singledb.api.views.highlights import HighlightVideosListApiView
+from singledb.api.views.audit import AuditKeyWordsExportApiView
 
 urlpatterns = [
     url(r'^countries/$', CountryListApiView.as_view(), name="countries_list"),
@@ -12,4 +13,5 @@ urlpatterns = [
     url(r'^highlights/channels/$', HighlightChannelsListApiView.as_view(), name="highlights_channels"),
     url(r'^highlights/videos/$', HighlightVideosListApiView.as_view(), name="highlights_videos"),
     url(r'^highlights/keywords/$', HighlightKeywordsListApiView.as_view(), name="highlights_keywords"),
+    url(r"^audit/keywords/export/$", AuditKeyWordsExportApiView.as_view(), name="audit_keywords_export")
 ]

@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 VIDEO_AD_THUMBNAIL_SIZE = (300, 60)
 
 WEEKDAYS = list(calendar.day_name)
-NameValidator = RegexValidator(r"^[^#']*$",
-                               "# and ' are not allowed for titles")
 YT_VIDEO_REGEX = r"^(?:https?:/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)" \
                  r"(?:/watch\?v=|/video/|/)([^\s&/\?]+)(?:.*)$"
 VideoUrlValidator = RegexValidator(YT_VIDEO_REGEX, 'Wrong video url')
@@ -48,7 +46,7 @@ class CreationItemQueryset(models.QuerySet):
 class UniqueCreationItem(models.Model):
     objects = CreationItemQueryset.as_manager()
 
-    name = models.CharField(max_length=250, validators=[NameValidator])
+    name = models.CharField(max_length=250)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -89,6 +87,7 @@ class AccountCreation(UniqueCreationItem):
     objects = AccountCreationManager()
     id = models.CharField(primary_key=True, max_length=12,
                           default=get_uid, editable=False)
+    name = models.CharField(max_length=255)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",
                               on_delete=CASCADE,
@@ -252,17 +251,25 @@ class CampaignCreation(UniqueCreationItem):
         default=STANDARD_DELIVERY,
     )
 
-    CPV_STRATEGY = 'CPV'
-    CPM_STRATEGY = 'CPM'
+    MAX_CPV_STRATEGY = 'MAX_CPV'
+    MAX_CPM_STRATEGY = 'MAX_CPM'
+    TARGET_CPM_STRATEGY = 'TARGET_CPM'
+    TARGET_CPA_STRATEGY = 'TARGET_CPA'
+
     BID_STRATEGY_TYPES = (
-        (CPV_STRATEGY, CPV_STRATEGY),
-        (CPM_STRATEGY, CPM_STRATEGY),
+        (MAX_CPV_STRATEGY, 'Maximum CPV'),
+        (MAX_CPM_STRATEGY, 'Maximum CPM'),
+        (TARGET_CPM_STRATEGY, 'Target CPM'),
+        (TARGET_CPA_STRATEGY, 'Target CPA'),
     )
+
     bid_strategy_type = models.CharField(
-        max_length=3,
+        max_length=10,
         choices=BID_STRATEGY_TYPES,
-        default=CPV_STRATEGY,
+        default=MAX_CPV_STRATEGY,
     )
+
+    target_cpa = models.IntegerField(null=True, blank=True, default=None)
 
     MANUAL_CPV_BIDDING = 'MANUAL_CPV'
     BIDDING_TYPES = (
@@ -395,6 +402,31 @@ class CampaignCreation(UniqueCreationItem):
 
         return start_for_creation, start, end
 
+    def get_aw_schedulers(self):
+        schedules_queryset = self.ad_schedule_rules.all()
+        extra_schedules_rules = {
+            8: list(calendar.day_name),  # all days
+            9: list(calendar.day_name[:-2]),  # all working days
+            10: list(calendar.day_name[-2:]),  # weekends
+        }
+        schedules = []
+        for schedule in schedules_queryset:
+            if schedule.day not in extra_schedules_rules.keys():
+                days = [WEEKDAYS[schedule.day - 1].upper()]
+            else:
+                weekdays = extra_schedules_rules[schedule.day]
+                days = [day.upper() for day in weekdays]
+            for day in days:
+                aw_schedule_string = "{} {} {} {} {}".format(
+                    day,
+                    schedule.from_hour,
+                    schedule.from_minute,
+                    schedule.to_hour,
+                    schedule.to_minute
+                )
+                schedules.append(aw_schedule_string)
+        return schedules
+
     def get_aws_code(self, request):
 
         start_for_creation, start, end = self.get_creation_dates()
@@ -409,18 +441,15 @@ class CampaignCreation(UniqueCreationItem):
                     budget_type=self.budget_type,
                     start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
                     bid_strategy_type=self.bid_strategy_type.lower(),
+                    campaign_type=self.type,
+                    target_cpa=self.target_cpa,
                     is_paused=self.campaign_is_paused,
                     start=start.strftime("%Y%m%d") if start else None,
                     end=end.strftime("%Y%m%d") if end else None,
                     video_networks=self.video_networks,
                     lang_ids=list(self.languages.values_list('id', flat=True)),
                     devices=self.devices,
-                    schedules=[
-                        "{} {} {} {} {}".format(
-                            WEEKDAYS[s.day - 1].upper(), s.from_hour,
-                            s.from_minute, s.to_hour, s.to_minute
-                        ) for s in self.ad_schedule_rules.all()
-                    ],
+                    schedules=self.get_aw_schedulers(),
                     freq_caps={
                         f["event_type"]: f
                         for f in self.frequency_capping.all(
@@ -481,10 +510,13 @@ class AdGroupCreation(UniqueCreationItem):
     IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
     DISCOVERY_TYPE = 'TRUE_VIEW_IN_DISPLAY'
     BUMPER_AD = 'BUMPER'
+    DISPLAY_AD = 'DISPLAY'
+
     VIDEO_AD_FORMATS = (
         (IN_STREAM_TYPE, "In-stream"),
         (DISCOVERY_TYPE, "Discovery"),
         (BUMPER_AD, "Bumper"),
+        (DISPLAY_AD, "Display")
     )
     video_ad_format = models.CharField(
         max_length=20,
@@ -501,8 +533,10 @@ class AdGroupCreation(UniqueCreationItem):
                 AdCreation.objects.filter(
                     ad_group_creation__campaign_creation=self.campaign_creation).count() > 1:
 
-            if self.campaign_creation.bid_strategy_type == CampaignCreation.CPM_STRATEGY:
+            if self.campaign_creation.bid_strategy_type == CampaignCreation.MAX_CPM_STRATEGY:
                 types = [AdGroupCreation.BUMPER_AD]
+            elif self.campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY:
+                types = [AdGroupCreation.DISPLAY_AD]
             else:
                 types = [AdGroupCreation.IN_STREAM_TYPE]
         else:
@@ -631,6 +665,8 @@ class AdGroupCreation(UniqueCreationItem):
             interests_negative=qs_to_list(interests.filter(is_negative=True), to_int=True),
             keywords=qs_to_list(keywords.filter(is_negative=False)),
             keywords_negative=qs_to_list(keywords.filter(is_negative=True)),
+            bid_strategy_type=campaign.bid_strategy_type.lower(),
+            target_cpa=campaign.target_cpa,
         )
         lines = [
             "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
@@ -676,6 +712,9 @@ class AdCreation(UniqueCreationItem):
     display_url = models.CharField(max_length=200, default="")
     final_url = models.URLField(default="")
     tracking_template = models.CharField(max_length=250, validators=[TrackingTemplateValidator], default="")
+    business_name = models.CharField(max_length=250, null=True, default="") #allowing null to be true ONLY because previously it was, so may be some null entries in DB
+    short_headline = models.CharField(max_length=250, null=True, default="")
+    long_headline = models.CharField(max_length=250, null=True, default="")
 
     # video details
     video_id = models.CharField(max_length=20, default="")
@@ -742,6 +781,10 @@ class AdCreation(UniqueCreationItem):
     beacon_dcm_2_changed = models.BooleanField(default=False)
     beacon_dcm_3_changed = models.BooleanField(default=False)
 
+    headline = models.CharField(max_length=250, null=True, default=None)
+    description_1 = models.CharField(max_length=250, null=True, default=None)
+    description_2 = models.CharField(max_length=250, null=True, default=None)
+
     tag_field_names = (
         "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
         "beacon_view_1", "beacon_view_2", "beacon_view_3",
@@ -786,6 +829,8 @@ class AdCreation(UniqueCreationItem):
                 image.save(self.companion_banner.path)
 
     def get_aws_code(self, request):
+        campaign = self.ad_group_creation.campaign_creation
+        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
         code = "createOrUpdateVideoAd(ad_group, {});".format(
             json.dumps(
                 dict(
@@ -800,6 +845,13 @@ class AdCreation(UniqueCreationItem):
                     final_url=self.final_url,
                     tracking_template=self.tracking_template,
                     custom_params={p['name']: p['value'] for p in self.custom_params},
+                    headline=self.headline,
+                    description_1=self.description_1,
+                    description_2=self.description_2,
+                    long_headline=self.long_headline,
+                    short_headline=self.short_headline,
+                    business_name=self.business_name,
+                    ad_type=ad_type
                 )
             )
         )

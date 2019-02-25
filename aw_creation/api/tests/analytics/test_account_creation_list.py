@@ -100,7 +100,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             set(response.data.keys()),
             {
                 "id", "name", "account", "campaign_creations",
-                "updated_at", "is_ended", "is_paused", "is_approved",
+                "updated_at", "is_ended", "is_paused", "is_approved", "sync_at"
             }
         )
 
@@ -116,7 +116,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "frequency_capping", "ad_schedule_rules",
                 "location_rules", "ad_group_creations",
                 "video_networks", "type", "delivery_method",
-                "is_draft",
+                "is_draft", 'bid_strategy_type', "sync_at", "target_cpa"
             }
         )
         self.assertEqual(len(campaign_creation["languages"]), 1)

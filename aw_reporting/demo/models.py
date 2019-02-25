@@ -476,7 +476,15 @@ class DemoAd(BaseDemo):
             beacon_dcm_1="",
             beacon_dcm_2="",
             beacon_dcm_3="",
-            is_disapproved=False
+            is_disapproved=False,
+
+            headline=None,
+            description_1=None,
+            description_2=None,
+
+            long_headline="",
+            short_headline="",
+            business_name=""
         )
         return data
 
@@ -741,6 +749,7 @@ class DemoCampaign(BaseDemo):
             ],
             ad_schedule_rules=[
                 dict(
+                    id=1,
                     from_hour=18,
                     from_minute=0,
                     to_minute=0,
@@ -768,6 +777,7 @@ class DemoCampaign(BaseDemo):
                 dict(id=uid, name=n)
                 for uid, n in CampaignCreation.CONTENT_LABELS[5:7]
             ],
+            bid_strategy_type=CampaignCreation.MAX_CPV_STRATEGY,
         )
         return data
 

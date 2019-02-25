@@ -66,6 +66,7 @@ def get_minutes_run_and_total_minutes(flight):
             last_update = last_update.astimezone(timezone)
         else:
             last_update = now_in_default_tz()
+        last_update = last_update.astimezone(tz=timezone)
         total_seconds = (end - start).total_seconds()
         latest_datetime = end if end < last_update else last_update
         seconds_run = max((latest_datetime - start).total_seconds(), 0)
