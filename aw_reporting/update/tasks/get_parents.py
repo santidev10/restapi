@@ -8,6 +8,23 @@ from aw_reporting.update.tasks.utils.get_account_border_dates import get_account
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 from aw_reporting.update.tasks.utils.reset_denorm_flag import reset_denorm_flag
+from utils.utils import chunks_generator
+
+
+def _generate_stat_instances(model, statuses, report):
+    for row_obj in report:
+        ad_group_id = row_obj.AdGroupId
+        stats = {
+            "parent_status_id": statuses.index(row_obj.Criteria),
+            "date": row_obj.Date,
+            "ad_group_id": ad_group_id,
+            "video_views_25_quartile": quart_views(row_obj, 25),
+            "video_views_50_quartile": quart_views(row_obj, 50),
+            "video_views_75_quartile": quart_views(row_obj, 75),
+            "video_views_100_quartile": quart_views(row_obj, 100),
+        }
+        stats.update(get_base_stats(row_obj))
+        yield model(**stats)
 
 
 def get_parents(client, account, today):
@@ -37,25 +54,10 @@ def get_parents(client, account, today):
         report = parent_performance_report(
             client, dates=(min_date, max_date),
         )
-        bulk_data = []
-        for row_obj in report:
-            ad_group_id = row_obj.AdGroupId
-            stats = {
-                "parent_status_id": ParentStatuses.index(row_obj.Criteria),
-                "date": row_obj.Date,
-                "ad_group_id": ad_group_id,
-
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
-            }
-            stats.update(get_base_stats(row_obj))
-            bulk_data.append(ParentStatistic(**stats))
-
-            ad_group_ids.add(row_obj.AdGroupId)
-
-        if bulk_data:
-            ParentStatistic.objects.safe_bulk_create(bulk_data)
+        ad_group_ids = {row_obj.AdGroupId for row_obj in report}
+        generator = _generate_stat_instances(ParentStatistic, ParentStatuses, report)
+        chunk_size = 10000
+        for chunk in chunks_generator(generator, chunk_size):
+            ParentStatistic.objects.safe_bulk_create(chunk)
 
     reset_denorm_flag(ad_group_ids=ad_group_ids)
