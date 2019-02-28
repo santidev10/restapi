@@ -8,8 +8,26 @@ from aw_reporting.update.tasks.utils.constants import GET_DF
 from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_stat_instances(model, top_cities, report, latest_dates):
+    for row_obj in filter(
+            lambda i: i.CityCriteriaId.isnumeric() and int(i.CityCriteriaId) in top_cities, report):
+        city_id = int(row_obj.CityCriteriaId)
+        date = latest_dates.get((city_id, row_obj.CampaignId))
+        row_date = datetime.strptime(row_obj.Date, GET_DF).date()
+        if date and row_date <= date:
+            continue
+        stats = {
+            "city_id": city_id,
+            "date": row_date,
+            "ad_group_id": row_obj.AdGroupId,
+        }
+        stats.update(get_base_stats(row_obj))
+        yield model(**stats)
 
 
 def get_cities(client, account, today):
@@ -77,26 +95,8 @@ def get_cities(client, account, today):
 
         report = geo_performance_report(
             client, dates=(min_date, max_date),
-            additional_fields=tuple(MAIN_STATISTICS_FILEDS) +
-                              ("Date", "AdGroupId")
-        )
-
-        bulk_data = []
-        for row_obj in filter(
-                lambda i: i.CityCriteriaId.isnumeric()
-                          and int(i.CityCriteriaId) in top_cities, report):
-
-            city_id = int(row_obj.CityCriteriaId)
-            date = latest_dates.get((city_id, row_obj.CampaignId))
-            row_date = datetime.strptime(row_obj.Date, GET_DF).date()
-            if date and row_date <= date:
-                continue
-            stats = {
-                "city_id": city_id,
-                "date": row_date,
-                "ad_group_id": row_obj.AdGroupId,
-            }
-            stats.update(get_base_stats(row_obj))
-            bulk_data.append(CityStatistic(**stats))
-        if bulk_data:
-            CityStatistic.objects.bulk_create(bulk_data)
+            additional_fields=tuple(MAIN_STATISTICS_FILEDS) + ("Date", "AdGroupId"))
+        generator = _generate_stat_instances(CityStatistic, top_cities, report, latest_dates)
+        chunk_size = 10000
+        for chunk in chunks_generator(generator, chunk_size):
+            CityStatistic.objects.safe_bulk_create(chunk)
