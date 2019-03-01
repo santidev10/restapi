@@ -17,11 +17,12 @@ class BaseQueryset(models.QuerySet):
         if transaction.get_connection().in_atomic_block:
             raise IntegrityError(
                 "`safe_bulk_create` is invoked inside a transaction")
+        bulk_chunk = list(objs)
         try:
-            self.bulk_create(objs, batch_size=batch_size)
+            self.bulk_create(bulk_chunk, batch_size=batch_size)
         except IntegrityError as ex_1:
             logger.info(ex_1)
-            for obj in objs:
+            for obj in bulk_chunk:
                 try:
                     obj.save()
                 except IntegrityError as ex_2:
