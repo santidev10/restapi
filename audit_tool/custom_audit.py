@@ -29,7 +29,7 @@ class CustomAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 8
-    master_process_batch_size = 10000
+    master_process_batch_size = 1000
     lock = Lock()
 
     def __init__(self, *args, **kwargs):
@@ -60,11 +60,11 @@ class CustomAudit(object):
 
         self.persistent_channel_segment = PersistentSegmentChannel(
             title=self.create_segment_title(PersistentSegmentType.CHANNEL, self.segment_title),
-            category=PersistentSegmentCategory.BLACKLIST
+            category=PersistentSegmentCategory.WHITELIST
         )
         self.persistent_video_segment = PersistentSegmentVideo(
             title=self.create_segment_title(PersistentSegmentType.VIDEO, self.segment_title),
-            category=PersistentSegmentCategory.BLACKLIST
+            category=PersistentSegmentCategory.WHITELIST
         )
         self.persistent_channel_segment.save()
         self.persistent_video_segment.save()
@@ -80,15 +80,19 @@ class CustomAudit(object):
         start = time.time()
 
         print('Getting all channel ids...')
-        all_channel_ids = PersistentSegmentRelatedChannel.objects.order_by().values('related_id', 'details').distinct()
+        all_channels = PersistentSegmentRelatedChannel\
+            .objects\
+            .order_by()\
+            .distinct('related_id')[:200]
+
         processes = []
 
         # Sanity check
         total_videos_audited = Value('i', 0)
 
-        while all_channel_ids:
+        while all_channels:
             # Batch size controlled by main process to distribute to other processes
-            master_batch = all_channel_ids[:self.master_process_batch_size]
+            master_batch = all_channels[:self.master_process_batch_size]
 
             # Items found by each of the processes. Will actually be created after joining the processes after each master batch
             found_items = Manager().dict()
@@ -116,15 +120,17 @@ class CustomAudit(object):
             for process in processes:
                 process.join()
 
-            if found_items['channels']:
-                PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
 
-            if found_items['videos']:
-                PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
+            PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
+            PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
 
-            all_channel_ids = all_channel_ids[self.master_process_batch_size:]
+            all_channels = all_channels[self.master_process_batch_size:]
 
         end = time.time()
+
+        # need to finalize results
+        print('Finalizing segment details')
+        self.finalize_segments()
 
         print('All videos audited: {}'.format(total_videos_audited.value))
         print('Total execution time: {}'.format(end - start))
@@ -141,10 +147,13 @@ class CustomAudit(object):
 
         while channel_batch:
             channel_batch_chunk = channel_batch[:self.channel_batch_size]
+
             # map list of channel data to dictionary
             channel_batch_chunk = {
-                channel['related_id']: channel['details'] for channel in channel_batch_chunk
+                channel.related_id: channel
+                for channel in channel_batch_chunk
             }
+
             channel_batch_chunk_ids = channel_batch_chunk.keys()
             videos = self.get_videos_batch(channel_ids=channel_batch_chunk_ids)
 
@@ -165,28 +174,36 @@ class CustomAudit(object):
                         PersistentSegmentRelatedVideo(
                             segment=self.persistent_video_segment,
                             related_id=video['video_id'],
+                            category=video['category'],
+                            title=video['title'],
+                            thumbnail_image_url=video['thumbnail_image_url'],
                             details=self.video_details(video, found_words)
                         )
                     )
 
-                    if channel_found_words.get(channel_id) is None:
-                        # List of all objects to create at end of batch since a channels videos could possibly be in different indicies
-                        channel_found_words[channel_id] = channel_batch_chunk[channel_id]
-                        channel_found_words[channel_id]['bad_words'] = found_words
-                    else:
-                        channel_found_words[channel_id]['bad_words'] += found_words
+                    with self.lock:
+                        if channel_found_words.get(channel_id) is None:
+                            # List of all objects to create at end of batch since a channels videos could possibly be in different indicies
+                            channel_found_words[channel_id] = channel_batch_chunk[channel_id].__dict__
+                            channel_found_words[channel_id]['details']['bad_words'] = found_words
+
+                        else:
+                            channel_found_words[channel_id]['details']['bad_words'] += found_words
 
             found_channels = [
                 PersistentSegmentRelatedChannel(
                     segment=self.persistent_channel_segment,
+                    title=value['title'],
+                    category=value['category'],
+                    thumbnail_image_url=value['thumbnail_image_url'],
                     related_id=channel_id,
-                    details=values
-                ) for channel_id, values in channel_found_words.items()
+                    details=value['details']
+                ) for channel_id, value in channel_found_words.items()
             ]
 
             with self.lock:
-                found_items['channels'] += found_channels
-                found_items['videos'] += found_videos
+                found_items['channels'].extend(found_channels)
+                found_items['videos'].extend(found_videos)
 
                 counter.value += len(videos)
                 print('Total videos audited: {}'.format(counter.value))
@@ -252,3 +269,10 @@ class CustomAudit(object):
             bad_words=found_words,
         )
         return details
+
+    def finalize_segments(self):
+        persistent_channel_segment = PersistentSegmentChannel.objects.get(title__contains=self.segment_title)
+        persistent_channel_segment.details = persistent_channel_segment.calculate_details()
+
+        persistent_video_segment = PersistentSegmentVideo.objects.get(title__contains=self.segment_title)
+        persistent_video_segment.details = persistent_video_segment.calculate_details()
