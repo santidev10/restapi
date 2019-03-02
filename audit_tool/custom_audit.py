@@ -84,7 +84,7 @@ class CustomAudit(object):
             .objects\
             .order_by()\
             .values()\
-            .distinct('related_id')[:150]
+            .distinct('related_id')
 
         processes = []
 
