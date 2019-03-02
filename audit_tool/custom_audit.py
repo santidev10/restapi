@@ -2,12 +2,19 @@ import csv
 import re
 import time
 import logging
-from segment.models import SegmentChannel
-from segment.models import SegmentRelatedChannel
+
+from segment.models.persistent import PersistentSegmentVideo
+from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent.constants import PersistentSegmentCategory
+from segment.models.persistent.constants import PersistentSegmentType
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from multiprocessing import Process
 from multiprocessing import Manager
+from multiprocessing import Lock
+from multiprocessing import Value
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +29,8 @@ class CustomAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 8
+    master_process_batch_size = 10000
+    lock = Lock()
 
     def __init__(self, *args, **kwargs):
         """
@@ -47,92 +56,142 @@ class CustomAudit(object):
         self.audit_regex = self.read_csv_create_regex()
         self.connector = Connector()
 
-        print('Creating segment: {}'.format(self.segment_title))
-        self.segment = SegmentChannel(
-            title=self.segment_title,
-            category=SegmentChannel.PRIVATE
+        print('Creating Persistent Channel and Video Segments: {}'.format(self.segment_title))
+
+        self.persistent_channel_segment = PersistentSegmentChannel(
+            title=self.create_segment_title(PersistentSegmentType.CHANNEL, self.segment_title),
+            category=PersistentSegmentCategory.BLACKLIST
         )
-        self.segment.save()
+        self.persistent_video_segment = PersistentSegmentVideo(
+            title=self.create_segment_title(PersistentSegmentType.VIDEO, self.segment_title),
+            category=PersistentSegmentCategory.BLACKLIST
+        )
+        self.persistent_channel_segment.save()
+        self.persistent_video_segment.save()
+
+    def create_segment_title(self, type, title):
+        type = PersistentSegmentType.CHANNEL.capitalize() \
+            if type == PersistentSegmentType.CHANNEL \
+            else PersistentSegmentType.VIDEO.capitalize()
+
+        return '{}s {} {}'.format(type, title, PersistentSegmentCategory.WHITELIST.capitalize())
 
     def run(self, *args, **kwargs):
         start = time.time()
 
         print('Getting all channel ids...')
-        all_channel_ids = PersistentSegmentRelatedChannel.objects.order_by().values('related_id').distinct().values_list('related_id', flat=True)[:200]
-
+        all_channel_ids = PersistentSegmentRelatedChannel.objects.order_by().values('related_id', 'details').distinct()
         processes = []
-        # batch_limit will split all_channel_ids evenly for each process
-        batch_limit = len(all_channel_ids) // self.max_process_count
 
-        # Shared dictionary across processes to keep track of audit found channels that have already been added
-        shared_found_channels = Manager().dict()
-        shared_found_channels['total_videos_audited'] = 0
+        # Sanity check
+        total_videos_audited = Value('i', 0)
 
-        related_objects_to_create = Manager().list()
+        while all_channel_ids:
+            # Batch size controlled by main process to distribute to other processes
+            master_batch = all_channel_ids[:self.master_process_batch_size]
 
-        print('Spawning {} processes...'.format(self.max_process_count))
+            # Items found by each of the processes. Will actually be created after joining the processes after each master batch
+            found_items = Manager().dict()
+            found_items['channels'] = []
+            found_items['videos'] = []
 
-        for _ in range(self.max_process_count):
-            process_task = all_channel_ids[:batch_limit]
-            process = Process(
-                target=self.audit_channels,
-                kwargs={'batch': process_task, 'found_channels': shared_found_channels, 'segment': self.segment, 'to_create': related_objects_to_create}
-            )
-            all_channel_ids = all_channel_ids[batch_limit - 1:]
-            processes.append(process)
-            process.start()
+            # batch_limit will split all_channel_ids evenly for each process
+            batch_limit = len(master_batch) // self.max_process_count
 
-        for process in processes:
-            process.join()
+            # Shared dictionary across processes to keep track of audit found channels that have already been added
+
+            print('Spawning {} processes...'.format(self.max_process_count))
+
+            for _ in range(self.max_process_count):
+                process_task = master_batch[:batch_limit]
+                process = Process(
+                    target=self.audit_channels,
+                    kwargs={'batch': process_task, 'counter': total_videos_audited, 'found_items': found_items}
+                )
+                processes.append(process)
+                # Truncate master_batch for next process
+                master_batch = master_batch[batch_limit:]
+                process.start()
+
+            for process in processes:
+                process.join()
+
+            if found_items['channels']:
+                PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
+
+            if found_items['videos']:
+                PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
+
+            all_channel_ids = all_channel_ids[self.master_process_batch_size:]
 
         end = time.time()
 
-        print('All videos audited: {}'.format(shared_found_channels.pop('total_videos_audited')))
+        print('All videos audited: {}'.format(total_videos_audited.value))
         print('Total execution time: {}'.format(end - start))
 
-        # Each process will create their own found channels
-        SegmentRelatedChannel.objects.bulk_create(related_objects_to_create)
-
-        return shared_found_channels
-
-    def audit_channels(self, batch: list, found_channels: Manager, segment: SegmentChannel, to_create: Manager):
+    def audit_channels(self, batch: list, counter: Manager, found_items: Manager):
         """
         Function that is executed by each process.
             Retrieves and audits videos for given batch channel ids.
         :param batch: (list) Channel ids to retrieve and audit videos
-        :param found_channels: (dict) Shared dictionary for all processes to check if a channel has already been found
-        :param segment: (SegmentChannel) Foreign key segment that will be used to create SegmentChannelRelated objects
+        :param counter: Shared counter for processes
         :return: None
         """
         channel_batch = batch
 
         while channel_batch:
             channel_batch_chunk = channel_batch[:self.channel_batch_size]
-            videos = self.get_videos_batch(channel_ids=channel_batch_chunk)
+            # map list of channel data to dictionary
+            channel_batch_chunk = {
+                channel['related_id']: channel['details'] for channel in channel_batch_chunk
+            }
+            channel_batch_chunk_ids = channel_batch_chunk.keys()
+            videos = self.get_videos_batch(channel_ids=channel_batch_chunk_ids)
+
+            channel_found_words = {}
+            found_videos = []
 
             for video in videos:
-                channel_id = video.get('channel__channel_id')
+                channel_id = video.get('channel_id')
 
                 if not channel_id:
                     continue
 
-                # If the channel has not been flagged and fails audit, then add it
-                # Checks shared found channels for all processes to read from
                 found_words = self.audit_video(video, self.audit_regex)
 
-                if not found_channels.get(channel_id) and found_words:
-                    # List of all objects to create at end of audit
-                    to_create.append(
-                        SegmentRelatedChannel(
-                            segment=segment,
-                            related_id=channel_id)
+                if found_words:
+                    # Each video we find it should be created as related
+                    found_videos.append(
+                        PersistentSegmentRelatedVideo(
+                            segment=self.persistent_video_segment,
+                            related_id=video['video_id'],
+                            details=self.video_details(video, found_words)
+                        )
                     )
-                    found_channels[channel_id] = ', '.join(found_words)
 
-            found_channels['total_videos_audited'] += len(videos)
+                    if channel_found_words.get(channel_id) is None:
+                        # List of all objects to create at end of batch since a channels videos could possibly be in different indicies
+                        channel_found_words[channel_id] = channel_batch_chunk[channel_id]
+                        channel_found_words[channel_id]['bad_words'] = found_words
+                    else:
+                        channel_found_words[channel_id]['bad_words'] += found_words
 
-            print('Total videos audited: {}'.format(found_channels['total_videos_audited'] ))
-            channel_batch = channel_batch[self.channel_batch_size - 1:]
+            found_channels = [
+                PersistentSegmentRelatedChannel(
+                    segment=self.persistent_channel_segment,
+                    related_id=channel_id,
+                    details=values
+                ) for channel_id, values in channel_found_words.items()
+            ]
+
+            with self.lock:
+                found_items['channels'] += found_channels
+                found_items['videos'] += found_videos
+
+                counter.value += len(videos)
+                print('Total videos audited: {}'.format(counter.value))
+
+            channel_batch = channel_batch[self.channel_batch_size:]
 
     def get_videos_batch(self, channel_ids: list = None) -> list:
         """
@@ -140,8 +199,10 @@ class CustomAudit(object):
         :param channel_ids: (list) -> Channel id strings
         :return: (list) -> video objects from singledb
         """
+
         params = dict(
-            fields="title,video_id,channel_id,title,description,tags,language,transcript,channel__channel_id",
+            fields="video_id,channel_id,title,description,tags,thumbnail_image_url,category,likes,dislikes,views,"
+                   "language,transcript",
             sort="video_id",
             size=self.video_batch_size,
             channel_id__terms=",".join(channel_ids),
@@ -179,3 +240,15 @@ class CustomAudit(object):
         escaped_audit_words = '|'.join([row[0] for row in csv_reader])
 
         return re.compile(escaped_audit_words)
+
+    def video_details(self, video, found_words):
+        details = dict(
+            likes=video["likes"],
+            dislikes=video["dislikes"],
+            views=video["views"],
+            tags=video["tags"],
+            description=video["description"],
+            language=video["language"],
+            bad_words=found_words,
+        )
+        return details
