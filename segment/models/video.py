@@ -146,6 +146,9 @@ class SegmentVideo(BaseSegment):
         }
         return statistics
 
+    def _set_total_for_huge_segment(self, items_count):
+        self.videos = items_count
+
 
 class SegmentRelatedVideo(BaseSegmentRelated):
     segment = models.ForeignKey(SegmentVideo, related_name="related")

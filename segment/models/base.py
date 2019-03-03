@@ -109,7 +109,13 @@ class BaseSegment(Timestampable):
         """
         Process segment statistics fields
         """
-        ids = list(self.get_related_ids())
+        ids = self.get_related_ids()
+        ids_count = ids.count()
+        if ids_count > settings.MAX_SEGMENT_TO_AGGREGATE:
+            self._set_total_for_huge_segment(ids_count)
+            self.save()
+            return
+        ids = list(ids)
         ids_hash = Connector().store_ids(ids)
         data = self.obtain_singledb_data(ids_hash)
         # just return on any fail
@@ -120,6 +126,9 @@ class BaseSegment(Timestampable):
         self.get_adw_statistics()
         self.save()
         return "Done"
+
+    def _set_total_for_huge_segment(self, items_count):
+        raise NotImplementedError
 
     def obtain_singledb_data(self, ids_hash):
         raise NotImplementedError
@@ -135,6 +144,7 @@ class BaseSegment(Timestampable):
         for batch in all_batches:
             ids = [item["pk"] for item in batch]
             self.add_related_ids(ids)
+        self.update_statistics()
 
     def get_adw_statistics(self):
         """

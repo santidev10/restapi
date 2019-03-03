@@ -428,6 +428,8 @@ SWAGGER_SETTINGS = {
 
 TEMPDIR = "/tmp"
 
+MAX_SEGMENT_TO_AGGREGATE = 10000
+
 try:
     from .local_settings import *
 except ImportError:

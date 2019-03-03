@@ -112,10 +112,14 @@ class SegmentChannel(BaseSegment):
         Count segment statistics
         """
         statistics = {
+            "test": "123",
             "channels_count": self.channels,
             "top_three_channels": self.top_three_channels,
         }
         return statistics
+
+    def _set_total_for_huge_segment(self, items_count):
+        self.channels = items_count
 
 
 class SegmentRelatedChannel(BaseSegmentRelated):
