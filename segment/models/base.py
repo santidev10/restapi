@@ -127,6 +127,15 @@ class BaseSegment(Timestampable):
     def populate_statistics_fields(self, data):
         raise NotImplementedError
 
+    def load_list_batch_generator(self, filters):
+        raise NotImplementedError
+
+    def add_by_filters(self, filters):
+        all_batches = self.load_list_batch_generator(filters)
+        for batch in all_batches:
+            ids = [item["pk"] for item in batch]
+            self.add_related_ids(ids)
+
     def get_adw_statistics(self):
         """
         Prepare segment adwords statistics

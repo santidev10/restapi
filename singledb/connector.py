@@ -136,6 +136,47 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
+    def _get_items_list_full(self, endpoint, sort_filed, filters, fields, batch_size=1000):
+        """
+        Obtain full list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for channels by sized batches
+        """
+        fields = (fields or []) + [sort_filed]
+        params = {
+            "sort": sort_filed,
+            "size": batch_size,
+            "fields": ",".join(fields),
+            **filters
+        }
+        last_id = None
+        has_more = True
+        count = 0
+        while has_more:
+            params[sort_filed + "__range"] = "{},".format(last_id or "")
+            start_from = 0 if last_id is None else 1
+            response_data = self.execute_get_call(endpoint, params)
+            items = response_data.get("items")[start_from:]
+            count += len(items)
+            print(count, last_id)
+            if len(items) > 0:
+                yield items
+                last_id = items[-1][sort_filed]
+            else:
+                has_more = False
+
+    def get_channel_list_full(self, filters, fields=None, batch_size=None):
+        """
+        Obtain full channel list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for channels by sized batches
+        """
+        return self._get_items_list_full("channels/", "channel_id", filters, fields, batch_size)
+
     def get_top_channel_keywords(self, query_params):
         """
         Get top keywords for popular channels
@@ -200,6 +241,16 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
+    def get_video_list_full(self, filters, fields=None, batch_size=1000):
+        """
+        Obtain full video list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for videos by sized batches
+        """
+        return self._get_items_list_full("videos/", "video_id", filters, fields, batch_size)
+
     def delete_videos(self, query_params, data):
         """
         Delete videos
@@ -222,6 +273,7 @@ class SingleDatabaseApiConnector(object):
         """
         Add fields query param to query params if absent
         """
+        print(type(query_params))
         if "fields" not in query_params:
             query_params._mutable = True
             query_params["fields"] = ",".join(default_fields)
