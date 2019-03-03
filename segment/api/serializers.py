@@ -116,7 +116,7 @@ class SegmentSerializer(ModelSerializer):
             sdb_connector = SingleDatabaseApiConnector()
             sdb_connector.post_channels(self.ids_to_create)
             segment.add_related_ids(self.ids_to_create)
-        if self.filters:
+        if self.filters is not None:
             fill_segment_from_filters.delay(segment.segment_type, segment.pk, self.filters)
         if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create, self.filters)):
             segment.update_statistics()

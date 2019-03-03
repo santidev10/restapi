@@ -136,7 +136,7 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def _get_items_list_full(self, endpoint, sort_filed, filters, fields, batch_size=1000):
+    def _get_items_list_full(self, endpoint, sort_filed, filters, fields, batch_size):
         """
         Obtain full list by batches.
         :param fields: list of fields to retrieve
@@ -160,14 +160,13 @@ class SingleDatabaseApiConnector(object):
             response_data = self.execute_get_call(endpoint, params)
             items = response_data.get("items")[start_from:]
             count += len(items)
-            print(count, last_id)
             if len(items) > 0:
                 yield items
                 last_id = items[-1][sort_filed]
             else:
                 has_more = False
 
-    def get_channel_list_full(self, filters, fields=None, batch_size=None):
+    def get_channel_list_full(self, filters, fields=None, batch_size=5000):
         """
         Obtain full channel list by batches.
         :param fields: list of fields to retrieve
@@ -241,7 +240,7 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def get_video_list_full(self, filters, fields=None, batch_size=1000):
+    def get_video_list_full(self, filters, fields=None, batch_size=5000):
         """
         Obtain full video list by batches.
         :param fields: list of fields to retrieve
@@ -273,7 +272,6 @@ class SingleDatabaseApiConnector(object):
         """
         Add fields query param to query params if absent
         """
-        print(type(query_params))
         if "fields" not in query_params:
             query_params._mutable = True
             query_params["fields"] = ",".join(default_fields)
