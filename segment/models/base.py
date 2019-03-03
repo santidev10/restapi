@@ -140,10 +140,15 @@ class BaseSegment(Timestampable):
         raise NotImplementedError
 
     def add_by_filters(self, filters):
+        logger.debug("%s add_by_filters started", self)
+        items_imported = 0
         all_batches = self.load_list_batch_generator(filters)
         for batch in all_batches:
             ids = [item["pk"] for item in batch]
             self.add_related_ids(ids)
+            items_imported += len(ids)
+            logger.debug("%s add_by_filters progress: imported %d", self, items_imported)
+        logger.debug("%s add_by_filters finished", self)
         self.update_statistics()
 
     def get_adw_statistics(self):
@@ -191,6 +196,9 @@ class BaseSegment(Timestampable):
                 if ch_id in self.top_recommend_channels:
                     self.top_recommend_channels.remove(ch_id)
             self.save()
+
+    def __repr__(self):
+        return "<{}>{ id: {}, name: {}}".format(type(self).__name__, self.id, self.title)
 
 
 class BaseSegmentRelated(Model):
