@@ -2,7 +2,10 @@ from datetime import datetime
 from datetime import timedelta
 
 from django.db import models
-
+from django.contrib.postgres.fields import JSONField
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
+from django.db.models import ForeignKey
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -64,3 +67,14 @@ class ChannelAuditIgnore(AuditIgnoreModel):
 
 class VideoAuditIgnore(AuditIgnoreModel):
     pass
+
+
+class TopicAudit(BaseModel):
+    title = models.CharField(max_length=255)
+    should_start = models.BooleanField(default=False)
+    is_running = models.BooleanField(default=False)
+    keywords = JSONField(default=dict())
+    last_started = models.DateField()
+    last_stopped = models.DateField()
+    channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic_audit')
+    video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic_audit')
