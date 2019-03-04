@@ -15,20 +15,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         # this should run endelessly looking for new topic audits to start up
-        topic_audits_to_start = TopicAudit.objects.filter(should_start=True, is_running=False)
+        topic_audits_to_run = TopicAudit.objects.filter(should_start=True, is_running=False)
 
-        for topic in topic_audits_to_start:
+        # Topics are topic objects derived from TopicAudit model
+        for topic in topic_audits_to_run:
+            # convert json field of keywords to list
             keywords = json.loads(topic.keywords)
 
-            new_audit = TopicAuditor(
-                keywords=topic.keywords,
+            audit = TopicAuditor(
+                topic=topic,
                 channel_segment=topic.channel_segment,
                 video_segment=topic.video_segment,
+                keywords=keywords,
             )
-
-
-
-
-
-
+            audit.run()
 

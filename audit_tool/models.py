@@ -69,12 +69,12 @@ class VideoAuditIgnore(AuditIgnoreModel):
     pass
 
 
-class TopicAudit(BaseModel):
+class Topic(BaseModel):
     title = models.CharField(max_length=255)
     should_start = models.BooleanField(default=False)
     is_running = models.BooleanField(default=False)
     keywords = JSONField(default=dict())
-    last_started = models.DateField()
-    last_stopped = models.DateField()
+    last_started = models.DateField(null=True)
+    last_stopped = models.DateField(null=True)
     channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic_audit')
     video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic_audit')

@@ -28,7 +28,7 @@ class CustomAudit(object):
     """
     video_batch_size = 10000
     channel_batch_size = 40
-    max_process_count = 8
+    max_process_count = 3
     master_process_batch_size = 1000
     lock = Lock()
 
@@ -36,47 +36,24 @@ class CustomAudit(object):
         """
         :param args: None
         :param kwargs:
-            (str) csv_file_path -> Absolute csv file path
-            (str) segment_title -> Title for custom segment / Audit
+            (str) topic -> Topic model
+            (PersistentSegmentChannel) channel_segment_manager
+            (PersistentSegmentVideo) channel_segment_manager
+            (list) keywords -> list of keywords read from csv
         """
-        self.csv_file_path = kwargs.get('csv_file_path', None)
-        self.segment_title = kwargs.get('segment_title', None)
+        keywords = kwargs.get('keywords')
 
-        if self.csv_file_path is None:
-            raise ValueError('You must provide a csv path to read.')
-
-        if self.segment_title is None:
-            raise ValueError('You must provide a title for the custom segmented audit.')
-
-        try:
-            self.csv_file = open(self.csv_file_path, mode='r', encoding='utf-8-sig')
-        except IOError:
-            raise ValueError('The provided csv file was not found.')
-
-        self.audit_regex = self.read_csv_create_regex()
+        self.topic_manager = kwargs.get('topic')
+        self.channel_segment_manager = kwargs.get('channel_segment')
+        self.video_segment_manager = kwargs.get('video_segment')
+        self.audit_regex = self.create_regex(keywords)
         self.connector = Connector()
 
-        print('Creating Persistent Channel and Video Segments: {}'.format(self.segment_title))
-
-        self.persistent_channel_segment = PersistentSegmentChannel(
-            title=self.create_segment_title(PersistentSegmentType.CHANNEL, self.segment_title),
-            category=PersistentSegmentCategory.WHITELIST
-        )
-        self.persistent_video_segment = PersistentSegmentVideo(
-            title=self.create_segment_title(PersistentSegmentType.VIDEO, self.segment_title),
-            category=PersistentSegmentCategory.WHITELIST
-        )
-        self.persistent_channel_segment.save()
-        self.persistent_video_segment.save()
-
-    def create_segment_title(self, type, title):
-        type = PersistentSegmentType.CHANNEL.capitalize() \
-            if type == PersistentSegmentType.CHANNEL \
-            else PersistentSegmentType.VIDEO.capitalize()
-
-        return '{}s {} {}'.format(type, title, PersistentSegmentCategory.WHITELIST.capitalize())
-
     def run(self, *args, **kwargs):
+        self.topic_manager.should_start = False
+        self.topic_manager.is_running = True
+        self.topic_manager.save()
+
         start = time.time()
 
         print('Getting all channel ids...')
@@ -134,6 +111,20 @@ class CustomAudit(object):
 
         print('All videos audited: {}'.format(total_videos_audited.value))
         print('Total execution time: {}'.format(end - start))
+
+        # Checks whether this audit should run again
+        self.check_should_run()
+
+    def check_should_run(self):
+        """
+        Checks the topic_should_stop flag to determine if the audit should run again
+            This flag can be set through the shell or through another command
+        :return:
+        """
+        should_run = not self.topic.should_stop
+
+        if should_run:
+            self.run()
 
     def audit_channels(self, batch: list, counter: Manager, found_items: Manager):
         """
@@ -251,16 +242,15 @@ class CustomAudit(object):
 
         return found
 
-    def read_csv_create_regex(self) -> re:
+    def create_regex(self, keywords) -> re:
         """
         Reads provided csv file of audit words and compiles regex for auditing
 
         :return: Regex of audit words
         """
-        csv_reader = csv.reader(self.csv_file)
-        escaped_audit_words = '|'.join([row[0] for row in csv_reader])
+        audit_keywords = '|'.join([keyword for keyword in keywords])
 
-        return re.compile(escaped_audit_words)
+        return re.compile(audit_keywords)
 
     def video_details(self, video, found_words):
         details = dict(
