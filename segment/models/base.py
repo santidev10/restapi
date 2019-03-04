@@ -113,6 +113,7 @@ class BaseSegment(Timestampable):
         ids_count = ids.count()
         if ids_count > settings.MAX_SEGMENT_TO_AGGREGATE:
             self._set_total_for_huge_segment(ids_count)
+            self.adw_data = dict()
             self.save()
             return
         ids = list(ids)

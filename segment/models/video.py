@@ -148,6 +148,7 @@ class SegmentVideo(BaseSegment):
 
     def _set_total_for_huge_segment(self, items_count):
         self.videos = items_count
+        self.top_three_videos = dict()
 
 
 class SegmentRelatedVideo(BaseSegmentRelated):
