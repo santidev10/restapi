@@ -322,31 +322,18 @@ LANDING_CONTACTS = {
 }
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
-    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
-    "maryna.antonova@sigma.software",
-    "yulia.prokudina@sigma.software",
+    "anna.chumak@sigma.software",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
-    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
-    "maryna.antonova@sigma.software",
-    "yulia.prokudina@sigma.software",
-]
-
-PAYMENT_ACTION_EMAIL_ADDRESSES = [
-    "alexander.dobrzhansky@sigma.software",
     "anna.chumak@sigma.software",
-    "maria.konareva@sigma.software",
-    "yulia.prokudina@sigma.software",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
-    "alex.klinovoy@sigma.software",
     "maria.konareva@sigma.software",
-    "maryna.antonova@sigma.software",
-    "yulia.prokudina@sigma.software",
+    "anna.chumak@sigma.software",
 ]
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [

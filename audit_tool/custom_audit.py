@@ -6,9 +6,8 @@ from segment.models import SegmentChannel
 from segment.models import SegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from threading import Thread
-from threading import Lock
-from queue import Queue
+from multiprocessing import Process
+from multiprocessing import Manager
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +19,9 @@ class CustomAudit(object):
         Retrieves all existing channel ids from PersistentSegmentRelated table
         Slices group of channels, retrieves all videos for sliced channels, and audits videos
     """
-    queue_size = 1000
     video_batch_size = 10000
-    channel_batch_size = 50
-    # throttle is float or int seconds to rest in between retrieving videos as to not overwhelm singledb
-    throttle = 1.5
-    max_thread_count = 5
-    audited_found_channels = {}
-    channels_with_found_words = []
-    lock = Lock()
+    channel_batch_size = 40
+    max_process_count = 8
 
     def __init__(self, *args, **kwargs):
         """
@@ -53,94 +46,99 @@ class CustomAudit(object):
 
         self.audit_regex = self.read_csv_create_regex()
         self.connector = Connector()
+
+        print('Creating segment: {}'.format(self.segment_title))
         self.segment = SegmentChannel(
             title=self.segment_title,
             category=SegmentChannel.PRIVATE
         )
         self.segment.save()
 
-    def run(self):
-        """
-        Creates queue and threads, enqueues channel id batches for threads to work
-        :return:
-        """
+    def run(self, *args, **kwargs):
         start = time.time()
-        all_channel_ids = PersistentSegmentRelatedChannel.objects.order_by().values('related_id').distinct().values_list('related_id', flat=True)
 
-        queue = Queue(maxsize=self.queue_size)
+        print('Getting all channel ids...')
+        all_channel_ids = PersistentSegmentRelatedChannel.objects.order_by().values('related_id').distinct().values_list('related_id', flat=True)[:200]
 
-        # Create threads and listen for queue
-        self.start_threads(queue=queue)
+        processes = []
+        # batch_limit will split all_channel_ids evenly for each process
+        batch_limit = len(all_channel_ids) // self.max_process_count
 
-        # Enqueue batches of channel ids for threads to work on
-        while all_channel_ids:
-            channel_batch = all_channel_ids[:self.channel_batch_size]
-            queue.put(channel_batch)
-            all_channel_ids = all_channel_ids[self.channel_batch_size - 1:]
+        # Shared dictionary across processes to keep track of audit found channels that have already been added
+        shared_found_channels = Manager().dict()
+        shared_found_channels['total_videos_audited'] = 0
 
-        queue.join()
+        related_objects_to_create = Manager().list()
 
-        SegmentRelatedChannel.objects.bulk_create(self.channels_with_found_words)
+        print('Spawning {} processes...'.format(self.max_process_count))
+
+        for _ in range(self.max_process_count):
+            process_task = all_channel_ids[:batch_limit]
+            process = Process(
+                target=self.audit_channels,
+                kwargs={'batch': process_task, 'found_channels': shared_found_channels, 'segment': self.segment, 'to_create': related_objects_to_create}
+            )
+            all_channel_ids = all_channel_ids[batch_limit - 1:]
+            processes.append(process)
+            process.start()
+
+        for process in processes:
+            process.join()
 
         end = time.time()
-        logger.info('Custom audit for segment "{}" complete.'.format(self.segment_title))
-        logger.info('Audit execution time: {}'.format(end - start))
-        print('Audit execution time: {}'.format(end - start))
 
-    def start_threads(self, queue: Queue) -> None:
+        print('All videos audited: {}'.format(shared_found_channels.pop('total_videos_audited')))
+        print('Total execution time: {}'.format(end - start))
+
+        # Each process will create their own found channels
+        SegmentRelatedChannel.objects.bulk_create(related_objects_to_create)
+
+        return shared_found_channels
+
+    def audit_channels(self, batch: list, found_channels: Manager, segment: SegmentChannel, to_create: Manager):
         """
-        Creates threads that will listen for queue tasks
-        :param queue: Queue that threads will work on
+        Function that is executed by each process.
+            Retrieves and audits videos for given batch channel ids.
+        :param batch: (list) Channel ids to retrieve and audit videos
+        :param found_channels: (dict) Shared dictionary for all processes to check if a channel has already been found
+        :param segment: (SegmentChannel) Foreign key segment that will be used to create SegmentChannelRelated objects
         :return: None
         """
-        logger.info('Starting {} threads.'.format(self.max_thread_count))
-        for _ in range(self.max_thread_count):
-            worker = Thread(target=self.execute_thread, args=(queue,))
-            worker.setDaemon(True)
-            worker.start()
+        channel_batch = batch
 
-    def execute_thread(self, queue: Queue) -> None:
-        """
-        Wrapper function to listen for Queue and execute audit_channels
-        :param queue:
-        :return:
-        """
-        while True:
-            channel_ids = queue.get()
-            self.audit_channels(channel_ids=channel_ids)
-            queue.task_done()
+        while channel_batch:
+            channel_batch_chunk = channel_batch[:self.channel_batch_size]
+            videos = self.get_videos_batch(channel_ids=channel_batch_chunk)
 
-    def audit_channels(self, channel_ids: list = None):
-        """
-        Executes custom audit process
-        :return: None
-        """
-        channel_ids_batch = channel_ids
-        videos = self.get_videos_batch(channel_ids=channel_ids_batch)
+            for video in videos:
+                channel_id = video.get('channel__channel_id')
 
-        for video in videos:
-            channel_id = video.get('channel__channel_id')
+                if not channel_id:
+                    continue
 
-            if not channel_id:
-                continue
+                # If the channel has not been flagged and fails audit, then add it
+                # Checks shared found channels for all processes to read from
+                found_words = self.audit_video(video, self.audit_regex)
 
-            # If the channel has not been flagged and fails audit, then add it
-            # Checks global self.audited_found_channels for all threads to read from
-            if not self.audited_found_channels.get(channel_id) and self.audit_video(video, self.audit_regex):
+                if not found_channels.get(channel_id) and found_words:
+                    # List of all objects to create at end of audit
+                    to_create.append(
+                        SegmentRelatedChannel(
+                            segment=segment,
+                            related_id=channel_id)
+                    )
+                    found_channels[channel_id] = ', '.join(found_words)
 
-                # List of all objects to create at end of audit
-                self.channels_with_found_words.append(
-                    SegmentRelatedChannel(
-                        segment=self.segment,
-                        related_id=channel_id)
-                )
-                self.audited_found_channels[channel_id] = True
+            found_channels['total_videos_audited'] += len(videos)
+
+            print('Total videos audited: {}'.format(found_channels['total_videos_audited'] ))
+            channel_batch = channel_batch[self.channel_batch_size - 1:]
 
     def get_videos_batch(self, channel_ids: list = None) -> list:
         """
         Retrieves all videos associated with channel_ids
         :param channel_ids: (list) -> Channel id strings
-        :return: (list) -> video dictrionaries from singledb
+        :return: (list) -> video objects from singledb
         """
         params = dict(
             fields="title,video_id,channel_id,title,description,tags,language,transcript,channel__channel_id",
@@ -155,7 +153,6 @@ class CustomAudit(object):
     def audit_video(self, video, regex) -> bool:
         """
         Returns boolean if any match is found against audit regex
-
         :param video: (dict) video data
         :param regex: Compiled audit words regex
         :return: bool
@@ -168,7 +165,9 @@ class CustomAudit(object):
         ]
         metadata = ' '.join(metadata)
 
-        return regex.search(metadata)
+        found = re.findall(regex, metadata)
+
+        return found
 
     def read_csv_create_regex(self) -> re:
         """
