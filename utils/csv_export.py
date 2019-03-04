@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.lang import flatten
+from utils.lang import flatten_generator
 
 
 class BaseCSVStreamResponseGenerator(object):
@@ -104,7 +104,7 @@ class CassandraExportMixin(object):
         return response.data.get("items")
 
     def _data_filtered(self, filters):
-        return flatten(self._data_filtered_batch_generator(filters))
+        return flatten_generator(self._data_filtered_batch_generator(filters))
 
     def post(self, request):
         """

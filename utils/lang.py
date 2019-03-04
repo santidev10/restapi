@@ -3,8 +3,12 @@ from functools import reduce
 from typing import Sequence
 
 
-def flatten(l):
+def flatten_generator(l):
     return (item for sublist in l for item in sublist)
+
+
+def flatten(l):
+    return list(flatten_generator(l))
 
 
 def safe_index(l, item, default=None):
