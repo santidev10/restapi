@@ -149,7 +149,7 @@ class SingleDatabaseApiConnector(object):
             "sort": sort_filed,
             "size": batch_size,
             "fields": ",".join(fields),
-            **filters
+            **self._normalize_filters(filters)
         }
         last_id = None
         has_more = True
@@ -431,3 +431,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "bad_words/" + pk + "/"
         response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
+
+    def _normalize_filters(self, filters):
+        def map_value(value):
+            return ",".join(value) if isinstance(value, (list, tuple)) else value
+        return {key: map_value(value) for key, value in filters.items()}
