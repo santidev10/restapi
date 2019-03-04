@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from utils.lang import flatten_generator
 
 
 class BaseCSVStreamResponseGenerator(object):
@@ -78,11 +79,7 @@ class CassandraExportMixin(object):
     Export mixin for cassandra data
     """
 
-    def post(self, request):
-        """
-        Export mechanism
-        """
-        assert self.fields_to_export and self.export_file_title
+    def _data_simple(self, request):
         # max export size limit
         max_export_size = 10000
 
@@ -102,11 +99,36 @@ class CassandraExportMixin(object):
         request.query_params._mutable = True
         response = self.get(request)
         if response.status_code > 300:
-            return response
+            raise SDBError(request)
+
+        return response.data.get("items")
+
+    def _data_filtered(self, filters):
+        return flatten_generator(self._data_filtered_batch_generator(filters))
+
+    def post(self, request):
+        """
+        Export mechanism
+        """
+        assert self.fields_to_export and self.export_file_title
+        filters = request.data.get("filters")
+        try:
+            if filters is not None:
+                export_data = self._data_filtered(filters)
+            else:
+                export_data = self._data_simple(request)
+        except SDBError as er:
+            return er.sdb_response
+
         # generate csv file
         csv_generator = CSVExport(
             fields=self.fields_to_export,
-            data=response.data.get("items"),
+            data=export_data,
             file_title=self.export_file_title)
         response = csv_generator.prepare_csv_file_response()
         return response
+
+
+class SDBError(Exception):
+    def __init__(self, sdb_response):
+        self.sdb_response = sdb_response
