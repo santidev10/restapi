@@ -87,7 +87,7 @@ class SegmentSerializer(ModelSerializer):
         self.ids_to_add = data.pop("ids_to_add", [])
         self.ids_to_delete = data.pop("ids_to_delete", [])
         self.ids_to_create = data.pop("ids_to_create", [])
-        self.filters = data.pop("filters", dict())
+        self.filters = data.pop("filters", None)
         segment_category = data.get("category")
         user = self.context.get("request").user
         available_categories = dict(self.Meta.model.CATEGORIES).keys()
