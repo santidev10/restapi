@@ -82,10 +82,12 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
 
             # campaigns is yielded from self._campaigns_generator as a django values list tuple (id, goal_allocation, account)
             for campaign in campaigns:
-                campaign_id = campaign[0]
-                campaign_budget = campaign[1]
+                campaign_id = campaign.get('id')
+                campaign_budget = campaign.get('budget')
+                campaign_goal_allocation = campaign.get('goal_allocation')
 
-                campaign_budgets[campaign_id] = campaign_budget
+                # Goal allocations are stored as integer percent values
+                campaign_budgets[campaign_id] = round(campaign_budget * campaign_goal_allocation / 100, 2)
 
         return campaign_budgets
 
@@ -100,7 +102,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             campaigns = account\
                 .campaigns \
                 .filter(status='eligible') \
-                .values_list('id', 'goal_allocation', 'account') \
+                .values('id', 'budget', 'goal_allocation', 'account') \
 
             if not campaigns:
                 continue
