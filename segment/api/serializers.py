@@ -1,7 +1,9 @@
 """
 Segment api serializers module
 """
+from django.db.models import F
 from rest_framework.serializers import CharField
+from rest_framework.serializers import IntegerField
 from rest_framework.serializers import DictField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
@@ -22,6 +24,7 @@ class SegmentSerializer(ModelSerializer):
     ids_to_delete = ListField(required=False)
     ids_to_create = ListField(required=False)
     filters = DictField(required=False)
+    pending_updates = IntegerField(read_only=True)
 
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False)
@@ -44,6 +47,7 @@ class SegmentSerializer(ModelSerializer):
             "shared_with",
             "statistics",
             "title",
+            "pending_updates",
             "updated_at",
         )
 
@@ -117,6 +121,7 @@ class SegmentSerializer(ModelSerializer):
             sdb_connector.post_channels(self.ids_to_create)
             segment.add_related_ids(self.ids_to_create)
         if self.filters is not None:
+            type(segment).objects.filter(pk=segment.pk).update(pending_updates=F("pending_updates") + 1)
             fill_segment_from_filters.delay(segment.segment_type, segment.pk, self.filters)
         if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create, self.filters)):
             segment.update_statistics()

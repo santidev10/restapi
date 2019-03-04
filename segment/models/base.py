@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
 from django.db.models import CharField
+from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Manager
 from django.db.models import Model
@@ -48,6 +49,7 @@ class BaseSegment(Timestampable):
                        on_delete=SET_NULL)
     shared_with = ArrayField(CharField(max_length=200), blank=True,
                              default=list)
+    pending_updates = IntegerField(default=0, null=False)
     related = None
     related_aw_statistics_model = None
     segment_type = None
