@@ -12,6 +12,7 @@ from audit_tool.models import APIScriptTracker
 
 logger = logging.getLogger('topic_audit')
 
+
 class TopicAudit(object):
     """
     Interface to run topic audits against our existing channels and videos.
