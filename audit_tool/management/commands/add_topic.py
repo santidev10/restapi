@@ -4,7 +4,7 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentType
 from audit_tool.models import TopicAudit
-from django.core.management import call_command
+from audit_tool.models import Keyword
 
 import logging
 import os
@@ -31,8 +31,6 @@ class Command(BaseCommand):
         title = kwargs['title']
         csv_file_path = kwargs['file']
 
-        keywords = ','.join(self.read_csv(csv_file_path))
-
         new_persistent_segment_channel = PersistentSegmentChannel(
             title=self.create_segment_title(PersistentSegmentType.CHANNEL, title),
             category=PersistentSegmentCategory.WHITELIST
@@ -47,15 +45,24 @@ class Command(BaseCommand):
             is_running=None,
             from_beginning=None,
             completed_at=None,
-            keywords=keywords,
             channel_segment=new_persistent_segment_channel,
             video_segment=new_persistent_segment_video,
         )
+
+        keywords = self.read_csv(csv_file_path)
+        keyword_objects = [
+            Keyword(
+                keyword=keyword,
+                topic=new_topic
+            ) for keyword in keywords
+        ]
+
         new_persistent_segment_channel.save()
         new_persistent_segment_video.save()
         new_topic.save()
+        Keyword.objects.bulk_create(keyword_objects)
 
-        self.stdout('Created Topic, PersistentSegmentChannel, and PersistentSegmentVideo with title: {}.'.format(title))
+        self.stdout('Created Topic, PersistentSegmentChannel, PersistentSegmentVideo and Keywords for title: {}.'.format(title))
 
     @staticmethod
     def create_segment_title(type, title):

@@ -5,6 +5,7 @@ from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
+from django.db.models import ManyToManyField
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -69,10 +70,16 @@ class VideoAuditIgnore(AuditIgnoreModel):
 
 
 class TopicAudit(BaseModel):
-    title = models.CharField(max_length=255)
-    is_running = models.NullBooleanField(blank=True, default=None)
+    title = models.CharField(max_length=255, unique=True)
+    is_running = models.NullBooleanField(blank=True, default=None, db_index=True)
     from_beginning = models.NullBooleanField(blank=True, default=None)
     completed_at = models.DateField(blank=True, null=True, default=None)
-    keywords = models.TextField()
     channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic')
     video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic')
+
+    class Meta:
+        index_together = ['is_running', 'from_beginning']
+
+class Keyword(models.Model):
+    keyword = models.CharField(max_length=255)
+    topic = ForeignKey(TopicAudit, related_name='keywords')
