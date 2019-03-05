@@ -24,20 +24,12 @@ class Command(BaseCommand):
             '--file',
             help='Set file path of csv keywords to read from.'
         )
-        parser.add_argument(
-            '--immediately',
-            help='Flag for whether an audit for the topic should start immediately.'
-        )
 
     def handle(self, *args, **kwargs):
         self.validate_options(*args, **kwargs)
 
         title = kwargs['title']
         csv_file_path = kwargs['file']
-        should_start_immediately = False
-
-        if kwargs.get('immediately'):
-            should_start_immediately = True
 
         keywords = ','.join(self.read_csv(csv_file_path))
 
@@ -52,10 +44,10 @@ class Command(BaseCommand):
         # is_running, last_started, last_stopped are set by topic_audit execution
         new_topic = TopicAudit(
             title=title,
+            is_running=None,
+            from_beginning=None,
+            completed_at=None,
             keywords=keywords,
-            is_running=should_start_immediately,
-            last_started=None,
-            last_stopped=None,
             channel_segment=new_persistent_segment_channel,
             video_segment=new_persistent_segment_video,
         )
@@ -65,9 +57,6 @@ class Command(BaseCommand):
 
         self.stdout('Created Topic, PersistentSegmentChannel, and PersistentSegmentVideo with title: {}.'.format(title))
 
-        if should_start_immediately:
-            call_command('run_topic_audit', title=title)
-
     @staticmethod
     def create_segment_title(type, title):
         type = PersistentSegmentType.CHANNEL.capitalize() \
@@ -75,6 +64,14 @@ class Command(BaseCommand):
             else PersistentSegmentType.VIDEO.capitalize()
 
         return '{}s {} {}'.format(type, title, PersistentSegmentCategory.WHITELIST.capitalize())
+
+    @staticmethod
+    def read_csv(file_path):
+        with open(file_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            keywords = [row[0] for row in csv_reader]
+
+            return keywords
 
     def validate_options(self, *args, **kwargs):
         if kwargs['file'] is None:
@@ -91,10 +88,3 @@ class Command(BaseCommand):
 
         except OSError:
             self.stdout.write('The provided --file path is invalid.')
-
-    def read_csv(self, file_path):
-        with open(file_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            keywords = [row[0] for row in csv_reader]
-
-            return keywords

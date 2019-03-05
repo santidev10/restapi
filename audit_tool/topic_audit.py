@@ -61,9 +61,6 @@ class TopicAudit(object):
 
             # batch_limit will split all_channel_ids evenly for each process
             batch_limit = len(master_batch) // self.max_process_count
-
-            # Shared dictionary across processes to keep track of audit found channels that have already been added
-
             logger.info('Spawning {} processes...'.format(self.max_process_count))
 
             for _ in range(self.max_process_count):
@@ -83,27 +80,25 @@ class TopicAudit(object):
             PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
             PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
 
-            # Add new topics that may have been added during last batch
-            self.running_topics += self.get_topics_to_run(is_beginning=False)
-
             all_channels = all_channels[self.master_process_batch_size:]
 
         end = time.time()
-        self.finalize_segments()
-
-        logger.info('Audit complete for: {} \n Total execution time: {}'.format(self.topic_manager.title, end - start))
 
         # Finalize topics
         self.finzalize_topics(self.running_topics)
 
+        logger.info('Audit complete for: {} \n Total execution time: {}'.format(self.topic_manager.title, end - start))
+
     def get_topics_to_run(self, is_beginning=False):
         """
-        Checks the topic_should_stop flag to determine if the audit should run again
-            This flag can be set through the shell or through another command
-        :return:
+        Retrieves topics that should be run
+            If a topic has a value of is_beginning, then the topic has started after videos have been audited and must
+            be run again to parse videos that is has not seen
+        :param is_beginning: (bool) Status of audit
+        :return: (list) -> Topic
         """
         topic_audits = []
-        topics = Topic.objects.filter(from_beginning=False, is_running=False)
+        topics = Topic.objects.filter(from_beginning=None, is_running=None)
 
         # create new topic objects and set their values
         for topic in topics:
@@ -149,7 +144,7 @@ class TopicAudit(object):
                 related_videos_to_create += results['videos']
 
             with self.lock:
-                # Add items to create once all the processes have been joined
+                # Add items to create to shared dictionary
                 found_items['channels'] += related_channels_to_create
                 found_items['videos'] += related_videos_to_create
 
@@ -201,7 +196,8 @@ class TopicAudit(object):
         )
         return details
 
-    def finalize_topics(self, topics):
+    @staticmethod
+    def finalize_topics(topics):
         # If the topic is from beginning, save details
         # During next audit, these topics will not be filtered for
         for topic in topics:

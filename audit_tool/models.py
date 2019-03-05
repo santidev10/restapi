@@ -70,9 +70,9 @@ class VideoAuditIgnore(AuditIgnoreModel):
 
 class TopicAudit(BaseModel):
     title = models.CharField(max_length=255)
-    is_running = models.BooleanField(default=False)
-    from_beginning = models.BooleanField(default=False)
-    completed_at = models.DateField(blank=True, null=True, deafult=None)
+    is_running = models.NullBooleanField(blank=True, default=None)
+    from_beginning = models.NullBooleanField(blank=True, default=None)
+    completed_at = models.DateField(blank=True, null=True, default=None)
     keywords = models.TextField()
     channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic')
     video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic')
