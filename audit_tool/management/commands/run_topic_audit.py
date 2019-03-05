@@ -1,32 +1,46 @@
 from django.core.management.base import BaseCommand
 from audit_tool.models import TopicAudit
 from audit_tool.topic_audit import TopicAudit as TopicAuditor
-
-import json
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
 import logging
-import os
-import csv
 
-logger = logging.getLogger(__name__)
-
+logger = logging.getLogger('topic_audit')
 
 class Command(BaseCommand):
-    help = 'Execute a custom audit against existing channels and videos with a provided csv of audit words'
+    help = 'Run a topic audit that has already been created.'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--title',
+            help='Title of Topic to start.'
+        )
 
     def handle(self, *args, **kwargs):
-        # this should run endelessly looking for new topic audits to start up
-        topic_audits_to_run = TopicAudit.objects.filter(should_start=True, is_running=False)
+        title = kwargs['title']
 
-        # Topics are topic objects derived from TopicAudit model
-        for topic in topic_audits_to_run:
-            # convert json field of keywords to list
-            keywords = json.loads(topic.keywords)
+        # check if able to get topic, channel, and video
+        try:
+            topic = TopicAudit.objects.get(title=title)
+        except TopicAudit.DoesNotExist:
+            logger.error('A topic with --title {} was not found.'.format(title))
+        try:
+            persistent_channel_segment = PersistentSegmentChannel.objects.get(related_topic=topic)
+        except PersistentSegmentChannel.DoesNotExist:
+            logger.error('The related persistent channel segment was not found.')
+        try:
+            persistent_video_segemnt = PersistentSegmentVideo.objects.get(related_topic=topic)
+        except PersistentSegmentChannel.DoesNotExist:
+            logger.error('The related persistent video segment was not found.')
 
-            audit = TopicAuditor(
-                topic=topic,
-                channel_segment=topic.channel_segment,
-                video_segment=topic.video_segment,
-                keywords=keywords,
-            )
-            audit.run()
+        if topic.is_running:
+            raise ValueError('The topic with --title {} is already running.'.format(title))
 
+        keywords = topic.keywords.split(',')
+        topic_audit = TopicAuditor(
+            keywords=keywords,
+            topic=topic,
+            channel_segment=persistent_channel_segment,
+            video_segment=persistent_video_segemnt,
+        )
+        topic_audit.run()

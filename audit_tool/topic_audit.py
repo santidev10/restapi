@@ -1,30 +1,23 @@
-import csv
-import re
-import time
-import logging
-
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.models.persistent.constants import PersistentSegmentType
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from multiprocessing import Process
 from multiprocessing import Manager
 from multiprocessing import Lock
-from multiprocessing import Value
+import re
+import time
+import logging
+from django.utils import timezone
 
+logger = logging.getLogger('topic_audit')
 
-logger = logging.getLogger(__name__)
-
-
-class CustomAudit(object):
+class TopicAudit(object):
     """
-    Class to run custom audit against our existing channels and videos.
-        Reads in a csv file to construct audit keyword regex
+    Interface to run topic audits against our existing channels and videos.
         Retrieves all existing channel ids from PersistentSegmentRelated table
-        Slices group of channels, retrieves all videos for sliced channels, and audits videos
+        Retrieves all videos for channels and audits videos
     """
     video_batch_size = 10000
     channel_batch_size = 40
@@ -41,22 +34,27 @@ class CustomAudit(object):
             (PersistentSegmentVideo) channel_segment_manager
             (list) keywords -> list of keywords read from csv
         """
-        keywords = kwargs.get('keywords')
+        keywords = kwargs['keywords']
 
-        self.topic_manager = kwargs.get('topic')
-        self.channel_segment_manager = kwargs.get('channel_segment')
-        self.video_segment_manager = kwargs.get('video_segment')
+        self.topic_manager = kwargs['topic']
+        self.channel_segment_manager = kwargs['channel_segment']
+        self.video_segment_manager = kwargs['video_segment']
         self.audit_regex = self.create_regex(keywords)
         self.connector = Connector()
 
     def run(self, *args, **kwargs):
-        self.topic_manager.should_start = False
+        """
+        Executes audit logic
+            At the end of audit, checks whether to run audit again
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        logger.info('Starting topic audit for: {}'.format(self.topic_manager.title))
         self.topic_manager.is_running = True
         self.topic_manager.save()
 
         start = time.time()
-
-        print('Getting all channel ids...')
         all_channels = PersistentSegmentRelatedChannel\
             .objects\
             .order_by()\
@@ -64,9 +62,6 @@ class CustomAudit(object):
             .distinct('related_id')
 
         processes = []
-
-        # Sanity check
-        total_videos_audited = Value('i', 0)
 
         while all_channels:
             # Batch size controlled by main process to distribute to other processes
@@ -82,13 +77,13 @@ class CustomAudit(object):
 
             # Shared dictionary across processes to keep track of audit found channels that have already been added
 
-            print('Spawning {} processes...'.format(self.max_process_count))
+            logger.info('Spawning {} processes...'.format(self.max_process_count))
 
             for _ in range(self.max_process_count):
                 process_task = master_batch[:batch_limit]
                 process = Process(
                     target=self.audit_channels,
-                    kwargs={'batch': process_task, 'counter': total_videos_audited, 'found_items': found_items}
+                    kwargs={'batch': process_task, 'found_items': found_items}
                 )
                 processes.append(process)
                 # Truncate master_batch for next process
@@ -104,13 +99,9 @@ class CustomAudit(object):
             all_channels = all_channels[self.master_process_batch_size:]
 
         end = time.time()
-
-        # need to finalize results
-        print('Finalizing segment details')
         self.finalize_segments()
 
-        print('All videos audited: {}'.format(total_videos_audited.value))
-        print('Total execution time: {}'.format(end - start))
+        logger.info('Audit complete for: {} \n Total execution time: {}'.format(self.topic_manager.title, end - start))
 
         # Checks whether this audit should run again
         self.check_should_run()
@@ -121,17 +112,21 @@ class CustomAudit(object):
             This flag can be set through the shell or through another command
         :return:
         """
-        should_run = not self.topic.should_stop
+        should_run = self.topic.is_running
 
         if should_run:
+            self.topic_manager.last_started = timezone.now()
             self.run()
+        else:
+            self.topic_manager.is_running = False
+            self.topic_manager.last_stopped = timezone.now()
+            self.topic_manager.save()
 
-    def audit_channels(self, batch: list, counter: Manager, found_items: Manager):
+    def audit_channels(self, batch: list, found_items: Manager):
         """
         Function that is executed by each process.
             Retrieves and audits videos for given batch channel ids.
         :param batch: (list) Channel ids to retrieve and audit videos
-        :param counter: Shared counter for processes
         :return: None
         """
         channel_batch = batch
@@ -181,7 +176,6 @@ class CustomAudit(object):
                         channel_found_words[channel_id]['details']['title'] = channel_batch_chunk[channel_id]['title']
                         channel_found_words[channel_id]['details']['thumbnail_image_url'] = channel_batch_chunk[channel_id]['thumbnail_image_url']
 
-
                     else:
                         channel_found_words[channel_id]['details']['bad_words'] += found_words
 
@@ -199,9 +193,6 @@ class CustomAudit(object):
             with self.lock:
                 found_items['channels'] += found_channels
                 found_items['videos'] += found_videos
-
-                counter.value += len(videos)
-                print('Total videos audited: {}'.format(counter.value))
 
             channel_batch = channel_batch[self.channel_batch_size:]
 
@@ -248,6 +239,10 @@ class CustomAudit(object):
 
         :return: Regex of audit words
         """
+        # Coerce into list
+        if type(keywords) == 'str':
+            keywords = keywords.split(',')
+
         audit_keywords = '|'.join([keyword for keyword in keywords])
 
         return re.compile(audit_keywords)

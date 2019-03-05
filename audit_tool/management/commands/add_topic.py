@@ -3,22 +3,19 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentType
-from audit_tool.models import Topic
-
-from django.utils import timezone
+from audit_tool.models import TopicAudit
+from django.core.management import call_command
 
 import logging
 import os
 import csv
 
-logger = logging.getLogger(__name__)
-
+logger = logging.getLogger('topic_audit')
 
 class Command(BaseCommand):
     help = 'Add a topic.'
 
     def add_arguments(self, parser):
-        # Positional arguments
         parser.add_argument(
             '--title',
             help='Set title of topic and related persistent channel and video segments.'
@@ -27,9 +24,9 @@ class Command(BaseCommand):
             '--file',
             help='Set file path of csv keywords to read from.'
         )
-        parser.add_argment(
+        parser.add_argument(
             '--immediately',
-            help='Whether an audit for the topic should start immediately.'
+            help='Flag for whether an audit for the topic should start immediately.'
         )
 
     def handle(self, *args, **kwargs):
@@ -42,22 +39,22 @@ class Command(BaseCommand):
         if kwargs.get('immediately'):
             should_start_immediately = True
 
-        keywords = self.read_csv(csv_file_path)
+        keywords = ','.join(self.read_csv(csv_file_path))
 
         new_persistent_segment_channel = PersistentSegmentChannel(
             title=self.create_segment_title(PersistentSegmentType.CHANNEL, title),
             category=PersistentSegmentCategory.WHITELIST
         )
-        new_persistent_segment_video = PersistentSegmentChannel(
+        new_persistent_segment_video = PersistentSegmentVideo(
             title=self.create_segment_title(PersistentSegmentType.VIDEO, title),
             category=PersistentSegmentCategory.WHITELIST
         )
-        new_topic = Topic(
+        # is_running, last_started, last_stopped are set by topic_audit execution
+        new_topic = TopicAudit(
             title=title,
-            should_start=should_start_immediately,
-            is_running=False, # is_running flag will be set to true by topic_audit command
             keywords=keywords,
-            last_started=timezone.now() if should_start_immediately else None,
+            is_running=should_start_immediately,
+            last_started=None,
             last_stopped=None,
             channel_segment=new_persistent_segment_channel,
             video_segment=new_persistent_segment_video,
@@ -69,11 +66,10 @@ class Command(BaseCommand):
         self.stdout('Created Topic, PersistentSegmentChannel, and PersistentSegmentVideo with title: {}.'.format(title))
 
         if should_start_immediately:
-            self.stdout(
-                'Topic audit for {} is set to run.'.format(title))
+            call_command('run_topic_audit', title=title)
 
     @staticmethod
-    def create_segment_title(self, type, title):
+    def create_segment_title(type, title):
         type = PersistentSegmentType.CHANNEL.capitalize() \
             if type == PersistentSegmentType.CHANNEL \
             else PersistentSegmentType.VIDEO.capitalize()
@@ -97,7 +93,8 @@ class Command(BaseCommand):
             self.stdout.write('The provided --file path is invalid.')
 
     def read_csv(self, file_path):
-        with open(file_path, mode='r') as csv_file:
+        with open(file_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
+            keywords = [row[0] for row in csv_reader]
 
-            return list(csv_reader)
+            return keywords
