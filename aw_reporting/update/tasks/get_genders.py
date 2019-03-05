@@ -12,6 +12,23 @@ from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 
 
+def _generate_stat_instances(stats_model, gender_model, report, click_type_data):
+    for row_obj in report:
+        stats = {
+            "gender_id": gender_model.index(row_obj.Criteria),
+            "date": row_obj.Date,
+            "ad_group_id": row_obj.AdGroupId,
+            "video_views_25_quartile": quart_views(row_obj, 25),
+            "video_views_50_quartile": quart_views(row_obj, 50),
+            "video_views_75_quartile": quart_views(row_obj, 75),
+            "video_views_100_quartile": quart_views(row_obj, 100),
+        }
+        stats.update(get_base_stats(row_obj))
+        update_stats_with_click_type_data(
+            stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        yield stats_model(**stats)
+
+
 def get_genders(client, account, today):
     from aw_reporting.models import GenderStatistic
     from aw_reporting.models import Genders
@@ -37,24 +54,7 @@ def get_genders(client, account, today):
         )
         click_type_report = gender_performance_report(
             client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
-        click_type_data = format_click_types_report(click_type_report,
-                                                    DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
-        bulk_data = []
-        for row_obj in report:
-            stats = {
-                "gender_id": Genders.index(row_obj.Criteria),
-                "date": row_obj.Date,
-                "ad_group_id": row_obj.AdGroupId,
-
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
-            }
-            stats.update(get_base_stats(row_obj))
-            update_stats_with_click_type_data(
-                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
-            bulk_data.append(GenderStatistic(**stats))
-
-        if bulk_data:
-            GenderStatistic.objects.safe_bulk_create(bulk_data)
+        click_type_data = format_click_types_report(
+            click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+        generator = _generate_stat_instances(GenderStatistic, Genders, report, click_type_data)
+        GenderStatistic.objects.safe_bulk_create(generator)
