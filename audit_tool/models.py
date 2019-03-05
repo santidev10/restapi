@@ -83,3 +83,6 @@ class TopicAudit(BaseModel):
 class Keyword(models.Model):
     keyword = models.CharField(max_length=255)
     topic = ForeignKey(TopicAudit, related_name='keywords')
+
+    class Meta:
+        unique_together = ['keyword', 'topic']
