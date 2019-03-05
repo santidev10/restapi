@@ -1,8 +1,5 @@
-from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent import PersistentSegmentChannel
-from audit_tool.models import TopicAudit
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from multiprocessing import Process
 from multiprocessing import Manager
@@ -11,7 +8,7 @@ import re
 import time
 import logging
 from django.utils import timezone
-from django.db.models import Q
+from audit_tool.models import APIScriptTracker
 
 logger = logging.getLogger('topic_audit')
 
@@ -23,14 +20,16 @@ class TopicAudit(object):
     """
     video_batch_size = 10000
     channel_batch_size = 40
-    max_process_count = 8
+    max_process_count = 10
     master_process_batch_size = 5000
     lock = Lock()
     running_topics = []
 
     def __init__(self, *args, **kwargs):
         self.connector = Connector()
-        self.running_topics = self.get_topics_to_run(is_beginning=True)
+        self.script_tracker = APIScriptTracker.objects.get_or_create(name='TopicAudit')
+        self.cursor = self.script_tracker.cursor
+        self.running_topics = self.get_topics_to_run(self.cursor)
 
     def run(self, *args, **kwargs):
         """
@@ -39,12 +38,13 @@ class TopicAudit(object):
         """
         logger.info('Starting topic audit...')
 
+        # Start from persistent cursor
         start = time.time()
         all_channels = PersistentSegmentRelatedChannel\
             .objects\
             .order_by()\
             .values()\
-            .distinct('related_id')
+            .distinct('related_id')[self.cursor:]
 
         processes = []
 
@@ -83,10 +83,15 @@ class TopicAudit(object):
             PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
             PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
 
+            self.update_cursor(update_value=len(master_batch))
+
             all_channels = all_channels[self.master_process_batch_size:]
 
             # Pick up new topics for next master batch
             self.running_topics += self.get_topics_to_run(is_beginning=False)
+
+        # Audit has completed, reset cursor to 0 for next audit
+        self.update_cursor(reset=True)
 
         end = time.time()
 
@@ -95,29 +100,40 @@ class TopicAudit(object):
 
         logger.info('Audit complete for: {} \n Total execution time: {}'.format(self.topic_manager.title, end - start))
 
-    def get_topics_to_run(self, is_beginning=False):
+    def update_cursor(self, update_value=0, reset=False):
+        """
+        Updates the script cursor for persistent progress
+        :param update_value: Value to increment self.script_tracker.cursor with
+        :param reset: Flag for if the script has completed
+            If True, then cursor should be reset to 0 to run audit from beginning the next
+            time the audit is run
+        :return:
+        """
+        if reset:
+            self.script_tracker.cursor = 0
+            self.script_tracker.save()
+        else:
+            # Update script cursor
+            self.script_tracker.cursor = self.cursor + update_value
+            self.script_tracker.save()
+            self.cursor = self.script_tracker.cursor
+
+    def get_topics_to_run(self, cursor):
         """
         Retrieves topics that should be run
-            If a topic has a value of is_beginning, then the topic has started after videos have been audited and must
-            be run again to parse videos that is has not seen
-        :param is_beginning: (bool) Status of audit
+        :param cursor: (int) Current progress of audit
         :return: (list)  Topic
         """
         topic_audits = []
+        topics = Topic.objects.all().exclude(is_running=False)
 
-        """"
-        If is_running is None, then topic has not started yet and must be started
-        If is_running is True and from_beginning is False, then topic started audit after beginning 
-            The topic must be ran again to parse videos that it skipped
         """
-        topics = Topic.objects.filter(
-            Q(is_running=None) |
-            Q(is_running=True) & Q(from_beginning=False)
-        )
-
+        If cursor has value of 0, then the audit is running from the beginning
+            Else, the topics retrieved have started after the beginning and will
+                be run again to parse channels it has skipped
+        """
         for topic in topics:
-            topic.is_running = True
-            topic.from_beginning = is_beginning
+            topic.from_beginning = True if cursor == 0 else False
             topic.save()
 
             topic_audits.append(
@@ -218,8 +234,17 @@ class TopicAudit(object):
 
     @staticmethod
     def finalize_topics(topics: list) -> None:
-        # If the topic is from beginning, then audit is complete and save details
-        # During next audit, these topics will not be filtered for
+        """
+        Finalize topic details if completed
+        :param topics: (list)
+        :return: None
+        """
+
+        """
+        If the topic is from beginning, then audit for topic is complete and save its details
+        During next audit, these topics will be excluded
+        Topics with from_beginning is False will be run again during next audit to parse skipped channels
+        """
         for topic in topics:
             if topic.from_beginning:
                 topic.is_running = False

@@ -42,9 +42,6 @@ class Command(BaseCommand):
         # is_running, last_started, last_stopped are set by topic_audit execution
         new_topic = TopicAudit(
             title=title,
-            is_running=None,
-            from_beginning=None,
-            completed_at=None,
             channel_segment=new_persistent_segment_channel,
             video_segment=new_persistent_segment_video,
         )

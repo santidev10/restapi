@@ -71,8 +71,8 @@ class VideoAuditIgnore(AuditIgnoreModel):
 
 class TopicAudit(BaseModel):
     title = models.CharField(max_length=255, unique=True)
-    is_running = models.NullBooleanField(blank=True, default=None, db_index=True)
-    from_beginning = models.NullBooleanField(blank=True, default=None)
+    is_running = models.BooleanField(blank=True, default=True, db_index=True)
+    from_beginning = models.BooleanField(blank=True, default=False)
     completed_at = models.DateField(blank=True, null=True, default=None)
     channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic')
     video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic')
@@ -86,3 +86,8 @@ class Keyword(models.Model):
 
     class Meta:
         unique_together = ['keyword', 'topic']
+
+
+class APIScriptTracker(models.Model):
+    name = models.CharField(max_length=255, unique=True, db_index=True)
+    cursor = models.BigIntegerField(default=0)
