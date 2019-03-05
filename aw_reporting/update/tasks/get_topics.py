@@ -11,7 +11,6 @@ from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
-from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +65,4 @@ def get_topics(client, account, today):
         click_type_data = format_click_types_report(
             click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
         generator = _generate_stat_instances(TopicStatistic, topics, report, click_type_data)
-        chunk_size = 10000
-        for chunk in chunks_generator(generator, chunk_size):
-            TopicStatistic.objects.safe_bulk_create(chunk)
+        TopicStatistic.objects.safe_bulk_create(generator)

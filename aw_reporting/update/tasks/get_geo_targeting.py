@@ -3,7 +3,6 @@ from datetime import timedelta
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from utils.datetime import now_in_default_tz
-from utils.utils import chunks_generator
 
 
 def _generate_stat_instances(model, report, campaign_ids, saved_targeting):
@@ -44,6 +43,4 @@ def get_geo_targeting(ad_client, account, *_):
 
     report = geo_location_report(ad_client)
     generator = _generate_stat_instances(GeoTargeting, report, campaign_ids, saved_targeting)
-    chunk_size = 10000
-    for chunk in chunks_generator(generator, chunk_size):
-        GeoTargeting.objects.safe_bulk_create(chunk)
+    GeoTargeting.objects.safe_bulk_create(generator)

@@ -8,7 +8,6 @@ from aw_reporting.update.tasks.utils.constants import GET_DF
 from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
-from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +96,4 @@ def get_cities(client, account, today):
             client, dates=(min_date, max_date),
             additional_fields=tuple(MAIN_STATISTICS_FILEDS) + ("Date", "AdGroupId"))
         generator = _generate_stat_instances(CityStatistic, top_cities, report, latest_dates)
-        chunk_size = 10000
-        for chunk in chunks_generator(generator, chunk_size):
-            CityStatistic.objects.safe_bulk_create(chunk)
+        CityStatistic.objects.safe_bulk_create(generator)

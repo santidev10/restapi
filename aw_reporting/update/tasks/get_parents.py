@@ -8,7 +8,6 @@ from aw_reporting.update.tasks.utils.get_account_border_dates import get_account
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 from aw_reporting.update.tasks.utils.reset_denorm_flag import reset_denorm_flag
-from utils.utils import chunks_generator
 
 
 def _generate_stat_instances(model, statuses, report):
@@ -56,8 +55,6 @@ def get_parents(client, account, today):
         )
         ad_group_ids = {row_obj.AdGroupId for row_obj in report}
         generator = _generate_stat_instances(ParentStatistic, ParentStatuses, report)
-        chunk_size = 10000
-        for chunk in chunks_generator(generator, chunk_size):
-            ParentStatistic.objects.safe_bulk_create(chunk)
+        ParentStatistic.objects.safe_bulk_create(generator)
 
     reset_denorm_flag(ad_group_ids=ad_group_ids)
