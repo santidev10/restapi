@@ -5,7 +5,6 @@ from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
-from django.db.models import ManyToManyField
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -79,6 +78,7 @@ class TopicAudit(BaseModel):
 
     class Meta:
         index_together = ['is_running', 'from_beginning']
+
 
 class Keyword(models.Model):
     keyword = models.CharField(max_length=255)
