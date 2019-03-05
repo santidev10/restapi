@@ -21,7 +21,7 @@ class TopicAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 10
-    master_process_batch_size = 5000
+    master_process_batch_size = 5500
     lock = Lock()
     running_topics = []
 
@@ -130,7 +130,7 @@ class TopicAudit(object):
         """
         If cursor has value of 0, then the audit is running from the beginning
             Else, the topics retrieved have started after the beginning and will
-                be run again to parse channels it has skipped
+            be run again to parse channels it has skipped
         """
         for topic in topics:
             topic.from_beginning = True if cursor == 0 else False
