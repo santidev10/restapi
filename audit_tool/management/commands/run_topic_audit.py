@@ -5,6 +5,9 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 import logging
 
+from pid.decorator import pidfile
+from pid import PidFileAlreadyLockedError
+
 logger = logging.getLogger('topic_audit')
 
 class Command(BaseCommand):
@@ -17,6 +20,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
+        try:
+            self.run(*args, **kwargs)
+        except PidFileAlreadyLockedError:
+            pass
+
+    @pidfile(piddir=".", pidname="topic_audit.pid")
+    def run(self, *args, **kwargs):
         title = kwargs['title']
 
         # check if able to get topic, channel, and video
