@@ -132,13 +132,13 @@ class YoutubeAPIConnector(object):
             options["pageToken"] = page_token
         return self.__execute_call(self.youtube.videos().list(**options))
 
-    def get_channel_comments(self, channel_id: str, max_results=100, page_token=None):
+    def get_video_comments(self, video_id: str, max_results=100, page_token=None):
 
         # Use comment ids to get data for
         options = {
             'part': 'snippet',
             'maxResults': max_results,
-            'allThreadsRelatedToChannelId': channel_id
+            'videoId': video_id
         }
         if page_token:
             options['pageToken'] = page_token

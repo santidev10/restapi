@@ -11,8 +11,24 @@ class AuditMixin(object):
 
         return bad_words_names
 
-    def compile_audit_regex(self, keywords: list):
+    def compile_audit_regexp(self, keywords: list):
         regexp = re.compile(
             "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]))
         )
         return regexp
+
+    def get_videos_batch(self, channel_ids: list, fields: str) -> list:
+        """
+        Retrieves all videos associated with channel_ids
+        :param channel_ids: (list) -> Channel id strings
+        :return: (list) -> video objects from singledb
+        """
+        params = dict(
+            fields=fields,
+            sort="video_id",
+            size=10000,
+            channel_id__terms=",".join(channel_ids),
+        )
+        response = self.connector.execute_get_call("videos/", params)
+
+        return response.get('items')
