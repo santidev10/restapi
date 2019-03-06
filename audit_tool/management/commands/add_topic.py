@@ -32,6 +32,14 @@ class Command(BaseCommand):
         title = kwargs['title']
         csv_file_path = kwargs['file']
 
+        try:
+            TopicAudit.objects.get(title=title)
+            raise ValueError('This Topic is already active.')
+
+        except TopicAudit.DoesNotExist:
+            pass
+
+
         new_persistent_segment_channel = PersistentSegmentChannel(
             title=self.create_segment_title(PersistentSegmentType.CHANNEL, title),
             category=PersistentSegmentCategory.WHITELIST

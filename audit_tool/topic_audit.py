@@ -1,7 +1,5 @@
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from multiprocessing import Process
 from multiprocessing import Manager
@@ -29,6 +27,7 @@ class TopicAudit(object):
     max_process_count = 10
     master_process_batch_size = 5000
     lock = Lock()
+    running_topics = []
 
     def __init__(self, *args, **kwargs):
         self.connector = Connector()
@@ -50,6 +49,8 @@ class TopicAudit(object):
             return
 
         logger.info('Starting topic audit with {} processes...'.format(self.max_process_count))
+
+        self.topic_logger('Starting audit for', ', '.join([topic.topic_manager.title for topic in self.running_topics]))
 
         # Start from persistent cursor
         start = time.time()
@@ -98,28 +99,36 @@ class TopicAudit(object):
                 try:
                     PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
                 except DjangoIntegrityError or PostgresIntegrityError:
-                    unique_items = self.get_unique_items(PersistentSegmentRelatedChannel, found_items['channels'])
+                    unique_items = self.get_new_items(PersistentSegmentRelatedChannel, found_items['channels'])
                     PersistentSegmentRelatedChannel.objects.bulk_create(unique_items)
 
             if found_items['videos']:
                 try:
                     PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
                 except DjangoIntegrityError or PostgresIntegrityError:
-                    unique_items = self.get_unique_items(PersistentSegmentRelatedVideo, found_items['videos'])
+                    unique_items = self.get_new_items(PersistentSegmentRelatedVideo, found_items['videos'])
                     PersistentSegmentRelatedVideo.objects.bulk_create(unique_items)
 
+            # Update persistent script cursor in case of failure
             self.update_script_cursor(update_value=self.master_process_batch_size)
 
             all_channels = all_channels[self.master_process_batch_size:]
 
-            # check for topics that have passed their start cursors
-            self.check_topic_cursors(self.script_cursor)
+            # Finalize topics with start cursors that have passed the running script's cursor
+            self.running_topics = self.check_topic_cursors(self.script_cursor)
 
             # Pick up new topics for next master batch
             new_topics = self.get_topics_to_run(self.script_cursor)
-            already_running = [topic.topic_manager for topic in self.running_topics]
 
+            if new_topics:
+                self.topic_logger('Picked up topics', ', '.join([topic.topic_manager.title for topic in new_topics]))
+
+            # Remove topics that have completed
+            already_running = [topic.topic_manager for topic in self.running_topics]
             self.running_topics += [topic for topic in new_topics if topic.topic_manager.title not in already_running]
+
+            if not self.running_topics:
+                break
 
         # Audit has completed, reset cursor to 0 for next audit
         self.update_script_cursor(reset=True)
@@ -141,16 +150,23 @@ class TopicAudit(object):
         logger.info('Audit complete. Total execution time: {}'.format(end - start))
 
         if completed_topics:
-            logger.info('Completed topics: {}'.format(', '.join(completed_topics)))
+            self.topic_logger('Completed topics', ', '.join(completed_topics))
         if topics_to_rerun:
-            logger.info('Completed topics: {}'.format(', '.join(topics_to_rerun)))
+            self.topic_logger('Topics to rerun', ', '.join(topics_to_rerun))
 
-    def get_unique_items(self, manager, items):
+    def get_new_items(self, manager, items):
+        """
+        Filters for new items that are not alredy saved
+        :param manager: PersistentSegmentRelatedChannel or PersistentSegmentRelatedVideo
+        :param items: (list)
+        :return: (list) PersistentSegmentRelatedChannel / PersistentSegmentRelatedVideo objects
+        """
         new_items = []
 
+        # manager is either PersistentSegmentRelatedChannel or PersistentSegmentRelatedVideo
         for item in items:
             try:
-                manager.objects.get(related_id=item.related_id)
+                manager.objects.get(related_id=item.related_id, segment=item.segment)
             except manager.DoesNotExist:
                 new_items.append(item)
 
@@ -168,6 +184,7 @@ class TopicAudit(object):
         for topic in self.running_topics:
             if topic.topic_manager.start_cursor >= script_cursor:
                 topic.topic_manager.from_beginning = True
+                topic.save()
 
                 completed_topics.append(topic)
 
@@ -175,7 +192,8 @@ class TopicAudit(object):
                 incomplete_topics.append(topic)
 
         self.finalize_topics(completed_topics)
-        self.running_topics = incomplete_topics
+
+        return incomplete_topics
 
     def update_script_cursor(self, update_value=0, reset=False):
         """
@@ -198,6 +216,7 @@ class TopicAudit(object):
     def get_topics_to_run(self, cursor):
         """
         Retrieves topics that should be run
+            If cursor is 0, then will start topic as from_beginning
         :param cursor: (int) Current progress of audit
         :return: (list)  Topic
         """
@@ -303,6 +322,19 @@ class TopicAudit(object):
                 topic.channel_segment_manager.save()
                 topic.video_segment_manager.save()
 
+                logger.info('Topic complete: {}'.format(topic.topic_manager.title))
+
+    @staticmethod
+    def topic_logger(log_message, topics):
+        """
+        Log info
+        :param log_message: (str)
+        :param topics: (list)
+        :return: None
+        """
+        logger.info('{}: {}'.format(log_message, topics))
+
+
 
 class Topic(object):
     """
@@ -381,12 +413,6 @@ class Topic(object):
         }
 
         return results
-
-    def get_unique_items(self, manager, items):
-        existing_ids = manager.related.all().values_list('related_id', flat=True)
-        items_to_create = [item for item in items if item.related_id not in existing_ids]
-
-        return items_to_create
 
     def audit_video(self, video: dict) -> bool:
         """
