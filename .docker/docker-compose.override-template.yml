@@ -18,7 +18,7 @@ services:
       - "8000:80"
   sdb:
     volumes:
-      - ../saas-singledb/:/code/
+      - ../singledb/:/code/
   webdev:
     image: viewiq-ui-dev
     build:
