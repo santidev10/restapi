@@ -340,11 +340,6 @@ class Topic(object):
             found_words = self.audit_video(video)
 
             if found_words:
-                if self.topic_manager.title == 'American Idol':
-                    print(self.topic_manager.title)
-                    print(found_words)
-                    print(self.audit_regex)
-
                 # Each video we find it should be created as related
                 found_videos.append(
                     PersistentSegmentRelatedVideo(
