@@ -1,67 +1,59 @@
-version: '3'
+version: "3"
 
 services:
-  pg:
-    image: postgres:9.6
-    environment:
-      POSTGRES_DB: saas
-      POSTGRES_PASSWORD: password
-    ports:
-    - "5432:5432"
   api:
     build: .
     image: viewiq-restapi
-    volumes:
-    - .:/code
-    ports:
-    - "5000:5000"
     environment:
       SINGLE_DATABASE_API_HOST: sdb
       ALLOWED_HOSTS: api
       CELERY_BROKER_HOST: rabbitmq
     depends_on:
-    - pg
-    - rabbitmq
-  celery_beat:
-    image: viewiq-restapi
-    volumes:
-    - .:/code
-    command: ["celery", "-A", "saas", "beat", "-l", "info"]
-    depends_on:
-    - rabbitmq
-    - api
-    environment:
-      CELERY_BROKER_HOST: rabbitmq
+      - pg
+      - rabbitmq
   celery_worker:
     image: viewiq-restapi
-    volumes:
-    - .:/code
-    command: ["celery", "-A", "saas", "worker", "-c", "4", "-l", "info"]
+    command: ["celery", "-A", "saas", "worker", "-l", "info"]
     depends_on:
-    - rabbitmq
-    - pg
+      - rabbitmq
+      - pg
     environment:
       CELERY_BROKER_HOST: rabbitmq
+  celery_beat:
+    image: viewiq-restapi
+    command: ["celery", "-A", "saas", "beat", "-l", "info"]
+    depends_on:
+      - rabbitmq
+    environment:
+      CELERY_BROKER_HOST: rabbitmq
+
   web:
-    image: saas-ui
-    ports:
-    - "8000:80"
+    image: viewiq-ui
+    build:
+      context: ../ui
+      dockerfile: Dockerfile.dist
     volumes:
-    - ./.docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./.docker/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
-    - api
+      - api
   sdb:
-    image: saas-sdb
+    image: viewiq-sdb
+    build:
+      context: ../singledb/.
     depends_on:
-    - cassandra
-    - es
+      - cassandra
+      - es
+
+  pg:
+    image: postgres:9.6
+    environment:
+      POSTGRES_DB: saas
+      POSTGRES_PASSWORD: password
   es:
     image: elasticsearch:6.4.2
   cassandra:
     image: cassandra
     expose:
-    - "9042"
+      - "9042"
   rabbitmq:
     image: rabbitmq:3.7.8-management
-    ports:
-    - "15672:15672"

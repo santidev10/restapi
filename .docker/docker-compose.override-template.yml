@@ -1,0 +1,44 @@
+version: "3"
+
+services:
+  api:
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/code
+  celery_worker:
+    volumes:
+      - .:/code
+  celery_beat:
+    volumes:
+      - .:/code
+
+  web:
+    ports:
+      - "8000:80"
+  sdb:
+    volumes:
+      - ../saas-singledb/:/code/
+  webdev:
+    image: viewiq-ui-dev
+    build:
+      context: ../ui/.
+    environment:
+      PROXY_URL: http://api:5000/
+    depends_on:
+      - api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../ui:/code:rw
+      - /code/node_modules/
+
+  pg:
+    ports:
+      - "5432:5432"
+  flower:
+    image: iserko/docker-celery-flower
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: amqp://rabbitmq
