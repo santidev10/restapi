@@ -18,7 +18,7 @@ class Command(BaseCommand):
 
     @pidfile(piddir=".", pidname="topic_audit.pid")
     def run(self, *args, **kwargs):
-        title = kwargs['title']
-
+        logger.info('Starting PID topic_audit.pid...')
         topic_audit = TopicAuditor()
         topic_audit.run()
+

@@ -9,6 +9,7 @@ import time
 import logging
 from django.utils import timezone
 from audit_tool.models import APIScriptTracker
+from audit_tool.models import TopicAudit as TopicAuditModel
 
 logger = logging.getLogger('topic_audit')
 
@@ -22,21 +23,30 @@ class TopicAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 10
-    master_process_batch_size = 5500
+    master_process_batch_size = 100
     lock = Lock()
     running_topics = []
+    cursor = 0
 
     def __init__(self, *args, **kwargs):
         self.connector = Connector()
-        self.script_tracker = APIScriptTracker.objects.get_or_create(name='TopicAudit')
-        self.cursor = self.script_tracker.cursor
+        tracker, _ = APIScriptTracker.objects.get_or_create(name='TopicAudit')
+        self.script_tracker = tracker
         self.running_topics = self.get_topics_to_run(self.cursor)
+
+        # Init the cursor with db value
+        self.cursor = self.script_tracker.cursor
 
     def run(self, *args, **kwargs):
         """
         Executes audit logic
             After each master process batch, retrieves pending topics to run
         """
+
+        if not self.running_topics:
+            logger.info('No topics to run.')
+            return
+
         logger.info('Starting topic audit...')
 
         # Start from persistent cursor
@@ -45,7 +55,7 @@ class TopicAudit(object):
             .objects\
             .order_by()\
             .values()\
-            .distinct('related_id')[self.cursor:]
+            .distinct('related_id')[:1000][self.cursor:]
 
         processes = []
 
@@ -60,7 +70,6 @@ class TopicAudit(object):
 
             # batch_limit will split all_channels evenly for each process
             batch_limit = len(master_batch) // self.max_process_count
-            logger.info('Spawning {} processes...'.format(self.max_process_count))
 
             for _ in range(self.max_process_count):
                 process_task = master_batch[:batch_limit]
@@ -84,12 +93,15 @@ class TopicAudit(object):
             PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
             PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
 
-            self.update_cursor(update_value=len(master_batch))
+            self.update_cursor(update_value=self.master_process_batch_size)
 
             all_channels = all_channels[self.master_process_batch_size:]
 
             # Pick up new topics for next master batch
-            self.running_topics += self.get_topics_to_run(is_beginning=False)
+            new_topics = self.get_topics_to_run(self.cursor)
+            already_running = [topic.topic_manager for topic in self.running_topics]
+
+            self.running_topics += [topic for topic in new_topics if topic.topic_manager.title not in already_running]
 
         # Audit has completed, reset cursor to 0 for next audit
         self.update_cursor(reset=True)
@@ -97,9 +109,23 @@ class TopicAudit(object):
         end = time.time()
 
         # Finalize topics
-        self.finzalize_topics(self.running_topics)
+        self.finalize_topics(self.running_topics)
 
-        logger.info('Audit complete for: {} \n Total execution time: {}'.format(self.topic_manager.title, end - start))
+        completed_topics = []
+        topics_to_rerun = []
+
+        for topic in self.running_topics:
+            if topic.topic_manager.from_beginning:
+                completed_topics.append(topic.topic_manager.title)
+            else:
+                topics_to_rerun.append(topic.topic_manager.title)
+
+        logger.info('Audit complete. Total execution time: {}'.format(end - start))
+
+        if completed_topics:
+            logger.info('Completed topics: {}'.format(', '.join(completed_topics)))
+        if topics_to_rerun:
+            logger.info('Completed topics: {}'.format(', '.join(topics_to_rerun)))
 
     def update_cursor(self, update_value=0, reset=False):
         """
@@ -125,23 +151,27 @@ class TopicAudit(object):
         :param cursor: (int) Current progress of audit
         :return: (list)  Topic
         """
-        topic_audits = []
-        topics = Topic.objects.all().exclude(is_running=False)
+        all_running_topic_audits = TopicAuditModel.objects.all().exclude(is_running=False)
+        already_running = [topic.topic_manager.title for topic in self.running_topics]
+        new_topic_audits = []
 
         """
         If cursor has value of 0, then the audit is running from the beginning
             Else, the topics retrieved have started after the beginning and will
             be run again to parse channels it has skipped
         """
-        for topic in topics:
-            topic.from_beginning = True if cursor == 0 else False
-            topic.save()
+        for topic_audit in all_running_topic_audits:
+            if topic_audit.title not in already_running:
+                topic_audit.from_beginning = True if cursor == 0 else False
+                topic_audit.save()
 
-            topic_audits.append(
-                Topic(topic=topic)
-            )
+                keywords = topic_audit.keywords.all().values_list('keyword', flat=True)
 
-        return topic_audits
+                new_topic_audits.append(
+                    Topic(topic=topic_audit, keywords=keywords)
+                )
+
+        return new_topic_audits
 
     def audit_channels(self, batch: list, found_items: Manager) -> None:
         """
@@ -200,21 +230,6 @@ class TopicAudit(object):
         return response.get('items')
 
     @staticmethod
-    def create_regex(keywords) -> re:
-        """
-        Reads provided csv file of keywordss and compiles regex for auditing
-        :param keywords: (list) keyword string
-        :return: Regex of keywordss
-        """
-        # Coerce into list if string
-        if type(keywords) == 'str':
-            keywords = keywords.split(',')
-
-        audit_keywords = '|'.join([keyword for keyword in keywords])
-
-        return re.compile(audit_keywords)
-
-    @staticmethod
     def video_details(video: dict, found_words: list) -> dict:
         """
         Returns dictionary of video data and found keywords
@@ -247,15 +262,15 @@ class TopicAudit(object):
         Topics with from_beginning is False will be run again during next audit to parse skipped channels
         """
         for topic in topics:
-            if topic.from_beginning:
-                topic.is_running = False
-                topic.completed_at = timezone.now()
-                topic.channel_segment.details = topic.channel_segment.calculate_details()
-                topic.channel_video.details = topic.channel_segment.calculate_details()
+            if topic.topic_manager.from_beginning:
+                topic.topic_manager.is_running = False
+                topic.topic_manager.completed_at = timezone.now()
+                topic.channel_segment_manager.details = topic.channel_segment_manager.calculate_details()
+                topic.video_segment_manager.details = topic.video_segment_manager.calculate_details()
 
-                topic.save()
-                topic.channel_segment.save()
-                topic.video_segment.save()
+                topic.topic_manager.save()
+                topic.channel_segment_manager.save()
+                topic.video_segment_manager.save()
 
 
 class Topic(object):
@@ -282,14 +297,14 @@ class Topic(object):
         :return: (dict) channels: PersistentSegmentRelatedChannel objects to create
                         videos: PersistentSegmentRelatedVideo objects to create
         """
+        channel_found_words = {}
+        found_videos = []
+
         for video in videos:
             channel_id = video.get('channel_id')
 
             if not channel_id:
                 continue
-
-            channel_found_words = {}
-            found_videos = []
 
             found_words = self.audit_video(video, self.audit_regex)
 
@@ -297,7 +312,7 @@ class Topic(object):
                 # Each video we find it should be created as related
                 found_videos.append(
                     PersistentSegmentRelatedVideo(
-                        segment=self.persistent_video_segment,
+                        segment=self.video_segment_manager,
                         related_id=video['video_id'],
                         category=video['category'],
                         title=video['title'],
@@ -320,7 +335,7 @@ class Topic(object):
 
         found_channels = [
             PersistentSegmentRelatedChannel(
-                segment=self.persistent_channel_segment,
+                segment=self.channel_segment_manager,
                 title=value['title'],
                 category=value['category'],
                 thumbnail_image_url=value['thumbnail_image_url'],
@@ -354,3 +369,18 @@ class Topic(object):
         found = re.findall(self.audit_regex, metadata)
 
         return found
+
+    @staticmethod
+    def create_regex(keywords) -> re:
+        """
+        Reads provided csv file of keywordss and compiles regex for auditing
+        :param keywords: (list) keyword string
+        :return: Regex of keywordss
+        """
+        # Coerce into list if string
+        if type(keywords) == 'str':
+            keywords = keywords.split(',')
+
+        audit_keywords = '|'.join([keyword for keyword in keywords])
+
+        return re.compile(audit_keywords)

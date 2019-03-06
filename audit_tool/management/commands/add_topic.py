@@ -5,6 +5,7 @@ from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentType
 from audit_tool.models import TopicAudit
 from audit_tool.models import Keyword
+from django.utils import timezone
 
 import logging
 import os
@@ -39,14 +40,21 @@ class Command(BaseCommand):
             title=self.create_segment_title(PersistentSegmentType.VIDEO, title),
             category=PersistentSegmentCategory.WHITELIST
         )
+
+        new_persistent_segment_channel.save()
+        new_persistent_segment_video.save()
+
         # is_running, last_started, last_stopped are set by topic_audit execution
         new_topic = TopicAudit(
             title=title,
             channel_segment=new_persistent_segment_channel,
             video_segment=new_persistent_segment_video,
+            date=timezone.now()
         )
 
-        keywords = self.read_csv(csv_file_path)
+        new_topic.save()
+
+        keywords = set(self.read_csv(csv_file_path))
         keyword_objects = [
             Keyword(
                 keyword=keyword,
@@ -54,12 +62,9 @@ class Command(BaseCommand):
             ) for keyword in keywords
         ]
 
-        new_persistent_segment_channel.save()
-        new_persistent_segment_video.save()
-        new_topic.save()
         Keyword.objects.bulk_create(keyword_objects)
 
-        self.stdout('Created Topic, PersistentSegmentChannel, PersistentSegmentVideo and Keywords for title: {}.'.format(title))
+        self.stdout.write('Created Topic, PersistentSegmentChannel, PersistentSegmentVideo and Keywords for title: {}.'.format(title))
 
     @staticmethod
     def create_segment_title(type, title):
