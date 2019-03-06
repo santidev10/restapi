@@ -27,7 +27,7 @@ class TopicAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 10
-    master_process_batch_size = 100
+    master_process_batch_size = 5000
     lock = Lock()
 
     def __init__(self, *args, **kwargs):
