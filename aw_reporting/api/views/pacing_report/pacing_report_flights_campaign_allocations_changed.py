@@ -103,6 +103,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             campaigns = account\
                 .campaigns \
                 .filter(status='eligible') \
+                .exclude(goal_allocation=0.0) \
                 .values('id', 'budget', 'goal_allocation', 'account') \
 
             if not campaigns:
