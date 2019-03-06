@@ -297,6 +297,9 @@ class VideoListApiView(
 
         return response_data
 
+    def _data_filtered_batch_generator(self, filters):
+        return Connector().get_video_list_full(filters, fields=self.fields_to_export, batch_size=1000)
+
 
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
