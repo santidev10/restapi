@@ -30,7 +30,9 @@ class CommentAudit(AuditMixin):
 
     def parse_transcript(self, video):
         transcript = video.get('transcript')
+        found = re.findall(self.bad_words_regexp, transcript)
 
+        return found
 
 
     def get_top_10k_channels(self):
@@ -38,4 +40,17 @@ class CommentAudit(AuditMixin):
         top_10k = sorted(all_channels, key=lambda obj: obj['details'].get('subscribers'), reverse=True)[:10000]
 
         return top_10k
+
+    def get_comments(self):
+        all_comments = []
+
+        response = self.youtube_connector.get_channel_comments()
+        all_comments += response.get('items')
+
+        next_page_token = response.get('nextPageToken')
+        while next_page_token:
+            response = self.youtube_connector.get_channel_comments(next_page_token=next_page_token)
+            next_page_token = response.get('nextPageToken')
+
+
 
