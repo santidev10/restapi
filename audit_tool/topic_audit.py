@@ -1,5 +1,7 @@
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from multiprocessing import Process
 from multiprocessing import Manager
@@ -10,6 +12,8 @@ import logging
 from django.utils import timezone
 from audit_tool.models import APIScriptTracker
 from audit_tool.models import TopicAudit as TopicAuditModel
+from django.db.utils import IntegrityError as DjangoIntegrityError
+from psycopg2 import IntegrityError as PostgresIntegrityError
 
 logger = logging.getLogger('topic_audit')
 
@@ -23,19 +27,17 @@ class TopicAudit(object):
     video_batch_size = 10000
     channel_batch_size = 40
     max_process_count = 10
-    master_process_batch_size = 100
+    master_process_batch_size = 5000
     lock = Lock()
-    running_topics = []
-    cursor = 0
 
     def __init__(self, *args, **kwargs):
         self.connector = Connector()
         tracker, _ = APIScriptTracker.objects.get_or_create(name='TopicAudit')
         self.script_tracker = tracker
-        self.running_topics = self.get_topics_to_run(self.cursor)
 
         # Init the cursor with db value
-        self.cursor = self.script_tracker.cursor
+        self.script_cursor = self.script_tracker.cursor
+        self.running_topics = self.get_topics_to_run(self.script_cursor)
 
     def run(self, *args, **kwargs):
         """
@@ -47,7 +49,7 @@ class TopicAudit(object):
             logger.info('No topics to run.')
             return
 
-        logger.info('Starting topic audit...')
+        logger.info('Starting topic audit with {} processes...'.format(self.max_process_count))
 
         # Start from persistent cursor
         start = time.time()
@@ -55,7 +57,7 @@ class TopicAudit(object):
             .objects\
             .order_by()\
             .values()\
-            .distinct('related_id')[:1000][self.cursor:]
+            .distinct('related_id')[self.script_cursor:]
 
         processes = []
 
@@ -71,6 +73,7 @@ class TopicAudit(object):
             # batch_limit will split all_channels evenly for each process
             batch_limit = len(master_batch) // self.max_process_count
 
+            # Spawn processes and distribute even work
             for _ in range(self.max_process_count):
                 process_task = master_batch[:batch_limit]
                 process = Process(
@@ -90,21 +93,36 @@ class TopicAudit(object):
             Each process can not individually create objects as they share the same DB connection (Will get SSL error)
             psycopg2.OperationalError: SSL error: decryption failed or bad record mac
             """
-            PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
-            PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
+            # If the event of existing objects (since topics may need to be run again), extract new objects
+            if found_items['channels']:
+                try:
+                    PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
+                except DjangoIntegrityError or PostgresIntegrityError:
+                    unique_items = self.get_unique_items(PersistentSegmentRelatedChannel, found_items['channels'])
+                    PersistentSegmentRelatedChannel.objects.bulk_create(unique_items)
 
-            self.update_cursor(update_value=self.master_process_batch_size)
+            if found_items['videos']:
+                try:
+                    PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
+                except DjangoIntegrityError or PostgresIntegrityError:
+                    unique_items = self.get_unique_items(PersistentSegmentRelatedVideo, found_items['videos'])
+                    PersistentSegmentRelatedVideo.objects.bulk_create(unique_items)
+
+            self.update_script_cursor(update_value=self.master_process_batch_size)
 
             all_channels = all_channels[self.master_process_batch_size:]
 
+            # check for topics that have passed their start cursors
+            self.check_topic_cursors(self.script_cursor)
+
             # Pick up new topics for next master batch
-            new_topics = self.get_topics_to_run(self.cursor)
+            new_topics = self.get_topics_to_run(self.script_cursor)
             already_running = [topic.topic_manager for topic in self.running_topics]
 
             self.running_topics += [topic for topic in new_topics if topic.topic_manager.title not in already_running]
 
         # Audit has completed, reset cursor to 0 for next audit
-        self.update_cursor(reset=True)
+        self.update_script_cursor(reset=True)
 
         end = time.time()
 
@@ -127,23 +145,55 @@ class TopicAudit(object):
         if topics_to_rerun:
             logger.info('Completed topics: {}'.format(', '.join(topics_to_rerun)))
 
-    def update_cursor(self, update_value=0, reset=False):
+    def get_unique_items(self, manager, items):
+        new_items = []
+
+        for item in items:
+            try:
+                manager.objects.get(related_id=item.related_id)
+            except manager.DoesNotExist:
+                new_items.append(item)
+
+        return new_items
+
+    def check_topic_cursors(self, script_cursor):
+        """
+        Checks if the script_cursor has passed a topic's start cursor.
+            If True, then topic has seen all items in database and can complete the topic for efficiency
+        :param script_cursor: (int)
+        :return: None
+        """
+        incomplete_topics = []
+        completed_topics = []
+        for topic in self.running_topics:
+            if topic.topic_manager.start_cursor >= script_cursor:
+                topic.topic_manager.from_beginning = True
+
+                completed_topics.append(topic)
+
+            else:
+                incomplete_topics.append(topic)
+
+        self.finalize_topics(completed_topics)
+        self.running_topics = incomplete_topics
+
+    def update_script_cursor(self, update_value=0, reset=False):
         """
         Updates the script cursor for persistent progress
-        :param update_value: Value to increment self.script_tracker.cursor with
+        :param update_value: Value to increment cursor with
         :param reset: Flag for if the script has completed
             If True, then cursor should be reset to 0 to run audit from beginning the next
             time the audit is run
-        :return:
+        :return: None
         """
         if reset:
             self.script_tracker.cursor = 0
             self.script_tracker.save()
         else:
-            # Update script cursor
-            self.script_tracker.cursor = self.cursor + update_value
+            self.script_tracker.cursor = self.script_cursor + update_value
             self.script_tracker.save()
-            self.cursor = self.script_tracker.cursor
+
+        self.script_cursor = self.script_tracker.cursor
 
     def get_topics_to_run(self, cursor):
         """
@@ -163,6 +213,7 @@ class TopicAudit(object):
         for topic_audit in all_running_topic_audits:
             if topic_audit.title not in already_running:
                 topic_audit.from_beginning = True if cursor == 0 else False
+                topic_audit.start_cursor = cursor
                 topic_audit.save()
 
                 keywords = topic_audit.keywords.all().values_list('keyword', flat=True)
@@ -226,27 +277,7 @@ class TopicAudit(object):
             channel_id__terms=",".join(channel_ids),
         )
         response = self.connector.execute_get_call("videos/", params)
-
         return response.get('items')
-
-    @staticmethod
-    def video_details(video: dict, found_words: list) -> dict:
-        """
-        Returns dictionary of video data and found keywords
-        :param video: (dict)
-        :param found_words: (list)
-        :return:
-        """
-        details = dict(
-            likes=video["likes"],
-            dislikes=video["dislikes"],
-            views=video["views"],
-            tags=video["tags"],
-            description=video["description"],
-            language=video["language"],
-            bad_words=found_words,
-        )
-        return details
 
     @staticmethod
     def finalize_topics(topics: list) -> None:
@@ -306,9 +337,14 @@ class Topic(object):
             if not channel_id:
                 continue
 
-            found_words = self.audit_video(video, self.audit_regex)
+            found_words = self.audit_video(video)
 
             if found_words:
+                if self.topic_manager.title == 'American Idol':
+                    print(self.topic_manager.title)
+                    print(found_words)
+                    print(self.audit_regex)
+
                 # Each video we find it should be created as related
                 found_videos.append(
                     PersistentSegmentRelatedVideo(
@@ -351,6 +387,12 @@ class Topic(object):
 
         return results
 
+    def get_unique_items(self, manager, items):
+        existing_ids = manager.related.all().values_list('related_id', flat=True)
+        items_to_create = [item for item in items if item.related_id not in existing_ids]
+
+        return items_to_create
+
     def audit_video(self, video: dict) -> bool:
         """
         Returns list of all found words
@@ -384,3 +426,22 @@ class Topic(object):
         audit_keywords = '|'.join([keyword for keyword in keywords])
 
         return re.compile(audit_keywords)
+
+    @staticmethod
+    def video_details(video: dict, found_words: list) -> dict:
+        """
+        Returns dictionary of video data and found keywords
+        :param video: (dict)
+        :param found_words: (list)
+        :return:
+        """
+        details = dict(
+            likes=video["likes"],
+            dislikes=video["dislikes"],
+            views=video["views"],
+            tags=video["tags"],
+            description=video["description"],
+            language=video["language"],
+            bad_words=found_words,
+        )
+        return details
