@@ -107,6 +107,9 @@ class SegmentVideo(BaseSegment):
             type(self)._singledb_method = Connector().get_video_list
         return self. _singledb_method
 
+    def load_list_batch_generator(self, filters):
+        return Connector().get_video_list_full(filters, fields=["pk"])
+
     def obtain_singledb_data(self, ids_hash):
         """
         Execute call to SDB
@@ -142,6 +145,10 @@ class SegmentVideo(BaseSegment):
             "top_three_videos": self.top_three_videos,
         }
         return statistics
+
+    def _set_total_for_huge_segment(self, items_count):
+        self.videos = items_count
+        self.top_three_videos = dict()
 
 
 class SegmentRelatedVideo(BaseSegmentRelated):

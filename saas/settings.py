@@ -217,6 +217,14 @@ LOGGING = {
             'backupCount': 14,
             'formatter': 'main_formatter',
         },
+        'file_topic_audit': {
+            'filename': os.path.join(LOGS_DIRECTORY, "topic_audit.log"),
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'formatter': 'main_formatter',
+        },
         'mail_admins': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
@@ -246,6 +254,10 @@ LOGGING = {
         "celery": {
             "handlers": ["file_celery"],
             "level": "INFO",
+        },
+        "topic_audit": {
+            "handlers": ['file_topic_audit'],
+            "level": "INFO"
         },
         '': {
             'handlers': ['console', 'file', "mail_admins"],
@@ -414,6 +426,8 @@ SWAGGER_SETTINGS = {
 }
 
 TEMPDIR = "/tmp"
+
+MAX_SEGMENT_TO_AGGREGATE = 10000
 
 try:
     from .local_settings import *

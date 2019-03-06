@@ -8,8 +8,6 @@ from aw_reporting.update.tasks.utils.get_account_border_dates import get_account
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 
-from utils.utils import chunks_generator
-
 
 def _generate_stat_instances(model, contains, report):
     for row_obj in report:
@@ -74,16 +72,13 @@ def get_placements(client, account, today):
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        chunk_size = 10000
         # As Out-Of-Memory errors prevention we have to download this report twice
         # and save to the DB only the necessary records at each load.
         # Any accumulation of such a report in memory is unacceptable because it may cause Out-Of-Memory error.
         report = placement_performance_report(client, dates=(min_date, max_date))
         generator = _generate_stat_instances(YTChannelStatistic, "/channel/", report)
-        for chunk in chunks_generator(generator, chunk_size):
-            YTChannelStatistic.objects.safe_bulk_create(chunk)
+        YTChannelStatistic.objects.safe_bulk_create(generator)
 
         report = placement_performance_report(client, dates=(min_date, max_date))
         generator = _generate_stat_instances(YTVideoStatistic, "/video/", report)
-        for chunk in chunks_generator(generator, chunk_size):
-            YTVideoStatistic.objects.safe_bulk_create(chunk)
+        YTVideoStatistic.objects.safe_bulk_create(generator)

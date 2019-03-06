@@ -71,3 +71,9 @@ class SingleDatabaseApiConnectorPatcher:
         with open("saas/fixtures/tests/singledb_bad_words_list.json") as data_file:
             bad_words = json.load(data_file)
         return bad_words
+
+    def get_channel_list_full(self, *args, **kwargs):
+        pass
+
+    def get_video_list_full(self, *args, **kwargs):
+        pass
