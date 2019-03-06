@@ -8,8 +8,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.models import Account
 from aw_reporting.reports.pacing_report import PacingReport
-from utils.datetime import Time
-from pytz import utc
+from django.utils import timezone
 
 
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
@@ -45,12 +44,12 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
-        actual_sum = sum(request.data.values())
-        if round(actual_sum) != 100:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data="Sum of the values is wrong: {}".format(actual_sum)
-            )
+        # actual_sum = sum(request.data.values())
+        # if round(actual_sum) != 100:
+        #     return Response(
+        #         status=HTTP_400_BAD_REQUEST,
+        #         data="Sum of the values is wrong: {}".format(actual_sum)
+        #     )
         # apply changes to CampaignCreation
         for campaign_id, allocation_value in request.data.items():
             related_account_id = Campaign.objects.get(id=campaign_id).account_id
@@ -59,7 +58,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 goal_allocation=allocation_value,
             )
             Account.objects.filter(id=related_account_id).update(
-                update_time=Time().now(tz=utc),
+                update_time=timezone.now()
             )
         # return
         res = self.get(request, *args, **kwargs)

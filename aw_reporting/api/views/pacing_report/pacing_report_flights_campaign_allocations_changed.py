@@ -87,7 +87,8 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
                 campaign_goal_allocation = campaign.get('goal_allocation')
 
                 # Goal allocations are stored as integer percent values
-                campaign_budgets[campaign_id] = round(campaign_budget * campaign_goal_allocation / 100, 2)
+                # campaign_budgets[campaign_id] = round(campaign_budget * campaign_goal_allocation / 100, 2)
+                campaign_budgets[campaign_id] = campaign_goal_allocation
 
         return campaign_budgets
 
