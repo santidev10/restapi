@@ -1,17 +1,12 @@
 import csv
 import re
-import time
-import logging
-from segment.models import SegmentChannel
-from segment.models import SegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 from audit_tool.audit_mixin import AuditMixin
-import threading
-from queue import Queue
-import json
+from audit_tool.models import YoutubeUser
+from audit_tool.models import Comment
 
 
 class CommentAudit(AuditMixin):
@@ -30,6 +25,11 @@ class CommentAudit(AuditMixin):
         self.bad_words_regexp = self.compile_audit_regexp(bad_words)
 
     def get_videos_generator(self, channels):
+        """
+        Generates batches of video ids with given channels
+        :param channels: (list) channel dicts
+        :return: (list) video dicts
+        """
         last_id = None
         channel_ids = ','.join(channels)
         params = dict(
@@ -48,29 +48,17 @@ class CommentAudit(AuditMixin):
             if not videos:
                 break
 
-            for video in videos:
-                if video['video_id'] == last_id:
-                    continue
-                if not video.get('category'):
-                    video['category'] = 'Unknown'
-                if not video.get('language'):
-                    video['language'] = 'Unknown'
-
-            print('Videos retrieved: ', len(videos))
             yield videos
             last_id = videos[-1]['video_id']
 
-    def execute_thread(self, queue, target):
-        while True:
-            work = queue.get()
-            print(work)
-            target(work)
-
-            queue.task_done()
-
     def run(self):
-        print('Getting comments...')
+        """
+        Handles main script logic
+            Retrieves batches of videos to retrieve comments for and save
+        :return:
+        """
         comment_batch = []
+
         top_10k_channels = self.get_top_10k_channels()
         video_batch = next(self.get_videos_generator(top_10k_channels))
 
@@ -78,15 +66,45 @@ class CommentAudit(AuditMixin):
             for video in video_batch:
                 comments = self.get_video_comments(video)
 
-                comment_batch += comments
+                for comment in comments:
+                    comment = comment['snippet']['topLevelComment']
+
+                    # Need to immediately get or create to provide for new comment creation
+                    youtube_user, _ = YoutubeUser(
+                                name=comment['authorDisplayName'],
+                                channel_id=comment['authorChannelId']['value'],
+                                thumbnail_image_url=comment['authorProfileImageUrl'],
+                            )
+
+                    comment_batch.append(
+                        Comment(
+                            user=youtube_user,
+                            id=comment['id'],
+                            text=comment['snippet']['textOriginal'],
+                            video_id=comment['snippet']['videoId'],
+                            like_count=comment['snippet']['likeCount'],
+                            reply_count=comment['snippet']['replyCount'],
+                            published_at=comment['snippet']['publishedAt'],
+                            is_top_level=True,
+                        )
+                    )
+
+                video_batch = next(self.get_videos_generator(top_10k_channels))
 
             if len(comment_batch) >= self.comment_batch_size:
-                self.write_comments(comment_batch)
+                Comment.objects.bulk_create(comment_batch)
+                YoutubeUser.objects.bulk_create(user_batch)
+
                 comment_batch.clear()
 
-        print('complete')
+        print('Complete')
 
     def parse_comment(self, comment):
+        """
+        Finds and returns matches for bad words in comment text
+        :param comment: (dict)
+        :return: Found words
+        """
         text = comment.get('textOriginal')
 
         found = re.findall(self.bad_words_regexp, text)
@@ -94,13 +112,22 @@ class CommentAudit(AuditMixin):
         return found
 
     def get_top_10k_channels(self):
+        """
+        Get top 10k channels based on subscriber count
+        :return: (list) channel dicts
+        """
         all_channels = list(PersistentSegmentRelatedChannel.objects.all().distinct().exclude(details__subscribers__isnull=True).values('related_id', 'details'))
         top_10k = sorted(all_channels, key=lambda obj: obj['details'].get('subscribers'), reverse=True)
         top_10k_ids = [channel.get('related_id') for channel in top_10k]
 
         return top_10k_ids
 
-    def get_video_comments(self, video):
+    def get_video_comments(self, video, max_page_count=3):
+        """
+        Retrieves up to three pages of comments for a given video
+        :param video:
+        :return: (list) comment dicts
+        """
         video_id = video['video_id']
         video_comments = []
 
@@ -112,9 +139,9 @@ class CommentAudit(AuditMixin):
             print('Unable to get comments for: ', video_id)
 
         next_page_token = response.get('nextPageToken')
-        page = 0
+        page = 1
 
-        while next_page_token and page < 2:
+        while next_page_token and page < max_page_count:
             try:
                 response = self.youtube_connector.get_video_comments(video_id=video_id, page_token=next_page_token)
 

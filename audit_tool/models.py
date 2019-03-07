@@ -97,17 +97,20 @@ class APIScriptTracker(models.Model):
 class YoutubeUser(models.Model):
     channel_id = models.CharField(max_length=255, unique=True, db_index=True)
     name = models.CharField(max_length=255)
-    username = models.CharField(max_length=255)
     thumbnail_image_url = models.TextField()
 
 
 class Comment(models.Model):
-    video_id = models.CharField(max_length=255, db_index=True)
-    user = ForeignKey(UserComment, related_name='comments')
+    user = ForeignKey(YoutubeUser, related_name='comments')
+    id = models.CharField(max_length=255)
+    video_id = models.CharField(max_length=255)
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
-    comment = models.TextField()
+    text = models.TextField()
     like_count = models.IntegerField()
     is_top_level = models.BooleanField(default=True)
     reply_count = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ['id', 'video_id']
 
