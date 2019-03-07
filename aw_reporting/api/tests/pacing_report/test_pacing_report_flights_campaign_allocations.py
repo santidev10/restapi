@@ -85,9 +85,14 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
             id=2, salesforce_placement=placement, account=account)
 
         allocation_1, allocation_2 = 70, 30
-        put_data = {campaign_1.id: allocation_1,
-                    campaign_2.id: allocation_2}
-        self.assertEqual(sum(put_data.values()), 100)
+        put_data = {
+            'todayBudget': 0,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+
+        # goal_allocations are no longer percentage values, do not need to sum 100
+        # self.assertEqual(sum(put_data.values()), 100)
 
         response = self._update(flight.id, put_data)
         campaign_1.refresh_from_db()

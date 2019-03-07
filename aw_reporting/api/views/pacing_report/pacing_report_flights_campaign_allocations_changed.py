@@ -3,8 +3,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
-from pytz import utc
-from utils.datetime import Time
+from django.utils import timezone
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
@@ -34,7 +33,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
-            'hourlyUpdatedAt': Time().now(tz=utc)
+            'hourlyUpdatedAt': timezone.now()
         }
 
         return Response(all_updated_campaign_budgets)
