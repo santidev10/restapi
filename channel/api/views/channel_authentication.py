@@ -71,7 +71,6 @@ class ChannelAuthenticationApiView(APIView):
         In case we've failed to create user - we send None
         :return: user instance or None
         """
-
         created = False
         # If user is logged in we simply return it
         user = self.request.user
@@ -134,23 +133,29 @@ class ChannelAuthenticationApiView(APIView):
         :param user_id: google user id
         :return: image link, name
         """
-        url = 'https://www.googleapis.com/plus/v1/people/{}/' \
-              '?access_token={}'.format(user_id, token)
-        try:
-            response = requests.get(url)
-        except Exception:
-            extra_details = {}
-        else:
-            extra_details = response.json()
         user_data = {
-            "first_name": extra_details.get("name", {}).get("givenName", ""),
-            "last_name": extra_details.get("name", {}).get("familyName", ""),
+            "first_name": "",
+            "last_name": "",
             "profile_image_url": None,
             "last_login": timezone.now()
         }
-        if not extra_details.get("image", {}).get("isDefault", True):
-            user_data["profile_image_url"] = extra_details.get(
-                "image", {}).get("url", "").replace("sz=50", "sz=250")
+        url = "https://people.googleapis.com/v1/people/{}/?access_token={}&personFields=photos,names".format(
+            user_id, token)
+        try:
+            response = requests.get(url)
+        except Exception:
+            return user_data
+        extra_details = response.json()
+        photos = extra_details.get("photos", [])
+        for photo in photos:
+            metadata = photo.get("metadata", {})
+            if metadata.get("primary", False) and metadata.get("source", {}).get("type") == "PROFILE":
+                user_data["profile_image_url"] = photo.get("url", "").replace("s100", "s250")
+                break
+        names = extra_details.get("names")
+        if names:
+            user_data["first_name"] = names[0].get("givenName", "")
+            user_data["last_name"] = names[0].get("familyName", "")
         return user_data
 
     def set_user_avatar(self, user, access_token):
@@ -170,20 +175,22 @@ class ChannelAuthenticationApiView(APIView):
         # --> obtain user from google +
         response = response.json()
         user_google_id = response.get("sub")
-        google_plus_api_url = "https://www.googleapis.com/plus/v1/people/{}/" \
-                              "?access_token={}".format(user_google_id,
-                                                        access_token)
+        url = "https://people.googleapis.com/v1/people/{}/?access_token={}&personFields=photos".format(
+            user_google_id, access_token)
         try:
-            response = requests.get(google_plus_api_url)
+            response = requests.get(url)
         except Exception:
             return
         extra_details = response.json()
         # <-- obtain user from google +
         # --> set user avatar
-        if not extra_details.get("image", {}).get("isDefault", True):
-            profile_image_url = extra_details.get(
-                "image", {}).get("url", "").replace("sz=50", "sz=250")
-            user.profile_image_url = profile_image_url
-            user.save()
+        photos = extra_details.get("photos", [])
+        for photo in photos:
+            metadata = photo.get("metadata", {})
+            if metadata.get("primary", False) and metadata.get("source", {}).get("type") == "PROFILE":
+                profile_image_url = photo.get("url", "").replace("s100", "s250")
+                user.profile_image_url = profile_image_url
+                user.save()
+                break
         # <-- set user avatar
         return
