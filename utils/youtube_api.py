@@ -138,7 +138,8 @@ class YoutubeAPIConnector(object):
         options = {
             'part': 'snippet',
             'maxResults': max_results,
-            'videoId': video_id
+            'videoId': video_id,
+            'textFormat': 'plainText',
         }
         if page_token:
             options['pageToken'] = page_token
