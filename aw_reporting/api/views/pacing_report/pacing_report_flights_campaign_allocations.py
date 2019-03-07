@@ -39,11 +39,16 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             salesforce_placement=instance.placement
         ).values_list('id', flat=True)
         expected_keys = set(campaign_ids)
+
+        flight_updated_budget = request.data.keys.pop('todayBudget')
+
         if set(request.data.keys()) != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
+
+        # Campaign goal allocations are now dollar decimal values, not percentages
         # actual_sum = sum(request.data.values())
         # if round(actual_sum) != 100:
         #     return Response(
@@ -51,6 +56,10 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         #         data="Sum of the values is wrong: {}".format(actual_sum)
         #     )
         # apply changes to CampaignCreation
+
+        instance.budget = flight_updated_budget
+        instance.save()
+
         for campaign_id, allocation_value in request.data.items():
             related_account_id = Campaign.objects.get(id=campaign_id).account_id
 
