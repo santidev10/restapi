@@ -138,7 +138,7 @@ class ChannelAuthenticationApiView(APIView):
             "last_login": timezone.now()
         }
         try:
-            response_data = self.call_people_google_api(user_id, token, "photos,names")
+            response_data = self.call_people_google_api(user_id, token, ["photos", "names"])
         except Exception as e:
             return user_data
         photos = response_data.get("photos", [])
@@ -169,7 +169,7 @@ class ChannelAuthenticationApiView(APIView):
         response = response.json()
         user_google_id = response.get("sub")
         try:
-            response_data = self.call_people_google_api(user_google_id, access_token, "photos")
+            response_data = self.call_people_google_api(user_google_id, access_token, ["photos"])
         except Exception as e:
             return
         # <-- obtain user from people google
@@ -184,7 +184,7 @@ class ChannelAuthenticationApiView(APIView):
 
     def call_people_google_api(self,  user_google_id, access_token, fields, api_version="v1"):
         url = "https://people.googleapis.com/{}/people/{}/?access_token={}&personFields={}".format(
-            api_version, user_google_id, access_token, fields)
+            api_version, user_google_id, access_token, ",".join(fields))
         response = requests.get(url)
         return response.json()
 
