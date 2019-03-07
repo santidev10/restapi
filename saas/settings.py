@@ -109,12 +109,13 @@ TEMPLATES = [
 
 DATABASES = {
     'default': {
+        # default values are for the TC only
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'saas',
-        'USER': 'admin_saas',
-        'PASSWORD': 'kA1tWRRUyTLnNe2Hi8PL',
-        'HOST': 'localhost',
-        'PORT': '',  # Set to empty string for default.
+        'NAME': os.getenv('DB_NAME', 'saas'),
+        'USER': os.getenv('DB_USER', 'admin_saas'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
     }
 }
 
@@ -312,7 +313,7 @@ PASSWORD_RESET_TIMEOUT_DAYS = 1
 YOUTUBE_API_DEVELOPER_KEY = 'AIzaSyDCDO_d-0vmFspHlEdf9eRaB_1bvMmJ2aI'
 YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = 'AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4'
 
-SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "10.0.2.39")
+SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "localhost")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from .configs.celery import *

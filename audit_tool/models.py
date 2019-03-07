@@ -72,7 +72,8 @@ class TopicAudit(BaseModel):
     title = models.CharField(max_length=255, unique=True)
     is_running = models.BooleanField(blank=True, default=True, db_index=True)
     from_beginning = models.BooleanField(blank=True, default=False)
-    completed_at = models.DateField(blank=True, null=True, default=None)
+    start_cursor = models.BigIntegerField(default=0)
+    completed_at = models.DateTimeField(blank=True, null=True, default=None)
     channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic_channel')
     video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic_video')
 
