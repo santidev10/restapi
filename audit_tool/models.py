@@ -92,3 +92,22 @@ class Keyword(models.Model):
 class APIScriptTracker(models.Model):
     name = models.CharField(max_length=255, unique=True, db_index=True)
     cursor = models.BigIntegerField(default=0)
+
+
+class YoutubeUser(models.Model):
+    channel_id = models.CharField(max_length=255, unique=True, db_index=True)
+    name = models.CharField(max_length=255)
+    username = models.CharField(max_length=255)
+    thumbnail_image_url = models.TextField()
+
+
+class Comment(models.Model):
+    video_id = models.CharField(max_length=255, db_index=True)
+    user = ForeignKey(UserComment, related_name='comments')
+    published_at = models.DateTimeField()
+    updated_at = models.DateTimeField(blank=True, null=True)
+    comment = models.TextField()
+    like_count = models.IntegerField()
+    is_top_level = models.BooleanField(default=True)
+    reply_count = models.IntegerField(blank=True, null=True)
+
