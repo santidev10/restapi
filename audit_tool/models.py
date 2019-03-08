@@ -5,6 +5,7 @@ from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
+from django.contrib.postgres.fields import JSONField
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -101,8 +102,9 @@ class YoutubeUser(models.Model):
 
 
 class Comment(models.Model):
+    id = models.CharField(primary_key=True, max_length=255)
     user = ForeignKey(YoutubeUser, related_name='comments')
-    id = models.CharField(max_length=255)
+    parent_id = models.CharField(max_length=255, blank=True, null=True)
     video_id = models.CharField(max_length=255)
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
@@ -110,6 +112,8 @@ class Comment(models.Model):
     like_count = models.IntegerField()
     is_top_level = models.BooleanField(default=True)
     reply_count = models.IntegerField(blank=True, null=True)
+    time_stamp = models.CharField(max_length=255, default='')
+    found_items = JSONField(default={})
 
     class Meta:
         unique_together = ['id', 'video_id']

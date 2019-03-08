@@ -133,8 +133,6 @@ class YoutubeAPIConnector(object):
         return self.__execute_call(self.youtube.videos().list(**options))
 
     def get_video_comments(self, video_id: str, max_results=100, page_token=None):
-
-        # Use comment ids to get data for
         options = {
             'part': 'snippet',
             'maxResults': max_results,
@@ -145,6 +143,15 @@ class YoutubeAPIConnector(object):
             options['pageToken'] = page_token
 
         return self.__execute_call(self.youtube.commentThreads().list(**options))
+
+    def get_video_comment_replies(self, parent_id: str, max_results=100):
+        options = {
+            'part': 'snippet',
+            'maxResults': max_results,
+            'parentId': parent_id,
+            'textFormat': 'plainText',
+        }
+        return self.__execute_call(self.youtube.comments().list(**options))
 
     def __execute_call(self, method):
         """
