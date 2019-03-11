@@ -63,7 +63,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         #     )
         # apply changes to CampaignCreation
 
-        Flight.objects.get(
+        Flight.objects.filter(
             id=instance.id
         ).update(
             budget=flight_updated_budget

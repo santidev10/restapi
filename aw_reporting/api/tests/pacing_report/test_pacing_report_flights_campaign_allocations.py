@@ -86,7 +86,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
 
         allocation_1, allocation_2 = 70, 30
         put_data = {
-            'todayBudget': 0,
+            'flightBudget': 0,
             campaign_1.id: allocation_1,
             campaign_2.id: allocation_2
         }
