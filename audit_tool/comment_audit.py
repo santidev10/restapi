@@ -84,7 +84,7 @@ class CommentAudit(AuditMixin):
                         video_comment_ref[comment['id']] = comment['videoId']
 
                     # Need to immediately get or create to provide for new comment creation
-                    youtube_user, _ = YoutubeUser(
+                    youtube_user, _ = YoutubeUser.objects.get_or_create(
                                 name=comment['authorDisplayName'],
                                 channel_id=comment['authorChannelId']['value'],
                                 thumbnail_image_url=comment['authorProfileImageUrl'],
