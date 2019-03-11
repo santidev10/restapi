@@ -262,8 +262,6 @@ class PacingReport:
                 for k in DELIVERY_FIELDS
             }
 
-
-
             for f in DELIVERY_FIELDS:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
 
@@ -876,7 +874,6 @@ class PacingReport:
             self.add_calculated_fields(flight)
 
             flight['budget'] = f['budget']
-
             flights.append(flight)
 
         return flights
