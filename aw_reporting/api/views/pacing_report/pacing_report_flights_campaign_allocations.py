@@ -8,8 +8,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import Flight
 from aw_reporting.models import Account
 from aw_reporting.reports.pacing_report import PacingReport
-from utils.datetime import Time
-from pytz import utc
+from django.utils import timezone
 
 
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
@@ -40,18 +39,36 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             salesforce_placement=instance.placement
         ).values_list('id', flat=True)
         expected_keys = set(campaign_ids)
+
+        try:
+            flight_updated_budget = request.data.pop('flight_budget')
+        except KeyError:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data='You must provide a flight budget as "flight_budget"'
+            )
+
         if set(request.data.keys()) != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
-        actual_sum = sum(request.data.values())
-        if round(actual_sum) != 100:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data="Sum of the values is wrong: {}".format(actual_sum)
-            )
+
+        # Campaign goal allocations are now dollar decimal values, not percentages
+        # actual_sum = sum(request.data.values())
+        # if round(actual_sum) != 100:
+        #     return Response(
+        #         status=HTTP_400_BAD_REQUEST,
+        #         data="Sum of the values is wrong: {}".format(actual_sum)
+        #     )
         # apply changes to CampaignCreation
+
+        Flight.objects.filter(
+            id=instance.id
+        ).update(
+            budget=flight_updated_budget
+        )
+
         for campaign_id, allocation_value in request.data.items():
             related_account_id = Campaign.objects.get(id=campaign_id).account_id
 
@@ -59,7 +76,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 goal_allocation=allocation_value,
             )
             Account.objects.filter(id=related_account_id).update(
-                update_time=Time().now(tz=utc),
+                update_time=timezone.now()
             )
         # return
         res = self.get(request, *args, **kwargs)

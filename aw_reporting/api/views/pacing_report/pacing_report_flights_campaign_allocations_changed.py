@@ -3,8 +3,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
-from pytz import utc
-from utils.datetime import Time
+from django.utils import timezone
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
@@ -34,7 +33,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         all_updated_campaign_budgets = {
             'accountIds': cid_accounts.values_list('id', flat=True),
             'campaignBudgets': campaign_budgets,
-            'hourlyUpdatedAt': Time().now(tz=utc)
+            'hourlyUpdatedAt': timezone.now()
         }
 
         return Response(all_updated_campaign_budgets)
@@ -82,10 +81,13 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
 
             # campaigns is yielded from self._campaigns_generator as a django values list tuple (id, goal_allocation, account)
             for campaign in campaigns:
-                campaign_id = campaign[0]
-                campaign_budget = campaign[1]
+                campaign_id = campaign.get('id')
+                campaign_budget = campaign.get('budget')
+                campaign_goal_allocation = campaign.get('goal_allocation')
 
-                campaign_budgets[campaign_id] = campaign_budget
+                # Goal allocations are stored as integer percent values
+                # campaign_budgets[campaign_id] = round(campaign_budget * campaign_goal_allocation / 100, 2)
+                campaign_budgets[campaign_id] = campaign_goal_allocation
 
         return campaign_budgets
 
@@ -100,7 +102,8 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             campaigns = account\
                 .campaigns \
                 .filter(status='eligible') \
-                .values_list('id', 'goal_allocation', 'account') \
+                .exclude(goal_allocation=0.0) \
+                .values('id', 'budget', 'goal_allocation', 'account') \
 
             if not campaigns:
                 continue

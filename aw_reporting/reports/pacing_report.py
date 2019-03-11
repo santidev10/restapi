@@ -923,6 +923,8 @@ class PacingReport:
 
             self.add_calculated_fields(c)
 
+            c['flight_budget'] = flight.budget
+
         return campaigns
     # ## CAMPAIGNS ## #
 
