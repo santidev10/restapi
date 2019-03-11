@@ -8,6 +8,8 @@ import re
 import time
 from multiprocessing import Queue
 from multiprocessing import Process
+from multiprocessing import Manager
+from multiprocessing import Lock
 
 # python manage.py reaudit --file /Users/kennethoh/Desktop/custom_audit/VIQ-1326_videos_positive_phase1.csv
 
@@ -17,8 +19,9 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
-    channel_video_retrieve_batch_size = 500
-    video_audit_max_process_count = 4
+    channel_video_retrieve_batch_size = 250
+    video_audit_max_process_count = 3
+    lock = Lock()
 
     def __init__(self, csv_file_path, csv_export_path, csv_keyword_path, reverse=False):
         super().__init__()
@@ -82,7 +85,8 @@ class Reaudit(SegmentedAudit):
         self.audit_videos_youtube()
 
     def channel_run(self):
-        self.audit_channels()
+        # self.audit_channels()
+        self.process_channels()
 
     def audit_videos_youtube(self):
         total_parsed = 0
@@ -232,9 +236,11 @@ class Reaudit(SegmentedAudit):
 
         self.write_channel_results(all_results)
 
-    def get_channel_videos_batch(self):
+    def process_channels(self):
         channels_seen = 0
         all_videos = []
+
+        audit_results = Queue()
 
         for channel in self.channel_csv_generator(reverse=self.reverse_csv):
             channel_id = self.channel_id_regexp.search(channel['channel_url']).group()
@@ -245,24 +251,35 @@ class Reaudit(SegmentedAudit):
             channels_seen += 1
 
             if channels_seen % self.channel_video_retrieve_batch_size == 0:
-                self.start_audit_process(all_videos)
+                self.start_audit_process(audit_results, all_videos)
                 all_videos.clear()
+                print('Channels processed: {}'.format(channels_seen))
 
-    def start_audit_process(self, queue, videos):
-        audit_results = Queue()
+        print('Audit complete/')
+
+    def start_audit_process(self, audit_results, videos):
+        print('Starting mp audit with {} processes...'.format(self.video_audit_max_process_count))
+
         audit_processes = []
-        video_process_batch_limit = videos // self.video_audit_max_process_count
+        video_process_batch_limit = len(videos) // self.video_audit_max_process_count
+        shared_results = Manager().list()
 
         for _ in range(self.video_audit_max_process_count):
             video_batch = videos[:video_process_batch_limit]
             process = Process(
-                target=self.audit_channel_videos,
-                args=(queue, video_batch)
+                target=self.audit_videos,
+                args=(shared_results, video_batch)
             )
-
+            audit_processes.append(process)
             process.start()
-
             videos = videos[self.video_audit_max_process_count:]
+
+        for process in audit_processes:
+            process.join()
+
+        self.write_channel_results(shared_results)
+
+        print('Stored results.')
 
     def write_channel_results(self, results):
         channel_export = self.csv_export_path + 'barney_channel_results.csv'
@@ -278,14 +295,10 @@ class Reaudit(SegmentedAudit):
         with open(video_export, mode='a') as csv_file:
             writer = csv.writer(csv_file, delimiter=',')
 
-            for item in results:
-                videos = item['videos']
-
-                for video in videos:
-                    writer.writerow(video.values())
+            for video in results:
+                writer.writerow(video.values())
 
     def get_channel_videos(self, channel_id):
-        start = time.time()
         channel_videos_full_data = []
         channel_videos = []
         response = self.youtube_connector.obtain_channel_videos(channel_id, part='snippet', order='viewCount', safe_search='strict')
@@ -308,17 +321,11 @@ class Reaudit(SegmentedAudit):
             channel_videos_full_data += response.get('items')
             channel_videos = channel_videos[50:]
 
-        end = time.time()
-        total_time = end - start
-
         return channel_videos_full_data
 
-    def audit_channel_videos(self, channel, videos):
+    def audit_videos(self, shared_results, videos):
         start = time.time()
-        result = {
-            'channel': channel,
-            'videos': []
-        }
+        results = []
 
         for video in videos:
             if self._parse_video(video, self.bad_words_regexp):
@@ -327,17 +334,16 @@ class Reaudit(SegmentedAudit):
             hits = set(self._parse_video(video, self.keyword_regexp))
 
             if hits:
-                result['videos'].append(
+                results.append(
                     self.get_export_row(video, hits)
                 )
 
-        if result['videos']:
-            return result
+        if results:
+            with self.lock:
+                shared_results += results
 
         end = time.time()
 
         print('Time auditing {} videos: {}'.format(len(videos), end-start))
-
-        return None
 
 
