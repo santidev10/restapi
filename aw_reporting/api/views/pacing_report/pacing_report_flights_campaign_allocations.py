@@ -63,8 +63,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         #     )
         # apply changes to CampaignCreation
 
-        instance.budget = flight_updated_budget
-        instance.save()
+        Flight.objects.get(
+            id=instance.id
+        ).update(
+            budget=flight_updated_budget
+        )
 
         for campaign_id, allocation_value in request.data.items():
             related_account_id = Campaign.objects.get(id=campaign_id).account_id
