@@ -81,6 +81,7 @@ class PacingReportTestCase(APITestCase):
                 "ctr_quality",
                 "current_cost_limit",
                 "end",
+                "flight_budget",
                 "goal",
                 "goal_allocation",
                 "goal_type",
