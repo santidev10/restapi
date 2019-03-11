@@ -79,6 +79,7 @@ class CommentAudit(AuditMixin):
 
                     comment = comment['snippet'].get('topLevelComment') if is_top_level else comment['snippet']
 
+                    # Store video id and related data for retrieving replies
                     if comment.get('videoId'):
                         video_comment_ref[comment['id']] = comment['videoId']
 
@@ -112,7 +113,6 @@ class CommentAudit(AuditMixin):
                     )
 
                 # Get comment replies and append to current loop to reuse comment / youtube user creation logic
-                # TODO: Comment replies do not have video id on them
                 if comment_ids_with_replies:
                     for comment_id in comment_ids_with_replies:
                         replies = self.get_comment_replies(comment_id)
@@ -123,12 +123,12 @@ class CommentAudit(AuditMixin):
 
                         comments += replies
 
-            video_batch = next(self.get_videos_generator(top_10k_channels))
-
             if len(comment_batch) >= self.comment_batch_size:
                 Comment.objects.bulk_create(comment_batch)
 
                 comment_batch.clear()
+
+            video_batch = next(self.get_videos_generator(top_10k_channels))
 
         print('Complete')
 
@@ -227,73 +227,4 @@ class CommentAudit(AuditMixin):
     def audit_comments(self):
         all_comments = Comment.objects.all().order_by('video_id')
         comment_found_words = {}
-
-
-
-
-'''
-YT Response (video comment)
-{
-    'kind': 'youtube#commentThread',
-    'etag': '\'XpPGQXPnxQJhLgs6enD_n8JR4Qk/WvDpdKVNFePdEZv8phCQQt-aBo4\'',
-    'id': 'UgxRuZMZIJmdiuQEpHJ4AaABAg',
-    'snippet': {
-        'videoId': '-F1NwLNr0h0',
-        'topLevelComment': {
-            'kind': 'youtube#comment',
-            'etag': '\'XpPGQXPnxQJhLgs6enD_n8JR4Qk/NpJP_hrJkDbxqNrGXdsSXOt9rE8\'',
-            'id': 'UgxRuZMZIJmdiuQEpHJ4AaABAg',
-            'snippet': {
-                'authorDisplayName': 'Marshmello',
-                'authorProfileImageUrl': 'https://yt3.ggpht.com/-2ecBJ0Rt1QM/AAAAAAAAAAI/AAAAAAAAAAA/7iC-PVcjk3Y/s28-c-k-no-mo-rj-c0xffffff/photo.jpg',
-                'authorChannelUrl': 'http://www.youtube.com/channel/UCEdvpU2pFRCVqU6yIPyTpMQ',
-                'authorChannelId': {
-                    'value': 'UCEdvpU2pFRCVqU6yIPyTpMQ'
-                },
-                'videoId': '-F1NwLNr0h0',
-                'textDisplay': '<b>FRIENDS - OFFICIAL MUSIC VIDEO | OUT NOW</b> <a href=\'https://youtu.be/jzD_yyEcp0M\'>https://youtu.be/jzD_yyEcp0M</a>',
-                'textOriginal': '*FRIENDS - OFFICIAL MUSIC VIDEO | OUT NOW* https://youtu.be/jzD_yyEcp0M',
-                'canRate': true,
-                'viewerRating': 'none',
-                'likeCount': 483,
-                'publishedAt': '2018-02-16T12:56:49.000Z',
-                'updatedAt': '2018-02-16T12:56:49.000Z'
-            }
-        },
-        'canReply': true,
-        'totalReplyCount': 45,
-        'isPublic': true
-    }
-}
-
-
-
-'''
-
-
-# REPLY
-# [
-#    {
-#       'kind':'youtube#comment',
-#       'etag':'"XpPGQXPnxQJhLgs6enD_n8JR4Qk/ajV8gKBFNVGNDRa8jrsqXIVOTf8"',
-#       'id':'UgwRdzPi9YZJ3uvQza14AaABAg.8pOio75OEEG8pOjKjdJ0mC',
-#       'snippet':{
-#          'authorDisplayName':'James Brown',
-#          'authorProfileImageUrl':'https://yt3.ggpht.com/--wowMD5v_YE/AAAAAAAAAAI/AAAAAAAAAAA/hofkHvZ2BCs/s28-c-k-no-mo-rj-c0xffffff/photo.jpg',
-#          'authorChannelUrl':'http://www.youtube.com/channel/UCKjpwfi52QGqidsT5N5BqIw',
-#          'authorChannelId':{
-#             'value':'UCKjpwfi52QGqidsT5N5BqIw'
-#          },
-#          'textDisplay':"Thanks for the report! And of course every such 'Zuckerberg world' is only survivable, when incorporated into a free society, taking care as the higher representation, and watching and monitoring closely.",
-#          'textOriginal':"Thanks for the report! And of course every such 'Zuckerberg world' is only survivable, when incorporated into a free society, taking care as the higher representation, and watching and monitoring closely.",
-#          'parentId':'UgwRdzPi9YZJ3uvQza14AaABAg',
-#          'canRate':True,
-#          'viewerRating':'none',
-#          'likeCount':0,
-#          'publishedAt':'2018-12-28T09:07:47.000Z',
-#          'updatedAt':'2018-12-28T09:07:47.000Z'
-#       }
-#    }
-]
-
 
