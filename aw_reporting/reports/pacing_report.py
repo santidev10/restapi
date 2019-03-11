@@ -49,6 +49,7 @@ class DefaultRate:
 
 
 FLIGHT_FIELDS = (
+    "budget",
     "cost",
     "end",
     "id",
@@ -260,6 +261,8 @@ class PacingReport:
                 k: row.get(k) or 0
                 for k in DELIVERY_FIELDS
             }
+
+
 
             for f in DELIVERY_FIELDS:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
@@ -872,7 +875,7 @@ class PacingReport:
 
             self.add_calculated_fields(flight)
 
-            flight['flight_budget'] = Flight.objects.get(id=f['id']).budget
+            flight['budget'] = f['budget']
 
             flights.append(flight)
 
