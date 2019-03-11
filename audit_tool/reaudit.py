@@ -19,7 +19,7 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
-    channel_video_retrieve_batch_size = 250
+    channel_video_retrieve_batch_size = 150
     video_audit_max_process_count = 3
     lock = Lock()
 
@@ -89,6 +89,8 @@ class Reaudit(SegmentedAudit):
         self.process_channels()
 
     def audit_videos_youtube(self):
+        print('Starting audit...')
+
         total_parsed = 0
         found_videos = []
 
@@ -158,16 +160,11 @@ class Reaudit(SegmentedAudit):
     def _parse_video(self, video, regexp):
         video = video.get('snippet')
 
-        tags = video.get("tags", [])
-
-        items = [
-            video.get("title") or "",
-            video.get("description") or "",
-            video.get("transcript") or "",
-        ]
-
-        items += tags
-        text = " ".join(items)
+        text = ''
+        text += video.get("title ", '')
+        text += video.get("description ", '')
+        text += video.get("transcript ", '')
+        text += video.get("tags", '')
 
         return re.findall(regexp, text)
 
@@ -237,6 +234,9 @@ class Reaudit(SegmentedAudit):
         self.write_channel_results(all_results)
 
     def process_channels(self):
+        print('Starting audit...')
+
+        videos_seen = 0
         channels_seen = 0
         all_videos = []
 
@@ -248,12 +248,19 @@ class Reaudit(SegmentedAudit):
             channel_videos = self.get_channel_videos(channel_id)
             all_videos += channel_videos
 
+            videos_seen += len(channel_videos)
             channels_seen += 1
 
             if channels_seen % self.channel_video_retrieve_batch_size == 0:
-                self.start_audit_process(audit_results, all_videos)
+                # self.start_audit_process(audit_results, all_videos)
+
+                results = self.audit_videos(_, all_videos)
+
+                self.write_channel_results(results)
+
                 all_videos.clear()
                 print('Channels processed: {}'.format(channels_seen))
+                print('Videos processed: {}'.format(videos_seen))
 
         print('Audit complete/')
 
@@ -338,12 +345,14 @@ class Reaudit(SegmentedAudit):
                     self.get_export_row(video, hits)
                 )
 
-        if results:
-            with self.lock:
-                shared_results += results
+        # if results:
+        #     with self.lock:
+        #         shared_results += results
 
         end = time.time()
 
         print('Time auditing {} videos: {}'.format(len(videos), end-start))
+
+        return results
 
 
