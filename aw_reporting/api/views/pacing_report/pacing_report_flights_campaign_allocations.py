@@ -41,11 +41,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         expected_keys = set(campaign_ids)
 
         try:
-            flight_updated_budget = request.data.pop('flightBudget')
+            flight_updated_budget = request.data.pop('flight_budget')
         except KeyError:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data='You must provide a flight budget as "flightBudget"'
+                data='You must provide a flight budget as "flight_budget"'
             )
 
         if set(request.data.keys()) != expected_keys:
