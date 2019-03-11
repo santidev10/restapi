@@ -110,7 +110,6 @@ class Comment(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
     text = models.TextField()
     like_count = models.IntegerField(blank=True, null=True)
-    is_top_level = models.BooleanField(default=True)
     reply_count = models.IntegerField(blank=True, null=True)
     time_stamp = models.CharField(max_length=255, default='')
     found_items = JSONField(default={})

@@ -74,12 +74,12 @@ class CommentAudit(AuditMixin):
                     is_top_level = comment['snippet'].get('topLevelComment')
 
                     # Get comment ids to retrieve if comment has replies
-                    if is_top_level and comment['snippet']['topLevelComment'] > 0:
+                    if is_top_level and comment['snippet']['totalReplyCount'] > 0:
                         comment_ids_with_replies.append(comment['id'])
 
                     comment = comment['snippet'].get('topLevelComment') if is_top_level else comment['snippet']
 
-                    # Store video id and related data for retrieving replies
+                    # Store video id and related data for retrieving replies since reply comments do not return a video id
                     if comment.get('videoId'):
                         video_comment_ref[comment['id']] = comment['videoId']
 
@@ -107,7 +107,7 @@ class CommentAudit(AuditMixin):
                             like_count=comment['snippet']['likeCount'],
                             reply_count=comment['snippet']['replyCount'],
                             published_at=comment['snippet']['publishedAt'],
-                            is_top_level=is_top_level,
+                            updated_at=comment['snippet'].get('updatedAt'),
                             found_items=found_items
                         )
                     )
