@@ -19,8 +19,8 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
-    channel_video_retrieve_batch_size = 150
-    video_audit_max_process_count = 3
+    channel_video_retrieve_batch_size = 300
+    video_audit_max_process_count = 4
     lock = Lock()
 
     def __init__(self, csv_file_path, csv_export_path, csv_keyword_path, reverse=False):
@@ -160,11 +160,15 @@ class Reaudit(SegmentedAudit):
     def _parse_video(self, video, regexp):
         video = video.get('snippet')
 
+        tags = video.get('tags')
+
         text = ''
         text += video.get("title ", '')
         text += video.get("description ", '')
         text += video.get("transcript ", '')
-        text += video.get("tags", '')
+
+        if tags:
+            text += ' '.join(tags)
 
         return re.findall(regexp, text)
 
@@ -240,8 +244,6 @@ class Reaudit(SegmentedAudit):
         channels_seen = 0
         all_videos = []
 
-        audit_results = Queue()
-
         for channel in self.channel_csv_generator(reverse=self.reverse_csv):
             channel_id = self.channel_id_regexp.search(channel['channel_url']).group()
 
@@ -252,11 +254,10 @@ class Reaudit(SegmentedAudit):
             channels_seen += 1
 
             if channels_seen % self.channel_video_retrieve_batch_size == 0:
-                # self.start_audit_process(audit_results, all_videos)
+                print('Auditing next batch')
+                audit_results = self.start_audit_process(all_videos)
 
-                results = self.audit_videos(_, all_videos)
-
-                self.write_channel_results(results)
+                self.write_channel_results(audit_results)
 
                 all_videos.clear()
                 print('Channels processed: {}'.format(channels_seen))
@@ -264,7 +265,7 @@ class Reaudit(SegmentedAudit):
 
         print('Audit complete/')
 
-    def start_audit_process(self, audit_results, videos):
+    def start_audit_process(self, videos):
         print('Starting mp audit with {} processes...'.format(self.video_audit_max_process_count))
 
         audit_processes = []
@@ -284,7 +285,7 @@ class Reaudit(SegmentedAudit):
         for process in audit_processes:
             process.join()
 
-        self.write_channel_results(shared_results)
+        return shared_results
 
         print('Stored results.')
 
