@@ -98,7 +98,7 @@ class APIScriptTracker(models.Model):
 class YoutubeUser(models.Model):
     channel_id = models.CharField(max_length=255, unique=True, db_index=True)
     name = models.CharField(max_length=255)
-    thumbnail_image_url = models.TextField()
+    thumbnail_image_url = models.TextField(null=True)
 
 
 class Comment(models.Model):
@@ -109,7 +109,7 @@ class Comment(models.Model):
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
     text = models.TextField()
-    like_count = models.IntegerField()
+    like_count = models.IntegerField(blank=True, null=True)
     is_top_level = models.BooleanField(default=True)
     reply_count = models.IntegerField(blank=True, null=True)
     time_stamp = models.CharField(max_length=255, default='')
