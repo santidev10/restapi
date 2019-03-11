@@ -6,6 +6,8 @@ import csv
 import json
 import re
 import time
+from multiprocessing import Queue
+from multiprocessing import Process
 
 # python manage.py reaudit --file /Users/kennethoh/Desktop/custom_audit/VIQ-1326_videos_positive_phase1.csv
 
@@ -15,6 +17,8 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
+    channel_video_retrieve_batch_size = 500
+    video_audit_max_process_count = 4
 
     def __init__(self, csv_file_path, csv_export_path, csv_keyword_path, reverse=False):
         super().__init__()
@@ -228,6 +232,38 @@ class Reaudit(SegmentedAudit):
 
         self.write_channel_results(all_results)
 
+    def get_channel_videos_batch(self):
+        channels_seen = 0
+        all_videos = []
+
+        for channel in self.channel_csv_generator(reverse=self.reverse_csv):
+            channel_id = self.channel_id_regexp.search(channel['channel_url']).group()
+
+            channel_videos = self.get_channel_videos(channel_id)
+            all_videos += channel_videos
+
+            channels_seen += 1
+
+            if channels_seen % self.channel_video_retrieve_batch_size == 0:
+                self.start_audit_process(all_videos)
+                all_videos.clear()
+
+    def start_audit_process(self, queue, videos):
+        audit_results = Queue()
+        audit_processes = []
+        video_process_batch_limit = videos // self.video_audit_max_process_count
+
+        for _ in range(self.video_audit_max_process_count):
+            video_batch = videos[:video_process_batch_limit]
+            process = Process(
+                target=self.audit_channel_videos,
+                args=(queue, video_batch)
+            )
+
+            process.start()
+
+            videos = videos[self.video_audit_max_process_count:]
+
     def write_channel_results(self, results):
         channel_export = self.csv_export_path + 'barney_channel_results.csv'
         video_export = self.csv_export_path + 'barney_video_results.csv'
@@ -274,8 +310,6 @@ class Reaudit(SegmentedAudit):
 
         end = time.time()
         total_time = end - start
-
-        print('Time getting all {} channel videos: {}'.format(len(channel_videos_full_data), total_time))
 
         return channel_videos_full_data
 
