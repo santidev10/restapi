@@ -389,7 +389,7 @@ class Reaudit(SegmentedAudit):
             print('No results to write.')
 
         channel_export = self.csv_export_path + 'barney_channel_results.csv'
-        video_export = self.csv_export_path + 'barney_video_results.csv'
+        video_export = self.csv_export_path + 'barney_video_results_FINAL.csv'
 
         # with open(channel_export, mode='a') as csv_file:
         #     writer = csv.writer(csv_file, delimiter=',')
