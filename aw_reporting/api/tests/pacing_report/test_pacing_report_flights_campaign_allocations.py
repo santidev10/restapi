@@ -5,7 +5,7 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED, \
     HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign
+from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
 from saas.urls.namespaces import Namespace
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -77,14 +77,22 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
         flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
         campaign_1 = Campaign.objects.create(
-            id=1, salesforce_placement=placement)
+            id=1, salesforce_placement=placement, account=account)
         campaign_2 = Campaign.objects.create(
-            id=2, salesforce_placement=placement)
+            id=2, salesforce_placement=placement, account=account)
+
         allocation_1, allocation_2 = 70, 30
-        put_data = {campaign_1.id: allocation_1,
-                    campaign_2.id: allocation_2}
-        self.assertEqual(sum(put_data.values()), 100)
+        put_data = {
+            'flight_budget': 0,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+
+        # goal_allocations are no longer percentage values, do not need to sum 100
+        # self.assertEqual(sum(put_data.values()), 100)
 
         response = self._update(flight.id, put_data)
         campaign_1.refresh_from_db()
