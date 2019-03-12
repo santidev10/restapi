@@ -17,13 +17,17 @@ class Migration(migrations.Migration):
             name='CommentVideo',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('video_id', models.CharField(db_index=True, max_length=15)),
+                ('video_id', models.CharField(unique=True, max_length=15)),
             ],
         ),
         migrations.AddField(
             model_name='comment',
             name='comment_id',
             field=models.CharField(db_index=True, default='', max_length=50),
+        ),
+        migrations.RemoveField(
+            model_name='comment',
+            name='parent_id',
         ),
         migrations.AddField(
             model_name='comment',
@@ -63,10 +67,6 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='comment',
             unique_together=set([]),
-        ),
-        migrations.RemoveField(
-            model_name='comment',
-            name='parent_id',
         ),
         migrations.RemoveField(
             model_name='comment',

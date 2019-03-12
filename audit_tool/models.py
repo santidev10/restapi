@@ -96,7 +96,7 @@ class APIScriptTracker(models.Model):
 
 
 class CommentVideo(models.Model):
-    video_id = models.CharField(max_length=15, db_index=True)
+    video_id = models.CharField(max_length=15, unique=True)
 
 
 class YoutubeUser(models.Model):
