@@ -7,6 +7,7 @@ from utils.youtube_api import YoutubeAPIConnectorException
 from audit_tool.audit_mixin import AuditMixin
 from audit_tool.models import YoutubeUser
 from audit_tool.models import Comment
+from audit_tool.models import CommentVideo
 
 
 class CommentAudit(AuditMixin):
@@ -58,8 +59,7 @@ class CommentAudit(AuditMixin):
             Retrieves batches of videos to retrieve comments for and save
         :return:
         """
-        comment_batch = []
-
+        comment_batch = {}
         top_10k_channels = self.get_top_10k_channels()
         video_batch = next(self.get_videos_generator(top_10k_channels))
 
@@ -67,6 +67,11 @@ class CommentAudit(AuditMixin):
             video_comment_ref = {}
 
             for video in video_batch:
+                # Initially create to use as Foreign key for comment objects
+                comment_video = CommentVideo.objects.get_or_create(
+                    video_id=video['video_id']
+                )
+
                 comments = self.get_video_comments(video)
                 comment_ids_with_replies = []
 
@@ -77,18 +82,24 @@ class CommentAudit(AuditMixin):
                     if is_top_level and comment['snippet']['totalReplyCount'] > 0:
                         comment_ids_with_replies.append(comment['id'])
 
+                    # API response is different for top level comments vs replies
                     comment = comment['snippet'].get('topLevelComment') if is_top_level else comment['snippet']
 
                     # Store video id and related data for retrieving replies since reply comments do not return a video id
                     if comment.get('videoId'):
                         video_comment_ref[comment['id']] = comment['videoId']
 
-                    # Need to immediately get or create to provide for new comment creation
-                    youtube_user, _ = YoutubeUser.objects.get_or_create(
-                                name=comment['authorDisplayName'],
-                                channel_id=comment['authorChannelId']['value'],
-                                thumbnail_image_url=comment['authorProfileImageUrl'],
-                            )
+                    try:
+                        youtube_user = YoutubeUser.objects.get(
+                            channel_id=comment['authorChannelId']['value'],
+                        )
+
+                    except YoutubeUser.DoesNotExist:
+                        youtube_user = YoutubeUser.objects.create(
+                            name=comment['authorDisplayName'],
+                            channel_id=comment['authorChannelId']['value'],
+                            thumbnail_image_url=comment['authorProfileImageUrl'],
+                        )
 
                     found_words, found_time_stamps = self.parse_comment(comment)
 
@@ -97,20 +108,19 @@ class CommentAudit(AuditMixin):
                         'found_time_stamps': found_time_stamps
                     }
 
-                    comment_batch.append(
-                        Comment(
+                    # Set in dictionary in case we need to reference it as a parent comment
+                    comment_batch[comment['id']] = Comment(
                             user=youtube_user,
-                            id=comment['id'],
-                            parent_id=comment.get('parentId'),
+                            video=comment_video,
+                            parent=comment_batch.get(comment.get('parentId')),
+                            comment_id=comment['id'],
                             text=comment['snippet']['textOriginal'],
-                            video_id=comment['snippet']['videoId'],
                             like_count=comment['snippet']['likeCount'],
                             reply_count=comment['snippet']['replyCount'],
                             published_at=comment['snippet']['publishedAt'],
                             updated_at=comment['snippet'].get('updatedAt'),
                             found_items=found_items
                         )
-                    )
 
                 # Get comment replies and append to current loop to reuse comment / youtube user creation logic
                 if comment_ids_with_replies:
@@ -124,13 +134,12 @@ class CommentAudit(AuditMixin):
                         comments += replies
 
             if len(comment_batch) >= self.comment_batch_size:
-                Comment.objects.bulk_create(comment_batch)
-
+                Comment.objects.bulk_create(comment_batch.values())
                 comment_batch.clear()
 
             video_batch = next(self.get_videos_generator(top_10k_channels))
 
-        print('Complete')
+        print('Complete.')
 
     def get_comment_replies(self, parent_id):
         """

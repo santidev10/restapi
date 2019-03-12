@@ -95,25 +95,24 @@ class APIScriptTracker(models.Model):
     cursor = models.BigIntegerField(default=0)
 
 
+class CommentVideo(models.Model):
+    video_id = models.CharField(max_length=15, db_index=True)
+
+
 class YoutubeUser(models.Model):
-    channel_id = models.CharField(max_length=255, unique=True, db_index=True)
-    name = models.CharField(max_length=255)
+    channel_id = models.CharField(max_length=50, db_index=True)
+    name = models.CharField(max_length=30)
     thumbnail_image_url = models.TextField(null=True)
 
 
 class Comment(models.Model):
-    id = models.CharField(primary_key=True, max_length=255)
-    user = ForeignKey(YoutubeUser, related_name='comments')
-    parent_id = models.CharField(max_length=255, blank=True, null=True)
-    video_id = models.CharField(max_length=255)
+    comment_id = models.CharField(max_length=50, db_index=True, default='')
+    user = ForeignKey(YoutubeUser, related_name='user_comments')
+    video = ForeignKey(CommentVideo, related_name='video_comments')
+    parent = ForeignKey('self', blank=True, null=True)
+    text = models.TextField()
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
-    text = models.TextField()
-    like_count = models.IntegerField(blank=True, null=True)
-    reply_count = models.IntegerField(blank=True, null=True)
-    time_stamp = models.CharField(max_length=255, default='')
+    like_count = models.IntegerField(default=0)
+    reply_count = models.IntegerField(default=0)
     found_items = JSONField(default={})
-
-    class Meta:
-        unique_together = ['id', 'video_id']
-
