@@ -89,6 +89,7 @@ class PacingReportFlightsTestCase(APITestCase):
                 "current_cost_limit",
                 "dynamic_placement",
                 "end",
+                "budget",
                 "goal",
                 "goal_type",
                 "goal_type_id",
