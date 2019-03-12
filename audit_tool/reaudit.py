@@ -7,6 +7,7 @@ import json
 import re
 import time
 from multiprocessing import Queue
+from multiprocessing import Pool
 from multiprocessing import Process
 from multiprocessing import Manager
 from multiprocessing import Lock
@@ -22,16 +23,18 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
-    channel_video_retrieve_batch_size = 400
-    video_audit_max_process_count = 6
-    video_retrieve_max_thread_count = 10
+    max_process_count = 8
     lock = Lock()
     thread_lock = ThreadLock()
+    max_pool_size = 20
+    channel_video_retrieve_batch_size = 500
+    get_channel_videos_chunk_size = 50
+    audit_batch_size = 3000
 
     def __init__(self, csv_file_path, csv_export_path, csv_keyword_path, reverse=False):
         super().__init__()
 
-        self.youtube_connector = YoutubeAPIConnector()
+        # self.youtube_connector = YoutubeAPIConnector()
         self.csv_file_path = csv_file_path
         self.csv_export_path = csv_export_path
         self.export_fields = ['Title', 'Category', 'URL', 'Language', 'Video Thumbnail URL', 'Channel ID', 'Views', 'Likes', 'Dislikes', 'Comments', 'Keyword Hits']
@@ -246,33 +249,53 @@ class Reaudit(SegmentedAudit):
 
     #################
 
-    def get_videos_thread_manager(self, channel_ids):
-        shared_result = []
+    def get_videos_process(self, channel_ids):
+        print('ids count: {}'.format(len(channel_ids)))
+        pool = Pool(processes=self.max_pool_size)
 
-        task_queue = ThreadQueue(maxsize=0)
+        print('Starting pool of {} processes...'.format(self.max_pool_size))
 
-        print('Starting {} threads...'.format(self.video_retrieve_max_thread_count))
+        # results = [pool.apply(self.get_channel_videos, args=(id,)) for id in channel_ids]
+        chunks = list(self.chunks(channel_ids, self.get_channel_videos_chunk_size))
+        results = pool.map(self.get_batch_videos, chunks)
 
-        for _ in range(self.video_retrieve_max_thread_count):
-            thread = Thread(target=self.thread_worker, args=(task_queue, shared_result))
-            thread.setDaemon(True)
-            thread.start()
+        flat = [item for sublist in results for item in sublist]
+
+        return flat
+
+        # print('Starting {} get video processes...'.format(self.max_process_count))
+        #
+        # videos = []
+        #
+        # for _ in range(self.max_process_count):
+        #     channel_batch = videos[:channel_batch_limit]
+        #     process = Process(
+        #         target=self.get_channel_videos(),
+        #         args=(shared_results, channel_batch)
+        #     )
+        #     processes.append(process)
+        #     process.start()
+        #     videos = videos[channel_batch_limit:]
+        #
+        # for process in processes:
+        #     process.join()
+        #
+        # return shared_results
+
+    @staticmethod
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    def get_batch_videos(self, channel_ids):
+        all_results = []
+        connector = YoutubeAPIConnector()
 
         for id in channel_ids:
-            task_queue.put(id)
+            results = self.get_channel_videos(id, connector)
+            all_results += results
 
-        task_queue.join()
-        return shared_result
-
-    def thread_worker(self, queue, results):
-        while True:
-            channel_id = queue.get()
-            videos = self.get_channel_videos(channel_id)
-
-            with self.thread_lock:
-                results += videos
-
-            queue.task_done()
+        return all_results
 
     def process_channels(self):
         print('Starting audit...')
@@ -287,17 +310,19 @@ class Reaudit(SegmentedAudit):
             channel_id = self.channel_id_regexp.search(channel['channel_url']).group()
 
             channel_batch.append(channel_id)
+            channels_seen += 1
 
             if len(channel_batch) >= self.channel_video_retrieve_batch_size:
-                videos = self.get_videos_thread_manager(channel_batch)
+                videos = self.get_videos_process(channel_batch)
 
                 videos_seen += len(videos)
-                channels_seen += 1
 
                 print('Auditing next batch of videos: {}'.format(len(videos)))
                 audit_results = self.start_audit_process(videos)
 
                 self.write_channel_results(audit_results)
+
+                channel_batch.clear()
 
                 print('Channels processed: {}'.format(channels_seen))
                 print('Videos processed: {}'.format(videos_seen))
@@ -324,26 +349,38 @@ class Reaudit(SegmentedAudit):
         print('Audit complete/')
 
     def start_audit_process(self, videos):
-        print('Starting mp audit with {} processes...'.format(self.video_audit_max_process_count))
+        pool = Pool(processes=self.max_process_count)
 
-        audit_processes = []
-        video_process_batch_limit = len(videos) // self.video_audit_max_process_count
-        shared_results = Manager().list()
+        print('videos to audit: {} with {} processes:'.format(len(videos), self.max_process_count))
 
-        for _ in range(self.video_audit_max_process_count):
-            video_batch = videos[:video_process_batch_limit]
-            process = Process(
-                target=self.audit_videos,
-                args=(shared_results, video_batch)
-            )
-            audit_processes.append(process)
-            process.start()
-            videos = videos[self.video_audit_max_process_count:]
+        chunks = list(self.chunks(videos, self.audit_batch_size))
 
-        for process in audit_processes:
-            process.join()
+        results = pool.map(self.audit_videos, chunks)
+        flat = [item for sublist in results for item in sublist]
 
-        return shared_results
+        return flat
+
+    # def start_audit_process(self, videos):
+    #     print('Starting mp audit with {} processes...'.format(self.max_process_count))
+    #
+    #     audit_processes = []
+    #     video_process_batch_limit = len(videos) // self.max_process_count
+    #     shared_results = Manager().list()
+    #
+    #     for _ in range(self.max_process_count):
+    #         video_batch = videos[:video_process_batch_limit]
+    #         process = Process(
+    #             target=self.audit_videos,
+    #             args=(shared_results, video_batch)
+    #         )
+    #         audit_processes.append(process)
+    #         process.start()
+    #         videos = videos[self.max_process_count:]
+    #
+    #     for process in audit_processes:
+    #         process.join()
+    #
+    #     return shared_results
 
     def write_channel_results(self, results):
         if results:
@@ -367,16 +404,16 @@ class Reaudit(SegmentedAudit):
             for video in results:
                 writer.writerow(video.values())
 
-    def get_channel_videos(self, channel_id):
+    def get_channel_videos(self, channel_id, connector):
         channel_videos_full_data = []
         channel_videos = []
-        response = self.youtube_connector.obtain_channel_videos(channel_id, part='snippet', order='viewCount', safe_search='strict')
+        response = connector.obtain_channel_videos(channel_id, part='snippet', order='viewCount', safe_search='strict')
 
         channel_videos += [video['id']['videoId'] for video in response.get('items')]
         next_page_token = response.get('nextPageToken')
 
         while next_page_token and response.get('items'):
-            response = self.youtube_connector\
+            response = connector\
                 .obtain_channel_videos(channel_id, part='snippet', page_token=next_page_token, order='viewCount', safe_search='strict')
 
             channel_videos += [video['id']['videoId'] for video in response.get('items')]
@@ -385,14 +422,16 @@ class Reaudit(SegmentedAudit):
         while channel_videos:
             video_full_data_batch = channel_videos[:50]
 
-            response = self.youtube_connector.obtain_videos(','.join(video_full_data_batch), part='snippet,statistics')
+            response = connector.obtain_videos(','.join(video_full_data_batch), part='snippet,statistics')
 
             channel_videos_full_data += response.get('items')
             channel_videos = channel_videos[50:]
 
         return channel_videos_full_data
+        # with self.lock:
+        #     shared_results += channel_videos_full_data
 
-    def audit_videos(self, shared_results, videos):
+    def audit_videos(self, videos):
         start = time.time()
         results = []
 
@@ -407,11 +446,11 @@ class Reaudit(SegmentedAudit):
                     self.get_export_row(video, hits)
                 )
 
-        if results:
-            with self.lock:
-                shared_results += results
-
         end = time.time()
 
-        print('Time auditing {} videos: {}'.format(len(videos), end-start))
+        print('Time auditing {} videos: {}'.format(len(videos), end - start))
+
+        return results
+
+
 
