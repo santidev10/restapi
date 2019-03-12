@@ -109,7 +109,7 @@ class Comment(models.Model):
     comment_id = models.CharField(max_length=50, db_index=True, default='')
     user = ForeignKey(YoutubeUser, related_name='user_comments')
     video = ForeignKey(CommentVideo, related_name='video_comments')
-    parent = ForeignKey('self', blank=True, null=True)
+    parent_comment = ForeignKey('self', blank=True, null=True)
     text = models.TextField()
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
