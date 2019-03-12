@@ -19,8 +19,8 @@ class Reaudit(SegmentedAudit):
     channel_batch_limit = 50
     export_batch_limit = 5000
     export_channel_limit = 50
-    channel_video_retrieve_batch_size = 300
-    video_audit_max_process_count = 4
+    channel_video_retrieve_batch_size = 400
+    video_audit_max_process_count = 6
     lock = Lock()
 
     def __init__(self, csv_file_path, csv_export_path, csv_keyword_path, reverse=False):
@@ -254,7 +254,7 @@ class Reaudit(SegmentedAudit):
             channels_seen += 1
 
             if channels_seen % self.channel_video_retrieve_batch_size == 0:
-                print('Auditing next batch')
+                print('Auditing next batch of videos: {}'.format(len(all_videos)))
                 audit_results = self.start_audit_process(all_videos)
 
                 self.write_channel_results(audit_results)
@@ -262,6 +262,7 @@ class Reaudit(SegmentedAudit):
                 all_videos.clear()
                 print('Channels processed: {}'.format(channels_seen))
                 print('Videos processed: {}'.format(videos_seen))
+                print('Last channel seen: {}'.format(repr(channel)))
 
         print('Audit complete/')
 
@@ -287,9 +288,12 @@ class Reaudit(SegmentedAudit):
 
         return shared_results
 
-        print('Stored results.')
-
     def write_channel_results(self, results):
+        if results:
+            print('Writing {} results'.format(len(results)))
+        else:
+            print('No results to write.')
+
         channel_export = self.csv_export_path + 'barney_channel_results.csv'
         video_export = self.csv_export_path + 'barney_video_results.csv'
 
@@ -346,14 +350,11 @@ class Reaudit(SegmentedAudit):
                     self.get_export_row(video, hits)
                 )
 
-        # if results:
-        #     with self.lock:
-        #         shared_results += results
+        if results:
+            with self.lock:
+                shared_results += results
 
         end = time.time()
 
         print('Time auditing {} videos: {}'.format(len(videos), end-start))
-
-        return results
-
 
