@@ -2,7 +2,10 @@ from datetime import datetime
 from datetime import timedelta
 
 from django.db import models
-
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
+from django.db.models import ForeignKey
+from django.contrib.postgres.fields import JSONField
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -64,3 +67,52 @@ class ChannelAuditIgnore(AuditIgnoreModel):
 
 class VideoAuditIgnore(AuditIgnoreModel):
     pass
+
+
+class TopicAudit(BaseModel):
+    title = models.CharField(max_length=255, unique=True)
+    is_running = models.BooleanField(blank=True, default=True, db_index=True)
+    from_beginning = models.BooleanField(blank=True, default=False)
+    start_cursor = models.BigIntegerField(default=0)
+    completed_at = models.DateTimeField(blank=True, null=True, default=None)
+    channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic_channel')
+    video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic_video')
+
+    class Meta:
+        index_together = ['is_running', 'from_beginning']
+
+
+class Keyword(models.Model):
+    keyword = models.CharField(max_length=255)
+    topic = ForeignKey(TopicAudit, related_name='keywords')
+
+    class Meta:
+        unique_together = ['keyword', 'topic']
+
+
+class APIScriptTracker(models.Model):
+    name = models.CharField(max_length=255, unique=True, db_index=True)
+    cursor = models.BigIntegerField(default=0)
+
+
+class CommentVideo(models.Model):
+    video_id = models.CharField(max_length=15, unique=True)
+
+
+class YoutubeUser(models.Model):
+    channel_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=30)
+    thumbnail_image_url = models.TextField(null=True)
+
+
+class Comment(models.Model):
+    comment_id = models.CharField(max_length=50, unique=True)
+    user = ForeignKey(YoutubeUser, related_name='user_comments')
+    video = ForeignKey(CommentVideo, related_name='video_comments')
+    parent = ForeignKey('self', blank=True, null=True)
+    text = models.TextField()
+    published_at = models.DateTimeField()
+    updated_at = models.DateTimeField(blank=True, null=True)
+    like_count = models.IntegerField(default=0, db_index=True)
+    reply_count = models.IntegerField(default=0)
+    found_items = JSONField(default={})

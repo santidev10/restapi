@@ -1,6 +1,8 @@
 from django.core.management.base import BaseCommand
 from audit_tool.custom_audit import CustomAudit
 import logging
+import os
+import csv
 
 logger = logging.getLogger(__name__)
 
@@ -34,5 +36,10 @@ class Command(BaseCommand):
                 segment_title=segment_title,
             )
             custom_audit.run()
+
+            self.stdout.write('Audit for {} complete.'.format(segment_title))
+
+
+
 
 

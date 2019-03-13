@@ -599,7 +599,9 @@ function createDisplayResponsive(adGroup, params) {
 
     var adOperation = builder.build();
     var labelName = "Display ad #" + params.id;
-    AdsApp.createLabel(labelName);
+    try {
+        AdsApp.createLabel(labelName);
+    } catch (e) {}
     adOperation.getResult().applyLabel(labelName);
     return adOperation;
 }
@@ -717,7 +719,11 @@ function createOrUpdateVideoAd(adGroup, params) {
     if (params.is_deleted) {
         return;
     }
-    return createVideoAd(adGroup, params);
+    try {
+        return createVideoAd(adGroup, params);
+    } catch (e) {
+        Logger.log(e)
+    }
 }
 
 function getBaseCampaignsInfo() {
