@@ -31,6 +31,25 @@ class BlacklistVideos(object):
                         csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
                         )
 
+    def update_channel_seeds(self):
+        channel_ids = self.extract_channel_ids()
+        for channel_id in channel_ids:
+            video_ids = self.get_channel_videos(channel_id)
+
+            for video_id in video_ids:
+                if video_id == 'Fxq5JowQA9U':
+                    print('Last video met', video_id)
+                    print('Channel id: {}'.format(channel_id))
+
+                    break
+
+                try:
+                    BlacklistVideo.objects.filter(video_id=video_id).update(scanned=True)
+                    print('video scanned updated: {}'.format(video_id))
+                except BlacklistVideo.DoesNotExist:
+                    pass
+
+
     def export_existing(self):
         all_video_data = BlacklistVideo \
             .objects.all() \
