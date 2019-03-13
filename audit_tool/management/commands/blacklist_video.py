@@ -13,5 +13,5 @@ class Command(BaseCommand):
         audit_type = kwargs['type']
 
         blacklist = BlacklistVideos(audit_type)
-        # blacklist.run()
-        blacklist.update_channel_seeds()
+        blacklist.run()
+        # blacklist.update_channel_seeds()
