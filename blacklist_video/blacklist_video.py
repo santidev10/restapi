@@ -14,6 +14,18 @@ class BlacklistVideos(object):
         self.yt_connector = YoutubeAPIConnector()
         self.audit_type = audit_type
 
+    def export(self):
+        all_video_data = BlacklistVideo \
+            .objects.all() \
+            .distinct('video_id') \
+            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+
+        self.export_csv(data=all_video_data,
+                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title',
+                                 'Channel URL', 'Video URL'],
+                        csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
+                        )
+
     def run(self):
         print('Starting video blacklist...')
 
@@ -272,6 +284,9 @@ class BlacklistVideos(object):
                 row = [item for item in video]
                 row.append(
                     'http://youtube.com/channel/' + video[3]
+                )
+                row.append(
+                    'https://www.youtube.com/watch?v=' + video[0]
                 )
                 writer.writerow(row)
 
