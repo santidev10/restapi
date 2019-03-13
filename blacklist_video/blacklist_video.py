@@ -73,7 +73,7 @@ class BlacklistVideos(object):
                 video_id_seeds.append(video_id)
 
         print('Video seeds extracted: {}'.format(len(video_id_seeds)))
-        return video_id_seeds
+        self.get_video_data(video_id_seeds)
 
     def get_related_videos(self):
         print('Getting related videos')
@@ -95,9 +95,9 @@ class BlacklistVideos(object):
 
                 print('Related videos retrieved {} for {}'.format(len(video_data), id))
 
-                # While there is a next page, get and save the results
+                # While there is a next page and the response has data, get and save the results
                 page_number = 1
-                while response.get('nextPageToken') is not None:
+                while response.get('nextPageToken') is not None and response.get('items'):
                     print('Getting page {} for id {}'.format(page_number, id))
 
                     page_token = response['nextPageToken']
@@ -151,28 +151,47 @@ class BlacklistVideos(object):
             video.save()
 
     def _bulk_create(self, video_data):
-        blacklist_to_create = [
-            BlacklistVideo(
-                video_id=video['id'] if type(video['id']) is str else video['id']['videoId'],
-                channel_id=video['snippet']['channelId'],
-                channel_title=video['snippet']['channelTitle'],
-                title=video['snippet']['title'],
-                description=video['snippet']['description'],
-                scanned=False
-            ) for video in video_data
-        ]
+        to_create = []
 
-        BlacklistVideo.objects.bulk_create(blacklist_to_create)
+        for video in video_data:
+            video_id = video['id'] if type(video['id']) is str else video['id']['videoId']
+
+            try:
+                BlacklistVideo.objects.get(video_id=video_id)
+
+            except BlacklistVideo.DoesNotExist:
+
+                to_create.append(
+                    BlacklistVideo(
+                        video_id=video_id,
+                        channel_id=video['snippet']['channelId'],
+                        channel_title=video['snippet']['channelTitle'],
+                        title=video['snippet']['title'],
+                        description=video['snippet']['description'],
+                        scanned=False
+                    )
+                )
+
+        BlacklistVideo.objects.bulk_create(to_create)
 
     def extract_channel_videos(self):
+        """
+        Gets all video ids for each of the channels in csv
+        :return:
+        """
         all_channel_ids = self.extract_channel_ids()
 
         for id in all_channel_ids:
             video_ids = self.get_channel_videos(id)
             self.get_video_data(video_ids)
+
         print('Get videos for {} channels'.format(len(all_channel_ids)))
 
     def extract_channel_ids(self):
+        """
+        Extracts all channel ids from csv
+        :return:
+        """
         csv_file_path = '/Users/kennethoh/Desktop/blacklist/blacklist_channels.csv'
         all_channel_ids = []
 
@@ -187,6 +206,11 @@ class BlacklistVideos(object):
         return all_channel_ids
 
     def get_channel_videos(self, channel_id):
+        """
+        Gets all video ids for channel id
+        :param channel_id:
+        :return:
+        """
         video_ids = []
         result = self.yt_connector.obtain_channel_videos(channel_id)
 
