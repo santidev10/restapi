@@ -1,4 +1,3 @@
-from audit_tool.topic_audit import TopicAudit
 from audit_tool.segmented_audit import SegmentedAudit
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
@@ -7,28 +6,19 @@ import json
 import re
 import time
 from multiprocessing import Pool
-from multiprocessing import Lock
-from threading import Lock as ThreadLock
 import langid
 
-# python manage.py reaudit --file /Users/kennethoh/Desktop/custom_audit/VIQ-1326_videos_positive_phase1.csv
-
 class Reaudit(SegmentedAudit):
-    # Limits the number of videos retrieved from youtube api; can not exceed
-    video_batch_limit = 50
-    channel_batch_limit = 50
-    export_batch_limit = 5000
-    export_channel_limit = 50
-    max_process_count = 3
-    lock = Lock()
-    thread_lock = ThreadLock()
-    max_pool_size = 20
-    channel_video_retrieve_batch_size = 500
-    get_channel_videos_chunk_size = 50
-    audit_batch_size = 3000
+    max_process_count = 4
 
+    # video_chunk_size = 10000
+    # channel_chunk_size = 1000
+
+    # TEST
     video_chunk_size = 10000
-    channel_chunk_size = 1000
+    video_batch_size = 50000
+    channel_batch_size = 10000
+    channel_chunk_size = 10
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -82,11 +72,6 @@ class Reaudit(SegmentedAudit):
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
         self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path)
-        self.reverse_csv = None
-
-        # with open(csv_export_path, mode='w') as export_file:
-        #     writer = csv.writer(export_file, delimiter=',')
-        #     writer.writerow(self.export_fields)
 
     def create_keyword_regexp(self, csv_path):
         with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
@@ -102,7 +87,7 @@ class Reaudit(SegmentedAudit):
 
     def run(self):
         print('starting...')
-        target, data_generator, chunk_size = self.get_executor(self.audit_type)
+        target, data_generator, chunk_size = self.get_executor()
 
         self.run_processor(target, data_generator, audit_type=self.audit_type, chunk_size=chunk_size)
 
@@ -115,6 +100,28 @@ class Reaudit(SegmentedAudit):
 
         else:
             print('Audit type not supported: {}'.format(self.audit_type))
+
+    def run_processor(self, target, generator, audit_type='video', chunk_size=5000):
+        pool = Pool(processes=self.max_process_count)
+        items_seen = 0
+
+        # Channel batches = 1k, so every 1k channels data will write
+        # Video batches = 10k, so every 10k videos will write
+        for batch in generator():
+            chunks = self.chunks(batch, chunk_size)
+            results = pool.map(target, chunks)
+            all_results = [item for sublist in results for item in sublist]
+
+            items_seen += len(batch)
+
+            if audit_type == 'video':
+                self.write_data(all_results, audit_type)
+
+            else:
+                self.write_data(all_results['videos'], audit_type)
+                self.write_data(all_results['channels']. audit_type)
+
+            print('Seen {} {}s'.format(items_seen, self.audit_type))
 
     def process_videos(self):
         # video batch is 200k videos
@@ -130,32 +137,26 @@ class Reaudit(SegmentedAudit):
 
             self.write_data(all_results, data_type='video')
 
-    def run_processor(self, target, generator, audit_type='video', chunk_size=5000):
-        pool = Pool(processes=self.max_process_count)
-
-        # Channel batches = 1k, so every 1k channels data will write
-        # Video batches = 10k, so every 10k videos will write
-        for batch in generator():
-            chunks = self.chunks(batch, chunk_size)
-            results = pool.map(target, chunks)
-            all_results = [item for sublist in results for item in sublist]
-
-            self.write_data(all_results, audit_type)
-
-    def process_channels(self, channel_ids):
+    def process_channels(self, csv_channels):
         print('Starting audit...')
 
         all_videos = []
         connector = YoutubeAPIConnector()
 
-        for channel_id in channel_ids:
+        for row in csv_channels:
+            channel_id = self.channel_id_regexp.search(row[1]).group()
             channel_videos = self.get_channel_videos(channel_id, connector)
             all_videos += channel_videos
 
-        # audit videos
-        audit_results = self.audit_videos(all_videos)
+        video_audit_results = self.audit_videos(all_videos)
+        channel_audit_results = self.audit_channels(video_audit_results, connector)
 
-        return audit_results
+        final_results = {
+            'videos': video_audit_results,
+            'channels': channel_audit_results
+        }
+
+        return final_results
 
     def get_all_channel_video_data(self, channel_ids):
         all_results = []
@@ -166,13 +167,6 @@ class Reaudit(SegmentedAudit):
             all_results += results
 
         return all_results
-
-    def video_process(self, videos):
-        connector = YoutubeAPIConnector()
-        video_data = self.get_video_data(videos, connector)
-        audit_results = self.audit_videos(video_data)
-
-        return audit_results
 
     def get_video_data(self, videos, connector):
         all_results = []
@@ -189,7 +183,11 @@ class Reaudit(SegmentedAudit):
         return all_results
 
     def write_data(self, data, audit_type='video'):
-        export_path = self.csv_export_dir + self.csv_export_title + '.csv'
+        if audit_type == 'video':
+            export_path = self.csv_export_dir + self.csv_export_title + 'Video.csv'
+        else:
+            export_path = self.csv_export_dir + self.csv_export_title + 'Channel.csv'
+
         with open(export_path, mode='a') as export_file:
             writer = csv.writer(export_file, delimiter=',')
 
@@ -223,6 +221,22 @@ class Reaudit(SegmentedAudit):
 
         return export_row
 
+    def get_channel_export_row(self, channel):
+        print(channel)
+        metadata = channel['snippet']
+        statistics = channel['statistics']
+
+        export_row = [
+            metadata['title'],
+            channel['channel_id'],
+            'http://www.youtube.com/channel/' + channel['channel_id'],
+            statistics['viewCount'],
+            statistics['subscriberCount'],
+            statistics['videoCount'],
+        ]
+
+        return export_row
+
     def video_csv_data_generator(self):
         with open(self.csv_file_path, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
@@ -238,7 +252,7 @@ class Reaudit(SegmentedAudit):
                 row['video_id'] = video_id
                 rows_batch.append(row)
 
-                if len(rows_batch) >= 50000:
+                if len(rows_batch) >= self.video_batch_size:
                     yield rows_batch
                     rows_batch.clear()
 
@@ -247,15 +261,12 @@ class Reaudit(SegmentedAudit):
     def channel_csv_generator(self):
         with open(self.csv_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             batch = []
-            csv_reader = csv.DictReader(csv_file)
-
-            # Pass over headers
-            next(csv_reader)
+            csv_reader = csv.reader(csv_file)
 
             for row in csv_reader:
                 batch.append(row)
 
-                if len(batch) >= 20000:
+                if len(batch) >= self.channel_batch_size:
                     yield batch
                     batch.clear()
 
@@ -298,15 +309,11 @@ class Reaudit(SegmentedAudit):
                 continue
 
             hits = set(self._parse_video(video, self.keyword_regexp))
-
-            self.set_video_language(video)
-
             if hits:
                 self.set_video_language(video)
                 self.set_keyword_hits(video, hits)
 
                 # Only add English videos and add if category matches mapping
-                # print(video['snippet']['defaultLanguage'], self.video_categories.get(video['snippet']['categoryId']))
                 if video['snippet']['defaultLanguage'] == 'en' and self.video_categories.get(video['snippet']['categoryId']):
                     results.append(video)
 
@@ -317,14 +324,14 @@ class Reaudit(SegmentedAudit):
         return results
 
     def audit_channels(self, videos, connector):
-        channels = {}
+        channel_data = {}
 
         for video in videos:
             channel_id = video['snippet']['channelId']
-            channels[channel_id] = channels.get(channel_id, {})
-            channels[channel_id]['keyword_hits'] = channels[channel_id].get('keyword_hits', set()).update(video['snippet']['keyword_hits'])
+            channel_data[channel_id] = channel_data.get(channel_id, {})
+            channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits', set()).update(video['snippet']['keyword_hits'])
 
-        channel_ids = [channel_id for channel_id in channels.keys()]
+        channel_ids = [channel_id for channel_id in channel_data.keys()]
 
         while channel_ids:
             batch = ','.join(channel_ids[:50])
@@ -332,9 +339,11 @@ class Reaudit(SegmentedAudit):
 
             for item in response:
                 channel_id = item['id']
-                channels[channel_id]
+                channel_data[channel_id]['channel_id'] = channel_id
+                channel_data[channel_id]['statistics'] = item['statistics']
+                channel_data[channel_id]['metadata'] = item['snippet']
 
-
+        return channel_data.values()
 
     def get_channel_data(self, channel_ids):
         pass
