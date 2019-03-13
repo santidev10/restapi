@@ -17,7 +17,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--export',
-            help='Set file export result path.'
+            help='Set file export result directory.'
         )
         parser.add_argument(
             '--keywords',
@@ -25,21 +25,15 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--type',
-            help='Channel audit'
+            help='Video or channel audit'
         )
         parser.add_argument(
-            '--reverse',
-            help='Channel audit'
+            '--title',
+            help='Export title'
         )
 
     def handle(self, *args, **kwargs):
-        csv_file_path = kwargs['file']
-        csv_export_path = kwargs['export']
-        csv_keywords_path = kwargs['keywords']
-        type = kwargs['type']
-        reverse = kwargs.get('reverse', False)
-
-        reaudit = Reaudit(csv_file_path, csv_export_path, csv_keywords_path, reverse=reverse)
+        reaudit = Reaudit(*args, **kwargs)
 
         if type == 'channel':
             reaudit.channel_run()
