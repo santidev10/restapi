@@ -54,13 +54,12 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
 
-        # Campaign goal allocations are now dollar decimal values, not percentages
-        # actual_sum = sum(request.data.values())
-        # if round(actual_sum) != 100:
-        #     return Response(
-        #         status=HTTP_400_BAD_REQUEST,
-        #         data="Sum of the values is wrong: {}".format(actual_sum)
-        #     )
+        actual_sum = sum(request.data.values())
+        if round(actual_sum) != 100:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data="Sum of the values is wrong: {}".format(actual_sum)
+            )
         # apply changes to CampaignCreation
 
         Flight.objects.filter(
@@ -72,8 +71,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         for campaign_id, allocation_value in request.data.items():
             related_account_id = Campaign.objects.get(id=campaign_id).account_id
 
+            campaign_budget = (flight_updated_budget * allocation_value) / 100
+
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value,
+                budget=campaign_budget
             )
             Account.objects.filter(id=related_account_id).update(
                 update_time=timezone.now()
