@@ -2,23 +2,24 @@ from audit_tool.segmented_audit import SegmentedAudit
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 import csv
-import json
 import re
-import time
 from multiprocessing import Pool
 import langid
+import datetime
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 4
+    max_process_count = 8
 
-    # video_chunk_size = 10000
-    # channel_chunk_size = 1000
-
-    # TEST
     video_chunk_size = 10000
     video_batch_size = 50000
-    channel_batch_size = 10000
-    channel_chunk_size = 10
+    channel_batch_size = 1000
+    channel_chunk_size = 100
+
+    video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
+                         'Like Count', 'Dislike Count', 'Comment Count', 'Keyword Hits', 'Channel Title', 'Channel URL', 'Channel Subscribers']
+
+    channel_csv_headers = ['Title', 'Channel ID', 'Channel URL', 'Channel Subscriber Count',
+                           'Channel Videos View Count', 'Channel Total Video Count', 'Keyword Hits']
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -29,6 +30,17 @@ class Reaudit(SegmentedAudit):
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
         self.csv_keyword_path = kwargs.get('keywords')
+        self.video_export_path = '{dir}{title}{type}{time}.csv'.format(dir=self.csv_export_dir,
+                                                                       title=self.csv_export_title,
+                                                                       type='Video',
+                                                                       time=str(datetime.datetime.now())
+                                                                       )
+
+        self.channel_export_path = '{dir}{title}{type}{time}.csv'.format(dir=self.csv_export_dir,
+                                                                         title=self.csv_export_title,
+                                                                         type='Channel',
+                                                                         time=str(datetime.datetime.now())
+                                                                         )
         self.categories = {
             '1': 'Film & Animation',
             '2': 'Autos & Vehicles',
@@ -73,6 +85,17 @@ class Reaudit(SegmentedAudit):
         self.channel_id_regexp = re.compile('(?<=channel/).*')
         self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path)
 
+        # Write csv headers
+        with open(self.video_export_path, mode='w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(self.video_csv_headers)
+
+        # Write csv headers
+        with open(self.channel_export_path, mode='w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(self.channel_csv_headers)
+
+
     def create_keyword_regexp(self, csv_path):
         with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
@@ -114,32 +137,26 @@ class Reaudit(SegmentedAudit):
 
             items_seen += len(batch)
 
-            if audit_type == 'video':
-                self.write_data(all_results, audit_type)
-
-            else:
-                self.write_data(all_results['videos'], audit_type)
-                self.write_data(all_results['channels']. audit_type)
+            self.write_data(all_results, audit_type)
 
             print('Seen {} {}s'.format(items_seen, self.audit_type))
 
-    def process_videos(self):
+    def process_videos(self, csv_videos):
         # video batch is 200k videos
-        pool = Pool(processes=self.max_process_count)
-        for video_batch in self.video_csv_data_generator():
 
-            chunks = self.chunks(video_batch, 10000)
+        all_videos = []
+        connector = YoutubeAPIConnector()
 
-            results = pool.map(self.video_process, chunks)
-            all_results = [item for sublist in results for item in sublist]
+        while csv_videos:
+            batch = ','.join([video.get('video_id') for video in csv_videos[:50]])
+            response = connector.obtain_videos(batch, part='snippet,statistics').get('items')
+            all_videos += response
 
-            print('Writing {} videos'.format(len(all_results)))
+            csv_videos = csv_videos[50:]
 
-            self.write_data(all_results, data_type='video')
+        return all_videos
 
     def process_channels(self, csv_channels):
-        print('Starting audit...')
-
         all_videos = []
         connector = YoutubeAPIConnector()
 
@@ -151,12 +168,21 @@ class Reaudit(SegmentedAudit):
         video_audit_results = self.audit_videos(all_videos)
         channel_audit_results = self.audit_channels(video_audit_results, connector)
 
-        final_results = {
-            'videos': video_audit_results,
-            'channels': channel_audit_results
+        self.update_video_channel_subscribers(video_audit_results, channel_audit_results)
+
+        return video_audit_results + channel_audit_results
+
+    @staticmethod
+    def update_video_channel_subscribers(videos, channels):
+        # Create dictionary of channel to subscriber count
+        channel_subscribers = {
+            channel['channelId']: channel['statistics']['subscriberCount']
+            for channel in channels
         }
 
-        return final_results
+        for video in videos:
+            channel_id = video['snippet']['channelId']
+            video['statistics']['channelSubscriberCount'] = channel_subscribers[channel_id]
 
     def get_all_channel_video_data(self, channel_ids):
         all_results = []
@@ -168,36 +194,33 @@ class Reaudit(SegmentedAudit):
 
         return all_results
 
-    def get_video_data(self, videos, connector):
-        all_results = []
-
-        while videos:
-            batch = ','.join([video.get('video_id') for video in videos[:50]])
-            response = connector.obtain_videos(batch, part='snippet,statistics').get('items')
-            all_results += response
-
-            videos = videos[50:]
-
-        print('videos retrieved', len(all_results))
-
-        return all_results
-
     def write_data(self, data, audit_type='video'):
-        if audit_type == 'video':
-            export_path = self.csv_export_dir + self.csv_export_title + 'Video.csv'
-        else:
-            export_path = self.csv_export_dir + self.csv_export_title + 'Channel.csv'
+        videos = []
+        channels = []
 
-        with open(export_path, mode='a') as export_file:
+        if audit_type == 'video':
+            videos = data
+        else:
+            for item in data:
+                if item.get('type') == 'channel':
+                    channels.append(item)
+                else:
+                    videos.append(item)
+
+        with open(self.video_export_path, mode='a') as export_file:
             writer = csv.writer(export_file, delimiter=',')
 
-            for item in data:
-                if audit_type == 'video':
-                    row = self.get_video_export_row(item)
-                else:
-                    row = self.get_channel_export_row(item)
-
+            for item in videos:
+                row = self.get_video_export_row(item)
                 writer.writerow(row)
+
+        if audit_type == 'channel':
+            with open(self.channel_export_path, mode='a') as export_file:
+                writer = csv.writer(export_file, delimiter=',')
+
+                for item in channels:
+                    row = self.get_channel_export_row(item)
+                    writer.writerow(row)
 
     def get_video_export_row(self, video, csv_data={}):
         metadata = video['snippet']
@@ -208,31 +231,30 @@ class Reaudit(SegmentedAudit):
             self.categories.get(metadata['categoryId']),
             'http://www.youtube.com/video/' + video['id'],
             metadata.get('defaultLanguage'),
-            metadata.get('thumbnails', {}).get('standard', {}).get('url', ''),
-            metadata.get('channelTitle'),
-            'http://www.youtube.com/channel/' + metadata['channelId'],
             statistics.get('viewCount', ''),
             statistics.get('likeCount', ''),
             statistics.get('dislikeCount', ''),
             statistics.get('commentCount', ''),
-            csv_data.get('channel_subscribers'),
-            ','.join(video['snippet']['keyword_hits'])
+            ','.join(video['snippet']['keyword_hits']),
+            metadata.get('channelTitle'),
+            'http://www.youtube.com/channel/' + metadata['channelId'],
+            csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
         ]
 
         return export_row
 
     def get_channel_export_row(self, channel):
-        print(channel)
         metadata = channel['snippet']
         statistics = channel['statistics']
 
         export_row = [
             metadata['title'],
-            channel['channel_id'],
-            'http://www.youtube.com/channel/' + channel['channel_id'],
-            statistics['viewCount'],
+            channel['channelId'],
+            'http://www.youtube.com/channel/' + channel['channelId'],
             statistics['subscriberCount'],
+            statistics['viewCount'],
             statistics['videoCount'],
+            ', '.join(channel['keyword_hits'])
         ]
 
         return export_row
@@ -296,11 +318,8 @@ class Reaudit(SegmentedAudit):
             channel_videos = channel_videos[50:]
 
         return channel_videos_full_data
-        # with self.lock:
-        #     shared_results += channel_videos_full_data
 
     def audit_videos(self, videos):
-        start = time.time()
         results = []
 
         for video in videos:
@@ -309,6 +328,7 @@ class Reaudit(SegmentedAudit):
                 continue
 
             hits = set(self._parse_video(video, self.keyword_regexp))
+
             if hits:
                 self.set_video_language(video)
                 self.set_keyword_hits(video, hits)
@@ -317,21 +337,21 @@ class Reaudit(SegmentedAudit):
                 if video['snippet']['defaultLanguage'] == 'en' and self.video_categories.get(video['snippet']['categoryId']):
                     results.append(video)
 
-        end = time.time()
-
-        print('Time auditing {} videos: {}'.format(len(videos), end - start))
-
         return results
 
     def audit_channels(self, videos, connector):
+        if not videos:
+            return []
+
         channel_data = {}
 
         for video in videos:
             channel_id = video['snippet']['channelId']
             channel_data[channel_id] = channel_data.get(channel_id, {})
-            channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits', set()).update(video['snippet']['keyword_hits'])
+            channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits') or set()
+            channel_data[channel_id]['keyword_hits'].update(video['snippet']['keyword_hits'])
 
-        channel_ids = [channel_id for channel_id in channel_data.keys()]
+        channel_ids = list(channel_data.keys())
 
         while channel_ids:
             batch = ','.join(channel_ids[:50])
@@ -339,14 +359,19 @@ class Reaudit(SegmentedAudit):
 
             for item in response:
                 channel_id = item['id']
-                channel_data[channel_id]['channel_id'] = channel_id
-                channel_data[channel_id]['statistics'] = item['statistics']
-                channel_data[channel_id]['metadata'] = item['snippet']
 
-        return channel_data.values()
+                channel_data[channel_id]['type'] = 'channel'
+                channel_data[channel_id]['channelId'] = channel_id
+                channel_data[channel_id]['statistics'] = item['statistics']
+                channel_data[channel_id]['snippet'] = item['snippet']
+
+            channel_ids = channel_ids[50:]
+
+        return list(channel_data.values())
 
     def get_channel_data(self, channel_ids):
         pass
+
     @staticmethod
     def set_video_language(video):
         lang = video['snippet'].get('defaultLanguage')
