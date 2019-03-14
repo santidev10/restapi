@@ -1,4 +1,4 @@
-var IQ_API_HOST = 'https://rc.view-iq.channelfactory.com/api/v1/';
+var IQ_API_HOST = 'https://rc-viewiq.channelfactory.com/api/v1/';
 var CHANGED_ACCOUNTS = 'pacing_report/flights/campaigns/budgets/updated/';
 var SET_CAMPAIGN_ACCOUNT_UPDATE_TIMES = 'pacing_report/status/'
 
@@ -6,27 +6,39 @@ function main() {
   Logger.log('Updating budget allocations...');
 
   var mcc_account_id = getAccountId();
-  var accountsToUpdate = getUpdatedAccounts(mcc_account_id);
-  Logger.log(JSON.stringify(accountsToUpdate))
-  var accountSelector = AdsManagerApp
+  var updatedBudgets = getBudgetAllocations(mcc_account_id);
+  var accountIds = Object.keys(updatedBudgets.accounts);
+
+  var accountIterator = AdsManagerApp
       .accounts()
-      .withIds(accountsToUpdate.accountIds);
+      .withIds(accountIds)
+  	  .get();
 
-  accountSelector.executeInParallel('processAccount', 'displayResults', JSON.stringify(accountsToUpdate));
+  processAllAccounts(accountIterator, updatedBudgets);
 
-  Logger.log('Budget allocations update complete');
+  Logger.log('Update complete.');
+}
+
+function processAllAccounts(iterator, updatedBudgets) {
+  while (iterator.hasNext()) {
+    var account = iterator.next();
+
+    AdsManagerApp.select(account);
+
+    processAccount(updatedBudgets);
+  }
 }
 
 function getAccountId() {
-  return AdWordsApp.currentAccount().getCustomerId().split('-').join('');
+  return AdsApp.currentAccount().getCustomerId().split('-').join('');
 }
 
-function getUpdatedAccounts(mcc_account_id) {
-  // Retrieve aw_accounts that have been edited / marked for syncing in view-iq
+function getBudgetAllocations(mcc_account_id) {
   var options = {
     muteHttpExceptions : true,
     method: 'GET',
   };
+
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CHANGED_ACCOUNTS + mcc_account_id + '/', options);
 
   if (resp.getResponseCode() == 200) {
@@ -42,20 +54,20 @@ function getUpdatedAccounts(mcc_account_id) {
   }
 }
 
-function processAccount(budgetConfig) {
-  var cidAccount = getAccountId();
-  budgetConfig = JSON.parse(budgetConfig);
+function processAccount(updatedBudgets) {
+  var accountId = getAccountId();
+  var campaignBudgets = updatedBudgets.accounts[accountId]
 
-  var campaignIterator = AdsApp.videoCampaigns()
-      .withIds(Object.keys(budgetConfig.campaignBudgets))
+  var videoCampaignIterator = AdsApp.videoCampaigns()
+      .withIds(Object.keys(campaignBudgets))
       .get();
 
-  processCampaigns(campaignIterator, budgetConfig.campaignBudgets);
+  var displayCampaignIterator = AdsApp.campaigns()
+      .withIds(Object.keys(campaignBudgets))
+      .get();
 
-  var hourlyUpdatedAt = budgetConfig.hourlyUpdatedAt;
-  var response = setAccountCampaignUpdateTimes(cidAccount, hourlyUpdatedAt);
-
-  return response;
+  processCampaigns(videoCampaignIterator, campaignBudgets);
+  processCampaigns(videoCampaignIterator, campaignBudgets);
 }
 
 function processCampaigns(iterator, campaignBudgets) {
@@ -64,48 +76,17 @@ function processCampaigns(iterator, campaignBudgets) {
   while (campaignIterator.hasNext()) {
     var campaign = campaignIterator.next();
     var campaignBudget = campaign.getBudget();
+    var campaignId = String(campaign.getId());
 
-    var updatedCampaignBudget = campaignBudgets[campaign.getId()];
+    var updatedCampaignBudget = campaignBudgets[campaignId];
 
     if (updatedCampaignBudget) {
-      campaignBudget.setAmount(updatedCampaignBudget);
+      try {
+        campaignBudget.setAmount(updatedCampaignBudget);
+
+      } catch(err) {
+        campaignBudget.setTotalAmount(updatedCampaignBudget);
+      }
     }
   }
 }
-
-function getManagedAccounts() {
-  return AdsManagerApp.accounts.get();
-}
-
-function setAccountCampaignUpdateTimes(accountId, updatedAt) {
-  // Update Accounts hourly_updated_at fields to mark sync with Adwords
-  var options = {
-    muteHttpExceptions : true,
-    method: 'PATCH',
-    data: {
-      account_id: accountId,
-      updated_at: updatedAt
-    }
-  };
-
-  var resp = UrlFetchApp.fetch(IQ_API_HOST + SET_CAMPAIGN_ACCOUNT_UPDATE_TIMES + '/', options);
-
-  if (resp.getResponseCode() == 200) {
-    return JSON.parse(resp.getContentText());
-  } else {
-    Logger.log(resp.getResponseCode());
-    Logger.log(resp.getContentText());
-    return '';
-  }
-}
-
-function displayResults(results) {
-  if (results.length > 0) {
-    results.forEach(function(result) {
-      Logger.log(JSON.stringify(result));
-    });
-  } else {
-   	Logger.log('No results.');
-  }
-}
-
