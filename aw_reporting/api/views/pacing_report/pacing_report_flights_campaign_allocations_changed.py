@@ -3,10 +3,13 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import Account
+from aw_reporting.models import Flight
 from django.utils import timezone
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
+    permission_classes = tuple()
+
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
@@ -85,9 +88,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
                 campaign_budget = campaign.get('budget')
                 campaign_goal_allocation = campaign.get('goal_allocation')
 
-                # Goal allocations are stored as integer percent values
-                # campaign_budgets[campaign_id] = round(campaign_budget * campaign_goal_allocation / 100, 2)
-                campaign_budgets[campaign_id] = campaign_goal_allocation
+                campaign_budgets[campaign_id] = campaign_budget
 
         return campaign_budgets
 
@@ -102,7 +103,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             campaigns = account\
                 .campaigns \
                 .filter(status='eligible') \
-                .exclude(goal_allocation=0.0) \
+                .exclude(budget__lte=0) \
                 .values('id', 'budget', 'goal_allocation', 'account') \
 
             if not campaigns:
