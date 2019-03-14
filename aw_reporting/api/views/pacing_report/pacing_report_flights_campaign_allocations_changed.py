@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
+    permission_classes = tuple()
+
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
