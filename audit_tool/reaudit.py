@@ -8,12 +8,12 @@ import langid
 import datetime
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 14
+    max_process_count = 8
 
     video_chunk_size = 10000
     video_batch_size = 50000
-    channel_batch_size = 3000
-    channel_chunk_size = 300
+    channel_batch_size = 1000
+    channel_chunk_size = 100
 
     video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
                          'Like Count', 'Dislike Count', 'Comment Count', 'Keyword Hits', 'Channel Title', 'Channel URL', 'Channel Subscribers']
