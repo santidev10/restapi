@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Account
-
+from django.utils import timezone
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
     permission_classes = tuple()
@@ -15,6 +15,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
         :param kwargs: None
         :return: (dict) Updated campaign budgets
         """
+
         mcc_account_id = kwargs.pop('pk')
         managed_accounts = Account \
             .objects \
@@ -27,6 +28,7 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             for account_id in managed_accounts
         }
 
+        now = timezone.now()
         running_placements = OpPlacement.objects.filter(start__lte=now, end__gte=now)
         running_campaigns = []
 
