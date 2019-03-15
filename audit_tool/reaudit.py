@@ -11,7 +11,7 @@ class Reaudit(SegmentedAudit):
     max_process_count = 8
 
     video_chunk_size = 10000
-    video_batch_size = 50000
+    video_batch_size = 30000
     channel_batch_size = 1000
     channel_chunk_size = 100
 
@@ -90,10 +90,11 @@ class Reaudit(SegmentedAudit):
             writer = csv.writer(csv_file)
             writer.writerow(self.video_csv_headers)
 
-        # Write csv headers
-        with open(self.channel_export_path, mode='w') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(self.channel_csv_headers)
+        if self.audit_type == 'channel':
+            # Write csv headers
+            with open(self.channel_export_path, mode='w') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(self.channel_csv_headers)
 
 
     def create_keyword_regexp(self, csv_path):
@@ -142,19 +143,27 @@ class Reaudit(SegmentedAudit):
             print('Seen {} {}s'.format(items_seen, self.audit_type))
 
     def process_videos(self, csv_videos):
-        # video batch is 200k videos
-
         all_videos = []
         connector = YoutubeAPIConnector()
 
         while csv_videos:
-            batch = ','.join([video.get('video_id') for video in csv_videos[:50]])
-            response = connector.obtain_videos(batch, part='snippet,statistics').get('items')
-            all_videos += response
+            batch = csv_videos[:50]
+            video_channel_subscriber_ref = {
+                video.get('video_id'): video.get('channel_subscribers')
+                for video in batch
+            }
+            batch_ids = ','.join([video.get('video_id') for video in batch])
+            response = connector.obtain_videos(batch_ids, part='snippet,statistics').get('items')
 
+            for video in response:
+                video['statistics']['channelSubscriberCount'] = video_channel_subscriber_ref[video['id']]
+
+            all_videos += response
             csv_videos = csv_videos[50:]
 
-        return all_videos
+        audit_results = self.audit_videos(all_videos)
+
+        return audit_results
 
     def process_channels(self, csv_channels):
         all_videos = []
