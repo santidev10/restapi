@@ -7,8 +7,10 @@ from multiprocessing import Pool
 
 class BlacklistVideos(object):
     video_batch_size = 10
-    max_process_count = 3
-    video_processing_batch_size = 10000
+    max_process_count = 8
+    video_processing_batch_size = 2000
+    max_depth_size = 10000
+
 
     def __init__(self, audit_type):
         self.yt_connector = YoutubeAPIConnector()
@@ -113,79 +115,69 @@ class BlacklistVideos(object):
         print('Video seeds extracted: {}'.format(len(video_id_seeds)))
         self.get_video_data(video_id_seeds)
 
-    def start_related_videos_process(self):
-        print('Starting related videos process')
-
-        # Get all video ids to scan
-        video_ids_to_scan = BlacklistVideo \
+    def director(self):
+        videos_to_scan = BlacklistVideo \
             .objects \
             .filter(scanned=False) \
-            .distinct('video_id') \
-            .values_list('video_id', flat=True)
+            .distinct('video_id')
 
-        while video_ids_to_scan:
-            pool = Pool(processes=self.max_process_count)
-            chunks = self.chunks(video_ids_to_scan, self.video_processing_batch_size)
+        while videos_to_scan:
+            batch = videos_to_scan[:self.video_batch_size]
+            related_videos = self.start_pool(batch, self.get_related_videos)
 
-            pool.map(self.get_related_videos, chunks)
+            videos_to_scan.update(scanned=True)
 
-            video_ids_to_scan = BlacklistVideo \
+            videos_to_scan = BlacklistVideo \
                 .objects \
                 .filter(scanned=False) \
-                .distinct('video_id') \
-                .values_list('video_id', flat=True)
+                .distinct('video_id')
 
-            print('Videos to scan: {}'.format(len(video_ids_to_scan)))
+        print('Complete')
 
-    def get_related_videos(self, video_ids):
+
+    def pool_manager(self, data, target):
+        print('Starting related videos process')
+
+        pool = Pool(processes=self.max_process_count)
+        chunks = self.chunks(data, self.video_processing_batch_size)
+
+        results = pool.map(target, chunks)
+
+        return results
+
+    def get_related_videos(self, videos):
+        """
+
+        :param videos: (list) BlacklistVideo objects
+        :return:
+        """
+        all_related_videos = []
+        yt_connector = YoutubeAPIConnector()
         print('Getting related videos')
-        # Get all video ids to scan
 
-        for id in video_ids:
-            response = self.yt_connector.get_related_videos(id)
-            video_data = response['items']
+        for video in videos:
+            response = yt_connector.get_related_videos(video.video_id)['items']
+            related_videos = [
+                BlacklistVideo(
+                    video_id=video['id'],
+                    channel_id=video['snippet']['channelId'],
+                    channel_title=video['snippet']['channelTitle'],
+                    title=video['snippet']['title'],
+                    description=video['snippet']['description'],
+                    scanned=False,
+                    source=video
+                ) for video in response
+            ]
 
-            self._bulk_create(video_data)
-
-            print('Related videos retrieved {} for {}'.format(len(video_data), id))
-
-            # While there is a next page and the response has data, get and save the results
-            page_number = 1
+            all_related_videos += related_videos
             while response.get('nextPageToken') is not None and response.get('items'):
-                print('Getting page {} for id {}'.format(page_number, id))
-
                 page_token = response['nextPageToken']
-                response = self.yt_connector.get_related_videos(id, page_token=page_token)
-                video_data = response['items']
+                response = yt_connector.get_related_videos(id, page_token=page_token).get('items')
+                related_videos = response['items']
 
-                print('Related videos retrieved: {}'.format(len(video_data)))
+                all_related_videos += related_videos
 
-                if video_data:
-                    self._bulk_create(video_data)
-
-                page_number += 1
-
-    def get_related_videos_worker(self):
-        while True:
-            # Get video ids list from queue
-            video_id = self.get_related_videos_queue.get()
-            video_data = self.yt_connector.get_related_videos(video_id)['items']
-
-            print('Related videos retrieved: {}'.format(len(video_data)))
-
-            self._bulk_create(video_data)
-            self.get_videos_from_db()
-
-            self.get_related_videos_queue.task_done()
-
-    def update_scanned(self, video_ids):
-        print('Updated scanned for: {}'.format(video_ids))
-
-        # BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
-        for id in video_ids:
-            video = BlacklistVideo.objects.get(video_id=id)
-            video.scanned = True
-            video.save()
+        return all_related_videos
 
     def _bulk_create(self, video_data):
         to_create = []

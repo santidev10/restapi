@@ -7,3 +7,4 @@ class BlacklistVideo(models.Model):
     title = models.CharField(max_length=225)
     description = models.TextField()
     scanned = models.BooleanField(default=False)
+    source = models.ForeignKey('self')
