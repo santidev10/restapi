@@ -1,13 +1,13 @@
 var IQ_API_HOST = 'https://rc-viewiq.channelfactory.com/api/v1/';
 var CHANGED_ACCOUNTS = 'pacing_report/flights/campaigns/budgets/updated/';
-var SET_CAMPAIGN_ACCOUNT_UPDATE_TIMES = 'pacing_report/status/'
+var CAMPAIGNS_SYNCED = 'pacing_report/status/'
 
 function main() {
   Logger.log('Updating budget allocations...');
 
   var mcc_account_id = getAccountId();
   var updatedBudgets = getBudgetAllocations(mcc_account_id);
-  var accountIds = Object.keys(updatedBudgets.accounts);
+  var accountIds = Object.keys(updatedBudgets);
 
   var accountIterator = AdsManagerApp
       .accounts()
@@ -16,7 +16,13 @@ function main() {
 
   processAllAccounts(accountIterator, updatedBudgets);
 
-  Logger.log('Update complete.');
+  var campaignIds = []
+  accountIds.forEach(function(accountId) {
+  	campaignIds = campaignIds.concat(Object.keys(updatedBudgets[accountId]));
+  });
+
+  response = updateSyncTimes(campaignIds);
+  Logger.log(response);
 }
 
 function processAllAccounts(iterator, updatedBudgets) {
@@ -56,7 +62,7 @@ function getBudgetAllocations(mcc_account_id) {
 
 function processAccount(updatedBudgets) {
   var accountId = getAccountId();
-  var campaignBudgets = updatedBudgets.accounts[accountId]
+  var campaignBudgets = updatedBudgets[accountId]
 
   var videoCampaignIterator = AdsApp.videoCampaigns()
       .withIds(Object.keys(campaignBudgets))
@@ -89,4 +95,25 @@ function processCampaigns(iterator, campaignBudgets) {
       }
     }
   }
+}
+
+function updateSyncTimes(campaignIds) {
+  var options = {
+    muteHttpExceptions : true,
+    method: 'PATCH',
+    paylod: JSON.stringify({'campaignIds': campaignIds})
+  };
+
+  var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED + '/', options);
+  var message;
+
+  if (resp.getResponseCode() == 200) {
+    message = JSON.parse(resp.getContentText());
+  } else {
+    message = {
+  	  'errorCode': resp.getResponseCode(),
+      'message': resp.getContentText()
+    };
+  }
+  return message;
 }
