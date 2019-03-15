@@ -5,6 +5,7 @@ from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
+from django.contrib.postgres.fields import JSONField
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -92,3 +93,26 @@ class Keyword(models.Model):
 class APIScriptTracker(models.Model):
     name = models.CharField(max_length=255, unique=True, db_index=True)
     cursor = models.BigIntegerField(default=0)
+
+
+class CommentVideo(models.Model):
+    video_id = models.CharField(max_length=15, unique=True)
+
+
+class YoutubeUser(models.Model):
+    channel_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=30)
+    thumbnail_image_url = models.TextField(null=True)
+
+
+class Comment(models.Model):
+    comment_id = models.CharField(max_length=50, unique=True)
+    user = ForeignKey(YoutubeUser, related_name='user_comments')
+    video = ForeignKey(CommentVideo, related_name='video_comments')
+    parent = ForeignKey('self', blank=True, null=True)
+    text = models.TextField()
+    published_at = models.DateTimeField()
+    updated_at = models.DateTimeField(blank=True, null=True)
+    like_count = models.IntegerField(default=0, db_index=True)
+    reply_count = models.IntegerField(default=0)
+    found_items = JSONField(default={})
