@@ -32,7 +32,7 @@ class Command(BaseCommand):
             help='Export title'
         )
         parser.add_argument(
-            '--bad_words',
+            '--badwords',
             help='More bad words'
         )
 

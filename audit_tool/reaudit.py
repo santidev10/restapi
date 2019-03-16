@@ -84,7 +84,7 @@ class Reaudit(SegmentedAudit):
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
         self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path)
-        self.more_bad_words = self.create_keyword_regexp(kwargs['bad_words']) if kwargs.get('bad_words') else None
+        self.more_bad_words = self.create_keyword_regexp(kwargs['badwords']) if kwargs.get('badwords') else None
 
         # Write csv headers
         with open(self.video_export_path, mode='w') as csv_file:
