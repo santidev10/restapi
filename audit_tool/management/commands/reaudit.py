@@ -31,6 +31,10 @@ class Command(BaseCommand):
             '--title',
             help='Export title'
         )
+        parser.add_argument(
+            '--bad_words',
+            help='More bad words'
+        )
 
     def handle(self, *args, **kwargs):
         reaudit = Reaudit(*args, **kwargs)
