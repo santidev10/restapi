@@ -36,21 +36,21 @@ class BlacklistVideos(object):
         # else:
         #     self.extract_video_id_seeds()
 
-        self.start_related_videos_process()
+        self.process_manager()
 
-        all_video_data = BlacklistVideo\
-            .objects.all() \
-            .distinct('video_id') \
-            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+        # all_video_data = BlacklistVideo\
+        #     .objects.all() \
+        #     .distinct('video_id') \
+        #     .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
         print('Audit complete!')
         total_videos = BlacklistVideo.objects.all().count()
         print('Total videos stored: {}'.format(total_videos))
 
-        self.export_csv(data=all_video_data,
-                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL'],
-                        csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
-                        )
+        # self.export_csv(data=all_video_data,
+        #                 headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL'],
+        #                 csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
+        #                 )
 
     def update_channel_seeds(self):
         channel_ids = self.extract_channel_ids()
@@ -69,7 +69,6 @@ class BlacklistVideos(object):
                     print('video scanned updated: {}'.format(video_id))
                 except BlacklistVideo.DoesNotExist:
                     pass
-
 
     def export_existing(self):
         all_video_data = BlacklistVideo \
@@ -115,17 +114,19 @@ class BlacklistVideos(object):
         print('Video seeds extracted: {}'.format(len(video_id_seeds)))
         self.get_video_data(video_id_seeds)
 
-    def director(self):
+    def process_manager(self):
+        pool = Pool(processes=self.max_process_count)
         videos_to_scan = BlacklistVideo \
             .objects \
             .filter(scanned=False) \
-            .distinct('video_id')
+            .distinct('video_id')[:1000]
 
         while videos_to_scan:
-            batch = videos_to_scan[:self.video_batch_size]
-            related_videos = self.start_pool(batch, self.get_related_videos)
+            batches = self.chunks(videos_to_scan, self.video_processing_batch_size)
+            videos = pool.map(self.get_related_videos, batches)
 
-            videos_to_scan.update(scanned=True)
+            to_update_or_create = [item for batch in videos for item in batch]
+            self._bulk_update_or_create(to_update_or_create)
 
             videos_to_scan = BlacklistVideo \
                 .objects \
@@ -133,17 +134,6 @@ class BlacklistVideos(object):
                 .distinct('video_id')
 
         print('Complete')
-
-
-    def pool_manager(self, data, target):
-        print('Starting related videos process')
-
-        pool = Pool(processes=self.max_process_count)
-        chunks = self.chunks(data, self.video_processing_batch_size)
-
-        results = pool.map(target, chunks)
-
-        return results
 
     def get_related_videos(self, videos):
         """
@@ -153,7 +143,7 @@ class BlacklistVideos(object):
         """
         all_related_videos = []
         yt_connector = YoutubeAPIConnector()
-        print('Getting related videos')
+        print('Getting related videos for {} videos'.format(len(videos)))
 
         for video in videos:
             response = yt_connector.get_related_videos(video.video_id)['items']
@@ -172,34 +162,28 @@ class BlacklistVideos(object):
             all_related_videos += related_videos
             while response.get('nextPageToken') is not None and response.get('items'):
                 page_token = response['nextPageToken']
-                response = yt_connector.get_related_videos(id, page_token=page_token).get('items')
+                response = yt_connector.get_related_videos(video['id'], page_token=page_token).get('items')
                 related_videos = response['items']
 
                 all_related_videos += related_videos
 
-        return all_related_videos
+            video.scanned = True
 
-    def _bulk_create(self, video_data):
+            if len(all_related_videos) >= self.max_depth_size:
+                return videos + all_related_videos
+
+    def _bulk_update_or_create(self, video_objects):
         to_create = []
 
-        for video in video_data:
-            video_id = video['id'] if type(video['id']) is str else video['id']['videoId']
-
+        for video in video_objects:
             try:
-                BlacklistVideo.objects.get(video_id=video_id)
+                BlacklistVideo.objects.get(video_id=video.video_id)
 
             except BlacklistVideo.DoesNotExist:
+                to_create.append(video)
 
-                to_create.append(
-                    BlacklistVideo(
-                        video_id=video_id,
-                        channel_id=video['snippet']['channelId'],
-                        channel_title=video['snippet']['channelTitle'],
-                        title=video['snippet']['title'],
-                        description=video['snippet']['description'],
-                        scanned=False
-                    )
-                )
+            else:
+                video.save()
 
         BlacklistVideo.objects.bulk_create(to_create)
 
