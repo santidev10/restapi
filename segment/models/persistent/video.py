@@ -56,7 +56,7 @@ class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
 
-        if self.segment.category == PersistentSegmentCategory.CUSTOM:
+        if self.segment.category == PersistentSegmentCategory.TOPIC:
             row[PersistentSegmentExportColumn.CHANNEL_ID] = details.get('channel_id')
             row[PersistentSegmentExportColumn.CHANNEL_TITLE] = details.get('channel_title')
 
