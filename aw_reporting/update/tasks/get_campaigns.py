@@ -102,8 +102,8 @@ def get_campaigns(client, account, *_):
             campaign = Campaign.objects.get(pk=campaign_id)
 
             # Continue if the campaign's sync time is less than its update time, as it is pending to be synced with viewiq
-            if campaign.sync_time and campaign.sync_time < campaign.update_time:
-                continue
+            # if campaign.sync_time and campaign.sync_time < campaign.update_time:
+            #     continue
 
             for field, value in stats.items():
                 setattr(campaign, field, value)
