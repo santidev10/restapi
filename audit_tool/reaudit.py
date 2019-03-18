@@ -8,7 +8,7 @@ import langid
 import datetime
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 4
+    max_process_count = 12
 
     video_chunk_size = 10000
     video_batch_size = 30000
