@@ -108,6 +108,8 @@ class PullAWDataTestCase(TransactionTestCase):
             de_norm_fields_are_recalculated=True,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            update_time=now,
+            sync_time=now,
             cost=1,
             budget=1,
             impressions=1,
@@ -820,7 +822,7 @@ class PullAWDataTestCase(TransactionTestCase):
         last_statistic_date = today - timedelta(weeks=54)
         request_start_date = last_statistic_date + timedelta(days=1)
         account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1, account=account)
+        campaign = Campaign.objects.create(id=1, account=account, update_time=now, sync_time=now)
         ad_group = AdGroup.objects.create(id=1,
                                           campaign=campaign,
                                           de_norm_fields_are_recalculated=True,
@@ -1045,6 +1047,8 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            update_time=now,
+            sync_time=now,
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
@@ -1093,6 +1097,8 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            update_time=now,
+            sync_time=now
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
