@@ -108,8 +108,7 @@ class PullAWDataTestCase(TransactionTestCase):
             de_norm_fields_are_recalculated=True,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
-            update_time=now,
-            sync_time=now,
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
             cost=1,
             budget=1,
             impressions=1,
@@ -1047,8 +1046,7 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
-            update_time=now,
-            sync_time=now,
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
@@ -1097,8 +1095,7 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
-            update_time=now,
-            sync_time=now
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
