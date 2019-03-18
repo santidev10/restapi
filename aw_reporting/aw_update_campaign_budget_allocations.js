@@ -73,7 +73,7 @@ function processAccount(updatedBudgets) {
       .get();
 
   processCampaigns(videoCampaignIterator, campaignBudgets);
-  processCampaigns(videoCampaignIterator, campaignBudgets);
+  processCampaigns(displayCampaignIterator, campaignBudgets);
 }
 
 function processCampaigns(iterator, campaignBudgets) {
