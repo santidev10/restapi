@@ -8,18 +8,19 @@ import langid
 import datetime
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 14
+    max_process_count = 4
 
     video_chunk_size = 10000
     video_batch_size = 30000
     channel_batch_size = 1000
     channel_chunk_size = 100
+    channel_row_data = {}
 
     video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
                          'Like Count', 'Dislike Count', 'Comment Count', 'Keyword Hits', 'Channel Title', 'Channel URL', 'Channel Subscribers']
 
-    channel_csv_headers = ['Title', 'Channel ID', 'Channel URL', 'Channel Subscriber Count',
-                           'Channel Videos View Count', 'Channel Total Video Count', 'Keyword Hits']
+    channel_csv_headers = ['Title', 'Channel URL', 'Language', 'Category', 'Subscribers',
+                           'Total Video Views', 'Total Audited Videos', 'Total Likes', 'Total Dislikes', 'AO Check 3/15. To keep? (Y/N)' 'AO Assigned']
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -83,8 +84,9 @@ class Reaudit(SegmentedAudit):
 
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
-        self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path)
+        self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path) if self.csv_keyword_path else None
         self.more_bad_words = self.create_keyword_regexp(kwargs['badwords']) if kwargs.get('badwords') else None
+        self.custom_csv = kwargs.get('custom_csv')
 
         # Write csv headers
         with open(self.video_export_path, mode='w') as csv_file:
@@ -112,6 +114,9 @@ class Reaudit(SegmentedAudit):
 
     def run(self):
         print('starting...')
+        if self.custom_csv:
+            self.get_channel_row_data_mapping()
+
         target, data_generator, chunk_size = self.get_executor()
 
         self.run_processor(target, data_generator, audit_type=self.audit_type, chunk_size=chunk_size)
@@ -171,7 +176,7 @@ class Reaudit(SegmentedAudit):
         connector = YoutubeAPIConnector()
 
         for row in csv_channels:
-            channel_id = self.channel_id_regexp.search(row[1]).group()
+            channel_id = self.channel_id_regexp.search(row.get('channel_url')).group()
             channel_videos = self.get_channel_videos(channel_id, connector)
             all_videos += channel_videos
 
@@ -241,31 +246,45 @@ class Reaudit(SegmentedAudit):
             self.categories.get(metadata['categoryId']),
             'http://www.youtube.com/video/' + video['id'],
             metadata.get('defaultLanguage'),
-            statistics.get('viewCount', ''),
-            statistics.get('likeCount', ''),
-            statistics.get('dislikeCount', ''),
-            statistics.get('commentCount', ''),
-            ','.join(video['snippet']['keyword_hits']),
+            statistics.get('viewCount', 0),
+            statistics.get('likeCount', 0),
+            statistics.get('dislikeCount', 0),
+            statistics.get('commentCount', 0),
             metadata.get('channelTitle'),
             'http://www.youtube.com/channel/' + metadata['channelId'],
             csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
         ]
 
+        if self.keyword_regexp:
+            export_row.append(','.join(video['snippet']['keyword_hits']),)
+
         return export_row
 
     def get_channel_export_row(self, channel):
+        channel_id = channel['channelId']
         metadata = channel['snippet']
         statistics = channel['statistics']
+        video_data = channel['aggregatedVideoData']
+        channel_category_id = max(channel['categoryCount'], key=channel['categoryCount'].count)
 
         export_row = [
             metadata['title'],
-            channel['channelId'],
-            'http://www.youtube.com/channel/' + channel['channelId'],
+            'http://www.youtube.com/channel/' + channel_id,
+            metadata['defaultLanguage'],
+            self.categories[channel_category_id],
             statistics['subscriberCount'],
             statistics['viewCount'],
-            statistics['videoCount'],
-            ', '.join(channel['keyword_hits'])
+            video_data['totalAuditedVideos'],
+            video_data['totalLikes'],
+            video_data['totalDislikes'],
         ]
+
+        if self.keyword_regexp:
+            export_row.append(', '.join(channel['keyword_hits']))
+
+        if self.custom_csv and self.channel_row_data.get(channel_id):
+            aocheck, aoassigned = self.channel_row_data[channel_id]
+            export_row.extend([aocheck, aoassigned])
 
         return export_row
 
@@ -293,7 +312,10 @@ class Reaudit(SegmentedAudit):
     def channel_csv_generator(self):
         with open(self.csv_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             batch = []
-            csv_reader = csv.reader(csv_file)
+            csv_reader = csv.DictReader(csv_file)
+
+            # Pass over headers
+            next(csv_reader, None)
 
             for row in csv_reader:
                 batch.append(row)
@@ -303,6 +325,15 @@ class Reaudit(SegmentedAudit):
                     batch.clear()
 
             yield batch
+
+    def get_channel_row_data_mapping(self,):
+        with open(self.csv_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            for row in csv_reader:
+                if row.get('aocheck'):
+                    channel_id = self.channel_id_regexp.search(row.get('channel_url')).group()
+                    self.channel_row_data[channel_id] = (row.get('aocheck'), row.get('aoassigned'))
 
     def get_channel_videos(self, channel_id, connector):
         channel_videos_full_data = []
@@ -341,15 +372,20 @@ class Reaudit(SegmentedAudit):
             if self.more_bad_words and self._parse_video(video, self.more_bad_words):
                 continue
 
-            hits = set(self._parse_video(video, self.keyword_regexp))
+            # If whitelist keywords provided, keywords to filter for
+            if self.keyword_regexp:
+                hits = set(self._parse_video(video, self.keyword_regexp))
 
-            if hits:
-                self.set_video_language(video)
-                self.set_keyword_hits(video, hits)
+                if hits:
+                    self.set_language(video)
+                    self.set_keyword_hits(video, hits)
 
-                # Only add English videos and add if category matches mapping
-                if video['snippet']['defaultLanguage'] == 'en' and self.video_categories.get(video['snippet']['categoryId']):
-                    results.append(video)
+                    # Only add English videos and add if category matches mapping
+                    if video['snippet']['defaultLanguage'] == 'en' and self.video_categories.get(video['snippet']['categoryId']):
+                        results.append(video)
+            else:
+                self.set_language(video)
+                results.append(video)
 
         return results
 
@@ -362,8 +398,19 @@ class Reaudit(SegmentedAudit):
         for video in videos:
             channel_id = video['snippet']['channelId']
             channel_data[channel_id] = channel_data.get(channel_id, {})
-            channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits') or set()
-            channel_data[channel_id]['keyword_hits'].update(video['snippet']['keyword_hits'])
+            channel_data[channel_id]['aggregatedVideoData'] = channel_data[channel_id].get('aggregatedVideoData', {
+                'totalLikes': 0,
+                'totalDislikes': 0,
+            })
+            channel_data[channel_id]['aggregatedVideoData']['totalLikes'] += int(video['statistics'].get('likeCount', 0))
+            channel_data[channel_id]['aggregatedVideoData']['totalDislikes'] += int(video['statistics'].get('dislikeCount', 0))
+            channel_data[channel_id]['aggregatedVideoData']['totalAuditedVideos'] = channel_data[channel_id]['aggregatedVideoData'].get('totalAuditedVideos', 0) + 1
+            channel_data[channel_id]['categoryCount'] = channel_data[channel_id].get('categoryCount', [])
+            channel_data[channel_id]['categoryCount'].append(video['snippet'].get('categoryId'))
+
+            if self.keyword_regexp:
+                channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits') or set()
+                channel_data[channel_id]['keyword_hits'].update(video['snippet']['keyword_hits'])
 
         channel_ids = list(channel_data.keys())
 
@@ -373,7 +420,7 @@ class Reaudit(SegmentedAudit):
 
             for item in response:
                 channel_id = item['id']
-
+                self.set_language(item)
                 channel_data[channel_id]['type'] = 'channel'
                 channel_data[channel_id]['channelId'] = channel_id
                 channel_data[channel_id]['statistics'] = item['statistics']
@@ -387,12 +434,12 @@ class Reaudit(SegmentedAudit):
         pass
 
     @staticmethod
-    def set_video_language(video):
-        lang = video['snippet'].get('defaultLanguage')
+    def set_language(item):
+        lang = item['snippet'].get('defaultLanguage')
 
         if lang is None:
-            text = video['snippet']['title'] + ' ' + video['snippet']['description']
-            video['snippet']['defaultLanguage'] = langid.classify(text)[0].lower()
+            text = item['snippet']['title'] + ' ' + item['snippet']['description']
+            item['snippet']['defaultLanguage'] = langid.classify(text)[0].lower()
 
     @staticmethod
     def chunks(l, n):
