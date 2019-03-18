@@ -3,8 +3,8 @@ Segment api serializers module
 """
 from django.db.models import F
 from rest_framework.serializers import CharField
-from rest_framework.serializers import IntegerField
 from rest_framework.serializers import DictField
+from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -123,6 +123,7 @@ class SegmentSerializer(ModelSerializer):
         if self.filters is not None:
             type(segment).objects.filter(pk=segment.pk).update(pending_updates=F("pending_updates") + 1)
             fill_segment_from_filters.delay(segment.segment_type, segment.pk, self.filters)
+            segment.refresh_from_db()
         if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create, self.filters)):
             segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
