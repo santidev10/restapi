@@ -4,17 +4,20 @@ import csv
 import re
 import json
 from multiprocessing import Pool
+from django.db.utils import IntegrityError as DjangoIntegrityError
+from psycopg2 import IntegrityError as PostgresIntegrityError
 
 class BlacklistVideos(object):
     video_batch_size = 10
-    max_process_count = 8
-    video_processing_batch_size = 2000
-    max_depth_size = 10000
+    max_process_count = 4
+    video_processing_batch_size = 1
+    max_batch_size = 5
+    headers = ['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL']
 
-
-    def __init__(self, audit_type):
+    def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
-        self.audit_type = audit_type
+        self.seed_type = kwargs.get('seed')
+        self.seed_file_path = kwargs.get('file')
 
     def export(self):
         all_video_data = BlacklistVideo \
@@ -31,44 +34,16 @@ class BlacklistVideos(object):
     def run(self):
         print('Starting video blacklist...')
 
-        # if self.audit_type == 'channel':
-        #     self.extract_channel_videos()
-        # else:
-        #     self.extract_video_id_seeds()
+        if self.seed_type == 'channel':
+            self.extract_channel_videos()
+        else:
+            self.extract_video_id_seeds()
 
         self.process_manager()
-
-        # all_video_data = BlacklistVideo\
-        #     .objects.all() \
-        #     .distinct('video_id') \
-        #     .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
         print('Audit complete!')
         total_videos = BlacklistVideo.objects.all().count()
         print('Total videos stored: {}'.format(total_videos))
-
-        # self.export_csv(data=all_video_data,
-        #                 headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL'],
-        #                 csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
-        #                 )
-
-    def update_channel_seeds(self):
-        channel_ids = self.extract_channel_ids()
-        for channel_id in channel_ids:
-            video_ids = self.get_channel_videos(channel_id)
-
-            for video_id in video_ids:
-                if video_id == 'Fxq5JowQA9U':
-                    print('Last video met', video_id)
-                    print('Channel id: {}'.format(channel_id))
-
-                    break
-
-                try:
-                    BlacklistVideo.objects.filter(video_id=video_id).update(scanned=True)
-                    print('video scanned updated: {}'.format(video_id))
-                except BlacklistVideo.DoesNotExist:
-                    pass
 
     def export_existing(self):
         all_video_data = BlacklistVideo \
@@ -81,7 +56,7 @@ class BlacklistVideos(object):
                         csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
                         )
 
-    def get_video_data(self, video_ids):
+    def get_save_video_data(self, video_ids):
         while video_ids:
             video_batch = video_ids[:self.video_batch_size]
             video_ids_term = ','.join(video_batch)
@@ -90,11 +65,57 @@ class BlacklistVideos(object):
 
             video_data = response['items']
             print('Creating {} videos.'.format(len(video_data)))
-            self._bulk_create(video_data)
+
+            self._bulk_create_seeds(video_data)
 
             video_ids = video_ids[self.video_batch_size:]
 
         print('Total seed ids added', BlacklistVideo.objects.all().count())
+
+    def _safe_bulk_create(self, video_objs):
+        to_create = []
+        duplicates = {}
+
+        try:
+            BlacklistVideo.objects.bulk_create(video_objs)
+
+        except DjangoIntegrityError or PostgresIntegrityError:
+            for video in video_objs:
+                try:
+                    BlacklistVideo.objects.get(video_id=video.video_id)
+
+                except BlacklistVideo.DoesNotExist:
+                    if not duplicates.get(video.video_id):
+                        to_create.append(video)
+
+                    duplicates[video.video_id] = True
+
+        BlacklistVideo.objects.bulk_create(to_create)
+
+    def _bulk_create_seeds(self, video_data):
+        to_create = []
+
+        for video in video_data:
+            video_id = video['id'] if type(video['id']) is str else video['id']['videoId']
+
+            try:
+                BlacklistVideo.objects.get(video_id=video_id)
+
+            except BlacklistVideo.DoesNotExist:
+
+                to_create.append(
+                    BlacklistVideo(
+                        video_id=video_id,
+                        channel_id=video['snippet']['channelId'],
+                        channel_title=video['snippet']['channelTitle'],
+                        title=video['snippet']['title'],
+                        description=video['snippet']['description'],
+                        scanned=False,
+                        source=None
+                    )
+                )
+
+        BlacklistVideo.objects.bulk_create(to_create)
 
     def extract_video_id_seeds(self):
         """
@@ -102,9 +123,7 @@ class BlacklistVideos(object):
         :return:
         """
         video_id_seeds = []
-        csv_file_path = '/Users/kennethoh/Desktop/blacklist/blacklist.csv'
-
-        with open(csv_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
 
             for row in csv_reader:
@@ -112,80 +131,84 @@ class BlacklistVideos(object):
                 video_id_seeds.append(video_id)
 
         print('Video seeds extracted: {}'.format(len(video_id_seeds)))
-        self.get_video_data(video_id_seeds)
+        self.get_save_video_data(video_id_seeds)
 
     def process_manager(self):
+        # Need to pass video objects instead of ids to processes to set as foreign keys for found related items
         pool = Pool(processes=self.max_process_count)
         videos_to_scan = BlacklistVideo \
             .objects \
             .filter(scanned=False) \
-            .distinct('video_id')[:1000]
+            .distinct('video_id')[:self.max_batch_size]
 
         while videos_to_scan:
+            # batches of 100 videos for each process to retrieve related videos for
             batches = self.chunks(videos_to_scan, self.video_processing_batch_size)
             videos = pool.map(self.get_related_videos, batches)
 
-            to_update_or_create = [item for batch in videos for item in batch]
-            self._bulk_update_or_create(to_update_or_create)
+            to_create = [item for batch_result in videos for item in batch_result]
+
+            for batch in batches:
+                # Update batch videos since they have been scanned for related items
+                video_ids = [scanned.video_id for scanned in batch]
+                print(video_ids)
+                BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
+
+            self._safe_bulk_create(to_create)
+
+            return
 
             videos_to_scan = BlacklistVideo \
                 .objects \
                 .filter(scanned=False) \
-                .distinct('video_id')
+                .distinct('video_id')[:self.max_batch_size]
 
         print('Complete')
 
     def get_related_videos(self, videos):
         """
-
+        Retrieves all related videos for videos list argument
         :param videos: (list) BlacklistVideo objects
-        :return:
+        :return: (list) BlacklistVideo objects
         """
         all_related_videos = []
         yt_connector = YoutubeAPIConnector()
         print('Getting related videos for {} videos'.format(len(videos)))
 
         for video in videos:
-            response = yt_connector.get_related_videos(video.video_id)['items']
-            related_videos = [
-                BlacklistVideo(
-                    video_id=video['id'],
-                    channel_id=video['snippet']['channelId'],
-                    channel_title=video['snippet']['channelTitle'],
-                    title=video['snippet']['title'],
-                    description=video['snippet']['description'],
-                    scanned=False,
-                    source=video
-                ) for video in response
-            ]
+            response = yt_connector.get_related_videos(video.video_id)
+            items = response['items']
 
+            page_token = response.get('nextPageToken')
+
+            related_videos = self.set_obj_fields(video, items)
             all_related_videos += related_videos
-            while response.get('nextPageToken') is not None and response.get('items'):
-                page_token = response['nextPageToken']
-                response = yt_connector.get_related_videos(video['id'], page_token=page_token).get('items')
-                related_videos = response['items']
+
+            while page_token and items:
+                response = yt_connector.get_related_videos(video.video_id, page_token=page_token)
+                items = response['items']
+
+                page_token = response.get('nextPageToken')
+                related_videos = self.set_obj_fields(video, items)
 
                 all_related_videos += related_videos
 
-            video.scanned = True
+        return all_related_videos
 
-            if len(all_related_videos) >= self.max_depth_size:
-                return videos + all_related_videos
+    def set_obj_fields(self, source, items):
+        related_videos = [
+            BlacklistVideo(
+                video_id=item['id']['videoId'],
+                channel_id=item['snippet']['channelId'],
+                channel_title=item['snippet']['channelTitle'],
+                title=item['snippet']['title'],
+                description=item['snippet']['description'],
+                scanned=False,
+                source=source
+            ) for item in items
+        ]
 
-    def _bulk_update_or_create(self, video_objects):
-        to_create = []
-
-        for video in video_objects:
-            try:
-                BlacklistVideo.objects.get(video_id=video.video_id)
-
-            except BlacklistVideo.DoesNotExist:
-                to_create.append(video)
-
-            else:
-                video.save()
-
-        BlacklistVideo.objects.bulk_create(to_create)
+        return related_videos
 
     def extract_channel_videos(self):
         """
@@ -196,19 +219,18 @@ class BlacklistVideos(object):
 
         for id in all_channel_ids:
             video_ids = self.get_channel_videos(id)
-            self.get_video_data(video_ids)
+            self.get_save_video_data(video_ids)
 
-        print('Get videos for {} channels'.format(len(all_channel_ids)))
+        print('Got videos for {} channels'.format(len(all_channel_ids)))
 
     def extract_channel_ids(self):
         """
         Extracts all channel ids from csv
         :return:
         """
-        csv_file_path = '/Users/kennethoh/Desktop/blacklist/blacklist_channels.csv'
         all_channel_ids = []
 
-        with open(csv_file_path) as csv_file:
+        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
 
             for row in csv_reader:

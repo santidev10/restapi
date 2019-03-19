@@ -6,13 +6,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Positional arguments
         parser.add_argument(
-            '--type',
+            '--seed',
+        )
+        parser.add_argument(
+            '--file',
         )
 
     def handle(self, *args, **kwargs):
-        audit_type = kwargs['type']
-
-        blacklist = BlacklistVideos(audit_type)
-        # blacklist.run()
+        blacklist = BlacklistVideos(*args, **kwargs)
+        blacklist.run()
         # blacklist.update_channel_seeds()
-        blacklist.export()
+        # blacklist.export()
