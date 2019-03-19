@@ -10,13 +10,13 @@ from psycopg2 import IntegrityError as PostgresIntegrityError
 class BlacklistVideos(object):
     video_batch_size = 10
     max_process_count = 4
-    video_processing_batch_size = 1
-    max_batch_size = 5
+    video_processing_batch_size = 10
+    max_batch_size = 100
     headers = ['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL']
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
-        self.seed_type = kwargs.get('seed')
+        self.seed_type = kwargs.get('seed_type')
         self.seed_file_path = kwargs.get('file')
 
     def export(self):
@@ -36,8 +36,10 @@ class BlacklistVideos(object):
 
         if self.seed_type == 'channel':
             self.extract_channel_videos()
-        else:
+        elif self.seed_type == 'video':
             self.extract_video_id_seeds()
+        else:
+            raise ValueError('Unsupported seed_type: {}'.format(self.seed_type))
 
         self.process_manager()
 
@@ -151,12 +153,12 @@ class BlacklistVideos(object):
             for batch in batches:
                 # Update batch videos since they have been scanned for related items
                 video_ids = [scanned.video_id for scanned in batch]
-                print(video_ids)
+
                 BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
 
             self._safe_bulk_create(to_create)
 
-            return
+            print('Videos left to scan: {}'.format(BlacklistVideo.objects.all().count()))
 
             videos_to_scan = BlacklistVideo \
                 .objects \
@@ -173,7 +175,6 @@ class BlacklistVideos(object):
         """
         all_related_videos = []
         yt_connector = YoutubeAPIConnector()
-        print('Getting related videos for {} videos'.format(len(videos)))
 
         for video in videos:
             response = yt_connector.get_related_videos(video.video_id)

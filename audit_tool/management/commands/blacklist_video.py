@@ -6,7 +6,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Positional arguments
         parser.add_argument(
-            '--seed',
+            '--seed_type',
         )
         parser.add_argument(
             '--file',
