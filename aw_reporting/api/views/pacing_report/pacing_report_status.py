@@ -27,4 +27,4 @@ class PacingReportStatusApiView(APIView):
 
         Campaign.objects.filter(id__in=campaign_ids).update(sync_time=timezone.now())
 
-        return Response(status=HTTP_200_OK, data='Campaigns sync complete.')
+        return Response(status=HTTP_200_OK, data='Campaigns sync complete for: {}.'.format(', '.join(campaign_ids)))
