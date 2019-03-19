@@ -104,7 +104,6 @@ function updateSyncTimes(campaignIds) {
     'payload': JSON.stringify({ campaignIds: campaignIds }),
    	'contentType': 'application/json'
   };
-  Logger.log(options.payload)
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED + '/', options);
   var message;
 
