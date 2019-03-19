@@ -98,10 +98,13 @@ function processCampaigns(iterator, campaignBudgets) {
 }
 
 function updateSyncTimes(campaignIds) {
+  var data = {
+    'campaignIds': campaignIds
+  };
   var options = {
     muteHttpExceptions : true,
     method: 'PATCH',
-    paylod: JSON.stringify({'campaignIds': campaignIds})
+    payload: data
   };
 
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED + '/', options);
