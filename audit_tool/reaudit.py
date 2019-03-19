@@ -272,6 +272,7 @@ class Reaudit(SegmentedAudit):
             'http://www.youtube.com/channel/' + channel_id,
             metadata['defaultLanguage'],
             self.categories[channel_category_id],
+            statistics['videoCount'],
             statistics['subscriberCount'],
             statistics['viewCount'],
             video_data['totalAuditedVideos'],
