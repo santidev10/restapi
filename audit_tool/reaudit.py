@@ -17,7 +17,7 @@ class Reaudit(SegmentedAudit):
     channel_row_data = {}
 
     video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
-                         'Like Count', 'Dislike Count', 'Comment Count', 'Keyword Hits', 'Channel Title', 'Channel URL', 'Channel Subscribers']
+                         'Like Count', 'Dislike Count', 'Comment Count', 'Channel Title', 'Channel URL', 'Channel Subscribers', 'Keyword Hits']
 
     channel_csv_headers = ['Title', 'Channel URL', 'Language', 'Category', 'Subscribers',
                            'Total Video Views', 'Total Audited Videos', 'Total Likes', 'Total Dislikes', 'AO Check 3/15. To keep? (Y/N)' 'AO Assigned']
