@@ -171,12 +171,12 @@ class Reaudit(SegmentedAudit):
             all_whitelist_channels += result['whitelist_channels']
             all_blacklist_channels += result['blacklist_channels']
 
-        self.write_data(all_is_brand_safety_videos, data_type='video', audit_type='brand_safety')
+        self.write_data(all_is_brand_safety_videos, data_type='video', audit_type='brand_safety_safe')
         self.write_data(all_not_brand_safety_videos, data_type='video', audit_type='brand_safety')
         self.write_data(all_blacklist_videos, data_type='video', audit_type='blacklist')
         self.write_data(all_whitelist_videos, data_type='video', audit_type='whitelist')
 
-        self.write_data(all_is_brand_safety_channels, data_type='channel', audit_type='brand_safety')
+        self.write_data(all_is_brand_safety_channels, data_type='channel', audit_type='brand_safety_safe')
         self.write_data(all_not_brand_safety_channels, data_type='channel', audit_type='brand_safety')
         self.write_data(all_blacklist_channels, data_type='channel', audit_type='blacklist')
         self.write_data(all_whitelist_channels, data_type='channel', audit_type='whitelist')
@@ -241,7 +241,6 @@ class Reaudit(SegmentedAudit):
 
                 if not channel_id:
                     continue
-
 
             channel_videos = self.get_channel_videos(channel_id, connector)
             all_videos += channel_videos
