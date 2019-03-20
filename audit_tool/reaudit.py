@@ -233,7 +233,6 @@ class Reaudit(SegmentedAudit):
 
             if channel_id:
                 channel_id = channel_id.group()
-                channel_id = channel_id
 
             else:
                 # If no channel id, then get user name to retrieve channel id
