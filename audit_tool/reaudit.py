@@ -91,7 +91,6 @@ class Reaudit(SegmentedAudit):
         #         writer = csv.writer(csv_file)
         #         writer.writerow(self.channel_csv_headers)
 
-
     def create_keyword_regexp(self, csv_path):
         with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
@@ -155,6 +154,7 @@ class Reaudit(SegmentedAudit):
         all_not_brand_safety_videos = []
         all_blacklist_videos = []
         all_whitelist_videos = []
+
         all_is_brand_safety_channels = []
         all_not_brand_safety_channels = []
         all_blacklist_channels = []
@@ -168,16 +168,16 @@ class Reaudit(SegmentedAudit):
 
             all_is_brand_safety_channels += result['is_brand_safety_channels']
             all_not_brand_safety_channels += result['not_brand_safety_channels']
-            all_whitelist_channels += result['whitelist_channels']
             all_blacklist_channels += result['blacklist_channels']
+            all_whitelist_channels += result['whitelist_channels']
 
         self.write_data(all_is_brand_safety_videos, data_type='video', audit_type='brand_safety_safe')
-        self.write_data(all_not_brand_safety_videos, data_type='video', audit_type='brand_safety')
+        self.write_data(all_not_brand_safety_videos, data_type='video', audit_type='brand_safety_unsafe')
         self.write_data(all_blacklist_videos, data_type='video', audit_type='blacklist')
         self.write_data(all_whitelist_videos, data_type='video', audit_type='whitelist')
 
         self.write_data(all_is_brand_safety_channels, data_type='channel', audit_type='brand_safety_safe')
-        self.write_data(all_not_brand_safety_channels, data_type='channel', audit_type='brand_safety')
+        self.write_data(all_not_brand_safety_channels, data_type='channel', audit_type='brand_safety_unsafe')
         self.write_data(all_blacklist_channels, data_type='channel', audit_type='blacklist')
         self.write_data(all_whitelist_channels, data_type='channel', audit_type='whitelist')
 
@@ -212,6 +212,7 @@ class Reaudit(SegmentedAudit):
             channel_id = response.get('items')[0].get('id')
 
         except IndexError:
+            print('Could not get channel id for: {}'.format(username))
             channel_id = None
 
         return channel_id
@@ -232,11 +233,11 @@ class Reaudit(SegmentedAudit):
 
             if channel_id:
                 channel_id = channel_id.group()
+                channel_id = channel_id
+
             else:
                 # If no channel id, then get user name to retrieve channel id
                 username = self.username_regexp.search(row.get('channel_url')).group()
-
-                print(username)
                 channel_id = self.get_channel_id_for_username(username, connector)
 
                 if not channel_id:
@@ -286,6 +287,10 @@ class Reaudit(SegmentedAudit):
         return all_results
 
     def write_data(self, data, data_type='video', audit_type='whitelist'):
+        if not data:
+            print('No data for: {} {}'.format(data_type, audit_type))
+            return
+
         export_path = '{dir}{title}{data_type}{audit_type}{time}.csv'.format(
             dir=self.csv_export_dir,
             title=self.csv_export_title,
@@ -306,7 +311,7 @@ class Reaudit(SegmentedAudit):
         statistics = video['statistics']
 
         audit_types = {
-            'brand_safety': 'brand_safety_hits',
+            'brand_safety_unsafe': 'brand_safety_hits',
             'whitelist': 'whitelist_hits',
             'blacklist': 'blacklist_hits',
         }
