@@ -150,25 +150,32 @@ class Reaudit(SegmentedAudit):
         :param results:
         :return:
         """
+        all_is_brand_safety_videos = []
         all_not_brand_safety_videos = []
         all_blacklist_videos = []
         all_whitelist_videos = []
+        all_is_brand_safety_channels = []
         all_not_brand_safety_channels = []
         all_blacklist_channels = []
         all_whitelist_channels = []
 
         for result in results:
+            all_is_brand_safety_videos += result['is_brand_safety_videos']
             all_not_brand_safety_videos += result['not_brand_safety_videos']
             all_blacklist_videos += result['blacklist_videos']
             all_whitelist_videos += result['whitelist_videos']
 
+            all_is_brand_safety_channels += result['is_brand_safety_channels']
             all_not_brand_safety_channels += result['not_brand_safety_channels']
             all_whitelist_channels += result['whitelist_channels']
             all_blacklist_channels += result['blacklist_channels']
 
+        self.write_data(all_is_brand_safety_videos, data_type='video', audit_type='brand_safety')
         self.write_data(all_not_brand_safety_videos, data_type='video', audit_type='brand_safety')
         self.write_data(all_blacklist_videos, data_type='video', audit_type='blacklist')
         self.write_data(all_whitelist_videos, data_type='video', audit_type='whitelist')
+
+        self.write_data(all_is_brand_safety_channels, data_type='channel', audit_type='brand_safety')
         self.write_data(all_not_brand_safety_channels, data_type='channel', audit_type='brand_safety')
         self.write_data(all_blacklist_channels, data_type='channel', audit_type='blacklist')
         self.write_data(all_whitelist_channels, data_type='channel', audit_type='whitelist')
@@ -297,12 +304,16 @@ class Reaudit(SegmentedAudit):
 
     def sort_channels_by_keyword_hits(self, channels):
         sorted_channels = {
+            'is_brand_safety_channels': [],
             'not_brand_safety_channels': [],
             'blacklist_channels': [],
             'whitelist_channels': [],
         }
 
         for channel in channels:
+            if not channel['aggregatedVideoData'].get('brand_safety_hits'):
+                sorted_channels['is_brand_safety_channels'].append(channel)
+
             if channel['aggregatedVideoData'].get('brand_safety_hits'):
                 sorted_channels['not_brand_safety_channels'].append(channel)
 
@@ -433,6 +444,7 @@ class Reaudit(SegmentedAudit):
             'whitelist_videos': [],
             'blacklist_videos': [],
             'not_brand_safety_videos': [],
+            'is_brand_safety_videos': []
         }
 
         for video in videos:
@@ -447,7 +459,12 @@ class Reaudit(SegmentedAudit):
                 self.set_keyword_hits(video, brand_safety_hits, 'brand_safety_hits')
                 results['not_brand_safety_videos'].append(video)
 
+            else:
+                results['is_brand_safety_videos'].append(video)
+                print(video)
+
             # If provided, more bad keywords to filter against
+            blacklist_hits = []
             if self.more_bad_words:
                 blacklist_hits = self._parse_video(video, self.more_bad_words)
                 if blacklist_hits:
@@ -455,7 +472,7 @@ class Reaudit(SegmentedAudit):
                     results['blacklist_videos'].append(video)
 
             # If whitelist keywords provided, keywords to filter for
-            if not brand_safety_hits and not blacklist_hits and self.whitelist_regexp:
+            if not brand_safety_hits and not self.more_bad_words and not blacklist_hits and self.whitelist_regexp:
                 whitelist_hits = set(self._parse_video(video, self.whitelist_regexp))
 
                 if whitelist_hits:
