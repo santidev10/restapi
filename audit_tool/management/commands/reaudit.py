@@ -39,6 +39,10 @@ class Command(BaseCommand):
             '--custom_csv',
             help='Csv'
         )
+        parser.add_argument(
+            '--blacklist',
+            nargs='?'
+        )
 
     def handle(self, *args, **kwargs):
         reaudit = Reaudit(*args, **kwargs)

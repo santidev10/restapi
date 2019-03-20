@@ -8,12 +8,12 @@ import langid
 import datetime
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 12
+    max_process_count = 5
 
     video_chunk_size = 10000
     video_batch_size = 30000
     channel_batch_size = 1000
-    channel_chunk_size = 100
+    channel_chunk_size = 1
     channel_row_data = {}
 
     video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
@@ -31,17 +31,6 @@ class Reaudit(SegmentedAudit):
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
         self.csv_keyword_path = kwargs.get('keywords')
-        self.video_export_path = '{dir}{title}{type}{time}.csv'.format(dir=self.csv_export_dir,
-                                                                       title=self.csv_export_title,
-                                                                       type='Video',
-                                                                       time=str(datetime.datetime.now())
-                                                                       )
-
-        self.channel_export_path = '{dir}{title}{type}{time}.csv'.format(dir=self.csv_export_dir,
-                                                                         title=self.csv_export_title,
-                                                                         type='Channel',
-                                                                         time=str(datetime.datetime.now())
-                                                                         )
         self.categories = {
             '1': 'Film & Animation',
             '2': 'Autos & Vehicles',
@@ -84,20 +73,21 @@ class Reaudit(SegmentedAudit):
 
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
-        self.keyword_regexp = self.create_keyword_regexp(self.csv_keyword_path) if self.csv_keyword_path else None
+        self.whitelist_regexp = self.create_keyword_regexp(self.csv_keyword_path) if self.csv_keyword_path else None
         self.more_bad_words = self.create_keyword_regexp(kwargs['badwords']) if kwargs.get('badwords') else None
         self.custom_csv = kwargs.get('custom_csv')
+        self.brand_safety = kwargs.get('brand_safety')
 
-        # Write csv headers
-        with open(self.video_export_path, mode='w') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(self.video_csv_headers)
-
-        if self.audit_type == 'channel':
-            # Write csv headers
-            with open(self.channel_export_path, mode='w') as csv_file:
-                writer = csv.writer(csv_file)
-                writer.writerow(self.channel_csv_headers)
+        # # Write csv headers
+        # with open(self.video_export_path, mode='w') as csv_file:
+        #     writer = csv.writer(csv_file)
+        #     writer.writerow(self.video_csv_headers)
+        #
+        # if self.audit_type == 'channel':
+        #     # Write csv headers
+        #     with open(self.channel_export_path, mode='w') as csv_file:
+        #         writer = csv.writer(csv_file)
+        #         writer.writerow(self.channel_csv_headers)
 
 
     def create_keyword_regexp(self, csv_path):
@@ -117,21 +107,21 @@ class Reaudit(SegmentedAudit):
         if self.custom_csv:
             self.get_channel_row_data_mapping()
 
-        target, data_generator, chunk_size = self.get_executor()
+        target, data_generator, result_processor, chunk_size = self.get_executor()
 
-        self.run_processor(target, data_generator, audit_type=self.audit_type, chunk_size=chunk_size)
+        self.run_processor(target, data_generator, result_processor, chunk_size=chunk_size)
 
     def get_executor(self):
         if self.audit_type == 'video':
-            return self.process_videos, self.video_csv_data_generator, self.video_chunk_size
+            return self.process_videos, self.video_csv_data_generator, self.process_video_results, self.video_chunk_size
 
         elif self.audit_type == 'channel':
-            return self.process_channels, self.channel_csv_generator, self.channel_chunk_size
+            return self.process_channels, self.channel_csv_generator, self.process_channel_results, self.channel_chunk_size
 
         else:
             print('Audit type not supported: {}'.format(self.audit_type))
 
-    def run_processor(self, target, generator, audit_type='video', chunk_size=5000):
+    def run_processor(self, target, generator, result_processor, chunk_size=5000):
         pool = Pool(processes=self.max_process_count)
         items_seen = 0
 
@@ -139,14 +129,31 @@ class Reaudit(SegmentedAudit):
         # Video batches = 10k, so every 10k videos will write
         for batch in generator():
             chunks = self.chunks(batch, chunk_size)
-            results = pool.map(target, chunks)
-            all_results = [item for sublist in results for item in sublist]
+            all_results = pool.map(target, chunks)
+
+            result_processor(all_results)
 
             items_seen += len(batch)
-
-            self.write_data(all_results, audit_type)
-
             print('Seen {} {}s'.format(items_seen, self.audit_type))
+
+        print('Complete!')
+
+    def process_video_results(self, results):
+        self.write_data(results, 'video', audit_type='whitelist')
+
+    def process_channel_results(self, results):
+        all_whitelist_videos = []
+        all_whitelist_channels = []
+        all_blacklist_channels = []
+
+        for result in results:
+            all_whitelist_videos.extend(result['whitelist_videos'])
+            all_whitelist_channels.extend(result['whitelist_channels'])
+            all_blacklist_channels.extend(result['blacklist_channels'])
+
+        self.write_data(all_whitelist_videos, 'video')
+        self.write_data(all_whitelist_channels, 'channel')
+        self.write_data(all_blacklist_channels, 'channel', audit_type='blacklist')
 
     def process_videos(self, csv_videos):
         all_videos = []
@@ -172,6 +179,11 @@ class Reaudit(SegmentedAudit):
         return audit_results
 
     def process_channels(self, csv_channels):
+        results = {
+            'whitelist_videos': [],
+            'whitelist_channels': [],
+            'blacklist_channels': []
+        }
         all_videos = []
         connector = YoutubeAPIConnector()
 
@@ -181,11 +193,10 @@ class Reaudit(SegmentedAudit):
             all_videos += channel_videos
 
         video_audit_results = self.audit_videos(all_videos)
-        channel_audit_results = self.audit_channels(video_audit_results, connector)
+        channel_audiit_results = self.audit_videos(video_audit_results, connector)
 
-        self.update_video_channel_subscribers(video_audit_results, channel_audit_results)
-
-        return video_audit_results + channel_audit_results
+        self.update_video_channel_subscribers(video_audit_results, channel_audiit_results)
+        return results
 
     @staticmethod
     def update_video_channel_subscribers(videos, channels):
@@ -209,33 +220,21 @@ class Reaudit(SegmentedAudit):
 
         return all_results
 
-    def write_data(self, data, audit_type='video'):
-        videos = []
-        channels = []
+    def write_data(self, data, data_type='video', audit_type='whitelist'):
+        export_path = '{dir}{title}{data_type}{audit_type}{time}.csv'.format(
+            dir=self.csv_export_dir,
+            title=self.csv_export_title,
+            data_type=data_type,
+            audit_type=audit_type,
+            time=str(datetime.datetime.now())
+        )
 
-        if audit_type == 'video':
-            videos = data
-        else:
-            for item in data:
-                if item.get('type') == 'channel':
-                    channels.append(item)
-                else:
-                    videos.append(item)
-
-        with open(self.video_export_path, mode='a') as export_file:
+        with open(export_path, mode='a') as export_file:
             writer = csv.writer(export_file, delimiter=',')
 
-            for item in videos:
-                row = self.get_video_export_row(item)
+            for item in data:
+                row = self.get_video_export_row(item) if data_type == 'video' else self.get_channel_export_row(item)
                 writer.writerow(row)
-
-        if audit_type == 'channel':
-            with open(self.channel_export_path, mode='a') as export_file:
-                writer = csv.writer(export_file, delimiter=',')
-
-                for item in channels:
-                    row = self.get_channel_export_row(item)
-                    writer.writerow(row)
 
     def get_video_export_row(self, video, csv_data={}):
         metadata = video['snippet']
@@ -253,14 +252,12 @@ class Reaudit(SegmentedAudit):
             metadata.get('channelTitle'),
             'http://www.youtube.com/channel/' + metadata['channelId'],
             csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
+            ','.join(video['snippet']['keyword_hits'])
         ]
-
-        if self.keyword_regexp:
-            export_row.append(','.join(video['snippet']['keyword_hits']),)
 
         return export_row
 
-    def get_channel_export_row(self, channel):
+    def get_channel_export_row(self, channel, audit_type='whitetlistt'):
         channel_id = channel['channelId']
         metadata = channel['snippet']
         statistics = channel['statistics']
@@ -280,8 +277,14 @@ class Reaudit(SegmentedAudit):
             video_data['totalDislikes'],
         ]
 
-        if self.keyword_regexp:
-            export_row.append(', '.join(channel['keyword_hits']))
+        if audit_type == 'brand_safety':
+            export_row.append(video_data['brand_safety_hits'])
+
+        elif audit_type == 'whitelist':
+            export_row.append(video_data['whitelist_hits'])
+
+        elif audit_type == 'blacklist':
+            export_row.append(video_data['blacklist_hits'])
 
         if self.custom_csv and self.channel_row_data.get(channel_id):
             aocheck, aoassigned = self.channel_row_data[channel_id]
@@ -365,28 +368,30 @@ class Reaudit(SegmentedAudit):
         results = []
 
         for video in videos:
-            # Continue over bad words
-            if self._parse_video(video, self.bad_words_regexp):
+            self.set_language(video)
+            # Only add English videos and add if category matches mapping
+            if video['snippet']['defaultLanguage'] != 'en' and not self.video_categories.get(
+                    video['snippet']['categoryId']):
                 continue
+
+            brand_safety_hits = self._parse_video(video, self.bad_words_regexp)
+            if brand_safety_hits:
+                self.set_keyword_hits(video, brand_safety_hits, 'brand_safety_hits')
 
             # If provided, more bad keywords to filter against
-            if self.more_bad_words and self._parse_video(video, self.more_bad_words):
-                continue
+            if self.more_bad_words:
+                blacklist_hits = self._parse_video(video, self.more_bad_words)
+                if blacklist_hits:
+                    self.set_keyword_hits(video, blacklist_hits, 'blacklist_hits')
 
             # If whitelist keywords provided, keywords to filter for
-            if self.keyword_regexp:
-                hits = set(self._parse_video(video, self.keyword_regexp))
+            if not brand_safety_hits and not blacklist_hits and self.whitelist_regexp:
+                whitelist_hits = set(self._parse_video(video, self.whitelist_regexp))
 
-                if hits:
-                    self.set_language(video)
-                    self.set_keyword_hits(video, hits)
+                if whitelist_hits:
+                    self.set_keyword_hits(video, whitelist_hits, 'whitelist_hits')
 
-                    # Only add English videos and add if category matches mapping
-                    if video['snippet']['defaultLanguage'] == 'en' and self.video_categories.get(video['snippet']['categoryId']):
-                        results.append(video)
-            else:
-                self.set_language(video)
-                results.append(video)
+            results.append(video)
 
         return results
 
@@ -402,6 +407,9 @@ class Reaudit(SegmentedAudit):
             channel_data[channel_id]['aggregatedVideoData'] = channel_data[channel_id].get('aggregatedVideoData', {
                 'totalLikes': 0,
                 'totalDislikes': 0,
+                'whitelist_hits': [],
+                'blacklist_hits': [],
+                'brand_safety_hits': []
             })
             channel_data[channel_id]['aggregatedVideoData']['totalLikes'] += int(video['statistics'].get('likeCount', 0))
             channel_data[channel_id]['aggregatedVideoData']['totalDislikes'] += int(video['statistics'].get('dislikeCount', 0))
@@ -409,9 +417,11 @@ class Reaudit(SegmentedAudit):
             channel_data[channel_id]['categoryCount'] = channel_data[channel_id].get('categoryCount', [])
             channel_data[channel_id]['categoryCount'].append(video['snippet'].get('categoryId'))
 
-            if self.keyword_regexp:
-                channel_data[channel_id]['keyword_hits'] = channel_data[channel_id].get('keyword_hits') or set()
-                channel_data[channel_id]['keyword_hits'].update(video['snippet']['keyword_hits'])
+            channel_data[channel_id]['snippet']['keyword_hits']['whitelist_hits'] += video['']['']
+
+            channel_data[channel_id]['aggregatedVideoData']['brand_safety_hits'] += video.get('brand_safety_hits')
+            channel_data[channel_id]['aggregatedVideoData']['blacklist_hits'] += video.get('blacklist_hits')
+            channel_data[channel_id]['aggregatedVideoData']['whitelist_hits'] += video.get('whitelist_hits')
 
         channel_ids = list(channel_data.keys())
 
@@ -448,8 +458,8 @@ class Reaudit(SegmentedAudit):
             yield l[i:i + n]
 
     @staticmethod
-    def set_keyword_hits(video, hits):
-        video['snippet']['keyword_hits'] = hits
+    def set_keyword_hits(video, hits, keyword_type):
+        video[keyword_type] = hits
 
     @staticmethod
     def _parse_video(video, regexp):
