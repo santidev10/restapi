@@ -7,6 +7,13 @@ function main() {
 
   var mcc_account_id = getAccountId();
   var updatedBudgets = getBudgetAllocations(mcc_account_id);
+
+  if (Object.keys(updatedBudgets) <= 0) {
+    Logger.log('No campaign budgets to update.')
+
+    return
+  }
+
   var accountIds = Object.keys(updatedBudgets);
 
   var accountIterator = AdsManagerApp
