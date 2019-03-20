@@ -9,12 +9,12 @@ import datetime
 from collections import Counter
 
 class Reaudit(SegmentedAudit):
-    max_process_count = 5
+    max_process_count = 12
 
     video_chunk_size = 10000
     video_batch_size = 30000
     channel_batch_size = 1000
-    channel_chunk_size = 1
+    channel_chunk_size = 100
     channel_row_data = {}
 
     video_csv_headers = ['Title', 'Category', 'Video URL', 'Language', 'View Count',
@@ -74,6 +74,7 @@ class Reaudit(SegmentedAudit):
 
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
+        self.username_regexp = re.compile('(?<=user/).*')
         self.whitelist_regexp = self.create_keyword_regexp(self.csv_keyword_path) if self.csv_keyword_path else None
         self.more_bad_words = self.create_keyword_regexp(kwargs['badwords']) if kwargs.get('badwords') else None
         self.custom_csv = kwargs.get('custom_csv')
@@ -203,6 +204,18 @@ class Reaudit(SegmentedAudit):
 
         return audit_results
 
+    @staticmethod
+    def get_channel_id_for_username(username, connector):
+        response = connector.obtain_user_channels(username)
+
+        try:
+            channel_id = response.get('items')[0].get('id')
+
+        except IndexError:
+            channel_id = None
+
+        return channel_id
+
     def process_channels(self, csv_channels):
         """
         Processes videos and aggregates video data to audit channels
@@ -215,7 +228,21 @@ class Reaudit(SegmentedAudit):
         connector = YoutubeAPIConnector()
 
         for row in csv_channels:
-            channel_id = self.channel_id_regexp.search(row.get('channel_url')).group()
+            channel_id = self.channel_id_regexp.search(row.get('channel_url'))
+
+            if channel_id:
+                channel_id = channel_id.group()
+            else:
+                # If no channel id, then get user name to retrieve channel id
+                username = self.username_regexp.search(row.get('channel_url')).group()
+
+                print(username)
+                channel_id = self.get_channel_id_for_username(username, connector)
+
+                if not channel_id:
+                    continue
+
+
             channel_videos = self.get_channel_videos(channel_id, connector)
             all_videos += channel_videos
 
@@ -461,7 +488,6 @@ class Reaudit(SegmentedAudit):
 
             else:
                 results['is_brand_safety_videos'].append(video)
-                print(video)
 
             # If provided, more bad keywords to filter against
             blacklist_hits = []
