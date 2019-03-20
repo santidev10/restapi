@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
 from django.db.models import CharField
+from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Manager
 from django.db.models import Model
@@ -48,6 +49,7 @@ class BaseSegment(Timestampable):
                        on_delete=SET_NULL)
     shared_with = ArrayField(CharField(max_length=200), blank=True,
                              default=list)
+    pending_updates = IntegerField(default=0, null=False)
     related = None
     related_aw_statistics_model = None
     segment_type = None
@@ -109,7 +111,14 @@ class BaseSegment(Timestampable):
         """
         Process segment statistics fields
         """
-        ids = list(self.get_related_ids())
+        ids = self.get_related_ids()
+        ids_count = ids.count()
+        if ids_count > settings.MAX_SEGMENT_TO_AGGREGATE:
+            self._set_total_for_huge_segment(ids_count)
+            self.adw_data = dict()
+            self.save()
+            return
+        ids = list(ids)
         ids_hash = Connector().store_ids(ids)
         data = self.obtain_singledb_data(ids_hash)
         # just return on any fail
@@ -121,11 +130,29 @@ class BaseSegment(Timestampable):
         self.save()
         return "Done"
 
+    def _set_total_for_huge_segment(self, items_count):
+        raise NotImplementedError
+
     def obtain_singledb_data(self, ids_hash):
         raise NotImplementedError
 
     def populate_statistics_fields(self, data):
         raise NotImplementedError
+
+    def load_list_batch_generator(self, filters):
+        raise NotImplementedError
+
+    def add_by_filters(self, filters):
+        logger.debug("%s add_by_filters started", self)
+        items_imported = 0
+        all_batches = self.load_list_batch_generator(filters)
+        for batch in all_batches:
+            ids = [item["pk"] for item in batch]
+            self.add_related_ids(ids)
+            items_imported += len(ids)
+            logger.debug("%s add_by_filters progress: imported %d", self, items_imported)
+        logger.debug("%s add_by_filters finished", self)
+        self.update_statistics()
 
     def get_adw_statistics(self):
         """
@@ -172,6 +199,9 @@ class BaseSegment(Timestampable):
                 if ch_id in self.top_recommend_channels:
                     self.top_recommend_channels.remove(ch_id)
             self.save()
+
+    def __repr__(self):
+        return "<{}>{ id: {}, name: {}}".format(type(self).__name__, self.id, self.title)
 
 
 class BaseSegmentRelated(Model):

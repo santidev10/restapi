@@ -53,9 +53,11 @@ class SegmentChannel(BaseSegment):
 
     # <--- deprecated
 
-    @property
-    def singledb_method(self):
-        return Connector().get_channel_list
+    def load_list(self, query_params):
+        return Connector().get_channel_list(query_params=query_params)
+
+    def load_list_batch_generator(self, filters):
+        return Connector().get_channel_list_full(filters, fields=["pk"])
 
     segment_type = 'channel'
     related_aw_statistics_model = YTChannelStatistic
@@ -73,7 +75,7 @@ class SegmentChannel(BaseSegment):
             "sort": "subscribers:desc",
             "size": 3
         }
-        top_three_channels_data = self.singledb_method(query_params=params)
+        top_three_channels_data = self.load_list(query_params=params)
 
         params = {
             "ids_hash": ids_hash,
@@ -81,7 +83,7 @@ class SegmentChannel(BaseSegment):
             "sources": DEFAULT_VIDEO_LIST_SOURCES,
             "size": 10000
         }
-        base_data = self.singledb_method(query_params=params)
+        base_data = self.load_list(query_params=params)
         data = {
             "top_three_channels_data": top_three_channels_data,
             "base_data": base_data
@@ -114,6 +116,11 @@ class SegmentChannel(BaseSegment):
             "top_three_channels": self.top_three_channels,
         }
         return statistics
+
+    def _set_total_for_huge_segment(self, items_count):
+        self.channels = items_count
+        self.videos = 0
+        self.top_three_channels = dict()
 
 
 class SegmentRelatedChannel(BaseSegmentRelated):

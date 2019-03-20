@@ -9,6 +9,7 @@ class PersistentSegmentType:
 class PersistentSegmentCategory:
     BLACKLIST = "blacklist"
     WHITELIST = "whitelist"
+    TOPIC = "topic"
 
 
 class PersistentSegmentTitles:
@@ -65,6 +66,8 @@ class PersistentSegmentExportColumn:
     SUBSCRIBERS = "Subscribers"
     AUDITED_VIDEOS = "Audited Videos"
     BAD_WORDS = "Bad Words"
+    CHANNEL_ID = "Channel ID"
+    CHANNEL_TITLE = "Channel Title"
 
     CHANNEL_BLACKLIST_CSV_COLUMNS = (
         URL,
@@ -91,6 +94,18 @@ class PersistentSegmentExportColumn:
         AUDITED_VIDEOS,
     )
 
+    CHANNEL_TOPIC_CSV_COLUMNS = (
+        URL,
+        TITLE,
+        CATEGORY,
+        SUBSCRIBERS,
+        LIKES,
+        DISLIKES,
+        VIEWS,
+        AUDITED_VIDEOS,
+        BAD_WORDS,
+    )
+
     VIDEO_BLACKLIST_CSV_COLUMNS = (
         URL,
         TITLE,
@@ -112,14 +127,28 @@ class PersistentSegmentExportColumn:
         VIEWS,
     )
 
+    VIDEO_TOPIC_CSV_COLUMNS = (
+        URL,
+        TITLE,
+        CATEGORY,
+        LIKES,
+        DISLIKES,
+        VIEWS,
+        BAD_WORDS,
+        CHANNEL_ID,
+        CHANNEL_TITLE
+    )
+
     CHANNEL_CSV_COLUMNS_MAP_BY_CATEGORY = (
         (PersistentSegmentCategory.BLACKLIST, CHANNEL_BLACKLIST_CSV_COLUMNS),
         (PersistentSegmentCategory.WHITELIST, CHANNEL_WHITELIST_CSV_COLUMNS),
+        (PersistentSegmentCategory.TOPIC, CHANNEL_TOPIC_CSV_COLUMNS),
     )
 
     VIDEO_CSV_COLUMNS_MAP_BY_CATEGORY = (
         (PersistentSegmentCategory.BLACKLIST, VIDEO_BLACKLIST_CSV_COLUMNS),
         (PersistentSegmentCategory.WHITELIST, VIDEO_WHITELIST_CSV_COLUMNS),
+        (PersistentSegmentCategory.TOPIC, VIDEO_TOPIC_CSV_COLUMNS),
     )
 
     CSV_COLUMNS_MAPS_BY_TYPE = (
