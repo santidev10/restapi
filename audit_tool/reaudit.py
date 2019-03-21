@@ -8,13 +8,13 @@ from collections import Counter
 
 class Reaudit(SegmentedAudit):
     max_process_count = 5
-
     video_chunk_size = 10000
     video_batch_size = 30000
     channel_batch_size = 1000
     channel_chunk_size = 10
     channel_row_data = {}
     max_csv_export_count = 50000
+    youtube_max_channel_list_limit = 50
     csv_pages = {
         'is_brand_safety_videos': {'count': 0, 'page': 1},
         'not_brand_safety_videos': {'count': 0, 'page': 1},
@@ -28,7 +28,6 @@ class Reaudit(SegmentedAudit):
     }
 
     video_csv_headers = ['Channel Name', 'Channel URL', 'Video Name', 'Video URL', 'Emoji Y/N', 'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Country', 'Keyword Hits']
-
     channel_csv_headers = ['Channel Title', 'Channel URL', 'Language', 'Category', 'Videos', 'Channel Subscribers', 'Total Views', 'Audited Videos', 'Total Likes', 'Total Dislikes', 'Country', 'Keyword Hits']
 
     def __init__(self, *args, **kwargs):
@@ -222,17 +221,33 @@ class Reaudit(SegmentedAudit):
             self.write_data(result['results'], **result['options'])
 
     def process_videos(self, csv_videos):
+        """
+        Manager to handle video audit process for video csv data
+        :param csv_videos: (generator) Yields list of csv video data
+        :return:
+        """
         all_videos = []
         connector = YoutubeAPIConnector()
 
         while csv_videos:
             batch = csv_videos[:50]
-            video_channel_subscriber_ref = {
-                video.get('video_id'): video.get('channel_subscribers')
-                for video in batch
-            }
             batch_ids = ','.join([video.get('video_id') for video in batch])
+
             response = connector.obtain_videos(batch_ids, part='snippet,statistics').get('items')
+
+            if not video.get('channel_subscribers'):
+                channel_statistics_data = self.get_channel_statistics_with_video_id(response, connector)
+                video_channel_subscriber_ref = {
+                    channel['id']: channel['statistics']['subscribers']
+                    for channel in channel_statistics_data
+                }
+
+            else:
+                # Provided csv video data will have channel subscribers
+                video_channel_subscriber_ref = {
+                    video.get('video_id'): video.get('channel_subscribers')
+                    for video in batch
+                }
 
             for video in response:
                 video['statistics']['channelSubscriberCount'] = video_channel_subscriber_ref[video['id']]
@@ -243,6 +258,27 @@ class Reaudit(SegmentedAudit):
         audit_results = self.audit_videos(all_videos)
 
         return audit_results
+
+    def get_channel_statistics_with_video_id(self, videos, connector):
+        """
+        Gets channel statistics for videos
+        :param videos: (list) Youtube Video data
+        :return: (dict) Mapping of channels and their statistics
+        """
+        channel_data = []
+        cursor = 0
+
+        # Can't mutuate videos as it's being used after this function call
+        while True:
+            if cursor >= len(videos):
+                break
+
+            batch = channel_data[cursor:self.youtube_max_channel_list_limit]
+            cursor += len(batch)
+            response = connector.obtain_channels(batch, part='statistics')
+            channel_data += response['items']
+
+        return channel_data
 
     @staticmethod
     def get_channel_id_for_username(username, connector):
