@@ -1,12 +1,15 @@
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from brand_safety.models import BadWord
+
 import re
+
 
 class AuditMixin(object):
     def get_all_bad_words(self):
         if not self.connector:
             self.connector = Connector()
-        bad_words = self.connector.get_bad_words_list({})
-        bad_words_names = [item["name"] for item in bad_words]
+
+        bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
 
         return bad_words_names
