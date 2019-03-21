@@ -8,16 +8,20 @@ from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
 
 class BlacklistVideos(object):
-    video_batch_size = 10
-    max_process_count = 4
-    video_processing_batch_size = 10
-    max_batch_size = 100
+    youtube_video_limit = 50
+    video_batch_size = 100
+    max_process_count = 6
+    max_batch_size = 500
+    video_processing_batch_size = 50
+    max_db_size = 750000
     headers = ['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL']
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
-        self.seed_type = kwargs.get('seed_type')
-        self.seed_file_path = kwargs.get('file')
+        self.seed_type = kwargs['seed_type']
+        self.seed_file_path = kwargs['file']
+        self.export_path = kwargs['export']
+        self.export_title = kwargs['title']
 
     def export(self):
         all_video_data = BlacklistVideo \
@@ -25,10 +29,12 @@ class BlacklistVideos(object):
             .distinct('video_id') \
             .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
+        export_path = '{}{}.csv'.format(self.export_path, self.export_title)
+
         self.export_csv(data=all_video_data,
                         headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title',
                                  'Channel URL', 'Video URL'],
-                        csv_export_path='/Users/kennethoh/Desktop/blacklist/blacklist_result.csv'
+                        csv_export_path=export_path
                         )
 
     def run(self):
@@ -60,7 +66,7 @@ class BlacklistVideos(object):
 
     def get_save_video_data(self, video_ids):
         while video_ids:
-            video_batch = video_ids[:self.video_batch_size]
+            video_batch = video_ids[:self.youtube_video_limit]
             video_ids_term = ','.join(video_batch)
             # Get metadata for the videos
             response = self.yt_connector.obtain_video_metadata(video_ids_term)
@@ -144,6 +150,8 @@ class BlacklistVideos(object):
             .distinct('video_id')[:self.max_batch_size]
 
         while videos_to_scan:
+            print('Getting related videos for {} videos'.format(len(videos_to_scan)))
+
             # batches of 100 videos for each process to retrieve related videos for
             batches = self.chunks(videos_to_scan, self.video_processing_batch_size)
             videos = pool.map(self.get_related_videos, batches)
@@ -156,14 +164,22 @@ class BlacklistVideos(object):
 
                 BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
 
+            print('Saving {} videos'.format(len(to_create)))
             self._safe_bulk_create(to_create)
 
-            print('Videos left to scan: {}'.format(BlacklistVideo.objects.all().count()))
+            total_items = BlacklistVideo.objects.all().count()
+
+            print('Total items saved: {}'.format(total_items))
+
+            if total_items >= self.max_db_size:
+                break
 
             videos_to_scan = BlacklistVideo \
                 .objects \
                 .filter(scanned=False) \
                 .distinct('video_id')[:self.max_batch_size]
+
+        self.export()
 
         print('Complete')
 
@@ -232,11 +248,12 @@ class BlacklistVideos(object):
         all_channel_ids = []
 
         with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
+            csv_reader = csv.DictReader(csv_file)
 
             for row in csv_reader:
                 # Extract channel id and add to queue to get all videos for channel
-                channel_id = re.search(r'(?<=channel/).*', row[0]).group()
+                channel_id = re.search(r'(?<=channel/).*', row['channel_url']).group()
+
                 all_channel_ids.append(channel_id)
 
         return all_channel_ids

@@ -11,9 +11,13 @@ class Command(BaseCommand):
         parser.add_argument(
             '--file',
         )
+        parser.add_argument(
+            '--export',
+        )
+        parser.add_argument(
+            '--title',
+        )
 
     def handle(self, *args, **kwargs):
         blacklist = BlacklistVideos(*args, **kwargs)
         blacklist.run()
-        # blacklist.update_channel_seeds()
-        # blacklist.export()
