@@ -356,6 +356,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
                                          .filter(
                                             Q(title__in=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES)
                                             | Q(category=PersistentSegmentCategory.WHITELIST)
+                                            | Q(category=PersistentSegmentCategory.TOPIC)
                                          )
         return queryset
 
