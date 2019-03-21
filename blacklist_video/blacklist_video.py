@@ -11,43 +11,37 @@ class BlacklistVideos(object):
     youtube_video_limit = 50
     video_batch_size = 100
     max_process_count = 6
-    max_batch_size = 500
-    video_processing_batch_size = 50
+    max_batch_size = 10000
+    video_processing_batch_size = 200
     max_db_size = 750000
     headers = ['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL']
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
-        self.seed_type = kwargs['seed_type']
-        self.seed_file_path = kwargs['file']
-        self.export_path = kwargs['export']
-        self.export_title = kwargs['title']
-
-    def export(self):
-        all_video_data = BlacklistVideo \
-            .objects.all() \
-            .distinct('video_id') \
-            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
-
-        export_path = '{}{}.csv'.format(self.export_path, self.export_title)
-
-        self.export_csv(data=all_video_data,
-                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title',
-                                 'Channel URL', 'Video URL'],
-                        csv_export_path=export_path
-                        )
+        self.seed_type = kwargs.get('seed_type')
+        self.seed_file_path = kwargs.get('file')
+        self.export_path = kwargs.get('export')
+        self.export_title = kwargs.get('title')
+        self.ignore_seed = kwargs.get('ignore_seed')
+        self.export_force = kwargs.get('export_force')
 
     def run(self):
         print('Starting video blacklist...')
 
-        if self.seed_type == 'channel':
-            self.extract_channel_videos()
-        elif self.seed_type == 'video':
-            self.extract_video_id_seeds()
-        else:
-            raise ValueError('Unsupported seed_type: {}'.format(self.seed_type))
+        if self.export_force:
+            self.export()
+            return
 
-        self.process_manager()
+        if not self.ignore_seed:
+            if self.seed_type == 'channel':
+                self.extract_channel_videos()
+            elif self.seed_type == 'video':
+                self.extract_video_id_seeds()
+            else:
+                raise ValueError('Unsupported seed_type: {}'.format(self.seed_type))
+
+        self.run_process()
+        self.export()
 
         print('Audit complete!')
         total_videos = BlacklistVideo.objects.all().count()
@@ -141,7 +135,7 @@ class BlacklistVideos(object):
         print('Video seeds extracted: {}'.format(len(video_id_seeds)))
         self.get_save_video_data(video_id_seeds)
 
-    def process_manager(self):
+    def run_process(self):
         # Need to pass video objects instead of ids to processes to set as foreign keys for found related items
         pool = Pool(processes=self.max_process_count)
         videos_to_scan = BlacklistVideo \
@@ -152,8 +146,7 @@ class BlacklistVideos(object):
         while videos_to_scan:
             print('Getting related videos for {} videos'.format(len(videos_to_scan)))
 
-            # batches of 100 videos for each process to retrieve related videos for
-            batches = self.chunks(videos_to_scan, self.video_processing_batch_size)
+            batches = list(self.chunks(videos_to_scan, self.video_processing_batch_size))
             videos = pool.map(self.get_related_videos, batches)
 
             to_create = [item for batch_result in videos for item in batch_result]
@@ -161,7 +154,6 @@ class BlacklistVideos(object):
             for batch in batches:
                 # Update batch videos since they have been scanned for related items
                 video_ids = [scanned.video_id for scanned in batch]
-
                 BlacklistVideo.objects.filter(video_id__in=video_ids).update(scanned=True)
 
             print('Saving {} videos'.format(len(to_create)))
@@ -178,8 +170,6 @@ class BlacklistVideos(object):
                 .objects \
                 .filter(scanned=False) \
                 .distinct('video_id')[:self.max_batch_size]
-
-        self.export()
 
         print('Complete')
 
@@ -307,6 +297,20 @@ class BlacklistVideos(object):
                 writer.writerow(row)
 
         print('CSV export complete.')
+
+    def export(self):
+        all_video_data = BlacklistVideo \
+            .objects.all() \
+            .distinct('video_id') \
+            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+
+        export_path = '{}{}.csv'.format(self.export_path, self.export_title)
+
+        self.export_csv(data=all_video_data,
+                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title',
+                                 'Channel URL', 'Video URL'],
+                        csv_export_path=export_path
+                        )
 
 
     @staticmethod

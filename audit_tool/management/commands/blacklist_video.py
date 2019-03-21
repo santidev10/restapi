@@ -6,6 +6,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Positional arguments
         parser.add_argument(
+            '--ignore_seed',
+            nargs='?',
+            help='Ignore seed files and retrieve using existing db data'
+        )
+        parser.add_argument(
             '--seed_type',
         )
         parser.add_argument(
@@ -16,6 +21,10 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--title',
+        )
+        parser.add_argument(
+            '--export_force',
+            help='Immediately export existing items'
         )
 
     def handle(self, *args, **kwargs):
