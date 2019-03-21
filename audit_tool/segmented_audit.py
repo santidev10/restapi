@@ -4,6 +4,7 @@ from typing import Type
 
 from audit_tool.models import ChannelAuditIgnore, AuditIgnoreModel
 from audit_tool.models import VideoAuditIgnore
+from brand_safety.models import BadWord
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
@@ -25,9 +26,12 @@ class SegmentedAudit:
     def __init__(self):
         self.connector = Connector()
 
-        bad_words = self.get_all_bad_words()
         self.bad_words_regexp = re.compile(
-            "({})".format("|".join([r"\b{}\b".format(re.escape(w)) for w in bad_words]))
+            "({})".format(
+                "|".join(
+                    [r"\b{}\b".format(re.escape(w)) for w in self.get_all_bad_words()]
+                )
+            )
         )
 
     def run(self):
@@ -116,10 +120,9 @@ class SegmentedAudit:
             last_id = videos[-1]["video_id"]
 
     def get_all_bad_words(self):
-        bad_words = self.connector.get_bad_words_list({})
-        bad_words_names = [item["name"] for item in bad_words]
-        bad_words_names = list(set(bad_words_names))
-        return bad_words_names
+        bad_words = BadWord.objects.values_list("name", flat=True)
+        bad_words = list(set(bad_words))
+        return bad_words
 
     def _parse_video(self, video):
         items = [
