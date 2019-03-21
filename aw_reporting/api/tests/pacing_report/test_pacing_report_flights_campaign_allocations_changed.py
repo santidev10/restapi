@@ -19,7 +19,7 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
 
     def test_success(self):
         self.create_test_user()
-        past = timezone.now() - timedelta(10),
+        past = timezone.now() - timedelta(10)
         future = timezone.now() + timedelta(10)
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(
@@ -47,7 +47,7 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
 
         response = self.client.get(self._get_url(1))
 
-        self.assertEqual(len(response.data.keys()), 2)
+        self.assertEqual(len(response.data['2'].values()), 2)
         self.assertEqual(response.data['2']['1'], campaign_1.budget)
         self.assertEqual(response.data['2']['2'], campaign_2.budget)
 
