@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from aw_reporting.models import Campaign
 from aw_reporting.models import Account
 from django.utils import timezone
+from django.db.models import F
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
     permission_classes = tuple()
@@ -24,7 +25,11 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
             .values_list('id', flat=True)
 
         now = timezone.now()
-        running_campaigns = Campaign.objects.filter(salesforce_placement__start__lte=now, salesforce_placement__end__gte=now)
+        running_campaigns = Campaign.objects \
+            .filter(salesforce_placement__start__lte=now,
+                    salesforce_placement__end__gte=now,
+                    sync_time__lte=F('update_time'))
+
         all_updated_campaign_budgets = {}
 
         for campaign in running_campaigns:
