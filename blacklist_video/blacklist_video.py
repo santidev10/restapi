@@ -14,7 +14,10 @@ class BlacklistVideos(object):
     max_batch_size = 1200
     video_processing_batch_size = 100
     max_db_size = 750000
-    headers = ['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title', 'Channel URL']
+    csv_export_limit = 150000
+    page_number = 1
+    export_count = 0
+    headers = ['Video Title', 'Video URL', 'Video ID', 'Video Description', 'Channel Title', 'Channel URL', 'Channel ID']
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
@@ -24,6 +27,7 @@ class BlacklistVideos(object):
         self.export_title = kwargs.get('title')
         self.ignore_seed = kwargs.get('ignore_seed')
         self.export_force = kwargs.get('export_force')
+        self.return_results = kwargs.get('return')
 
     def run(self):
         print('Starting video blacklist...')
@@ -41,7 +45,12 @@ class BlacklistVideos(object):
                 raise ValueError('Unsupported seed_type: {}'.format(self.seed_type))
 
         self.run_process()
-        self.export()
+
+        if self.export_path:
+            self.export_csv()
+
+        if self.return_results:
+            return BlacklistVideo.objects.all().values_list('video_id', flat=True)
 
         print('Audit complete!')
         total_videos = BlacklistVideo.objects.all().count()
@@ -82,6 +91,7 @@ class BlacklistVideos(object):
             BlacklistVideo.objects.bulk_create(video_objs)
 
         except DjangoIntegrityError or PostgresIntegrityError:
+            print('Duplicates')
             for video in video_objs:
                 try:
                     BlacklistVideo.objects.get(video_id=video.video_id)
@@ -149,7 +159,7 @@ class BlacklistVideos(object):
             batches = list(self.chunks(videos_to_scan, self.video_processing_batch_size))
             videos = pool.map(self.get_related_videos, batches)
 
-            to_create = [item for batch_result in videos for item in batch_result]
+            to_create = self.get_unique_items([item for batch_result in videos for item in batch_result], key='video_id')
 
             for batch in batches:
                 # Update batch videos since they have been scanned for related items
@@ -172,6 +182,19 @@ class BlacklistVideos(object):
                 .distinct('video_id')[:self.max_batch_size]
 
         print('Complete')
+
+    @staticmethod
+    def get_unique_items(items, key='video_id'):
+        unique = {}
+
+        for item in items:
+            item_id = getattr(item, key)
+            if not unique.get(item_id):
+                unique[item_id] = item
+
+        unique_items = unique.values()
+
+        return unique_items
 
     def get_related_videos(self, videos):
         """
@@ -270,47 +293,50 @@ class BlacklistVideos(object):
 
         return video_ids
 
-    def export_csv(self, data=None, headers=None, csv_export_path=None):
-        if data is None:
-            raise ValueError('You must provide a data source.')
-        if headers is None:
-            raise ValueError('You must provide a list of heaeders.')
-        if csv_export_path is None:
-            raise ValueError('You must provide a csv output path.')
-
-        print('Exporting CSV to: {}'.format(csv_export_path))
-
-        video_data = (video for video in data)
-
-        with open(csv_export_path, mode='w') as csv_export:
-            writer = csv.writer(csv_export, delimiter=',')
-            writer.writerow(headers)
-
-            for video in video_data:
-                row = [item for item in video]
-                row.append(
-                    'http://youtube.com/channel/' + video[3]
-                )
-                row.append(
-                    'https://www.youtube.com/watch?v=' + video[0]
-                )
-                writer.writerow(row)
-
-        print('CSV export complete.')
-
-    def export(self):
+    def export_csv(self):
         all_video_data = BlacklistVideo \
             .objects.all() \
             .distinct('video_id') \
-            .values_list('video_id', 'title', 'description', 'channel_id', 'channel_title')
+            .values('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
-        export_path = '{}{}.csv'.format(self.export_path, self.export_title)
+        while True:
+            next_page = False
+            export_path = '{}Page{}{}.csv'.format(self.export_path, self.page_number, self.export_title)
+            print('Exporting CSV to: {}'.format(export_path))
 
-        self.export_csv(data=all_video_data,
-                        headers=['Video ID', 'Video Title', 'Video Description', 'Channel ID', 'Channel Title',
-                                 'Channel URL', 'Video URL'],
-                        csv_export_path=export_path
-                        )
+            with open(export_path, mode='w') as csv_export:
+                writer = csv.writer(csv_export)
+                writer.writerow(self.headers)
+
+                for video in all_video_data:
+                    row = self.get_csv_export_row(video)
+                    writer.writerow(row)
+                    self.export_count += 1
+
+                    if self.export_count >= self.csv_export_limit:
+                        next_page = True
+                        self.page_number += 1
+                        self.export_count = 0
+                        all_video_data = all_video_data[self.csv_export_limit:]
+                        break
+
+            if next_page is False:
+                break
+
+        print('CSV export complete.')
+
+    def get_csv_export_row(self, video):
+        row = [
+            video['title'][:255],
+            'http://youtube.com/video/' + video['video_id'],
+            video['video_id'],
+            video['description'],
+            video['channel_title'][:255],
+            'http://youtube.com/channel/' + video['channel_id'],
+            video['channel_id'],
+        ]
+
+        return row
 
     @staticmethod
     def chunks(iterable, length):
