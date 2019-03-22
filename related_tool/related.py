@@ -297,8 +297,7 @@ class Related(object):
         """
         all_video_data = RelatedVideo \
             .objects.all() \
-            .distinct('video_id') \
-            .order_by('channel_id') \
+            .order_by('channel_title') \
             .values('video_id', 'title', 'description', 'channel_id', 'channel_title')
 
         while True:
@@ -306,7 +305,7 @@ class Related(object):
             export_path = '{}Page{}{}.csv'.format(self.export_path, self.page_number, self.export_title)
             print('Exporting CSV to: {}'.format(export_path))
 
-            with open(export_path, mode='w') as csv_export:
+            with open(export_path, mode='w', encoding='utf-8') as csv_export:
                 writer = csv.writer(csv_export)
                 writer.writerow(self.headers)
 
