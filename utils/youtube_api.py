@@ -193,14 +193,12 @@ class YoutubeAPIConnector(object):
         while tries_count <= self.max_connect_retries:
             try:
                 result = method.execute()
-            except Exception as e:
+            except Exception:
                 tries_count += 1
-                print('Trying api call again. Count: {}'.format(tries_count))
                 if tries_count <= self.max_connect_retries:
-                    sleep_seconds_count = 10
+                    sleep_seconds_count = self.max_connect_retries \
+                                            ** self.retry_sleep_coefficient
                     time.sleep(sleep_seconds_count)
-
-                print(str(e))
             else:
                 return result
         raise YoutubeAPIConnectorException(
