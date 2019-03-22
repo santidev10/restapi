@@ -23,12 +23,12 @@ class Related(object):
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
+        self.export_force = kwargs.get('export_force')
+        self.ignore_seed = kwargs.get('ignore_seed')
         self.seed_type = kwargs.get('seed_type')
         self.seed_file_path = kwargs.get('file')
         self.export_path = kwargs.get('export')
         self.export_title = kwargs.get('title')
-        self.ignore_seed = kwargs.get('ignore_seed')
-        self.export_force = kwargs.get('export_force')
         self.return_results = kwargs.get('return')
 
     def run(self):

@@ -6,24 +6,27 @@ class Command(BaseCommand):
         # Positional arguments
         parser.add_argument(
             '--export_force',
-            help='Immediately export existing items'
+            help='Export existing items in database without getting related items.'
         )
         parser.add_argument(
             '--ignore_seed',
-            nargs='?',
-            help='Ignore seed files and retrieve using existing db data'
+            help='Ignore seed files and get related items for existing unscanned items in database'
         )
         parser.add_argument(
             '--seed_type',
+            help='Set seed data type (video, channel)'
         )
         parser.add_argument(
             '--file',
+            help='File path of seed csv file'
         )
         parser.add_argument(
             '--export',
+            help='Export directory e.g. ~/Desktop/'
         )
         parser.add_argument(
             '--title',
+            help='Set title of export file'
         )
 
     def handle(self, *args, **kwargs):
