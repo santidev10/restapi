@@ -6,5 +6,5 @@ class RelatedVideo(models.Model):
     channel_title = models.CharField(max_length=225)
     title = models.CharField(max_length=225)
     description = models.TextField()
-    scanned = models.BooleanField(default=False)
+    scanned = models.BooleanField(default=False, db_index=True)
     source = models.ForeignKey('self', blank=True, null=True)
