@@ -9,8 +9,18 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.views import APIView
-
+from drf_yasg.utils import swagger_auto_schema
 from userprofile.api.serializers import UserSerializer
+from drf_yasg import openapi
+
+LOGIN_REQUEST_SCHEMA = openapi.Schema(
+    title="Login request",
+    type=openapi.TYPE_OBJECT,
+    properties=dict(
+        username=openapi.Schema(type=openapi.TYPE_STRING),
+        password=openapi.Schema(type=openapi.TYPE_STRING),
+    ),
+)
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",

@@ -44,17 +44,17 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
+    "administration",
+    "audit_tool",
     "aw_creation",
     "aw_reporting",
-    "userprofile",
-    "segment",
-    "keyword_tool",
-    "landing",
-    "administration",
+    "brand_safety",
     "channel",
     "email_reports",
-    "audit_tool",
-    "blacklist_video"
+    "keyword_tool",
+    "landing",
+    "segment",
+    "userprofile",
 )
 
 THIRD_PARTY_APPS = (
