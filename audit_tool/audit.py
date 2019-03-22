@@ -35,6 +35,7 @@ class Audit(SegmentedAudit):
 
         # self.youtube_connector = YoutubeAPIConnector()
         self.audit_type = kwargs.get('type')
+        self.csv_source_file_path = kwargs.get('file')
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
         self.csv_keyword_path = kwargs.get('keywords')
@@ -175,7 +176,6 @@ class Audit(SegmentedAudit):
                     'audit_type': 'whitelist'
                 }
             },
-
             'is_brand_safety_channels': {
                 'results': [],
                 'options': {
@@ -389,6 +389,10 @@ class Audit(SegmentedAudit):
             print('No data for: {} {}'.format(data_type, audit_type))
             return
 
+        # Sort items by channel title
+        sort_key = 'channelId' if data_type == 'video' else 'title'
+        data.sort(key=lambda item: item['snippet'][sort_key])
+
         while True:
             next_page = False
             csv_pages_key = '{}_{}s'.format(audit_type, data_type)
@@ -531,7 +535,7 @@ class Audit(SegmentedAudit):
         Yields each row of csv
         :return: (dict)
         """
-        with open(self.csv_file_path, mode='r') as csv_file:
+        with open(self.csv_source_file_path, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
 
             # Pass over headers
@@ -556,7 +560,7 @@ class Audit(SegmentedAudit):
         Yields each row of csv
         :return: (dict)
         """
-        with open(self.csv_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+        with open(self.csv_source_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             batch = []
             csv_reader = csv.DictReader(csv_file)
 
@@ -623,7 +627,8 @@ class Audit(SegmentedAudit):
             'whitelist_videos': [],
             'blacklist_videos': [],
             'not_brand_safety_videos': [],
-            'is_brand_safety_videos': []
+            'is_brand_safety_videos': [],
+            'ignore_brand_safety_videos': []
         }
 
         for video in videos:

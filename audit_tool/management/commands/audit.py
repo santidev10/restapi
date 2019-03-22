@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 from audit_tool.audit import Audit
-from related_tool.models import RelatedVideo
 import logging
 
 from pid.decorator import pidfile
