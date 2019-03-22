@@ -110,6 +110,10 @@ class Reaudit(SegmentedAudit):
 
         self.run_processor(target, data_generator, result_processor, chunk_size=chunk_size)
 
+    def related_video_audit(self, related_videos):
+
+        pass
+
     def get_processor(self):
         if self.audit_type == 'video':
             return self.process_videos, self.video_data_generator, self.process_video_results, self.video_chunk_size
@@ -230,6 +234,7 @@ class Reaudit(SegmentedAudit):
         connector = YoutubeAPIConnector()
 
         while csv_videos:
+            # Needs to be 50 for youtube limit
             batch = csv_videos[:50]
             batch_ids = ','.join([video.get('video_id') for video in batch])
 

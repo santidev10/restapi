@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from audit_tool.reaudit import Reaudit
+from related_tool.models import RelatedVideo
 import logging
 
 from pid.decorator import pidfile
@@ -35,12 +36,25 @@ class Command(BaseCommand):
             '--badwords',
             help='More bad words'
         )
+        parser.add_argument(
+            '--related_seed',
+            help='If data to audit should come from related videos table'
+        )
 
     def handle(self, *args, **kwargs):
         reaudit = Reaudit(*args, **kwargs)
+        all_related_videos = RelatedVideo.objects.all()
 
-        if type == 'channel':
-            reaudit.channel_run()
+        if kwargs.get('related_seed'):
+            reaudit.related_audit(all_related_videos)
+
         else:
             reaudit.run()
 
+
+class RelatedAudit(Reaudit):
+    def __init__(self, related_video_data):
+        super()__init__()
+        self.related_video_data = related_video_data
+
+    def video_data_generator(self):
