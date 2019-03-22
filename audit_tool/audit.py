@@ -1,10 +1,10 @@
-from .audit_mixin import AuditMixin
+from .auditor import Auditor
 from utils.youtube_api import YoutubeAPIConnector
 import csv
 from multiprocessing import Pool
 from . import audit_constants as constants
 
-class Audit(AuditMixin):
+class Audit(object):
     max_process_count = 5
     video_chunk_size = 10000
     video_batch_size = 30000
@@ -31,13 +31,13 @@ class Audit(AuditMixin):
         super().__init__()
 
         # self.youtube_connector = YoutubeAPIConnector()
+        self.auditor = Auditor()
         self.audit_type = kwargs.get('type')
         self.csv_source_file_path = kwargs.get('file')
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
-        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
-        self.brand_safety_tags_regexp = self.compile_audit_regexp(self.get_all_bad_words())
+        self.whitelist_regexp = self.auditor.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
+        self.blacklist_regexp = self.auditor.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
 
     def run(self):
         print('starting...')
@@ -60,7 +60,7 @@ class Audit(AuditMixin):
         items_seen = 0
 
         for batch in generator():
-            chunks = self.chunks(batch, chunk_size)
+            chunks = self.auditor.chunks(batch, chunk_size)
             all_results = pool.map(target, chunks)
 
             result_processor(all_results)
@@ -167,7 +167,7 @@ class Audit(AuditMixin):
             response = connector.obtain_videos(batch_ids, part='snippet,statistics').get('items')
 
             if not video.get('channel_subscribers'):
-                channel_statistics_data = self.get_channel_statistics_with_video_data(response, connector)
+                channel_statistics_data = self.auditor.get_channel_statistics_with_video_data(response, connector)
                 video_channel_subscriber_ref = {
                     channel['id']: channel['statistics']['subscribers']
                     for channel in channel_statistics_data
@@ -186,11 +186,11 @@ class Audit(AuditMixin):
             all_videos += response
             csv_videos = csv_videos[50:]
 
-        video_audit_results = self.audit_videos(all_videos, blacklist_regexp=self.blacklist_regexp, whitelist_regexp=self.whitelist_regexp)
-        channel_audit_results = self.audit_channels(video_audit_results, connector)
+        video_audit_results = self.auditor.audit_videos(all_videos, blacklist_regexp=self.blacklist_regexp, whitelist_regexp=self.whitelist_regexp)
+        channel_audit_results = self.auditor.audit_channels(video_audit_results, connector)
 
         # sort channels based on their video keyword hits
-        sorted_channels = self.sort_channels_by_keyword_hits(channel_audit_results)
+        sorted_channels = self.auditor.sort_channels_by_keyword_hits(channel_audit_results)
 
         final_results.update(sorted_channels)
         final_results.update(video_audit_results)
@@ -209,34 +209,34 @@ class Audit(AuditMixin):
         connector = YoutubeAPIConnector()
 
         for row in csv_channels:
-            channel_id = self.channel_id_regexp.search(row.get('channel_url'))
+            channel_id = self.auditor.channel_id_regexp.search(row.get('channel_url'))
 
             if channel_id:
                 channel_id = channel_id.group()
 
             else:
                 # If no channel id, then get user name to retrieve channel id
-                username = self.username_regexp.search(row.get('channel_url')).group()
-                channel_id = self.get_channel_id_for_username(username, connector)
+                username = self.auditor.username_regexp.search(row.get('channel_url')).group()
+                channel_id = self.auditor.get_channel_id_for_username(username, connector)
 
                 if not channel_id:
                     continue
 
-            channel_videos = self.get_channel_videos(channel_id, connector)
+            channel_videos = self.auditor.get_channel_videos(channel_id, connector)
             all_videos += channel_videos
 
         # audit_videos func sets keyword hits key on each video and returns sorted videos
-        video_audit_results = self.audit_videos(all_videos)
+        video_audit_results = self.auditor.audit_videos(all_videos)
 
         all_video_audit_results = sum(video_audit_results.values(), [])
 
         # audit_channels aggregates all the videos for each channels
-        channel_audit_results = self.audit_channels(all_video_audit_results, connector)
+        channel_audit_results = self.auditor.audit_channels(all_video_audit_results, connector)
 
-        self.update_video_channel_subscribers(all_video_audit_results, channel_audit_results)
+        self.auditor.update_video_channel_subscribers(all_video_audit_results, channel_audit_results)
 
         # sort channels based on their video keyword hits
-        sorted_channels = self.sort_channels_by_keyword_hits(channel_audit_results)
+        sorted_channels = self.auditor.sort_channels_by_keyword_hits(channel_audit_results)
 
         final_results.update(sorted_channels)
         final_results.update(video_audit_results)
@@ -308,13 +308,13 @@ class Audit(AuditMixin):
             video['has_emoji'],
             statistics.get('viewCount', 0),
             metadata['description'],
-            self.categories.get(metadata['categoryId']),
+            self.auditor.categories.get(metadata['categoryId']),
             metadata.get('defaultLanguage'),
             statistics.get('likeCount', 0),
             statistics.get('dislikeCount', 0),
             statistics.get('commentCount', 0),
             csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
-            self.get_keyword_count(video.get(self.audit_keyword_hit_mapping.get(audit_type), []))
+            self.auditor.get_keyword_count(video.get(self.auditor.audit_keyword_hit_mapping.get(audit_type), []))
         ]
 
         return export_row
@@ -336,7 +336,7 @@ class Audit(AuditMixin):
             metadata['title'],
             'http://www.youtube.com/channel/' + channel_id,
             metadata['defaultLanguage'],
-            self.categories[channel_category_id],
+            self.auditor.categories[channel_category_id],
             statistics['videoCount'],
             statistics['subscriberCount'],
             statistics['viewCount'],
@@ -344,7 +344,7 @@ class Audit(AuditMixin):
             video_data['totalLikes'],
             video_data['totalDislikes'],
             metadata.get('country', 'Unknown'),
-            self.get_keyword_count(video_data.get(self.audit_keyword_hit_mapping.get(audit_type), []))
+            self.auditor.get_keyword_count(video_data.get(self.auditor.audit_keyword_hit_mapping.get(audit_type), []))
         ]
 
         return export_row
@@ -359,7 +359,7 @@ class Audit(AuditMixin):
             rows_batch = []
 
             for row in csv_reader:
-                video_id = self.video_id_regexp.search(row.pop('url')).group()
+                video_id = self.auditor.video_id_regexp.search(row.pop('url')).group()
                 # rows_batch[video_id] = row
                 row['video_id'] = video_id
                 rows_batch.append(row)

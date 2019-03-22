@@ -1,4 +1,5 @@
 from utils.youtube_api import YoutubeAPIConnector
+from audit_tool.auditor import Auditor
 from .models import RelatedVideo
 import csv
 import re

@@ -6,7 +6,7 @@ import re
 import langid
 from . import audit_constants as constants
 
-class AuditMixin(object):
+class Auditor(object):
     youtube_max_channel_list_limit = 50
     video_id_regexp = re.compile('(?<=video/).*')
     channel_id_regexp = re.compile('(?<=channel/).*')
@@ -50,6 +50,9 @@ class AuditMixin(object):
         constants.WHITELIST: constants.WHITELIST_HITS,
         constants.BLACKLIST: constants.BLACKLIST_HITS
     }
+
+    def __init__(self):
+        self.brand_safety_tags_regexp = self.compile_audit_regexp(self.get_all_bad_words())
 
     @staticmethod
     def read_and_create_keyword_regexp(csv_path):
