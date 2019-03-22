@@ -6,7 +6,7 @@ from multiprocessing import Pool
 import langid
 from collections import Counter
 
-class Reaudit(SegmentedAudit):
+class Audit(SegmentedAudit):
     max_process_count = 5
     video_chunk_size = 10000
     video_batch_size = 30000
@@ -35,7 +35,6 @@ class Reaudit(SegmentedAudit):
 
         # self.youtube_connector = YoutubeAPIConnector()
         self.audit_type = kwargs.get('type')
-        self.csv_file_path = kwargs.get('file')
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
         self.csv_keyword_path = kwargs.get('keywords')
@@ -82,8 +81,8 @@ class Reaudit(SegmentedAudit):
         self.video_id_regexp = re.compile('(?<=video/).*')
         self.channel_id_regexp = re.compile('(?<=channel/).*')
         self.username_regexp = re.compile('(?<=user/).*')
-        self.whitelist_regexp = self.create_keyword_regexp(self.csv_keyword_path) if self.csv_keyword_path else None
-        self.more_bad_words = self.create_keyword_regexp(kwargs['badwords']) if kwargs.get('badwords') else None
+        self.whitelist_regexp = self.create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
+        self.blacklist_regexp = self.create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
         self.brand_safety = kwargs.get('brand_safety')
         self.emoji_regexp = re.compile(u"["
                                    u"\U0001F600-\U0001F64F"  # emoticons
@@ -116,10 +115,10 @@ class Reaudit(SegmentedAudit):
 
     def get_processor(self):
         if self.audit_type == 'video':
-            return self.process_videos, self.video_data_generator, self.process_video_results, self.video_chunk_size
+            return self.process_videos, self.video_data_generator, self.process_results, self.video_chunk_size
 
         elif self.audit_type == 'channel':
-            return self.process_channels, self.channel_data_generator, self.process_channel_results, self.channel_chunk_size
+            return self.process_channels, self.channel_data_generator, self.process_results, self.channel_chunk_size
 
         else:
             print('Audit type not supported: {}'.format(self.audit_type))
@@ -141,10 +140,7 @@ class Reaudit(SegmentedAudit):
 
         print('Complete!')
 
-    def process_video_results(self, results):
-        self.write_data(results, 'video', audit_type='whitelist')
-
-    def process_channel_results(self, results: list):
+    def process_results(self, results: list):
         """
         Extracts results from results (nested lists from processes) and writes data
         :param results:
@@ -230,6 +226,7 @@ class Reaudit(SegmentedAudit):
         :param csv_videos: (generator) Yields list of csv video data
         :return:
         """
+        final_results = {}
         all_videos = []
         connector = YoutubeAPIConnector()
 
@@ -260,9 +257,16 @@ class Reaudit(SegmentedAudit):
             all_videos += response
             csv_videos = csv_videos[50:]
 
-        audit_results = self.audit_videos(all_videos)
+        video_audit_results = self.audit_videos(all_videos)
+        channel_audit_results = self.audit_channels(video_audit_results, connector)
 
-        return audit_results
+        # sort channels based on their video keyword hits
+        sorted_channels = self.sort_channels_by_keyword_hits(channel_audit_results)
+
+        final_results.update(sorted_channels)
+        final_results.update(video_audit_results)
+
+        return final_results
 
     def get_channel_statistics_with_video_id(self, videos, connector):
         """
@@ -641,14 +645,14 @@ class Reaudit(SegmentedAudit):
 
             # If provided, more bad keywords to filter against
             blacklist_hits = []
-            if self.more_bad_words:
-                blacklist_hits = self._parse_item(video, self.more_bad_words)
+            if self.blacklist_regexp:
+                blacklist_hits = self._parse_item(video, self.blacklist_regexp)
                 if blacklist_hits:
                     self.set_keyword_hits(video, blacklist_hits, 'blacklist_hits')
                     results['blacklist_videos'].append(video)
 
             # If whitelist keywords provided, keywords to filter for
-            if not brand_safety_hits and not self.more_bad_words and not blacklist_hits and self.whitelist_regexp:
+            if not brand_safety_hits and not self.blacklist_regexp and not blacklist_hits and self.whitelist_regexp:
                 whitelist_hits = set(self._parse_item(video, self.whitelist_regexp))
 
                 if whitelist_hits:
